@@ -70,7 +70,7 @@ A feed object representing a community post with text, and optionally images.
 
 *Usage:*
 ```javascript
-new PlatformPost{
+new PlatformPost({
 	id: new PlatformID(config.name, item?.id, config.id),
 	name: item?.attributes?.title,
 	author: getPlatformAuthorLink(item, context),
