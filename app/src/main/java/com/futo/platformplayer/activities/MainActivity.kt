@@ -207,7 +207,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                     .build()
             )
         }
-
+        
         ApiMethods.UserAgent = "Grayjay Android (${BuildConfig.VERSION_CODE})";
 
         Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
@@ -249,6 +249,8 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Logger.i(TAG, "MainActivity Starting");
+        ApiMethods.initCache(cacheDir);
+
         StateApp.instance.setGlobalContext(this, lifecycleScope);
         StateApp.instance.mainAppStarting(this);
 
