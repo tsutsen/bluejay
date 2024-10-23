@@ -44,9 +44,11 @@ import com.futo.polycentric.core.toBase64
 import com.futo.polycentric.core.toURLInfoSystemLinkUrl
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import userpackage.Protocol
 import userpackage.Protocol.Reference
@@ -510,67 +512,88 @@ class StatePolycentric {
         };
     }
 
-    private suspend fun mapQueryReferences(contextUrl: String, response: Protocol.QueryReferencesResponse): List<PolycentricPlatformComment> {
-        return response.itemsList.mapNotNull {
-            val sev = SignedEvent.fromProto(it.event);
-            val ev = sev.event;
-            if (ev.contentType != ContentType.POST.value) {
-                return@mapNotNull null;
-            }
+    private suspend fun mapQueryReferences(contextUrl: String, response: Protocol.QueryReferencesResponse): List<PolycentricPlatformComment> = coroutineScope {
+        response.itemsList.map { item ->
+            async {
+                val sev = SignedEvent.fromProto(item.event)
+                val ev = sev.event
+                if (ev.contentType != ContentType.POST.value) {
+                    return@async null
+                }
 
-            try {
-                val post = Protocol.Post.parseFrom(ev.content);
-                val likes = it.countsList[0];
-                val dislikes = it.countsList[1];
-                val replies = it.countsList[2];
+                try {
+                    val post = Protocol.Post.parseFrom(ev.content)
+                    val likes = item.countsList.getOrNull(0)
+                    val dislikes = item.countsList.getOrNull(1)
+                    val replies = item.countsList.getOrNull(2)
 
-                val profileEvents = ApiMethods.getQueryLatest(
-                    PolycentricCache.SERVER,
-                    ev.system.toProto(),
-                    listOf(
-                        ContentType.AVATAR.value,
-                        ContentType.USERNAME.value
-                    )
-                ).eventsList.map { e -> SignedEvent.fromProto(e) }.groupBy { e -> e.event.contentType }
-                    .map { (_, events) -> events.maxBy { x -> x.event.unixMilliseconds ?: 0 } };
+                    val profileEvents = ApiMethods.getQueryLatest(
+                        PolycentricCache.SERVER,
+                        ev.system.toProto(),
+                        listOf(
+                            ContentType.AVATAR.value,
+                            ContentType.USERNAME.value
+                        )
+                    ).eventsList.map { e -> SignedEvent.fromProto(e) }.groupBy { e -> e.event.contentType }
+                        .map { (_, events) -> events.maxBy { x -> x.event.unixMilliseconds ?: 0 } };
 
-                val nameEvent = profileEvents.firstOrNull { e -> e.event.contentType == ContentType.USERNAME.value };
-                val avatarEvent = profileEvents.firstOrNull { e -> e.event.contentType == ContentType.AVATAR.value };
-                val imageBundle = if (avatarEvent != null) {
-                    val lwwElementValue = avatarEvent.event.lwwElement?.value;
-                    if (lwwElementValue != null) {
-                        Protocol.ImageBundle.parseFrom(lwwElementValue)
+                    val nameEvent = profileEvents.firstOrNull { e -> e.event.contentType == ContentType.USERNAME.value };
+                    val avatarEvent = profileEvents.firstOrNull { e -> e.event.contentType == ContentType.AVATAR.value };
+                    val imageBundle = if (avatarEvent != null) {
+                        val lwwElementValue = avatarEvent.event.lwwElement?.value;
+                        if (lwwElementValue != null) {
+                            Protocol.ImageBundle.parseFrom(lwwElementValue)
+                        } else {
+                            null
+                        }
                     } else {
                         null
                     }
-                } else {
+
+
+                    val unixMilliseconds = ev.unixMilliseconds
+                    //TODO: Don't use single hardcoded server here
+                    val systemLinkUrl = ev.system.systemToURLInfoSystemLinkUrl(listOf(PolycentricCache.SERVER))
+                    val dp_25 = 25.dp(StateApp.instance.context.resources)
+
+                    PolycentricPlatformComment(
+                        contextUrl = contextUrl,
+                        author = PlatformAuthorLink(
+                            id = PlatformID(
+                                "polycentric",
+                                systemLinkUrl,
+                                null,
+                                ClaimType.POLYCENTRIC.value.toInt()
+                            ),
+                            name = nameEvent?.event?.lwwElement?.value?.decodeToString() ?: "Unknown",
+                            url = systemLinkUrl,
+                            thumbnail = imageBundle?.selectBestImage(dp_25 * dp_25)?.let { img ->
+                                img.toURLInfoSystemLinkUrl(
+                                    ev.system.toProto(),
+                                    img.process,
+                                    listOf(PolycentricCache.SERVER)
+                                )
+                            },
+                            subscribers = null
+                        ),
+                        msg = if (post.content.length > PolycentricPlatformComment.MAX_COMMENT_SIZE) {
+                            post.content.substring(0, PolycentricPlatformComment.MAX_COMMENT_SIZE)
+                        } else {
+                            post.content
+                        },
+                        rating = RatingLikeDislikes(likes ?: 0, dislikes ?: 0),
+                        date = unixMilliseconds?.let {
+                            Instant.ofEpochMilli(it).atOffset(ZoneOffset.UTC)
+                        } ?: OffsetDateTime.MIN,
+                        replyCount = replies?.toInt() ?: 0,
+                        eventPointer = sev.toPointer(),
+                        parentReference = sev.event.references.getOrNull(0)
+                    )
+                } catch (e: Throwable) {
                     null
                 }
-
-                val unixMilliseconds = ev.unixMilliseconds
-                //TODO: Don't use single hardcoded sderver here
-                val systemLinkUrl = ev.system.systemToURLInfoSystemLinkUrl(listOf(PolycentricCache.SERVER));
-                val dp_25 = 25.dp(StateApp.instance.context.resources)
-                return@mapNotNull PolycentricPlatformComment(
-                    contextUrl = contextUrl,
-                    author = PlatformAuthorLink(
-                        id = PlatformID("polycentric", systemLinkUrl, null, ClaimType.POLYCENTRIC.value.toInt()),
-                        name = nameEvent?.event?.lwwElement?.value?.decodeToString() ?: "Unknown",
-                        url = systemLinkUrl,
-                        thumbnail =  imageBundle?.selectBestImage(dp_25 * dp_25)?.let { img -> img.toURLInfoSystemLinkUrl(ev.system.toProto(), img.process, listOf(PolycentricCache.SERVER)) },
-                        subscribers = null
-                    ),
-                    msg = if (post.content.count() > PolycentricPlatformComment.MAX_COMMENT_SIZE) post.content.substring(0, PolycentricPlatformComment.MAX_COMMENT_SIZE) else post.content,
-                    rating = RatingLikeDislikes(likes, dislikes),
-                    date = if (unixMilliseconds != null) Instant.ofEpochMilli(unixMilliseconds).atOffset(ZoneOffset.UTC) else OffsetDateTime.MIN,
-                    replyCount = replies.toInt(),
-                    eventPointer = sev.toPointer(),
-                    parentReference = sev.event.references.getOrNull(0)
-                );
-            } catch (e: Throwable) {
-                return@mapNotNull null;
             }
-        };
+        }.awaitAll().filterNotNull()
     }
 
     companion object {
