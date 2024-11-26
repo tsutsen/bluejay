@@ -10,6 +10,7 @@ import java.io.BufferedInputStream
 import java.io.OutputStream
 import java.lang.reflect.Field
 import java.lang.reflect.Method
+import java.net.BindException
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
@@ -41,20 +42,34 @@ class ManagedHttpServer(private val _requestedPort: Int = 0) {
         _workerPool = Executors.newCachedThreadPool();
 
         Thread {
+            var socket: ServerSocket? = null
             try {
-                val socket = ServerSocket(_requestedPort);
+                socket = ServerSocket(_requestedPort);
                 port = socket.localPort;
+            } catch (e: BindException) {
+                try {
+                    Logger.w(TAG, "Failed create socket due to port being in use, attempting to automatically choose port...", e);
+                    socket = ServerSocket(0);
+                    port = socket.localPort;
+                } catch (e: Throwable) {
+                    Logger.e(TAG, "Failed to accept socket.", e);
+                    stop();
+                }
+            } catch (e: Throwable) {
+                Logger.e(TAG, "Failed to accept socket.", e);
+                stop();
+            }
 
+            try {
                 val stopCount = _stopCount;
                 while (_stopCount == stopCount) {
                     if(_logVerbose)
                         Logger.i(TAG, "Waiting for connection...");
-                    val s = socket.accept() ?: continue;
+                    val s = socket?.accept() ?: continue;
 
                     try {
                         handleClientRequest(s);
-                    }
-                    catch(ex : Exception) {
+                    } catch(ex : Exception) {
                         Logger.e(TAG, "Client disconnected due to: " + ex.message, ex);
                     }
                 }
