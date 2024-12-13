@@ -66,6 +66,7 @@ class PolycentricCreateProfileActivity : AppCompatActivity() {
                 val username = _profileName.text.toString();
                 if (username.length < 3) {
                     UIDialogs.toast(this@PolycentricCreateProfileActivity, getString(R.string.must_be_at_least_3_characters_long));
+                    _creating = false;
                     return@setOnClickListener;
                 }
 
@@ -93,8 +94,6 @@ class PolycentricCreateProfileActivity : AppCompatActivity() {
                         } catch (e: Throwable) {
                             Logger.e(TAG, getString(R.string.failed_to_create_profile), e);
                             return@launch;
-                        } finally {
-                            _creating = false;
                         }
 
                         try {
@@ -111,6 +110,7 @@ class PolycentricCreateProfileActivity : AppCompatActivity() {
                             _buttonCreate.visibility = View.VISIBLE;
                             _loader.stop();
                             _loader.visibility = View.GONE;
+                            _creating = false;
                         }
                     }
 
@@ -119,7 +119,7 @@ class PolycentricCreateProfileActivity : AppCompatActivity() {
                         finish();
                     }
                 }
-            } finally {
+            } catch (e: Exception) {
                 _creating = false;
             }
         };
