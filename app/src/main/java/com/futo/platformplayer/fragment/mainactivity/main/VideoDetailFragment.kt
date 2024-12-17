@@ -255,14 +255,14 @@ class VideoDetailFragment() : MainFragment() {
 
     fun minimizeVideoDetail() {
         _viewDetail?.setFullscreen(false);
-        _motionLayout?.setTransition(R.id.maximize)
-        _motionLayout?.transitionToStart();
+        _motionLayout?.transitionToState(R.id.collapsed)
     }
     fun maximizeVideoDetail(instant: Boolean) {
         state = State.MAXIMIZED
         onMaximized.emit()
         if(instant) {
-            _motionLayout?.setState(R.id.collapsed, _motionLayout!!.width,_motionLayout!!.height)
+            _motionLayout?.setTransition(R.id.maximize)
+            _motionLayout?.progress = 1f
         } else {
             _motionLayout?.transitionToState(R.id.expanded)
         }
@@ -286,8 +286,7 @@ class VideoDetailFragment() : MainFragment() {
         viewDetail.onVideoChanged.subscribe(::onVideoChanged)
         viewDetail.onMinimize.subscribe {
             isMinimizingFromFullScreen = true
-            _motionLayout!!.setTransition(R.id.maximize)
-            _motionLayout!!.transitionToStart()
+            _motionLayout?.transitionToState(R.id.collapsed)
         };
         viewDetail.onClose.subscribe {
             Logger.i(TAG, "onClose")

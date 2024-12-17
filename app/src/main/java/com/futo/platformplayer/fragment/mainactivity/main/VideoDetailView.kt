@@ -807,7 +807,6 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
                 if(currentId == R.id.full_screen_gesture) {
                     setFullscreen(true)
                     motionLayout?.transitionToState(R.id.expanded)
-                    motionLayout?.isInteractionEnabled = false
                 }
             }
 

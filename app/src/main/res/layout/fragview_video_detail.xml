@@ -380,19 +380,23 @@
                         android:id="@+id/videodetail_rating"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintEnd_toStartOf="@id/buttons_pins"
                         android:layout_marginTop="7dp"
-                        android:layout_marginStart="15dp" />
+                        android:layout_marginStart="15dp"
+                        app:layout_constraintHorizontal_chainStyle="spread_inside"/>
 
                     <com.futo.platformplayer.views.pills.RoundButtonGroup
                         android:id="@+id/buttons_pins"
-                        app:layout_constraintLeft_toRightOf="@id/videodetail_rating"
+                        app:layout_constraintStart_toEndOf="@id/videodetail_rating"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintRight_toRightOf="parent"
-                        android:layout_marginLeft="10dp"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        android:layout_marginStart="10dp"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        app:layout_constraintWidth_max="500dp"
+                        app:layout_constraintHorizontal_chainStyle="spread_inside"/>
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
 
@@ -591,15 +595,13 @@
 
     <FrameLayout
         android:id="@+id/videodetail_quality_overview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:elevation="100dp"
-        android:visibility="gone" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"/>
 
     <FrameLayout
         android:id="@+id/overlay_container"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:elevation="100dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:visibility="gone" />
 </com.futo.platformplayer.views.containers.CustomMotionLayout>

@@ -113,7 +113,6 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
     private var _lastSourceFit: Float? = null;
     private var _lastWindowWidth: Int = resources.configuration.screenWidthDp
     private var _lastWindowHeight: Int = resources.configuration.screenHeightDp
-    private var _originalBottomMargin: Int = 0;
 
     private var _isControlsLocked: Boolean = false;
 
@@ -710,11 +709,6 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
     @OptIn(UnstableApi::class)
     fun fitHeight(videoSize: VideoSize? = null) {
         Logger.i(TAG, "Video Fit Height")
-        if (_originalBottomMargin != 0) {
-            val layoutParams = _videoView.layoutParams as ConstraintLayout.LayoutParams
-            layoutParams.setMargins(0, 0, 0, _originalBottomMargin)
-            _videoView.layoutParams = layoutParams
-        }
 
         var h = videoSize?.height ?: lastVideoSource?.height ?: exoPlayer?.player?.videoSize?.height
         ?: 0
@@ -760,6 +754,7 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
             _lastSourceFit!!,
             resources.displayMetrics
         )
+        _videoView.setPadding(_videoView.paddingLeft, _videoView.paddingTop, _videoView.paddingRight, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 7.0f, Resources.getSystem().displayMetrics).toInt())
         val rootParams = LayoutParams(LayoutParams.MATCH_PARENT, (height).toInt())
         _root.layoutParams = rootParams
         isFitMode = true
@@ -768,9 +763,7 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
     @OptIn(UnstableApi::class)
     fun fillHeight(isMiniPlayer: Boolean) {
         Logger.i(TAG, "Video Fill Height");
-        val layoutParams = _videoView.layoutParams as ConstraintLayout.LayoutParams;
-        _originalBottomMargin =
-            if (layoutParams.bottomMargin > 0) layoutParams.bottomMargin else _originalBottomMargin;
+        var layoutParams = _videoView.layoutParams as ConstraintLayout.LayoutParams;
         layoutParams.setMargins(0);
         _videoView.layoutParams = layoutParams;
         _videoView.invalidate();
@@ -781,6 +774,9 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
 
         if(isMiniPlayer){
             _videoView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            _videoView.setPadding(_videoView.paddingLeft, _videoView.paddingTop, _videoView.paddingRight, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 7.0f, Resources.getSystem().displayMetrics).toInt())
+        } else {
+            _videoView.setPadding(_videoView.paddingLeft, _videoView.paddingTop, _videoView.paddingRight, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 0.0f, Resources.getSystem().displayMetrics).toInt())
         }
 
         isFitMode = false;
