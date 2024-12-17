@@ -12,6 +12,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.net.Uri
+import android.os.Build
 import android.support.v4.media.session.PlaybackStateCompat
 import android.text.Spanned
 import android.util.Log
@@ -2615,7 +2616,7 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
     fun handleLeavePictureInPicture() {
         Logger.i(TAG, "handleLeavePictureInPicture")
     }
-    fun getPictureInPictureParams() : PictureInPictureParams {
+    fun getPictureInPictureParams(isPlaying: Boolean) : PictureInPictureParams {
         var videoSourceWidth = _player.exoPlayer?.player?.videoSize?.width ?: 0;
         var videoSourceHeight = _player.exoPlayer?.player?.videoSize?.height ?: 0;
 
@@ -2641,11 +2642,16 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
         else
             RemoteAction(Icon.createWithResource(context, R.drawable.ic_play_notif), context.getString(R.string.play), context.getString(R.string.resumes_the_video), MediaControlReceiver.getPlayIntent(context, 6));
 
-        return PictureInPictureParams.Builder()
+        val params = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(videoSourceWidth, videoSourceHeight))
             .setSourceRectHint(r)
             .setActions(listOf(playpauseAction))
-            .build();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            params.setAutoEnterEnabled(isPlaying)
+        }
+
+        return params.build()
     }
 
     //Other

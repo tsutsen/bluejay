@@ -269,6 +269,7 @@ class VideoDetailFragment() : MainFragment() {
     }
     fun closeVideoDetails() {
         Logger.i(TAG, "closeVideoDetails()")
+        _viewDetail?.onPlayChanged?.emit(false)
         state = State.CLOSED;
         _viewDetail?.onStop();
         close();
@@ -294,12 +295,10 @@ class VideoDetailFragment() : MainFragment() {
         };
         viewDetail.onMaximize.subscribe { maximizeVideoDetail(it) };
         viewDetail.onPlayChanged.subscribe {
-            if(isInPictureInPicture) {
-                val params = _viewDetail?.getPictureInPictureParams();
-                if (params != null)
-                    activity?.setPictureInPictureParams(params);
-            }
-        };
+            val params = _viewDetail?.getPictureInPictureParams(it)
+            if (params != null)
+                activity?.setPictureInPictureParams(params)
+        }
         viewDetail.onEnterPictureInPicture.subscribe {
             Logger.i(TAG, "onEnterPictureInPicture")
             isInPictureInPicture = true;
@@ -367,10 +366,10 @@ class VideoDetailFragment() : MainFragment() {
         val viewDetail = _viewDetail;
         Logger.i(TAG, "onUserLeaveHint preventPictureInPicture=${viewDetail?.preventPictureInPicture} isCasting=${StateCasting.instance.isCasting} isBackgroundPictureInPicture=${Settings.instance.playback.isBackgroundPictureInPicture()} allowBackground=${viewDetail?.allowBackground}");
 
-        if(viewDetail?.preventPictureInPicture == false && !StateCasting.instance.isCasting && Settings.instance.playback.isBackgroundPictureInPicture() && !viewDetail.allowBackground) {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S && viewDetail?.preventPictureInPicture == false && !StateCasting.instance.isCasting && Settings.instance.playback.isBackgroundPictureInPicture() && !viewDetail.allowBackground) {
             _leavingPiP = false;
 
-            val params = _viewDetail?.getPictureInPictureParams();
+            val params = _viewDetail?.getPictureInPictureParams(true);
             if(params != null) {
                 Logger.i(TAG, "enterPictureInPictureMode")
                 activity?.enterPictureInPictureMode(params);
@@ -379,7 +378,7 @@ class VideoDetailFragment() : MainFragment() {
     }
 
     fun forcePictureInPicture() {
-        val params = _viewDetail?.getPictureInPictureParams();
+        val params = _viewDetail?.getPictureInPictureParams(true);
         if(params != null)
             activity?.enterPictureInPictureMode(params);
     }
