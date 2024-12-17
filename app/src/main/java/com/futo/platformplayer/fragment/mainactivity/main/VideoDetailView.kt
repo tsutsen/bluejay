@@ -2,7 +2,6 @@ package com.futo.platformplayer.fragment.mainactivity.main
 
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
-import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.content.res.Resources
@@ -15,11 +14,10 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.support.v4.media.session.PlaybackStateCompat
 import android.text.Spanned
-import android.util.AttributeSet
 import android.util.Log
 import android.util.Rational
 import android.util.TypedValue
-import android.view.MotionEvent
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -30,6 +28,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
@@ -130,9 +129,9 @@ import com.futo.platformplayer.views.FeedStyle
 import com.futo.platformplayer.views.LoaderView
 import com.futo.platformplayer.views.MonetizationView
 import com.futo.platformplayer.views.adapters.feedtypes.PreviewVideoView
-import com.futo.platformplayer.views.behavior.TouchInterceptFrameLayout
 import com.futo.platformplayer.views.casting.CastView
 import com.futo.platformplayer.views.comments.AddCommentView
+import com.futo.platformplayer.views.containers.CustomMotionLayout
 import com.futo.platformplayer.views.others.CreatorThumbnail
 import com.futo.platformplayer.views.overlays.DescriptionOverlay
 import com.futo.platformplayer.views.overlays.LiveChatOverlay
@@ -160,6 +159,7 @@ import com.futo.polycentric.core.Models
 import com.futo.polycentric.core.Opinion
 import com.futo.polycentric.core.toURLInfoSystemLinkUrl
 import com.google.protobuf.ByteString
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -171,11 +171,10 @@ import kotlinx.coroutines.withContext
 import userpackage.Protocol
 import java.time.OffsetDateTime
 import kotlin.math.abs
-import kotlin.math.max
 import kotlin.math.roundToLong
 
 @UnstableApi
-class VideoDetailView : ConstraintLayout {
+class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) : FrameLayout(inflater.context) {
     private val TAG = "VideoDetailView"
 
     lateinit var fragment: VideoDetailFragment;
@@ -202,7 +201,7 @@ class VideoDetailView : ConstraintLayout {
     private val _timeBar: TimeBar;
     private var _upNext: UpNextView;
 
-    private val rootView: ConstraintLayout;
+    private val rootView: CustomMotionLayout;
 
     private val _title: TextView;
     private val _subTitle: TextView;
@@ -231,7 +230,6 @@ class VideoDetailView : ConstraintLayout {
 
     private val _commentsList: CommentsList;
 
-    private var _minimizeProgress: Float = 0f;
     private val _buttonSubscribe: SubscribeButton;
 
     private val _buttonPins: RoundButtonGroup;
@@ -247,7 +245,7 @@ class VideoDetailView : ConstraintLayout {
     private val _textResume: TextView;
     private val _layoutResume: LinearLayout;
     private var _jobHideResume: Job? = null;
-    private val _layoutPlayerContainer: TouchInterceptFrameLayout;
+    private val _layoutPlayerContainer: FrameLayout;
     private val _layoutChangeBottomSection: LinearLayout;
 
     //Overlays
@@ -311,7 +309,6 @@ class VideoDetailView : ConstraintLayout {
     var allowBackground : Boolean = false
         private set;
 
-    val onTouchCancel = Event0();
     private var _lastPositionSaveTime: Long = -1;
 
     private val DP_5 = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5f, resources.displayMetrics);
@@ -329,9 +326,8 @@ class VideoDetailView : ConstraintLayout {
         Pair(0, 10) //around live, try every 10 seconds
     );
 
-    @androidx.annotation.OptIn(UnstableApi::class)
-    constructor(context: Context, attrs : AttributeSet? = null) : super(context, attrs) {
-        inflate(context, R.layout.fragview_video_detail, this);
+    init {
+        inflater.inflate(R.layout.fragview_video_detail, this)
 
         //Declare Views
         rootView = findViewById(R.id.videodetail_root);
@@ -383,8 +379,7 @@ class VideoDetailView : ConstraintLayout {
         _textSkip = findViewById(R.id.text_skip);
         _layoutResume = findViewById(R.id.layout_resume);
         _textResume = findViewById(R.id.text_resume);
-        _layoutPlayerContainer = findViewById(R.id.layout_player_container);
-        _layoutPlayerContainer.onClick.subscribe { onMaximize.emit(false); };
+        _layoutPlayerContainer = findViewById(R.id.layout_player_container)
 
         _layoutRating = findViewById(R.id.layout_rating);
         _textDislikes = findViewById(R.id.text_dislikes);
@@ -549,10 +544,6 @@ class VideoDetailView : ConstraintLayout {
             updatePlaybackTracking(position);
         };
 
-        _player.onVideoClicked.subscribe {
-            if(_minimizeProgress < 0.5)
-                onMaximize.emit(false);
-        }
         _player.onSourceChanged.subscribe(::onSourceChanged);
         _player.onSourceEnded.subscribe {
             if (!fragment.isInPictureInPicture) {
@@ -789,6 +780,49 @@ class VideoDetailView : ConstraintLayout {
                 }
             }
         }
+
+        var currentState = R.id.expanded
+
+        rootView.addTransitionListener(object : MotionLayout.TransitionListener {
+            override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) {
+                when (currentId) {
+                    R.id.collapsed -> {
+                        _player.gestureControl.setOnClickListener {
+                            fragment.maximizeVideoDetail(false)
+                        }
+                        _player.gestureControl.controlsEnabled = false
+                    }
+
+                    R.id.expanded -> {
+                        _layoutResume.alpha = 1f
+                        _cast.setButtonAlpha(1f)
+                        _player.lockControlsAlpha(false)
+                        _player.hideControls(false)
+
+                        _player.gestureControl.controlsEnabled = true
+                        _player.gestureControl.setOnClickListener(null)
+                    }
+                }
+                currentState = currentId
+                if(currentId == R.id.full_screen_gesture) {
+                    setFullscreen(true)
+                    motionLayout?.transitionToState(R.id.expanded)
+                    motionLayout?.isInteractionEnabled = false
+                }
+            }
+
+            override fun onTransitionStarted(motionLayout: MotionLayout?, startId: Int, endId: Int) {
+                if (currentState == R.id.expanded) {
+                    _layoutResume.alpha = 0f
+                    _cast.setButtonAlpha(0f)
+                    _player.lockControlsAlpha(true)
+                    _player.hideControls(true);
+                }
+            }
+
+            override fun onTransitionTrigger(motionLayout: MotionLayout?, triggerId: Int, positive: Boolean, progress: Float) { }
+            override fun onTransitionChange(motionLayout: MotionLayout?, startId: Int, endId: Int, progress: Float) {}
+        })
     }
 
     val _trackingUpdateTimeLock = Object();
@@ -1890,17 +1924,6 @@ class VideoDetailView : ConstraintLayout {
         }
     }
 
-    override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
-        if (ev?.actionMasked == MotionEvent.ACTION_CANCEL ||
-            ev?.actionMasked == MotionEvent.ACTION_POINTER_DOWN ||
-            ev?.actionMasked == MotionEvent.ACTION_POINTER_UP) {
-            onTouchCancel.emit();
-        }
-
-        return super.onInterceptTouchEvent(ev);
-    }
-
-
     //Actions
     private fun showVideoSettings() {
         Logger.i(TAG, "showVideoSettings")
@@ -2327,9 +2350,7 @@ class VideoDetailView : ConstraintLayout {
         Logger.i(TAG, "handleFullScreen(fullscreen=$fullscreen)")
 
         if(fullscreen) {
-            _layoutPlayerContainer.setPadding(0, 0, 0, 0);
-
-            val lp = _container_content.layoutParams as LayoutParams;
+            val lp = _container_content.layoutParams as ConstraintLayout.LayoutParams
             lp.topMargin = 0;
             _container_content.layoutParams = lp;
 
@@ -2340,9 +2361,7 @@ class VideoDetailView : ConstraintLayout {
             setProgressBarOverlayed(null);
         }
         else {
-            _layoutPlayerContainer.setPadding(0, 0, 0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6.0f, Resources.getSystem().displayMetrics).toInt());
-
-            val lp = _container_content.layoutParams as LayoutParams;
+            val lp = _container_content.layoutParams as ConstraintLayout.LayoutParams;
             lp.topMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, -18.0f, Resources.getSystem().displayMetrics).toInt();
             _container_content.layoutParams = lp;
 
@@ -2558,7 +2577,7 @@ class VideoDetailView : ConstraintLayout {
                     hideAddTo()
 
                     onVideoClicked.subscribe { video, _ ->
-                        fragment.navigate<VideoDetailFragment>(video).maximizeVideoDetail()
+                        fragment.navigate<VideoDetailFragment>(video).maximizeVideoDetail(false)
                     }
 
                     onChannelClicked.subscribe {
@@ -2593,17 +2612,9 @@ class VideoDetailView : ConstraintLayout {
         _overlay_quality_selector?.hide();
 
         _player.fillHeight(false)
-        _layoutPlayerContainer.setPadding(0, 0, 0, 0);
     }
     fun handleLeavePictureInPicture() {
         Logger.i(TAG, "handleLeavePictureInPicture")
-
-        if(!_player.isFullScreen) {
-            _player.fitHeight();
-            _layoutPlayerContainer.setPadding(0, 0, 0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6.0f, Resources.getSystem().displayMetrics).toInt());
-        } else {
-            _layoutPlayerContainer.setPadding(0, 0, 0, 0);
-        }
     }
     fun getPictureInPictureParams() : PictureInPictureParams {
         var videoSourceWidth = _player.exoPlayer?.player?.videoSize?.width ?: 0;
@@ -2693,53 +2704,6 @@ class VideoDetailView : ConstraintLayout {
         }
     }
 
-    //Animation related setters
-    fun setMinimizeProgress(progress : Float) {
-        _minimizeProgress = progress;
-        _player.lockControlsAlpha(progress < 0.9);
-        _layoutPlayerContainer.shouldInterceptTouches = progress < 0.95;
-
-        if(progress > 0.9) {
-            if(_minimize_controls.visibility != View.GONE)
-                _minimize_controls.visibility = View.GONE;
-        }
-        else if(_minimize_controls.visibility != View.VISIBLE) {
-            _minimize_controls.visibility = View.VISIBLE;
-        }
-
-        //Switching video to fill
-        if(progress > 0.25) {
-            if(!_player.isFullScreen && _player.layoutParams.height != WRAP_CONTENT) {
-                _player.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
-                if(!fragment.isInPictureInPicture) {
-                    _player.fitHeight();
-                    _layoutPlayerContainer.setPadding(0, 0, 0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6.0f, Resources.getSystem().displayMetrics).toInt());
-                }
-                else {
-                    _layoutPlayerContainer.setPadding(0, 0, 0, 0);
-                }
-                _cast.layoutParams = _cast.layoutParams.apply {
-                    (this as MarginLayoutParams).bottomMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6.0f, resources.displayMetrics).toInt();
-                };
-                setProgressBarOverlayed(false);
-                _player.hideControls(false);
-            }
-        }
-        else {
-            if(_player.layoutParams.height == WRAP_CONTENT) {
-                _player.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT);
-                _player.fillHeight(true)
-                _cast.layoutParams = _cast.layoutParams.apply {
-                    (this as MarginLayoutParams).bottomMargin = 0;
-                };
-                setProgressBarOverlayed(true);
-                _player.hideControls(false);
-
-                _layoutPlayerContainer.setPadding(0, 0, 0, 0);
-            }
-        }
-    }
-
     private fun setPolycentricProfile(cachedPolycentricProfile: PolycentricCache.CachedPolycentricProfile?, animate: Boolean) {
         _polycentricProfile = cachedPolycentricProfile;
 
@@ -2764,42 +2728,8 @@ class VideoDetailView : ConstraintLayout {
     }
 
     fun setProgressBarOverlayed(isOverlayed: Boolean?) {
-        Logger.v(TAG, "setProgressBarOverlayed(isOverlayed: ${isOverlayed ?: "null"})");
-        isOverlayed?.let{ _cast.setProgressBarOverlayed(it) };
-
-        if(isOverlayed == null) {
-            //For now this seems to be the best way to keep it updated?
-            _playerProgress.layoutParams = _playerProgress.layoutParams.apply {
-                (this as MarginLayoutParams).bottomMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, -12f, resources.displayMetrics).toInt();
-            };
-            _playerProgress.elevation = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2f, resources.displayMetrics);
-        }
-        else if(isOverlayed) {
-            _playerProgress.layoutParams = _playerProgress.layoutParams.apply {
-                (this as MarginLayoutParams).bottomMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, -2f, resources.displayMetrics).toInt();
-            };
-            _playerProgress.elevation = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5f, resources.displayMetrics);
-        }
-        else {
-            _playerProgress.layoutParams = _playerProgress.layoutParams.apply {
-                (this as MarginLayoutParams).bottomMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6f, resources.displayMetrics).toInt();
-            };
-            _playerProgress.elevation = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2f, resources.displayMetrics);
-        }
-    }
-    fun setContentAlpha(alpha: Float) {
-        _container_content.alpha = alpha;
-    }
-    fun setControllerAlpha(alpha: Float) {
-        _layoutResume.alpha = alpha;
-        _player.videoControls.alpha = alpha;
-        _cast.setButtonAlpha(alpha);
-    }
-    fun setMinimizeControlsAlpha(alpha : Float) {
-        _minimize_controls.alpha = alpha;
-        val clickable = alpha > 0.9;
-        if(_minimize_controls.isClickable != clickable)
-            _minimize_controls.isClickable = clickable;
+        Logger.v(TAG, "setProgressBarOverlayed(isOverlayed: ${isOverlayed ?: "null"})")
+        isOverlayed?.let { _cast.setProgressBarOverlayed(it) }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
@@ -2809,16 +2739,6 @@ class VideoDetailView : ConstraintLayout {
         } else if (!fragment.isFullscreen && !fragment.isInPictureInPicture) {
             _player.fitHeight()
         }
-    }
-
-    fun setVideoMinimize(value : Float) {
-        val padRight = (resources.displayMetrics.widthPixels * 0.70 * value).toInt()
-        _player.setPadding(0, _player.paddingTop, padRight, 0)
-        _cast.setPadding(0, _cast.paddingTop, padRight, 0)
-    }
-
-    fun setTopPadding(value: Float) {
-        _player.setPadding(_player.paddingLeft, value.toInt(), _player.paddingRight, 0)
     }
 
     //Tasks

@@ -139,10 +139,7 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
     val onSourceEnded = Event0();
     val onPrevious = Event0();
     val onNext = Event0();
-
     val onChapterChanged = Event2<IChapter?, Boolean>();
-
-    val onVideoClicked = Event0();
     val onTimeBarChanged = Event2<Long, Long>();
 
     @OptIn(UnstableApi::class)
@@ -599,13 +596,10 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         }
 
         if (fullScreen) {
-            val lp = background.layoutParams as ConstraintLayout.LayoutParams;
-            lp.bottomMargin = 0;
-            background.layoutParams = lp;
+            _videoView.setPadding(_videoView.paddingLeft, _videoView.paddingTop, _videoView.paddingRight, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 0.0f, Resources.getSystem().displayMetrics).toInt())
             _videoView.setBackgroundColor(Color.parseColor("#FF000000"))
 
             gestureControl.hideControls();
-            //videoControlsBar.visibility = View.GONE;
             _videoView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
 
             _videoControls_fullscreen.show();
@@ -613,13 +607,10 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
             videoControls.visibility = View.GONE;
         }
         else {
-            val lp = background.layoutParams as ConstraintLayout.LayoutParams;
-            lp.bottomMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6.0f, Resources.getSystem().displayMetrics).toInt();
-            background.layoutParams = lp;
+            _videoView.setPadding(_videoView.paddingLeft, _videoView.paddingTop, _videoView.paddingRight, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 7.0f, Resources.getSystem().displayMetrics).toInt())
             _videoView.setBackgroundColor(Color.parseColor("#00000000"))
 
             gestureControl.hideControls();
-            //videoControlsBar.visibility = View.VISIBLE;
             _videoView.resizeMode = _desiredResizeModePortrait;
 
             videoControls.show();
@@ -648,10 +639,6 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         }
         else if(!locked && _isControlsLocked != locked)
             _isControlsLocked = locked;
-    }
-
-    override fun play() {
-        super.play();
     }
 
     override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -768,15 +755,12 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         }
         _videoView.resizeMode = _desiredResizeModePortrait
 
-        val marginBottom =
-            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 7f, resources.displayMetrics)
         val height = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             _lastSourceFit!!,
             resources.displayMetrics
         )
-        val rootParams = LayoutParams(LayoutParams.MATCH_PARENT, (height + marginBottom).toInt())
-        rootParams.bottomMargin = marginBottom.toInt()
+        val rootParams = LayoutParams(LayoutParams.MATCH_PARENT, (height).toInt())
         _root.layoutParams = rootParams
         isFitMode = true
     }
@@ -800,11 +784,6 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         }
 
         isFitMode = false;
-    }
-
-    //Animated Calls
-    fun setEndPadding(value: Float) {
-        setPadding(0, 0, value.toInt(), 0)
     }
 
     fun updateRotateLock() {

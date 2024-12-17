@@ -117,7 +117,7 @@ class DownloadsFragment : MainFragment() {
                 .asAnyWithTop(findViewById(R.id.downloads_top)) {
                     it.onClick.subscribe {
                         StatePlayer.instance.clearQueue();
-                        _frag.navigate<VideoDetailFragment>(it).maximizeVideoDetail();
+                        _frag.navigate<VideoDetailFragment>(it).maximizeVideoDetail(false);
                     }
                 };
 

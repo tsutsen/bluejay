@@ -1,24 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.futo.platformplayer.views.containers.CustomMotionLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:fitsSystemWindows="false"
-    android:background="@drawable/bottom_menu_border"
+    android:background="@color/transparent"
     android:id="@+id/videodetail_root"
-    android:clickable="true">
+    app:layoutDescription="@xml/videodetail_scene">
 
-    <com.futo.platformplayer.views.behavior.TouchInterceptFrameLayout
+    <FrameLayout
         android:id="@+id/layout_player_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="6dp"
-        android:elevation="2dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent">
+        android:layout_width="0dp"
+        android:layout_height="0dp">
+
+        <!--this acts as a background-->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:cardBackgroundColor="@color/black"
+            android:translationY="-7dp"/>
 
         <com.futo.platformplayer.views.video.FutoVideoPlayer
             android:id="@+id/videodetail_player"
@@ -38,39 +40,31 @@
             android:visibility="gone"
             android:elevation="4dp"
             android:layout_marginBottom="6dp" />
+    </FrameLayout>
 
-        <androidx.media3.ui.PlayerControlView
-            android:id="@+id/videodetail_progress"
-            android:layout_width="match_parent"
-            android:layout_height="12dp"
-            android:layout_gravity="bottom"
-            android:layout_marginLeft="-6dp"
-            android:layout_marginRight="-6dp"
-            android:layout_marginBottom="6dp"
-            app:show_timeout="-1"
-            android:elevation="2dp"
-            app:controller_layout_id="@layout/video_player_ui_bar" />
-    </com.futo.platformplayer.views.behavior.TouchInterceptFrameLayout>
+    <androidx.media3.ui.PlayerControlView
+        android:id="@+id/videodetail_progress"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:show_timeout="-1"
+        android:elevation="1dp"
+        android:background="@color/black"
+        app:controller_layout_id="@layout/video_player_ui_bar" />
 
     <!--Minimized Controls-->
     <LinearLayout
         android:id="@+id/minimize_controls"
-        android:orientation="horizontal"
         android:layout_width="0dp"
-        android:layout_height="60dp"
+        android:layout_height="0dp"
+        android:paddingBottom="7dp"
         android:gravity="center_vertical"
-        android:paddingStart="10dp"
-        android:clickable="false"
-        android:elevation="5dp"
-        android:alpha="1"
-        app:layout_constraintTop_toTopOf="@id/layout_player_container"
-        app:layout_constraintBottom_toBottomOf="@id/layout_player_container"
-        app:layout_constraintEnd_toEndOf="@id/layout_player_container"
-        app:layout_constraintWidth_percent="0.7">
+        android:background="@color/black"
+        android:orientation="horizontal">
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginStart="10dp"
             android:layout_marginEnd="10dp"
             android:orientation="vertical">
             <!--Video Title-->
@@ -180,16 +174,8 @@
 
     <FrameLayout
         android:id="@+id/contentContainer"
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="-18dp"
-        android:elevation="1dp"
-        app:layout_constraintTop_toBottomOf="@id/layout_player_container"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent">
-
+        android:layout_width="0dp"
+        android:layout_height="0dp">
         <FrameLayout
             android:id="@+id/videodetail_container_main"
             android:layout_width="match_parent"
@@ -616,4 +602,4 @@
         android:layout_height="match_parent"
         android:elevation="100dp"
         android:visibility="gone" />
-</androidx.constraintlayout.widget.ConstraintLayout>
+</com.futo.platformplayer.views.containers.CustomMotionLayout>

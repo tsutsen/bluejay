@@ -7,14 +7,14 @@
     android:background="@color/transparent"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <androidx.media3.ui.PlayerView
+        android:paddingBottom="7dp"
         android:id="@+id/video_player"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:default_artwork="@drawable/placeholder_video_thumbnail"
         app:use_artwork="true"
         app:use_controller="false"
-        app:show_buffering="always"
-        android:layout_marginBottom="6dp" />
+        app:show_buffering="always"/>
     <!--
     <androidx.media3.ui.PlayerControlView
         android:id="@+id/video_player_bar"
@@ -28,8 +28,7 @@
         android:id="@+id/layout_controls_background"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#55000000"
-        android:layout_marginBottom="6dp">
+        android:background="#55000000">
     </FrameLayout>
 
     <FrameLayout

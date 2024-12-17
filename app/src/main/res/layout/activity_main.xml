@@ -54,7 +54,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             tools:layout="@layout/fragview_video_detail"
-            android:elevation="15dp"
             android:visibility="invisible" />
     </FrameLayout>
 

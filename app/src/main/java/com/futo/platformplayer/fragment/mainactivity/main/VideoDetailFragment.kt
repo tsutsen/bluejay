@@ -32,12 +32,11 @@ import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.PlatformVideoWithTime
 import com.futo.platformplayer.models.UrlVideoWithTime
 import com.futo.platformplayer.states.StatePlayer
-import com.futo.platformplayer.views.containers.SingleViewTouchableMotionLayout
+import com.futo.platformplayer.views.containers.CustomMotionLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.min
 
 //region Fragment
 @UnstableApi
@@ -49,8 +48,8 @@ class VideoDetailFragment() : MainFragment() {
 
     private var _isActive: Boolean = false;
 
-    private var _viewDetail : VideoDetailView? = null;
-    private var _view : SingleViewTouchableMotionLayout? = null;
+    private var _viewDetail : VideoDetailView? = null
+    private var _motionLayout: CustomMotionLayout? = null
 
     var isFullscreen : Boolean = false;
     /**
@@ -59,8 +58,6 @@ class VideoDetailFragment() : MainFragment() {
      */
     var isMinimizingFromFullScreen : Boolean = false;
     val onFullscreenChanged = Event1<Boolean>();
-    var isTransitioning : Boolean = false
-        private set;
     var isInPictureInPicture : Boolean = false
         private set;
 
@@ -76,12 +73,7 @@ class VideoDetailFragment() : MainFragment() {
     val currentUrl get() = _viewDetail?.currentUrl;
 
     val onMinimize = Event0();
-    val onTransitioning = Event1<Boolean>();
     val onMaximized = Event0();
-
-    private var _isInitialMaximize = true;
-
-    private val _maximizeProgress get() = _view?.progress ?: 0.0f;
 
     private var _loadUrlOnCreate: UrlVideoWithTime? = null;
     private var _leavingPiP = false;
@@ -263,22 +255,17 @@ class VideoDetailFragment() : MainFragment() {
 
     fun minimizeVideoDetail() {
         _viewDetail?.setFullscreen(false);
-        if(_view != null)
-            _view!!.transitionToStart();
+        _motionLayout?.setTransition(R.id.maximize)
+        _motionLayout?.transitionToStart();
     }
-    fun maximizeVideoDetail(instant: Boolean = false) {
-        if((_maximizeProgress > 0.9f || instant) && state != State.MAXIMIZED) {
-            state = State.MAXIMIZED;
-            onMaximized.emit();
+    fun maximizeVideoDetail(instant: Boolean) {
+        state = State.MAXIMIZED
+        onMaximized.emit()
+        if(instant) {
+            _motionLayout?.setState(R.id.collapsed, _motionLayout!!.width,_motionLayout!!.height)
+        } else {
+            _motionLayout?.transitionToState(R.id.expanded)
         }
-        _view?.let {
-            if(!instant) {
-                it.transitionToEnd();
-            } else {
-                it.progress = 1f;
-                onTransitioning.emit(true);
-            }
-        };
     }
     fun closeVideoDetails() {
         Logger.i(TAG, "closeVideoDetails()")
@@ -291,90 +278,56 @@ class VideoDetailFragment() : MainFragment() {
     }
 
     override fun onCreateMainView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _view = inflater.inflate(R.layout.fragment_video_detail, container, false) as SingleViewTouchableMotionLayout;
-        _viewDetail = _view!!.findViewById<VideoDetailView>(R.id.fragview_videodetail).also {
-            it.applyFragment(this);
-            it.onFullscreenChanged.subscribe(::onFullscreenChanged);
-            it.onVideoChanged.subscribe(::onVideoChanged)
-            it.onMinimize.subscribe {
-                isMinimizingFromFullScreen = true
-                _view!!.transitionToStart();
-            };
-            it.onClose.subscribe {
-                Logger.i(TAG, "onClose")
-                closeVideoDetails();
-            };
-            it.onMaximize.subscribe { maximizeVideoDetail(it) };
-            it.onPlayChanged.subscribe {
-                if(isInPictureInPicture) {
-                    val params = _viewDetail?.getPictureInPictureParams();
-                    if (params != null)
-                        activity?.setPictureInPictureParams(params);
-                }
-            };
-            it.onEnterPictureInPicture.subscribe {
-                Logger.i(TAG, "onEnterPictureInPicture")
-                isInPictureInPicture = true;
-                _viewDetail?.handleEnterPictureInPicture();
-                _viewDetail?.invalidate();
-            };
-            it.onTouchCancel.subscribe {
-                val v = _view ?: return@subscribe;
-                if (v.progress >= 0.5 && v.progress < 1) {
-                    maximizeVideoDetail();
-                }
-                if (v.progress < 0.5 && v.progress > 0) {
-                    minimizeVideoDetail();
-                }
-            };
-        }
-        _view!!.setTransitionListener(object : MotionLayout.TransitionListener {
-            override fun onTransitionChange(motionLayout: MotionLayout?, startId: Int, endId: Int, progress: Float) {
+        val viewDetail = VideoDetailView(this, inflater);
+
+        _motionLayout = viewDetail.findViewById(R.id.videodetail_root)
+        viewDetail.applyFragment(this);
+        viewDetail.onFullscreenChanged.subscribe(::onFullscreenChanged);
+        viewDetail.onVideoChanged.subscribe(::onVideoChanged)
+        viewDetail.onMinimize.subscribe {
+            isMinimizingFromFullScreen = true
+            _motionLayout!!.setTransition(R.id.maximize)
+            _motionLayout!!.transitionToStart()
+        };
+        viewDetail.onClose.subscribe {
+            Logger.i(TAG, "onClose")
+            closeVideoDetails();
+        };
+        viewDetail.onMaximize.subscribe { maximizeVideoDetail(it) };
+        viewDetail.onPlayChanged.subscribe {
+            if(isInPictureInPicture) {
+                val params = _viewDetail?.getPictureInPictureParams();
+                if (params != null)
+                    activity?.setPictureInPictureParams(params);
+            }
+        };
+        viewDetail.onEnterPictureInPicture.subscribe {
+            Logger.i(TAG, "onEnterPictureInPicture")
+            isInPictureInPicture = true;
+            _viewDetail?.handleEnterPictureInPicture();
+            _viewDetail?.invalidate();
+        };
+        _motionLayout!!.addTransitionListener(object : MotionLayout.TransitionListener {
+            override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) {
                 _viewDetail?.stopAllGestures()
-
-                if (state != State.MINIMIZED && progress < 0.1) {
-                    state = State.MINIMIZED;
+                if (state != State.MINIMIZED && currentId == R.id.collapsed) {
+                    state = State.MINIMIZED
                     isMinimizingFromFullScreen = false
-                    onMinimize.emit();
-                }
-                else if (state != State.MAXIMIZED && progress > 0.9) {
-                    if (_isInitialMaximize) {
-                        state = State.CLOSED;
-                        _isInitialMaximize = false;
-                    }
-                    else {
-                        state = State.MAXIMIZED;
-                        onMaximized.emit();
-                    }
+                    onMinimize.emit()
                 }
 
-                if (isTransitioning && (progress > 0.95 || progress < 0.05)) {
-                    isTransitioning = false;
-                    onTransitioning.emit(isTransitioning);
-
-                    if(isInPictureInPicture) leavePictureInPictureMode(false); //Workaround to prevent getting stuck in p2p
-                }
-                else if (!isTransitioning && (progress < 0.95 && progress > 0.05)) {
-                    isTransitioning = true;
-                    onTransitioning.emit(isTransitioning);
-
-                    if(isInPictureInPicture) leavePictureInPictureMode(false); //Workaround to prevent getting stuck in p2p
+                if (state != State.MAXIMIZED && currentId == R.id.expanded) {
+                    state = State.MAXIMIZED
+                    onMaximized.emit()
                 }
             }
-            override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) { }
-            override fun onTransitionStarted(p0: MotionLayout?, p1: Int, p2: Int) { }
-            override fun onTransitionTrigger(p0: MotionLayout?, p1: Int, p2: Boolean, p3: Float) { }
-        });
-
-        _view?.let {
-            if (it.progress >= 0.5 && it.progress < 1.0)
-                maximizeVideoDetail();
-            if (it.progress < 0.5 && it.progress > 0.0)
-                minimizeVideoDetail();
-        }
+            override fun onTransitionStarted(motionLayout: MotionLayout?, startId: Int, endId: Int) {}
+            override fun onTransitionTrigger(motionLayout: MotionLayout?, triggerId: Int, positive: Boolean, progress: Float) {}
+            override fun onTransitionChange(motionLayout: MotionLayout?, startId: Int, endId: Int, progress: Float) {}
+        })
 
         _loadUrlOnCreate?.let { _viewDetail?.setVideo(it.url, it.timeSeconds, it.playWhenReady) };
-        maximizeVideoDetail();
+        maximizeVideoDetail(false);
 
         SettingsActivity.settingsActivityClosed.subscribe(this) {
             updateOrientation()
@@ -407,7 +360,8 @@ class VideoDetailFragment() : MainFragment() {
         }
         _autoRotateObserver?.startObserving()
 
-        return _view!!;
+        _viewDetail = viewDetail
+        return viewDetail
     }
 
     fun onUserLeaveHint() {
@@ -512,20 +466,11 @@ class VideoDetailFragment() : MainFragment() {
         _portraitOrientationListener?.disableListener()
         _autoRotateObserver?.stopObserving()
 
-        _viewDetail?.let {
-            _viewDetail = null;
-            it.onDestroy();
-        }
-        _view = null;
+        _viewDetail = null;
     }
 
     override fun onDestroy() {
         super.onDestroy()
-
-        _viewDetail?.let {
-            _viewDetail = null;
-            it.onDestroy();
-        }
 
         StateCasting.instance.onActiveDeviceConnectionStateChanged.remove(this);
 
@@ -583,13 +528,8 @@ class VideoDetailFragment() : MainFragment() {
             showSystemUI()
         }
 
-        // temporarily force the device to portrait if auto-rotate is disabled to prevent landscape when exiting full screen on a small device
-//        @SuppressLint("SourceLockedOrientationActivity")
-//        if (!isFullscreen && isSmallWindow() && !isAutoRotateEnabled() && !isMinimizingFromFullScreen) {
-//            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-//        }
         updateOrientation();
-        _view?.allowMotion = !fullscreen;
+        _motionLayout?.isInteractionEnabled = !fullscreen
     }
 
     companion object {

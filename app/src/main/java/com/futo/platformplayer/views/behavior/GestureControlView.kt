@@ -106,6 +106,8 @@ class GestureControlView : LinearLayout {
 
     var fullScreenGestureEnabled = true
 
+    var controlsEnabled = true
+
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
         LayoutInflater.from(context).inflate(R.layout.view_gesture_controls, this, true);
 
@@ -308,6 +310,10 @@ class GestureControlView : LinearLayout {
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         val ev = event ?: return super.onTouchEvent(event);
+
+        if(!controlsEnabled) {
+            return super.onTouchEvent(ev)
+        }
 
         cancelHideJob();
 

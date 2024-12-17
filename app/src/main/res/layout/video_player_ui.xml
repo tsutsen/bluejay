@@ -7,8 +7,7 @@
     android:layout_height="match_parent"
     android:layout_gravity="bottom"
     android:layoutDirection="ltr"
-    android:orientation="vertical"
-    tools:targetApi="28">
+    android:orientation="vertical">
 
     <ImageButton
         android:id="@+id/button_minimize"

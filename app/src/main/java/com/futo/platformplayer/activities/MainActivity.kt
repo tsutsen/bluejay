@@ -339,14 +339,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _fragVideoDetail.onMinimize.subscribe {
             updateSegmentPaddings();
         };
-        _fragVideoDetail.onTransitioning.subscribe {
-            if (it || _fragVideoDetail.state != VideoDetailFragment.State.MINIMIZED)
-                _fragContainerOverlay.elevation =
-                    TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 15f, resources.displayMetrics);
-            else
-                _fragContainerOverlay.elevation =
-                    TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5f, resources.displayMetrics);
-        }
 
         _fragVideoDetail.onCloseEvent.subscribe {
             _fragMainHome.setPreviewsEnabled(true);
@@ -1076,8 +1068,8 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                 if (_fragContainerVideoDetail.visibility != View.VISIBLE)
                     _fragContainerVideoDetail.visibility = View.VISIBLE;
                 when (segment.state) {
-                    VideoDetailFragment.State.MINIMIZED -> segment.maximizeVideoDetail()
-                    VideoDetailFragment.State.CLOSED -> segment.maximizeVideoDetail()
+                    VideoDetailFragment.State.MINIMIZED -> segment.maximizeVideoDetail(false)
+                    VideoDetailFragment.State.CLOSED -> segment.maximizeVideoDetail(false)
                     else -> {}
                 }
                 segment.onShown(parameter, isBack);
@@ -1200,7 +1192,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         }
     }
 
-
     private fun updateSegmentPaddings() {
         var paddingBottom = 0f;
         if (fragCurrent.hasBottomBar)
@@ -1210,9 +1201,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             0, 0, 0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, paddingBottom - HEIGHT_MENU_DP, resources.displayMetrics)
                 .toInt()
         );
-
-        if (_fragVideoDetail.state == VideoDetailFragment.State.MINIMIZED)
-            paddingBottom += HEIGHT_VIDEO_MINIMIZED_DP;
 
         _fragContainerMain.setPadding(
             0, 0, 0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, paddingBottom, resources.displayMetrics)

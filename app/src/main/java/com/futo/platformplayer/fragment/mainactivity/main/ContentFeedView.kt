@@ -188,9 +188,9 @@ abstract class ContentFeedView<TFragment> : FeedView<TFragment, IPlatformContent
                 StatePlayer.instance.insertToQueue(content, true);
             } else {
                 if (Settings.instance.playback.shouldResumePreview(time))
-                    fragment.navigate<VideoDetailFragment>(content.withTimestamp(time)).maximizeVideoDetail();
+                    fragment.navigate<VideoDetailFragment>(content.withTimestamp(time)).maximizeVideoDetail(false);
                 else
-                    fragment.navigate<VideoDetailFragment>(content).maximizeVideoDetail();
+                    fragment.navigate<VideoDetailFragment>(content).maximizeVideoDetail(false);
             }
         } else if (content is IPlatformPlaylist) {
             fragment.navigate<RemotePlaylistFragment>(content);
@@ -202,7 +202,7 @@ abstract class ContentFeedView<TFragment> : FeedView<TFragment, IPlatformContent
         when(contentType) {
             ContentType.MEDIA -> {
                 StatePlayer.instance.clearQueue();
-                fragment.navigate<VideoDetailFragment>(url).maximizeVideoDetail();
+                fragment.navigate<VideoDetailFragment>(url).maximizeVideoDetail(false);
             };
             ContentType.PLAYLIST -> fragment.navigate<RemotePlaylistFragment>(url);
             ContentType.URL -> fragment.navigate<BrowserFragment>(url);

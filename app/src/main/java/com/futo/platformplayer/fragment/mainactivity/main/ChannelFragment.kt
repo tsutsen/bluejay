@@ -212,7 +212,7 @@ class ChannelFragment : MainFragment() {
                 when (v) {
                     is IPlatformVideo -> {
                         StatePlayer.instance.clearQueue()
-                        fragment.navigate<VideoDetailFragment>(v).maximizeVideoDetail()
+                        fragment.navigate<VideoDetailFragment>(v).maximizeVideoDetail(false)
                     }
 
                     is IPlatformPlaylist -> {
@@ -248,7 +248,7 @@ class ChannelFragment : MainFragment() {
                 when (contentType) {
                     ContentType.MEDIA -> {
                         StatePlayer.instance.clearQueue()
-                        fragment.navigate<VideoDetailFragment>(url).maximizeVideoDetail()
+                        fragment.navigate<VideoDetailFragment>(url).maximizeVideoDetail(false)
                     }
 
                     ContentType.URL -> fragment.navigate<BrowserFragment>(url)

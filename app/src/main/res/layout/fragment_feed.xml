@@ -94,10 +94,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="0dp" />
 
+<!--                    TODO: the padding for the recycler view needs to be the same as the minimized video player and perhaps should be dynamic based on whether the player is mini or closed-->
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/list_results"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
+                        android:paddingBottom="80dp"
+                        android:clipToPadding="false"
                         android:orientation="vertical" />
                 </LinearLayout>
 

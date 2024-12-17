@@ -217,7 +217,7 @@ class HistoryFragment : MainFragment() {
             val diff = v.video.duration - v.position;
             val vid: Any = if (diff > 5) { v.video.withTimestamp(v.position) } else { v.video };
             StatePlayer.instance.clearQueue();
-            _fragment.navigate<VideoDetailFragment>(vid).maximizeVideoDetail();
+            _fragment.navigate<VideoDetailFragment>(vid).maximizeVideoDetail(false);
             _editSearch.clearFocus();
             inputMethodManager.hideSoftInputFromWindow(_editSearch.windowToken, 0);
 
