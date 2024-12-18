@@ -372,7 +372,7 @@ class VideoUrlWidevineSource extends VideoUrlSource {
         super(obj);
         this.plugin_type = "VideoUrlWidevineSource";
 
-        this.licenseUri = obj.licenseUri;
+        this.widevineLicenseUri = obj.licenseUri;
         if(obj.getLicenseRequestExecutor)
             this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
     }
@@ -409,7 +409,7 @@ class AudioUrlWidevineSource extends AudioUrlSource {
         super(obj);
         this.plugin_type = "AudioUrlWidevineSource";
 
-        this.licenseUri = obj.licenseUri;
+        this.widevineLicenseUri = obj.licenseUri;
         if(obj.getLicenseRequestExecutor)
             this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
 
@@ -469,6 +469,8 @@ class DashSource {
             this.language = obj.language;
         if(obj.requestModifier)
             this.requestModifier = obj.requestModifier;
+        if(obj.getRequestExecutor)
+            this.getRequestExecutor = obj.getRequestExecutor;
     }
 }
 class DashWidevineSource extends DashSource {
@@ -476,7 +478,7 @@ class DashWidevineSource extends DashSource {
         super(obj);
         this.plugin_type = "DashWidevineSource";
 
-        this.licenseUri = obj.licenseUri;
+        this.widevineLicenseUri = obj.licenseUri;
         if(obj.getLicenseRequestExecutor)
             this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
     }
@@ -511,6 +513,9 @@ class DashManifestRawAudioSource {
         this.manifest = obj.manifest ?? null;
         if(obj.requestModifier)
             this.requestModifier = obj.requestModifier;
+        this.widevineLicenseUri = obj.widevineLicenseUri;
+        if(obj.getLicenseRequestExecutor)
+            this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
     }
 }
 

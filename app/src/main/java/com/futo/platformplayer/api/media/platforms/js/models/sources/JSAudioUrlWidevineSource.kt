@@ -8,7 +8,7 @@ import com.futo.platformplayer.engine.V8Plugin
 import com.futo.platformplayer.getOrThrow
 
 class JSAudioUrlWidevineSource : JSAudioUrlSource, IAudioUrlWidevineSource {
-    override val licenseUri: String
+    override val widevineLicenseUri: String
     override val hasLicenseRequestExecutor: Boolean
 
     @Suppress("ConvertSecondaryConstructorToPrimary")
@@ -16,7 +16,7 @@ class JSAudioUrlWidevineSource : JSAudioUrlSource, IAudioUrlWidevineSource {
         val contextName = "JSAudioUrlWidevineSource"
         val config = plugin.config
 
-        licenseUri = _obj.getOrThrow(config, "licenseUri", contextName)
+        widevineLicenseUri = _obj.getOrThrow(config, "widevineLicenseUri", contextName)
         hasLicenseRequestExecutor = obj.has("getLicenseRequestExecutor")
     }
 
@@ -36,6 +36,6 @@ class JSAudioUrlWidevineSource : JSAudioUrlSource, IAudioUrlWidevineSource {
 
     override fun toString(): String {
         val url = getAudioUrl()
-        return "(name=$name, container=$container, bitrate=$bitrate, codec=$codec, url=$url, language=$language, duration=$duration, hasLicenseRequestExecutor=${hasLicenseRequestExecutor}, licenseUri=$licenseUri)"
+        return "(name=$name, container=$container, bitrate=$bitrate, codec=$codec, url=$url, language=$language, duration=$duration, hasLicenseRequestExecutor=${hasLicenseRequestExecutor}, widevineLicenseUri=$widevineLicenseUri)"
     }
 }
