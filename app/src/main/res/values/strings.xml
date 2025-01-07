@@ -34,6 +34,7 @@
     <string name="preferred_quality_description">Default quality for watching a video</string>
     <string name="update">Update</string>
     <string name="close">Close</string>
+    <string name="open_in_browser">Open In Browser</string>
     <string name="never">Never</string>
     <string name="import_options">Select any of the following available import options.</string>
     <string name="there_is_an_update_available_do_you_wish_to_update">There is an update available, do you wish to update?</string>
@@ -240,6 +241,8 @@
     <string name="locked_content_description">This content is locked</string>
     <string name="unknown">Unknown</string>
     <string name="tap_to_open_in_browser">Tap to open in browser</string>
+    <string name="drm_not_supported">This device does not support the DRM required to play this content</string>
+    <string name="open_and_play_in_mobile_browser">Please try playing this content in a mobile browser on this device. If it plays open a bug report and share your device model and OS version.</string>
     <string name="missing_plugin">Missing Plugin</string>
     <string name="viewers_are_raiding">Viewers are raiding</string>
     <string name="go_now">Go now</string>

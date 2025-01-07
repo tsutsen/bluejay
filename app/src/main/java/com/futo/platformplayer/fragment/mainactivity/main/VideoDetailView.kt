@@ -31,11 +31,13 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat.startActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.ui.PlayerControlView
 import androidx.media3.ui.TimeBar
 import com.bumptech.glide.Glide
@@ -432,6 +434,21 @@ class VideoDetailView : ConstraintLayout {
         }
 
         _player.attachPlayer();
+
+        _player.exoPlayer?.player?.addAnalyticsListener(object : AnalyticsListener {
+            override fun onDrmSessionManagerError(
+                eventTime: AnalyticsListener.EventTime, error: Exception
+            ) {
+                super.onDrmSessionManagerError(eventTime, error)
+                UIDialogs.showDialog(context, R.drawable.ic_lock, context.getString(R.string.drm_not_supported), context.getString(R.string.open_and_play_in_mobile_browser), null, 1, UIDialogs.Action(context.getString(R.string.open_in_browser), {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(video?.url))
+                    val options =
+                        android.app.ActivityOptions.makeCustomAnimation(context, android.R.anim.fade_in, android.R.anim.fade_out)
+                    startActivity(context, intent, options.toBundle())
+                }, UIDialogs.ActionStyle.NONE), UIDialogs.Action(context.getString(R.string.close), {}, UIDialogs.ActionStyle.PRIMARY)
+                )
+            }
+        })
 
         _container_content_liveChat.onRaidNow.subscribe {
             StatePlayer.instance.clearQueue();
