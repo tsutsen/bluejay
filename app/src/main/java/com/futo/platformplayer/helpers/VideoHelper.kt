@@ -48,7 +48,7 @@ class VideoHelper {
         }
 
         fun isDownloadable(source: IVideoSource) = source is IVideoUrlSource || source is IHLSManifestSource || source is JSDashManifestRawSource;
-        fun isDownloadable(source: IAudioSource) = (source is IAudioUrlSource || source is IHLSManifestAudioSource || source is JSDashManifestRawAudioSource) && source !is IAudioUrlWidevineSource
+        fun isDownloadable(source: IAudioSource) = (source is IAudioUrlSource || source is IHLSManifestAudioSource || source is JSDashManifestRawAudioSource) && source !is IAudioUrlWidevineSource && !(source is JSDashManifestRawAudioSource && source.widevineLicenseUri != null)
 
         fun selectBestVideoSource(desc: IVideoSourceDescriptor, desiredPixelCount : Int, prefContainers : Array<String>) : IVideoSource? = selectBestVideoSource(desc.videoSources.toList(), desiredPixelCount, prefContainers);
         fun selectBestVideoSource(sources: Iterable<IVideoSource>, desiredPixelCount : Int, prefContainers : Array<String>) : IVideoSource? {
