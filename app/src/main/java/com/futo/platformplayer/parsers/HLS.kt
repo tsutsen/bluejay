@@ -99,7 +99,8 @@ class HLS {
             }
 
             val initSegment =
-                lines.find { it.startsWith("#EXT-X-MAP:URI=") }?.substringAfter("=")?.trim('"')
+                lines.find { it.startsWith("#EXT-X-MAP:") }?.substringAfter(":")?.split(",")?.get(0)
+                    ?.substringAfter("=")?.trim('"')
             val segments = mutableListOf<Segment>()
             if (initSegment != null) {
                 segments.add(MediaSegment(0.0, resolveUrl(sourceUrl, initSegment)))
