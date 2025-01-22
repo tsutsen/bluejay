@@ -2,23 +2,20 @@ package com.futo.platformplayer.api.media.platforms.js.models.sources
 
 import com.caoccao.javet.values.V8Value
 import com.caoccao.javet.values.reference.V8ValueObject
-import com.futo.platformplayer.api.media.models.streams.sources.IAudioUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestAudioSource
 import com.futo.platformplayer.api.media.platforms.js.JSClient
-import com.futo.platformplayer.engine.IV8PluginConfig
-import com.futo.platformplayer.engine.V8Plugin
 import com.futo.platformplayer.getOrNull
 import com.futo.platformplayer.getOrThrow
 import com.futo.platformplayer.orNull
 
 class JSHLSManifestAudioSource : IHLSManifestAudioSource, JSSource {
-    override val container : String get() = "application/vnd.apple.mpegurl";
+    override var container : String = "application/vnd.apple.mpegurl";
     override val codec: String = "HLS";
     override val name : String;
-    override val bitrate : Int = 0;
+    override var bitrate : Int = 0;
     override val url : String;
     override val duration: Long;
-    override val language: String;
+    override var language: String;
 
     override var priority: Boolean = false;
 
@@ -34,6 +31,17 @@ class JSHLSManifestAudioSource : IHLSManifestAudioSource, JSSource {
         priority = obj.getOrNull(config, "priority", contextName) ?: false;
     }
 
+    fun setPreferredBitrate(bitrate: Int) {
+        this@JSHLSManifestAudioSource.bitrate = bitrate;
+    }
+
+    fun setPreferredLanguage(language: String) {
+        this@JSHLSManifestAudioSource.language = language;
+    }
+
+    fun setPreferredContainer(container: String) {
+        this@JSHLSManifestAudioSource.container = container;
+    }
 
     companion object {
         fun fromV8HLSNullable(plugin: JSClient, obj: V8Value?) : JSHLSManifestAudioSource? = obj.orNull { fromV8HLS(plugin, it as V8ValueObject) };

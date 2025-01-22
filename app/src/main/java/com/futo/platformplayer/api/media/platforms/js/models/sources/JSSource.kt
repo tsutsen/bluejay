@@ -1,7 +1,5 @@
 package com.futo.platformplayer.api.media.platforms.js.models.sources
 
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.HttpDataSource
 import com.caoccao.javet.values.V8Value
 import com.caoccao.javet.values.reference.V8ValueObject
 import com.futo.platformplayer.api.media.models.modifier.AdhocRequestModifier
@@ -17,9 +15,12 @@ import com.futo.platformplayer.engine.V8Plugin
 import com.futo.platformplayer.getOrDefault
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.orNull
-import com.futo.platformplayer.views.video.datasources.JSHttpDataSource
 
-abstract class JSSource {
+interface IUnderlyingObject {
+    fun getUnderlyingObject(): V8ValueObject?
+}
+
+abstract class JSSource : IUnderlyingObject {
     protected val _plugin: JSClient;
     protected val _config: IV8PluginConfig;
     protected val _obj: V8ValueObject;
@@ -88,7 +89,7 @@ abstract class JSSource {
     fun getUnderlyingPlugin(): JSClient? {
         return _plugin;
     }
-    fun getUnderlyingObject(): V8ValueObject? {
+    override fun getUnderlyingObject(): V8ValueObject? {
         return _obj;
     }
 
