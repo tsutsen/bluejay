@@ -343,7 +343,9 @@ class UISlideOverlays {
                                     selectedVideoVariant =
                                         DashManifestSourceDelegate(source, it.format.width, it.format.height, it.format.containerMimeType!!)
                                     slideUpMenuOverlay.selectOption(videoButtons, it)
-                                    slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                    if (audioButtons.isEmpty()){
+                                        slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                    }
                                 }, invokeParent = false
                             )
                         )
@@ -466,7 +468,9 @@ class UISlideOverlays {
                                 source.setPreferredHeight(it.height)
                                 selectedVideoVariant = source
                                 slideUpMenuOverlay.selectOption(videoButtons, it)
-                                slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                if (audioButtons.isEmpty()){
+                                    slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                }
                             },
                             invokeParent = false
                         ))
