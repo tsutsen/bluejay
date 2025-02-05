@@ -23,7 +23,7 @@ class JSDashManifestWidevineSource : IVideoUrlSource, IDashManifestSource,
 
     override var priority: Boolean = false
 
-    override val widevineLicenseUri: String
+    override val drmLicenseUri: String
     override val hasLicenseRequestExecutor: Boolean
 
     @Suppress("ConvertSecondaryConstructorToPrimary")
@@ -36,7 +36,7 @@ class JSDashManifestWidevineSource : IVideoUrlSource, IDashManifestSource,
 
         priority = obj.getOrNull(config, "priority", contextName) ?: false
 
-        widevineLicenseUri = _obj.getOrThrow(config, "widevineLicenseUri", contextName)
+        drmLicenseUri = _obj.getOrThrow(config, "drmLicenseUri", contextName)
         hasLicenseRequestExecutor = obj.has("getLicenseRequestExecutor")
     }
 

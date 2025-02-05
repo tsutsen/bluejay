@@ -27,7 +27,7 @@ class JSDashManifestRawAudioSource : JSSource, IAudioSource, IJSDashManifestRawS
 
     override val hasGenerate: Boolean;
 
-    override val widevineLicenseUri: String?
+    override val drmLicenseUri: String?
     override val hasLicenseRequestExecutor: Boolean
 
     constructor(plugin: JSClient, obj: V8ValueObject) : super(TYPE_DASH_RAW, plugin, obj) {
@@ -43,7 +43,7 @@ class JSDashManifestRawAudioSource : JSSource, IAudioSource, IJSDashManifestRawS
         language = _obj.getOrDefault(config, "language", contextName, Language.UNKNOWN) ?: Language.UNKNOWN;
         hasGenerate = _obj.has("generate");
 
-        widevineLicenseUri = _obj.getOrThrow(config, "widevineLicenseUri", contextName)
+        drmLicenseUri = _obj.getOrThrow(config, "drmLicenseUri", contextName)
         hasLicenseRequestExecutor = obj.has("getLicenseRequestExecutor")
     }
 

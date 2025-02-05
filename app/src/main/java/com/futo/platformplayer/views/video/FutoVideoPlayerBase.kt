@@ -494,10 +494,10 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         else
             DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
 
-        val baseCallback = HttpMediaDrmCallback(videoSource.widevineLicenseUri, dataSource)
+        val baseCallback = HttpMediaDrmCallback(videoSource.drmLicenseUri, dataSource)
 
         val callback = if (videoSource.hasLicenseRequestExecutor) {
-            PluginMediaDrmCallback(baseCallback, videoSource.getLicenseRequestExecutor()!!, videoSource.widevineLicenseUri!!)
+            PluginMediaDrmCallback(baseCallback, videoSource.getLicenseRequestExecutor()!!, videoSource.drmLicenseUri!!)
         } else {
             baseCallback
         }
@@ -534,10 +534,10 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
             if (videoSource is JSSource && (videoSource.requiresCustomDatasource)) videoSource.getHttpDataSourceFactory()
             else DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
 
-        val baseCallback = HttpMediaDrmCallback(videoSource.widevineLicenseUri, dataSource)
+        val baseCallback = HttpMediaDrmCallback(videoSource.drmLicenseUri, dataSource)
 
         val callback = if (videoSource.hasLicenseRequestExecutor) {
-            PluginMediaDrmCallback(baseCallback, videoSource.getLicenseRequestExecutor()!!, videoSource.widevineLicenseUri!!)
+            PluginMediaDrmCallback(baseCallback, videoSource.getLicenseRequestExecutor()!!, videoSource.drmLicenseUri!!)
         } else {
             baseCallback
         }
@@ -668,11 +668,11 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         else
             DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
 
-        val baseCallback = HttpMediaDrmCallback(audioSource.widevineLicenseUri, dataSource)
+        val baseCallback = HttpMediaDrmCallback(audioSource.drmLicenseUri, dataSource)
 
         val callback =
-            if (audioSource.hasLicenseRequestExecutor && audioSource.widevineLicenseUri != null) {
-                PluginMediaDrmCallback(baseCallback, audioSource.getLicenseRequestExecutor()!!, audioSource.widevineLicenseUri)
+            if (audioSource.hasLicenseRequestExecutor && audioSource.drmLicenseUri != null) {
+                PluginMediaDrmCallback(baseCallback, audioSource.getLicenseRequestExecutor()!!, audioSource.drmLicenseUri)
             } else {
                 baseCallback
             }
@@ -687,7 +687,7 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
                 if (generated != null) {
                     withContext(Dispatchers.Main) {
                         val factory = DashMediaSource.Factory(dataSource)
-                        if (audioSource.widevineLicenseUri != null) {
+                        if (audioSource.drmLicenseUri != null) {
                             if (!MediaDrm.isCryptoSchemeSupported(C.WIDEVINE_UUID)) {
                                 throw IllegalArgumentException("Device does not support Widevine")
                             }
@@ -709,7 +709,7 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
             return false
         } else {
             val factory = DashMediaSource.Factory(dataSource)
-            if (audioSource.widevineLicenseUri != null) {
+            if (audioSource.drmLicenseUri != null) {
                 if (!MediaDrm.isCryptoSchemeSupported(C.WIDEVINE_UUID)) {
                     throw IllegalArgumentException("Device does not support Widevine")
                 }
@@ -741,10 +741,10 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         else
             DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
 
-        val baseCallback = HttpMediaDrmCallback(audioSource.widevineLicenseUri, dataSource)
+        val baseCallback = HttpMediaDrmCallback(audioSource.drmLicenseUri, dataSource)
 
         val callback = if (audioSource.hasLicenseRequestExecutor) {
-            PluginMediaDrmCallback(baseCallback, audioSource.getLicenseRequestExecutor()!!, audioSource.widevineLicenseUri!!)
+            PluginMediaDrmCallback(baseCallback, audioSource.getLicenseRequestExecutor()!!, audioSource.drmLicenseUri!!)
         } else {
             baseCallback
         }
