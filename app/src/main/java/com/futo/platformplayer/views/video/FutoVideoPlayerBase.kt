@@ -494,7 +494,7 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         else
             DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
 
-        val baseCallback = HttpMediaDrmCallback(videoSource.drmLicenseUri, dataSource)
+        val baseCallback = HttpMediaDrmCallback((videoSource as JSSource).drmLicenseUri, dataSource)
 
         val callback = if (videoSource.hasLicenseRequestExecutor) {
             PluginMediaDrmCallback(baseCallback, videoSource.getLicenseRequestExecutor()!!, videoSource.drmLicenseUri!!)
@@ -534,7 +534,7 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
             if (videoSource is JSSource && (videoSource.requiresCustomDatasource)) videoSource.getHttpDataSourceFactory()
             else DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
 
-        val baseCallback = HttpMediaDrmCallback(videoSource.drmLicenseUri, dataSource)
+        val baseCallback = HttpMediaDrmCallback((videoSource as JSSource).drmLicenseUri, dataSource)
 
         val callback = if (videoSource.hasLicenseRequestExecutor) {
             PluginMediaDrmCallback(baseCallback, videoSource.getLicenseRequestExecutor()!!, videoSource.drmLicenseUri!!)
@@ -741,7 +741,7 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         else
             DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
 
-        val baseCallback = HttpMediaDrmCallback(audioSource.drmLicenseUri, dataSource)
+        val baseCallback = HttpMediaDrmCallback((audioSource as JSSource).drmLicenseUri, dataSource)
 
         val callback = if (audioSource.hasLicenseRequestExecutor) {
             PluginMediaDrmCallback(baseCallback, audioSource.getLicenseRequestExecutor()!!, audioSource.drmLicenseUri!!)
@@ -759,7 +759,6 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
                 MediaItem.fromUri(audioSource.getAudioUrl())
             )
     }
-
 
     //Prefered source selection
     fun getPreferredVideoSource(video: IPlatformVideoDetails, targetPixels: Int = -1): IVideoSource? {

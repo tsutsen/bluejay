@@ -23,9 +23,6 @@ class JSDashManifestWidevineSource : IVideoUrlSource, IDashManifestSource,
 
     override var priority: Boolean = false
 
-    override val drmLicenseUri: String
-    override val hasLicenseRequestExecutor: Boolean
-
     @Suppress("ConvertSecondaryConstructorToPrimary")
     constructor(plugin: JSClient, obj: V8ValueObject) : super(TYPE_DASH, plugin, obj) {
         val contextName = "DashWidevineSource"
@@ -35,23 +32,6 @@ class JSDashManifestWidevineSource : IVideoUrlSource, IDashManifestSource,
         duration = _obj.getOrThrow(config, "duration", contextName)
 
         priority = obj.getOrNull(config, "priority", contextName) ?: false
-
-        drmLicenseUri = _obj.getOrThrow(config, "drmLicenseUri", contextName)
-        hasLicenseRequestExecutor = obj.has("getLicenseRequestExecutor")
-    }
-
-    override fun getLicenseRequestExecutor(): JSRequestExecutor? {
-        if (!hasLicenseRequestExecutor || _obj.isClosed)
-            return null
-
-        val result = V8Plugin.catchScriptErrors<Any>(_config, "[${_config.name}] JSDashManifestWidevineSource", "obj.getLicenseRequestExecutor()") {
-            _obj.invoke("getLicenseRequestExecutor", arrayOf<Any>())
-        }
-
-        if (result !is V8ValueObject)
-            return null
-
-        return JSRequestExecutor(_plugin, result)
     }
 
     override fun getVideoUrl(): String {

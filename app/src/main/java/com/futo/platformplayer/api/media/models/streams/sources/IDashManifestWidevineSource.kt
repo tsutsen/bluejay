@@ -1,5 +1,5 @@
 package com.futo.platformplayer.api.media.models.streams.sources
 
-interface IDashManifestWidevineSource : IWidevineSource {
+interface IDashManifestWidevineSource {
     val url: String
 }

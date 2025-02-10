@@ -1,7 +1,5 @@
 package com.futo.platformplayer.api.media.platforms.js.models.sources
 
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.HttpDataSource
 import com.caoccao.javet.values.V8Value
 import com.caoccao.javet.values.reference.V8ValueObject
 import com.futo.platformplayer.api.media.models.modifier.AdhocRequestModifier
@@ -15,9 +13,9 @@ import com.futo.platformplayer.api.media.platforms.js.models.JSRequestModifier
 import com.futo.platformplayer.engine.IV8PluginConfig
 import com.futo.platformplayer.engine.V8Plugin
 import com.futo.platformplayer.getOrDefault
+import com.futo.platformplayer.getOrThrow
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.orNull
-import com.futo.platformplayer.views.video.datasources.JSHttpDataSource
 
 abstract class JSSource {
     protected val _plugin: JSClient;
@@ -29,6 +27,9 @@ abstract class JSSource {
 
     val hasRequestExecutor: Boolean;
     private val _requestExecutor: JSRequest?;
+
+    val drmLicenseUri: String?
+    val hasLicenseRequestExecutor: Boolean
 
     val requiresCustomDatasource: Boolean get() {
         return hasRequestModifier || hasRequestExecutor;
@@ -51,6 +52,9 @@ abstract class JSSource {
             JSRequest(plugin, it, null, null, true);
         }
         hasRequestExecutor = _requestExecutor != null || obj.has("getRequestExecutor");
+
+        drmLicenseUri = _obj.getOrThrow(_config, "drmLicenseUri", "JSSource.drmLicenseUri")
+        hasLicenseRequestExecutor = obj.has("getLicenseRequestExecutor")
     }
 
     fun getRequestModifier(): IRequestModifier? {
@@ -81,6 +85,19 @@ abstract class JSSource {
 
         if (result !is V8ValueObject)
             return null;
+
+        return JSRequestExecutor(_plugin, result)
+    }
+    fun getLicenseRequestExecutor(): JSRequestExecutor? {
+        if (!hasLicenseRequestExecutor || _obj.isClosed)
+            return null
+
+        val result = V8Plugin.catchScriptErrors<Any>(_config, "[${_config.name}] JSSource", "obj.getLicenseRequestExecutor()") {
+            _obj.invoke("getLicenseRequestExecutor", arrayOf<Any>())
+        }
+
+        if (result !is V8ValueObject)
+            return null
 
         return JSRequestExecutor(_plugin, result)
     }

@@ -17,11 +17,11 @@ import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestAudi
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
-import com.futo.platformplayer.api.media.models.streams.sources.IWidevineSource
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlRangeSource
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawAudioSource
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSSource
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlRangeSource
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.others.Language
@@ -45,8 +45,8 @@ class VideoHelper {
 
             return false
         }
-        fun isDownloadable(source: IVideoSource) = (source is IVideoUrlSource || source is IHLSManifestSource || source is JSDashManifestRawSource) && source !is IWidevineSource
-        fun isDownloadable(source: IAudioSource) = (source is IAudioUrlSource || source is IHLSManifestAudioSource || source is JSDashManifestRawAudioSource) && source !is IWidevineSource && !(source is JSDashManifestRawAudioSource && source.drmLicenseUri != null)
+        fun isDownloadable(source: IVideoSource) = (source is IVideoUrlSource || source is IHLSManifestSource || source is JSDashManifestRawSource) && !(source is JSSource && source.drmLicenseUri != null)
+        fun isDownloadable(source: IAudioSource) = (source is IAudioUrlSource || source is IHLSManifestAudioSource || source is JSDashManifestRawAudioSource) && !(source is JSSource && source.drmLicenseUri != null)
         fun selectBestVideoSource(desc: IVideoSourceDescriptor, desiredPixelCount : Int, prefContainers : Array<String>) : IVideoSource? = selectBestVideoSource(desc.videoSources.toList(), desiredPixelCount, prefContainers);
         fun selectBestVideoSource(sources: Iterable<IVideoSource>, desiredPixelCount : Int, prefContainers : Array<String>) : IVideoSource? {
             val targetVideo = if(desiredPixelCount > 0) {
