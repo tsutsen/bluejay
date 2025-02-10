@@ -23,6 +23,7 @@ import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.dash.manifest.DashManifestParser
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
+import androidx.media3.exoplayer.drm.MediaDrmCallback
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
@@ -34,14 +35,11 @@ import com.futo.platformplayer.api.media.models.chapters.IChapter
 import com.futo.platformplayer.api.media.models.streams.VideoMuxedSourceDescriptor
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioSource
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioUrlSource
-import com.futo.platformplayer.api.media.models.streams.sources.IAudioUrlWidevineSource
 import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
-import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestWidevineSource
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestAudioSource
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
-import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlWidevineSource
 import com.futo.platformplayer.api.media.models.streams.sources.LocalAudioSource
 import com.futo.platformplayer.api.media.models.streams.sources.LocalVideoSource
 import com.futo.platformplayer.api.media.models.subtitles.ISubtitleSource
@@ -413,11 +411,9 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         val didSet = when(videoSource) {
             is LocalVideoSource -> { swapVideoSourceLocal(videoSource); true; }
             is JSVideoUrlRangeSource -> { swapVideoSourceUrlRange(videoSource); true; }
-            is IDashManifestWidevineSource -> { swapVideoSourceDashWidevine(videoSource); true }
             is IDashManifestSource -> { swapVideoSourceDash(videoSource); true;}
-            is JSDashManifestRawSource -> swapVideoSourceDashRaw(videoSource, play, resume);
+            is JSDashManifestRawSource -> swapVideoSourceDashRaw(videoSource, play, resume)
             is IHLSManifestSource -> { swapVideoSourceHLS(videoSource); true; }
-            is IVideoUrlWidevineSource -> { swapVideoSourceUrlWidevine(videoSource); true; }
             is IVideoUrlSource -> { swapVideoSourceUrl(videoSource); true; }
             null -> { _lastVideoMediaSource = null; true;}
             else -> throw IllegalArgumentException("Unsupported video source [${videoSource.javaClass.simpleName}]");
@@ -430,8 +426,7 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
             is LocalAudioSource -> {swapAudioSourceLocal(audioSource); true; }
             is JSAudioUrlRangeSource -> { swapAudioSourceUrlRange(audioSource); true; }
             is JSHLSManifestAudioSource -> { swapAudioSourceHLS(audioSource); true; }
-            is JSDashManifestRawAudioSource -> swapAudioSourceDashRaw(audioSource, play, resume);
-            is IAudioUrlWidevineSource -> { swapAudioSourceUrlWidevine(audioSource); true; }
+            is JSDashManifestRawAudioSource -> swapAudioSourceDashRaw(audioSource, play, resume)
             is IAudioUrlSource -> { swapAudioSourceUrl(audioSource); true; }
             null -> { _lastAudioMediaSource = null; true; }
             else -> throw IllegalArgumentException("Unsupported video source [${audioSource.javaClass.simpleName}]");
@@ -471,80 +466,50 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         }
         else throw IllegalArgumentException("source without itag data...");
     }
+
     @OptIn(UnstableApi::class)
     private fun swapVideoSourceUrl(videoSource: IVideoUrlSource) {
         Logger.i(TAG, "Loading VideoSource [Url]");
-        val dataSource = if(videoSource is JSSource && videoSource.requiresCustomDatasource)
+        val dataSource = if (videoSource is JSSource && videoSource.requiresCustomDatasource)
             videoSource.getHttpDataSourceFactory()
         else
             DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT);
-        _lastVideoMediaSource = ProgressiveMediaSource.Factory(dataSource)
-            .createMediaSource(MediaItem.fromUri(videoSource.getVideoUrl()));
-    }
-    @OptIn(UnstableApi::class)
-    private fun swapVideoSourceUrlWidevine(videoSource: IVideoUrlWidevineSource) {
-        Logger.i(TAG, "Loading VideoSource [UrlWidevine]");
 
-        if (!MediaDrm.isCryptoSchemeSupported(C.WIDEVINE_UUID)) {
-            throw IllegalArgumentException("Device does not support Widevine")
-        }
+        val drmCallback = if (videoSource is JSSource) getDrmCallback(videoSource, dataSource) else null
 
-        val dataSource = if(videoSource is JSSource && videoSource.requiresCustomDatasource)
-            videoSource.getHttpDataSourceFactory()
-        else
-            DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
-
-        val baseCallback = HttpMediaDrmCallback((videoSource as JSSource).drmLicenseUri, dataSource)
-
-        val callback = if (videoSource.hasLicenseRequestExecutor) {
-            PluginMediaDrmCallback(baseCallback, videoSource.getLicenseRequestExecutor()!!, videoSource.drmLicenseUri!!)
-        } else {
-            baseCallback
-        }
-
-        _lastVideoMediaSource = ProgressiveMediaSource.Factory(dataSource)
-            .setDrmSessionManagerProvider {
+        val factory = ProgressiveMediaSource.Factory(dataSource)
+        if (drmCallback != null) {
+            factory.setDrmSessionManagerProvider {
                 DefaultDrmSessionManager.Builder()
                     .setMultiSession(true)
-                    .build(callback)
+                    .build(drmCallback)
             }
-            .createMediaSource(
-                MediaItem.fromUri(videoSource.getVideoUrl())
-            )
+        }
+
+        _lastVideoMediaSource = factory
+            .createMediaSource(MediaItem.fromUri(videoSource.getVideoUrl()));
     }
+
     @OptIn(UnstableApi::class)
     private fun swapVideoSourceDash(videoSource: IDashManifestSource) {
         Logger.i(TAG, "Loading VideoSource [Dash]");
-        val dataSource = if(videoSource is JSSource && (videoSource.requiresCustomDatasource))
+        val dataSource = if (videoSource is JSSource && (videoSource.requiresCustomDatasource))
             videoSource.getHttpDataSourceFactory()
         else
             DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT);
-        _lastVideoMediaSource = DashMediaSource.Factory(dataSource)
-            .createMediaSource(MediaItem.fromUri(videoSource.url))
-    }
-    @OptIn(UnstableApi::class)
-    private fun swapVideoSourceDashWidevine(videoSource: IDashManifestWidevineSource) {
-        Logger.i(TAG, "Loading VideoSource [DashWidevine]")
 
-        if (!MediaDrm.isCryptoSchemeSupported(C.WIDEVINE_UUID)) {
-            throw IllegalArgumentException("Device does not support Widevine")
+        val drmCallback =
+            if (videoSource is JSSource) getDrmCallback(videoSource, dataSource) else null
+
+        val factory = DashMediaSource.Factory(dataSource)
+        if (drmCallback != null) {
+            factory.setDrmSessionManagerProvider {
+                DefaultDrmSessionManager.Builder().setMultiSession(true).build(drmCallback)
+            }
         }
 
-        val dataSource =
-            if (videoSource is JSSource && (videoSource.requiresCustomDatasource)) videoSource.getHttpDataSourceFactory()
-            else DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
-
-        val baseCallback = HttpMediaDrmCallback((videoSource as JSSource).drmLicenseUri, dataSource)
-
-        val callback = if (videoSource.hasLicenseRequestExecutor) {
-            PluginMediaDrmCallback(baseCallback, videoSource.getLicenseRequestExecutor()!!, videoSource.drmLicenseUri!!)
-        } else {
-            baseCallback
-        }
-
-        _lastVideoMediaSource = DashMediaSource.Factory(dataSource).setDrmSessionManagerProvider {
-                DefaultDrmSessionManager.Builder().setMultiSession(true).build(callback)
-            }.createMediaSource(MediaItem.fromUri(videoSource.url))
+        _lastVideoMediaSource =
+            factory.createMediaSource(MediaItem.fromUri(videoSource.url))
     }
     @OptIn(UnstableApi::class)
     private fun swapVideoSourceDashRaw(videoSource: JSDashManifestRawSource, play: Boolean, resume: Boolean): Boolean {
@@ -639,15 +604,28 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         }
         else throw IllegalArgumentException("source without itag data...")
     }
+
     @OptIn(UnstableApi::class)
     private fun swapAudioSourceUrl(audioSource: IAudioUrlSource) {
         Logger.i(TAG, "Loading AudioSource [Url]");
-        val dataSource = if(audioSource is JSSource && audioSource.requiresCustomDatasource)
+        val dataSource = if (audioSource is JSSource && audioSource.requiresCustomDatasource)
             audioSource.getHttpDataSourceFactory()
         else
             DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT);
-        _lastAudioMediaSource = ProgressiveMediaSource.Factory(dataSource)
-            .createMediaSource(MediaItem.fromUri(audioSource.getAudioUrl()));
+
+        val drmCallback =
+            if (audioSource is JSSource) getDrmCallback(audioSource, dataSource) else null
+
+        val factory = ProgressiveMediaSource.Factory(dataSource)
+        if (drmCallback != null) {
+            factory.setDrmSessionManagerProvider {
+                DefaultDrmSessionManager.Builder()
+                    .setMultiSession(true)
+                    .build(drmCallback)
+            }
+        }
+        _lastAudioMediaSource =
+            factory.createMediaSource(MediaItem.fromUri(audioSource.getAudioUrl()));
     }
     @OptIn(UnstableApi::class)
     private fun swapAudioSourceHLS(audioSource: IHLSManifestAudioSource) {
@@ -662,102 +640,73 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
 
     @OptIn(UnstableApi::class)
     private fun swapAudioSourceDashRaw(audioSource: JSDashManifestRawAudioSource, play: Boolean, resume: Boolean): Boolean {
-        Logger.i(TAG, "Loading AudioSource [DashRaw]")
+        Logger.i(TAG, "Loading AudioSource [DashRaw]");
         val dataSource = if (audioSource.requiresCustomDatasource)
             audioSource.getHttpDataSourceFactory()
         else
-            DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
+            DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT);
 
-        val baseCallback = HttpMediaDrmCallback(audioSource.drmLicenseUri, dataSource)
-
-        val callback =
-            if (audioSource.hasLicenseRequestExecutor && audioSource.drmLicenseUri != null) {
-                PluginMediaDrmCallback(baseCallback, audioSource.getLicenseRequestExecutor()!!, audioSource.drmLicenseUri)
-            } else {
-                baseCallback
-            }
-
-        _lastVideoMediaSource = DashMediaSource.Factory(dataSource).setDrmSessionManagerProvider {
-            DefaultDrmSessionManager.Builder().setMultiSession(true).build(callback)
-        }.createMediaSource(MediaItem.fromUri(audioSource.url))
+        val drmCallback = getDrmCallback(audioSource, dataSource)
 
         if (audioSource.hasGenerate) {
             findViewTreeLifecycleOwner()?.lifecycle?.coroutineScope?.launch(Dispatchers.IO) {
-                val generated = audioSource.generate()
+                val generated = audioSource.generate();
                 if (generated != null) {
                     withContext(Dispatchers.Main) {
                         val factory = DashMediaSource.Factory(dataSource)
-                        if (audioSource.drmLicenseUri != null) {
-                            if (!MediaDrm.isCryptoSchemeSupported(C.WIDEVINE_UUID)) {
-                                throw IllegalArgumentException("Device does not support Widevine")
-                            }
+                        if (drmCallback != null) {
                             factory.setDrmSessionManagerProvider {
                                 DefaultDrmSessionManager.Builder().setMultiSession(true)
-                                    .build(callback)
+                                    .build(drmCallback)
                             }
                         }
-                        _lastVideoMediaSource = factory.createMediaSource(
-                            DashManifestParser().parse(
-                                Uri.parse(audioSource.url),
-                                ByteArrayInputStream(generated.toByteArray() ?: ByteArray(0))
-                            )
-                        )
-                        loadSelectedSources(play, resume)
+                        _lastVideoMediaSource = factory
+                            .createMediaSource(
+                                DashManifestParser().parse(
+                                    Uri.parse(audioSource.url),
+                                    ByteArrayInputStream(generated.toByteArray() ?: ByteArray(0))
+                                )
+                            );
+                        loadSelectedSources(play, resume);
                     }
                 }
             }
-            return false
+            return false;
         } else {
             val factory = DashMediaSource.Factory(dataSource)
-            if (audioSource.drmLicenseUri != null) {
-                if (!MediaDrm.isCryptoSchemeSupported(C.WIDEVINE_UUID)) {
-                    throw IllegalArgumentException("Device does not support Widevine")
-                }
+            if (drmCallback != null) {
                 factory.setDrmSessionManagerProvider {
                     DefaultDrmSessionManager.Builder().setMultiSession(true)
-                        .build(callback)
+                        .build(drmCallback)
                 }
             }
-            _lastVideoMediaSource = factory.createMediaSource(
-                DashManifestParser().parse(
-                    Uri.parse(audioSource.url),
-                    ByteArrayInputStream(audioSource.manifest?.toByteArray() ?: ByteArray(0))
-                )
-            )
-            return true
+            _lastVideoMediaSource = factory
+                .createMediaSource(
+                    DashManifestParser().parse(
+                        Uri.parse(audioSource.url),
+                        ByteArrayInputStream(audioSource.manifest?.toByteArray() ?: ByteArray(0))
+                    )
+                );
+            return true;
         }
     }
 
     @OptIn(UnstableApi::class)
-    private fun swapAudioSourceUrlWidevine(audioSource: IAudioUrlWidevineSource) {
-        Logger.i(TAG, "Loading AudioSource [UrlWidevine]")
-
-        if (!MediaDrm.isCryptoSchemeSupported(C.WIDEVINE_UUID)) {
-            throw IllegalArgumentException("Device does not support Widevine")
-        }
-
-        val dataSource = if (audioSource is JSSource && audioSource.requiresCustomDatasource)
-            audioSource.getHttpDataSourceFactory()
-        else
-            DefaultHttpDataSource.Factory().setUserAgent(DEFAULT_USER_AGENT)
-
-        val baseCallback = HttpMediaDrmCallback((audioSource as JSSource).drmLicenseUri, dataSource)
-
-        val callback = if (audioSource.hasLicenseRequestExecutor) {
-            PluginMediaDrmCallback(baseCallback, audioSource.getLicenseRequestExecutor()!!, audioSource.drmLicenseUri!!)
-        } else {
-            baseCallback
-        }
-
-        _lastAudioMediaSource = ProgressiveMediaSource.Factory(dataSource)
-            .setDrmSessionManagerProvider {
-                DefaultDrmSessionManager.Builder()
-                    .setMultiSession(true)
-                    .build(callback)
+    private fun getDrmCallback(source: JSSource, dataSource: HttpDataSource.Factory): MediaDrmCallback? {
+        return if (source.drmLicenseUri != null) {
+            if (!MediaDrm.isCryptoSchemeSupported(C.WIDEVINE_UUID)) {
+                throw IllegalArgumentException("Device does not support Widevine")
             }
-            .createMediaSource(
-                MediaItem.fromUri(audioSource.getAudioUrl())
-            )
+
+            val delegateCallback =
+                HttpMediaDrmCallback(source.drmLicenseUri, dataSource)
+
+            if (source.hasLicenseRequestExecutor) {
+                PluginMediaDrmCallback(delegateCallback, source.getLicenseRequestExecutor()!!, source.drmLicenseUri)
+            } else {
+                delegateCallback
+            }
+        } else null
     }
 
     //Prefered source selection

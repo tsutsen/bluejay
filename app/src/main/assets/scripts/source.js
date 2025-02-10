@@ -365,16 +365,20 @@ class VideoUrlSource {
         this.url = obj.url;
         if(obj.requestModifier)
             this.requestModifier = obj.requestModifier;
+
+        // deprecated api conversion
+        if(obj.licenseUri)
+            this.drmLicenseUri = obj.licenseUri;
+
+        if(obj.drmLicenseUri)
+            this.drmLicenseUri = obj.drmLicenseUri;
+        if(obj.getLicenseRequestExecutor)
+            this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
     }
 }
 class VideoUrlWidevineSource extends VideoUrlSource {
     constructor(obj) {
         super(obj);
-        this.plugin_type = "VideoUrlWidevineSource";
-
-        this.drmLicenseUri = obj.licenseUri;
-        if(obj.getLicenseRequestExecutor)
-            this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
     }
 }
 class VideoUrlRangeSource extends VideoUrlSource {
@@ -402,16 +406,6 @@ class AudioUrlSource {
         this.language = obj.language ?? Language.UNKNOWN;
         if(obj.requestModifier)
             this.requestModifier = obj.requestModifier;
-    }
-}
-class AudioUrlWidevineSource extends AudioUrlSource {
-    constructor(obj) {
-        super(obj);
-        this.plugin_type = "AudioUrlWidevineSource";
-
-        this.drmLicenseUri = obj.licenseUri;
-        if(obj.getLicenseRequestExecutor)
-            this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
 
         // deprecated api conversion
         if(obj.bearerToken) {
@@ -429,6 +423,19 @@ class AudioUrlWidevineSource extends AudioUrlSource {
                 }
             }
         }
+        // deprecated api conversion
+        if(obj.licenseUri)
+            this.drmLicenseUri = obj.licenseUri;
+
+        if(obj.drmLicenseUri)
+            this.drmLicenseUri = obj.drmLicenseUri;
+        if(obj.getLicenseRequestExecutor)
+            this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
+    }
+}
+class AudioUrlWidevineSource extends AudioUrlSource {
+    constructor(obj) {
+        super(obj);
     }
 }
 class AudioUrlRangeSource extends AudioUrlSource {
@@ -471,16 +478,20 @@ class DashSource {
             this.requestModifier = obj.requestModifier;
         if(obj.getRequestExecutor)
             this.getRequestExecutor = obj.getRequestExecutor;
+
+        // deprecated api conversion
+        if(obj.licenseUri)
+            this.drmLicenseUri = obj.licenseUri;
+
+        if(obj.drmLicenseUri)
+            this.drmLicenseUri = obj.drmLicenseUri;
+        if(obj.getLicenseRequestExecutor)
+            this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
     }
 }
 class DashWidevineSource extends DashSource {
     constructor(obj) {
         super(obj);
-        this.plugin_type = "DashWidevineSource";
-
-        this.drmLicenseUri = obj.licenseUri;
-        if(obj.getLicenseRequestExecutor)
-            this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
     }
 }
 class DashManifestRawSource {
@@ -513,7 +524,9 @@ class DashManifestRawAudioSource {
         this.manifest = obj.manifest ?? null;
         if(obj.requestModifier)
             this.requestModifier = obj.requestModifier;
-        this.drmLicenseUri = obj.drmLicenseUri;
+
+        if(obj.drmLicenseUri)
+            this.drmLicenseUri = obj.drmLicenseUri;
         if(obj.getLicenseRequestExecutor)
             this.getLicenseRequestExecutor = obj.getLicenseRequestExecutor;
     }
