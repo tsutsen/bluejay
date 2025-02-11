@@ -2,6 +2,7 @@ package com.futo.platformplayer.api.media.models.streams.sources
 
 import android.net.Uri
 import com.futo.platformplayer.api.media.models.subtitles.ISubtitleSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSSource
 
 class HLSVariantVideoUrlSource(
     override val name: String,
@@ -12,7 +13,8 @@ class HLSVariantVideoUrlSource(
     override val bitrate: Int?,
     override val duration: Long,
     override val priority: Boolean,
-    val url: String
+    val url: String,
+    val jsSource: JSSource? = null,
 ) : IVideoUrlSource {
     override fun getVideoUrl(): String {
         return url
@@ -27,7 +29,8 @@ class HLSVariantAudioUrlSource(
     override val language: String,
     override val duration: Long?,
     override val priority: Boolean,
-    val url: String
+    val url: String,
+    val jsSource: JSSource? = null,
 ) : IAudioUrlSource {
     override fun getAudioUrl(): String {
         return url

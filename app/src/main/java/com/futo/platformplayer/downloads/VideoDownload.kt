@@ -10,11 +10,10 @@ import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.PlatformID
 import com.futo.platformplayer.api.media.models.streams.VideoUnMuxedSourceDescriptor
 import com.futo.platformplayer.api.media.models.streams.sources.AudioUrlSource
+import com.futo.platformplayer.api.media.models.streams.sources.HLSVariantAudioUrlSource
+import com.futo.platformplayer.api.media.models.streams.sources.HLSVariantVideoUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioSource
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioUrlSource
-import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
-import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestAudioSource
-import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.LocalAudioSource
@@ -28,12 +27,11 @@ import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideo
 import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideoDetails
 import com.futo.platformplayer.api.media.platforms.js.JSClient
-import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
-import com.futo.platformplayer.api.media.platforms.js.models.JSRequestExecutor
-import com.futo.platformplayer.api.media.platforms.js.models.JSVideo
 import com.futo.platformplayer.api.media.platforms.js.models.sources.IJSDashManifestRawSource
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawAudioSource
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSHLSManifestAudioSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSHLSManifestSource
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSSource
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.exceptions.DownloadException
@@ -44,9 +42,9 @@ import com.futo.platformplayer.parsers.HLS
 import com.futo.platformplayer.serializers.OffsetDateTimeNullableSerializer
 import com.futo.platformplayer.states.StateDownloads
 import com.futo.platformplayer.states.StatePlatform
-import com.futo.platformplayer.states.StatePlugins
 import com.futo.platformplayer.toHumanBitrate
 import com.futo.platformplayer.toHumanBytesSpeed
+import com.futo.polycentric.core.hexStringToByteArray
 import hasAnySource
 import isDownloadable
 import kotlinx.coroutines.CancellationException
@@ -59,6 +57,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Transient
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -69,8 +68,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.ForkJoinTask
 import java.util.concurrent.ThreadLocalRandom
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 import kotlin.coroutines.resumeWithException
-import kotlin.time.times
 
 @kotlinx.serialization.Serializable
 class VideoDownload {
@@ -93,10 +94,10 @@ class VideoDownload {
     var audioSource: AudioUrlSource?;
     @Contextual
     @Transient
-    val videoSourceToUse: IVideoSource? get () = if(requiresLiveVideoSource) videoSourceLive as IVideoSource? else videoSource as IVideoSource?;
+    val videoSourceToUse: IVideoSource? get () = if (videoSource?.container == "application/vnd.apple.mpegurl") videoSource else if(requiresLiveVideoSource) videoSourceLive as IVideoSource? else videoSource as IVideoSource?;
     @Contextual
     @Transient
-    val audioSourceToUse: IAudioSource? get () = if(requiresLiveAudioSource) audioSourceLive as IAudioSource? else audioSource as IAudioSource?;
+    val audioSourceToUse: IAudioSource? get () = if (audioSource?.container == "application/vnd.apple.mpegurl") audioSource else if(requiresLiveAudioSource) audioSourceLive as IAudioSource? else audioSource as IAudioSource?;
 
     var requireVideoSource: Boolean = false;
     var requireAudioSource: Boolean = false;
@@ -130,6 +131,9 @@ class VideoDownload {
 
     var hasVideoRequestExecutor: Boolean = false;
     var hasAudioRequestExecutor: Boolean = false;
+
+    var hasVideoRequestModifier: Boolean = false;
+    var hasAudioRequestModifier: Boolean = false;
 
     var progress: Double = 0.0;
     var isCancelled = false;
@@ -180,7 +184,7 @@ class VideoDownload {
         this.requireAudioSource = targetBitrate != null; //TODO: May not be a valid check.. can only be determined after live fetch?
         this.requiredCheck = optionalSources;
     }
-    constructor(video: IPlatformVideoDetails, videoSource: IVideoSource?, audioSource: IAudioSource?, subtitleSource: SubtitleRawSource?) {
+    constructor(video: IPlatformVideoDetails, videoSource: IVideoSource?, audioSource: IAudioSource?, subtitleSource: SubtitleRawSource?, hasHLSRequestModifier: Boolean = false) {
         this.video = SerializedPlatformVideo.fromVideo(video);
         this.videoDetails = SerializedPlatformVideoDetails.fromVideo(video, if (subtitleSource != null) listOf(subtitleSource) else listOf());
         this.videoSource = if(videoSource is IVideoUrlSource) VideoUrlSource.fromUrlSource(videoSource) else null;
@@ -191,8 +195,10 @@ class VideoDownload {
         this.prepareTime = OffsetDateTime.now();
         this.hasVideoRequestExecutor = videoSource is JSSource && videoSource.hasRequestExecutor;
         this.hasAudioRequestExecutor = audioSource is JSSource && audioSource.hasRequestExecutor;
-        this.requiresLiveVideoSource = this.hasVideoRequestExecutor || (videoSource is JSDashManifestRawSource && videoSource.hasGenerate);
-        this.requiresLiveAudioSource = this.hasAudioRequestExecutor || (audioSource is JSDashManifestRawAudioSource && audioSource.hasGenerate);
+        this.hasVideoRequestModifier = videoSource is JSSource && videoSource.hasRequestModifier || hasHLSRequestModifier
+        this.hasAudioRequestModifier = audioSource is JSSource && audioSource.hasRequestModifier || hasHLSRequestModifier
+        this.requiresLiveVideoSource = this.hasVideoRequestExecutor || this.hasVideoRequestModifier || (videoSource is JSDashManifestRawSource && videoSource.hasGenerate);
+        this.requiresLiveAudioSource = this.hasAudioRequestExecutor || this.hasAudioRequestModifier || (audioSource is JSDashManifestRawAudioSource && audioSource.hasGenerate);
         this.targetVideoName = videoSource?.name;
         this.targetAudioName = audioSource?.name;
         this.targetPixelCount = if(videoSource != null) (videoSource.width * videoSource.height).toLong() else null;
@@ -285,9 +291,14 @@ class VideoDownload {
             if(videoSource == null && targetPixelCount != null) {
                 val videoSources = arrayListOf<IVideoSource>()
                 for (source in original.video.videoSources) {
-                    if (source is IHLSManifestSource) {
+                    if (source is JSHLSManifestSource) {
                         try {
-                            val playlistResponse = client.get(source.url)
+                            val playlistResponse = if (source.hasRequestModifier) {
+                                val request = source.getRequestModifier()!!.modifyRequest(source.url, mapOf())
+                                client.get(request.url!!, request.headers.toMutableMap())
+                            } else {
+                                client.get(source.url)
+                            }
                             if (playlistResponse.isOk) {
                                 val playlistContent = playlistResponse.body?.string()
                                 if (playlistContent != null) {
@@ -320,6 +331,10 @@ class VideoDownload {
                     if(original.video.videoSources.size == 0)
                         requireVideoSource = false;
                 }
+                else if (vsource is HLSVariantVideoUrlSource && vsource.container == "application/vnd.apple.mpegurl") {
+                    videoSource = VideoUrlSource.fromUrlSource(vsource)
+                    videoSourceLive = vsource.jsSource!!
+                }
                 else if(vsource is IVideoUrlSource)
                     videoSource = VideoUrlSource.fromUrlSource(vsource)
                 else if(vsource is JSSource && requiresLiveVideoSource)
@@ -333,9 +348,14 @@ class VideoDownload {
                 val video = original.video
                 if (video is VideoUnMuxedSourceDescriptor) {
                     for (source in video.audioSources) {
-                        if (source is IHLSManifestAudioSource) {
+                        if (source is JSHLSManifestAudioSource) {
                             try {
-                                val playlistResponse = client.get(source.url)
+                                val playlistResponse = if (source.hasRequestModifier) {
+                                    val request = source.getRequestModifier()!!.modifyRequest(source.url, mapOf())
+                                    client.get(request.url!!, request.headers.toMutableMap())
+                                } else {
+                                    client.get(source.url)
+                                }
                                 if (playlistResponse.isOk) {
                                     val playlistContent = playlistResponse.body?.string()
                                     if (playlistContent != null) {
@@ -347,6 +367,26 @@ class VideoDownload {
                             }
                         } else {
                             audioSources.add(source)
+                        }
+                    }
+                }
+                for (source in video.videoSources) {
+                    if (source is JSHLSManifestSource) {
+                        try {
+                            val playlistResponse = if (source.hasRequestModifier) {
+                                val request = source.getRequestModifier()!!.modifyRequest(source.url, mapOf())
+                                client.get(request.url!!, request.headers.toMutableMap())
+                            } else {
+                                client.get(source.url)
+                            }
+                            if (playlistResponse.isOk) {
+                                val playlistContent = playlistResponse.body?.string()
+                                if (playlistContent != null) {
+                                    audioSources.addAll(HLS.parseAndGetAudioSources(source, playlistContent, source.url))
+                                }
+                            }
+                        } catch (e: Throwable) {
+                            Log.i(TAG, "Failed to get HLS audio sources", e)
                         }
                     }
                 }
@@ -375,6 +415,10 @@ class VideoDownload {
                     audioSource = null;
                     if(!original.video.isUnMuxed || original.video.videoSources.size == 0)
                         requireVideoSource = false;
+                }
+                else if (asource is HLSVariantAudioUrlSource && asource.container == "application/vnd.apple.mpegurl") {
+                    audioSource = AudioUrlSource.fromUrlSource(asource)
+                    audioSourceLive = asource.jsSource!!
                 }
                 else if(asource is IAudioUrlSource)
                     audioSource = AudioUrlSource.fromUrlSource(asource)
@@ -458,9 +502,9 @@ class VideoDownload {
                     }
                 }
 
-                if(actualVideoSource is IVideoUrlSource)
+                if(videoSource is IVideoUrlSource)
                     videoFileSize = when (videoSource!!.container) {
-                        "application/vnd.apple.mpegurl" -> downloadHlsSource(context, "Video", client, videoSource!!.getVideoUrl(), File(downloadDir, videoFileName!!), progressCallback)
+                        "application/vnd.apple.mpegurl" -> downloadHlsSource(context, "Video", client, if (actualVideoSource is JSSource) actualVideoSource else null, videoSource!!.getVideoUrl(), File(downloadDir, videoFileName!!), progressCallback)
                         else -> downloadFileSource("Video", client, videoSource!!.getVideoUrl(), File(downloadDir, videoFileName!!), progressCallback)
                     }
                 else if(actualVideoSource is JSDashManifestRawSource) {
@@ -498,9 +542,9 @@ class VideoDownload {
                     }
                 }
 
-                if(actualAudioSource is IAudioUrlSource)
+                if(audioSource is IAudioUrlSource)
                     audioFileSize = when (audioSource!!.container) {
-                        "application/vnd.apple.mpegurl" -> downloadHlsSource(context, "Audio", client, audioSource!!.getAudioUrl(), File(downloadDir, audioFileName!!), progressCallback)
+                        "application/vnd.apple.mpegurl" -> downloadHlsSource(context, "Audio", client, if (audioSourceLive is JSSource) audioSourceLive else null, audioSource!!.getAudioUrl(), File(downloadDir, audioFileName!!), progressCallback)
                         else -> downloadFileSource("Audio", client, audioSource!!.getAudioUrl(), File(downloadDir, audioFileName!!), progressCallback)
                     }
                 else if(actualAudioSource is JSDashManifestRawAudioSource) {
@@ -554,7 +598,15 @@ class VideoDownload {
         }
     }
 
-    private suspend fun downloadHlsSource(context: Context, name: String, client: ManagedHttpClient, hlsUrl: String, targetFile: File, onProgress: (Long, Long, Long) -> Unit): Long {
+    private fun decryptSegment(encryptedSegment: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val secretKey = SecretKeySpec(key, "AES")
+        val ivSpec = IvParameterSpec(iv)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
+        return cipher.doFinal(encryptedSegment)
+    }
+
+    private suspend fun downloadHlsSource(context: Context, name: String, client: ManagedHttpClient, source: JSSource?, hlsUrl: String, targetFile: File, onProgress: (Long, Long, Long) -> Unit): Long {
         if(targetFile.exists())
             targetFile.delete();
 
@@ -562,13 +614,33 @@ class VideoDownload {
 
         val segmentFiles = arrayListOf<File>()
         try {
-            val response = client.get(hlsUrl)
+            val response = if (source is JSSource && source.hasRequestModifier) {
+                val request = source.getRequestModifier()!!.modifyRequest(hlsUrl, mapOf())
+                client.get(request.url!!, request.headers.toMutableMap())
+            } else {
+                client.get(hlsUrl)
+            }
             check(response.isOk) { "Failed to get variant playlist: ${response.code}" }
 
             val vpContent = response.body?.string()
                 ?: throw Exception("Variant playlist content is empty")
 
             val variantPlaylist = HLS.parseVariantPlaylist(vpContent, hlsUrl)
+
+            val decryptionInfo: DecryptionInfo? = if (variantPlaylist.decryptionInfo != null) {
+                val keyResponse = if (source is JSSource && source.hasRequestModifier) {
+                    val request = source.getRequestModifier()!!.modifyRequest(variantPlaylist.decryptionInfo.keyUrl, mapOf())
+                    client.get(request.url!!, request.headers.toMutableMap())
+                } else {
+                    client.get(variantPlaylist.decryptionInfo.keyUrl)
+                }
+                check(keyResponse.isOk) { "HLS request failed for decryption key: ${keyResponse.code}" }
+
+                DecryptionInfo(keyResponse.body!!.bytes(), variantPlaylist.decryptionInfo.iv.hexStringToByteArray())
+            } else {
+                null
+            }
+
             variantPlaylist.segments.forEachIndexed { index, segment ->
                 if (segment !is HLS.MediaSegment) {
                     return@forEachIndexed
@@ -580,7 +652,7 @@ class VideoDownload {
                 try {
                     segmentFiles.add(segmentFile)
 
-                    val segmentLength = downloadSource_Sequential(client, outputStream, segment.uri) { segmentLength, totalRead, lastSpeed ->
+                    val segmentLength = downloadSource_Sequential(client, outputStream, segment.uri, if (index == 0) null else decryptionInfo) { segmentLength, totalRead, lastSpeed ->
                         val averageSegmentLength = if (index == 0) segmentLength else downloadedTotalLength / index
                         val expectedTotalLength = averageSegmentLength * (variantPlaylist.segments.size - 1) + segmentLength
                         onProgress(expectedTotalLength, downloadedTotalLength + totalRead, lastSpeed)
@@ -620,10 +692,8 @@ class VideoDownload {
 
     private suspend fun combineSegments(context: Context, segmentFiles: List<File>, targetFile: File) = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { continuation ->
-            val fileList = File(context.cacheDir, "fileList-${UUID.randomUUID()}.txt")
-            fileList.writeText(segmentFiles.joinToString("\n") { "file '${it.absolutePath}'" })
-
-            val cmd = "-f concat -safe 0 -i \"${fileList.absolutePath}\" -c copy \"${targetFile.absolutePath}\""
+            val cmd =
+                "-i \"concat:${segmentFiles.joinToString("|")}\" -c copy \"${targetFile.absolutePath}\""
 
             val statisticsCallback = StatisticsCallback { _ ->
                 //TODO: Show progress?
@@ -633,7 +703,6 @@ class VideoDownload {
             val session = FFmpegKit.executeAsync(cmd,
                 { session ->
                     if (ReturnCode.isSuccess(session.returnCode)) {
-                        fileList.delete()
                         continuation.resumeWith(Result.success(Unit))
                     } else {
                         val errorMessage = if (ReturnCode.isCancel(session.returnCode)) {
@@ -641,7 +710,6 @@ class VideoDownload {
                         } else {
                             "Command failed with state '${session.state}' and return code ${session.returnCode}, stack trace ${session.failStackTrace}"
                         }
-                        fileList.delete()
                         continuation.resumeWithException(RuntimeException(errorMessage))
                     }
                 },
@@ -761,7 +829,7 @@ class VideoDownload {
             else {
                 Logger.i(TAG, "Download $name Sequential");
                 try {
-                    sourceLength = downloadSource_Sequential(client, fileStream, videoUrl, onProgress);
+                    sourceLength = downloadSource_Sequential(client, fileStream, videoUrl, null, onProgress);
                 } catch (e: Throwable) {
                     Logger.w(TAG, "Failed to download sequentially (url = $videoUrl)")
                     throw e
@@ -788,7 +856,31 @@ class VideoDownload {
         }
         return sourceLength!!;
     }
-    private fun downloadSource_Sequential(client: ManagedHttpClient, fileStream: FileOutputStream, url: String, onProgress: (Long, Long, Long) -> Unit): Long {
+
+    data class DecryptionInfo(
+        val key: ByteArray,
+        val iv: ByteArray
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as DecryptionInfo
+
+            if (!key.contentEquals(other.key)) return false
+            if (!iv.contentEquals(other.iv)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = key.contentHashCode()
+            result = 31 * result + iv.contentHashCode()
+            return result
+        }
+    }
+
+    private fun downloadSource_Sequential(client: ManagedHttpClient, fileStream: FileOutputStream, url: String, decryptionInfo: DecryptionInfo?, onProgress: (Long, Long, Long) -> Unit): Long {
         val progressRate: Int = 4096 * 5;
         var lastProgressCount: Int = 0;
         val speedRate: Int = 4096 * 5;
@@ -808,6 +900,8 @@ class VideoDownload {
         val sourceLength = result.body.contentLength();
         val sourceStream = result.body.byteStream();
 
+        val segmentBuffer = ByteArrayOutputStream()
+
         var totalRead: Long = 0;
         try {
             var read: Int;
@@ -818,7 +912,7 @@ class VideoDownload {
                 if (read < 0)
                     break;
 
-                fileStream.write(buffer, 0, read);
+                segmentBuffer.write(buffer, 0, read);
 
                 totalRead += read;
 
@@ -842,6 +936,14 @@ class VideoDownload {
         } finally {
             sourceStream.close()
             result.body.close()
+        }
+
+        if (decryptionInfo != null) {
+            val decryptedData =
+                decryptSegment(segmentBuffer.toByteArray(), decryptionInfo.key, decryptionInfo.iv)
+            fileStream.write(decryptedData)
+        } else {
+            fileStream.write(segmentBuffer.toByteArray())
         }
 
         onProgress(sourceLength, totalRead, 0);

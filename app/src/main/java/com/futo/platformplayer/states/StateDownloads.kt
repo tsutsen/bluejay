@@ -336,8 +336,8 @@ class StateDownloads {
     fun download(video: IPlatformVideo, targetPixelcount: Long?, targetBitrate: Long?) {
         download(VideoDownload(video, targetPixelcount, targetBitrate));
     }
-    fun download(video: IPlatformVideoDetails, videoSource: IVideoSource?, audioSource: IAudioSource?, subtitleSource: SubtitleRawSource?) {
-        download(VideoDownload(video, videoSource, audioSource, subtitleSource));
+    fun download(video: IPlatformVideoDetails, videoSource: IVideoSource?, audioSource: IAudioSource?, subtitleSource: SubtitleRawSource?, hasRequestModifier: Boolean = false) {
+        download(VideoDownload(video, videoSource, audioSource, subtitleSource, hasRequestModifier));
     }
 
     private fun download(videoState: VideoDownload, notify: Boolean = true) {

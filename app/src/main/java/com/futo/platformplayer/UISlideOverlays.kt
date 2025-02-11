@@ -28,6 +28,9 @@ import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideo
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawAudioSource
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSHLSManifestAudioSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSHLSManifestSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSSource
 import com.futo.platformplayer.downloads.VideoLocal
 import com.futo.platformplayer.fragment.mainactivity.main.SubscriptionGroupFragment
 import com.futo.platformplayer.helpers.VideoHelper
@@ -269,12 +272,17 @@ class UISlideOverlays {
 
         }
 
-        fun showHlsPicker(video: IPlatformVideoDetails, source: Any, sourceUrl: String, container: ViewGroup): SlideUpMenuOverlay {
+        fun showHlsPicker(video: IPlatformVideoDetails, source: JSSource, sourceUrl: String, container: ViewGroup): SlideUpMenuOverlay {
             val items = arrayListOf<View>(LoaderView(container.context))
             val slideUpMenuOverlay = SlideUpMenuOverlay(container.context, container, container.context.getString(R.string.download_video), null, true, items)
 
             StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-                val masterPlaylistResponse = ManagedHttpClient().get(sourceUrl)
+                val masterPlaylistResponse = if (source.hasRequestModifier) {
+                    val request = source.getRequestModifier()!!.modifyRequest(sourceUrl, mapOf())
+                    ManagedHttpClient().get(request.url!!, request.headers.toMutableMap())
+                } else {
+                    ManagedHttpClient().get(sourceUrl)
+                }
                 check(masterPlaylistResponse.isOk) { "Failed to get master playlist: ${masterPlaylistResponse.code}" }
 
                 val masterPlaylistContent = masterPlaylistResponse.body?.string()
@@ -355,7 +363,7 @@ class UISlideOverlays {
 
                     slideUpMenuOverlay.onOK.subscribe {
                         //TODO: Fix SubtitleRawSource issue
-                        StateDownloads.instance.download(video, selectedVideoVariant, selectedAudioVariant, null);
+                        StateDownloads.instance.download(video, selectedVideoVariant, selectedAudioVariant, null, if (source is JSSource) source.hasRequestModifier else false);
                         slideUpMenuOverlay.hide()
                     }
 
@@ -475,7 +483,7 @@ class UISlideOverlays {
                             )
                         }
 
-                        is IHLSManifestSource -> {
+                        is JSHLSManifestSource -> {
                             SlideUpMenuItem(
                                 container.context,
                                 R.drawable.ic_movie,
@@ -549,7 +557,7 @@ class UISlideOverlays {
                                 );
                             }
 
-                            is IHLSManifestAudioSource -> {
+                            is JSHLSManifestAudioSource -> {
                                 SlideUpMenuItem(
                                     container.context,
                                     R.drawable.ic_movie,
@@ -614,13 +622,13 @@ class UISlideOverlays {
 
             menu.onOK.subscribe {
                 val sv = selectedVideo
-                if (sv is IHLSManifestSource) {
+                if (sv is JSHLSManifestSource) {
                     showHlsPicker(video, sv, sv.url, container)
                     return@subscribe
                 }
 
                 val sa = selectedAudio
-                if (sa is IHLSManifestAudioSource) {
+                if (sa is JSHLSManifestAudioSource) {
                     showHlsPicker(video, sa, sa.url, container)
                     return@subscribe
                 }

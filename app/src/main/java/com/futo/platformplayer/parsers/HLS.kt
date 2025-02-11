@@ -5,6 +5,7 @@ import com.futo.platformplayer.api.media.models.streams.sources.HLSVariantSubtit
 import com.futo.platformplayer.api.media.models.streams.sources.HLSVariantVideoUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestAudioSource
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSSource
 import com.futo.platformplayer.toYesNo
 import com.futo.platformplayer.yesNoToBoolean
 import java.net.URI
@@ -61,7 +62,28 @@ class HLS {
             val playlistType = lines.find { it.startsWith("#EXT-X-PLAYLIST-TYPE:") }?.substringAfter(":")
             val streamInfo = lines.find { it.startsWith("#EXT-X-STREAM-INF:") }?.let { parseStreamInfo(it) }
 
+
+            val keyInfo =
+                lines.find { it.startsWith("#EXT-X-KEY:") }?.substringAfter(":")?.split(",")
+
+            val key = keyInfo?.find { it.startsWith("URI=") }?.substringAfter("=")?.trim('"')
+            val iv =
+                keyInfo?.find { it.startsWith("IV=") }?.substringAfter("=")?.substringAfter("x")
+
+            val decryptionInfo: DecryptionInfo? = key?.let { k ->
+                iv?.let { i ->
+                    DecryptionInfo(k, i)
+                }
+            }
+
+            val initSegment =
+                lines.find { it.startsWith("#EXT-X-MAP:") }?.substringAfter(":")?.split(",")?.get(0)
+                    ?.substringAfter("=")?.trim('"')
             val segments = mutableListOf<Segment>()
+            if (initSegment != null) {
+                segments.add(MediaSegment(0.0, resolveUrl(sourceUrl, initSegment)))
+            }
+
             var currentSegment: MediaSegment? = null
             lines.forEach { line ->
                 when {
@@ -86,14 +108,14 @@ class HLS {
                 }
             }
 
-            return VariantPlaylist(version, targetDuration, mediaSequence, discontinuitySequence, programDateTime, playlistType, streamInfo, segments)
+            return VariantPlaylist(version, targetDuration, mediaSequence, discontinuitySequence, programDateTime, playlistType, streamInfo, segments, decryptionInfo)
         }
 
-        fun parseAndGetVideoSources(source: Any, content: String, url: String): List<HLSVariantVideoUrlSource> {
+        fun parseAndGetVideoSources(source: JSSource, content: String, url: String): List<HLSVariantVideoUrlSource> {
             val masterPlaylist: MasterPlaylist
             try {
                 masterPlaylist = parseMasterPlaylist(content, url)
-                return masterPlaylist.getVideoSources()
+                return masterPlaylist.getVideoSources(source)
             } catch (e: Throwable) {
                 if (content.lines().any { it.startsWith("#EXTINF:") }) {
                     return if (source is IHLSManifestSource) {
@@ -109,11 +131,11 @@ class HLS {
             }
         }
 
-        fun parseAndGetAudioSources(source: Any, content: String, url: String): List<HLSVariantAudioUrlSource> {
+        fun parseAndGetAudioSources(source: JSSource, content: String, url: String): List<HLSVariantAudioUrlSource> {
             val masterPlaylist: MasterPlaylist
             try {
                 masterPlaylist = parseMasterPlaylist(content, url)
-                return masterPlaylist.getAudioSources()
+                return masterPlaylist.getAudioSources(source)
             } catch (e: Throwable) {
                 if (content.lines().any { it.startsWith("#EXTINF:") }) {
                     return if (source is IHLSManifestSource) {
@@ -317,7 +339,7 @@ class HLS {
             return builder.toString()
         }
 
-        fun getVideoSources(): List<HLSVariantVideoUrlSource> {
+        fun getVideoSources(source: JSSource? = null): List<HLSVariantVideoUrlSource> {
             return variantPlaylistsRefs.map {
                 var width: Int? = null
                 var height: Int? = null
@@ -328,11 +350,11 @@ class HLS {
                 }
 
                 val suffix = listOf(it.streamInfo.video, it.streamInfo.codecs).mapNotNull { x -> x?.ifEmpty { null } }.joinToString(", ")
-                HLSVariantVideoUrlSource(suffix, width ?: 0, height ?: 0, "application/vnd.apple.mpegurl", it.streamInfo.codecs ?: "", it.streamInfo.bandwidth, 0, false, it.url)
+                HLSVariantVideoUrlSource(suffix, width ?: 0, height ?: 0, "application/vnd.apple.mpegurl", it.streamInfo.codecs ?: "", it.streamInfo.bandwidth, 0, false, it.url, source)
             }
         }
 
-        fun getAudioSources(): List<HLSVariantAudioUrlSource> {
+        fun getAudioSources(source: JSSource? = null): List<HLSVariantAudioUrlSource> {
             return mediaRenditions.mapNotNull {
                 if (it.uri == null) {
                     return@mapNotNull null
@@ -340,7 +362,7 @@ class HLS {
 
                 val suffix = listOf(it.language, it.groupID).mapNotNull { x -> x?.ifEmpty { null } }.joinToString(", ")
                 return@mapNotNull when (it.type) {
-                    "AUDIO" -> HLSVariantAudioUrlSource(it.name?.ifEmpty { "Audio (${suffix})" } ?: "Audio (${suffix})", 0, "application/vnd.apple.mpegurl", "", it.language ?: "", null, false, it.uri)
+                    "AUDIO" -> HLSVariantAudioUrlSource(it.name?.ifEmpty { "Audio (${suffix})" } ?: "Audio (${suffix})", 0, "application/vnd.apple.mpegurl", "", it.language ?: "", null, false, it.uri, source)
                     else -> null
                 }
             }
@@ -368,6 +390,11 @@ class HLS {
         }
     }
 
+    data class DecryptionInfo(
+        val keyUrl: String,
+        val iv: String
+    )
+
     data class VariantPlaylist(
         val version: Int?,
         val targetDuration: Int?,
@@ -376,7 +403,8 @@ class HLS {
         val programDateTime: ZonedDateTime?,
         val playlistType: String?,
         val streamInfo: StreamInfo?,
-        val segments: List<Segment>
+        val segments: List<Segment>,
+        val decryptionInfo: DecryptionInfo? = null
     ) {
         fun buildM3U8(): String = buildString {
             append("#EXTM3U\n")
