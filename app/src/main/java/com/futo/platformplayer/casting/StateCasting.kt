@@ -501,14 +501,15 @@ class StateCasting {
         val id = UUID.randomUUID();
         val videoPath = "/video-${id}"
         val videoUrl = url + videoPath;
+        val videoContainer = if (videoSource.container == "application/vnd.apple.mpegurl") "video/mp4" else videoSource.container;
 
         _castServer.addHandlerWithAllowAllOptions(
-            HttpFileHandler("GET", videoPath, videoSource.container, videoSource.filePath)
+            HttpFileHandler("GET", videoPath, videoContainer, videoSource.filePath)
                 .withHeader("Access-Control-Allow-Origin", "*"), true
         ).withTag("cast");
 
         Logger.i(TAG, "Casting local video (videoUrl: $videoUrl).");
-        ad.loadVideo("BUFFERED", videoSource.container, videoUrl, resumePosition, video.duration.toDouble(), speed);
+        ad.loadVideo("BUFFERED", videoContainer, videoUrl, resumePosition, video.duration.toDouble(), speed);
 
         return listOf(videoUrl);
     }
