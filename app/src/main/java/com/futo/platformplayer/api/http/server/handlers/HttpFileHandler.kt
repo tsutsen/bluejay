@@ -46,7 +46,8 @@ class HttpFileHandler(method: String, path: String, private val contentType: Str
         }
 
         var totalBytesSent = 0
-        val contentLength = end - start + 1
+        val byteReadOffset = if (contentType == "video/webm" && end == 8192L) 0 else 1;
+        val contentLength = end - start + byteReadOffset
         responseHeaders["Content-Length"] = contentLength.toString()
         Logger.i(TAG, "Sending $contentLength bytes (start: $start, end: $end)")
 
@@ -59,7 +60,7 @@ class HttpFileHandler(method: String, path: String, private val contentType: Str
 
                     val outputStream = responseStream
                     while (true) {
-                        val expectedBytesRead = (end - current + 1).coerceAtMost(buffer.size.toLong());
+                        val expectedBytesRead = (end - current + byteReadOffset).coerceAtMost(buffer.size.toLong());
                         val bytesRead = inputStream.read(buffer);
                         if (bytesRead < 0) {
                             Logger.i(TAG, "End of file reached")
