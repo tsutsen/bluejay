@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import com.futo.platformplayer.R
+import com.futo.platformplayer.Settings
 import com.futo.platformplayer.api.media.exceptions.NoPlatformClientException
 import com.futo.platformplayer.api.media.models.channels.IPlatformChannel
 import com.futo.platformplayer.api.media.models.contents.IPlatformContent
@@ -176,8 +177,11 @@ class StatePlaylists {
             StateDownloads.instance.checkForOutdatedPlaylistVideos(VideoDownload.GROUP_WATCHLATER);
         }
     }
-    fun addToWatchLater(video: SerializedPlatformVideo, isUserInteraction: Boolean = false, orderPosition: Int = -1) {
+    fun addToWatchLater(video: SerializedPlatformVideo, isUserInteraction: Boolean = false, orderPosition: Int = -1): Boolean {
+        var wasNew = false;
         synchronized(_watchlistStore) {
+            if(!_watchlistStore.hasItem { it.url == video.url })
+                wasNew = true;
             _watchlistStore.saveAsync(video);
             if(orderPosition == -1)
                 _watchlistOrderStore.set(*(listOf(video.url) + _watchlistOrderStore.values) .toTypedArray());
@@ -197,6 +201,7 @@ class StatePlaylists {
         }
 
         StateDownloads.instance.checkForOutdatedPlaylists();
+        return wasNew;
     }
 
     fun getLastPlayedPlaylist() : Playlist? {
@@ -306,14 +311,19 @@ class StatePlaylists {
                 broadcastSyncPlaylist(playlist);
         }
     }
-    fun addToPlaylist(id: String, video: IPlatformVideo) {
+    fun addToPlaylist(id: String, video: IPlatformVideo): Boolean {
         synchronized(playlistStore) {
-            val playlist = getPlaylist(id) ?: return;
+            val playlist = getPlaylist(id) ?: return false;
+            if(!Settings.instance.other.playlistAllowDups && playlist.videos.any { it.url == video.url })
+                return false;
+
+
             playlist.videos.add(SerializedPlatformVideo.fromVideo(video));
             playlist.dateUpdate = OffsetDateTime.now();
             playlistStore.saveAsync(playlist, true);
 
             broadcastSyncPlaylist(playlist);
+            return true;
         }
     }
 

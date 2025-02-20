@@ -13,6 +13,8 @@
     <string name="home">Home</string>
     <string name="progress_bar">Progress Bar</string>
     <string name="progress_bar_description">If a historical progress bar should be shown</string>
+    <string name="hide_hidden_from_search">Hide hidden from home in search</string>
+    <string name="hide_hidden_from_search_description">Hide videos and creators hidden from home also in search results</string>
     <string name="recommendations">Recommendations</string>
     <string name="more">More</string>
     <string name="playlists">Playlists</string>
@@ -196,6 +198,7 @@
     <string name="connected_to">Connected to</string>
     <string name="volume">Volume</string>
     <string name="changelog">Changelog</string>
+    <string name="changelog_plugin_description">Shows available changelogs for current and past versions</string>
     <string name="some_example_changelog">Some example changelog.</string>
     <string name="previous">Previous</string>
     <string name="next">Next</string>
@@ -286,6 +289,8 @@
     <string name="also_removes_any_data_related_plugin_like_login_or_settings">Also removes any data related plugin like login or settings</string>
     <string name="announcement">Announcement</string>
     <string name="notifications">Notifications</string>
+    <string name="check_disabled_plugin_updates">Check disabled plugins for updates</string>
+    <string name="check_disabled_plugin_updates_description">Check disabled plugins for updates</string>
     <string name="planned_content_notifications">Planned Content Notifications</string>
     <string name="planned_content_notifications_description">Schedules discovered planned content as notifications, resulting in more accurate notifications for this content.</string>
     <string name="attempt_to_utilize_byte_ranges">Attempt to utilize byte ranges</string>
@@ -401,8 +406,8 @@
     <string name="prefer_webm_audio_description">If player should prefer Webm codecs (opus) over mp4 codecs (AAC), may result in worse compatibility.</string>
     <string name="allow_under_cutout">Allow video under cutout</string>
     <string name="allow_under_cutout_description">Allow video to go underneath the screen cutout in full screen.\nMay require restart</string>
-    <string name="autoplay">Enable autoplay by default</string>
-    <string name="autoplay_description">Autoplay will be enabled by default whenever you watch a video</string>
+    <string name="autoplay">Autoplay next video by default</string>
+    <string name="autoplay_description">Autoplay next video will be enabled by default whenever you watch a video</string>
     <string name="allow_full_screen_portrait">Allow full-screen portrait when watching horizontal videos</string>
     <string name="delete_watchlist_on_finish">Delete from WatchLater when watched</string>
     <string name="delete_watchlist_on_finish_description">After you leave a video that you mostly watched, it will be removed from watch later.</string>
@@ -427,6 +432,8 @@
     <string name="bypass_rotation_prevention">Bypass Rotation Prevention</string>
     <string name="playlist_delete_confirmation">Playlist Delete Confirmation</string>
     <string name="playlist_delete_confirmation_description">Show confirmation dialog when deleting media from a playlist</string>
+    <string name="playlist_allow_dups">Allow duplicate playlist videos</string>
+    <string name="playlist_allow_dups_description">Allow adding duplicate videos to playlists</string>
     <string name="enable_polycentric">Enable Polycentric</string>
     <string name="polycentric_local_cache">Enable Polycentric Local Caching</string>
     <string name="polycentric_local_cache_description">Caches polycentric results on-device to reduce load times, changing requires app reboot</string>
@@ -955,6 +962,14 @@
         <item>Views Descending</item>
         <item>Watchtime Ascending</item>
         <item>Watchtime Descending</item>
+    </string-array>
+    <string-array name="downloads_sortby_array">
+        <item>Name (Ascending)</item>
+        <item>Name (Descending)</item>
+        <item>Download Date (Oldest)</item>
+        <item>Download Date (Newest)</item>
+        <item>Release Date (Oldest)</item>
+        <item>Release Date (Newest)</item>
     </string-array>
     <string-array name="feed_style">
         <item>Preview</item>

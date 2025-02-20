@@ -141,11 +141,17 @@ class VideoDownload {
     var error: String? = null;
 
     var videoFilePath: String? = null;
-    var videoFileName: String? = null;
+    var videoFileNameBase: String? = null;
+    var videoFileNameExt: String? = null;
+    val videoFileName: String? get() = if(videoFileNameBase.isNullOrEmpty()) null else videoFileNameBase + (if(!videoFileNameExt.isNullOrEmpty()) "." + videoFileNameExt else "");
+    var videoOverrideContainer: String? = null;
     var videoFileSize: Long? = null;
 
     var audioFilePath: String? = null;
-    var audioFileName: String? = null;
+    var audioFileNameBase: String? = null;
+    var audioFileNameExt: String? = null;
+    val audioFileName: String? get() = if(audioFileNameBase.isNullOrEmpty()) null else audioFileNameBase + (if(!audioFileNameExt.isNullOrEmpty()) "." + audioFileNameExt else "");
+    var audioOverrideContainer: String? = null;
     var audioFileSize: Long? = null;
 
     var subtitleFilePath: String? = null;
@@ -235,11 +241,13 @@ class VideoDownload {
             videoDetails = null;
             videoSource = null;
             videoSourceLive = null;
+            videoOverrideContainer = null;
         }
         if(requiresLiveAudioSource && !isLiveAudioSourceValid) {
             videoDetails = null;
             audioSource = null;
             videoSourceLive = null;
+            audioOverrideContainer = null;
         }
         if(video == null && videoDetails == null)
             throw IllegalStateException("Missing information for download to complete");
@@ -310,6 +318,10 @@ class VideoDownload {
                 if(vsource == null)
                     vsource = VideoHelper.selectBestVideoSource(videoSources, targetPixelCount!!.toInt(), arrayOf())
                 //    ?: throw IllegalStateException("Could not find a valid video source for video");
+                if(vsource is JSSource) {
+                    this.hasVideoRequestExecutor = this.hasVideoRequestExecutor || vsource.hasRequestExecutor;
+                    this.requiresLiveVideoSource = this.hasVideoRequestExecutor || (vsource is JSDashManifestRawSource && vsource.hasGenerate);
+                }
 
                 if(vsource == null) {
                     videoSource = null;
@@ -361,6 +373,12 @@ class VideoDownload {
                     asource = VideoHelper.selectBestAudioSource(audioSources, arrayOf(), null, targetBitrate)
                         ?: if(videoSource != null ) null
                         else throw DownloadException("Could not find a valid video or audio source for download")
+
+                if(asource is JSSource) {
+                    this.hasAudioRequestExecutor = this.hasAudioRequestExecutor || asource.hasRequestExecutor;
+                    this.requiresLiveAudioSource = this.hasAudioRequestExecutor || (asource is JSDashManifestRawSource && asource.hasGenerate);
+                }
+
                 if(asource == null) {
                     audioSource = null;
                     if(!original.video.isUnMuxed || original.video.videoSources.size == 0)
@@ -400,11 +418,13 @@ class VideoDownload {
         else audioSource;
 
         if(actualVideoSource != null) {
-            videoFileName = "${videoDetails!!.id.value!!} [${actualVideoSource!!.width}x${actualVideoSource!!.height}].${videoContainerToExtension(actualVideoSource!!.container)}".sanitizeFileName();
+            videoFileNameBase = "${videoDetails!!.id.value!!} [${actualVideoSource!!.width}x${actualVideoSource!!.height}]".sanitizeFileName();
+            videoFileNameExt = videoContainerToExtension(actualVideoSource!!.container);
             videoFilePath = File(downloadDir, videoFileName!!).absolutePath;
         }
         if(actualAudioSource != null) {
-            audioFileName = "${videoDetails!!.id.value!!} [${actualAudioSource!!.language}-${actualAudioSource!!.bitrate}].${audioContainerToExtension(actualAudioSource!!.container)}".sanitizeFileName();
+            audioFileNameBase = "${videoDetails!!.id.value!!} [${actualAudioSource!!.language}-${actualAudioSource!!.bitrate}]".sanitizeFileName();
+            audioFileNameExt = audioContainerToExtension(actualAudioSource!!.container);
             audioFilePath = File(downloadDir, audioFileName!!).absolutePath;
         }
         if(subtitleSource != null) {
@@ -1052,8 +1072,8 @@ class VideoDownload {
     fun complete() {
         Logger.i(TAG, "VideoDownload Complete [${name}]");
         val existing = StateDownloads.instance.getCachedVideo(id);
-        val localVideoSource = videoFilePath?.let { LocalVideoSource.fromSource(videoSourceToUse!!, it, videoFileSize ?: 0) };
-        val localAudioSource = audioFilePath?.let { LocalAudioSource.fromSource(audioSourceToUse!!, it, audioFileSize ?: 0) };
+        val localVideoSource = videoFilePath?.let { LocalVideoSource.fromSource(videoSourceToUse!!, it, videoFileSize ?: 0, videoOverrideContainer) };
+        val localAudioSource = audioFilePath?.let { LocalAudioSource.fromSource(audioSourceToUse!!, it, audioFileSize ?: 0, audioOverrideContainer) };
         val localSubtitleSource = subtitleFilePath?.let { LocalSubtitleSource.fromSource(subtitleSource!!, it) };
 
         if(localVideoSource != null && videoSourceToUse != null && videoSourceToUse is IStreamMetaDataSource)
@@ -1082,7 +1102,7 @@ class VideoDownload {
             StateDownloads.instance.updateCachedVideo(existing);
         }
         else {
-            val newVideo = VideoLocal(videoDetails!!);
+            val newVideo = VideoLocal(videoDetails!!, OffsetDateTime.now());
             if(localVideoSource != null)
                 newVideo.videoSource.add(localVideoSource);
             if(localAudioSource != null)
@@ -1134,7 +1154,7 @@ class VideoDownload {
             else if (container.contains("video/x-matroska"))
                 return "mkv";
             else
-                return "video";
+                return "video";//throw IllegalStateException("Unknown container: " + container)
         }
 
         fun audioContainerToExtension(container: String): String {
@@ -1145,11 +1165,11 @@ class VideoDownload {
             else if (container.contains("audio/mp3"))
                 return "mp3";
             else if (container.contains("audio/webm"))
-                return "webma";
+                return "webm";
             else if (container == "application/vnd.apple.mpegurl")
-                return "mp4";
+                return "mp4a";
             else
-                return "audio";
+                return "audio";// throw IllegalStateException("Unknown container: " + container)
         }
 
         fun subtitleContainerToExtension(container: String?): String {

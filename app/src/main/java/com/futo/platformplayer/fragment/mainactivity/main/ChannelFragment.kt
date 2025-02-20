@@ -25,6 +25,7 @@ import com.futo.platformplayer.UISlideOverlays
 import com.futo.platformplayer.api.media.PlatformID
 import com.futo.platformplayer.api.media.exceptions.NoPlatformClientException
 import com.futo.platformplayer.api.media.models.PlatformAuthorLink
+import com.futo.platformplayer.api.media.models.ResultCapabilities
 import com.futo.platformplayer.api.media.models.channels.IPlatformChannel
 import com.futo.platformplayer.api.media.models.channels.SerializedChannel
 import com.futo.platformplayer.api.media.models.contents.ContentType
@@ -237,8 +238,8 @@ class ChannelFragment : MainFragment() {
             }
             adapter.onAddToWatchLaterClicked.subscribe { content ->
                 if (content is IPlatformVideo) {
-                    StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(content), true)
-                    UIDialogs.toast("Added to watch later\n[${content.name}]")
+                    if(StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(content), true))
+                        UIDialogs.toast("Added to watch later\n[${content.name}]")
                 }
             }
             adapter.onUrlClicked.subscribe { url ->
@@ -457,6 +458,12 @@ class ChannelFragment : MainFragment() {
 
                         _fragment.topBar?.assume<NavigationTopBarFragment>()?.setMenuItems(buttons)
                     }
+                    if(plugin != null && plugin.capabilities.hasGetChannelCapabilities) {
+                        if(plugin.getChannelCapabilities()?.types?.contains(ResultCapabilities.TYPE_SHORTS) ?: false &&
+                            !(_viewPager.adapter as ChannelViewPagerAdapter).containsItem(ChannelTab.SHORTS.ordinal.toLong())) {
+                            (_viewPager.adapter as ChannelViewPagerAdapter).insert(1, ChannelTab.SHORTS);
+                        }
+                    }
                 }
             }
 
@@ -469,8 +476,13 @@ class ChannelFragment : MainFragment() {
                     R.string.subscribers
                 ).lowercase() else ""
 
-            val supportsPlaylists =
-                StatePlatform.instance.getChannelClient(channel.url).capabilities.hasGetChannelPlaylists
+            var supportsPlaylists = false;
+            try {
+                supportsPlaylists = StatePlatform.instance.getChannelClient(channel.url).capabilities.hasGetChannelPlaylists
+            } catch (ex: Throwable) {
+                //Ignore error
+                Logger.e(TAG, "Failed to check if supports playlists", ex);
+            }
             val playlistPosition = 1
             if (supportsPlaylists && !(_viewPager.adapter as ChannelViewPagerAdapter).containsItem(
                     ChannelTab.PLAYLISTS.ordinal.toLong()
