@@ -79,6 +79,36 @@ class UISlideOverlays {
             return menu;
         }
 
+        fun showQueueOptionsOverlay(context: Context, container: ViewGroup) {
+            UISlideOverlays.showOverlay(container, "Queue options", null, {
+
+            }, SlideUpMenuItem(context, R.drawable.ic_playlist, "Save as playlist", "", "Creates a new playlist with queue as videos", null, {
+                val nameInput = SlideUpMenuTextInput(container.context, container.context.getString(R.string.name));
+                val addPlaylistOverlay = SlideUpMenuOverlay(container.context, container, container.context.getString(R.string.create_new_playlist), container.context.getString(R.string.ok), false, nameInput);
+
+                addPlaylistOverlay.onOK.subscribe {
+                    val text = nameInput.text.trim()
+                    if (text.isBlank()) {
+                        return@subscribe;
+                    }
+
+                    addPlaylistOverlay.hide();
+                    nameInput.deactivate();
+                    nameInput.clear();
+                    StatePlayer.instance.saveQueueAsPlaylist(text);
+                    UIDialogs.appToast("Playlist [${text}] created");
+                };
+
+                addPlaylistOverlay.onCancel.subscribe {
+                    nameInput.deactivate();
+                    nameInput.clear();
+                };
+
+                addPlaylistOverlay.show();
+                nameInput.activate();
+            }, false));
+        }
+
         fun showSubscriptionOptionsOverlay(subscription: Subscription, container: ViewGroup): SlideUpMenuOverlay {
             val items = arrayListOf<View>();
 
@@ -335,7 +365,9 @@ class UISlideOverlays {
                             call = {
                                 selectedVideoVariant = it
                                 slideUpMenuOverlay.selectOption(videoButtons, it)
-                                slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                if (audioButtons.isEmpty()){
+                                    slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                }
                             },
                             invokeParent = false
                         ))
@@ -417,7 +449,7 @@ class UISlideOverlays {
             }
 
             items.add(SlideUpMenuGroup(container.context, container.context.getString(R.string.video), videoSources,
-                listOf(listOf(SlideUpMenuItem(
+                listOf((if (audioSources != null) listOf(SlideUpMenuItem(
                     container.context,
                     R.drawable.ic_movie,
                     container.context.getString(R.string.none),
@@ -430,7 +462,7 @@ class UISlideOverlays {
                             menu?.setOk(container.context.getString(R.string.download));
                     },
                     invokeParent = false
-                )) +
+                )) else listOf()) +
                 videoSources
                 .filter { it.isDownloadable() }
                 .map {
@@ -895,7 +927,8 @@ class UISlideOverlays {
                             "${lastUpdated.videos.size} " + container.context.getString(R.string.videos),
                             tag = "",
                             call = {
-                                StatePlaylists.instance.addToPlaylist(lastUpdated.id, video);
+                                if(StatePlaylists.instance.addToPlaylist(lastUpdated.id, video))
+                                    UIDialogs.appToast("Added to playlist [${lastUpdated?.name}]", false);
                                 StateDownloads.instance.checkForOutdatedPlaylists();
                             }))
                 );
@@ -906,7 +939,7 @@ class UISlideOverlays {
             val watchLater = StatePlaylists.instance.getWatchLater();
             items.add(SlideUpMenuGroup(container.context, container.context.getString(R.string.actions), "actions",
                 (listOf(
-                    if(!isLimited)
+                    if(!isLimited && !video.isLive)
                         SlideUpMenuItem(
                             container.context,
                             R.drawable.ic_download,
@@ -991,7 +1024,8 @@ class UISlideOverlays {
                     "${playlist.videos.size} " + container.context.getString(R.string.videos),
                     tag = "",
                     call = {
-                        StatePlaylists.instance.addToPlaylist(playlist.id, video);
+                        if(StatePlaylists.instance.addToPlaylist(playlist.id, video))
+                            UIDialogs.appToast("Added to playlist [${playlist.name}]", false);
                         StateDownloads.instance.checkForOutdatedPlaylists();
                     }));
             }
@@ -1018,7 +1052,8 @@ class UISlideOverlays {
                             "${lastUpdated.videos.size} " + container.context.getString(R.string.videos),
                             tag = "",
                             call = {
-                                StatePlaylists.instance.addToPlaylist(lastUpdated.id, video);
+                                if(StatePlaylists.instance.addToPlaylist(lastUpdated.id, video))
+                                    UIDialogs.appToast("Added to playlist [${lastUpdated?.name}]", false);
                                 StateDownloads.instance.checkForOutdatedPlaylists();
                             }))
                 );
@@ -1040,7 +1075,10 @@ class UISlideOverlays {
                         StatePlayer.TYPE_WATCHLATER,
                         "${watchLater.size} " + container.context.getString(R.string.videos),
                         tag = "watch later",
-                        call = { StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(video), true); }),
+                        call = {
+                            if(StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(video), true))
+                                UIDialogs.appToast("Added to watch later", false);
+                        }),
                     )
             );
 
@@ -1067,7 +1105,8 @@ class UISlideOverlays {
                     "${playlist.videos.size} " + container.context.getString(R.string.videos),
                     tag = "",
                     call = {
-                        StatePlaylists.instance.addToPlaylist(playlist.id, video);
+                        if(StatePlaylists.instance.addToPlaylist(playlist.id, video))
+                            UIDialogs.appToast("Added to playlist [${playlist.name}]", false);
                         StateDownloads.instance.checkForOutdatedPlaylists();
                     }));
             }

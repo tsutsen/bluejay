@@ -641,24 +641,18 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
         };
 
         var hadDevice = false;
-        StateSync.instance.deviceUpdatedOrAdded.subscribe(this) { id, session ->
-            val hasDevice = StateSync.instance.hasAtLeastOneOnlineDevice();
-            if(hasDevice != hadDevice) {
-                hadDevice = hasDevice;
-                fragment.lifecycleScope.launch(Dispatchers.Main) {
-                    updateMoreButtons();
-                }
-            }
-        };
-        StateSync.instance.deviceRemoved.subscribe(this) { id ->
-            val hasDevice = StateSync.instance.hasAtLeastOneOnlineDevice();
-            if(hasDevice != hadDevice) {
+        val devicesChanged = { id: String ->
+            val hasDevice = StateSync.instance.hasAuthorizedDevice();
+            if (hasDevice != hadDevice) {
                 hadDevice = hasDevice;
                 fragment.lifecycleScope.launch(Dispatchers.Main) {
                     updateMoreButtons();
                 }
             }
         }
+
+        StateSync.instance.deviceUpdatedOrAdded.subscribe(this) { id, _ -> devicesChanged(id) };
+        StateSync.instance.deviceRemoved.subscribe(this) { id -> devicesChanged(id) };
 
         MediaControlReceiver.onLowerVolumeReceived.subscribe(this) { handleLowerVolume() };
         MediaControlReceiver.onPlayReceived.subscribe(this) { handlePlay() };
@@ -910,22 +904,20 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
                     }
                     _slideUpOverlay?.hide();
                 } else null,
-            if(!isLimitedVersion)
-                RoundButton(context, R.drawable.ic_screen_share, context.getString(R.string.background), TAG_BACKGROUND) {
-                    if(!allowBackground) {
-                        _player.switchToAudioMode();
-                        allowBackground = true;
-                        it.text.text = resources.getString(R.string.background_revert);
-                    }
-                    else {
-                        _player.switchToVideoMode();
-                        allowBackground = false;
-                        it.text.text = resources.getString(R.string.background);
-                    }
-                    _slideUpOverlay?.hide();
+            if (!isLimitedVersion) RoundButton(context, R.drawable.ic_screen_share, if (allowBackground) context.getString(R.string.background_revert) else context.getString(R.string.background), TAG_BACKGROUND) {
+                if (!allowBackground) {
+                    _player.switchToAudioMode();
+                    allowBackground = true;
+                    it.text.text = resources.getString(R.string.background_revert);
+                } else {
+                    _player.switchToVideoMode();
+                    allowBackground = false;
+                    it.text.text = resources.getString(R.string.background);
                 }
+                _slideUpOverlay?.hide();
+            }
             else null,
-            if(!isLimitedVersion)
+            if(!isLimitedVersion && !(video?.isLive ?: false))
                 RoundButton(context, R.drawable.ic_download, context.getString(R.string.download), TAG_DOWNLOAD) {
                     video?.let {
                         _slideUpOverlay = UISlideOverlays.showDownloadVideoOverlay(it, _overlayContainer, context.contentResolver);
@@ -956,18 +948,25 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
                 };
                 _slideUpOverlay?.hide();
             },
-            if(StateSync.instance.hasAtLeastOneOnlineDevice()) {
+            if (StateSync.instance.hasAuthorizedDevice()) {
                 RoundButton(context, R.drawable.ic_device, context.getString(R.string.send_to_device), TAG_SEND_TO_DEVICE) {
-                    val devices = StateSync.instance.getSessions();
+                    val devices = StateSync.instance.getAuthorizedSessions();
                     val videoToSend = video ?: return@RoundButton;
                     if(devices.size > 1) {
                         //not implemented
-                    }
-                    else if(devices.size == 1){
+                    } else if(devices.size == 1){
                         val device = devices.first();
+                        Logger.i(TAG, "Send to device? (public key: ${device.remotePublicKey}): " + videoToSend.url)
                         UIDialogs.showConfirmationDialog(context, "Would you like to open\n[${videoToSend.name}]\non ${device.remotePublicKey}" , {
+                            Logger.i(TAG, "Send to device confirmed (public key: ${device.remotePublicKey}): " + videoToSend.url)
+
                             fragment.lifecycleScope.launch(Dispatchers.IO) {
-                                device.sendJsonData(GJSyncOpcodes.sendToDevices, SendToDevicePackage(videoToSend.url, (lastPositionMilliseconds/1000).toInt()));
+                                try {
+                                    device.sendJsonData(GJSyncOpcodes.sendToDevices, SendToDevicePackage(videoToSend.url, (lastPositionMilliseconds / 1000).toInt()))
+                                    Logger.i(TAG, "Send to device packet sent (public key: ${device.remotePublicKey}): " + videoToSend.url)
+                                } catch (e: Throwable) {
+                                    Logger.e(TAG, "Send to device packet failed to send", e)
+                                }
                             }
                         })
                     }
@@ -1930,6 +1929,39 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
         _overlay_quality_selector?.selectOption("video", _lastVideoSource);
         _overlay_quality_selector?.selectOption("audio", _lastAudioSource);
         _overlay_quality_selector?.selectOption("subtitles", _lastSubtitleSource);
+
+        if (_lastVideoSource is IDashManifestSource || _lastVideoSource is IHLSManifestSource) {
+
+            val videoTracks =
+                _player.exoPlayer?.player?.currentTracks?.groups?.firstOrNull { it.mediaTrackGroup.type == C.TRACK_TYPE_VIDEO }
+
+            var selectedQuality: Format? = null
+
+            if (videoTracks != null) {
+                for (i in 0 until videoTracks.mediaTrackGroup.length) {
+                    if (videoTracks.mediaTrackGroup.getFormat(i).height == _player.targetTrackVideoHeight) {
+                        selectedQuality = videoTracks.mediaTrackGroup.getFormat(i)
+                    }
+                }
+            }
+
+            var videoMenuGroup: SlideUpMenuGroup? = null
+            for (view in _overlay_quality_selector!!.groupItems) {
+                if (view is SlideUpMenuGroup && view.groupTag == "video") {
+                    videoMenuGroup = view
+                }
+            }
+
+            if (selectedQuality != null) {
+                videoMenuGroup?.getItem("auto")?.setSubText("")
+                _overlay_quality_selector?.selectOption("video", selectedQuality)
+            } else {
+                videoMenuGroup?.getItem("auto")
+                    ?.setSubText("${_player.exoPlayer?.player?.videoFormat?.width}x${_player.exoPlayer?.player?.videoFormat?.height}")
+                _overlay_quality_selector?.selectOption("video", "auto")
+            }
+        }
+
         val currentPlaybackRate = (if (_isCasting) StateCasting.instance.activeDevice?.speed else _player.getPlaybackRate()) ?: 1.0
         _overlay_quality_selector?.groupItems?.firstOrNull { it is SlideUpMenuButtonList && it.id == "playback_rate" }?.let {
             (it as SlideUpMenuButtonList).setSelected(currentPlaybackRate.toString())
@@ -2103,17 +2135,15 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
                                 call = { handleSelectSubtitleTrack(it) })
                         }.toList().toTypedArray())
             else null,
-            if(liveStreamVideoFormats?.isEmpty() == false)
-                SlideUpMenuGroup(this.context, context.getString(R.string.stream_video), "video",
-                    *liveStreamVideoFormats
-                        .map {
-                            SlideUpMenuItem(this.context,
-                                R.drawable.ic_movie,
-                                it.label ?: it.containerMimeType ?: it.bitrate.toString(),
-                                "${it.width}x${it.height}",
-                                tag = it,
-                                call = { _player.selectVideoTrack(it.height) });
-                        }.toList().toTypedArray())
+            if (liveStreamVideoFormats?.isEmpty() == false) SlideUpMenuGroup(
+                this.context, context.getString(R.string.stream_video), "video", (listOf(
+                    SlideUpMenuItem(this.context, R.drawable.ic_movie, "Auto", tag = "auto", call = { _player.selectVideoTrack(-1) })
+                ) + (liveStreamVideoFormats.map {
+                    SlideUpMenuItem(this.context, R.drawable.ic_movie, it.label
+                        ?: it.containerMimeType
+                        ?: it.bitrate.toString(), "${it.width}x${it.height}", tag = it, call = { _player.selectVideoTrack(it.height) });
+                }))
+            )
             else null,
             if(liveStreamAudioFormats?.isEmpty() == false)
                 SlideUpMenuGroup(this.context, context.getString(R.string.stream_audio), "audio",
@@ -2586,8 +2616,13 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
 
                     onAddToWatchLaterClicked.subscribe(this) {
                         if(it is IPlatformVideo) {
-                            StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(it), true);
-                            UIDialogs.toast("Added to watch later\n[${it.name}]");
+                            if(StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(it), true))
+                                UIDialogs.toast("Added to watch later\n[${it.name}]");
+                        }
+                    }
+                    onAddToQueueClicked.subscribe(this) {
+                        if(it is IPlatformVideo) {
+                            StatePlayer.instance.addToQueue(it);
                         }
                     }
                 })

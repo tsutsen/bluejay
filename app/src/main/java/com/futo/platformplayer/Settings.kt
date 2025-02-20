@@ -254,6 +254,9 @@ class Settings : FragmentedStorageFileJson() {
         @FormField(R.string.progress_bar, FieldForm.TOGGLE, R.string.progress_bar_description, 6)
         var progressBar: Boolean = true;
 
+        @FormField(R.string.hide_hidden_from_search, FieldForm.TOGGLE, R.string.hide_hidden_from_search_description, 7)
+        var hidefromSearch: Boolean = false;
+
 
         fun getSearchFeedStyle(): FeedStyle {
             if(searchFeedStyle == 0)
@@ -641,6 +644,9 @@ class Settings : FragmentedStorageFileJson() {
     @Serializable
     class Plugins {
 
+        @FormField(R.string.check_disabled_plugin_updates, FieldForm.TOGGLE, R.string.check_disabled_plugin_updates_description, -1)
+        var checkDisabledPluginsForUpdates: Boolean = false;
+
         @FormField(R.string.clear_cookies_on_logout, FieldForm.TOGGLE, R.string.clears_cookies_when_you_log_out, 0)
         var clearCookiesOnLogout: Boolean = true;
 
@@ -861,11 +867,13 @@ class Settings : FragmentedStorageFileJson() {
     class Other {
         @FormField(R.string.playlist_delete_confirmation, FieldForm.TOGGLE, R.string.playlist_delete_confirmation_description, 2)
         var playlistDeleteConfirmation: Boolean = true;
+        @FormField(R.string.playlist_allow_dups, FieldForm.TOGGLE, R.string.playlist_allow_dups_description, 3)
+        var playlistAllowDups: Boolean = true;
 
-        @FormField(R.string.enable_polycentric, FieldForm.TOGGLE, R.string.can_be_disabled_when_you_are_experiencing_issues, 3)
+        @FormField(R.string.enable_polycentric, FieldForm.TOGGLE, R.string.can_be_disabled_when_you_are_experiencing_issues, 4)
         var polycentricEnabled: Boolean = true;
 
-        @FormField(R.string.polycentric_local_cache, FieldForm.TOGGLE, R.string.polycentric_local_cache_description, 4)
+        @FormField(R.string.polycentric_local_cache, FieldForm.TOGGLE, R.string.polycentric_local_cache_description, 5)
         var polycentricLocalCache: Boolean = true;
     }
 
