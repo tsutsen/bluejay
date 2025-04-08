@@ -169,6 +169,9 @@ class SyncSession : IAuthorizable {
         } catch (ex: Exception) {
             Logger.w(TAG, "Failed to handle sync package $opcode: ${ex.message}", ex)
         }
+        catch(ex: Exception) {
+            Logger.w(TAG, "Failed to handle sync package ${opcode}: ${ex.message}", ex);
+        }
     }
 
     inline fun <reified T> sendJsonData(subOpcode: UByte, data: T) {

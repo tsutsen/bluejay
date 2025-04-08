@@ -205,7 +205,7 @@ class Settings : FragmentedStorageFileJson() {
     var home = HomeSettings();
     @Serializable
     class HomeSettings {
-        @FormField(R.string.feed_style, FieldForm.DROPDOWN, R.string.may_require_restart, 5)
+        @FormField(R.string.feed_style, FieldForm.DROPDOWN, R.string.may_require_restart, 3)
         @DropdownFieldOptionsId(R.array.feed_style)
         var homeFeedStyle: Int = 1;
 
@@ -215,6 +215,11 @@ class Settings : FragmentedStorageFileJson() {
             else
                 return FeedStyle.THUMBNAIL;
         }
+
+        @FormField(R.string.show_home_filters, FieldForm.TOGGLE, R.string.show_home_filters_description, 4)
+        var showHomeFilters: Boolean = true;
+        @FormField(R.string.show_home_filters_plugin_names, FieldForm.TOGGLE, R.string.show_home_filters_plugin_names_description, 5)
+        var showHomeFiltersPluginNames: Boolean = false;
 
         @FormField(R.string.preview_feed_items, FieldForm.TOGGLE, R.string.preview_feed_items_description, 6)
         var previewFeedItems: Boolean = true;
@@ -294,6 +299,9 @@ class Settings : FragmentedStorageFileJson() {
         @FormField(R.string.show_subscription_group, FieldForm.TOGGLE, R.string.show_subscription_group_description, 5)
         var showSubscriptionGroups: Boolean = true;
 
+        @FormField(R.string.use_subscription_exchange, FieldForm.TOGGLE, R.string.use_subscription_exchange_description, 6)
+        var useSubscriptionExchange: Boolean = false;
+
         @FormField(R.string.preview_feed_items, FieldForm.TOGGLE, R.string.preview_feed_items_description, 6)
         var previewFeedItems: Boolean = true;
 
@@ -356,7 +364,7 @@ class Settings : FragmentedStorageFileJson() {
     var playback = PlaybackSettings();
     @Serializable
     class PlaybackSettings {
-        @FormField(R.string.primary_language, FieldForm.DROPDOWN, -1, -1)
+        @FormField(R.string.primary_language, FieldForm.DROPDOWN, -1, -2)
         @DropdownFieldOptionsId(R.array.audio_languages)
         var primaryLanguage: Int = 0;
 
@@ -380,6 +388,8 @@ class Settings : FragmentedStorageFileJson() {
                 else -> null
             }
         }
+        @FormField(R.string.prefer_original_audio, FieldForm.TOGGLE, R.string.prefer_original_audio_description, -1)
+        var preferOriginalAudio: Boolean = true;
 
         //= context.resources.getStringArray(R.array.audio_languages)[primaryLanguage];
 

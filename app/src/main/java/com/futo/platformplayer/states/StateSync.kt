@@ -445,106 +445,92 @@ class StateSync {
         deviceRemoved.emit(remotePublicKey)
     }
 
+
     private fun handleSyncSubscriptionPackage(origin: SyncSession, pack: SyncSubscriptionsPackage) {
         val added = mutableListOf<Subscription>()
-        for (sub in pack.subscriptions) {
-            if (!StateSubscriptions.instance.isSubscribed(sub.channel)) {
-                val removalTime = StateSubscriptions.instance.getSubscriptionRemovalTime(sub.channel.url)
-                if (sub.creationTime > removalTime) {
-                    val newSub = StateSubscriptions.instance.addSubscription(sub.channel, sub.creationTime)
-                    added.add(newSub)
+        for(sub in pack.subscriptions) {
+            if(!StateSubscriptions.instance.isSubscribed(sub.channel)) {
+                val removalTime = StateSubscriptions.instance.getSubscriptionRemovalTime(sub.channel.url);
+                if(sub.creationTime > removalTime) {
+                    val newSub = StateSubscriptions.instance.addSubscription(sub.channel, sub.creationTime);
+                    added.add(newSub);
                 }
             }
         }
-        if (added.size > 3)
-            UIDialogs.appToast("${added.size} Subscriptions from ${origin.remotePublicKey.take(8)}")
-        else if (added.size > 0)
-            UIDialogs.appToast("Subscriptions from ${origin.remotePublicKey.take(8)}:\n${added.joinToString("\n") { it.channel.name }}")
+        if(added.size > 3)
+            UIDialogs.appToast("${added.size} Subscriptions from ${origin.remotePublicKey.substring(0, Math.min(8, origin.remotePublicKey.length))}");
+        else if(added.size > 0)
+            UIDialogs.appToast("Subscriptions from ${origin.remotePublicKey.substring(0, Math.min(8, origin.remotePublicKey.length))}:\n" +
+                    added.map { it.channel.name }.joinToString("\n"));
 
-        if (pack.subscriptionRemovals.isNotEmpty()) {
-            val removed = StateSubscriptions.instance.applySubscriptionRemovals(pack.subscriptionRemovals)
-            if (removed.size > 3)
-                UIDialogs.appToast("Removed ${removed.size} Subscriptions from ${origin.remotePublicKey.take(8)}")
-            else if (removed.size > 0)
-                UIDialogs.appToast("Subscriptions removed from ${origin.remotePublicKey.take(8)}:\n${removed.joinToString("\n") { it.channel.name }}")
+
+        if(pack.subscriptions.isNotEmpty()) {
+            for (subRemoved in pack.subscriptionRemovals) {
+                val removed = StateSubscriptions.instance.applySubscriptionRemovals(pack.subscriptionRemovals);
+                if(removed.size > 3) {
+                    UIDialogs.appToast("Removed ${removed.size} Subscriptions from ${origin.remotePublicKey.substring(0, 8.coerceAtMost(origin.remotePublicKey.length))}");
+                } else if(removed.isNotEmpty()) {
+                    UIDialogs.appToast("Subscriptions removed from ${origin.remotePublicKey.substring(0, 8.coerceAtMost(origin.remotePublicKey.length))}:\n" + removed.map { it.channel.name }.joinToString("\n"));
+                }
+            }
         }
     }
 
-    private fun handleData(it: SyncSession, opcode: UByte, subOpcode: UByte, data: ByteBuffer) {
-        val remotePublicKey = it.remotePublicKey
+    private fun handleData(session: SyncSession, opcode: UByte, subOpcode: UByte, data: ByteBuffer) {
+        val remotePublicKey = session.remotePublicKey
         when (subOpcode) {
             GJSyncOpcodes.sendToDevices -> {
                 StateApp.instance.scopeOrNull?.launch(Dispatchers.Main) {
-                    val context = StateApp.instance.contextOrNull
-                    if (context is MainActivity) {
-                        val dataBody = ByteArray(data.remaining())
-                        data.get(dataBody)
-                        val json = String(dataBody, Charsets.UTF_8)
-                        val obj = Json.decodeFromString<SendToDevicePackage>(json)
-                        UIDialogs.appToast("Received url from device [${it.remotePublicKey}]:\n${obj.url}")
-                        context.handleUrl(obj.url, obj.position)
+                    val context = StateApp.instance.contextOrNull;
+                    if (context != null && context is MainActivity) {
+                        val dataBody = ByteArray(data.remaining());
+                        val remainder = data.remaining();
+                        data.get(dataBody, 0, remainder);
+                        val json = String(dataBody, Charsets.UTF_8);
+                        val obj = Json.decodeFromString<SendToDevicePackage>(json);
+                        UIDialogs.appToast("Received url from device [${session.remotePublicKey}]:\n{${obj.url}");
+                        context.handleUrl(obj.url, obj.position);
                     }
-                }
+                };
             }
 
             GJSyncOpcodes.syncStateExchange -> {
-                val dataBody = ByteArray(data.remaining())
-                data.get(dataBody)
-                val json = String(dataBody, Charsets.UTF_8)
-                val syncSessionData = Serializer.json.decodeFromString<SyncSessionData>(json)
-                Logger.i(TAG, "Received SyncSessionData from $remotePublicKey")
+                val dataBody = ByteArray(data.remaining());
+                data.get(dataBody);
+                val json = String(dataBody, Charsets.UTF_8);
+                val syncSessionData = Serializer.json.decodeFromString<SyncSessionData>(json);
 
-                it.sendData(
-                    GJSyncOpcodes.syncSubscriptions,
-                    StateSubscriptions.instance.getSyncSubscriptionsPackageString()
-                )
-                it.sendData(
-                    GJSyncOpcodes.syncSubscriptionGroups,
-                    StateSubscriptionGroups.instance.getSyncSubscriptionGroupsPackageString()
-                )
-                it.sendData(
-                    GJSyncOpcodes.syncPlaylists,
-                    StatePlaylists.instance.getSyncPlaylistsPackageString()
-                )
+                Logger.i(TAG, "Received SyncSessionData from $remotePublicKey");
 
-                val recentHistory =
-                    StateHistory.instance.getRecentHistory(syncSessionData.lastHistory)
-                if (recentHistory.isNotEmpty())
-                    it.sendJsonData(
-                        GJSyncOpcodes.syncHistory,
-                        recentHistory
-                    )
+
+                session.sendData(GJSyncOpcodes.syncSubscriptions, StateSubscriptions.instance.getSyncSubscriptionsPackageString());
+                session.sendData(GJSyncOpcodes.syncSubscriptionGroups, StateSubscriptionGroups.instance.getSyncSubscriptionGroupsPackageString());
+                session.sendData(GJSyncOpcodes.syncPlaylists, StatePlaylists.instance.getSyncPlaylistsPackageString())
+
+                session.sendData(GJSyncOpcodes.syncWatchLater, Json.encodeToString(StatePlaylists.instance.getWatchLaterSyncPacket(false)));
+
+                val recentHistory = StateHistory.instance.getRecentHistory(syncSessionData.lastHistory);
+                if(recentHistory.isNotEmpty())
+                    session.sendJsonData(GJSyncOpcodes.syncHistory, recentHistory);
             }
 
             GJSyncOpcodes.syncExport -> {
-                val dataBody = ByteArray(data.remaining())
-                val bytesStr = ByteArrayInputStream(
-                    data.array(),
-                    data.position(),
-                    data.remaining()
-                )
+                val dataBody = ByteArray(data.remaining());
+                val bytesStr = ByteArrayInputStream(data.array(), data.position(), data.remaining());
                 bytesStr.use { bytesStrBytes ->
-                    val exportStruct =
-                        StateBackup.ExportStructure.fromZipBytes(
-                            bytesStrBytes
-                        )
+                    val exportStruct = StateBackup.ExportStructure.fromZipBytes(bytesStrBytes);
                     for (store in exportStruct.stores) {
                         if (store.key.equals("subscriptions", true)) {
                             val subStore =
-                                StateSubscriptions.instance.getUnderlyingSubscriptionsStore()
-                            StateApp.instance.scopeOrNull?.launch(
-                                Dispatchers.IO
-                            ) {
+                                StateSubscriptions.instance.getUnderlyingSubscriptionsStore();
+                            StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
                                 val pack = SyncSubscriptionsPackage(
                                     store.value.map {
-                                        subStore.fromReconstruction(
-                                            it,
-                                            exportStruct.cache
-                                        )
+                                        subStore.fromReconstruction(it, exportStruct.cache)
                                     },
                                     StateSubscriptions.instance.getSubscriptionRemovals()
-                                )
-                                handleSyncSubscriptionPackage(it, pack)
+                                );
+                                handleSyncSubscriptionPackage(session, pack);
                             }
                         }
                     }
@@ -552,231 +538,137 @@ class StateSync {
             }
 
             GJSyncOpcodes.syncSubscriptions -> {
-                val dataBody = ByteArray(data.remaining())
-                data.get(dataBody)
-                val json = String(dataBody, Charsets.UTF_8)
-                val subPackage =
-                    Serializer.json.decodeFromString<SyncSubscriptionsPackage>(
-                        json
-                    )
-                handleSyncSubscriptionPackage(it, subPackage)
+                val dataBody = ByteArray(data.remaining());
+                data.get(dataBody);
+                val json = String(dataBody, Charsets.UTF_8);
+                val subPackage = Serializer.json.decodeFromString<SyncSubscriptionsPackage>(json);
+                handleSyncSubscriptionPackage(session, subPackage);
 
-                val newestSub =
-                    subPackage.subscriptions.maxOf { it.creationTime }
-                val sesData =
-                    instance.getSyncSessionData(remotePublicKey)
-                if (newestSub > sesData.lastSubscription) {
-                    sesData.lastSubscription = newestSub
-                    instance.saveSyncSessionData(sesData)
+                val newestSub = subPackage.subscriptions.maxOf { it.creationTime };
+
+                val sesData = getSyncSessionData(remotePublicKey);
+                if(newestSub > sesData.lastSubscription) {
+                    sesData.lastSubscription = newestSub;
+                    saveSyncSessionData(sesData);
                 }
             }
 
             GJSyncOpcodes.syncSubscriptionGroups -> {
-                val dataBody = ByteArray(data.remaining())
-                data.get(dataBody)
-                val json = String(dataBody, Charsets.UTF_8)
-                val pack =
-                    Serializer.json.decodeFromString<SyncSubscriptionGroupsPackage>(
-                        json
-                    )
+                val dataBody = ByteArray(data.remaining());
+                data.get(dataBody);
+                val json = String(dataBody, Charsets.UTF_8);
+                val pack = Serializer.json.decodeFromString<SyncSubscriptionGroupsPackage>(json);
 
-                var lastSubgroupChange = OffsetDateTime.MIN
-                for (group in pack.groups) {
-                    if (group.lastChange > lastSubgroupChange)
-                        lastSubgroupChange = group.lastChange
+                var lastSubgroupChange = OffsetDateTime.MIN;
+                for(group in pack.groups){
+                    if(group.lastChange > lastSubgroupChange)
+                        lastSubgroupChange = group.lastChange;
 
-                    val existing =
-                        StateSubscriptionGroups.instance.getSubscriptionGroup(
-                            group.id
-                        )
-                    if (existing == null)
-                        StateSubscriptionGroups.instance.updateSubscriptionGroup(
-                            group,
-                            false,
-                            true
-                        )
-                    else if (existing.lastChange < group.lastChange) {
-                        existing.name = group.name
-                        existing.urls = group.urls
-                        existing.image = group.image
-                        existing.priority = group.priority
-                        existing.lastChange = group.lastChange
-                        StateSubscriptionGroups.instance.updateSubscriptionGroup(
-                            existing,
-                            false,
-                            true
-                        )
+                    val existing = StateSubscriptionGroups.instance.getSubscriptionGroup(group.id);
+
+                    if(existing == null)
+                        StateSubscriptionGroups.instance.updateSubscriptionGroup(group, false, true);
+                    else if(existing.lastChange < group.lastChange) {
+                        existing.name = group.name;
+                        existing.urls = group.urls;
+                        existing.image = group.image;
+                        existing.priority = group.priority;
+                        existing.lastChange = group.lastChange;
+                        StateSubscriptionGroups.instance.updateSubscriptionGroup(existing, false, true);
                     }
                 }
-                for (removal in pack.groupRemovals) {
-                    val creation =
-                        StateSubscriptionGroups.instance.getSubscriptionGroup(
-                            removal.key
-                        )
-                    val removalTime = OffsetDateTime.ofInstant(
-                        Instant.ofEpochSecond(removal.value), ZoneOffset.UTC
-                    )
-                    if (creation != null && creation.creationTime < removalTime)
-                        StateSubscriptionGroups.instance.deleteSubscriptionGroup(
-                            removal.key,
-                            false
-                        )
+                for(removal in pack.groupRemovals) {
+                    val creation = StateSubscriptionGroups.instance.getSubscriptionGroup(removal.key);
+                    val removalTime = OffsetDateTime.ofInstant(Instant.ofEpochSecond(removal.value, 0), ZoneOffset.UTC);
+                    if(creation != null && creation.creationTime < removalTime)
+                        StateSubscriptionGroups.instance.deleteSubscriptionGroup(removal.key, false);
                 }
             }
 
             GJSyncOpcodes.syncPlaylists -> {
-                val dataBody = ByteArray(data.remaining())
-                data.get(dataBody)
-                val json = String(dataBody, Charsets.UTF_8)
-                val pack =
-                    Serializer.json.decodeFromString<SyncPlaylistsPackage>(
-                        json
-                    )
+                val dataBody = ByteArray(data.remaining());
+                data.get(dataBody);
+                val json = String(dataBody, Charsets.UTF_8);
+                val pack = Serializer.json.decodeFromString<SyncPlaylistsPackage>(json);
 
-                for (playlist in pack.playlists) {
-                    val existing =
-                        StatePlaylists.instance.getPlaylist(playlist.id)
-                    if (existing == null)
-                        StatePlaylists.instance.createOrUpdatePlaylist(
-                            playlist,
-                            false
-                        )
-                    else if (existing.dateUpdate.toLocalDateTime() < playlist.dateUpdate.toLocalDateTime()) {
-                        existing.dateUpdate = playlist.dateUpdate
-                        existing.name = playlist.name
-                        existing.videos = playlist.videos
-                        existing.dateCreation = playlist.dateCreation
-                        existing.datePlayed = playlist.datePlayed
-                        StatePlaylists.instance.createOrUpdatePlaylist(
-                            existing,
-                            false
-                        )
+                for(playlist in pack.playlists) {
+                    val existing = StatePlaylists.instance.getPlaylist(playlist.id);
+
+                    if(existing == null)
+                        StatePlaylists.instance.createOrUpdatePlaylist(playlist, false);
+                    else if(existing.dateUpdate.toLocalDateTime() < playlist.dateUpdate.toLocalDateTime()) {
+                        existing.dateUpdate = playlist.dateUpdate;
+                        existing.name = playlist.name;
+                        existing.videos = playlist.videos;
+                        existing.dateCreation = playlist.dateCreation;
+                        existing.datePlayed = playlist.datePlayed;
+                        StatePlaylists.instance.createOrUpdatePlaylist(existing, false);
                     }
                 }
-                for (removal in pack.playlistRemovals) {
-                    val creation =
-                        StatePlaylists.instance.getPlaylist(removal.key)
-                    val removalTime = OffsetDateTime.ofInstant(
-                        Instant.ofEpochSecond(removal.value), ZoneOffset.UTC
-                    )
-                    if (creation != null && creation.dateCreation < removalTime)
-                        StatePlaylists.instance.removePlaylist(
-                            creation,
-                            false
-                        )
+                for(removal in pack.playlistRemovals) {
+                    val creation = StatePlaylists.instance.getPlaylist(removal.key);
+                    val removalTime = OffsetDateTime.ofInstant(Instant.ofEpochSecond(removal.value, 0), ZoneOffset.UTC);
+                    if(creation != null && creation.dateCreation < removalTime)
+                        StatePlaylists.instance.removePlaylist(creation, false);
+
                 }
             }
 
             GJSyncOpcodes.syncWatchLater -> {
-                val dataBody = ByteArray(data.remaining())
-                data.get(dataBody)
-                val json = String(dataBody, Charsets.UTF_8)
-                val pack =
-                    Serializer.json.decodeFromString<SyncWatchLaterPackage>(
-                        json
-                    )
+                val dataBody = ByteArray(data.remaining());
+                data.get(dataBody);
+                val json = String(dataBody, Charsets.UTF_8);
+                val pack = Serializer.json.decodeFromString<SyncWatchLaterPackage>(json);
 
-                Logger.i(
-                    TAG,
-                    "SyncWatchLater received ${pack.videos.size} (${pack.videoAdds.size}, ${pack.videoRemovals.size})"
-                )
+                Logger.i(TAG, "SyncWatchLater received ${pack.videos.size} (${pack.videoAdds?.size}, ${pack.videoRemovals?.size})");
 
-                val allExisting = StatePlaylists.instance.getWatchLater()
-                for (video in pack.videos) {
-                    val existing =
-                        allExisting.firstOrNull { it.url == video.url }
-                    val time = pack.videoAdds.get(video.url)?.let {
-                        OffsetDateTime.ofInstant(
-                            Instant.ofEpochSecond(it), ZoneOffset.UTC
-                        )
-                    } ?: OffsetDateTime.MIN
-                    if (existing == null) {
-                        StatePlaylists.instance.addToWatchLater(
-                            video,
-                            false
-                        )
-                        if (time > OffsetDateTime.MIN)
-                            StatePlaylists.instance.setWatchLaterAddTime(
-                                video.url,
-                                time
-                            )
+                val allExisting = StatePlaylists.instance.getWatchLater();
+                for(video in pack.videos) {
+                    val existing = allExisting.firstOrNull { it.url == video.url };
+                    val time = if(pack.videoAdds != null && pack.videoAdds.containsKey(video.url)) OffsetDateTime.ofInstant(Instant.ofEpochSecond(pack.videoAdds[video.url] ?: 0), ZoneOffset.UTC) else OffsetDateTime.MIN;
+
+                    if(existing == null) {
+                        StatePlaylists.instance.addToWatchLater(video, false);
+                        if(time > OffsetDateTime.MIN)
+                            StatePlaylists.instance.setWatchLaterAddTime(video.url, time);
                     }
                 }
-                for (removal in pack.videoRemovals) {
-                    val watchLater =
-                        allExisting.firstOrNull { it.url == removal.key }
-                            ?: continue
-                    val creation =
-                        StatePlaylists.instance.getWatchLaterRemovalTime(
-                            watchLater.url
-                        ) ?: OffsetDateTime.MIN
-                    val removalTime = OffsetDateTime.ofInstant(
-                        Instant.ofEpochSecond(removal.value), ZoneOffset.UTC
-                    )
-                    if (creation < removalTime)
-                        StatePlaylists.instance.removeFromWatchLater(
-                            watchLater,
-                            false,
-                            removalTime
-                        )
+                for(removal in pack.videoRemovals) {
+                    val watchLater = allExisting.firstOrNull { it.url == removal.key } ?: continue;
+                    val creation = StatePlaylists.instance.getWatchLaterRemovalTime(watchLater.url) ?: OffsetDateTime.MIN;
+                    val removalTime = OffsetDateTime.ofInstant(Instant.ofEpochSecond(removal.value), ZoneOffset.UTC);
+                    if(creation < removalTime)
+                        StatePlaylists.instance.removeFromWatchLater(watchLater, false, removalTime);
                 }
 
-                val packReorderTime = OffsetDateTime.ofInstant(
-                    Instant.ofEpochSecond(pack.reorderTime),
-                    ZoneOffset.UTC
-                )
-                val localReorderTime =
-                    StatePlaylists.instance.getWatchLaterLastReorderTime()
-                if (localReorderTime < packReorderTime && pack.ordering != null) {
-                    StatePlaylists.instance.updateWatchLaterOrdering(
-                        smartMerge(
-                            pack.ordering!!,
-                            StatePlaylists.instance.getWatchLaterOrdering()
-                        ),
-                        true
-                    )
+                val packReorderTime = OffsetDateTime.ofInstant(Instant.ofEpochSecond(pack.reorderTime), ZoneOffset.UTC);
+                val localReorderTime = StatePlaylists.instance.getWatchLaterLastReorderTime();
+                if(localReorderTime < packReorderTime && pack.ordering != null) {
+                    StatePlaylists.instance.updateWatchLaterOrdering(smartMerge(pack.ordering!!, StatePlaylists.instance.getWatchLaterOrdering()), true);
                 }
             }
 
             GJSyncOpcodes.syncHistory -> {
-                val dataBody = ByteArray(data.remaining())
-                data.get(dataBody)
-                val json = String(dataBody, Charsets.UTF_8)
-                val history =
-                    Serializer.json.decodeFromString<List<HistoryVideo>>(
-                        json
-                    )
-                Logger.i(
-                    TAG,
-                    "SyncHistory received ${history.size} videos from $remotePublicKey"
-                )
+                val dataBody = ByteArray(data.remaining());
+                data.get(dataBody);
+                val json = String(dataBody, Charsets.UTF_8);
+                val history = Serializer.json.decodeFromString<List<HistoryVideo>>(json);
+                Logger.i(TAG, "SyncHistory received ${history.size} videos from ${remotePublicKey}");
 
-                var lastHistory = OffsetDateTime.MIN
-                for (video in history) {
-                    val hist = StateHistory.instance.getHistoryByVideo(
-                        video.video,
-                        true,
-                        video.date
-                    )
-                    if (hist != null)
-                        StateHistory.instance.updateHistoryPosition(
-                            video.video,
-                            hist,
-                            true,
-                            video.position,
-                            video.date
-                        )
-                    if (lastHistory < video.date)
-                        lastHistory = video.date
+                var lastHistory = OffsetDateTime.MIN;
+                for(video in history){
+                    val hist = StateHistory.instance.getHistoryByVideo(video.video, true, video.date);
+                    if(hist != null)
+                        StateHistory.instance.updateHistoryPosition(video.video, hist, true, video.position, video.date)
+                    if(lastHistory < video.date)
+                        lastHistory = video.date;
                 }
 
-                if (lastHistory != OffsetDateTime.MIN && history.size > 1) {
-                    val sesData = instance.getSyncSessionData(
-                        remotePublicKey
-                    )
+                if(lastHistory != OffsetDateTime.MIN && history.size > 1) {
+                    val sesData = getSyncSessionData(remotePublicKey);
                     if (lastHistory > sesData.lastHistory) {
-                        sesData.lastHistory = lastHistory
-                        instance.saveSyncSessionData(sesData)
+                        sesData.lastHistory = lastHistory;
+                        saveSyncSessionData(sesData);
                     }
                 }
             }
