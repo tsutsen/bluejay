@@ -375,6 +375,8 @@ class StateApp {
             _cacheDirectory?.let { ApiMethods.initCache(it) };
         }
 
+        ModerationsManager.initialize(context);
+
         val logFile = File(context.filesDir, "log.txt");
         if (Settings.instance.logging.logLevel > LogLevel.NONE.value) {
             val fileLogConsumer = FileLogConsumer(logFile, LogLevel.fromInt(Settings.instance.logging.logLevel), false);

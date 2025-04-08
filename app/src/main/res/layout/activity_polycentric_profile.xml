@@ -168,6 +168,14 @@
             app:buttonIcon="@drawable/ic_trash"
             android:layout_marginTop="8dp"
             app:buttonBackground="@drawable/background_big_button_red"/>
+
+        <com.futo.platformplayer.views.buttons.BigButton
+            android:id="@+id/button_moderation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:buttonIcon="@drawable/ic_settings"
+            app:buttonText="Moderation Settings" />
     </LinearLayout>
 
     <com.futo.platformplayer.views.overlays.LoaderOverlay
