@@ -33,6 +33,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.security.SecureRandom
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 
@@ -278,4 +279,17 @@ fun ByteBuffer.toUtf8String(): String {
     val remainingBytes = ByteArray(remaining())
     get(remainingBytes)
     return String(remainingBytes, Charsets.UTF_8)
+}
+
+fun generateReadablePassword(length: Int): String {
+    val validChars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
+    val secureRandom = SecureRandom()
+    val randomBytes = ByteArray(length)
+    secureRandom.nextBytes(randomBytes)
+    val sb = StringBuilder(length)
+    for (byte in randomBytes) {
+        val index = (byte.toInt() and 0xFF) % validChars.length
+        sb.append(validChars[index])
+    }
+    return sb.toString()
 }
