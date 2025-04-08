@@ -9,12 +9,10 @@ import org.json.JSONObject
 class ModerationsManager private constructor(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("polycentric_moderation", Context.MODE_PRIVATE)
     
-    // LiveData for reactive UI updates
     private val _moderationLevels = MutableLiveData<Map<String, Int>>()
     val moderationLevels: LiveData<Map<String, Int>> = _moderationLevels
     
     init {
-        // Load initial values
         loadModerationLevels()
     }
     
@@ -33,7 +31,6 @@ class ModerationsManager private constructor(context: Context) {
             "violence" -> prefs.edit().putInt("violence_level", level).apply()
         }
         
-        // Update LiveData
         val currentMap = _moderationLevels.value?.toMutableMap() ?: mutableMapOf()
         currentMap[category] = level
         _moderationLevels.value = currentMap
@@ -52,7 +49,7 @@ class ModerationsManager private constructor(context: Context) {
             "hate" -> prefs.getInt("offensive_level", 2)
             "sexual" -> prefs.getInt("explicit_level", 1)
             "violence" -> prefs.getInt("violence_level", 1)
-            else -> 3 // Max level by default for unknown categories
+            else -> 3 
         }
         
         return contentLevel > userLevel

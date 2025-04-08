@@ -34,7 +34,6 @@ class PolycentricModerationActivity : AppCompatActivity() {
         
         _moderationsManager = ModerationsManager.getInstance()
         
-        // Initialize views
         _seekbarOffensive = findViewById(R.id.seekbar_offensive)
         _seekbarExplicit = findViewById(R.id.seekbar_explicit)
         _seekbarViolence = findViewById(R.id.seekbar_violence)
