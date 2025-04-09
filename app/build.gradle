@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.21'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '2.1.20'
     id 'org.ajoberstar.grgit' version '5.2.2'
     id 'com.google.protobuf'
     id 'kotlin-parcelize'
@@ -24,7 +24,7 @@ if (keystorePropertiesFile.exists()) {
 
 protobuf {
     protoc {
-        artifact = 'com.google.protobuf:protoc:3.25.1'
+        artifact = 'com.google.protobuf:protoc:4.30.2'
     }
     generateProtoTasks {
         all().each { task ->
@@ -39,7 +39,7 @@ protobuf {
 
 android {
     namespace 'com.futo.platformplayer'
-    compileSdk 34
+    compileSdk 35
     flavorDimensions "buildType"
     productFlavors {
         stable {
@@ -97,7 +97,7 @@ android {
 
     defaultConfig {
         minSdk 28
-        targetSdk 34
+        targetSdk 35
         versionCode gitVersionCode
         versionName gitVersionName
 
@@ -154,43 +154,43 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.dagger:dagger:2.48'
+    implementation 'com.google.dagger:dagger:2.55'
     implementation 'androidx.test:monitor:1.7.2'
     annotationProcessor 'com.google.dagger:dagger-compiler:2.48'
 
     //Core
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
 
     //Images
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
     implementation 'com.github.bumptech.glide:glide:4.16.0'
 
     //Async
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 
     //HTTP
     implementation "com.squareup.okhttp3:okhttp:4.11.0"
 
     //JSON
-    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2" //Used for structured json
-    implementation 'com.google.code.gson:gson:2.10.1' //Used for complex/anonymous cases like during development conversions (eg. V8RemoteObject)
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0" //Used for structured json
+    implementation 'com.google.code.gson:gson:2.11.0' //Used for complex/anonymous cases like during development conversions (eg. V8RemoteObject)
 
     //JS
-    implementation("com.caoccao.javet:javet-android:3.0.2")
+    implementation("com.caoccao.javet:javet-android:3.0.4")
 
     //Exoplayer
-    implementation 'androidx.media3:media3-exoplayer:1.2.1'
-    implementation 'androidx.media3:media3-exoplayer-dash:1.2.1'
-    implementation 'androidx.media3:media3-ui:1.2.1'
-    implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
-    implementation 'androidx.media3:media3-exoplayer-rtsp:1.2.1'
-    implementation 'androidx.media3:media3-exoplayer-smoothstreaming:1.2.1'
-    implementation 'androidx.media3:media3-transformer:1.2.1'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.6'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.7.6'
+    implementation 'androidx.media3:media3-exoplayer:1.6.0'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.6.0'
+    implementation 'androidx.media3:media3-ui:1.6.0'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.6.0'
+    implementation 'androidx.media3:media3-exoplayer-rtsp:1.6.0'
+    implementation 'androidx.media3:media3-exoplayer-smoothstreaming:1.6.0'
+    implementation 'androidx.media3:media3-transformer:1.6.0'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.8.9'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.8.9'
     implementation 'androidx.media:media:1.7.0'
 
     //Other
@@ -198,19 +198,19 @@ dependencies {
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.arthenica:ffmpeg-kit-full:6.0-2.LTS'
-    implementation 'org.jetbrains.kotlin:kotlin-reflect:1.9.0'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect:1.9.20'
     implementation 'com.github.dhaval2404:imagepicker:2.1'
     implementation 'com.google.zxing:core:3.4.1'
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation 'com.caverock:androidsvg-aar:1.4'
 
     //Protobuf
-    implementation 'com.google.protobuf:protobuf-javalite:3.25.1'
+    implementation 'com.google.protobuf:protobuf-javalite:4.30.2'
 
     implementation 'com.polycentric.core:app:1.0'
     implementation 'com.futo.futopay:app:1.0'
-    implementation 'androidx.work:work-runtime-ktx:2.9.0'
-    implementation 'androidx.concurrent:concurrent-futures-ktx:1.1.0'
+    implementation 'androidx.work:work-runtime-ktx:2.10.0'
+    implementation 'androidx.concurrent:concurrent-futures-ktx:1.2.0'
 
     //Database
     implementation("androidx.room:room-runtime:2.6.1")
@@ -219,13 +219,15 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
 
     //Payment
-    implementation 'com.stripe:stripe-android:20.35.1'
+    implementation 'com.stripe:stripe-android:21.7.1'
 
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
     testImplementation "org.jetbrains.kotlin:kotlin-test:1.8.22"
     testImplementation "org.xmlunit:xmlunit-core:2.9.1"
     testImplementation "org.mockito:mockito-core:5.4.0"
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }

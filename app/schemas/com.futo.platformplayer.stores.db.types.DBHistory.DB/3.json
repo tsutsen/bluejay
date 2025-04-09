@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 3,
-    "identityHash": "ffba56c2f572c25080ce8596e8bb8945",
+    "identityHash": "c9664b5f5951d402727b534bd4d169c9",
     "entities": [
       {
         "tableName": "history",
@@ -76,10 +76,8 @@
             "columnNames": [
               "datetime"
             ],
-            "orders": [
-              "DESC"
-            ],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_history_datetime` ON `${TABLE_NAME}` (`datetime` DESC)"
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_history_datetime` ON `${TABLE_NAME}` (`datetime`)"
           }
         ],
         "foreignKeys": []
@@ -88,7 +86,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ffba56c2f572c25080ce8596e8bb8945')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c9664b5f5951d402727b534bd4d169c9')"
     ]
   }
 }

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "eb813d54b9c44d29f1d7bb198a16d4d1",
+    "identityHash": "dcbf4dfbc1190853f0f6b7c0fef2efa5",
     "entities": [
       {
         "tableName": "subscription_cache",
@@ -70,10 +70,8 @@
             "columnNames": [
               "datetime"
             ],
-            "orders": [
-              "DESC"
-            ],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_subscription_cache_datetime` ON `${TABLE_NAME}` (`datetime` DESC)"
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_subscription_cache_datetime` ON `${TABLE_NAME}` (`datetime`)"
           }
         ],
         "foreignKeys": []
@@ -82,7 +80,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'eb813d54b9c44d29f1d7bb198a16d4d1')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dcbf4dfbc1190853f0f6b7c0fef2efa5')"
     ]
   }
 }

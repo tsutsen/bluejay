@@ -648,12 +648,12 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _wasStopped = true;
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent);
         handleIntent(intent);
     }
 
-    private fun handleIntent(intent: Intent?) {
+    private fun handleIntent(intent: Intent) {
         if (intent == null)
             return;
         Logger.i(TAG, "handleIntent started by " + intent.action);

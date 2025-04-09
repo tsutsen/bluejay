@@ -23,8 +23,6 @@ interface ManagedDBDAOBase<T, I: ManagedDBIndex<T>> {
 
     @Insert
     fun insert(index: I): Long;
-    @Insert
-    fun insertAll(vararg indexes: I)
 
     @Update
     fun update(index: I);
