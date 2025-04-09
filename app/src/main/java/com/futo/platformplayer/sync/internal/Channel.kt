@@ -153,7 +153,7 @@ class ChannelRelayed(
                 put(encryptedPayload, 0, encryptedLength)
             }
 
-            session.send(Opcode.RELAY.value, RelayOpcode.RELAYED_DATA.value, ByteBuffer.wrap(relayedPacket))
+            session.send(Opcode.RELAY.value, RelayOpcode.DATA.value, ByteBuffer.wrap(relayedPacket).order(ByteOrder.LITTLE_ENDIAN))
         }
     }
 
@@ -173,7 +173,7 @@ class ChannelRelayed(
                 put(encryptedPayload, 0, encryptedLength)
             }
 
-            session.send(Opcode.RELAY.value, RelayOpcode.RELAYED_ERROR.value, ByteBuffer.wrap(relayedPacket))
+            session.send(Opcode.RELAY.value, RelayOpcode.ERROR.value, ByteBuffer.wrap(relayedPacket))
         }
     }
 
@@ -311,7 +311,7 @@ class ChannelRelayed(
             val decryptedPayload = ByteArray(encryptedBytes.size - 16)
             val plen = transport!!.receiver.decryptWithAd(null, encryptedBytes, 0, decryptedPayload, 0, encryptedBytes.size)
             if (plen != decryptedPayload.size) throw IllegalStateException("Expected decrypted payload length to be $plen")
-            return ByteBuffer.wrap(decryptedPayload)
+            return ByteBuffer.wrap(decryptedPayload).order(ByteOrder.LITTLE_ENDIAN)
         }
     }
 
@@ -329,7 +329,7 @@ class ChannelRelayed(
 
     fun handleData(data: ByteBuffer) {
         val size = data.int
-        if (size != data.remaining() + 2) throw IllegalStateException("Incomplete packet received")
+        if (size != data.remaining()) throw IllegalStateException("Incomplete packet received")
         val opcode = data.get().toUByte()
         val subOpcode = data.get().toUByte()
         invokeDataHandler(opcode, subOpcode, data)

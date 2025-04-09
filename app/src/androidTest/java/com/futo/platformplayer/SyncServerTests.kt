@@ -12,8 +12,10 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class SyncServerTests {
 
-    private val relayHost = "relay.grayjay.app"
-    private val relayKey = "xGbHRzDOvE6plRbQaFgSen82eijF+gxS0yeUaeEErkw="
+    //private val relayHost = "relay.grayjay.app"
+    //private val relayKey = "xGbHRzDOvE6plRbQaFgSen82eijF+gxS0yeUaeEErkw="
+    private val relayKey = "XlUaSpIlRaCg0TGzZ7JYmPupgUHDqTZXUUBco2K7ejw="
+    private val relayHost = "192.168.1.175"
     private val relayPort = 9000
 
     /** Creates a client connected to the live relay server. */
@@ -126,7 +128,9 @@ class SyncServerTests {
 
         val tcsDataB = CompletableDeferred<ByteArray>()
         channelB.setDataHandler { _, _, o, so, d ->
-            if (o == Opcode.DATA.value && so == 0u.toUByte()) tcsDataB.complete(d.array())
+            val b = ByteArray(d.remaining())
+            d.get(b)
+            if (o == Opcode.DATA.value && so == 0u.toUByte()) tcsDataB.complete(b)
         }
         channelA.send(Opcode.DATA.value, 0u, ByteBuffer.wrap(maxSizeData))
         val receivedData = withTimeout(5000.milliseconds) { tcsDataB.await() }
