@@ -251,8 +251,7 @@ class ChannelRelayed(
             if (publicKeyBytes.size != 32) throw IllegalArgumentException("Public key must be 32 bytes")
 
             val (pairingMessageLength, pairingMessage) = if (pairingCode != null) {
-                val pairingProtocolName = "Noise_N_25519_ChaChaPoly_Blake2b"
-                val pairingHandshake = HandshakeState(pairingProtocolName, HandshakeState.INITIATOR).apply {
+                val pairingHandshake = HandshakeState(SyncSocketSession.nProtocolName, HandshakeState.INITIATOR).apply {
                     remotePublicKey.setPublicKey(publicKeyBytes, 0)
                     start()
                 }
