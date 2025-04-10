@@ -14,7 +14,7 @@ interface IChannel : AutoCloseable {
     val remoteVersion: Int?
     var authorizable: IAuthorizable?
     fun setDataHandler(onData: ((SyncSocketSession, IChannel, UByte, UByte, ByteBuffer) -> Unit)?)
-    fun send(opcode: UByte, subOpcode: UByte, data: ByteBuffer? = null)
+    fun send(opcode: UByte, subOpcode: UByte = 0u, data: ByteBuffer? = null)
     fun setCloseHandler(onClose: ((IChannel) -> Unit)?)
 }
 
@@ -325,13 +325,5 @@ class ChannelRelayed(
             val transport = handshakeState!!.split()
             completeHandshake(remoteVersion, transport)
         }
-    }
-
-    fun handleData(data: ByteBuffer) {
-        val size = data.int
-        if (size != data.remaining()) throw IllegalStateException("Incomplete packet received")
-        val opcode = data.get().toUByte()
-        val subOpcode = data.get().toUByte()
-        invokeDataHandler(opcode, subOpcode, data)
     }
 }

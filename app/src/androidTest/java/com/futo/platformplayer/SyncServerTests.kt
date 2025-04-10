@@ -93,13 +93,17 @@ class SyncServerTests {
 
         val tcsDataB = CompletableDeferred<ByteArray>()
         channelB.setDataHandler { _, _, o, so, d ->
-            if (o == Opcode.DATA.value && so == 0u.toUByte()) tcsDataB.complete(d.array())
+            val b = ByteArray(d.remaining())
+            d.get(b)
+            if (o == Opcode.DATA.value && so == 0u.toUByte()) tcsDataB.complete(b)
         }
         channelA.send(Opcode.DATA.value, 0u, ByteBuffer.wrap(byteArrayOf(1, 2, 3)))
 
         val tcsDataA = CompletableDeferred<ByteArray>()
         channelA.setDataHandler { _, _, o, so, d ->
-            if (o == Opcode.DATA.value && so == 0u.toUByte()) tcsDataA.complete(d.array())
+            val b = ByteArray(d.remaining())
+            d.get(b)
+            if (o == Opcode.DATA.value && so == 0u.toUByte()) tcsDataA.complete(b)
         }
         channelB.send(Opcode.DATA.value, 0u, ByteBuffer.wrap(byteArrayOf(4, 5, 6)))
 
@@ -231,7 +235,9 @@ class SyncServerTests {
 
         val tcsDataB = CompletableDeferred<ByteArray>()
         channelB.setDataHandler { _, _, o, so, d ->
-            if (o == Opcode.DATA.value && so == 0u.toUByte()) tcsDataB.complete(d.array())
+            val b = ByteArray(d.remaining())
+            d.get(b)
+            if (o == Opcode.DATA.value && so == 0u.toUByte()) tcsDataB.complete(b)
         }
         channelA.send(Opcode.DATA.value, 0u, ByteBuffer.wrap(largeData))
         val receivedData = withTimeout(10000.milliseconds) { tcsDataB.await() }
