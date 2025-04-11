@@ -31,6 +31,7 @@ import com.futo.platformplayer.sync.SyncSessionData
 import com.futo.platformplayer.sync.internal.ChannelSocket
 import com.futo.platformplayer.sync.internal.GJSyncOpcodes
 import com.futo.platformplayer.sync.internal.IAuthorizable
+import com.futo.platformplayer.sync.internal.IChannel
 import com.futo.platformplayer.sync.internal.Opcode
 import com.futo.platformplayer.sync.internal.SyncDeviceInfo
 import com.futo.platformplayer.sync.internal.SyncKeyPair
@@ -51,6 +52,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayInputStream
+import java.lang.Thread.sleep
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -91,6 +93,8 @@ class StateSync {
     var publicKey: String? = null
     val deviceRemoved: Event1<String> = Event1()
     val deviceUpdatedOrAdded: Event2<String, SyncSession> = Event2()
+
+    //TODO: Should authorize acknowledge be implemented?
 
     fun hasAuthorizedDevice(): Boolean {
         synchronized(_sessions) {
@@ -220,6 +224,7 @@ class StateSync {
                 try {
                     Log.i(TAG, "Starting relay session...")
 
+                    var socketClosed = false;
                     val socket = Socket(RELAY_SERVER, 9000)
                     _relaySession = SyncSocketSession(
                         (socket.remoteSocketAddress as InetSocketAddress).address.hostAddress!!,
@@ -271,61 +276,61 @@ class StateSync {
                                 session?.removeChannel(channel)
                             }
                         },
+                        onChannelEstablished = { _, channel, isResponder ->
+                            handleAuthorization(channel, isResponder)
+                        },
+                        onClose = { socketClosed = true },
                         onHandshakeComplete = { relaySession ->
-                            try {
-                                while (_started) {
-                                    val unconnectedAuthorizedDevices = synchronized(_authorizedDevices) {
-                                        _authorizedDevices.values.filter { !isConnected(it) }.toTypedArray()
-                                    }
+                            Thread {
+                                try {
+                                    while (_started && !socketClosed) {
+                                        val unconnectedAuthorizedDevices = synchronized(_authorizedDevices) {
+                                            _authorizedDevices.values.filter { !isConnected(it) }.toTypedArray()
+                                        }
 
-                                    relaySession.publishConnectionInformation(unconnectedAuthorizedDevices, PORT, true, false, false, true)
+                                        relaySession.publishConnectionInformation(unconnectedAuthorizedDevices, PORT, true, false, false, true)
 
-                                    val connectionInfos = runBlocking { relaySession.requestBulkConnectionInfo(unconnectedAuthorizedDevices) }
+                                        val connectionInfos = runBlocking { relaySession.requestBulkConnectionInfo(unconnectedAuthorizedDevices) }
 
-                                    for ((targetKey, connectionInfo) in connectionInfos) {
-                                        val potentialLocalAddresses = connectionInfo.ipv4Addresses.union(connectionInfo.ipv6Addresses)
-                                            .filter { it != connectionInfo.remoteIp }
-                                        if (connectionInfo.allowLocalDirect) {
-                                            Thread {
+                                        for ((targetKey, connectionInfo) in connectionInfos) {
+                                            val potentialLocalAddresses = connectionInfo.ipv4Addresses.union(connectionInfo.ipv6Addresses)
+                                                .filter { it != connectionInfo.remoteIp }
+                                            if (connectionInfo.allowLocalDirect) {
+                                                Thread {
+                                                    try {
+                                                        Log.v(TAG, "Attempting to connect directly, locally to '$targetKey'.")
+                                                        connect(potentialLocalAddresses.map { it }.toTypedArray(), PORT, targetKey, null)
+                                                    } catch (e: Throwable) {
+                                                        Log.e(TAG, "Failed to start direct connection using connection info with $targetKey.", e)
+                                                    }
+                                                }.start()
+                                            }
+
+                                            if (connectionInfo.allowRemoteDirect) {
+                                                // TODO: Implement direct remote connection if needed
+                                            }
+
+                                            if (connectionInfo.allowRemoteHolePunched) {
+                                                // TODO: Implement hole punching if needed
+                                            }
+
+                                            if (connectionInfo.allowRemoteProxied) {
                                                 try {
-                                                    val syncDeviceInfo = SyncDeviceInfo(
-                                                        targetKey,
-                                                        potentialLocalAddresses.map { it }.toTypedArray(),
-                                                        PORT,
-                                                        null
-                                                    )
-                                                    Log.v(TAG, "Attempting to connect directly, locally to '$targetKey'.")
-                                                    connect(syncDeviceInfo)
+                                                    Log.v(TAG, "Attempting relayed connection with '$targetKey'.")
+                                                    runBlocking { relaySession.startRelayedChannel(targetKey, null) }
                                                 } catch (e: Throwable) {
-                                                    Log.e(TAG, "Failed to start direct connection using connection info with $targetKey.", e)
+                                                    Log.e(TAG, "Failed to start relayed channel with $targetKey.", e)
                                                 }
-                                            }.start()
-                                        }
-
-                                        if (connectionInfo.allowRemoteDirect) {
-                                            // TODO: Implement direct remote connection if needed
-                                        }
-
-                                        if (connectionInfo.allowRemoteHolePunched) {
-                                            // TODO: Implement hole punching if needed
-                                        }
-
-                                        if (connectionInfo.allowRemoteProxied) {
-                                            try {
-                                                Log.v(TAG, "Attempting relayed connection with '$targetKey'.")
-                                                runBlocking { relaySession.startRelayedChannel(targetKey, null) }
-                                            } catch (e: Throwable) {
-                                                Log.e(TAG, "Failed to start relayed channel with $targetKey.", e)
                                             }
                                         }
-                                    }
 
-                                    Thread.sleep(15000)
+                                        Thread.sleep(15000)
+                                    }
+                                } catch (e: Throwable) {
+                                    Log.e(TAG, "Unhandled exception in relay session.", e)
+                                    relaySession.stop()
                                 }
-                            } catch (e: Throwable) {
-                                Log.e(TAG, "Unhandled exception in relay session.", e)
-                                relaySession.stop()
-                            }
+                            }.start()
                         }
                     )
 
@@ -718,7 +723,6 @@ class StateSync {
                 }
 
                 deviceRemoved.emit(it.remotePublicKey)
-
             },
             dataHandler = { it, opcode, subOpcode, data ->
                 handleData(it, opcode, subOpcode, data)
@@ -782,70 +786,77 @@ class StateSync {
                     session!!.addChannel(channelSocket!!)
                 }
 
-                if (isResponder) {
-                    val isAuthorized = synchronized(_authorizedDevices) {
-                        _authorizedDevices.values.contains(remotePublicKey)
-                    }
-
-                    if (!isAuthorized) {
-                        val scope = StateApp.instance.scopeOrNull
-                        val activity = SyncShowPairingCodeActivity.activity
-
-                        if (scope != null && activity != null) {
-                            scope.launch(Dispatchers.Main) {
-                                UIDialogs.showConfirmationDialog(activity, "Allow connection from ${remotePublicKey}?",
-                                    action = {
-                                        scope.launch(Dispatchers.IO) {
-                                            try {
-                                                session!!.authorize()
-                                                Logger.i(TAG, "Connection authorized for $remotePublicKey by confirmation")
-                                            } catch (e: Throwable) {
-                                                Logger.e(TAG, "Failed to send authorize", e)
-                                            }
-                                        }
-                                    },
-                                    cancelAction = {
-                                        scope.launch(Dispatchers.IO) {
-                                            try {
-                                                unauthorize(remotePublicKey)
-                                            } catch (e: Throwable) {
-                                                Logger.w(TAG, "Failed to send unauthorize", e)
-                                            }
-
-                                            synchronized(_sessions) {
-                                                session?.close()
-                                                _sessions.remove(remotePublicKey)
-                                            }
-                                        }
-                                    }
-                                )
-                            }
-                        } else {
-                            val publicKey = session!!.remotePublicKey
-                            session!!.unauthorize()
-                            session!!.close()
-
-                            synchronized(_sessions) {
-                                _sessions.remove(publicKey)
-                            }
-
-                            Logger.i(TAG, "Connection unauthorized for $remotePublicKey because not authorized and not on pairing activity to ask")
-                        }
-                    } else {
-                        //Responder does not need to check because already approved
-                        session!!.authorize()
-                        Logger.i(TAG, "Connection authorized for $remotePublicKey because already authorized")
-                    }
-                } else {
-                    //Initiator does not need to check because the manual action of scanning the QR counts as approval
-                    session!!.authorize()
-                    Logger.i(TAG, "Connection authorized for $remotePublicKey because initiator")
-                }
+                handleAuthorization(channelSocket!!, isResponder)
             },
             onData = { s, opcode, subOpcode, data ->
                 session?.handlePacket(opcode, subOpcode, data)
             }
         )
+    }
+
+    private fun handleAuthorization(channel: IChannel, isResponder: Boolean) {
+        val syncSession = channel.syncSession!!
+        val remotePublicKey = channel.remotePublicKey!!
+
+        if (isResponder) {
+            val isAuthorized = synchronized(_authorizedDevices) {
+                _authorizedDevices.values.contains(remotePublicKey)
+            }
+
+            if (!isAuthorized) {
+                val scope = StateApp.instance.scopeOrNull
+                val activity = SyncShowPairingCodeActivity.activity
+
+                if (scope != null && activity != null) {
+                    scope.launch(Dispatchers.Main) {
+                        UIDialogs.showConfirmationDialog(activity, "Allow connection from ${remotePublicKey}?",
+                            action = {
+                                scope.launch(Dispatchers.IO) {
+                                    try {
+                                        syncSession.authorize()
+                                        Logger.i(TAG, "Connection authorized for $remotePublicKey by confirmation")
+                                    } catch (e: Throwable) {
+                                        Logger.e(TAG, "Failed to send authorize", e)
+                                    }
+                                }
+                            },
+                            cancelAction = {
+                                scope.launch(Dispatchers.IO) {
+                                    try {
+                                        unauthorize(remotePublicKey)
+                                    } catch (e: Throwable) {
+                                        Logger.w(TAG, "Failed to send unauthorize", e)
+                                    }
+
+                                    syncSession.close()
+                                    synchronized(_sessions) {
+                                        _sessions.remove(remotePublicKey)
+                                    }
+                                }
+                            }
+                        )
+                    }
+                } else {
+                    val publicKey = syncSession.remotePublicKey
+                    syncSession.unauthorize()
+                    syncSession.close()
+
+                    synchronized(_sessions) {
+                        _sessions.remove(publicKey)
+                    }
+
+                    Logger.i(TAG, "Connection unauthorized for $remotePublicKey because not authorized and not on pairing activity to ask")
+                }
+            } else {
+                //Responder does not need to check because already approved
+                syncSession.authorize()
+                Logger.i(TAG, "Connection authorized for $remotePublicKey because already authorized")
+            }
+        } else {
+            //Initiator does not need to check because the manual action of scanning the QR counts as approval
+            syncSession.authorize()
+            Logger.i(TAG, "Connection authorized for $remotePublicKey because initiator")
+        }
     }
 
     inline fun <reified T> broadcastJsonData(subOpcode: UByte, data: T) {
@@ -895,16 +906,35 @@ class StateSync {
         _relaySession = null
     }
 
-    fun connect(deviceInfo: SyncDeviceInfo, onStatusUpdate: ((session: SyncSession?, complete: Boolean, message: String) -> Unit)? = null): SyncSocketSession {
-        onStatusUpdate?.invoke(null, false, "Connecting...")
-        val socket = getConnectedSocket(deviceInfo.addresses.map { InetAddress.getByName(it) }, deviceInfo.port) ?: throw Exception("Failed to connect")
-        onStatusUpdate?.invoke(null, false, "Handshaking...")
+    fun connect(deviceInfo: SyncDeviceInfo, onStatusUpdate: ((complete: Boolean?, message: String) -> Unit)? = null) {
+        try {
+            connect(deviceInfo.addresses, deviceInfo.port, deviceInfo.publicKey, deviceInfo.pairingCode, onStatusUpdate)
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Failed to connect directly", e)
+            val relaySession = _relaySession
+            if (relaySession != null) {
+                onStatusUpdate?.invoke(null, "Connecting via relay...")
+
+                runBlocking {
+                    relaySession.startRelayedChannel(deviceInfo.publicKey, deviceInfo.pairingCode)
+                    onStatusUpdate?.invoke(true, "Connected")
+                }
+            } else {
+                throw Exception("Failed to connect.")
+            }
+        }
+    }
+
+    fun connect(addresses: Array<String>, port: Int, publicKey: String, pairingCode: String?, onStatusUpdate: ((complete: Boolean?, message: String) -> Unit)? = null): SyncSocketSession {
+        onStatusUpdate?.invoke(null, "Connecting directly...")
+        val socket = getConnectedSocket(addresses.map { InetAddress.getByName(it) }, port) ?: throw Exception("Failed to connect")
+        onStatusUpdate?.invoke(null, "Handshaking...")
 
         val session = createSocketSession(socket, false) { s ->
-            onStatusUpdate?.invoke(s, true, "Handshake complete")
+            onStatusUpdate?.invoke(true, "Authorized")
         }
 
-        session.startAsInitiator(deviceInfo.publicKey, deviceInfo.pairingCode)
+        session.startAsInitiator(publicKey, pairingCode)
         return session
     }
 

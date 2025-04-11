@@ -37,8 +37,8 @@ class SyncSocketSession {
     private val _onClose: ((session: SyncSocketSession) -> Unit)?
     private val _onHandshakeComplete: ((session: SyncSocketSession) -> Unit)?
     private val _onNewChannel: ((session: SyncSocketSession, channel: ChannelRelayed) -> Unit)?
+    private val _onChannelEstablished: ((session: SyncSocketSession, channel: ChannelRelayed, isResponder: Boolean) -> Unit)?
     private val _isHandshakeAllowed: ((session: SyncSocketSession, remotePublicKey: String, pairingCode: String?) -> Boolean)?
-    private var _thread: Thread? = null
     private var _cipherStatePair: CipherStatePair? = null
     private var _remotePublicKey: String? = null
     val remotePublicKey: String? get() = _remotePublicKey
@@ -86,6 +86,7 @@ class SyncSocketSession {
         onHandshakeComplete: ((session: SyncSocketSession) -> Unit)? = null,
         onData: ((session: SyncSocketSession, opcode: UByte, subOpcode: UByte, data: ByteBuffer) -> Unit)? = null,
         onNewChannel: ((session: SyncSocketSession, channel: ChannelRelayed) -> Unit)? = null,
+        onChannelEstablished: ((session: SyncSocketSession, channel: ChannelRelayed, isResponder: Boolean) -> Unit)? = null,
         isHandshakeAllowed: ((session: SyncSocketSession, remotePublicKey: String, pairingCode: String?) -> Boolean)? = null
     ) {
         _inputStream = inputStream
@@ -95,6 +96,7 @@ class SyncSocketSession {
         _localKeyPair = localKeyPair
         _onData = onData
         _onNewChannel = onNewChannel
+        _onChannelEstablished = onChannelEstablished
         _isHandshakeAllowed = isHandshakeAllowed
         this.remoteAddress = remoteAddress
 
@@ -105,33 +107,29 @@ class SyncSocketSession {
 
     fun startAsInitiator(remotePublicKey: String, pairingCode: String? = null) {
         _started = true
-        _thread = Thread {
-            try {
-                handshakeAsInitiator(remotePublicKey, pairingCode)
-                _onHandshakeComplete?.invoke(this)
-                receiveLoop()
-            } catch (e: Throwable) {
-                Logger.e(TAG, "Failed to run as initiator", e)
-            } finally {
-                stop()
-            }
-        }.apply { start() }
+        try {
+            handshakeAsInitiator(remotePublicKey, pairingCode)
+            _onHandshakeComplete?.invoke(this)
+            receiveLoop()
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Failed to run as initiator", e)
+        } finally {
+            stop()
+        }
     }
 
     fun startAsResponder() {
         _started = true
-        _thread = Thread {
-            try {
-                if (handshakeAsResponder()) {
-                    _onHandshakeComplete?.invoke(this)
-                    receiveLoop()
-                }
-            } catch (e: Throwable) {
-                Logger.e(TAG, "Failed to run as responder", e)
-            } finally {
-                stop()
+        try {
+            if (handshakeAsResponder()) {
+                _onHandshakeComplete?.invoke(this)
+                receiveLoop()
             }
-        }.apply { start() }
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Failed to run as responder", e)
+        } finally {
+            stop()
+        }
     }
 
     private fun receiveLoop() {
@@ -191,7 +189,6 @@ class SyncSocketSession {
         _outputStream.close()
         _cipherStatePair?.sender?.destroy()
         _cipherStatePair?.receiver?.destroy()
-        _thread = null
         Logger.i(TAG, "Session closed")
     }
 
@@ -434,10 +431,11 @@ class SyncSocketSession {
                     return
                 }
                 val channel = ChannelRelayed(this, _localKeyPair, publicKey, false)
-                _onNewChannel?.invoke(this, channel)
                 channel.connectionId = connectionId
+                _onNewChannel?.invoke(this, channel)
                 _channels[connectionId] = channel
                 channel.sendResponseTransport(remoteVersion, requestId, channelHandshakeMessage)
+                _onChannelEstablished?.invoke(this, channel, true)
             }
             else -> Logger.w(TAG, "Unhandled request opcode: $subOpcode")
         }
@@ -483,6 +481,7 @@ class SyncSocketSession {
                         channel.handleTransportRelayed(remoteVersion, connectionId, handshakeMessage)
                         _channels[connectionId] = channel
                         tcs.complete(channel)
+                        _onChannelEstablished?.invoke(this, channel, false)
                     } ?: Logger.e(TAG, "No pending channel for requestId $requestId")
                 } else {
                     _pendingChannels.remove(requestId)?.let { (channel, tcs) ->
@@ -656,7 +655,12 @@ class SyncSocketSession {
 
     private fun handleNotify(subOpcode: UByte, data: ByteBuffer, sourceChannel: ChannelRelayed?) {
         when (subOpcode) {
-            NotifyOpcode.AUTHORIZED.value, NotifyOpcode.UNAUTHORIZED.value -> _onData?.invoke(this, Opcode.NOTIFY.value, subOpcode, data)
+            NotifyOpcode.AUTHORIZED.value, NotifyOpcode.UNAUTHORIZED.value -> {
+                if (sourceChannel != null)
+                    sourceChannel.invokeDataHandler(Opcode.NOTIFY.value, subOpcode, data)
+                else
+                    _onData?.invoke(this, Opcode.NOTIFY.value, subOpcode, data)
+            }
             NotifyOpcode.CONNECTION_INFO.value -> { /* Handle connection info if needed */ }
         }
     }
@@ -828,10 +832,6 @@ class SyncSocketSession {
                     Logger.w(TAG, "Unknown opcode received (opcode = ${opcode}, subOpcode = ${subOpcode})")
                 }
             }
-        }
-
-        if (authorizable?.isAuthorized != true) {
-            return
         }
     }
 

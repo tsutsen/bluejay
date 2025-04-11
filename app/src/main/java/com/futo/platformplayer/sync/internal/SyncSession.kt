@@ -33,6 +33,30 @@ class SyncSession : IAuthorizable {
         private set
     val displayName: String get() = remoteDeviceName ?: remotePublicKey
 
+    val linkType: LinkType get()
+    {
+        var hasProxied = false
+        var hasDirect = false
+        synchronized(_channels)
+        {
+            for (channel in _channels)
+            {
+                if (channel is ChannelRelayed)
+                    hasProxied = true
+                if (channel is ChannelSocket)
+                    hasDirect = true
+                if (hasProxied && hasDirect)
+                    return LinkType.Local
+            }
+        }
+
+        if (hasProxied)
+            return LinkType.Proxied
+        if (hasDirect)
+            return LinkType.Local
+        return LinkType.None
+    }
+
     var connected: Boolean = false
         private set(v) {
             if (field != v) {
@@ -70,6 +94,7 @@ class SyncSession : IAuthorizable {
         }
 
         channel.authorizable = this
+        channel.syncSession = this
     }
 
     fun authorize() {

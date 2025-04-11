@@ -13,6 +13,7 @@ interface IChannel : AutoCloseable {
     val remotePublicKey: String?
     val remoteVersion: Int?
     var authorizable: IAuthorizable?
+    var syncSession: SyncSession?
     fun setDataHandler(onData: ((SyncSocketSession, IChannel, UByte, UByte, ByteBuffer) -> Unit)?)
     fun send(opcode: UByte, subOpcode: UByte = 0u, data: ByteBuffer? = null)
     fun setCloseHandler(onClose: ((IChannel) -> Unit)?)
@@ -27,6 +28,7 @@ class ChannelSocket(private val session: SyncSocketSession) : IChannel {
     override var authorizable: IAuthorizable?
         get() = session.authorizable
         set(value) { session.authorizable = value }
+    override var syncSession: SyncSession? = null
 
     override fun setDataHandler(onData: ((SyncSocketSession, IChannel, UByte, UByte, ByteBuffer) -> Unit)?) {
         this.onData = onData
@@ -76,10 +78,11 @@ class ChannelRelayed(
     override var authorizable: IAuthorizable? = null
     val isAuthorized: Boolean get() = authorizable?.isAuthorized ?: false
     var connectionId: Long = 0L
-    override var remotePublicKey: String? = null
+    override var remotePublicKey: String? = publicKey
         private set
     override var remoteVersion: Int? = null
         private set
+    override var syncSession: SyncSession? = null
 
     private var onData: ((SyncSocketSession, IChannel, UByte, UByte, ByteBuffer) -> Unit)? = null
     private var onClose: ((IChannel) -> Unit)? = null
