@@ -375,7 +375,18 @@ class StateApp {
             _cacheDirectory?.let { ApiMethods.initCache(it) };
         }
 
+        Logger.i(TAG, "MainApp Starting: Initializing [ModerationsManager]");
         ModerationsManager.initialize(context);
+
+        Logger.i(TAG, "MainApp Starting: Setting [ModerationLevelProvider]");
+        ApiMethods.setModerationLevelProvider {
+            try {
+                ModerationsManager.getInstance().getCurrentModerationLevels()
+            } catch (e: IllegalStateException) {
+                // Handle case where manager might not be ready, though it should be here
+                null
+            }
+        }
 
         val logFile = File(context.filesDir, "log.txt");
         if (Settings.instance.logging.logLevel > LogLevel.NONE.value) {
