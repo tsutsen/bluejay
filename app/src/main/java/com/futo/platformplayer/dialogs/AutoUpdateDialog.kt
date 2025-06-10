@@ -7,7 +7,9 @@ import android.app.PendingIntent.getBroadcast
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
 import android.graphics.drawable.Animatable
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -154,7 +156,11 @@ class AutoUpdateDialog(context: Context?) : AlertDialog(context) {
             InstallReceiver.onReceiveResult.subscribe(this) { message -> onReceiveResult(message); };
 
             val packageInstaller: PackageInstaller = context.packageManager.packageInstaller;
-            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+            val params =
+                PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                params.setRequireUserAction(USER_ACTION_NOT_REQUIRED)
+            }
             val sessionId = packageInstaller.createSession(params);
             session = packageInstaller.openSession(sessionId)
 
