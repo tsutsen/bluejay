@@ -13,6 +13,7 @@ import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.TextView
@@ -40,6 +41,7 @@ import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.constructs.Event2
 import com.futo.platformplayer.constructs.Event3
 import com.futo.platformplayer.formatDuration
+import com.futo.platformplayer.fragment.mainactivity.main.VideoDetailFragment
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePlayer
@@ -61,6 +63,8 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
 
     var isFullScreen: Boolean = false
             private set;
+
+    var fragment: VideoDetailFragment? = null
 
     //Views
     private val _root: ConstraintLayout;
@@ -283,17 +287,25 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         };
         gestureControl.onToggleFullscreen.subscribe { setFullScreen(!isFullScreen) };
         gestureControl.onBrightnessAdjusted.subscribe {
-            if (Settings.instance.gestureControls.useSystemBrightness) {
-                setSystemBrightness(it)
+            if (Settings.instance.gestureControls.controlScreenBrightness) {
+                setScreenBrightness(it)
             } else {
+                setBrightnessOverlay(it)
                 if (it == 1.0f) {
                     _overlay_brightness.visibility = View.GONE;
                 } else {
                     _overlay_brightness.visibility = View.VISIBLE;
-                    _overlay_brightness.setBackgroundColor(Color.valueOf(0.0f, 0.0f, 0.0f, (1.0f - it)).toArgb());
                 }
             }
-        };
+        }
+        gestureControl.onBrightnessCleared.subscribe {
+            if (Settings.instance.gestureControls.controlScreenBrightness) {
+                clearCustomScreenBrightness()
+            } else {
+                setBrightnessOverlay(1.0f)
+                _overlay_brightness.visibility = View.GONE
+            }
+        }
         gestureControl.onPan.subscribe { x, y ->
             _videoView.translationX = x
             _videoView.translationY = y
@@ -476,33 +488,26 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         }
     }
 
+    private fun setBrightnessOverlay(brightness: Float) {
+        _overlay_brightness.setBackgroundColor(
+            Color.valueOf(0.0f, 0.0f, 0.0f, (1.0f - brightness)).toArgb()
+        )
+    }
+
     private fun updateAutoplayButton() {
         _control_autoplay.setColorFilter(ContextCompat.getColor(context, if (StatePlayer.instance.autoplay) com.futo.futopay.R.color.primary else R.color.white))
         _control_autoplay_fullscreen.setColorFilter(ContextCompat.getColor(context, if (StatePlayer.instance.autoplay) com.futo.futopay.R.color.primary else R.color.white))
     }
 
-    private fun setSystemBrightness(brightness: Float) {
-        Log.i(TAG, "setSystemBrightness $brightness")
-        if (android.provider.Settings.System.canWrite(context)) {
-            Log.i(TAG, "setSystemBrightness canWrite $brightness")
-            android.provider.Settings.System.putInt(context.contentResolver, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
-            android.provider.Settings.System.putInt(context.contentResolver, android.provider.Settings.System.SCREEN_BRIGHTNESS, (brightness * 255.0f).toInt().coerceAtLeast(1).coerceAtMost(255));
-        } else if (!_promptedForPermissions) {
-            Log.i(TAG, "setSystemBrightness prompt $brightness")
-            _promptedForPermissions = true
-            UIDialogs.showConfirmationDialog(context, "System brightness controls require explicit permission", action = {
-                openAndroidPermissionsMenu()
-            })
-        } else {
-            Log.i(TAG, "setSystemBrightness no permission?")
-            //No permissions but already prompted, ignore
-        }
+    private fun clearCustomScreenBrightness() {
+        setScreenBrightness(null)
     }
 
-    private fun openAndroidPermissionsMenu() {
-        val intent = Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
-        intent.setData(Uri.parse("package:" + context.packageName))
-        context.startActivity(intent)
+    private fun setScreenBrightness(brightness: Float?) {
+        val layoutParams: WindowManager.LayoutParams? = fragment?.activity?.window?.attributes
+        layoutParams?.screenBrightness =
+            brightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        fragment?.activity?.window?.attributes = layoutParams
     }
 
     fun updateNextPrevious() {

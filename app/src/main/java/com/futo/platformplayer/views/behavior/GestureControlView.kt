@@ -8,7 +8,6 @@ import android.graphics.Matrix
 import android.graphics.drawable.Animatable
 import android.media.AudioManager
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -24,7 +23,6 @@ import androidx.core.animation.doOnStart
 import androidx.core.view.GestureDetectorCompat
 import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
-import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.constructs.Event2
@@ -70,8 +68,6 @@ class GestureControlView : LinearLayout {
     private val _progressSound: CircularProgressBar;
     private var _animatorSound: ObjectAnimator? = null;
     private var _brightnessFactor = 1.0f;
-    private var _originalBrightnessFactor = 1.0f;
-    private var _originalBrightnessMode: Int = 0;
     private var _adjustingBrightness: Boolean = false;
     private val _layoutControlsBrightness: FrameLayout;
     private val _progressBrightness: CircularProgressBar;
@@ -110,6 +106,7 @@ class GestureControlView : LinearLayout {
 
     val onSeek = Event1<Long>();
     val onBrightnessAdjusted = Event1<Float>();
+    val onBrightnessCleared = Event0();
     val onPan = Event2<Float, Float>();
     val onZoom = Event1<Float>();
     val onSoundAdjusted = Event1<Float>();
@@ -781,60 +778,21 @@ class GestureControlView : LinearLayout {
         _animatorBrightness?.start();
     }
 
-    fun saveBrightness() {
-        try {
-            _originalBrightnessMode = android.provider.Settings.System.getInt(context.contentResolver, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE)
-
-            val brightness = android.provider.Settings.System.getInt(context.contentResolver, android.provider.Settings.System.SCREEN_BRIGHTNESS)
-            _brightnessFactor = brightness / 255.0f;
-            Log.i(TAG, "Starting brightness brightness: $brightness, _brightnessFactor: $_brightnessFactor, _originalBrightnessMode: $_originalBrightnessMode")
-
-            _originalBrightnessFactor = _brightnessFactor
-        } catch (e: Throwable) {
-            Settings.instance.gestureControls.useSystemBrightness = false
-            Settings.instance.save()
-            UIDialogs.toast(context, "useSystemBrightness disabled due to an error")
-        }
-    }
-    fun restoreBrightness() {
-        if (Settings.instance.gestureControls.restoreSystemBrightness) {
-            onBrightnessAdjusted.emit(_originalBrightnessFactor)
-
-            if (android.provider.Settings.System.canWrite(context)) {
-                Log.i(TAG, "Restoring system brightness mode _originalBrightnessMode: $_originalBrightnessMode")
-
-                android.provider.Settings.System.putInt(
-                    context.contentResolver,
-                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
-                    _originalBrightnessMode
-                )
-            }
-        }
-    }
-
     fun setFullscreen(isFullScreen: Boolean) {
         resetZoomPan()
 
-        if (isFullScreen) {
-            if (Settings.instance.gestureControls.useSystemBrightness) {
-                saveBrightness()
-            }
+        onBrightnessCleared.emit()
+        _brightnessFactor = 1.0f
 
+        if (isFullScreen) {
             if (Settings.instance.gestureControls.useSystemVolume) {
                 val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
                 val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
                 val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                 _soundFactor = currentVolume.toFloat() / maxVolume.toFloat()
             }
-
-            onBrightnessAdjusted.emit(_brightnessFactor);
             onSoundAdjusted.emit(_soundFactor);
         } else {
-            if (Settings.instance.gestureControls.useSystemBrightness) {
-                restoreBrightness()
-            } else {
-                onBrightnessAdjusted.emit(1.0f);
-            }
             //onSoundAdjusted.emit(1.0f);
             stopAdjustingBrightness();
             stopAdjustingSound();

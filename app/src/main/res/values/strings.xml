@@ -397,10 +397,8 @@
     <string name="brightness_slider_descr">Enable slide gesture to change brightness</string>
     <string name="toggle_full_screen">Toggle full screen</string>
     <string name="toggle_full_screen_descr">Enable swipe gesture to toggle full screen</string>
-    <string name="system_brightness">System brightness</string>
-    <string name="system_brightness_descr">Gesture controls adjust system brightness</string>
-    <string name="restore_system_brightness">Restore system brightness</string>
-    <string name="restore_system_brightness_descr">Restore system brightness when exiting full screen</string>
+    <string name="screen_brightness">Control screen brightness</string>
+    <string name="screen_brightness_desc">Gesture controls adjust the device screen brightness instead of an overlay filter</string>
     <string name="zoom_option">Enable zoom</string>
     <string name="zoom_option_descr">Enable two finger pinch zoom gesture</string>
     <string name="pan_option">Enable pan</string>
