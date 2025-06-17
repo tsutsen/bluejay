@@ -101,6 +101,7 @@ import com.futo.platformplayer.getNowDiffSeconds
 import com.futo.platformplayer.helpers.VideoHelper
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.Subscription
+import com.futo.platformplayer.others.Language
 import com.futo.platformplayer.receivers.MediaControlReceiver
 import com.futo.platformplayer.selectBestImage
 import com.futo.platformplayer.states.AnnouncementType
@@ -2230,8 +2231,9 @@ class VideoDetailView : ConstraintLayout {
                         .map {
                             SlideUpMenuItem(this.context,
                                 R.drawable.ic_movie,
-                                it.name,
-                                "${it.width}x${it.height}",
+                                if (it.name != "") it.name else "${it.height}p${it.frameRate ?: ""}",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.codec.trim() else "",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.bitrate?.toHumanBitrate() ?: "" else "",
                                 tag = it,
                                 call = { handleSelectVideoTrack(it) });
                         }.toList().toTypedArray())
@@ -2240,10 +2242,18 @@ class VideoDetailView : ConstraintLayout {
                 SlideUpMenuGroup(this.context, context.getString(R.string.offline_audio), "audio",
                     *localAudioSource
                         .map {
+                            val mainText = when {
+                                it.language != Language.UNKNOWN && it.bitrate == Format.NO_VALUE -> Locale.forLanguageTag(it.language).displayLanguage
+                                it.language == Language.UNKNOWN && it.bitrate != Format.NO_VALUE -> it.bitrate.toHumanBitrate()
+                                it.language != Language.UNKNOWN && it.bitrate != Format.NO_VALUE -> "${Locale.forLanguageTag(it.language).displayLanguage} ${it.bitrate.toHumanBitrate()}"
+                                else -> "Default"
+                            }
+
                             SlideUpMenuItem(this.context,
                                 R.drawable.ic_music,
-                                it.name,
-                                it.bitrate.toHumanBitrate(),
+                                if (it.name != "") it.name else mainText,
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.codec.trim() ?: "" else "",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) (if (it.original) "Original" else "") else "",
                                 tag = it,
                                 call = { handleSelectAudioTrack(it) });
                         }.toList().toTypedArray())
@@ -2260,36 +2270,49 @@ class VideoDetailView : ConstraintLayout {
                 this.context, context.getString(R.string.stream_video), "video", (listOf(
                     SlideUpMenuItem(this.context, R.drawable.ic_movie, "Auto", tag = "auto", call = { _player.selectVideoTrack(-1) })
                 ) + (liveStreamVideoFormats.map {
-                    SlideUpMenuItem(this.context, R.drawable.ic_movie, it.label
-                        ?: it.containerMimeType
-                        ?: it.bitrate.toString(), "${it.width}x${it.height}", tag = it, call = { _player.selectVideoTrack(it.height) });
+                    val frameRate =
+                        if (it.frameRate.toInt() == Format.NO_VALUE) "" else it.frameRate.toInt()
+                    SlideUpMenuItem(
+                        this.context, R.drawable.ic_movie, "${it.height}p${frameRate}",
+                        if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.containerMimeType ?: "" else "",
+                        if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.label ?: it.bitrate.toHumanBitrate() else "",
+                        tag = it, call = { _player.selectVideoTrack(it.height) });
                 }))
             )
             else null,
-            if(liveStreamAudioFormats?.isEmpty() == false)
-                SlideUpMenuGroup(this.context, context.getString(R.string.stream_audio), "audio",
+            if (liveStreamAudioFormats?.isEmpty() == false)
+                SlideUpMenuGroup(
+                    this.context, context.getString(R.string.stream_audio), "audio",
                     *liveStreamAudioFormats
                         .map {
-                            SlideUpMenuItem(this.context,
+                            val language = it.language
+                            val mainText = when {
+                                language != null && it.bitrate == Format.NO_VALUE -> Locale.forLanguageTag(language).displayLanguage
+                                language == null && it.bitrate != Format.NO_VALUE -> it.bitrate.toHumanBitrate()
+                                language != null && it.bitrate != Format.NO_VALUE -> "${Locale.forLanguageTag(language).displayLanguage} ${it.bitrate.toHumanBitrate()}"
+                                else -> "Default"
+                            }
+                            SlideUpMenuItem(
+                                this.context,
                                 R.drawable.ic_music,
-                                "${it.label ?: it.containerMimeType} ${it.bitrate}",
-                                "",
+                                mainText,
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.containerMimeType ?: "" else "",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.label else "",
                                 tag = it,
                                 call = { _player.selectAudioTrack(it.bitrate) });
-                        }.toList().toTypedArray())
+                        }.toList().toTypedArray()
+                )
             else null,
 
             if(bestVideoSources.isNotEmpty())
                 SlideUpMenuGroup(this.context, context.getString(R.string.video), "video",
                     *bestVideoSources
                         .map {
-                            val estSize = VideoHelper.estimateSourceSize(it);
-                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
                             SlideUpMenuItem(this.context,
                                 R.drawable.ic_movie,
-                                it!!.name,
-                                if (it.width > 0 && it.height > 0) "${it.width}x${it.height}" else "",
-                                (prefix + it.codec.trim()).trim(),
+                                if (it.name != "") it.name else "${it.height}p${it.frameRate ?: ""}",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.codec.trim() else "",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.bitrate?.toHumanBitrate() ?: "" else "",
                                 tag = it,
                                 call = { handleSelectVideoTrack(it) });
                         }.toList().toTypedArray())
@@ -2298,13 +2321,17 @@ class VideoDetailView : ConstraintLayout {
                 SlideUpMenuGroup(this.context, context.getString(R.string.audio), "audio",
                     *bestAudioSources
                         .map {
-                            val estSize = VideoHelper.estimateSourceSize(it);
-                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
+                            val mainText = when {
+                                it.language != Language.UNKNOWN && it.bitrate == Format.NO_VALUE -> Locale.forLanguageTag(it.language).displayLanguage
+                                it.language == Language.UNKNOWN && it.bitrate != Format.NO_VALUE -> it.bitrate.toHumanBitrate()
+                                it.language != Language.UNKNOWN && it.bitrate != Format.NO_VALUE -> "${Locale.forLanguageTag(it.language).displayLanguage} ${it.bitrate.toHumanBitrate()}"
+                                else -> "Default"
+                            }
                             SlideUpMenuItem(this.context,
                                 R.drawable.ic_music,
-                                it.name,
-                                it.bitrate.toHumanBitrate(),
-                                (prefix + it.codec.trim()).trim(),
+                                if (it.name != "") it.name else mainText,
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.codec.trim() ?: "" else "",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) (if (it.original) "Original" else "") else "",
                                 tag = it,
                                 call = { handleSelectAudioTrack(it) });
                         }.toList().toTypedArray())

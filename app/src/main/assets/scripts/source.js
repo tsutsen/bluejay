@@ -403,6 +403,8 @@ class VideoUrlSource {
         this.bitrate = obj.bitrate ?? 0;
         this.duration = obj.duration ?? 0;
         this.url = obj.url;
+        if(obj.frameRate)
+            this.frameRate = obj.frameRate;
         if(obj.requestModifier)
             this.requestModifier = obj.requestModifier;
     }

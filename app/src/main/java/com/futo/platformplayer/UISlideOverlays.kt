@@ -74,6 +74,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import androidx.core.net.toUri
+import androidx.media3.common.Format
+import com.futo.platformplayer.others.Language
+import java.util.Locale
 
 class UISlideOverlays {
     companion object {
@@ -344,14 +347,18 @@ class UISlideOverlays {
                         if (source is IHLSManifestAudioSource) {
                             val variant = HLS.mediaRenditionToVariant(MediaRendition("AUDIO", playlist.baseUri, "Single Playlist", null, null, null, null, null))!!
 
-                            val estSize = VideoHelper.estimateSourceSize(variant);
-                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
+                            val language = variant.language
+                            val mainText = when {
+                                language != Language.UNKNOWN && variant.bitrate == Format.NO_VALUE -> Locale.forLanguageTag(language).displayLanguage
+                                language == Language.UNKNOWN && variant.bitrate != Format.NO_VALUE -> variant.bitrate.toHumanBitrate()
+                                language != Language.UNKNOWN && variant.bitrate != Format.NO_VALUE -> "${Locale.forLanguageTag(language).displayLanguage} ${variant.bitrate.toHumanBitrate()}"
+                                else -> "Default"
+                            }
                             audioButtons.add(SlideUpMenuItem(
                                 container.context,
                                 R.drawable.ic_music,
-                                variant.name,
-                                listOf(variant.language, variant.codec).mapNotNull { x -> x.ifEmpty { null } }.joinToString(", "),
-                                (prefix + variant.codec).trim(),
+                                if (variant.name != "") variant.name else mainText,
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) variant.codec.trim() else "",
                                 tag = variant,
                                 call = {
                                     selectedAudioVariant = variant
@@ -363,14 +370,12 @@ class UISlideOverlays {
                         } else {
                             val variant = HLS.variantReferenceToVariant(VariantPlaylistReference(playlist.baseUri, StreamInfo(null, null, null, null, null, null, null, null, null)))
 
-                            val estSize = VideoHelper.estimateSourceSize(variant);
-                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
                             videoButtons.add(SlideUpMenuItem(
                                 container.context,
                                 R.drawable.ic_movie,
-                                variant.name,
-                                "${variant.width}x${variant.height}",
-                                (prefix + variant.codec).trim(),
+                                if (variant.name != "") variant.name else "${variant.width}p${variant.frameRate ?: ""}",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) variant.codec.trim() else "",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) variant.bitrate?.toHumanBitrate() else "",
                                 tag = variant,
                                 call = {
                                     selectedVideoVariant = variant
@@ -385,16 +390,19 @@ class UISlideOverlays {
                     } else if (playlist is HlsMultivariantPlaylist) {
                         masterPlaylist = HLS.parseMasterPlaylist(masterPlaylistContent, resolvedPlaylistUrl)
 
-                        masterPlaylist.getAudioSources().forEach { it ->
-
-                            val estSize = VideoHelper.estimateSourceSize(it);
-                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
+                        masterPlaylist.getAudioSources().forEach {
+                            val language = it.language
+                            val mainText = when {
+                                language != Language.UNKNOWN && it.bitrate == Format.NO_VALUE -> Locale.forLanguageTag(language).displayLanguage
+                                language == Language.UNKNOWN && it.bitrate != Format.NO_VALUE -> it.bitrate.toHumanBitrate()
+                                language != Language.UNKNOWN && it.bitrate != Format.NO_VALUE -> "${Locale.forLanguageTag(language).displayLanguage} ${it.bitrate.toHumanBitrate()}"
+                                else -> "Default"
+                            }
                             audioButtons.add(SlideUpMenuItem(
                                 container.context,
                                 R.drawable.ic_music,
-                                it.name,
-                                listOf(it.language, it.codec).mapNotNull { x -> x.ifEmpty { null } }.joinToString(", "),
-                                (prefix + it.codec).trim(),
+                                if (it.name != "") it.name else mainText,
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.codec.trim() else "",
                                 tag = it,
                                 call = {
                                     selectedAudioVariant = it
@@ -414,14 +422,12 @@ class UISlideOverlays {
                         }*/
 
                         masterPlaylist.getVideoSources().forEach {
-                            val estSize = VideoHelper.estimateSourceSize(it);
-                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
                             videoButtons.add(SlideUpMenuItem(
                                 container.context,
                                 R.drawable.ic_movie,
-                                it.name,
-                                "${it.width}x${it.height}",
-                                (prefix + it.codec).trim(),
+                                if (it.name != "") it.name else "${it.height}p${it.frameRate ?: ""}",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.codec.trim() else "",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.bitrate?.toHumanBitrate() else "",
                                 tag = it,
                                 call = {
                                     selectedVideoVariant = it
@@ -535,9 +541,9 @@ class UISlideOverlays {
                             SlideUpMenuItem(
                                 container.context,
                                 R.drawable.ic_movie,
-                                it.name,
-                                "${it.width}x${it.height}",
-                                (prefix + it.codec).trim(),
+                                if (it.name != "") it.name else  "${it.height}p${it.frameRate ?: ""}",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.codec.trim() else "",
+                                if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.bitrate?.toHumanBitrate() ?: "" else "",
                                 tag = it,
                                 call = {
                                     selectedVideo = it
@@ -573,8 +579,7 @@ class UISlideOverlays {
                             SlideUpMenuItem(
                                 container.context,
                                 R.drawable.ic_movie,
-                                it.name,
-                                "HLS",
+                                if (it.name != "") it.name else  "HLS",
                                 tag = it,
                                 call = {
                                     showHlsPicker(video, it, it.url, container)
@@ -606,14 +611,18 @@ class UISlideOverlays {
                     .map {
                         when (it) {
                             is IAudioUrlSource -> {
-                                val estSize = VideoHelper.estimateSourceSize(it);
-                                val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
+                                val mainText = when {
+                                    it.language != Language.UNKNOWN && it.bitrate == Format.NO_VALUE -> Locale.forLanguageTag(it.language).displayLanguage
+                                    it.language == Language.UNKNOWN && it.bitrate != Format.NO_VALUE -> it.bitrate.toHumanBitrate()
+                                    it.language != Language.UNKNOWN && it.bitrate != Format.NO_VALUE -> "${Locale.forLanguageTag(it.language).displayLanguage} ${it.bitrate.toHumanBitrate()}"
+                                    else -> "Default"
+                                }
                                 SlideUpMenuItem(
                                     container.context,
                                     R.drawable.ic_music,
-                                    it.name,
-                                    "${it.bitrate}",
-                                    (prefix + it.codec).trim(),
+                                    if (it.name != "") it.name else mainText,
+                                    if (Settings.instance.playback.showAdvancedMediaSourceMetadata) it.codec.trim() ?: "" else "",
+                                    if (Settings.instance.playback.showAdvancedMediaSourceMetadata) (if (it.original) "Original" else "") else "",
                                     tag = it,
                                     call = {
                                         selectedAudio = it
@@ -647,8 +656,7 @@ class UISlideOverlays {
                                 SlideUpMenuItem(
                                     container.context,
                                     R.drawable.ic_movie,
-                                    it.name,
-                                    "HLS Audio",
+                                    if (it.name != "") it.name else "HLS Audio",
                                     tag = it,
                                     call = {
                                         showHlsPicker(video, it, it.url, container)

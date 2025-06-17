@@ -18,6 +18,8 @@ class JSDashManifestSource : IVideoUrlSource, IDashManifestSource, JSSource {
     override val bitrate: Int? = null;
     override val url : String;
     override val duration: Long;
+    // only used for single source DASH
+    override val frameRate: Int? = null
 
     override var priority: Boolean = false;
 

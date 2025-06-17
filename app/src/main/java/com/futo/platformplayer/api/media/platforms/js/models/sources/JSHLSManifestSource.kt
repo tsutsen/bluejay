@@ -18,6 +18,7 @@ class JSHLSManifestSource : IHLSManifestSource, JSSource {
     override val bitrate : Int? = null;
     override val url : String;
     override val duration: Long;
+    override val frameRate: Int? = null
 
     override var priority: Boolean = false;
 

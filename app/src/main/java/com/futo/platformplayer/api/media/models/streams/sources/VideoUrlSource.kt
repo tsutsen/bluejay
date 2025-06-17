@@ -13,6 +13,7 @@ open class VideoUrlSource(
     override val container : String = "",
     override val codec : String = "",
     override val bitrate : Int? = 0,
+    override val frameRate: Int? = null,
 
     override var priority: Boolean = false
 ) : IVideoUrlSource, IStreamMetaDataSource {
@@ -38,7 +39,8 @@ open class VideoUrlSource(
                 source.duration,
                 source.container,
                 source.codec,
-                source.bitrate
+                source.bitrate,
+                source.frameRate
             );
             ret.streamMetaData = streamData;
 

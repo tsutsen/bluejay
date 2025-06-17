@@ -16,6 +16,7 @@ open class JSVideoUrlSource : IVideoUrlSource, JSSource {
     override val name : String;
     override val bitrate : Int;
     override val duration: Long;
+    override val frameRate: Int?
     private val url : String;
 
     override var priority: Boolean = false;
@@ -31,6 +32,7 @@ open class JSVideoUrlSource : IVideoUrlSource, JSSource {
         name = _obj.getOrThrow(config, "name", contextName);
         bitrate = _obj.getOrThrow(config, "bitrate", contextName);
         duration = _obj.getOrThrow<Int>(config, "duration", contextName).toLong();
+        frameRate = _obj.getOrNull(config, "frameRate", contextName);
         url = _obj.getOrThrow(config, "url", contextName);
 
         priority = obj.getOrNull(config, "priority", contextName) ?: false;

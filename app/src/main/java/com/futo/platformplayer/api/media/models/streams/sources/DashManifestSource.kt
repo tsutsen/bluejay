@@ -9,6 +9,8 @@ class DashManifestSource : IVideoSource, IDashManifestSource {
     override val bitrate: Int? = null;
     override val url : String;
     override val duration: Long get() = 0;
+    // only used for single source DASH
+    override val frameRate: Int? = null
 
     override var priority: Boolean = false;
 

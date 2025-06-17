@@ -19,6 +19,7 @@ class LocalVideoFileSource: IVideoSource {
     override val bitrate: Int = 0
     override val duration: Long;
     override val priority: Boolean = false;
+    override val frameRate: Int? = null
 
     constructor(file: File) {
         name = file.name;

@@ -300,6 +300,7 @@
     <string name="check_disabled_plugin_updates_description">Check disabled plugins for updates</string>
     <string name="planned_content_notifications">Planned Content Notifications</string>
     <string name="planned_content_notifications_description">Schedules discovered planned content as notifications, resulting in more accurate notifications for this content.</string>
+    <string name="show_advanced_media_source_metadata_desc">When displaying media sources show advanced metadata like container and codec</string>
     <string name="attempt_to_utilize_byte_ranges">Attempt to utilize byte ranges</string>
     <string name="auto_update">Auto Update</string>
     <string name="always_allow_reverse_landscape_auto_rotate">Always allow reverse landscape auto-rotate</string>
@@ -348,6 +349,7 @@
     <string name="default_audio_quality">Default Audio Quality</string>
     <string name="default_playback_speed">Default Playback Speed</string>
     <string name="default_video_quality">Default Video Quality</string>
+    <string name="show_advanced_media_source_metadata">Show Advanced Media Source Metadata</string>
     <string name="deletes_license_keys_from_app">Deletes license keys from app</string>
     <string name="download_when">Download when</string>
     <string name="enable_video_cache">Enable Video Cache</string>

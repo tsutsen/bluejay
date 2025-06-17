@@ -13,6 +13,7 @@ class LocalVideoSource : IVideoSource, IStreamMetaDataSource {
     override val name : String;
     override val bitrate : Int;
     override val duration : Long;
+    override val frameRate: Int?
 
     override var priority: Boolean = false;
 
@@ -22,7 +23,7 @@ class LocalVideoSource : IVideoSource, IStreamMetaDataSource {
     //Only for particular videos
     override var streamMetaData: StreamMetaData? = null;
 
-    constructor(name : String, filePath : String, fileSize: Long, width : Int = 0, height : Int = 0, duration: Long = 0, container : String = "", codec : String = "", bitrate : Int = 0) {
+    constructor(name : String, filePath : String, fileSize: Long, width : Int = 0, height : Int = 0, duration: Long = 0, container : String = "", codec : String = "", bitrate : Int = 0, frameRate : Int? = null) {
         this.name = name;
         this.width = width;
         this.height = height;
@@ -32,6 +33,7 @@ class LocalVideoSource : IVideoSource, IStreamMetaDataSource {
         this.filePath = filePath;
         this.fileSize = fileSize;
         this.bitrate = bitrate;
+        this.frameRate = frameRate
     }
 
     companion object {
@@ -45,7 +47,8 @@ class LocalVideoSource : IVideoSource, IStreamMetaDataSource {
                 source.duration,
                 overrideContainer ?: source.container,
                 source.codec,
-                source.bitrate?:0
+                source.bitrate?:0,
+                source.frameRate
             );
         }
     }

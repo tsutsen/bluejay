@@ -31,6 +31,8 @@ open class JSDashManifestRawSource: JSSource, IVideoSource, IJSDashManifestRawSo
     override val bitrate: Int?;
     override val duration: Long;
     override val priority: Boolean;
+    // only used for single source DASH
+    override val frameRate: Int?
 
     var url: String?;
     override var manifest: String?;
@@ -52,6 +54,7 @@ open class JSDashManifestRawSource: JSSource, IVideoSource, IJSDashManifestRawSo
         codec = _obj.getOrDefault(config, "codec", contextName, "") ?: "";
         bitrate = _obj.getOrDefault(config, "bitrate", contextName, 0) ?: 0;
         duration = _obj.getOrDefault(config, "duration", contextName, 0) ?: 0;
+        frameRate = _obj.getOrNull(config, "frameRate", contextName);
         priority = _obj.getOrDefault(config, "priority", contextName, false) ?: false;
         canMerge = _obj.getOrDefault(config, "canMerge", contextName, false) ?: false;
         hasGenerate = _obj.has("generate");

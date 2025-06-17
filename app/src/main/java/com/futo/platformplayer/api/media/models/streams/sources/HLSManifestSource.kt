@@ -9,6 +9,8 @@ class HLSManifestSource : IVideoSource, IHLSManifestSource {
     override val bitrate : Int? = null;
     override val url : String;
     override val duration: Long = 0;
+    override val frameRate: Int?
+        get() = null
 
     override var priority: Boolean = false;
 

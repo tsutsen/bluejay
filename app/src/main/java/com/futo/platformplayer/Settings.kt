@@ -442,14 +442,18 @@ class Settings : FragmentedStorageFileJson() {
         fun getPreferredPreviewQualityPixelCount(): Int = preferedQualityToPixels(preferredPreviewQuality);
 
         @AdvancedField
-        @FormField(R.string.simplify_sources, FieldForm.TOGGLE, R.string.simplify_sources_description, 4)
+        @FormField(R.string.show_advanced_media_source_metadata, FieldForm.TOGGLE, R.string.show_advanced_media_source_metadata_desc, 4)
+        var showAdvancedMediaSourceMetadata: Boolean = false;
+
+        @AdvancedField
+        @FormField(R.string.simplify_sources, FieldForm.TOGGLE, R.string.simplify_sources_description, 5)
         var simplifySources: Boolean = true;
 
         @AdvancedField
-        @FormField(R.string.always_allow_reverse_landscape_auto_rotate, FieldForm.TOGGLE, R.string.always_allow_reverse_landscape_auto_rotate_description, 5)
+        @FormField(R.string.always_allow_reverse_landscape_auto_rotate, FieldForm.TOGGLE, R.string.always_allow_reverse_landscape_auto_rotate_description, 6)
         var alwaysAllowReverseLandscapeAutoRotate: Boolean = true
 
-        @FormField(R.string.background_behavior, FieldForm.DROPDOWN, -1, 6)
+        @FormField(R.string.background_behavior, FieldForm.DROPDOWN, -1, 7)
         @DropdownFieldOptionsId(R.array.player_background_behavior)
         var backgroundPlay: Int = 2;
 
@@ -457,7 +461,7 @@ class Settings : FragmentedStorageFileJson() {
         fun isBackgroundPictureInPicture() = backgroundPlay == 2;
 
         @AdvancedField
-        @FormField(R.string.resume_after_preview, FieldForm.DROPDOWN, R.string.when_watching_a_video_in_preview_mode_resume_at_the_position_when_opening_the_video_code, 7)
+        @FormField(R.string.resume_after_preview, FieldForm.DROPDOWN, R.string.when_watching_a_video_in_preview_mode_resume_at_the_position_when_opening_the_video_code, 8)
         @DropdownFieldOptionsId(R.array.resume_after_preview)
         var resumeAfterPreview: Int = 1;
 
@@ -469,7 +473,7 @@ class Settings : FragmentedStorageFileJson() {
             return false;
         }
 
-        @FormField(R.string.chapter_update_fps_title, FieldForm.DROPDOWN, R.string.chapter_update_fps_description, 8)
+        @FormField(R.string.chapter_update_fps_title, FieldForm.DROPDOWN, R.string.chapter_update_fps_description, 9)
         @DropdownFieldOptionsId(R.array.chapter_fps)
         var chapterUpdateFPS: Int = 0;
 
@@ -484,7 +488,7 @@ class Settings : FragmentedStorageFileJson() {
         }
 
         @AdvancedField
-        @FormField(R.string.live_chat_webview, FieldForm.TOGGLE, R.string.use_the_live_chat_web_window_when_available_over_native_implementation, 9)
+        @FormField(R.string.live_chat_webview, FieldForm.TOGGLE, R.string.use_the_live_chat_web_window_when_available_over_native_implementation, 10)
         var useLiveChatWindow: Boolean = true;
 
         @FormField(R.string.restart_after_audio_focus_loss, FieldForm.DROPDOWN, R.string.restart_playback_when_gaining_audio_focus_after_a_loss, 11)
