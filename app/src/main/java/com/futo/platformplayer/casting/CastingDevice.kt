@@ -116,9 +116,10 @@ abstract class CastingDevice {
 
     val expectedCurrentTime: Double
         get() {
-            val diff = (System.currentTimeMillis() - lastTimeChangeTime_ms).toDouble() / 1000.0
-            return time + diff
-        }
+            val diff = if (isPlaying) ((System.currentTimeMillis() - lastTimeChangeTime_ms).toDouble() / 1000.0) else 0.0;
+            return time + diff;
+        };
+
     var connectionState: CastConnectionState = CastConnectionState.DISCONNECTED
         set(value) {
             val changed = value != field

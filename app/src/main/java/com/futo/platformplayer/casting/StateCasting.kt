@@ -189,10 +189,11 @@ class StateCasting {
                 })
             }
         }
+        startDiscovering()
     }
 
     @Synchronized
-    fun startDiscovering() {
+    private fun startDiscovering() {
         _nsdManager?.apply {
             _discoveryListeners.forEach {
                 discoverServices(it.key, NsdManager.PROTOCOL_DNS_SD, it.value)
@@ -201,7 +202,7 @@ class StateCasting {
     }
 
     @Synchronized
-    fun stopDiscovering() {
+    private fun stopDiscovering() {
         _nsdManager?.apply {
             _discoveryListeners.forEach {
                 try {
@@ -1243,9 +1244,16 @@ class StateCasting {
 
     private fun getLocalUrl(ad: CastingDevice): String {
         var address = ad.localAddress!!
-        if (address.isLinkLocalAddress) {
-            address = findPreferredAddress() ?: address
-            Logger.i(TAG, "Selected casting address: $address")
+        if (Settings.instance.casting.allowLinkLocalIpv4) {
+            if (address.isLinkLocalAddress && address is Inet6Address) {
+                address = findPreferredAddress() ?: address
+                Logger.i(TAG, "Selected casting address: $address")
+            }
+        } else {
+            if (address.isLinkLocalAddress) {
+                address = findPreferredAddress() ?: address
+                Logger.i(TAG, "Selected casting address: $address")
+            }
         }
         return "http://${address.toUrlAddress().trim('/')}:${_castServer.port}"
     }

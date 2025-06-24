@@ -320,7 +320,11 @@ class UIDialogs {
                         closeAction?.invoke()
                     }, UIDialogs.ActionStyle.NONE),
                     UIDialogs.Action(context.getString(R.string.retry), {
-                        retryAction?.invoke();
+                        try {
+                            retryAction?.invoke();
+                        } catch (e: Throwable) {
+                            Logger.e(TAG, "Unhandled exception retrying", e)
+                        }
                     }, UIDialogs.ActionStyle.PRIMARY)
                 );
             else
@@ -334,7 +338,11 @@ class UIDialogs {
                         closeAction?.invoke()
                     }, UIDialogs.ActionStyle.NONE),
                     UIDialogs.Action(context.getString(R.string.retry), {
-                        retryAction?.invoke();
+                        try {
+                            retryAction?.invoke();
+                        } catch (e: Throwable) {
+                            Logger.e(TAG, "Unhandled exception retrying", e)
+                        }
                     }, UIDialogs.ActionStyle.PRIMARY)
                 );
         }
