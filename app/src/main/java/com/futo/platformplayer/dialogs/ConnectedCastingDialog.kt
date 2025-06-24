@@ -13,7 +13,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.futo.platformplayer.R
 import com.futo.platformplayer.activities.MainActivity
-import com.futo.platformplayer.casting.AirPlayCastingDevice
+import com.futo.platformplayer.casting.AirPlay1CastingDevice
+import com.futo.platformplayer.casting.AirPlay2CastingDevice
 import com.futo.platformplayer.casting.CastConnectionState
 import com.futo.platformplayer.casting.CastingDevice
 import com.futo.platformplayer.casting.ChromecastCastingDevice
@@ -175,9 +176,12 @@ class ConnectedCastingDialog(context: Context?) : AlertDialog(context) {
         if (d is ChromecastCastingDevice) {
             _imageDevice.setImageResource(R.drawable.ic_chromecast);
             _textType.text = "Chromecast";
-        } else if (d is AirPlayCastingDevice) {
+        } else if (d is AirPlay1CastingDevice) {
             _imageDevice.setImageResource(R.drawable.ic_airplay);
             _textType.text = "AirPlay";
+        } else if (d is AirPlay2CastingDevice) {
+            _imageDevice.setImageResource(R.drawable.airplay_audio_logo);
+            _textType.text = "AirPlay 2";
         } else if (d is FCastCastingDevice) {
             _imageDevice.setImageResource(R.drawable.ic_fc);
             _textType.text = "FastCast";

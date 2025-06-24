@@ -4,21 +4,20 @@ import android.graphics.drawable.Animatable
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import com.futo.platformplayer.R
-import com.futo.platformplayer.casting.AirPlayCastingDevice
+import com.futo.platformplayer.casting.AirPlay1CastingDevice
 import com.futo.platformplayer.casting.CastConnectionState
 import com.futo.platformplayer.casting.CastingDevice
 import com.futo.platformplayer.casting.ChromecastCastingDevice
 import com.futo.platformplayer.casting.FCastCastingDevice
 import com.futo.platformplayer.casting.StateCasting
 import com.futo.platformplayer.constructs.Event1
-import com.futo.platformplayer.constructs.Event2
 import androidx.core.view.isVisible
 import com.futo.platformplayer.UIDialogs
+import com.futo.platformplayer.casting.AirPlay2CastingDevice
 
 class DeviceViewHolder : ViewHolder {
     private val _layoutDevice: FrameLayout;
@@ -84,9 +83,12 @@ class DeviceViewHolder : ViewHolder {
         if (d is ChromecastCastingDevice) {
             _imageDevice.setImageResource(R.drawable.ic_chromecast);
             _textType.text = "Chromecast";
-        } else if (d is AirPlayCastingDevice) {
+        } else if (d is AirPlay1CastingDevice) {
             _imageDevice.setImageResource(R.drawable.ic_airplay);
             _textType.text = "AirPlay";
+        } else if (d is AirPlay2CastingDevice) {
+            _imageDevice.setImageResource(R.drawable.airplay_audio_logo);
+            _textType.text = "AirPlay 2";
         } else if (d is FCastCastingDevice) {
             _imageDevice.setImageResource(R.drawable.ic_fc);
             _textType.text = "FCast";

@@ -1,5 +1,6 @@
 package com.futo.platformplayer.casting
 
+import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.models.CastingDeviceInfo
 import kotlinx.serialization.KSerializer
@@ -21,7 +22,8 @@ enum class CastConnectionState {
 enum class CastProtocolType {
     CHROMECAST,
     AIRPLAY,
-    FCAST;
+    FCAST,
+    AIRPLAY2;
 
     object CastProtocolTypeSerializer : KSerializer<CastProtocolType> {
         override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("CastProtocolType", PrimitiveKind.STRING)
@@ -40,23 +42,29 @@ enum class CastProtocolType {
     }
 }
 
-abstract class CastingDevice {
-    abstract val protocol: CastProtocolType;
-    abstract val isReady: Boolean;
-    abstract var usedRemoteAddress: InetAddress?;
-    abstract var localAddress: InetAddress?;
-    abstract val canSetVolume: Boolean;
-    abstract val canSetSpeed: Boolean;
+interface IPairingDataHandler {
+    fun savePairingData(deviceId: String, pairingData: ByteArray)
+    fun loadPairingData(deviceId: String): ByteArray?
+    fun clearPairingData(deviceId: String)
+}
 
-    var name: String? = null;
+abstract class CastingDevice {
+    abstract val protocol: CastProtocolType
+    abstract val isReady: Boolean
+    abstract var usedRemoteAddress: InetAddress?
+    abstract var localAddress: InetAddress?
+    abstract val canSetVolume: Boolean
+    abstract val canSetSpeed: Boolean
+
+    var name: String? = null
     var isPlaying: Boolean = false
             set(value) {
-                val changed = value != field;
-                field = value;
+                val changed = value != field
+                field = value
                 if (changed) {
-                    onPlayChanged.emit(value);
+                    onPlayChanged.emit(value)
                 }
-            };
+            }
 
     private var lastTimeChangeTime_ms: Long = 0
     var time: Double = 0.0
@@ -108,41 +116,44 @@ abstract class CastingDevice {
 
     val expectedCurrentTime: Double
         get() {
-            val diff = (System.currentTimeMillis() - lastTimeChangeTime_ms).toDouble() / 1000.0;
-            return time + diff;
-        };
+            val diff = (System.currentTimeMillis() - lastTimeChangeTime_ms).toDouble() / 1000.0
+            return time + diff
+        }
     var connectionState: CastConnectionState = CastConnectionState.DISCONNECTED
         set(value) {
-            val changed = value != field;
-            field = value;
+            val changed = value != field
+            field = value
 
             if (changed) {
-                onConnectionStateChanged.emit(value);
+                onConnectionStateChanged.emit(value)
             }
-        };
+        }
 
-    var onConnectionStateChanged = Event1<CastConnectionState>();
-    var onPlayChanged = Event1<Boolean>();
-    var onTimeChanged = Event1<Double>();
-    var onDurationChanged = Event1<Double>();
-    var onVolumeChanged = Event1<Double>();
-    var onSpeedChanged = Event1<Double>();
+    var onPairingPinRequired = Event0()
+    open fun providePairingPin(pin: String?) { throw NotImplementedError() }
 
-    abstract fun stopCasting();
+    var onConnectionStateChanged = Event1<CastConnectionState>()
+    var onPlayChanged = Event1<Boolean>()
+    var onTimeChanged = Event1<Double>()
+    var onDurationChanged = Event1<Double>()
+    var onVolumeChanged = Event1<Double>()
+    var onSpeedChanged = Event1<Double>()
 
-    abstract fun seekVideo(timeSeconds: Double);
-    abstract fun stopVideo();
-    abstract fun pauseVideo();
-    abstract fun resumeVideo();
-    abstract fun loadVideo(streamType: String, contentType: String, contentId: String, resumePosition: Double, duration: Double, speed: Double?);
-    abstract fun loadContent(contentType: String, content: String, resumePosition: Double, duration: Double, speed: Double?);
+    abstract fun stopCasting()
+
+    abstract fun seekVideo(timeSeconds: Double)
+    abstract fun stopVideo()
+    abstract fun pauseVideo()
+    abstract fun resumeVideo()
+    abstract fun loadVideo(streamType: String, contentType: String, contentId: String, resumePosition: Double, duration: Double, speed: Double?)
+    abstract fun loadContent(contentType: String, content: String, resumePosition: Double, duration: Double, speed: Double?)
     open fun changeVolume(volume: Double) { throw NotImplementedError() }
     open fun changeSpeed(speed: Double) { throw NotImplementedError() }
 
-    abstract fun start();
-    abstract fun stop();
+    abstract fun start()
+    abstract fun stop()
 
-    abstract fun getDeviceInfo(): CastingDeviceInfo;
+    abstract fun getDeviceInfo(): CastingDeviceInfo
 
-    abstract fun getAddresses(): List<InetAddress>;
+    abstract fun getAddresses(): List<InetAddress>
 }

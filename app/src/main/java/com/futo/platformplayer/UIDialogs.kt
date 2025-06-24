@@ -35,6 +35,7 @@ import com.futo.platformplayer.dialogs.ConnectedCastingDialog
 import com.futo.platformplayer.dialogs.ImportDialog
 import com.futo.platformplayer.dialogs.ImportOptionsDialog
 import com.futo.platformplayer.dialogs.MigrateDialog
+import com.futo.platformplayer.dialogs.PairingCodeDialog
 import com.futo.platformplayer.dialogs.PluginUpdateDialog
 import com.futo.platformplayer.dialogs.ProgressDialog
 import com.futo.platformplayer.engine.exceptions.PluginException
@@ -452,6 +453,14 @@ class UIDialogs {
             val dialog = CastingAddDialog(context);
             registerDialogOpened(dialog);
             dialog.setOnDismissListener { registerDialogClosed(dialog) };
+            dialog.show();
+        }
+
+        fun showPairingCodeDialog(context: Context, onSubmit: (code: String) -> Unit, onCancel: () -> Unit) {
+            val dialog = PairingCodeDialog(context, onSubmit);
+            registerDialogOpened(dialog);
+            dialog.setOnDismissListener { registerDialogClosed(dialog) }
+            dialog.setOnCancelListener { onCancel() }
             dialog.show();
         }
 

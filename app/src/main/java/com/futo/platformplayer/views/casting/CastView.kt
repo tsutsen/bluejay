@@ -20,7 +20,7 @@ import com.bumptech.glide.Glide
 import com.futo.platformplayer.R
 import com.futo.platformplayer.api.media.models.chapters.IChapter
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
-import com.futo.platformplayer.casting.AirPlayCastingDevice
+import com.futo.platformplayer.casting.AirPlay1CastingDevice
 import com.futo.platformplayer.casting.StateCasting
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.constructs.Event2
@@ -189,7 +189,7 @@ class CastView : ConstraintLayout {
 
         if(isPlaying) {
             val d = StateCasting.instance.activeDevice;
-            if (d is AirPlayCastingDevice) {
+            if (d is AirPlay1CastingDevice) {
                 _updateTimeJob = _scope.launch {
                     while (true) {
                         val device = StateCasting.instance.activeDevice;

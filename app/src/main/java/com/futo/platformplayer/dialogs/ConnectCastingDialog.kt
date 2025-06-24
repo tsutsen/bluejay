@@ -121,7 +121,7 @@ class ConnectCastingDialog(context: Context?) : AlertDialog(context) {
         }
 
         StateCasting.instance.onDeviceChanged.subscribe(this) { d ->
-            val index = _unifiedDevices.indexOfFirst { it.castingDevice.name == d.name }
+            val index = _unifiedDevices.indexOfFirst { it.castingDevice.name == d.name && it.castingDevice.protocol == d.protocol }
             if (index != -1) {
                 _unifiedDevices[index] = DeviceAdapterEntry(d, _unifiedDevices[index].isPinnedDevice, _unifiedDevices[index].isOnlineDevice)
                 _adapter.notifyItemChanged(index)
@@ -163,20 +163,14 @@ class ConnectCastingDialog(context: Context?) : AlertDialog(context) {
             override fun getOldListSize() = oldList.size
             override fun getNewListSize() = newList.size
             override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                val oldItem = oldList[oldItemPosition]
-                val newItem = newList[newItemPosition]
-                return oldItem.castingDevice.name == newItem.castingDevice.name
-                        && oldItem.castingDevice.isReady == newItem.castingDevice.isReady
-                        && oldItem.isOnlineDevice == newItem.isOnlineDevice
-                        && oldItem.isPinnedDevice == newItem.isPinnedDevice
+                return oldList[oldItemPosition].castingDevice.name == newList[newItemPosition].castingDevice.name && oldList[oldItemPosition].castingDevice.protocol == newList[newItemPosition].castingDevice.protocol
             }
+
             override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
                 val oldItem = oldList[oldItemPosition]
                 val newItem = newList[newItemPosition]
-                return oldItem.castingDevice.name == newItem.castingDevice.name
-                        && oldItem.castingDevice.isReady == newItem.castingDevice.isReady
-                        && oldItem.isOnlineDevice == newItem.isOnlineDevice
-                        && oldItem.isPinnedDevice == newItem.isPinnedDevice
+
+                return oldItem == newItem
             }
         })
 

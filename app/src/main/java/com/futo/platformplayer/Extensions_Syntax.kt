@@ -70,3 +70,15 @@ fun Long?.msToOffsetDateTimeUTC(): OffsetDateTime {
         return OffsetDateTime.MAX;
     return OffsetDateTime.ofInstant(Instant.ofEpochMilli(this), ZoneOffset.UTC)
 }
+
+/**
+ * Strips a leading zero byte if BigInteger.toByteArray() included it just to indicate a positive sign.
+ * Mirrors C's expectation that BN_bn2bin yields exactly the “minimal” big‐endian representation.
+ */
+fun ByteArray.stripLeadingZero(): ByteArray {
+    return if (this.size > 1 && this[0] == 0.toByte()) {
+        this.copyOfRange(1, this.size)
+    } else {
+        this
+    }
+}

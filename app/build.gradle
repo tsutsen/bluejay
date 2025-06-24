@@ -173,6 +173,7 @@ dependencies {
 
     //HTTP
     implementation "com.squareup.okhttp3:okhttp:4.11.0"
+    implementation "com.squareup.okhttp3:okhttp-urlconnection:4.11.0"
 
     //JSON
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2" //Used for structured json
@@ -204,6 +205,7 @@ dependencies {
     implementation 'com.google.zxing:core:3.4.1'
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation 'com.caverock:androidsvg-aar:1.4'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
 
     //Protobuf
     implementation 'com.google.protobuf:protobuf-javalite:3.25.1'
@@ -220,7 +222,9 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
 
     //Payment
-    implementation 'com.stripe:stripe-android:20.35.1'
+    implementation('com.stripe:stripe-android:20.35.1') {
+        exclude group: 'org.bouncycastle', module: 'bcprov-jdk15to18'
+    }
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'

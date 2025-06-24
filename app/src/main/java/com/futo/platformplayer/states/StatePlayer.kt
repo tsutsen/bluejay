@@ -17,8 +17,12 @@ import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideo
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.logging.Logger
+import com.futo.platformplayer.models.HistoryVideo
+import com.futo.platformplayer.models.ImportCache
 import com.futo.platformplayer.models.Playlist
 import com.futo.platformplayer.services.MediaPlaybackService
+import com.futo.platformplayer.stores.FragmentedStorage
+import com.futo.platformplayer.stores.v2.ReconstructStore
 import com.futo.platformplayer.video.PlayerManager
 import kotlin.random.Random
 
@@ -112,6 +116,8 @@ class StatePlayer {
 
     var currentVideo: IPlatformVideoDetails? = null
         private set;
+
+    private val _lastQueue = FragmentedStorage.storeJson<SerializedPlatformVideo>("lastQueue").load();
 
     fun setCurrentlyPlaying(video: IPlatformVideoDetails?) {
         currentVideo = video;
