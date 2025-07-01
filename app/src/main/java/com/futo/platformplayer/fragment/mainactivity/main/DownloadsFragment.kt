@@ -14,10 +14,14 @@ import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.futo.platformplayer.R
+import com.futo.platformplayer.Settings
+import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.downloads.VideoDownload
 import com.futo.platformplayer.downloads.VideoLocal
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.Playlist
+import com.futo.platformplayer.services.DownloadService
+import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StateDownloads
 import com.futo.platformplayer.states.StatePlayer
 import com.futo.platformplayer.states.StatePlaylists
@@ -53,6 +57,15 @@ class DownloadsFragment : MainFragment() {
     override fun onResume() {
         super.onResume()
         _view?.reloadUI();
+
+        if(StateDownloads.instance.getDownloading().any { it.state == VideoDownload.State.QUEUED } &&
+            !StateDownloads.instance.getDownloading().any { it.state == VideoDownload.State.DOWNLOADING } &&
+            Settings.instance.downloads.shouldDownload()) {
+            Logger.w(TAG, "Detected queued download, while not downloading, attempt recreating service");
+            StateApp.withContext {
+                DownloadService.getOrCreateService(it);
+            }
+        }
 
         StateDownloads.instance.onDownloadsChanged.subscribe(this) {
             lifecycleScope.launch(Dispatchers.Main) {
@@ -137,7 +150,7 @@ class DownloadsFragment : MainFragment() {
             spinnerSortBy.adapter = ArrayAdapter(context, R.layout.spinner_item_simple, resources.getStringArray(R.array.downloads_sortby_array)).also {
                 it.setDropDownViewResource(R.layout.spinner_dropdownitem_simple);
             };
-            val options = listOf("nameAsc", "nameDesc", "downloadDateAsc", "downloadDateDesc", "releasedAsc", "releasedDesc");
+            val options = listOf("nameAsc", "nameDesc", "downloadDateAsc", "downloadDateDesc", "releasedAsc", "releasedDesc", "sizeAsc", "sizeDesc");
             spinnerSortBy.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
                     when(pos) {
@@ -147,6 +160,8 @@ class DownloadsFragment : MainFragment() {
                         3 -> ordering.setAndSave("downloadDateDesc")
                         4 -> ordering.setAndSave("releasedAsc")
                         5 -> ordering.setAndSave("releasedDesc")
+                        6 -> ordering.setAndSave("sizeAsc")
+                        7 -> ordering.setAndSave("sizeDesc")
                         else -> ordering.setAndSave("")
                     }
                     updateContentFilters()
@@ -244,6 +259,8 @@ class DownloadsFragment : MainFragment() {
                     "nameDesc" -> vidsToReturn.sortedByDescending { it.name.lowercase() }
                     "releasedAsc" -> vidsToReturn.sortedBy { it.datetime ?: OffsetDateTime.MAX }
                     "releasedDesc" -> vidsToReturn.sortedByDescending { it.datetime ?: OffsetDateTime.MIN }
+                    "sizeAsc" -> vidsToReturn.sortedBy { it.videoSource.sumOf { it.fileSize } + it.audioSource.sumOf { it.fileSize } }
+                    "sizeDesc" -> vidsToReturn.sortedByDescending { it.videoSource.sumOf { it.fileSize } + it.audioSource.sumOf { it.fileSize } }
                     else -> vidsToReturn
                 }
             }

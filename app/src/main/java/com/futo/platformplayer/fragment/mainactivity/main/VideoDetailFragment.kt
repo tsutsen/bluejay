@@ -101,7 +101,7 @@ class VideoDetailFragment() : MainFragment() {
     }
 
     private fun isSmallWindow(): Boolean {
-        return resources.configuration.smallestScreenWidthDp < resources.getInteger(R.integer.column_width_dp) * 2
+        return resources.configuration.smallestScreenWidthDp < resources.getInteger(R.integer.smallest_width_dp)
     }
 
     private fun isAutoRotateEnabled(): Boolean {
@@ -455,6 +455,10 @@ class VideoDetailFragment() : MainFragment() {
                 activity?.enterPictureInPictureMode(params);
             }
         }
+
+        if (isFullscreen) {
+            viewDetail?.restoreBrightness()
+        }
     }
 
     fun forcePictureInPicture() {
@@ -463,10 +467,14 @@ class VideoDetailFragment() : MainFragment() {
             activity?.enterPictureInPictureMode(params);
     }
     fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, isStop: Boolean, newConfig: Configuration) {
-        if (isInPictureInPictureMode) {
-            _viewDetail?.startPictureInPicture();
-        } else if (isInPictureInPicture) {
-            leavePictureInPictureMode(isStop);
+        try {
+            if (isInPictureInPictureMode) {
+                _viewDetail?.startPictureInPicture();
+            } else if (isInPictureInPicture) {
+                leavePictureInPictureMode(isStop);
+            }
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Failed to handle onPictureInPictureModeChanged", e)
         }
     }
     fun leavePictureInPictureMode(isStop: Boolean) {
@@ -486,6 +494,10 @@ class VideoDetailFragment() : MainFragment() {
         Logger.v(TAG, "onResume");
         _isActive = true;
         _leavingPiP = false;
+
+        if (isFullscreen) {
+            _viewDetail?.saveBrightness()
+        }
 
         _viewDetail?.let {
             Logger.v(TAG, "onResume preventPictureInPicture=false");
@@ -615,11 +627,6 @@ class VideoDetailFragment() : MainFragment() {
             showSystemUI()
         }
 
-        // temporarily force the device to portrait if auto-rotate is disabled to prevent landscape when exiting full screen on a small device
-//        @SuppressLint("SourceLockedOrientationActivity")
-//        if (!isFullscreen && isSmallWindow() && !isAutoRotateEnabled() && !isMinimizingFromFullScreen) {
-//            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-//        }
         updateOrientation();
         _view?.allowMotion = !fullscreen;
     }

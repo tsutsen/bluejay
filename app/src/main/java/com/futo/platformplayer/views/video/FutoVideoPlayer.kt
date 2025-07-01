@@ -117,6 +117,9 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
 
     private var _isControlsLocked: Boolean = false;
 
+    private var _speedHoldPrevRate = 1f
+    private var _speedHoldWasPlaying = false
+
     private val _time_bar_listener: TimeBar.OnScrubListener;
 
     var isFitMode : Boolean = false
@@ -254,6 +257,20 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         gestureControl = findViewById(R.id.gesture_control);
 
         gestureControl.setupTouchArea(_layoutControls, background);
+        gestureControl.onSpeedHoldStart.subscribe {
+            exoPlayer?.player?.let { player ->
+                _speedHoldWasPlaying = player.isPlaying
+                _speedHoldPrevRate = getPlaybackRate()
+                setPlaybackRate(Settings.instance.playback.getHoldPlaybackSpeed().toFloat())
+                player.play()
+            }
+        }
+        gestureControl.onSpeedHoldEnd.subscribe {
+            exoPlayer?.player?.let { player ->
+                if (!_speedHoldWasPlaying) player.pause()
+                setPlaybackRate(_speedHoldPrevRate)
+            }
+        }
         gestureControl.onSeek.subscribe { seekFromCurrent(it); };
         gestureControl.onSoundAdjusted.subscribe {
             if (Settings.instance.gestureControls.useSystemVolume) {
@@ -531,6 +548,8 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
     fun setLoopVisible(visible: Boolean) {
         _control_loop.visibility = if (visible) View.VISIBLE else View.GONE;
         _control_loop_fullscreen.visibility = if (visible) View.VISIBLE else View.GONE;
+        if (StatePlayer.instance.loopVideo && !visible)
+            StatePlayer.instance.loopVideo = false
     }
 
     fun stopAllGestures() {
