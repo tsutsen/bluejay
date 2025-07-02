@@ -48,6 +48,17 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- BEGIN BLURB -->
+            <TextView
+                android:id="@+id/text_moderation_blurb"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="A lower slider value hides more content. Posts or comments with a tag level ABOVE your selected value will be hidden. (Level 0 = most strict, Level 3 = allow everything)"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="14sp" />
+            <!-- END BLURB -->
+
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
