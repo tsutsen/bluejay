@@ -161,8 +161,8 @@ class CommentsList : ConstraintLayout {
                 return@showConfirmationDialog
             }
 
-            val index = _comments.indexOf(comment)
-            if (index != -1) {
+            val index = _comments.indexOfFirst { it == comment || (it is LazyComment && it.getUnderlyingComment() == comment) }
+            if (index >= 0) {
                 _comments.removeAt(index)
                 _adapterComments.notifyItemRemoved(_adapterComments.childToParentPosition(index))
 

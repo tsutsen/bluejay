@@ -21,6 +21,7 @@ import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.activities.PolycentricHomeActivity
 import com.futo.platformplayer.api.media.models.comments.IPlatformComment
 import com.futo.platformplayer.api.media.models.comments.PolycentricPlatformComment
+import com.futo.platformplayer.api.media.models.comments.LazyComment
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.constructs.TaskHandler
 import com.futo.platformplayer.logging.Logger
@@ -170,8 +171,8 @@ class CommentsFragment : MainFragment() {
                     return@showConfirmationDialog
                 }
 
-                val index = _comments.indexOf(comment)
-                if (index != -1) {
+                val index = _comments.indexOfFirst { it == comment || (it is LazyComment && it.getUnderlyingComment() == comment) }
+                if (index >= 0) {
                     _comments.removeAt(index)
                     _adapterComments.notifyItemRemoved(_adapterComments.childToParentPosition(index))
 
