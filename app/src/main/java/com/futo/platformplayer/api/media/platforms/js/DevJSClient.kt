@@ -54,8 +54,12 @@ class DevJSClient : JSClient {
         return DevJSClient(context, config, _devScript, _auth, _captcha, devID, descriptor.settings);
     }
 
-    override fun getCopy(privateCopy: Boolean): JSClient {
-        return DevJSClient(_context, descriptor, _script, if(!privateCopy) _auth else null, _captcha, saveState(), devID);
+    override fun getCopy(privateCopy: Boolean, noSaveState: Boolean): JSClient {
+        val client = DevJSClient(_context, descriptor, _script, if(!privateCopy) _auth else null, _captcha, if (noSaveState) null else saveState(), devID);
+        client.setReloadData(getReloadData(true));
+        if (noSaveState)
+            client.initialize()
+        return client
     }
 
     override fun initialize() {

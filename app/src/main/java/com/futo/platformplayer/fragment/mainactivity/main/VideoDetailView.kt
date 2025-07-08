@@ -2,6 +2,9 @@ package com.futo.platformplayer.fragment.mainactivity.main
 
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -46,6 +49,7 @@ import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.UISlideOverlays
+import com.futo.platformplayer.activities.MainActivity
 import com.futo.platformplayer.api.media.IPluginSourced
 import com.futo.platformplayer.api.media.LiveChatManager
 import com.futo.platformplayer.api.media.PlatformID
@@ -76,7 +80,9 @@ import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideo
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
+import com.futo.platformplayer.api.media.platforms.js.models.JSVideo
 import com.futo.platformplayer.api.media.platforms.js.models.JSVideoDetails
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSSource
 import com.futo.platformplayer.api.media.structures.IPager
 import com.futo.platformplayer.casting.CastConnectionState
 import com.futo.platformplayer.casting.StateCasting
@@ -90,6 +96,7 @@ import com.futo.platformplayer.engine.exceptions.ScriptAgeException
 import com.futo.platformplayer.engine.exceptions.ScriptException
 import com.futo.platformplayer.engine.exceptions.ScriptImplementationException
 import com.futo.platformplayer.engine.exceptions.ScriptLoginRequiredException
+import com.futo.platformplayer.engine.exceptions.ScriptReloadRequiredException
 import com.futo.platformplayer.engine.exceptions.ScriptUnavailableException
 import com.futo.platformplayer.exceptions.UnsupportedCastException
 import com.futo.platformplayer.fixHtmlLinks
@@ -148,7 +155,6 @@ import com.futo.platformplayer.views.pills.PillRatingLikesDislikes
 import com.futo.platformplayer.views.pills.RoundButton
 import com.futo.platformplayer.views.pills.RoundButtonGroup
 import com.futo.platformplayer.views.platform.PlatformIndicator
-import com.futo.platformplayer.views.segments.ChaptersList
 import com.futo.platformplayer.views.segments.CommentsList
 import com.futo.platformplayer.views.subscriptions.SubscribeButton
 import com.futo.platformplayer.views.video.FutoVideoPlayer
@@ -172,6 +178,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import userpackage.Protocol
 import java.time.OffsetDateTime
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -408,6 +415,14 @@ class VideoDetailView : ConstraintLayout {
             showChaptersUI();
         };
 
+        _title.setOnLongClickListener {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager;
+            val clip = ClipData.newPlainText("Video Title", (it as TextView).text);
+            clipboard.setPrimaryClip(clip);
+            UIDialogs.toast(context, "Copied", false)
+            // let other interactions happen based on the touch
+            false
+        }
 
         _buttonSubscribe.onSubscribed.subscribe {
             _slideUpOverlay = UISlideOverlays.showSubscriptionOptionsOverlay(it, _overlayContainer);
@@ -571,7 +586,7 @@ class VideoDetailView : ConstraintLayout {
             _player.setIsReplay(true);
 
             val searchVideo = StatePlayer.instance.getCurrentQueueItem();
-            if (searchVideo is SerializedPlatformVideo?) {
+            if (searchVideo is SerializedPlatformVideo? && Settings.instance.playback.deleteFromWatchLaterAuto) {
                 searchVideo?.let { StatePlaylists.instance.removeFromWatchLater(it) };
             }
 
@@ -597,6 +612,10 @@ class VideoDetailView : ConstraintLayout {
             }
         }
 
+        _player.onReloadRequired.subscribe {
+            fetchVideo();
+        }
+
         _player.onPlayChanged.subscribe {
             if (StateCasting.instance.activeDevice == null) {
                 handlePlayChanged(it);
@@ -619,6 +638,7 @@ class VideoDetailView : ConstraintLayout {
                         loadCurrentVideo(lastPositionMilliseconds);
                         updatePillButtonVisibilities();
                         setCastEnabled(false);
+
                     }
                     else -> {}
                 }
@@ -647,6 +667,15 @@ class VideoDetailView : ConstraintLayout {
                     _timeBar.setDuration(video?.duration ?: 0);
                 }
             };
+
+            _cast.onTimeJobTimeChanged_s.subscribe {
+                if (_isCasting) {
+                    setLastPositionMilliseconds((it * 1000.0).toLong(), true);
+                    _timeBar.setPosition(it);
+                    _timeBar.setBufferedPosition(0);
+                    _timeBar.setDuration(video?.duration ?: 0);
+                }
+            }
         }
 
         _playerProgress.player = _player.exoPlayer?.player;
@@ -687,6 +716,20 @@ class VideoDetailView : ConstraintLayout {
         MediaControlReceiver.onCloseReceived.subscribe(this) {
             Logger.i(TAG, "MediaControlReceiver.onCloseReceived")
             onClose.emit()
+        };
+        MediaControlReceiver.onBackgroundReceived.subscribe(this) {
+            Logger.i(TAG, "MediaControlReceiver.onBackgroundReceived")
+            _player.switchToAudioMode();
+            allowBackground = true;
+            StateApp.instance.contextOrNull?.let {
+                try {
+                    if (it is MainActivity) {
+                        it.moveTaskToBack(true)
+                    }
+                } catch (e: Throwable) {
+                    Logger.i(TAG, "Failed to move task to back", e)
+                }
+            }
         };
         MediaControlReceiver.onSeekToReceived.subscribe(this) { handleSeek(it); };
 
@@ -766,7 +809,10 @@ class VideoDetailView : ConstraintLayout {
             _lastVideoSource = null;
             _lastAudioSource = null;
             _lastSubtitleSource = null;
+            _cast.cancel()
+            StateCasting.instance.cancel()
             video = null;
+            _container_content_liveChat?.close();
             _player.clear();
             cleanupPlaybackTracker();
             Logger.i(TAG, "Keep screen on unset onClose")
@@ -1090,7 +1136,7 @@ class VideoDetailView : ConstraintLayout {
             when (Settings.instance.playback.backgroundPlay) {
                 0 -> handlePause();
                 1 -> {
-                    if(!(video?.isLive ?: false) && Settings.instance.playback.backgroundSwitchToAudio)
+                    if(!(video?.isLive ?: false))
                         _player.switchToAudioMode();
                     StatePlayer.instance.startOrUpdateMediaSession(context, video);
                 }
@@ -1141,6 +1187,7 @@ class VideoDetailView : ConstraintLayout {
         MediaControlReceiver.onNextReceived.remove(this);
         MediaControlReceiver.onPreviousReceived.remove(this);
         MediaControlReceiver.onCloseReceived.remove(this);
+        MediaControlReceiver.onBackgroundReceived.remove(this);
         MediaControlReceiver.onSeekToReceived.remove(this);
 
         val job = _jobHideResume;
@@ -1373,8 +1420,8 @@ class VideoDetailView : ConstraintLayout {
             onVideoChanged.emit(0, 0)
         }
 
+        val me = this;
         if (video is JSVideoDetails) {
-            val me = this;
             fragment.lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     //TODO: Implement video.getContentChapters()
@@ -1430,6 +1477,32 @@ class VideoDetailView : ConstraintLayout {
                     updateMoreButtons();
                 }
             };
+        }
+        else {
+            fragment.lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    if (!StateApp.instance.privateMode) {
+                        val stopwatch = com.futo.platformplayer.debug.Stopwatch()
+                        var tracker = video.getPlaybackTracker()
+                        Logger.i(TAG, "video.getPlaybackTracker took ${stopwatch.elapsedMs}ms")
+
+                        if (tracker == null) {
+                            stopwatch.reset()
+                            tracker = StatePlatform.instance.getPlaybackTracker(video.url);
+                            Logger.i(
+                                TAG,
+                                "StatePlatform.instance.getPlaybackTracker took ${stopwatch.elapsedMs}ms"
+                            )
+                        }
+
+                        if (me.video?.url == video.url && !video.url.isNullOrBlank())
+                            me._playbackTracker = tracker;
+                    } else if (me.video == video)
+                        me._playbackTracker = null;
+                } catch (ex: Throwable) {
+                    Logger.e(TAG, "Playback tracker failed", ex);
+                }
+            }
         }
 
         val ref = Models.referenceFromBuffer(video.url.toByteArray())
@@ -1510,60 +1583,68 @@ class VideoDetailView : ConstraintLayout {
 
         _rating.visibility = View.GONE;
 
-        fragment.lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val queryReferencesResponse = ApiMethods.getQueryReferences(
-                    ApiMethods.SERVER, ref, null, null,
-                    arrayListOf(
-                        Protocol.QueryReferencesRequestCountLWWElementReferences.newBuilder()
-                            .setFromType(ContentType.OPINION.value).setValue(
-                            ByteString.copyFrom(Opinion.like.data)
-                        ).build(),
-                        Protocol.QueryReferencesRequestCountLWWElementReferences.newBuilder()
-                            .setFromType(ContentType.OPINION.value).setValue(
-                            ByteString.copyFrom(Opinion.dislike.data)
-                        ).build()
-                    ),
-                    extraByteReferences = listOfNotNull(extraBytesRef)
-                );
+        if (StatePolycentric.instance.enabled) {
+            fragment.lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val queryReferencesResponse = ApiMethods.getQueryReferences(
+                        ApiMethods.SERVER, ref, null, null,
+                        arrayListOf(
+                            Protocol.QueryReferencesRequestCountLWWElementReferences.newBuilder()
+                                .setFromType(ContentType.OPINION.value).setValue(
+                                    ByteString.copyFrom(Opinion.like.data)
+                                ).build(),
+                            Protocol.QueryReferencesRequestCountLWWElementReferences.newBuilder()
+                                .setFromType(ContentType.OPINION.value).setValue(
+                                    ByteString.copyFrom(Opinion.dislike.data)
+                                ).build()
+                        ),
+                        extraByteReferences = listOfNotNull(extraBytesRef)
+                    );
 
-                val likes = queryReferencesResponse.countsList[0];
-                val dislikes = queryReferencesResponse.countsList[1];
-                val hasLiked = StatePolycentric.instance.hasLiked(ref.toByteArray())/* || extraBytesRef?.let { StatePolycentric.instance.hasLiked(it) } ?: false*/;
-                val hasDisliked = StatePolycentric.instance.hasDisliked(ref.toByteArray())/* || extraBytesRef?.let { StatePolycentric.instance.hasDisliked(it) } ?: false*/;
+                    val likes = queryReferencesResponse.countsList[0];
+                    val dislikes = queryReferencesResponse.countsList[1];
+                    val hasLiked =
+                        StatePolycentric.instance.hasLiked(ref.toByteArray())/* || extraBytesRef?.let { StatePolycentric.instance.hasLiked(it) } ?: false*/;
+                    val hasDisliked =
+                        StatePolycentric.instance.hasDisliked(ref.toByteArray())/* || extraBytesRef?.let { StatePolycentric.instance.hasDisliked(it) } ?: false*/;
 
-                withContext(Dispatchers.Main) {
-                    _rating.visibility = View.VISIBLE;
-                    _rating.setRating(RatingLikeDislikes(likes, dislikes), hasLiked, hasDisliked);
-                    _rating.onLikeDislikeUpdated.subscribe(this) { args ->
-                        if (args.hasLiked) {
-                            args.processHandle.opinion(ref, Opinion.like);
-                        } else if (args.hasDisliked) {
-                            args.processHandle.opinion(ref, Opinion.dislike);
-                        } else {
-                            args.processHandle.opinion(ref, Opinion.neutral);
-                        }
-
-                        fragment.lifecycleScope.launch(Dispatchers.IO) {
-                            try {
-                                Logger.i(TAG, "Started backfill");
-                                args.processHandle.fullyBackfillServersAnnounceExceptions();
-                                Logger.i(TAG, "Finished backfill");
-                            } catch (e: Throwable) {
-                                Logger.e(TAG, "Failed to backfill servers", e)
+                    withContext(Dispatchers.Main) {
+                        _rating.visibility = View.VISIBLE;
+                        _rating.setRating(
+                            RatingLikeDislikes(likes, dislikes),
+                            hasLiked,
+                            hasDisliked
+                        );
+                        _rating.onLikeDislikeUpdated.subscribe(this) { args ->
+                            if (args.hasLiked) {
+                                args.processHandle.opinion(ref, Opinion.like);
+                            } else if (args.hasDisliked) {
+                                args.processHandle.opinion(ref, Opinion.dislike);
+                            } else {
+                                args.processHandle.opinion(ref, Opinion.neutral);
                             }
-                        }
 
-                        StatePolycentric.instance.updateLikeMap(
-                            ref,
-                            args.hasLiked,
-                            args.hasDisliked
-                        )
-                    };
+                            fragment.lifecycleScope.launch(Dispatchers.IO) {
+                                try {
+                                    Logger.i(TAG, "Started backfill");
+                                    args.processHandle.fullyBackfillServersAnnounceExceptions();
+                                    Logger.i(TAG, "Finished backfill");
+                                } catch (e: Throwable) {
+                                    Logger.e(TAG, "Failed to backfill servers", e)
+                                }
+                            }
+
+                            StatePolycentric.instance.updateLikeMap(
+                                ref,
+                                args.hasLiked,
+                                args.hasDisliked
+                            )
+                        };
+                    }
+                } catch (e: Throwable) {
+                    Logger.e(TAG, "Failed to get polycentric likes/dislikes.", e);
+                    _rating.visibility = View.GONE;
                 }
-            } catch (e: Throwable) {
-                Logger.e(TAG, "Failed to get polycentric likes/dislikes.", e);
-                _rating.visibility = View.GONE;
             }
         }
 
@@ -1822,11 +1903,46 @@ class VideoDetailView : ConstraintLayout {
     }
     private fun loadCurrentVideoCast(video: IPlatformVideoDetails, videoSource: IVideoSource?, audioSource: IAudioSource?, subtitleSource: ISubtitleSource?, resumePositionMs: Long, speed: Double?) {
         Logger.i(TAG, "loadCurrentVideoCast(video=$video, videoSource=$videoSource, audioSource=$audioSource, resumePositionMs=$resumePositionMs)")
+        castIfAvailable(context.contentResolver, video, videoSource, audioSource, subtitleSource, resumePositionMs, speed)
+    }
 
-        if(StateCasting.instance.castIfAvailable(context.contentResolver, video, videoSource, audioSource, subtitleSource, resumePositionMs, speed)) {
-            _cast.setVideoDetails(video, resumePositionMs / 1000);
-            setCastEnabled(true);
-        } else throw IllegalStateException("Disconnected cast during loading");
+    private fun castIfAvailable(contentResolver: ContentResolver, video: IPlatformVideoDetails, videoSource: IVideoSource?, audioSource: IAudioSource?, subtitleSource: ISubtitleSource?, resumePositionMs: Long, speed: Double?) {
+        fragment.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val plugin = if (videoSource is JSSource) videoSource.getUnderlyingPlugin()
+                    else if (audioSource is JSSource) audioSource.getUnderlyingPlugin()
+                    else null
+
+                val startId = plugin?.getUnderlyingPlugin()?.runtimeId
+                try {
+                    val castingSucceeded = StateCasting.instance.castIfAvailable(contentResolver, video, videoSource, audioSource, subtitleSource, resumePositionMs, speed, onLoading = {
+                        _cast.setLoading(it)
+                    }, onLoadingEstimate = {
+                        _cast.setLoading(it)
+                    })
+
+                    if (castingSucceeded) {
+                        withContext(Dispatchers.Main) {
+                            _cast.setVideoDetails(video, resumePositionMs / 1000);
+                            setCastEnabled(true);
+                        }
+                    }
+                } catch (e: ScriptReloadRequiredException) {
+                    Log.i(TAG, "Reload required exception", e)
+                    if (plugin == null)
+                        throw e
+
+                    if (startId != -1 && plugin.getUnderlyingPlugin().runtimeId != startId)
+                        throw e
+
+                    StatePlatform.instance.handleReloadRequired(e, {
+                        fetchVideo()
+                    });
+                }
+            } catch (e: Throwable) {
+                Logger.e(TAG, "loadCurrentVideoCast", e)
+            }
+        }
     }
 
     //Events
@@ -1863,8 +1979,8 @@ class VideoDetailView : ConstraintLayout {
             }
 
             updateQualityFormatsOverlay(
-                videoTrackFormats.distinctBy { it.height }.sortedBy { it.height },
-                audioTrackFormats.distinctBy { it.bitrate }.sortedBy { it.bitrate });
+                videoTrackFormats.distinctBy { it.height }.sortedByDescending { it.height },
+                audioTrackFormats.distinctBy { it.bitrate }.sortedByDescending { it.bitrate });
         }
     }
 
@@ -2115,23 +2231,40 @@ class VideoDetailView : ConstraintLayout {
 
         val canSetSpeed = !_isCasting || StateCasting.instance.activeDevice?.canSetSpeed == true
         val currentPlaybackRate = if (_isCasting) StateCasting.instance.activeDevice?.speed else _player.getPlaybackRate()
+        val qualityPlaybackSpeedTitle = if (canSetSpeed) SlideUpMenuTitle(this.context).apply { setTitle(context.getString(R.string.playback_rate) + " (${String.format("%.2f", currentPlaybackRate)})"); } else null;
         _overlay_quality_selector = SlideUpMenuOverlay(this.context, _overlay_quality_container, context.getString(
                     R.string.quality), null, true,
-            if (canSetSpeed) SlideUpMenuTitle(this.context).apply { setTitle(context.getString(R.string.playback_rate)) } else null,
+            qualityPlaybackSpeedTitle,
             if (canSetSpeed) SlideUpMenuButtonList(this.context, null, "playback_rate").apply {
-                setButtons(listOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.25"), currentPlaybackRate!!.toString());
+                val playbackSpeeds = Settings.instance.playback.getPlaybackSpeeds();
+                val format = if(playbackSpeeds.size < 20) "%.2f" else "%.1f";
+                val playbackLabels = playbackSpeeds.map { String.format(Locale.US, format, it) }.toMutableList();
+                playbackLabels.add("+");
+                playbackLabels.add(0, "-");
+
+                setButtons(playbackLabels, String.format(Locale.US, format, currentPlaybackRate));
                 onClick.subscribe { v ->
+                    val currentPlaybackSpeed = if (_isCasting) StateCasting.instance.activeDevice?.speed else _player.getPlaybackRate();
+                    var playbackSpeedString = v;
+                    val stepSpeed = Settings.instance.playback.getPlaybackSpeedStep();
+                    if(v == "+")
+                        playbackSpeedString = String.format(Locale.US, "%.2f", Math.min((currentPlaybackSpeed?.toDouble() ?: 1.0) + stepSpeed, 5.0)).toString();
+                    else if(v == "-")
+                        playbackSpeedString = String.format(Locale.US, "%.2f", Math.max(0.1, (currentPlaybackSpeed?.toDouble() ?: 1.0) - stepSpeed)).toString();
+                    val newPlaybackSpeed = playbackSpeedString.toDouble();
                     if (_isCasting) {
                         val ad = StateCasting.instance.activeDevice ?: return@subscribe
                         if (!ad.canSetSpeed) {
                             return@subscribe
                         }
 
-                        ad.changeSpeed(v.toDouble())
-                        setSelected(v);
+                        qualityPlaybackSpeedTitle?.setTitle(context.getString(R.string.playback_rate) + " (${String.format(Locale.US, "%.2f", newPlaybackSpeed)})");
+                        ad.changeSpeed(newPlaybackSpeed)
+                        setSelected(playbackSpeedString);
                     } else {
-                        _player.setPlaybackRate(v.toFloat());
-                        setSelected(v);
+                        qualityPlaybackSpeedTitle?.setTitle(context.getString(R.string.playback_rate) + " (${String.format(Locale.US, "%.2f", newPlaybackSpeed)})");
+                        _player.setPlaybackRate(playbackSpeedString.toFloat());
+                        setSelected(playbackSpeedString);
                     }
                 };
             } else null,
@@ -2322,7 +2455,7 @@ class VideoDetailView : ConstraintLayout {
 
         val d = StateCasting.instance.activeDevice;
         if (d != null && d.connectionState == CastConnectionState.CONNECTED)
-            StateCasting.instance.castIfAvailable(context.contentResolver, video, videoSource, _lastAudioSource, _lastSubtitleSource, (d.expectedCurrentTime * 1000.0).toLong(), d.speed);
+            castIfAvailable(context.contentResolver, video, videoSource, _lastAudioSource, _lastSubtitleSource, (d.expectedCurrentTime * 1000.0).toLong(), d.speed);
         else if(!_player.swapSources(videoSource, _lastAudioSource, true, true, true))
             _player.hideControls(false); //TODO: Disable player?
 
@@ -2337,7 +2470,7 @@ class VideoDetailView : ConstraintLayout {
 
         val d = StateCasting.instance.activeDevice;
         if (d != null && d.connectionState == CastConnectionState.CONNECTED)
-            StateCasting.instance.castIfAvailable(context.contentResolver, video, _lastVideoSource, audioSource, _lastSubtitleSource, (d.expectedCurrentTime * 1000.0).toLong(), d.speed);
+            castIfAvailable(context.contentResolver, video, _lastVideoSource, audioSource, _lastSubtitleSource, (d.expectedCurrentTime * 1000.0).toLong(), d.speed)
         else(!_player.swapSources(_lastVideoSource, audioSource, true, true, true))
         _player.hideControls(false); //TODO: Disable player?
 
@@ -2353,7 +2486,7 @@ class VideoDetailView : ConstraintLayout {
 
         val d = StateCasting.instance.activeDevice;
         if (d != null && d.connectionState == CastConnectionState.CONNECTED)
-            StateCasting.instance.castIfAvailable(context.contentResolver, video, _lastVideoSource, _lastAudioSource, toSet, (d.expectedCurrentTime * 1000.0).toLong(), d.speed);
+            castIfAvailable(context.contentResolver, video, _lastVideoSource, _lastAudioSource, toSet, (d.expectedCurrentTime * 1000.0).toLong(), d.speed);
         else
             _player.swapSubtitles(fragment.lifecycleScope, toSet);
 
@@ -2404,7 +2537,9 @@ class VideoDetailView : ConstraintLayout {
 
         val url = _url;
         if (!url.isNullOrBlank()) {
-            setLoading(true);
+            fragment.lifecycleScope.launch(Dispatchers.Main) {
+                setLoading(true);
+            }
             _taskLoadVideo.run(url);
         }
     }
@@ -2413,6 +2548,7 @@ class VideoDetailView : ConstraintLayout {
         Logger.i(TAG, "handleFullScreen(fullscreen=$fullscreen)")
 
         if(fullscreen) {
+            _container_content.visibility = GONE
             _layoutPlayerContainer.setPadding(0, 0, 0, 0);
 
             val lp = _container_content.layoutParams as LayoutParams;
@@ -2426,6 +2562,7 @@ class VideoDetailView : ConstraintLayout {
             setProgressBarOverlayed(null);
         }
         else {
+            _container_content.visibility = VISIBLE
             _layoutPlayerContainer.setPadding(0, 0, 0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6.0f, Resources.getSystem().displayMetrics).toInt());
 
             val lp = _container_content.layoutParams as LayoutParams;
@@ -2456,8 +2593,7 @@ class VideoDetailView : ConstraintLayout {
             _cast.visibility = View.VISIBLE;
         } else {
             StateCasting.instance.stopVideo();
-            _cast.stopTimeJob();
-            _cast.visibility = View.GONE;
+            _cast.cancel()
 
             if (video?.isLive == false) {
                 _player.setPlaybackRate(Settings.instance.playback.getDefaultPlaybackSpeed());
@@ -2483,6 +2619,15 @@ class VideoDetailView : ConstraintLayout {
         } else{
             videoSourceWidth >= videoSourceHeight
         }
+    }
+
+    fun saveBrightness() {
+        if (Settings.instance.gestureControls.useSystemBrightness) {
+            _player.gestureControl.saveBrightness()
+        }
+    }
+    fun restoreBrightness() {
+        _player.gestureControl.restoreBrightness()
     }
 
     fun setFullscreen(fullscreen : Boolean) {
@@ -2648,9 +2793,10 @@ class VideoDetailView : ConstraintLayout {
                     }
 
                     onChannelClicked.subscribe {
-                        if(it.url.isNotBlank())
+                        if(it.url.isNotBlank()) {
+                            fragment.minimizeVideoDetail()
                             fragment.navigate<ChannelFragment>(it)
-                        else
+                        } else
                             UIDialogs.appToast("No author url present");
                     }
 
@@ -2658,6 +2804,8 @@ class VideoDetailView : ConstraintLayout {
                         if(it is IPlatformVideo) {
                             if(StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(it), true))
                                 UIDialogs.toast("Added to watch later\n[${it.name}]");
+                            else
+                                UIDialogs.toast(context.getString(R.string.already_in_watch_later))
                         }
                     }
                     onAddToQueueClicked.subscribe(this) {
@@ -2725,10 +2873,11 @@ class VideoDetailView : ConstraintLayout {
         else
             RemoteAction(Icon.createWithResource(context, R.drawable.ic_play_notif), context.getString(R.string.play), context.getString(R.string.resumes_the_video), MediaControlReceiver.getPlayIntent(context, 6));
 
+        val toBackgroundAction = RemoteAction(Icon.createWithResource(context, R.drawable.ic_screen_share), context.getString(R.string.background), context.getString(R.string.background_switch_audio), MediaControlReceiver.getToBackgroundIntent(context, 7));
         return PictureInPictureParams.Builder()
             .setAspectRatio(Rational(videoSourceWidth, videoSourceHeight))
             .setSourceRectHint(r)
-            .setActions(listOf(playpauseAction))
+            .setActions(listOf(toBackgroundAction, playpauseAction))
             .build();
     }
 
@@ -2924,6 +3073,11 @@ class VideoDetailView : ConstraintLayout {
             return@TaskHandler result;
         })
         .success { setVideoDetails(it, true) }
+        .exception<ScriptReloadRequiredException> {
+            StatePlatform.instance.handleReloadRequired(it, {
+                fetchVideo();
+            });
+        }
         .exception<NoPlatformClientException> {
             Logger.w(TAG, "exception<NoPlatformClientException>", it)
 
@@ -3041,7 +3195,12 @@ class VideoDetailView : ConstraintLayout {
             Logger.w(TAG, "Failed to load recommendations.", it);
         };
 
-    private val _taskLoadPolycentricProfile = TaskHandler<PlatformID, PolycentricProfile?>(StateApp.instance.scopeGetter, { ApiMethods.getPolycentricProfileByClaim(ApiMethods.SERVER, ApiMethods.FUTO_TRUST_ROOT, it.claimFieldType.toLong(), it.claimType.toLong(), it.value!!) })
+    private val _taskLoadPolycentricProfile = TaskHandler<PlatformID, PolycentricProfile?>(StateApp.instance.scopeGetter, {
+        if (!StatePolycentric.instance.enabled)
+            return@TaskHandler null
+
+        ApiMethods.getPolycentricProfileByClaim(ApiMethods.SERVER, ApiMethods.FUTO_TRUST_ROOT, it.claimFieldType.toLong(), it.claimType.toLong(), it.value!!)
+    })
         .success { it -> setPolycentricProfile(it, animate = true) }
         .exception<Throwable> {
             Logger.w(TAG, "Failed to load claims.", it);
@@ -3113,10 +3272,6 @@ class VideoDetailView : ConstraintLayout {
 
     fun applyFragment(frag: VideoDetailFragment) {
         fragment = frag;
-        fragment.onMinimize.subscribe {
-            _liveChat?.stop();
-            _container_content_liveChat.close();
-        }
     }
 
 
