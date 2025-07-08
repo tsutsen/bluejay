@@ -49,6 +49,7 @@ import com.futo.platformplayer.stores.FragmentedStorage
 import com.futo.platformplayer.stores.v2.ManagedStore
 import com.futo.platformplayer.views.ToastView
 import com.futo.polycentric.core.ApiMethods
+import com.futo.polycentric.core.toBase64Url
 import kotlinx.coroutines.*
 import java.io.File
 import java.util.*
@@ -389,7 +390,14 @@ class StateApp {
             try {
                 ModerationsManager.getInstance().getCurrentModerationLevels()
             } catch (e: IllegalStateException) {
-                // Handle case where manager might not be ready, though it should be here
+                null
+            }
+        }
+
+        ApiMethods.setModerationExemptSystemProvider {
+            try {
+                StatePolycentric.instance.processHandle?.system?.toProto()?.toByteArray()?.toBase64Url()
+            } catch (e: Throwable) {
                 null
             }
         }

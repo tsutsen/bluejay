@@ -49,7 +49,7 @@ class ModerationsManager private constructor(context: Context) {
             "hate" -> prefs.getInt("offensive_level", 2)
             "sexual" -> prefs.getInt("explicit_level", 1)
             "violence" -> prefs.getInt("violence_level", 1)
-            else -> 3 
+            else -> 3
         }
         
         return contentLevel > userLevel
