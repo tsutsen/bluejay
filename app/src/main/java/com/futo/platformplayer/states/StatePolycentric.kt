@@ -55,6 +55,9 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.ForkJoinPool
+import com.futo.polycentric.core.ensureServerAndBackfill
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class StatePolycentric {
     private data class LikeDislikeEntry(val unixMilliseconds: Long, val hasLiked: Boolean, val hasDisliked: Boolean);
@@ -173,6 +176,15 @@ class StatePolycentric {
             }
 
             _likeDislikeMap = newMap
+
+            // Ensure current server is registered & synced (runs in background)
+            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    processHandle.ensureServerAndBackfill()
+                } catch (e: Throwable) {
+                    Logger.w(TAG, "Failed to ensure server and backfill: "+e.message)
+                }
+            }
         } else {
             _activeProcessHandle.setAndSave("");
             _likeDislikeMap = hashMapOf()

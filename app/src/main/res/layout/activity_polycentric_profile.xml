@@ -73,7 +73,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/inter_regular"
-        android:text="Further customize your profile, make platform claims, and other creator-specific features in the Harbor app."
+        android:text="Further customize your profile, make platform claims, and other creator-specific features in the Polycentric app."
         android:textSize="12dp"
         android:linksClickable="true"
         android:paddingLeft="20dp"
@@ -90,7 +90,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/inter_regular"
-        android:text="https://harbor.social"
+        android:text="https://polycentric.io"
         android:textSize="12dp"
         android:linksClickable="true"
         android:paddingLeft="20dp"
@@ -107,7 +107,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/inter_regular"
-        android:text="After you've installed Harbor you can export this profile to Harbor using the Export button."
+        android:text="After you've installed Polycentric you can export this profile to Polycentric using the Export button."
         android:textSize="12dp"
         android:linksClickable="true"
         android:paddingLeft="20dp"
@@ -131,15 +131,6 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/text_cta"
         app:layout_constraintBottom_toBottomOf="parent">
-
-        <com.futo.platformplayer.views.buttons.BigButton
-            android:id="@+id/button_open_harbor_profile"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:buttonText="Harbor Profile"
-            app:buttonSubText="See your Harbor profile in a browser"
-            app:buttonIcon="@drawable/ic_export"
-            android:layout_marginTop="8dp" />
 
         <com.futo.platformplayer.views.buttons.BigButton
             android:id="@+id/button_moderation"
