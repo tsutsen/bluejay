@@ -6,8 +6,6 @@ import com.futo.platformplayer.api.media.models.PlatformAuthorLink
 import com.futo.platformplayer.api.media.models.Thumbnails
 import com.futo.platformplayer.api.media.models.contents.ContentType
 import com.futo.platformplayer.serializers.OffsetDateTimeNullableSerializer
-import com.futo.polycentric.core.combineHashCodes
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNames
@@ -18,7 +16,7 @@ open class SerializedPlatformVideo(
     override val contentType: ContentType = ContentType.MEDIA,
     override val id: PlatformID,
     override val name: String,
-    override val thumbnails: Thumbnails,
+    override val thumbnails: Thumbnails = Thumbnails(),
     override val author: PlatformAuthorLink,
     @kotlinx.serialization.Serializable(with = OffsetDateTimeNullableSerializer::class)
     @JsonNames("datetime", "dateTime")
@@ -32,6 +30,10 @@ open class SerializedPlatformVideo(
 ) : IPlatformVideo, SerializedPlatformContent {
 
     override val isLive: Boolean = false;
+
+    override var playbackTime: Long = -1;
+    @kotlinx.serialization.Serializable(with = OffsetDateTimeNullableSerializer::class)
+    override var playbackDate: OffsetDateTime? = null;
 
     override fun toJson() : String {
         return Json.encodeToString(this);
