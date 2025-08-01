@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.URLDecoder
 import java.net.URLEncoder

@@ -207,6 +207,7 @@ dependencies {
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation 'com.caverock:androidsvg-aar:1.4'
     implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    implementation "com.googlecode.plist:dd-plist:1.23"
 
     //Protobuf
     implementation 'com.google.protobuf:protobuf-javalite:3.25.1'

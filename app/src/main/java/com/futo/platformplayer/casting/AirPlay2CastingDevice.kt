@@ -1,5 +1,8 @@
 package com.futo.platformplayer.casting
 
+import com.dd.plist.NSDictionary
+import com.dd.plist.NSNumber
+import com.dd.plist.NSString
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.CastingDeviceInfo
 import com.futo.platformplayer.stripLeadingZero
@@ -11,6 +14,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -168,62 +172,39 @@ class AirPlay2CastingDevice : CastingDevice {
         Logger.i(TAG, "loadVideo: contentId=$contentId, resumePosition=$resumePosition")
         if (!isReady || !_paired) return
 
-        val payload = mapOf(
-            "Content-Location" to contentId,
-            "Start-Position" to resumePosition / duration
-        )
-        val body = Json.encodeToString(payload)
-        val encryptedBody = if (_isEncrypted) encryptData(body.toByteArray()) else body.toByteArray()
-        postHttp("/play", encryptedBody, "application/x-apple-binary-plist")?.let { success ->
-            if (success) {
-                setTime(resumePosition)
-                setDuration(duration)
-                isPlaying = true
-            }
-        }
+        //TODO
     }
 
     override fun loadContent(contentType: String, content: String, resumePosition: Double, duration: Double, speed: Double?) {
-        loadVideo(contentType, contentType, content, resumePosition, duration, speed)
+        //TODO
     }
 
     override fun seekVideo(timeSeconds: Double) {
         Logger.i(TAG, "seekVideo: $timeSeconds")
         if (!isReady || !_paired) return
 
-        val payload = mapOf("position" to timeSeconds)
-        val body = Json.encodeToString(payload)
-        val encryptedBody = if (_isEncrypted) encryptData(body.toByteArray()) else body.toByteArray()
-        postHttp("/scrub", encryptedBody, "application/json")?.let { success ->
-            if (success) setTime(timeSeconds)
-        }
+        //TODO
     }
 
     override fun resumeVideo() {
         Logger.i(TAG, "resumeVideo")
         if (!isReady || !_paired) return
-        changeRate(1.0)
+        //TODO
         isPlaying = true
     }
 
     override fun pauseVideo() {
         Logger.i(TAG, "pauseVideo")
         if (!isReady || !_paired) return
-        changeRate(0.0)
+        //TODO
         isPlaying = false
     }
 
     override fun stopVideo() {
         Logger.i(TAG, "stopVideo")
         if (!isReady || !_paired) return
-        val body = ByteArray(0)
-        val encryptedBody = if (_isEncrypted) encryptData(body) else body
-        postHttp("/stop", encryptedBody, null)?.let { success ->
-            if (success) {
-                isPlaying = false
-                setTime(0.0)
-            }
-        }
+
+        //TODO
     }
 
     override fun stopCasting() {
@@ -235,27 +216,13 @@ class AirPlay2CastingDevice : CastingDevice {
         Logger.i(TAG, "changeVolume: $volume")
         if (!isReady || !_paired) return
 
-        val payload = mapOf("volume" to volume.coerceIn(0.0, 1.0))
-        val body = Json.encodeToString(payload)
-        val encryptedBody = if (_isEncrypted) encryptData(body.toByteArray()) else body.toByteArray()
-        postHttp("/volume", encryptedBody, "application/json")?.let { success ->
-            if (success) setVolume(volume)
-        }
+        //TODO
     }
 
     override fun changeSpeed(speed: Double) {
         Logger.i(TAG, "changeSpeed: $speed")
         if (!isReady || !_paired) return
-        changeRate(speed)
-    }
-
-    private fun changeRate(value: Double) {
-        val payload = mapOf("rate" to value)
-        val body = Json.encodeToString(payload)
-        val encryptedBody = if (_isEncrypted) encryptData(body.toByteArray()) else body.toByteArray()
-        postHttp("/rate", encryptedBody, "application/json")?.let { success ->
-            if (success) setSpeed(value)
-        }
+        //TODO
     }
 
     override fun getDeviceInfo(): CastingDeviceInfo {
@@ -688,6 +655,45 @@ class AirPlay2CastingDevice : CastingDevice {
         _incomingKey = hkdfExtractExpand(prk, "Control-Read-Encryption-Key".encodeToByteArray(), null, 32)
     }
 
+    /*private fun postEncrypted(
+        path: String,
+        plaintext: ByteArray
+    ): Boolean {
+        val encrypted = encryptData(plaintext)
+        val req = Request.Builder()
+            .url(getUrl(path))
+            .post(encrypted.toRequestBody(CONTENT_TYPE.toMediaType()))
+            .headers(
+                Headers.headersOf(
+                "User-Agent" to "AirPlay/381.13",
+                "X-Apple-HKP" to "3",
+                "X-Apple-Client-Name" to "Grayjay"
+            ) )
+            .build()
+
+        return try {
+            _httpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (e: Exception) {
+            Logger.w(TAG, "Encrypted POST failed to $path", e)
+            false
+        }
+    }*/
+
+    private fun Map<String,Any>.toNSDictionary(): NSDictionary {
+        val dict = NSDictionary()
+        forEach { (k,v) ->
+            when (v) {
+                is String -> dict[k] = NSString(v)
+                is Double -> dict[k] = NSNumber(v)
+                is Long -> dict[k] = NSNumber(v)
+                is Int -> dict[k] = NSNumber(v)
+                is Boolean -> dict[k] = if (v) NSNumber(true) else NSNumber(false)
+                else -> throw IllegalArgumentException("Unsupported plist value type: ${v.javaClass}")
+            }
+        }
+        return dict
+    }
+
     private fun encryptData(data: ByteArray): ByteArray {
         if (!_isEncrypted || _outgoingKey == null) return data
         val result = ByteArrayOutputStream()
@@ -729,23 +735,11 @@ class AirPlay2CastingDevice : CastingDevice {
 
     private fun pairingDidFinish() {
         Logger.i(TAG, "Pairing succeeded. Device is ready.")
-        val payload = mapOf(
-            "sessionUUID" to UUID.randomUUID().toString(),
-            "timingProtocol" to "None"
-        )
-        val body = Json.encodeToString(payload)
-        val setupRequest = """
-            SETUP /2182745467221657149 RTSP/1.0
-            Content-Length: ${body.length}
-            Content-Type: application/x-apple-binary-plist
-            User-Agent: AirPlay/381.13
-            X-Apple-HKP: 3
-            X-Apple-StreamID: 1
-            
-            $body
-        """.trimIndent()
-        val encryptedData = encryptData(setupRequest.encodeToByteArray())
-        postHttp("/2182745467221657149", encryptedData, null)
+        connectionState = CastConnectionState.CONNECTED
+        _state = AirPlaySenderState.READY_TO_PLAY
+        _paired = true
+
+        //TODO: Do something?
     }
 
     private fun postHttp(path: String, bodyBytes: ByteArray, contentType: String?): Boolean? {
