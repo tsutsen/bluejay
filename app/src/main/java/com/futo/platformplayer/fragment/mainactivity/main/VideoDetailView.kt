@@ -1160,6 +1160,8 @@ class VideoDetailView : ConstraintLayout {
                 _player.switchToVideoMode();
                 allowBackground = false;
                 _buttonPins.getButtonByTag(TAG_BACKGROUND)?.text?.text = resources.getString(R.string.background);
+            } else {
+                _buttonPins.getButtonByTag(TAG_BACKGROUND)?.text?.text = resources.getString(R.string.video);
             }
         }
         if(!_player.isFitMode && !_player.isFullScreen && !fragment.isInPictureInPicture)
