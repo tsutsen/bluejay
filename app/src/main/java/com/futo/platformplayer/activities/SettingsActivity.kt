@@ -21,6 +21,7 @@ import com.futo.platformplayer.*
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StateApp
+import com.futo.platformplayer.stores.FragmentedStorage
 import com.futo.platformplayer.views.LoaderView
 import com.futo.platformplayer.views.fields.FieldForm
 import com.futo.platformplayer.views.fields.ReadOnlyTextField
@@ -114,7 +115,10 @@ class SettingsActivity : AppCompatActivity(), IWithResultLauncher {
 
     var isFirstLoad = true;
     fun reloadSettings() {
-        StateApp.instance.initializeFiles();
+        // Ensure files are initialized before accessing Settings
+        if (!FragmentedStorage.isInitialized) {
+            FragmentedStorage.initialize(filesDir);
+        }
         
         val firstLoad = isFirstLoad;
         isFirstLoad = false;
@@ -151,7 +155,10 @@ class SettingsActivity : AppCompatActivity(), IWithResultLauncher {
     }
 
     fun updateDevMode() {
-        StateApp.instance.initializeFiles();
+        // Ensure files are initialized before accessing SettingsDev
+        if (!FragmentedStorage.isInitialized) {
+            FragmentedStorage.initialize(filesDir);
+        }
         
         if(SettingsDev.instance.developerMode)
             _devSets.visibility = View.VISIBLE;
