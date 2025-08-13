@@ -114,6 +114,8 @@ class SettingsActivity : AppCompatActivity(), IWithResultLauncher {
 
     var isFirstLoad = true;
     fun reloadSettings() {
+        StateApp.instance.initializeFiles();
+        
         val firstLoad = isFirstLoad;
         isFirstLoad = false;
         _form.setSearchVisible(false);
@@ -149,6 +151,8 @@ class SettingsActivity : AppCompatActivity(), IWithResultLauncher {
     }
 
     fun updateDevMode() {
+        StateApp.instance.initializeFiles();
+        
         if(SettingsDev.instance.developerMode)
             _devSets.visibility = View.VISIBLE;
         else
