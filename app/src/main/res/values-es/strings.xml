@@ -382,6 +382,7 @@
     <string name="failed_to_parse_newpipe_subscriptions">Error al analizar las suscripciones de NewPipe</string>
     <string name="failed_to_generate_qr_code">Error al generar el código QR</string>
     <string name="qr_code_too_large_use_text_below">Código QR demasiado grande. Use el texto de abajo para compartir su perfil.</string>
+    <string name="tap_qr_code_for_fullscreen">Toca el código QR para vista completa</string>
     <string name="share_text">Compartir texto</string>
     <string name="copied_text">Texto copiado</string>
     <string name="must_be_at_least_3_characters_long">Debe tener al menos 3 caracteres de longitud.</string>

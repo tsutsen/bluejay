@@ -22,6 +22,7 @@ import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StateApp.Companion.withContext
 import com.futo.platformplayer.states.StatePolycentric
 import com.futo.platformplayer.views.buttons.BigButton
+import com.futo.platformplayer.activities.QRCodeFullscreenActivity
 import com.futo.polycentric.core.ContentType
 import com.futo.polycentric.core.SignedEvent
 import com.futo.polycentric.core.StorageTypeCRDTItem
@@ -49,6 +50,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
     private lateinit var _imageQR: ImageView;
     private lateinit var _exportBundle: String;
     private lateinit var _textQR: TextView;
+    private lateinit var _textQRHint: TextView;
     private lateinit var _loader: View
 
     override fun attachBaseContext(newBase: Context?) {
@@ -64,6 +66,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
         _buttonCopy = findViewById(R.id.button_copy)
         _imageQR = findViewById(R.id.image_qr)
         _textQR = findViewById(R.id.text_qr)
+        _textQRHint = findViewById(R.id.text_qr_hint)
         _loader = findViewById(R.id.progress_loader)
         findViewById<ImageButton>(R.id.button_back).setOnClickListener {
             finish();
@@ -71,6 +74,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
 
         _imageQR.visibility = View.INVISIBLE
         _textQR.visibility = View.INVISIBLE
+        _textQRHint.visibility = View.INVISIBLE
         _loader.visibility = View.VISIBLE
         _buttonShare.visibility = View.INVISIBLE
         _buttonCopy.visibility = View.INVISIBLE
@@ -92,8 +96,15 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 _imageQR.setImageBitmap(pair.second)
                 _imageQR.visibility = View.VISIBLE
                 _textQR.visibility = View.VISIBLE
+                _textQRHint.visibility = View.VISIBLE
                 _buttonShare.visibility = View.VISIBLE
                 _buttonCopy.visibility = View.VISIBLE
+                
+                // Add click listener to open QR code in fullscreen
+                _imageQR.setOnClickListener {
+                    val intent = QRCodeFullscreenActivity.createIntent(this@PolycentricBackupActivity, pair.second, _exportBundle)
+                    startActivity(intent)
+                }
             } catch (e: Exception) {
                 Logger.e(TAG, getString(R.string.failed_to_generate_qr_code), e)
                 
@@ -107,6 +118,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 }
                 _textQR.text = errorMessage
                 _textQR.visibility = View.VISIBLE
+                _textQRHint.visibility = View.INVISIBLE
                 _buttonShare.visibility = View.VISIBLE
                 _buttonCopy.visibility = View.VISIBLE
                 
