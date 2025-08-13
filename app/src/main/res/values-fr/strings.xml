@@ -420,6 +420,7 @@
     <string name="unknown_reconstruction_type">Type de reconstruction inconnu</string>
     <string name="failed_to_parse_newpipe_subscriptions">Échec de l\'analyse des abonnements NewPipe</string>
     <string name="failed_to_generate_qr_code">Échec de la génération du code QR</string>
+    <string name="qr_code_too_large_use_text_below">Code QR trop volumineux. Utilisez le texte ci-dessous pour partager votre profil.</string>
     <string name="share_text">Partager le texte</string>
     <string name="copied_text">Texte copié</string>
     <string name="must_be_at_least_3_characters_long">Doit comporter au moins 3 caractères.</string>

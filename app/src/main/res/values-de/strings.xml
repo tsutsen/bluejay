@@ -404,6 +404,7 @@
     <string name="unknown_reconstruction_type">Unbekannter Rekonstruktionstyp</string>
     <string name="failed_to_parse_newpipe_subscriptions">Fehler beim Parsen von NewPipe-Abonnements</string>
     <string name="failed_to_generate_qr_code">Fehler beim Generieren des QR-Codes</string>
+    <string name="qr_code_too_large_use_text_below">QR-Code zu groß. Verwenden Sie den Text unten, um Ihr Profil zu teilen.</string>
     <string name="share_text">Text teilen</string>
     <string name="copied_text">Text kopiert</string>
     <string name="must_be_at_least_3_characters_long">Muss mindestens 3 Zeichen lang sein.</string>

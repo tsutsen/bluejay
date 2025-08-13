@@ -642,6 +642,7 @@
     <string name="failed_to_parse_text_file">Failed to parse text file</string>
     <string name="failed_to_parse_newpipe_subscriptions">Failed to parse NewPipe Subscriptions</string>
     <string name="failed_to_generate_qr_code">Failed to generate QR code</string>
+    <string name="qr_code_too_large_use_text_below">QR code too large. Use the text below to share your profile.</string>
     <string name="share_text">Share Text</string>
     <string name="copied_text">Copied Text</string>
     <string name="must_be_at_least_3_characters_long">Must be at least 3 characters long.</string>
