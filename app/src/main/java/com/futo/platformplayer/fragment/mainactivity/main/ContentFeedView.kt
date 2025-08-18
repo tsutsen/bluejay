@@ -4,19 +4,23 @@ import android.content.Context
 import android.util.Log
 import android.view.LayoutInflater
 import android.widget.LinearLayout
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.UISlideOverlays
+import com.futo.platformplayer.api.media.models.article.IPlatformArticle
 import com.futo.platformplayer.api.media.models.contents.ContentType
 import com.futo.platformplayer.api.media.models.contents.IPlatformContent
 import com.futo.platformplayer.api.media.models.playlists.IPlatformPlaylist
 import com.futo.platformplayer.api.media.models.post.IPlatformPost
 import com.futo.platformplayer.api.media.models.video.IPlatformVideo
 import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideo
+import com.futo.platformplayer.api.media.platforms.js.models.JSWeb
 import com.futo.platformplayer.api.media.structures.IPager
+import com.futo.platformplayer.fragment.mainactivity.main.ShortView.Companion
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StateMeta
 import com.futo.platformplayer.states.StatePlayer
@@ -32,6 +36,9 @@ import com.futo.platformplayer.views.adapters.feedtypes.PreviewVideoViewHolder
 import com.futo.platformplayer.views.overlays.slideup.SlideUpMenuItem
 import com.futo.platformplayer.views.overlays.slideup.SlideUpMenuOverlay
 import com.futo.platformplayer.withTimestamp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.math.floor
 import kotlin.math.max
 
@@ -57,7 +64,7 @@ abstract class ContentFeedView<TFragment> : FeedView<TFragment, IPlatformContent
         player.modifyState("ThumbnailPlayer") { state -> state.muted = true };
         _exoPlayer = player;
 
-        return PreviewContentListAdapter(context, feedStyle, dataset, player, _previewsEnabled, arrayListOf(), arrayListOf(), shouldShowTimeBar).apply {
+        return PreviewContentListAdapter(fragment.lifecycleScope, context, feedStyle, dataset, player, _previewsEnabled, arrayListOf(), arrayListOf(), shouldShowTimeBar).apply {
             attachAdapterEvents(this);
         }
     }
@@ -84,6 +91,8 @@ abstract class ContentFeedView<TFragment> : FeedView<TFragment, IPlatformContent
             if(it is IPlatformVideo) {
                 if(StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(it), true))
                     UIDialogs.toast("Added to watch later\n[${it.name}]");
+                else
+                    UIDialogs.toast(context.getString(R.string.already_in_watch_later))
             }
         };
         adapter.onLongPress.subscribe(this) {
@@ -196,16 +205,24 @@ abstract class ContentFeedView<TFragment> : FeedView<TFragment, IPlatformContent
             fragment.navigate<RemotePlaylistFragment>(content);
         } else if (content is IPlatformPost) {
             fragment.navigate<PostDetailFragment>(content);
+        } else if(content is IPlatformArticle) {
+            fragment.navigate<ArticleDetailFragment>(content);
         }
+        else if(content is JSWeb) {
+            fragment.navigate<WebDetailFragment>(content);
+        }
+        else
+            UIDialogs.appToast("Unknown content type [" + content.contentType.name + "]");
     }
     protected open fun onContentUrlClicked(url: String, contentType: ContentType) {
         when(contentType) {
             ContentType.MEDIA -> {
-                StatePlayer.instance.clearQueue();
-                fragment.navigate<VideoDetailFragment>(url).maximizeVideoDetail(false);
-            };
-            ContentType.PLAYLIST -> fragment.navigate<RemotePlaylistFragment>(url);
-            ContentType.URL -> fragment.navigate<BrowserFragment>(url);
+                StatePlayer.instance.clearQueue()
+                fragment.navigate<VideoDetailFragment>(url).maximizeVideoDetail(false)
+            }
+            ContentType.PLAYLIST -> fragment.navigate<RemotePlaylistFragment>(url)
+            ContentType.URL -> fragment.navigate<BrowserFragment>(url)
+            ContentType.CHANNEL -> fragment.navigate<ChannelFragment>(url)
             else -> {};
         }
     }
@@ -234,8 +251,15 @@ abstract class ContentFeedView<TFragment> : FeedView<TFragment, IPlatformContent
         }
 
         //TODO: Is this still necessary?
-        if(viewHolder.childViewHolder is ContentPreviewViewHolder)
-            (recyclerData.adapter as PreviewContentListAdapter?)?.preview(viewHolder.childViewHolder)
+        if(viewHolder.childViewHolder is ContentPreviewViewHolder) {
+            fragment.lifecycleScope.launch(Dispatchers.Main) {
+                try {
+                    (recyclerData.adapter as PreviewContentListAdapter?)?.preview(viewHolder.childViewHolder)
+                } catch (e: Throwable) {
+                    Logger.e(TAG, "playPreview failed", e)
+                }
+            }
+        }
     }
 
     private fun stopVideo() {

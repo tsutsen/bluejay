@@ -93,7 +93,7 @@ class VideoDetailFragment() : MainFragment() {
     }
 
     private fun isSmallWindow(): Boolean {
-        return resources.configuration.smallestScreenWidthDp < resources.getInteger(R.integer.column_width_dp) * 2
+        return resources.configuration.smallestScreenWidthDp < resources.getInteger(R.integer.smallest_width_dp)
     }
 
     private fun isAutoRotateEnabled(): Boolean {
@@ -396,16 +396,25 @@ class VideoDetailFragment() : MainFragment() {
 
     fun onUserLeaveHint() {
         val viewDetail = _viewDetail;
-        Logger.i(TAG, "onUserLeaveHint preventPictureInPicture=${viewDetail?.preventPictureInPicture} isCasting=${StateCasting.instance.isCasting} isBackgroundPictureInPicture=${Settings.instance.playback.isBackgroundPictureInPicture()} allowBackground=${viewDetail?.allowBackground}");
+        Logger.i(TAG, "onUserLeaveHint preventPictureInPicture=${viewDetail?.preventPictureInPicture} isCasting=${StateCasting.instance.isCasting} isBackgroundPictureInPicture=${Settings.instance.playback.isBackgroundPictureInPicture()} allowBackground=${viewDetail?.isAudioOnlyUserAction}");
 
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S && viewDetail?.preventPictureInPicture == false && !StateCasting.instance.isCasting && Settings.instance.playback.isBackgroundPictureInPicture() && !viewDetail.allowBackground) {
-            _leavingPiP = false;
+        if (viewDetail === null) {
+            return
+        }
 
-            val params = _viewDetail?.getPictureInPictureParams(true);
+        if (viewDetail.shouldEnterPictureInPicture) {
+            _leavingPiP = false
+        }
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S && viewDetail.preventPictureInPicture == false && !StateCasting.instance.isCasting && Settings.instance.playback.isBackgroundPictureInPicture() && !viewDetail.isAudioOnlyUserAction) {
+            val params = _viewDetail?.getPictureInPictureParams();
             if(params != null) {
                 Logger.i(TAG, "enterPictureInPictureMode")
                 activity?.enterPictureInPictureMode(params);
             }
+        }
+
+        if (isFullscreen) {
+            viewDetail.restoreBrightness()
         }
     }
 
@@ -415,10 +424,14 @@ class VideoDetailFragment() : MainFragment() {
             activity?.enterPictureInPictureMode(params);
     }
     fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, isStop: Boolean, newConfig: Configuration) {
-        if (isInPictureInPictureMode) {
-            _viewDetail?.startPictureInPicture();
-        } else if (isInPictureInPicture) {
-            leavePictureInPictureMode(isStop);
+        try {
+            if (isInPictureInPictureMode) {
+                _viewDetail?.startPictureInPicture();
+            } else if (isInPictureInPicture) {
+                leavePictureInPictureMode(isStop);
+            }
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Failed to handle onPictureInPictureModeChanged", e)
         }
     }
     fun leavePictureInPictureMode(isStop: Boolean) {
@@ -438,6 +451,10 @@ class VideoDetailFragment() : MainFragment() {
         Logger.v(TAG, "onResume");
         _isActive = true;
         _leavingPiP = false;
+
+        if (isFullscreen) {
+            _viewDetail?.saveBrightness()
+        }
 
         _viewDetail?.let {
             Logger.v(TAG, "onResume preventPictureInPicture=false");
@@ -468,7 +485,7 @@ class VideoDetailFragment() : MainFragment() {
 
     private fun stopIfRequired() {
         var shouldStop = true;
-        if (_viewDetail?.allowBackground == true) {
+        if (_viewDetail?.isAudioOnlyUserAction == true) {
             shouldStop = false;
         } else if (Settings.instance.playback.isBackgroundPictureInPicture() && !_leavingPiP) {
             shouldStop = false;

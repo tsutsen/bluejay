@@ -32,7 +32,8 @@ let Type = {
     Text: {
         RAW: 0,
         HTML: 1,
-        MARKUP: 2
+        MARKUP: 2,
+        CODE: 3
     },
     Chapter: {
         NORMAL: 0,
@@ -100,6 +101,12 @@ class CriticalException extends ScriptException {
 class UnavailableException extends ScriptException {
     constructor(msg) {
         super("UnavailableException", msg);
+    }
+}
+class ReloadRequiredException extends ScriptException {
+    constructor(msg, reloadData) {
+        super("ReloadRequiredException", msg);
+        this.reloadData = reloadData;
     }
 }
 class AgeException extends ScriptException {
@@ -244,6 +251,9 @@ class PlatformVideo extends PlatformContent {
         this.duration = obj.duration ?? -1; //Long
         this.viewCount = obj.viewCount ?? -1; //Long
 
+        this.playbackTime = obj.playbackTime ?? -1;
+        this.playbackDate = obj.playbackDate ?? undefined;
+
         this.isLive = obj.isLive ?? false; //Boolean
         this.isShort = !!obj.isShort ?? false;
     }
@@ -291,15 +301,39 @@ class PlatformPostDetails extends PlatformPost {
     }
 }
 
-class PlatformArticleDetails extends PlatformContent {
+class PlatformWeb extends PlatformContent {
+    constructor(obj) {
+        super(obj, 7);
+        obj = obj ?? {};
+        this.plugin_type = "PlatformWeb";
+    }
+}
+class PlatformWebDetails extends PlatformWeb {
+    constructor(obj) {
+        super(obj, 7);
+        obj = obj ?? {};
+        this.plugin_type = "PlatformWebDetails";
+        this.html = obj.html;
+    }
+}
+
+class PlatformArticle extends PlatformContent {
+    constructor(obj) {
+        super(obj, 3);
+        obj = obj ?? {};
+        this.plugin_type = "PlatformArticle";
+        this.rating = obj.rating ?? new RatingLikes(-1);
+        this.summary = obj.summary ?? "";
+        this.thumbnails = obj.thumbnails ?? new Thumbnails([]);
+    }
+}
+class PlatformArticleDetails extends PlatformArticle {
     constructor(obj) {
         super(obj, 3);
         obj = obj ?? {};
         this.plugin_type = "PlatformArticleDetails";
         this.rating = obj.rating ?? new RatingLikes(-1);
-        this.summary = obj.summary ?? "";
         this.segments = obj.segments ?? [];
-        this.thumbnails = obj.thumbnails ?? new Thumbnails([]);
     }
 }
 class ArticleSegment {
@@ -315,9 +349,17 @@ class ArticleTextSegment extends ArticleSegment {
     }
 }
 class ArticleImagesSegment extends ArticleSegment {
-    constructor(images) {
+    constructor(images, caption) {
         super(2);
         this.images = images;
+        this.caption = caption;
+    }
+}
+class ArticleHeaderSegment extends ArticleSegment {
+    constructor(content, level) {
+        super(3);
+        this.level = level;
+        this.content = content;
     }
 }
 class ArticleNestedSegment extends ArticleSegment {
@@ -425,14 +467,20 @@ class AudioUrlWidevineSource extends AudioUrlSource {
             this.getLicenseRequestExecutor = () => {
                 return {
                     executeRequest: (url, _headers, _method, license_request_data) => {
-                        return http.POST(
+                        const response = http.POST(
                            url,
                            license_request_data,
                            { Authorization: `Bearer ${obj.bearerToken}` },
                            false,
                            true
-                       ).body
-                    }
+                       );
+
+                       if (!response.body) {
+                           throw new ScriptException("Unable to acquire license key");
+                       }
+
+                       return response.body;
+                   }
                 }
             }
         }
@@ -595,6 +643,8 @@ class PlatformComment {
         this.date = obj.date ?? 0;
         this.replyCount = obj.replyCount ?? 0;
         this.context = obj.context ?? {};
+        if(obj.getReplies)
+            this.getReplies = obj.getReplies;
     }
 }
 
@@ -666,11 +716,12 @@ class LiveEventViewCount extends LiveEvent {
     }
 }
 class LiveEventRaid extends LiveEvent {
-    constructor(targetUrl, targetName, targetThumbnail) {
+    constructor(targetUrl, targetName, targetThumbnail, isOutgoing) {
         super(100);
         this.targetUrl = targetUrl;
         this.targetName = targetName;
         this.targetThumbnail = targetThumbnail;
+        this.isOutgoing = isOutgoing ?? true;
     }
 }
 
@@ -743,6 +794,7 @@ let plugin = {
 //To override by plugin
 const source = {
     getHome() { return new ContentPager([], false, {}); },
+    getShorts() { return new VideoPager([], false, {}); },
 
     enable(config){  },
     disable() {},

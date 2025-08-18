@@ -10,7 +10,9 @@ import com.futo.platformplayer.toHexString
 import com.futo.platformplayer.toInetAddress
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -33,7 +35,7 @@ class ChromecastCastingDevice : CastingDevice {
     override var usedRemoteAddress: InetAddress? = null;
     override var localAddress: InetAddress? = null;
     override val canSetVolume: Boolean get() = true;
-    override val canSetSpeed: Boolean get() = false; //TODO: Implement
+    override val canSetSpeed: Boolean get() = true;
 
     var addresses: Array<InetAddress>? = null;
     var port: Int = 0;
@@ -56,6 +58,11 @@ class ChromecastCastingDevice : CastingDevice {
     private var _mediaSessionId: Int? = null;
     private var _thread: Thread? = null;
     private var _pingThread: Thread? = null;
+    private var _launchRetries = 0
+    private val MAX_LAUNCH_RETRIES = 3
+    private var _lastLaunchTime_ms = 0L
+    private var _retryJob: Job? = null
+    private var _autoLaunchEnabled = true
 
     constructor(name: String, addresses: Array<InetAddress>, port: Int) : super() {
         this.name = name;
@@ -136,6 +143,23 @@ class ChromecastCastingDevice : CastingDevice {
         //TODO: This replace is necessary to get rid of backward slashes added by the JSON Object serializer
         val json = loadObject.toString().replace("\\/","/");
         sendChannelMessage("sender-0", transportId, "urn:x-cast:com.google.cast.media", json);
+    }
+
+    override fun changeSpeed(speed: Double) {
+        if (invokeInIOScopeIfRequired { changeSpeed(speed) }) return
+
+        val speedClamped = speed.coerceAtLeast(1.0).coerceAtLeast(1.0).coerceAtMost(2.0)
+        setSpeed(speedClamped)
+        val mediaSessionId = _mediaSessionId ?: return
+        val transportId = _transportId ?: return
+        val setSpeedObject = JSONObject().apply {
+            put("type", "SET_PLAYBACK_RATE")
+            put("mediaSessionId", mediaSessionId)
+            put("playbackRate", speedClamped)
+            put("requestId", _requestId++)
+        }
+
+        sendChannelMessage(sourceId = "sender-0", destinationId = transportId, namespace = "urn:x-cast:com.google.cast.media", json = setSpeedObject.toString())
     }
 
     override fun changeVolume(volume: Double) {
@@ -229,6 +253,7 @@ class ChromecastCastingDevice : CastingDevice {
         launchObject.put("appId", "CC1AD845");
         launchObject.put("requestId", _requestId++);
         sendChannelMessage("sender-0", "receiver-0", "urn:x-cast:com.google.cast.receiver", launchObject.toString());
+        _lastLaunchTime_ms = System.currentTimeMillis()
     }
 
     private fun getStatus() {
@@ -268,6 +293,7 @@ class ChromecastCastingDevice : CastingDevice {
             _contentType = null;
             _streamType = null;
             _sessionId = null;
+            _launchRetries = 0
             _transportId = null;
         }
 
@@ -280,8 +306,10 @@ class ChromecastCastingDevice : CastingDevice {
             return;
         }
 
+        _autoLaunchEnabled = true
         _started = true;
         _sessionId = null;
+        _launchRetries = 0
         _mediaSessionId = null;
 
         Logger.i(TAG, "Starting...");
@@ -322,6 +350,7 @@ class ChromecastCastingDevice : CastingDevice {
                         break;
                     } catch (e: Throwable) {
                         Logger.w(TAG, "Failed to get setup initial connection to ChromeCast device.", e)
+                        Thread.sleep(1000);
                     }
                 }
 
@@ -334,6 +363,10 @@ class ChromecastCastingDevice : CastingDevice {
 
                 //Connection loop
                 while (_scopeIO?.isActive == true) {
+                    _sessionId = null;
+                    _launchRetries = 0
+                    _mediaSessionId = null;
+
                     Logger.i(TAG, "Connecting to Chromecast.");
                     connectionState = CastConnectionState.CONNECTING;
 
@@ -392,7 +425,7 @@ class ChromecastCastingDevice : CastingDevice {
                         try {
                             val inputStream = _inputStream ?: break;
 
-                            synchronized(_inputStreamLock)
+                            val message = synchronized(_inputStreamLock)
                             {
                                 Log.d(TAG, "Receiving next packet...");
                                 val b1 = inputStream.readUnsignedByte();
@@ -404,7 +437,7 @@ class ChromecastCastingDevice : CastingDevice {
                                 if (size > buffer.size) {
                                     Logger.w(TAG, "Skipping packet that is too large $size bytes.")
                                     inputStream.skip(size.toLong());
-                                    return@synchronized
+                                    return@synchronized null
                                 }
 
                                 Log.d(TAG, "Received header indicating $size bytes. Waiting for message.");
@@ -413,15 +446,19 @@ class ChromecastCastingDevice : CastingDevice {
                                 //TODO: In the future perhaps this size-1 will cause issues, why is there a 0 on the end?
                                 val messageBytes = buffer.sliceArray(IntRange(0, size - 1));
                                 Log.d(TAG, "Received $size bytes: ${messageBytes.toHexString()}.");
-                                val message = ChromeCast.CastMessage.parseFrom(messageBytes);
-                                if (message.namespace != "urn:x-cast:com.google.cast.tp.heartbeat") {
-                                    Logger.i(TAG, "Received message: $message");
+                                val msg = ChromeCast.CastMessage.parseFrom(messageBytes);
+                                if (msg.namespace != "urn:x-cast:com.google.cast.tp.heartbeat") {
+                                    Logger.i(TAG, "Received message: $msg");
                                 }
+                                return@synchronized msg
+                            }
 
+                            if (message != null) {
                                 try {
                                     handleMessage(message);
                                 } catch (e: Throwable) {
                                     Logger.w(TAG, "Failed to handle message.", e);
+                                    break
                                 }
                             }
                         } catch (e: java.net.SocketException) {
@@ -485,6 +522,10 @@ class ChromecastCastingDevice : CastingDevice {
             }
         } catch (e: Throwable) {
             Logger.w(TAG, "Failed to send channel message (sourceId: $sourceId, destinationId: $destinationId, namespace: $namespace, json: $json)", e);
+            _socket?.close();
+            Logger.i(TAG, "Socket disconnected.");
+
+            connectionState = CastConnectionState.CONNECTING;
         }
     }
 
@@ -507,10 +548,12 @@ class ChromecastCastingDevice : CastingDevice {
 
                         if (appId == "CC1AD845") {
                             sessionIsRunning = true;
+                            _autoLaunchEnabled = false
 
                             if (_sessionId == null) {
                                 connectionState = CastConnectionState.CONNECTED;
                                 _sessionId = applicationUpdate.getString("sessionId");
+                                _launchRetries = 0
 
                                 val transportId = applicationUpdate.getString("transportId");
                                 connectMediaChannel(transportId);
@@ -518,28 +561,48 @@ class ChromecastCastingDevice : CastingDevice {
                                 _transportId = transportId;
 
                                 requestMediaStatus();
-                                playVideo();
                             }
                         }
                     }
                 }
 
                 if (!sessionIsRunning) {
-                    _sessionId = null;
-                    _mediaSessionId = null;
-                    setTime(0.0);
-                    _transportId = null;
-                    Logger.w(TAG, "Session not found.");
+                    if (System.currentTimeMillis() - _lastLaunchTime_ms > 5000) {
+                        _sessionId = null
+                        _mediaSessionId = null
+                        _transportId = null
 
-                    if (_launching) {
-                        Logger.i(TAG, "Player not found, launching.");
-                        launchPlayer();
+                        if (_autoLaunchEnabled) {
+                            if (_launching && _launchRetries < MAX_LAUNCH_RETRIES) {
+                                Logger.i(TAG, "No player yet; attempting launch #${_launchRetries + 1}")
+                                _launchRetries++
+                                launchPlayer()
+                            } else {
+                                // Maybe the first GET_STATUS came back empty; still try launching
+                                Logger.i(TAG, "Player not found; triggering launch #${_launchRetries + 1}")
+                                _launching = true
+                                _launchRetries++
+                                launchPlayer()
+                            }
+                        } else {
+                            Logger.e(TAG, "Player not found ($_launchRetries, _autoLaunchEnabled = $_autoLaunchEnabled); giving up.")
+                            Logger.i(TAG, "Unable to start media receiver on device")
+                            stop()
+                        }
                     } else {
-                        Logger.i(TAG, "Player not found, disconnecting.");
-                        stop();
+                        if (_retryJob == null) {
+                            Logger.i(TAG, "Scheduled retry job over 5 seconds")
+                            _retryJob = _scopeIO?.launch(Dispatchers.IO) {
+                                delay(5000)
+                                getStatus()
+                                _retryJob = null
+                            }
+                        }
                     }
                 } else {
-                    _launching = false;
+                    _launching = false
+                    _launchRetries = 0
+                    _autoLaunchEnabled = false
                 }
 
                 val volume = status.getJSONObject("volume");
@@ -566,7 +629,7 @@ class ChromecastCastingDevice : CastingDevice {
                     }
 
                     isPlaying = playerState == "PLAYING";
-                    if (isPlaying) {
+                    if (isPlaying ||  playerState == "PAUSED") {
                         setTime(currentTime);
                     }
 
@@ -577,10 +640,18 @@ class ChromecastCastingDevice : CastingDevice {
                         stopVideo();
                     }
                 }
+
+                val needsLoad = statuses.length() == 0 || (statuses.getJSONObject(0).getString("playerState") == "IDLE")
+                if (needsLoad && _contentId != null && _mediaSessionId == null) {
+                    Logger.i(TAG, "Receiver idle, sending initial LOAD")
+                    playVideo()
+                }
             } else if (type == "CLOSE") {
                 if (message.sourceId == "receiver-0") {
                     Logger.i(TAG, "Close received.");
-                    stop();
+                    stopCasting();
+                } else if (_transportId == message.sourceId) {
+                    throw Exception("Transport id closed.")
                 }
             }
         } else {
@@ -614,6 +685,13 @@ class ChromecastCastingDevice : CastingDevice {
         usedRemoteAddress = null;
         localAddress = null;
         _started = false;
+
+        _contentId = null
+        _contentType = null
+        _streamType = null
+
+        _retryJob?.cancel()
+        _retryJob = null
 
         val socket = _socket;
         val scopeIO = _scopeIO;

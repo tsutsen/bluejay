@@ -38,6 +38,7 @@ class StatePlayer {
     //Players
     private var _exoplayer : PlayerManager? = null;
     private var _thumbnailExoPlayer : PlayerManager? = null;
+    private var _shortExoPlayer: PlayerManager? = null
 
     //Video Status
     var rotationLock: Boolean = false
@@ -598,7 +599,7 @@ class StatePlayer {
             }
 
             if(_queuePosition < _queue.size) {
-                return _queue[_queuePosition];
+                return getCurrentQueueItem();
             }
         }
         return null;
@@ -633,6 +634,13 @@ class StatePlayer {
         }
         return _thumbnailExoPlayer!!;
     }
+    fun getShortPlayerOrCreate(context: Context) : PlayerManager {
+        if(_shortExoPlayer == null) {
+            val player = createExoPlayer(context);
+            _shortExoPlayer = PlayerManager(player);
+        }
+        return _shortExoPlayer!!;
+    }
 
     @OptIn(UnstableApi::class)
     private fun createExoPlayer(context : Context): ExoPlayer {
@@ -656,10 +664,13 @@ class StatePlayer {
     fun dispose(){
         val player = _exoplayer;
         val thumbPlayer = _thumbnailExoPlayer;
+        val shortPlayer = _shortExoPlayer
         _exoplayer = null;
         _thumbnailExoPlayer = null;
+        _shortExoPlayer = null
         player?.release();
         thumbPlayer?.release();
+        shortPlayer?.release()
     }
 
 

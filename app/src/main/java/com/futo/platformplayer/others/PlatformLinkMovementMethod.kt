@@ -8,11 +8,16 @@ import android.text.method.LinkMovementMethod
 import android.text.style.URLSpan
 import android.view.MotionEvent
 import android.widget.TextView
+import androidx.lifecycle.lifecycleScope
 import com.futo.platformplayer.activities.MainActivity
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.receivers.MediaControlReceiver
 import com.futo.platformplayer.timestampRegex
-import kotlinx.coroutines.runBlocking
+import com.futo.platformplayer.views.behavior.NonScrollingTextView
+import com.futo.platformplayer.views.behavior.NonScrollingTextView.Companion
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PlatformLinkMovementMethod(private val _context: Context) : LinkMovementMethod() {
 
@@ -60,31 +65,43 @@ class PlatformLinkMovementMethod(private val _context: Context) : LinkMovementMe
                     val dx = event.x - downX
                     val dy = event.y - downY
                     if (Math.abs(dx) <= touchSlop && Math.abs(dy) <= touchSlop && isTouchInside(widget, event)) {
-                        runBlocking {
-                            for (link in pressedLinks!!) {
-                                Logger.i(TAG) { "Link clicked '${link.url}'." }
+                    for (link in pressedLinks!!) {
+                        Logger.i(TAG) { "Link clicked '${link.url}'." }
 
-                                if (_context is MainActivity) {
-                                    if (_context.handleUrl(link.url)) continue
-                                    if (timestampRegex.matches(link.url)) {
-                                        val tokens = link.url.split(':')
-                                        var time_s = -1L
-                                        when (tokens.size) {
-                                            2 -> time_s = tokens[0].toLong() * 60 + tokens[1].toLong()
-                                            3 -> time_s = tokens[0].toLong() * 3600 +
-                                                    tokens[1].toLong() * 60 +
-                                                    tokens[2].toLong()
-                                        }
+                        val c = _context
+                        if (c is MainActivity) {
+                            c.lifecycleScope.launch(Dispatchers.IO) {
+                                if (c.handleUrl(link.url)) {
+                                    return@launch
+                                }
+                                if (timestampRegex.matches(link.url)) {
+                                    val tokens = link.url.split(':')
+                                    var time_s = -1L
+                                    when (tokens.size) {
+                                        2 -> time_s = tokens[0].toLong() * 60 + tokens[1].toLong()
+                                        3 -> time_s = tokens[0].toLong() * 3600 +
+                                                tokens[1].toLong() * 60 +
+                                                tokens[2].toLong()
+                                    }
 
-                                        if (time_s != -1L) {
+                                    if (time_s != -1L) {
+                                        withContext(Dispatchers.Main) {
                                             MediaControlReceiver.onSeekToReceived.emit(time_s * 1000)
-                                            continue
                                         }
+                                        return@launch
                                     }
                                 }
-                                _context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.url)))
+
+                                withContext(Dispatchers.Main) {
+                                    try {
+                                        c.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.url)))
+                                    } catch (e: Throwable) {
+                                        Logger.i(TAG, "Failed to start activity.", e)
+                                    }
+                                }
                             }
                         }
+                    }
                         pressedLinks = null
                         linkPressed = false
                         return true

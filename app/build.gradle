@@ -154,9 +154,10 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.dagger:dagger:2.48'
+    //implementation 'com.google.dagger:dagger:2.48'
     implementation 'androidx.test:monitor:1.7.2'
-    annotationProcessor 'com.google.dagger:dagger-compiler:2.48'
+    implementation 'com.google.android.material:material:1.12.0'
+    //annotationProcessor 'com.google.dagger:dagger-compiler:2.48'
 
     //Core
     implementation 'androidx.core:core-ktx:1.12.0'
@@ -180,6 +181,7 @@ dependencies {
 
     //JS
     implementation("com.caoccao.javet:javet-android:3.0.2")
+    //implementation 'com.caoccao.javet:javet-v8-android:4.1.4' //Change after extensive testing the freezing edge cases are solved.
 
     //Exoplayer
     implementation 'androidx.media3:media3-exoplayer:1.2.1'
@@ -197,7 +199,8 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.15.3'
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
-    implementation 'com.arthenica:ffmpeg-kit-full:5.1'
+    implementation fileTree(dir: 'aar', include: ['*.aar'])
+    implementation 'com.arthenica:smart-exception-java:0.2.1'
     implementation 'org.jetbrains.kotlin:kotlin-reflect:1.9.0'
     implementation 'com.github.dhaval2404:imagepicker:2.1'
     implementation 'com.google.zxing:core:3.4.1'

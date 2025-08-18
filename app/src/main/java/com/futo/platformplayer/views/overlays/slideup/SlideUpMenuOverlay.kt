@@ -13,6 +13,7 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.core.animation.doOnEnd
 import androidx.core.view.children
+import androidx.core.view.isVisible
 import com.futo.platformplayer.R
 import com.futo.platformplayer.constructs.Event0
 
@@ -42,10 +43,14 @@ class SlideUpMenuOverlay : RelativeLayout {
     constructor(context: Context, parent: ViewGroup, titleText: String, okText: String?, animated: Boolean, items: List<View>, hideButtons: Boolean = false): super(context){
         init(animated, okText);
         _container = parent;
-        if(!_container!!.children.contains(this)) {
-            _container!!.removeAllViews();
-            _container!!.addView(this);
+        _container!!.removeAllViews();
+        _container!!.addView(this);
+        if (_container!!.isVisible) {
+            isVisible = true
+            _viewBackground.alpha = 1.0f;
+            _viewOverlayContainer.translationY = 0.0f;
         }
+
         _textTitle.text = titleText;
         groupItems = items;
 
@@ -56,6 +61,12 @@ class SlideUpMenuOverlay : RelativeLayout {
         }
 
         setItems(items);
+
+        if (!isVisible) {
+            _viewOverlayContainer.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            _viewOverlayContainer.translationY = _viewOverlayContainer.measuredHeight.toFloat()
+            _viewBackground.alpha = 0f;
+        }
     }
 
 
@@ -113,6 +124,13 @@ class SlideUpMenuOverlay : RelativeLayout {
             _textOK.visibility = View.VISIBLE;
         }
     }
+    fun getSlideUpItemByTag(itemTag: Any?): SlideUpMenuItem? {
+        for(view in groupItems){
+            if(view is SlideUpMenuItem && view.itemTag == itemTag)
+                return view;
+        }
+        return null;
+    }
 
     fun selectOption(groupTag: Any?, itemTag: Any?, multiSelect: Boolean = false, toggle: Boolean = false): Boolean {
         var didSelect = false;
@@ -139,16 +157,9 @@ class SlideUpMenuOverlay : RelativeLayout {
         }
 
         isVisible = true;
-        _container?.post {
-            _container?.visibility = View.VISIBLE;
-            _container?.bringToFront();
-        }
+        _container?.visibility = View.VISIBLE;
 
         if (_animated) {
-            _viewOverlayContainer.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-            _viewOverlayContainer.translationY = _viewOverlayContainer.measuredHeight.toFloat()
-            _viewBackground.alpha = 0f;
-
             val animations = arrayListOf<Animator>();
             animations.add(ObjectAnimator.ofFloat(_viewBackground, "alpha", 0.0f, 1.0f).setDuration(ANIMATION_DURATION_MS));
             animations.add(ObjectAnimator.ofFloat(_viewOverlayContainer, "translationY", _viewOverlayContainer.measuredHeight.toFloat(), 0.0f).setDuration(ANIMATION_DURATION_MS));

@@ -4,8 +4,14 @@ import android.app.NotificationManager
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.hls.playlist.DefaultHlsPlaylistParserFactory
+import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist
+import androidx.media3.exoplayer.hls.playlist.HlsMultivariantPlaylist
 import androidx.recyclerview.widget.RecyclerView
 import com.futo.platformplayer.activities.MainActivity
 import com.futo.platformplayer.activities.SettingsActivity
@@ -37,6 +43,9 @@ import com.futo.platformplayer.models.Playlist
 import com.futo.platformplayer.models.Subscription
 import com.futo.platformplayer.models.SubscriptionGroup
 import com.futo.platformplayer.parsers.HLS
+import com.futo.platformplayer.parsers.HLS.MediaRendition
+import com.futo.platformplayer.parsers.HLS.StreamInfo
+import com.futo.platformplayer.parsers.HLS.VariantPlaylistReference
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StateDownloads
 import com.futo.platformplayer.states.StateHistory
@@ -63,6 +72,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
+import androidx.core.net.toUri
 
 class UISlideOverlays {
     companion object {
@@ -118,115 +129,163 @@ class UISlideOverlays {
             val originalVideo = subscription.doFetchVideos;
             val originalPosts = subscription.doFetchPosts;
 
-            val menu = SlideUpMenuOverlay(container.context, container, "Subscription Settings", null, true, listOf());
+            val menu = SlideUpMenuOverlay(
+                container.context,
+                container,
+                "Subscription Settings",
+                null,
+                true,
+                listOf()
+            );
 
-            StateApp.instance.scopeOrNull?.launch(Dispatchers.IO){
-                val plugin = StatePlatform.instance.getChannelClient(subscription.channel.url);
-                val capabilities = plugin.getChannelCapabilities();
+            StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
+                try {
+                    val plugin = StatePlatform.instance.getChannelClient(subscription.channel.url);
+                    val capabilities = plugin.getChannelCapabilities();
 
-                withContext(Dispatchers.Main) {
-                    items.addAll(listOf(
-                        SlideUpMenuItem(
-                            container.context,
-                            R.drawable.ic_notifications,
-                            "Notifications",
-                            "",
-                            tag = "notifications",
-                            call = {
-                                subscription.doNotifications = menu?.selectOption(null, "notifications", true, true) ?: subscription.doNotifications;
-                            },
-                            invokeParent = false
-                        ),
-                        if(StateSubscriptionGroups.instance.getSubscriptionGroups().isNotEmpty())
-                            SlideUpMenuGroup(container.context, "Subscription Groups",
-                                "You can select which groups this subscription is part of.",
-                                -1, listOf()) else null,
-                        if(StateSubscriptionGroups.instance.getSubscriptionGroups().isNotEmpty())
-                            SlideUpMenuRecycler(container.context, "as") {
-                                val groups = ArrayList<SubscriptionGroup>(StateSubscriptionGroups.instance.getSubscriptionGroups()
-                                    .map { SubscriptionGroup.Selectable(it, it.urls.contains(subscription.channel.url)) }
-                                    .sortedBy { !it.selected });
-                                var adapter: AnyAdapterView<SubscriptionGroup, SubscriptionGroupBarViewHolder>? = null;
-                                adapter = it.asAny(groups, RecyclerView.HORIZONTAL) {
-                                    it.onClick.subscribe {
-                                        if(it is SubscriptionGroup.Selectable) {
-                                            val actualGroup = StateSubscriptionGroups.instance.getSubscriptionGroup(it.id)
-                                                ?: return@subscribe;
-                                            groups.clear();
-                                            if(it.selected)
-                                                actualGroup.urls.remove(subscription.channel.url);
-                                            else
-                                                actualGroup.urls.add(subscription.channel.url);
+                    withContext(Dispatchers.Main) {
+                        items.addAll(
+                            listOf(
+                                SlideUpMenuItem(
+                                    container.context,
+                                    R.drawable.ic_notifications,
+                                    "Notifications",
+                                    "",
+                                    tag = "notifications",
+                                    call = {
+                                        subscription.doNotifications =
+                                            menu?.selectOption(null, "notifications", true, true)
+                                                ?: subscription.doNotifications;
+                                    },
+                                    invokeParent = false
+                                ),
+                                if (StateSubscriptionGroups.instance.getSubscriptionGroups()
+                                        .isNotEmpty()
+                                )
+                                    SlideUpMenuGroup(
+                                        container.context, "Subscription Groups",
+                                        "You can select which groups this subscription is part of.",
+                                        -1, listOf()
+                                    ) else null,
+                                if (StateSubscriptionGroups.instance.getSubscriptionGroups()
+                                        .isNotEmpty()
+                                )
+                                    SlideUpMenuRecycler(container.context, "as") {
+                                        val groups =
+                                            ArrayList<SubscriptionGroup>(
+                                                StateSubscriptionGroups.instance.getSubscriptionGroups()
+                                                    .map {
+                                                        SubscriptionGroup.Selectable(
+                                                            it,
+                                                            it.urls.contains(subscription.channel.url)
+                                                        )
+                                                    }
+                                                    .sortedBy { !it.selected });
+                                        var adapter: AnyAdapterView<SubscriptionGroup, SubscriptionGroupBarViewHolder>? =
+                                            null;
+                                        adapter = it.asAny(groups, RecyclerView.HORIZONTAL) {
+                                            it.onClick.subscribe {
+                                                if (it is SubscriptionGroup.Selectable) {
+                                                    val actualGroup =
+                                                        StateSubscriptionGroups.instance.getSubscriptionGroup(
+                                                            it.id
+                                                        )
+                                                            ?: return@subscribe;
+                                                    groups.clear();
+                                                    if (it.selected)
+                                                        actualGroup.urls.remove(subscription.channel.url);
+                                                    else
+                                                        actualGroup.urls.add(subscription.channel.url);
 
-                                            StateSubscriptionGroups.instance.updateSubscriptionGroup(actualGroup);
-                                            groups.addAll(StateSubscriptionGroups.instance.getSubscriptionGroups()
-                                                .map { SubscriptionGroup.Selectable(it, it.urls.contains(subscription.channel.url)) }
-                                                .sortedBy { !it.selected });
-                                            adapter?.notifyContentChanged();
-                                        }
-                                    }
-                                };
-                                return@SlideUpMenuRecycler adapter;
-                            } else null,
-                        SlideUpMenuGroup(container.context, "Fetch Settings",
-                            "Depending on the platform you might not need to enable a type for it to be available.",
-                            -1, listOf()),
-                        if(capabilities.hasType(ResultCapabilities.TYPE_LIVE)) SlideUpMenuItem(
-                            container.context,
-                            R.drawable.ic_live_tv,
-                            "Livestreams",
-                            "Check for livestreams",
-                            tag = "fetchLive",
-                            call = {
-                                subscription.doFetchLive = menu?.selectOption(null, "fetchLive", true, true) ?: subscription.doFetchLive;
-                            },
-                            invokeParent = false
-                        ) else null,
-                        if(capabilities.hasType(ResultCapabilities.TYPE_STREAMS)) SlideUpMenuItem(
-                            container.context,
-                            R.drawable.ic_play,
-                            "Streams",
-                            "Check for streams",
-                            tag = "fetchStreams",
-                            call = {
-                                subscription.doFetchStreams = menu?.selectOption(null, "fetchStreams", true, true) ?: subscription.doFetchStreams;
-                            },
-                            invokeParent = false
-                        ) else null,
-                        if(capabilities.hasType(ResultCapabilities.TYPE_VIDEOS))
-                            SlideUpMenuItem(
-                                container.context,
-                                R.drawable.ic_play,
-                                "Videos",
-                                "Check for videos",
-                                tag = "fetchVideos",
-                                call = {
-                                    subscription.doFetchVideos = menu?.selectOption(null, "fetchVideos", true, true) ?: subscription.doFetchVideos;
-                                },
-                                invokeParent = false
-                            ) else if(capabilities.hasType(ResultCapabilities.TYPE_MIXED) || capabilities.types.isEmpty())
-                            SlideUpMenuItem(
-                                container.context,
-                                R.drawable.ic_play,
-                                "Content",
-                                "Check for content",
-                                tag = "fetchVideos",
-                                call = {
-                                    subscription.doFetchVideos = menu?.selectOption(null, "fetchVideos", true, true) ?: subscription.doFetchVideos;
-                                },
-                                invokeParent = false
-                            ) else null,
-                        if(capabilities.hasType(ResultCapabilities.TYPE_POSTS)) SlideUpMenuItem(
-                            container.context,
-                            R.drawable.ic_chat,
-                            "Posts",
-                            "Check for posts",
-                            tag = "fetchPosts",
-                            call = {
-                                subscription.doFetchPosts = menu?.selectOption(null, "fetchPosts", true, true) ?: subscription.doFetchPosts;
-                            },
-                            invokeParent = false
-                        ) else null/*,,
+                                                    StateSubscriptionGroups.instance.updateSubscriptionGroup(
+                                                        actualGroup
+                                                    );
+                                                    groups.addAll(
+                                                        StateSubscriptionGroups.instance.getSubscriptionGroups()
+                                                            .map {
+                                                                SubscriptionGroup.Selectable(
+                                                                    it,
+                                                                    it.urls.contains(subscription.channel.url)
+                                                                )
+                                                            }
+                                                            .sortedBy { !it.selected });
+                                                    adapter?.notifyContentChanged();
+                                                }
+                                            }
+                                        };
+                                        return@SlideUpMenuRecycler adapter;
+                                    } else null,
+                                SlideUpMenuGroup(
+                                    container.context, "Fetch Settings",
+                                    "Depending on the platform you might not need to enable a type for it to be available.",
+                                    -1, listOf()
+                                ),
+                                if (capabilities.hasType(ResultCapabilities.TYPE_LIVE)) SlideUpMenuItem(
+                                    container.context,
+                                    R.drawable.ic_live_tv,
+                                    "Livestreams",
+                                    "Check for livestreams",
+                                    tag = "fetchLive",
+                                    call = {
+                                        subscription.doFetchLive =
+                                            menu?.selectOption(null, "fetchLive", true, true)
+                                                ?: subscription.doFetchLive;
+                                    },
+                                    invokeParent = false
+                                ) else null,
+                                if (capabilities.hasType(ResultCapabilities.TYPE_STREAMS)) SlideUpMenuItem(
+                                    container.context,
+                                    R.drawable.ic_play,
+                                    "Streams",
+                                    "Check for streams",
+                                    tag = "fetchStreams",
+                                    call = {
+                                        subscription.doFetchStreams =
+                                            menu?.selectOption(null, "fetchStreams", true, true)
+                                                ?: subscription.doFetchStreams;
+                                    },
+                                    invokeParent = false
+                                ) else null,
+                                if (capabilities.hasType(ResultCapabilities.TYPE_VIDEOS))
+                                    SlideUpMenuItem(
+                                        container.context,
+                                        R.drawable.ic_play,
+                                        "Videos",
+                                        "Check for videos",
+                                        tag = "fetchVideos",
+                                        call = {
+                                            subscription.doFetchVideos =
+                                                menu?.selectOption(null, "fetchVideos", true, true)
+                                                    ?: subscription.doFetchVideos;
+                                        },
+                                        invokeParent = false
+                                    ) else if (capabilities.hasType(ResultCapabilities.TYPE_MIXED) || capabilities.types.isEmpty())
+                                    SlideUpMenuItem(
+                                        container.context,
+                                        R.drawable.ic_play,
+                                        "Content",
+                                        "Check for content",
+                                        tag = "fetchVideos",
+                                        call = {
+                                            subscription.doFetchVideos =
+                                                menu?.selectOption(null, "fetchVideos", true, true)
+                                                    ?: subscription.doFetchVideos;
+                                        },
+                                        invokeParent = false
+                                    ) else null,
+                                if (capabilities.hasType(ResultCapabilities.TYPE_POSTS)) SlideUpMenuItem(
+                                    container.context,
+                                    R.drawable.ic_chat,
+                                    "Posts",
+                                    "Check for posts",
+                                    tag = "fetchPosts",
+                                    call = {
+                                        subscription.doFetchPosts =
+                                            menu?.selectOption(null, "fetchPosts", true, true)
+                                                ?: subscription.doFetchPosts;
+                                    },
+                                    invokeParent = false
+                                ) else null/*,,
 
                         SlideUpMenuGroup(container.context, "Actions",
                             "Various things you can do with this subscription",
@@ -234,61 +293,82 @@ class UISlideOverlays {
                         SlideUpMenuItem(container.context, R.drawable.ic_list, "Add to Group", "", "btnAddToGroup", {
                             showCreateSubscriptionGroup(container, subscription.channel);
                         }, false)*/
-                        ).filterNotNull());
+                            ).filterNotNull()
+                        );
 
-                    menu.setItems(items);
+                        menu.setItems(items);
 
-                    if(subscription.doNotifications)
-                        menu.selectOption(null, "notifications", true, true);
-                    if(subscription.doFetchLive)
-                        menu.selectOption(null, "fetchLive", true, true);
-                    if(subscription.doFetchStreams)
-                        menu.selectOption(null, "fetchStreams", true, true);
-                    if(subscription.doFetchVideos)
-                        menu.selectOption(null, "fetchVideos", true, true);
-                    if(subscription.doFetchPosts)
-                        menu.selectOption(null, "fetchPosts", true, true);
+                        if (subscription.doNotifications)
+                            menu.selectOption(null, "notifications", true, true);
+                        if (subscription.doFetchLive)
+                            menu.selectOption(null, "fetchLive", true, true);
+                        if (subscription.doFetchStreams)
+                            menu.selectOption(null, "fetchStreams", true, true);
+                        if (subscription.doFetchVideos)
+                            menu.selectOption(null, "fetchVideos", true, true);
+                        if (subscription.doFetchPosts)
+                            menu.selectOption(null, "fetchPosts", true, true);
 
-                    menu.onOK.subscribe {
-                        subscription.save();
-                        menu.hide(true);
+                        menu.onOK.subscribe {
+                            subscription.save();
+                            menu.hide(true);
 
-                        if(subscription.doNotifications && !originalNotif) {
-                            val mainContext = StateApp.instance.contextOrNull;
-                            if(Settings.instance.subscriptions.subscriptionsBackgroundUpdateInterval == 0) {
-                                UIDialogs.toast(container.context, "Enable 'Background Update' in settings for notifications to work");
+                            if (subscription.doNotifications && !originalNotif) {
+                                val mainContext = StateApp.instance.contextOrNull;
+                                if (Settings.instance.subscriptions.subscriptionsBackgroundUpdateInterval == 0) {
+                                    UIDialogs.toast(
+                                        container.context,
+                                        "Enable 'Background Update' in settings for notifications to work"
+                                    );
 
-                                if(mainContext is MainActivity) {
-                                    UIDialogs.showDialog(mainContext, R.drawable.ic_settings, "Background Updating Required",
-                                        "You need to set a Background Updating interval for notifications", null, 0,
-                                        UIDialogs.Action("Cancel", {}),
-                                        UIDialogs.Action("Configure", {
-                                            val intent = Intent(mainContext, SettingsActivity::class.java);
-                                            intent.putExtra("query", mainContext.getString(R.string.background_update));
-                                            mainContext.startActivity(intent);
-                                        }, UIDialogs.ActionStyle.PRIMARY));
+                                    if (mainContext is MainActivity) {
+                                        UIDialogs.showDialog(
+                                            mainContext,
+                                            R.drawable.ic_settings,
+                                            "Background Updating Required",
+                                            "You need to set a Background Updating interval for notifications",
+                                            null,
+                                            0,
+                                            UIDialogs.Action("Cancel", {}),
+                                            UIDialogs.Action("Configure", {
+                                                val intent = Intent(
+                                                    mainContext,
+                                                    SettingsActivity::class.java
+                                                );
+                                                intent.putExtra(
+                                                    "query",
+                                                    mainContext.getString(R.string.background_update)
+                                                );
+                                                mainContext.startActivity(intent);
+                                            }, UIDialogs.ActionStyle.PRIMARY)
+                                        );
+                                    }
+                                    return@subscribe;
+                                } else if (!(mainContext?.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).areNotificationsEnabled()) {
+                                    UIDialogs.toast(
+                                        container.context,
+                                        "Android notifications are disabled"
+                                    );
+                                    if (mainContext is MainActivity) {
+                                        mainContext.requestNotificationPermissions("Notifications are required for subscription updating and notifications to work");
+                                    }
                                 }
-                                return@subscribe;
                             }
-                            else if(!(mainContext?.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).areNotificationsEnabled()) {
-                                UIDialogs.toast(container.context, "Android notifications are disabled");
-                                if(mainContext is MainActivity) {
-                                    mainContext.requestNotificationPermissions("Notifications are required for subscription updating and notifications to work");
-                                }
-                            }
-                        }
-                    };
-                    menu.onCancel.subscribe {
-                        subscription.doNotifications = originalNotif;
-                        subscription.doFetchLive = originalLive;
-                        subscription.doFetchStreams = originalStream;
-                        subscription.doFetchVideos = originalVideo;
-                        subscription.doFetchPosts = originalPosts;
-                    };
+                        };
+                        menu.onCancel.subscribe {
+                            subscription.doNotifications = originalNotif;
+                            subscription.doFetchLive = originalLive;
+                            subscription.doFetchStreams = originalStream;
+                            subscription.doFetchVideos = originalVideo;
+                            subscription.doFetchPosts = originalPosts;
+                        };
 
-                    menu.setOk("Save");
+                        menu.setOk("Save");
 
-                    menu.show();
+                        menu.show();
+                    }
+                } catch (e: Throwable) {
+                    Logger.e(TAG, "Failed to show subscription overlay.", e)
                 }
             }
 
@@ -299,6 +379,7 @@ class UISlideOverlays {
 
         }
 
+        @OptIn(UnstableApi::class)
         fun showHlsPicker(video: IPlatformVideoDetails, source: Any, sourceUrl: String, container: ViewGroup): SlideUpMenuOverlay {
             val items = arrayListOf<View>(LoaderView(container.context))
             val slideUpMenuOverlay = SlideUpMenuOverlay(container.context, container, container.context.getString(R.string.download_video), null, true, items)
@@ -309,6 +390,8 @@ class UISlideOverlays {
 
                 val masterPlaylistContent = masterPlaylistResponse.body?.string()
                     ?: throw Exception("Master playlist content is empty")
+
+                val resolvedPlaylistUrl = masterPlaylistResponse.url
 
                 val videoButtons = arrayListOf<SlideUpMenuItem>()
                 val audioButtons = arrayListOf<SlideUpMenuItem>()
@@ -322,55 +405,103 @@ class UISlideOverlays {
 
                 val masterPlaylist: HLS.MasterPlaylist
                 try {
-                    masterPlaylist = HLS.parseMasterPlaylist(masterPlaylistContent, sourceUrl)
+                    val inputStream = ByteArrayInputStream(masterPlaylistContent.toByteArray())
+                    val playlist = DefaultHlsPlaylistParserFactory().createPlaylistParser()
+                        .parse(sourceUrl.toUri(), inputStream)
 
-                    masterPlaylist.getAudioSources().forEach { it ->
+                    if (playlist is HlsMediaPlaylist) {
+                        if (source is IHLSManifestAudioSource) {
+                            val variant = HLS.mediaRenditionToVariant(MediaRendition("AUDIO", playlist.baseUri, "Single Playlist", null, null, null, null, null))!!
 
-                        val estSize = VideoHelper.estimateSourceSize(it);
-                        val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
-                        audioButtons.add(SlideUpMenuItem(
-                            container.context,
-                            R.drawable.ic_music,
-                            it.name,
-                            listOf(it.language, it.codec).mapNotNull { x -> x.ifEmpty { null } }.joinToString(", "),
-                            (prefix + it.codec).trim(),
-                            tag = it,
-                            call = {
-                                selectedAudioVariant = it
-                                slideUpMenuOverlay.selectOption(audioButtons, it)
-                                slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
-                            },
-                            invokeParent = false
-                        ))
-                    }
-
-                    /*masterPlaylist.getSubtitleSources().forEach { it ->
-                        subtitleButtons.add(SlideUpMenuItem(container.context, R.drawable.ic_music, it.name, listOf(it.format).mapNotNull { x -> x.ifEmpty { null } }.joinToString(", "), it, {
-                            selectedSubtitleVariant = it
-                            slideUpMenuOverlay.selectOption(subtitleButtons, it)
-                            slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
-                        }, false))
-                    }*/
-
-                    masterPlaylist.getVideoSources().forEach {
-                        val estSize = VideoHelper.estimateSourceSize(it);
-                        val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
-                        videoButtons.add(SlideUpMenuItem(
-                            container.context,
-                            R.drawable.ic_movie,
-                            it.name,
-                            "${it.width}x${it.height}",
-                            (prefix + it.codec).trim(),
-                            tag = it,
-                            call = {
-                                selectedVideoVariant = it
-                                slideUpMenuOverlay.selectOption(videoButtons, it)
-                                if (audioButtons.isEmpty()){
+                            val estSize = VideoHelper.estimateSourceSize(variant);
+                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
+                            audioButtons.add(SlideUpMenuItem(
+                                container.context,
+                                R.drawable.ic_music,
+                                variant.name,
+                                listOf(variant.language, variant.codec).mapNotNull { x -> x.ifEmpty { null } }.joinToString(", "),
+                                (prefix + variant.codec).trim(),
+                                tag = variant,
+                                call = {
+                                    selectedAudioVariant = variant
+                                    slideUpMenuOverlay.selectOption(audioButtons, variant)
                                     slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
-                                }
-                            },
-                            invokeParent = false
-                        ))
+                                },
+                                invokeParent = false
+                            ))
+                        } else {
+                            val variant = HLS.variantReferenceToVariant(VariantPlaylistReference(playlist.baseUri, StreamInfo(null, null, null, null, null, null, null, null, null)))
+
+                            val estSize = VideoHelper.estimateSourceSize(variant);
+                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
+                            videoButtons.add(SlideUpMenuItem(
+                                container.context,
+                                R.drawable.ic_movie,
+                                variant.name,
+                                "${variant.width}x${variant.height}",
+                                (prefix + variant.codec).trim(),
+                                tag = variant,
+                                call = {
+                                    selectedVideoVariant = variant
+                                    slideUpMenuOverlay.selectOption(videoButtons, variant)
+                                    if (audioButtons.isEmpty()){
+                                        slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                    }
+                                },
+                                invokeParent = false
+                            ))
+                        }
+                    } else if (playlist is HlsMultivariantPlaylist) {
+                        masterPlaylist = HLS.parseMasterPlaylist(masterPlaylistContent, resolvedPlaylistUrl)
+
+                        masterPlaylist.getAudioSources().forEach { it ->
+
+                            val estSize = VideoHelper.estimateSourceSize(it);
+                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
+                            audioButtons.add(SlideUpMenuItem(
+                                container.context,
+                                R.drawable.ic_music,
+                                it.name,
+                                listOf(it.language, it.codec).mapNotNull { x -> x.ifEmpty { null } }.joinToString(", "),
+                                (prefix + it.codec).trim(),
+                                tag = it,
+                                call = {
+                                    selectedAudioVariant = it
+                                    slideUpMenuOverlay.selectOption(audioButtons, it)
+                                    slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                },
+                                invokeParent = false
+                            ))
+                        }
+
+                        /*masterPlaylist.getSubtitleSources().forEach { it ->
+                            subtitleButtons.add(SlideUpMenuItem(container.context, R.drawable.ic_music, it.name, listOf(it.format).mapNotNull { x -> x.ifEmpty { null } }.joinToString(", "), it, {
+                                selectedSubtitleVariant = it
+                                slideUpMenuOverlay.selectOption(subtitleButtons, it)
+                                slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                            }, false))
+                        }*/
+
+                        masterPlaylist.getVideoSources().forEach {
+                            val estSize = VideoHelper.estimateSourceSize(it);
+                            val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
+                            videoButtons.add(SlideUpMenuItem(
+                                container.context,
+                                R.drawable.ic_movie,
+                                it.name,
+                                "${it.width}x${it.height}",
+                                (prefix + it.codec).trim(),
+                                tag = it,
+                                call = {
+                                    selectedVideoVariant = it
+                                    slideUpMenuOverlay.selectOption(videoButtons, it)
+                                    if (audioButtons.isEmpty()){
+                                        slideUpMenuOverlay.setOk(container.context.getString(R.string.download))
+                                    }
+                                },
+                                invokeParent = false
+                            ))
+                        }
                     }
 
                     val newItems = arrayListOf<View>()
@@ -398,11 +529,11 @@ class UISlideOverlays {
                     if (masterPlaylistContent.lines().any { it.startsWith("#EXTINF:") }) {
                         withContext(Dispatchers.Main) {
                             if (source is IHLSManifestSource) {
-                                StateDownloads.instance.download(video, HLSVariantVideoUrlSource("variant", 0, 0, "application/vnd.apple.mpegurl", "", null, 0, false, sourceUrl), null, null)
+                                StateDownloads.instance.download(video, HLSVariantVideoUrlSource("variant", 0, 0, "application/vnd.apple.mpegurl", "", null, 0, false, resolvedPlaylistUrl), null, null)
                                 UIDialogs.toast(container.context, "Variant video HLS playlist download started")
                                 slideUpMenuOverlay.hide()
                             } else if (source is IHLSManifestAudioSource) {
-                                StateDownloads.instance.download(video, null, HLSVariantAudioUrlSource("variant", 0, "application/vnd.apple.mpegurl", "", "", null, false, sourceUrl), null)
+                                StateDownloads.instance.download(video, null, HLSVariantAudioUrlSource("variant", 0, "application/vnd.apple.mpegurl", "", "", null, false, false, resolvedPlaylistUrl), null)
                                 UIDialogs.toast(container.context, "Variant audio HLS playlist download started")
                                 slideUpMenuOverlay.hide()
                             } else {
@@ -683,6 +814,10 @@ class UISlideOverlays {
                                 Logger.e(TAG, "Failed download subtitles.", e);
                             }
                         }
+                    }
+                    if(!Settings.instance.downloads.shouldDownload()) {
+                        UIDialogs.appToast("Download will start when you're back on wifi.\n" +
+                                "(You can change this in settings)", true);
                     }
                 }
             };
@@ -980,26 +1115,30 @@ class UISlideOverlays {
                         + actions).filterNotNull()
             ));
             items.add(
-                SlideUpMenuGroup(container.context, container.context.getString(R.string.add_to), "addto",
-                    SlideUpMenuItem(container.context,
+                SlideUpMenuGroup(
+                    container.context, container.context.getString(R.string.add_to), "addto",
+                    SlideUpMenuItem(
+                        container.context,
                         R.drawable.ic_queue_add,
                         container.context.getString(R.string.add_to_queue),
                         "${queue.size} " + container.context.getString(R.string.videos),
                         tag = "queue",
                         call = { StatePlayer.instance.addToQueue(video); }),
-                    SlideUpMenuItem(container.context,
+                    SlideUpMenuItem(
+                        container.context,
                         R.drawable.ic_watchlist_add,
                         "${container.context.getString(R.string.add_to)} " + StatePlayer.TYPE_WATCHLATER + "",
                         "${watchLater.size} " + container.context.getString(R.string.videos),
                         tag = "watch later",
                         call = { StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(video), true); }),
-                    SlideUpMenuItem(container.context,
+                    SlideUpMenuItem(
+                        container.context,
                         R.drawable.ic_history,
                         container.context.getString(R.string.add_to_history),
                         "Mark as watched",
                         tag = "history",
                         call = { StateHistory.instance.markAsWatched(video); }),
-            ));
+                ));
 
             val playlistItems = arrayListOf<SlideUpMenuItem>();
             playlistItems.add(SlideUpMenuItem(
@@ -1063,14 +1202,17 @@ class UISlideOverlays {
             val queue = StatePlayer.instance.getQueue();
             val watchLater = StatePlaylists.instance.getWatchLater();
             items.add(
-                SlideUpMenuGroup(container.context, container.context.getString(R.string.other), "other",
-                    SlideUpMenuItem(container.context,
+                SlideUpMenuGroup(
+                    container.context, container.context.getString(R.string.other), "other",
+                    SlideUpMenuItem(
+                        container.context,
                         R.drawable.ic_queue_add,
                         container.context.getString(R.string.queue),
                         "${queue.size} " + container.context.getString(R.string.videos),
                         tag = "queue",
                         call = { StatePlayer.instance.addToQueue(video); }),
-                    SlideUpMenuItem(container.context,
+                    SlideUpMenuItem(
+                        container.context,
                         R.drawable.ic_watchlist_add,
                         StatePlayer.TYPE_WATCHLATER,
                         "${watchLater.size} " + container.context.getString(R.string.videos),
@@ -1078,8 +1220,10 @@ class UISlideOverlays {
                         call = {
                             if(StatePlaylists.instance.addToWatchLater(SerializedPlatformVideo.fromVideo(video), true))
                                 UIDialogs.appToast("Added to watch later", false);
+                            else
+                                UIDialogs.toast(container.context.getString(R.string.already_in_watch_later))
                         }),
-                    )
+                )
             );
 
             val playlistItems = arrayListOf<SlideUpMenuItem>();
@@ -1117,8 +1261,8 @@ class UISlideOverlays {
             return SlideUpMenuOverlay(container.context, container, container.context.getString(R.string.add_to), null, true, items).apply { show() };
         }
 
-        fun showFiltersOverlay(lifecycleScope: CoroutineScope, container: ViewGroup, enabledClientsIds: List<String>, filterValues: HashMap<String, List<String>>, isChannelSearch: Boolean = false): SlideUpMenuFilters {
-            val overlay = SlideUpMenuFilters(lifecycleScope, container, enabledClientsIds, filterValues, isChannelSearch);
+        fun showFiltersOverlay(lifecycleScope: CoroutineScope, container: ViewGroup, enabledClientsIds: List<String>, filterValues: HashMap<String, List<String>>): SlideUpMenuFilters {
+            val overlay = SlideUpMenuFilters(lifecycleScope, container, enabledClientsIds, filterValues);
             overlay.show();
             return overlay;
         }
@@ -1148,7 +1292,7 @@ class UISlideOverlays {
                     container.context.getString(R.string.decide_which_buttons_should_be_pinned),
                     tag = "",
                     call = {
-                        showOrderOverlay(container, container.context.getString(R.string.select_your_pins_in_order),  (visible + hidden).map { Pair(it.text.text.toString(), it.tagRef!!) }) {
+                        showOrderOverlay(container, container.context.getString(R.string.select_your_pins_in_order),  (visible + hidden).map { Pair(it.text.text.toString(), it.tagRef!!) }, {
                             val selected = it
                                 .map { x -> visible.find { it.tagRef == x } ?: hidden.find { it.tagRef == x } }
                                 .filter { it != null }
@@ -1156,7 +1300,7 @@ class UISlideOverlays {
                                 .toList();
 
                             onPinnedbuttons?.invoke(selected + (visible + hidden).filter { !selected.contains(it) });
-                        }
+                        });
                     },
                     invokeParent = false
                 ))
@@ -1164,29 +1308,40 @@ class UISlideOverlays {
 
             return SlideUpMenuOverlay(container.context, container, container.context.getString(R.string.more_options), null, true, *views).apply { show() };
         }
-
-        fun showOrderOverlay(container: ViewGroup, title: String, options: List<Pair<String, Any>>, onOrdered: (List<Any>)->Unit) {
+        fun showOrderOverlay(container: ViewGroup, title: String, options: List<Pair<String, Any>>, onOrdered: (List<Any>)->Unit, description: String? = null) {
             val selection: MutableList<Any> = mutableListOf();
 
             var overlay: SlideUpMenuOverlay? = null;
 
             overlay = SlideUpMenuOverlay(container.context, container, title, container.context.getString(R.string.save), true,
-                options.map { SlideUpMenuItem(
+                listOf(
+                    if(!description.isNullOrEmpty()) SlideUpMenuGroup(container.context, "", description, "", listOf()) else null,
+                ).filterNotNull() +
+                (options.map { SlideUpMenuItem(
                     container.context,
                     R.drawable.ic_move_up,
                     it.first,
                     "",
                     tag = it.second,
                     call = {
+                        val overlayItem = overlay?.getSlideUpItemByTag(it.second);
                         if(overlay!!.selectOption(null, it.second, true, true)) {
-                            if(!selection.contains(it.second))
+                            if(!selection.contains(it.second)) {
                                 selection.add(it.second);
-                        } else
+                                if(overlayItem != null) {
+                                    overlayItem.setSubText(selection.indexOf(it.second).toString());
+                                }
+                            }
+                        } else {
                             selection.remove(it.second);
+                            if(overlayItem != null) {
+                                overlayItem.setSubText("");
+                            }
+                        }
                     },
                     invokeParent = false
                 )
-                });
+                }));
             overlay.onOK.subscribe {
                 onOrdered.invoke(selection);
                 overlay.hide();

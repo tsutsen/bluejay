@@ -7,6 +7,7 @@ import com.caoccao.javet.values.reference.V8ValueObject
 import com.futo.platformplayer.api.media.IPlatformClient
 import com.futo.platformplayer.api.media.models.comments.IPlatformComment
 import com.futo.platformplayer.api.media.models.contents.IPlatformContent
+import com.futo.platformplayer.api.media.models.live.IPlatformLiveEvent
 import com.futo.platformplayer.api.media.models.playback.IPlaybackTracker
 import com.futo.platformplayer.api.media.models.ratings.IRating
 import com.futo.platformplayer.api.media.models.ratings.RatingLikes
@@ -24,12 +25,17 @@ import com.futo.platformplayer.engine.V8Plugin
 import com.futo.platformplayer.getOrDefault
 import com.futo.platformplayer.getOrThrow
 import com.futo.platformplayer.getOrThrowNullable
+import com.futo.platformplayer.invokeV8
 import com.futo.platformplayer.states.StateDeveloper
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class JSVideoDetails : JSVideo, IPlatformVideoDetails {
+    private val _plugin: JSClient;
     private val _hasGetComments: Boolean;
     private val _hasGetContentRecommendations: Boolean;
     private val _hasGetPlaybackTracker: Boolean;
+    private val _hasGetVODEvents: Boolean;
 
     //Details
     override val description : String;
@@ -45,9 +51,9 @@ class JSVideoDetails : JSVideo, IPlatformVideoDetails {
 
     override val subtitles: List<ISubtitleSource>;
 
-
     constructor(plugin: JSClient, obj: V8ValueObject) : super(plugin.config, obj) {
         val contextName = "VideoDetails";
+        _plugin = plugin;
         val config = plugin.config;
         description = _content.getOrThrow(config, "description", contextName);
         video = JSVideoSourceDescriptor.fromV8(plugin, _content.getOrThrow(config, "video", contextName));
@@ -69,6 +75,7 @@ class JSVideoDetails : JSVideo, IPlatformVideoDetails {
         _hasGetComments = _content.has("getComments");
         _hasGetPlaybackTracker = _content.has("getPlaybackTracker");
         _hasGetContentRecommendations = _content.has("getContentRecommendations");
+        _hasGetVODEvents = _content.has("getVODEvents");
     }
 
     override fun getPlaybackTracker(): IPlaybackTracker? {
@@ -82,14 +89,16 @@ class JSVideoDetails : JSVideo, IPlatformVideoDetails {
             return getPlaybackTrackerJS();
     }
     private fun getPlaybackTrackerJS(): IPlaybackTracker? {
-        return V8Plugin.catchScriptErrors(_pluginConfig, "VideoDetails", "videoDetails.getPlaybackTracker()") {
-            val tracker = _content.invoke<V8Value>("getPlaybackTracker", arrayOf<Any>())
-                ?: return@catchScriptErrors null;
-            if(tracker is V8ValueObject)
-                return@catchScriptErrors JSPlaybackTracker(_pluginConfig, tracker);
-            else
-                return@catchScriptErrors null;
-        };
+        return _plugin.busy {
+            V8Plugin.catchScriptErrors(_pluginConfig, "VideoDetails", "videoDetails.getPlaybackTracker()") {
+                val tracker = _content.invokeV8<V8Value>("getPlaybackTracker", arrayOf<Any>())
+                    ?: return@catchScriptErrors null;
+                if(tracker is V8ValueObject)
+                    return@catchScriptErrors JSPlaybackTracker(_plugin, tracker);
+                else
+                    return@catchScriptErrors null;
+            }
+        }
     }
 
     override fun getContentRecommendations(client: IPlatformClient): IPager<IPlatformContent>? {
@@ -106,8 +115,10 @@ class JSVideoDetails : JSVideo, IPlatformVideoDetails {
         return null;
     }
     private fun getContentRecommendationsJS(client: JSClient): JSContentPager {
-        val contentPager = _content.invoke<V8ValueObject>("getContentRecommendations", arrayOf<Any>());
-        return JSContentPager(_pluginConfig, client, contentPager);
+        return _plugin.busy {
+            val contentPager = _content.invokeV8<V8ValueObject>("getContentRecommendations", arrayOf<Any>());
+            return@busy JSContentPager(_pluginConfig, client, contentPager);
+        }
     }
 
     override fun getComments(client: IPlatformClient): IPager<IPlatformComment>? {
@@ -123,10 +134,23 @@ class JSVideoDetails : JSVideo, IPlatformVideoDetails {
     }
 
     private fun getCommentsJS(client: JSClient): IPager<IPlatformComment>? {
-        val commentPager = _content.invoke<V8Value>("getComments", arrayOf<Any>());
-        if (commentPager !is V8ValueObject) //TODO: Maybe handle this better?
-            return null;
+        return _plugin.busy {
+            val commentPager = _content.invokeV8<V8Value>("getComments", arrayOf<Any>());
+            if (commentPager !is V8ValueObject) //TODO: Maybe handle this better?
+                return@busy null;
 
-        return JSCommentPager(_pluginConfig, client, commentPager);
+            return@busy JSCommentPager(_pluginConfig, client, commentPager);
+        }
+    }
+
+    fun hasVODEvents(): Boolean{
+        return _hasGetVODEvents;
+    }
+    fun getVODEvents(url: String): IPager<IPlatformLiveEvent>? = _plugin.busy {
+        if(!_hasGetVODEvents)
+            return@busy null;
+
+        return@busy JSVODEventPager(_plugin.config, _plugin,
+            _content.invokeV8<V8ValueObject>("getVODEvents", arrayOf<Any>()));
     }
 }

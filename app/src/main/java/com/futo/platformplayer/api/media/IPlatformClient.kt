@@ -1,5 +1,6 @@
 package com.futo.platformplayer.api.media
 
+import com.futo.platformplayer.api.media.models.IPlatformChannelContent
 import com.futo.platformplayer.api.media.models.PlatformAuthorLink
 import com.futo.platformplayer.api.media.models.ResultCapabilities
 import com.futo.platformplayer.api.media.models.channels.IPlatformChannel
@@ -12,6 +13,7 @@ import com.futo.platformplayer.api.media.models.live.IPlatformLiveEvent
 import com.futo.platformplayer.api.media.models.playback.IPlaybackTracker
 import com.futo.platformplayer.api.media.models.playlists.IPlatformPlaylist
 import com.futo.platformplayer.api.media.models.playlists.IPlatformPlaylistDetails
+import com.futo.platformplayer.api.media.models.video.IPlatformVideo
 import com.futo.platformplayer.api.media.structures.IPager
 import com.futo.platformplayer.models.ImageVariable
 
@@ -34,6 +36,11 @@ interface IPlatformClient {
      * Gets the home recommendations
      */
     fun getHome(): IPager<IPlatformContent>
+
+    /**
+     * Gets the shorts feed
+     */
+    fun getShorts(): IPager<IPlatformVideo>
 
     //Search
     /**
@@ -65,6 +72,11 @@ interface IPlatformClient {
      * Searches for channels and returns a channel pager
      */
     fun searchChannels(query: String): IPager<PlatformAuthorLink>;
+
+    /**
+     * Searches for channels and returns a content pager
+     */
+    fun searchChannelsAsContent(query: String): IPager<IPlatformContent>;
 
 
     //Video Pages
@@ -170,6 +182,10 @@ interface IPlatformClient {
      * Retrieves the subscriptions of the currently logged in user
      */
     fun getUserSubscriptions(): Array<String>;
+    /**
+     * Retrieves the history of the currently logged in user
+     */
+    fun getUserHistory(): IPager<IPlatformContent>;
 
 
     fun isClaimTypeSupported(claimType: Int): Boolean;

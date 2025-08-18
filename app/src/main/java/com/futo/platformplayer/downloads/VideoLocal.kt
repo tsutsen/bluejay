@@ -10,7 +10,7 @@ import com.futo.platformplayer.api.media.models.contents.IPlatformContent
 import com.futo.platformplayer.api.media.models.playback.IPlaybackTracker
 import com.futo.platformplayer.api.media.models.ratings.IRating
 import com.futo.platformplayer.api.media.models.streams.IVideoSourceDescriptor
-import com.futo.platformplayer.api.media.models.streams.LocalVideoMuxedSourceDescriptor
+import com.futo.platformplayer.api.media.models.streams.DownloadedVideoMuxedSourceDescriptor
 import com.futo.platformplayer.api.media.models.streams.LocalVideoUnMuxedSourceDescriptor
 import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
@@ -57,7 +57,7 @@ class VideoLocal: IPlatformVideoDetails, IStoreItem {
     override val video: IVideoSourceDescriptor get() = if(audioSource.isNotEmpty())
         LocalVideoUnMuxedSourceDescriptor(this)
     else
-        LocalVideoMuxedSourceDescriptor(this);
+        DownloadedVideoMuxedSourceDescriptor(this);
     override val preview: IVideoSourceDescriptor? get() = videoSerialized.preview;
 
     override val live: IVideoSource? get() = videoSerialized.live;
@@ -72,6 +72,10 @@ class VideoLocal: IPlatformVideoDetails, IStoreItem {
     override val isLive: Boolean get() = videoSerialized.isLive;
 
     override val isShort: Boolean get() = videoSerialized.isShort;
+
+    override var playbackTime: Long = -1;
+    @kotlinx.serialization.Serializable(with = OffsetDateTimeNullableSerializer::class)
+    override var playbackDate: OffsetDateTime? = null;
 
     //TODO: Offline subtitles
     override val subtitles: List<ISubtitleSource> = listOf();

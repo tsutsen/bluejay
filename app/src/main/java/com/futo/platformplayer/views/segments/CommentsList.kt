@@ -22,12 +22,12 @@ import com.futo.platformplayer.api.media.structures.IPager
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.constructs.TaskHandler
 import com.futo.platformplayer.engine.exceptions.ScriptUnavailableException
-import com.futo.platformplayer.fullyBackfillServersAnnounceExceptions
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePolycentric
 import com.futo.platformplayer.views.adapters.CommentViewHolder
 import com.futo.platformplayer.views.adapters.InsertedViewAdapterWithLoader
+import com.futo.polycentric.core.fullyBackfillServersAnnounceExceptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.UnknownHostException
@@ -68,15 +68,7 @@ class CommentsList : ConstraintLayout {
         UIDialogs.showGeneralRetryErrorDialog(context, it.message ?: "", it, { loadNextPage() });
     };
 
-    private val _scrollListener = object : RecyclerView.OnScrollListener() {
-        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-            super.onScrolled(recyclerView, dx, dy);
-            onScrolled();
-
-            val totalScrollDistance = recyclerView.computeVerticalScrollOffset()
-            _layoutScrollToTop.visibility = if (totalScrollDistance > recyclerView.height) View.VISIBLE else View.GONE
-        }
-    };
+    private val _scrollListener: RecyclerView.OnScrollListener
 
     private var _loader: (suspend () -> IPager<IPlatformComment>)? = null;
     private val _adapterComments: InsertedViewAdapterWithLoader<CommentViewHolder>;
@@ -131,6 +123,14 @@ class CommentsList : ConstraintLayout {
         _llmReplies = LinearLayoutManager(context);
         _recyclerComments.layoutManager = _llmReplies;
         _recyclerComments.adapter = _adapterComments;
+        _scrollListener = object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy);
+                onScrolled();
+
+                _layoutScrollToTop.visibility = if (_llmReplies.findFirstCompletelyVisibleItemPosition() > 5) View.VISIBLE else View.GONE
+            }
+        };
         _recyclerComments.addOnScrollListener(_scrollListener);
     }
 
