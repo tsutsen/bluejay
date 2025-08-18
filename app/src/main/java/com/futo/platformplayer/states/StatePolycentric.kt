@@ -28,6 +28,7 @@ import com.futo.platformplayer.selectBestImage
 import com.futo.platformplayer.stores.FragmentedStorage
 import com.futo.platformplayer.stores.StringStorage
 import com.futo.polycentric.core.ApiMethods
+import com.futo.polycentric.core.ensureServerAndBackfill
 import com.futo.polycentric.core.ClaimType
 import com.futo.polycentric.core.ContentType
 import com.futo.polycentric.core.Opinion
@@ -55,7 +56,6 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.ForkJoinPool
-import com.futo.polycentric.core.ensureServerAndBackfill
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
