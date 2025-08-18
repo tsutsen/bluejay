@@ -301,7 +301,6 @@ class VideoDetailFragment() : MainFragment() {
     }
     fun closeVideoDetails() {
         Logger.i(TAG, "closeVideoDetails()")
-        _viewDetail?.onPlayChanged?.emit(false)
         state = State.CLOSED;
         _viewDetail?.onStop();
         close();
@@ -326,11 +325,6 @@ class VideoDetailFragment() : MainFragment() {
             closeVideoDetails();
         };
         viewDetail.onMaximize.subscribe { maximizeVideoDetail(it) };
-        viewDetail.onPlayChanged.subscribe {
-            val params = _viewDetail?.getPictureInPictureParams(it)
-            if (params != null)
-                activity?.setPictureInPictureParams(params)
-        }
         viewDetail.onEnterPictureInPicture.subscribe {
             Logger.i(TAG, "onEnterPictureInPicture")
             isInPictureInPicture = true;
@@ -419,7 +413,7 @@ class VideoDetailFragment() : MainFragment() {
     }
 
     fun forcePictureInPicture() {
-        val params = _viewDetail?.getPictureInPictureParams(true);
+        val params = _viewDetail?.getPictureInPictureParams();
         if(params != null)
             activity?.enterPictureInPictureMode(params);
     }
