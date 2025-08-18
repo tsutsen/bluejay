@@ -90,6 +90,15 @@
             app:buttonSubText="@string/copy_your_identity_to_clipboard"
             app:buttonIcon="@drawable/ic_copy"
             android:layout_marginTop="8dp" />
+
+        <com.futo.platformplayer.views.buttons.BigButton
+            android:id="@+id/button_export_file"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:buttonText="@string/export_to_file"
+            app:buttonSubText="@string/save_profile_to_file_for_sharing"
+            app:buttonIcon="@drawable/ic_download"
+            android:layout_marginTop="8dp" />
     </LinearLayout>
 
     <ProgressBar

@@ -14,8 +14,10 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.futo.platformplayer.R
+import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.setNavigationBarColorAndIcons
 import com.futo.platformplayer.states.StateApp
@@ -40,13 +42,13 @@ import kotlinx.coroutines.withContext
 import userpackage.Protocol
 import userpackage.Protocol.ExportBundle
 import userpackage.Protocol.URLInfo
-import java.io.ByteArrayOutputStream
-import java.util.zip.GZIPOutputStream
-import android.util.Base64
+import java.io.File
+import java.io.FileWriter
 
 class PolycentricBackupActivity : AppCompatActivity() {
     private lateinit var _buttonShare: BigButton;
     private lateinit var _buttonCopy: BigButton;
+    private lateinit var _buttonExportFile: BigButton;
     private lateinit var _imageQR: ImageView;
     private lateinit var _exportBundle: String;
     private lateinit var _textQR: TextView;
@@ -64,6 +66,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
 
         _buttonShare = findViewById(R.id.button_share)
         _buttonCopy = findViewById(R.id.button_copy)
+        _buttonExportFile = findViewById(R.id.button_export_file)
         _imageQR = findViewById(R.id.image_qr)
         _textQR = findViewById(R.id.text_qr)
         _textQRHint = findViewById(R.id.text_qr_hint)
@@ -78,6 +81,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
         _loader.visibility = View.VISIBLE
         _buttonShare.visibility = View.INVISIBLE
         _buttonCopy.visibility = View.INVISIBLE
+        _buttonExportFile.visibility = View.INVISIBLE
 
         lifecycleScope.launch {
             try {
@@ -111,12 +115,14 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 // Show the export bundle text even if QR code generation fails
                 _exportBundle = withContext(Dispatchers.IO) { createExportBundle() }
                 
-                // Provide more specific error message based on the exception
-                val errorMessage = when {
-                    e.message?.contains("Data too big") == true -> getString(R.string.qr_code_too_large_use_text_below)
-                    else -> getString(R.string.failed_to_generate_qr_code)
+                // Show file export button when QR code is too large
+                if (e.message?.contains("Data too big") == true) {
+                    _textQR.text = getString(R.string.qr_code_too_large_use_file_export)
+                    _buttonExportFile.visibility = View.VISIBLE
+                } else {
+                    _textQR.text = getString(R.string.failed_to_generate_qr_code)
                 }
-                _textQR.text = errorMessage
+                
                 _textQR.visibility = View.VISIBLE
                 _textQRHint.visibility = View.INVISIBLE
                 _buttonShare.visibility = View.VISIBLE
@@ -139,36 +145,19 @@ class PolycentricBackupActivity : AppCompatActivity() {
             val clip = ClipData.newPlainText(getString(R.string.copied_text), _exportBundle);
             clipboard.setPrimaryClip(clip);
         };
+
+        _buttonExportFile.onClick.subscribe {
+            exportToFile()
+        };
     }
 
     private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
-        // Try different error correction levels and settings to handle large data
-        val errorCorrectionLevels = listOf(
-            ErrorCorrectionLevel.L,  // 7% recovery
-            ErrorCorrectionLevel.M,  // 15% recovery  
-            ErrorCorrectionLevel.Q,  // 25% recovery
-            ErrorCorrectionLevel.H   // 30% recovery
-        )
+        val hints = java.util.EnumMap<EncodeHintType, Any>(EncodeHintType::class.java)
+        hints[EncodeHintType.ERROR_CORRECTION] = ErrorCorrectionLevel.M
+        hints[EncodeHintType.MARGIN] = 1
         
-        var lastException: Exception? = null
-        
-        for (errorLevel in errorCorrectionLevels) {
-            try {
-                val hints = java.util.EnumMap<EncodeHintType, Any>(EncodeHintType::class.java)
-                hints[EncodeHintType.ERROR_CORRECTION] = errorLevel
-                hints[EncodeHintType.MARGIN] = 1
-                
-                val bitMatrix = MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, width, height, hints)
-                return bitMatrixToBitmap(bitMatrix)
-            } catch (e: Exception) {
-                lastException = e
-                Logger.w(TAG, "Failed to generate QR code with error correction level $errorLevel: ${e.message}")
-                continue
-            }
-        }
-        
-        // If all attempts fail, throw the last exception
-        throw lastException ?: Exception("Failed to generate QR code")
+        val bitMatrix = MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, width, height, hints)
+        return bitMatrixToBitmap(bitMatrix)
     }
 
     private fun bitMatrixToBitmap(matrix: BitMatrix): Bitmap {
@@ -259,31 +248,38 @@ class PolycentricBackupActivity : AppCompatActivity() {
             .setBody(exportBundle.toByteString())
             .build();
 
-        val originalData = urlInfo.toByteArray()
-        val originalUrl = "polycentric://" + originalData.toBase64Url()
-        
-        // If the original URL is too long, try compression
-        if (originalUrl.length > 2000) { // QR code practical limit
-            try {
-                val compressedData = compressData(originalData)
-                val compressedUrl = "polycentric://" + compressedData.toBase64Url()
-                val compressionRatio = (compressedUrl.length.toFloat() / originalUrl.length * 100).toInt()
-                Logger.i(TAG, "Using compressed export bundle. Original size: ${originalUrl.length}, Compressed size: ${compressedUrl.length}, Compression ratio: ${compressionRatio}%")
-                return compressedUrl
-            } catch (e: Exception) {
-                Logger.w(TAG, "Failed to compress export bundle, using original", e)
-            }
-        }
-        
-        return originalUrl
+        val data = urlInfo.toByteArray()
+        return "polycentric://" + data.toBase64Url()
     }
-    
-    private fun compressData(data: ByteArray): ByteArray {
-        val outputStream = ByteArrayOutputStream()
-        GZIPOutputStream(outputStream).use { gzip ->
-            gzip.write(data)
+
+    private fun exportToFile() {
+        try {
+            val fileName = "polycentric_profile_${System.currentTimeMillis()}.txt"
+            val file = File(filesDir, fileName)
+            
+            FileWriter(file).use { writer ->
+                writer.write(_exportBundle)
+            }
+            
+            val uri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                file
+            )
+            
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "Polycentric Profile Export")
+                putExtra(Intent.EXTRA_TEXT, "Polycentric profile export file")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            
+            startActivity(Intent.createChooser(shareIntent, "Export Profile to File"))
+        } catch (e: Exception) {
+            Logger.e(TAG, "Failed to export to file", e)
+            UIDialogs.toast(this, "Failed to export profile to file")
         }
-        return outputStream.toByteArray()
     }
 
     companion object {
