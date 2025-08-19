@@ -2730,9 +2730,6 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
         Logger.i(TAG, "handleFullScreen(fullscreen=$fullscreen)")
 
         if(fullscreen) {
-            _container_content.visibility = GONE
-            _layoutPlayerContainer.setPadding(0, 0, 0, 0);
-
             val lp = _container_content.layoutParams as ConstraintLayout.LayoutParams;
             lp.topMargin = 0;
             _container_content.layoutParams = lp;
@@ -2744,9 +2741,6 @@ class VideoDetailView(fragment: VideoDetailFragment, inflater: LayoutInflater) :
             setProgressBarOverlayed(null);
         }
         else {
-            _container_content.visibility = VISIBLE
-            _layoutPlayerContainer.setPadding(0, 0, 0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6.0f, Resources.getSystem().displayMetrics).toInt());
-
             val lp = _container_content.layoutParams as ConstraintLayout.LayoutParams;
             lp.topMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, -18.0f, Resources.getSystem().displayMetrics).toInt();
             _container_content.layoutParams = lp;
