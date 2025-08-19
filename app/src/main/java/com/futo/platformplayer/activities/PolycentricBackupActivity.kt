@@ -115,7 +115,8 @@ class PolycentricBackupActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "QR code generation failed. Bundle length: ${_exportBundle.length}, Error: ${e.message}", e)
+                val byteSize = _exportBundle.toByteArray(Charsets.UTF_8).size
+                Logger.e(TAG, "QR code generation failed. Bundle length: ${_exportBundle.length} chars, ${byteSize} bytes, Error: ${e.message}", e)
                 
                 // Show the export bundle text even if QR code generation fails
                 _exportBundle = withContext(Dispatchers.IO) { createExportBundle() }
@@ -157,13 +158,8 @@ class PolycentricBackupActivity : AppCompatActivity() {
     }
 
     private fun isContentSuitableForQRCode(content: String): Boolean {
-        // QR Code Version 40 (177x177) capacity limits:
-        // - Error Correction Level L (7%): ~2953 characters
-        // - Error Correction Level M (15%): ~2334 characters  
-        // - Error Correction Level Q (25%): ~1666 characters
-        // - Error Correction Level H (30%): ~1276 characters
-        // We use Error Correction Level M, so limit to 2300 characters for reliability
-        return content.length <= 2300
+        val bytes = content.toByteArray(Charsets.UTF_8)
+        return bytes.size <= 2300  // QR Code Version 40 with Error Correction Level M can hold ~2331 bytes
     }
 
     private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
