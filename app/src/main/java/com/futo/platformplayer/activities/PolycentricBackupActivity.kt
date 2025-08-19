@@ -270,9 +270,9 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 writer.write(_exportBundle)
             }
             
-                            val uri = FileProvider.getUriForFile(
+                val uri = FileProvider.getUriForFile(
                     this,
-                    getString(R.string.authority),
+                    "${packageName}.fileprovider",
                     file
                 )
             
