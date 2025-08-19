@@ -34,6 +34,7 @@ import userpackage.Protocol.ExportBundle
 class PolycentricImportProfileActivity : AppCompatActivity() {
     private lateinit var _buttonHelp: ImageButton;
     private lateinit var _buttonScanProfile: LinearLayout;
+    private lateinit var _buttonImportFile: LinearLayout;
     private lateinit var _buttonImportProfile: LinearLayout;
     private lateinit var _editProfile: EditText;
     private lateinit var _loaderOverlay: LoaderOverlay;
@@ -44,6 +45,20 @@ class PolycentricImportProfileActivity : AppCompatActivity() {
             if (it.contents != null) {
                 val scannedUrl = it.contents
                 import(scannedUrl)
+            }
+        }
+    }
+
+    private val _filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { fileUri ->
+            try {
+                val content = contentResolver.openInputStream(fileUri)?.bufferedReader()?.readText()
+                content?.let { fileContent ->
+                    import(fileContent.trim())
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to read file", e)
+                UIDialogs.toast(this, "Failed to read file: ${e.message}")
             }
         }
     }
@@ -59,6 +74,7 @@ class PolycentricImportProfileActivity : AppCompatActivity() {
 
         _buttonHelp = findViewById(R.id.button_help);
         _buttonScanProfile = findViewById(R.id.button_scan_profile);
+        _buttonImportFile = findViewById(R.id.button_import_file);
         _buttonImportProfile = findViewById(R.id.button_import_profile);
         _loaderOverlay = findViewById(R.id.loader_overlay);
         _editProfile = findViewById(R.id.edit_profile);
@@ -80,6 +96,10 @@ class PolycentricImportProfileActivity : AppCompatActivity() {
             integrator.setBarcodeImageEnabled(true)
             integrator.setCaptureActivity(QRCaptureActivity::class.java);
             _qrCodeResultLauncher.launch(integrator.createScanIntent())
+        };
+
+        _buttonImportFile.setOnClickListener {
+            _filePickerLauncher.launch("text/plain")
         };
 
         _buttonImportProfile.setOnClickListener {
