@@ -12,6 +12,7 @@ import com.futo.platformplayer.activities.PolycentricHomeActivity
 import com.futo.platformplayer.activities.PolycentricProfileActivity
 import com.futo.platformplayer.activities.SettingsActivity
 import com.futo.platformplayer.activities.SyncHomeActivity
+import com.futo.platformplayer.activities.UnhideCreatorsActivity
 import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.fragment.mainactivity.bottombar.MenuBottomBarFragment
@@ -138,8 +139,6 @@ class Settings : FragmentedStorageFileJson() {
         }
     }
 
-
-
     @FormField(R.string.import_data, FieldForm.BUTTON, R.string.import_data_description, -3)
     @FormFieldButton(R.drawable.ic_move_up)
     fun import() {
@@ -234,6 +233,17 @@ class Settings : FragmentedStorageFileJson() {
         @FormField(R.string.progress_bar, FieldForm.TOGGLE, R.string.progress_bar_description, 6)
         var progressBar: Boolean = true;
 
+        @FormField(R.string.unhide_creators, FieldForm.BUTTON, R.string.unhide_creators_description, 6)
+        @FormFieldButton(R.drawable.ic_visibility_off)
+        fun unhideCreators() {
+            try {
+                SettingsActivity.getActivity()?.let {
+                    it.startActivity(Intent(it, UnhideCreatorsActivity::class.java));
+                }
+            } catch (e: Throwable) {
+                //Ignored
+            }
+        }
 
         @FormField(R.string.clear_hidden, FieldForm.BUTTON, R.string.clear_hidden_description, 8)
         @FormFieldButton(R.drawable.ic_visibility_off)

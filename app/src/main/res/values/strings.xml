@@ -91,6 +91,7 @@
     <string name="watch_later">Watch Later</string>
     <string name="no_results">Nothing to see here</string>
     <string name="no_results_shorts">The enabled sources do not have any short video results.</string>
+    <string name="no_hidden_creators">There are no hidden creators.</string>
     <string name="create">Create</string>
     <string name="ok">OK</string>
     <string name="yes">Yes</string>
@@ -509,6 +510,8 @@
     <string name="reinstall_embedded_plugins">Reinstall Embedded Plugins</string>
     <string name="remove_cached_version">Remove Cached Version</string>
     <string name="remove_the_last_downloaded_version">Remove the last downloaded version</string>
+    <string name="unhide_creators">Manage Hidden Creators</string>
+    <string name="unhide_creators_description">View and selectively unhide previously hidden creators, showing them again</string>
     <string name="clear_hidden">Clear Hidden</string>
     <string name="clear_hidden_description">Removes all hidden creators and videos, showing them again</string>
     <string name="reset_announcements">Reset announcements</string>
