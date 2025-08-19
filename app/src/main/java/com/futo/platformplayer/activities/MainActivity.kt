@@ -715,9 +715,19 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             Intent.ACTION_SEND -> {
                 val streamExtra = intent.getStringExtra(Intent.EXTRA_STREAM);
                 val textExtra = intent.getStringExtra(Intent.EXTRA_TEXT);
-                Logger.i(TAG, "Share Received - EXTRA_STREAM: $streamExtra");
+                val streamParcelable = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM);
+                
+                Logger.i(TAG, "Share Received - EXTRA_STREAM (String): $streamExtra");
+                Logger.i(TAG, "Share Received - EXTRA_STREAM (Parcelable): $streamParcelable");
                 Logger.i(TAG, "Share Received - EXTRA_TEXT: $textExtra");
-                targetData = streamExtra ?: textExtra;
+                
+                // Try to get the actual file content
+                targetData = when {
+                    streamParcelable != null -> streamParcelable.toString()
+                    streamExtra != null -> streamExtra
+                    textExtra != null -> textExtra
+                    else -> null
+                }
                 Logger.i(TAG, "Share Received - Final targetData: " + targetData);
             }
 
