@@ -106,7 +106,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 
                 // Add click listener to open QR code in fullscreen
                 _imageQR.setOnClickListener {
-                    val intent = QRCodeFullscreenActivity.createIntent(this@PolycentricBackupActivity, pair.second, _exportBundle)
+                    val intent = QRCodeFullscreenActivity.createIntent(this@PolycentricBackupActivity, _exportBundle)
                     startActivity(intent)
                 }
             } catch (e: Exception) {
