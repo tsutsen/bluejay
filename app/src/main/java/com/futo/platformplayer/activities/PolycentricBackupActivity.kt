@@ -84,14 +84,12 @@ class PolycentricBackupActivity : AppCompatActivity() {
         _buttonExportFile.visibility = View.INVISIBLE
 
         lifecycleScope.launch {
-            // Create export bundle first
             val bundle = withContext(Dispatchers.IO) { createExportBundle() }
             _exportBundle = bundle
             Logger.i(TAG, "Export bundle created, length: ${bundle.length}")
             
             try {
                 val pair = withContext(Dispatchers.IO) {
-                    // Check if bundle is suitable for QR code
                     if (!isContentSuitableForQRCode(bundle)) {
                         throw Exception("Data too big for QR code generation")
                     }
@@ -110,7 +108,6 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 _buttonShare.visibility = View.VISIBLE
                 _buttonCopy.visibility = View.VISIBLE
                 
-                // Add click listener to open QR code in fullscreen (only if QR generation succeeded)
                 _imageQR.setOnClickListener {
                     val intent = QRCodeFullscreenActivity.createIntent(this@PolycentricBackupActivity, _exportBundle)
                     startActivity(intent)
@@ -119,7 +116,6 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 val byteSize = bundle.toByteArray(Charsets.UTF_8).size
                 Logger.e(TAG, "QR code generation failed. Bundle length: ${bundle.length} chars, ${byteSize} bytes, Error: ${e.message}", e)
                 
-                // Show file export button when QR code is too large
                 if (e.message?.contains("Data too big") == true) {
                     _textQR.text = getString(R.string.qr_code_too_large_use_file_export)
                     _buttonExportFile.visibility = View.VISIBLE
@@ -161,7 +157,6 @@ class PolycentricBackupActivity : AppCompatActivity() {
     }
 
     private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
-        // Check if content is too large for QR code generation
         if (!isContentSuitableForQRCode(content)) {
             throw Exception("Data too big for QR code generation")
         }

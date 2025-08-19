@@ -47,7 +47,6 @@ class QRCodeFullscreenActivity : AppCompatActivity() {
         // Generate QR code bitmap from text
         qrText?.let { text ->
             try {
-                // Check if content is suitable for QR code
                 if (!isContentSuitableForQRCode(text)) {
                     throw Exception("Data too big for QR code generation")
                 }
@@ -63,7 +62,6 @@ class QRCodeFullscreenActivity : AppCompatActivity() {
             }
         }
 
-        // Set click listeners
         buttonBack.setOnClickListener {
             finish()
         }
@@ -72,7 +70,6 @@ class QRCodeFullscreenActivity : AppCompatActivity() {
             finish()
         }
 
-        // Make the entire QR code area clickable to close
         imageQR.setOnClickListener {
             finish()
         }
@@ -84,7 +81,6 @@ class QRCodeFullscreenActivity : AppCompatActivity() {
     }
 
     private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
-        // Check if content is too large for QR code generation
         if (!isContentSuitableForQRCode(content)) {
             throw Exception("Data too big for QR code generation")
         }
