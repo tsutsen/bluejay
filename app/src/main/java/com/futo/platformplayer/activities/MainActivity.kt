@@ -901,9 +901,11 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     }
 
     fun handleContent(file: String, mime: String? = null): Boolean {
-        Logger.i(TAG, "handleContent(url=$file)");
+        Logger.i(TAG, "handleContent(url=$file, mime=$mime)");
 
         val data = readSharedContent(file);
+        Logger.i(TAG, "File content length: ${data.size} bytes")
+        
         if (file.lowercase().endsWith(".json") || mime == "application/json") {
             var recon = String(data);
             if (!recon.trim().startsWith("["))
@@ -930,6 +932,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             StateBackup.importZipBytes(this, lifecycleScope, data);
             return true;
         } else if (file.lowercase().endsWith(".txt") || mime == "text/plain") {
+            Logger.i(TAG, "Processing text file, content: ${String(data).take(100)}...")
             return handleUnknownText(String(data));
         }
         return false;
@@ -993,6 +996,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     }
 
     fun handleUnknownText(text: String): Boolean {
+        Logger.i(TAG, "handleUnknownText called with text: ${text.take(100)}...")
         try {
             // Check for Polycentric profile data
             if (text.startsWith("polycentric://")) {
@@ -1008,6 +1012,8 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                 navigate(_fragImportSubscriptions, lines);
                 return true;
             }
+            
+            Logger.w(TAG, "Unknown text format, first 200 chars: ${text.take(200)}")
         } catch (ex: Throwable) {
             Logger.e(TAG, ex.message, ex);
             UIDialogs.showGeneralErrorDialog(this, getString(R.string.failed_to_parse_text_file), ex);
