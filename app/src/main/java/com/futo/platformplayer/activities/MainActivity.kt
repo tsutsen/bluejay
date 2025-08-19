@@ -705,15 +705,20 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         if (intent == null)
             return;
         Logger.i(TAG, "handleIntent started by " + intent.action);
-
+        Logger.i(TAG, "Intent data: " + intent.dataString);
+        Logger.i(TAG, "Intent type: " + intent.type);
+        Logger.i(TAG, "Intent extras: " + intent.extras?.keySet()?.joinToString(", "));
 
         var targetData: String? = null;
 
         when (intent.action) {
             Intent.ACTION_SEND -> {
-                targetData = intent.getStringExtra(Intent.EXTRA_STREAM)
-                    ?: intent.getStringExtra(Intent.EXTRA_TEXT);
-                Logger.i(TAG, "Share Received: " + targetData);
+                val streamExtra = intent.getStringExtra(Intent.EXTRA_STREAM);
+                val textExtra = intent.getStringExtra(Intent.EXTRA_TEXT);
+                Logger.i(TAG, "Share Received - EXTRA_STREAM: $streamExtra");
+                Logger.i(TAG, "Share Received - EXTRA_TEXT: $textExtra");
+                targetData = streamExtra ?: textExtra;
+                Logger.i(TAG, "Share Received - Final targetData: " + targetData);
             }
 
             Intent.ACTION_VIEW -> {
@@ -765,22 +770,29 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         }
 
         try {
+            Logger.i(TAG, "About to process targetData: $targetData")
             if (targetData != null) {
                 lifecycleScope.launch(Dispatchers.Main) {
                     try {
+                        Logger.i(TAG, "Calling handleUrlAll with: $targetData")
                         handleUrlAll(targetData)
                     } catch (e: Throwable) {
                         Logger.e(TAG, "Unhandled exception in handleUrlAll", e)
                     }
                 }
+            } else {
+                Logger.w(TAG, "targetData is null, nothing to process")
             }
         } catch (ex: Throwable) {
+            Logger.e(TAG, "Exception in handleIntent", ex)
             UIDialogs.showGeneralErrorDialog(this, getString(R.string.failed_to_handle_file), ex);
         }
     }
 
     suspend fun handleUrlAll(url: String) {
+        Logger.i(TAG, "handleUrlAll called with url: $url")
         val uri = Uri.parse(url)
+        Logger.i(TAG, "Parsed URI scheme: ${uri.scheme}")
         when (uri.scheme) {
             "grayjay" -> {
                 if (url.startsWith("grayjay://license/")) {
