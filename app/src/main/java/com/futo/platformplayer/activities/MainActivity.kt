@@ -705,9 +705,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         if (intent == null)
             return;
         Logger.i(TAG, "handleIntent started by " + intent.action);
-        Logger.i(TAG, "Intent data: " + intent.dataString);
-        Logger.i(TAG, "Intent type: " + intent.type);
-        Logger.i(TAG, "Intent extras: " + intent.extras?.keySet()?.joinToString(", "));
 
         var targetData: String? = null;
 
@@ -717,10 +714,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                 val textExtra = intent.getStringExtra(Intent.EXTRA_TEXT);
                 val streamParcelable = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM);
                 
-                Logger.i(TAG, "Share Received - EXTRA_STREAM (String): $streamExtra");
-                Logger.i(TAG, "Share Received - EXTRA_STREAM (Parcelable): $streamParcelable");
-                Logger.i(TAG, "Share Received - EXTRA_TEXT: $textExtra");
-                
                 // Try to get the actual file content
                 targetData = when {
                     streamParcelable != null -> streamParcelable.toString()
@@ -728,7 +721,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                     textExtra != null -> textExtra
                     else -> null
                 }
-                Logger.i(TAG, "Share Received - Final targetData: " + targetData);
             }
 
             Intent.ACTION_VIEW -> {
@@ -780,29 +772,22 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         }
 
         try {
-            Logger.i(TAG, "About to process targetData: $targetData")
             if (targetData != null) {
                 lifecycleScope.launch(Dispatchers.Main) {
                     try {
-                        Logger.i(TAG, "Calling handleUrlAll with: $targetData")
                         handleUrlAll(targetData)
                     } catch (e: Throwable) {
                         Logger.e(TAG, "Unhandled exception in handleUrlAll", e)
                     }
                 }
-            } else {
-                Logger.w(TAG, "targetData is null, nothing to process")
             }
         } catch (ex: Throwable) {
-            Logger.e(TAG, "Exception in handleIntent", ex)
             UIDialogs.showGeneralErrorDialog(this, getString(R.string.failed_to_handle_file), ex);
         }
     }
 
     suspend fun handleUrlAll(url: String) {
-        Logger.i(TAG, "handleUrlAll called with url: $url")
         val uri = Uri.parse(url)
-        Logger.i(TAG, "Parsed URI scheme: ${uri.scheme}")
         when (uri.scheme) {
             "grayjay" -> {
                 if (url.startsWith("grayjay://license/")) {
@@ -923,11 +908,9 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     }
 
     fun handleContent(file: String, mime: String? = null): Boolean {
-        Logger.i(TAG, "handleContent(url=$file, mime=$mime)");
+        Logger.i(TAG, "handleContent(url=$file)");
 
         val data = readSharedContent(file);
-        Logger.i(TAG, "File content length: ${data.size} bytes")
-        
         if (file.lowercase().endsWith(".json") || mime == "application/json") {
             var recon = String(data);
             if (!recon.trim().startsWith("["))
@@ -954,7 +937,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             StateBackup.importZipBytes(this, lifecycleScope, data);
             return true;
         } else if (file.lowercase().endsWith(".txt") || mime == "text/plain") {
-            Logger.i(TAG, "Processing text file, content: ${String(data).take(100)}...")
             return handleUnknownText(String(data));
         }
         return false;
@@ -1018,11 +1000,9 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     }
 
     fun handleUnknownText(text: String): Boolean {
-        Logger.i(TAG, "handleUnknownText called with text: ${text.take(100)}...")
         try {
             // Check for Polycentric profile data
             if (text.startsWith("polycentric://")) {
-                Logger.i(TAG, "Detected Polycentric profile in shared text file")
                 startActivity(Intent(this, PolycentricImportProfileActivity::class.java).apply { 
                     putExtra("url", text.trim()) 
                 })
@@ -1034,8 +1014,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                 navigate(_fragImportSubscriptions, lines);
                 return true;
             }
-            
-            Logger.w(TAG, "Unknown text format, first 200 chars: ${text.take(200)}")
         } catch (ex: Throwable) {
             Logger.e(TAG, ex.message, ex);
             UIDialogs.showGeneralErrorDialog(this, getString(R.string.failed_to_parse_text_file), ex);
