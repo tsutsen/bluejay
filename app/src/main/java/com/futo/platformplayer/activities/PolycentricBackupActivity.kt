@@ -115,7 +115,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, getString(R.string.failed_to_generate_qr_code), e)
+                Logger.e(TAG, "QR code generation failed. Bundle length: ${_exportBundle.length}, Error: ${e.message}", e)
                 
                 // Show the export bundle text even if QR code generation fails
                 _exportBundle = withContext(Dispatchers.IO) { createExportBundle() }
@@ -157,9 +157,13 @@ class PolycentricBackupActivity : AppCompatActivity() {
     }
 
     private fun isContentSuitableForQRCode(content: String): Boolean {
-        // QR Code Version 40 (177x177) with L error correction can hold ~2953 characters
-        // We use a conservative limit of 2900 characters to ensure reliable generation
-        return content.length <= 2900
+        // QR Code Version 40 (177x177) capacity limits:
+        // - Error Correction Level L (7%): ~2953 characters
+        // - Error Correction Level M (15%): ~2334 characters  
+        // - Error Correction Level Q (25%): ~1666 characters
+        // - Error Correction Level H (30%): ~1276 characters
+        // We use Error Correction Level M, so limit to 2300 characters for reliability
+        return content.length <= 2300
     }
 
     private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
@@ -277,11 +281,11 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 writer.write(_exportBundle)
             }
             
-            val uri = FileProvider.getUriForFile(
-                this,
-                "${packageName}.fileprovider",
-                file
-            )
+                            val uri = FileProvider.getUriForFile(
+                    this,
+                    getString(R.string.authority),
+                    file
+                )
             
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
