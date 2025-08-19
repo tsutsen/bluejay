@@ -84,11 +84,13 @@ class PolycentricBackupActivity : AppCompatActivity() {
         _buttonExportFile.visibility = View.INVISIBLE
 
         lifecycleScope.launch {
+            // Create export bundle first
+            val bundle = withContext(Dispatchers.IO) { createExportBundle() }
+            _exportBundle = bundle
+            Logger.i(TAG, "Export bundle created, length: ${bundle.length}")
+            
             try {
                 val pair = withContext(Dispatchers.IO) {
-                    val bundle = createExportBundle()
-                    Logger.i(TAG, "Export bundle created, length: ${bundle.length}")
-                    
                     // Check if bundle is suitable for QR code
                     if (!isContentSuitableForQRCode(bundle)) {
                         throw Exception("Data too big for QR code generation")
@@ -101,7 +103,6 @@ class PolycentricBackupActivity : AppCompatActivity() {
                     Pair(bundle, qr)
                 }
 
-                _exportBundle = pair.first
                 _imageQR.setImageBitmap(pair.second)
                 _imageQR.visibility = View.VISIBLE
                 _textQR.visibility = View.VISIBLE
@@ -115,11 +116,8 @@ class PolycentricBackupActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
             } catch (e: Exception) {
-                val byteSize = _exportBundle.toByteArray(Charsets.UTF_8).size
-                Logger.e(TAG, "QR code generation failed. Bundle length: ${_exportBundle.length} chars, ${byteSize} bytes, Error: ${e.message}", e)
-                
-                // Show the export bundle text even if QR code generation fails
-                _exportBundle = withContext(Dispatchers.IO) { createExportBundle() }
+                val byteSize = bundle.toByteArray(Charsets.UTF_8).size
+                Logger.e(TAG, "QR code generation failed. Bundle length: ${bundle.length} chars, ${byteSize} bytes, Error: ${e.message}", e)
                 
                 // Show file export button when QR code is too large
                 if (e.message?.contains("Data too big") == true) {
