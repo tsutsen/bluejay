@@ -994,6 +994,15 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
     fun handleUnknownText(text: String): Boolean {
         try {
+            // Check for Polycentric profile data
+            if (text.startsWith("polycentric://")) {
+                Logger.i(TAG, "Detected Polycentric profile in shared text file")
+                startActivity(Intent(this, PolycentricImportProfileActivity::class.java).apply { 
+                    putExtra("url", text.trim()) 
+                })
+                return true;
+            }
+            
             if (text.startsWith("@/Subscription") || text.startsWith("Subscriptions")) {
                 val lines = text.split("\n").map { it.trim() }.drop(1).filter { it.isNotEmpty() };
                 navigate(_fragImportSubscriptions, lines);
