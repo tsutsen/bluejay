@@ -47,6 +47,11 @@ class QRCodeFullscreenActivity : AppCompatActivity() {
         // Generate QR code bitmap from text
         qrText?.let { text ->
             try {
+                // Check if content is suitable for QR code
+                if (!isContentSuitableForQRCode(text)) {
+                    throw Exception("Data too big for QR code generation")
+                }
+                
                 val dimension = TypedValue.applyDimension(
                     TypedValue.COMPLEX_UNIT_DIP, 300f, resources.displayMetrics
                 ).toInt()
@@ -73,7 +78,18 @@ class QRCodeFullscreenActivity : AppCompatActivity() {
         }
     }
 
+    private fun isContentSuitableForQRCode(content: String): Boolean {
+        // QR Code Version 40 (177x177) with L error correction can hold ~2953 characters
+        // We use a conservative limit of 2900 characters to ensure reliable generation
+        return content.length <= 2900
+    }
+
     private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
+        // Check if content is too large for QR code generation
+        if (!isContentSuitableForQRCode(content)) {
+            throw Exception("Data too big for QR code generation")
+        }
+        
         val hints = java.util.EnumMap<EncodeHintType, Any>(EncodeHintType::class.java)
         hints[EncodeHintType.ERROR_CORRECTION] = ErrorCorrectionLevel.M
         hints[EncodeHintType.MARGIN] = 1

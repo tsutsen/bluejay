@@ -89,6 +89,11 @@ class PolycentricBackupActivity : AppCompatActivity() {
                     val bundle = createExportBundle()
                     Logger.i(TAG, "Export bundle created, length: ${bundle.length}")
                     
+                    // Check if bundle is suitable for QR code
+                    if (!isContentSuitableForQRCode(bundle)) {
+                        throw Exception("Data too big for QR code generation")
+                    }
+                    
                     val dimension = TypedValue.applyDimension(
                         TypedValue.COMPLEX_UNIT_DIP, 200f, resources.displayMetrics
                     ).toInt()
@@ -104,7 +109,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 _buttonShare.visibility = View.VISIBLE
                 _buttonCopy.visibility = View.VISIBLE
                 
-                // Add click listener to open QR code in fullscreen
+                // Add click listener to open QR code in fullscreen (only if QR generation succeeded)
                 _imageQR.setOnClickListener {
                     val intent = QRCodeFullscreenActivity.createIntent(this@PolycentricBackupActivity, _exportBundle)
                     startActivity(intent)
@@ -151,7 +156,18 @@ class PolycentricBackupActivity : AppCompatActivity() {
         };
     }
 
+    private fun isContentSuitableForQRCode(content: String): Boolean {
+        // QR Code Version 40 (177x177) with L error correction can hold ~2953 characters
+        // We use a conservative limit of 2900 characters to ensure reliable generation
+        return content.length <= 2900
+    }
+
     private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
+        // Check if content is too large for QR code generation
+        if (!isContentSuitableForQRCode(content)) {
+            throw Exception("Data too big for QR code generation")
+        }
+        
         val hints = java.util.EnumMap<EncodeHintType, Any>(EncodeHintType::class.java)
         hints[EncodeHintType.ERROR_CORRECTION] = ErrorCorrectionLevel.M
         hints[EncodeHintType.MARGIN] = 1
