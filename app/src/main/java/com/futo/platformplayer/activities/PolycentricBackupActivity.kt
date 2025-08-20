@@ -296,11 +296,11 @@ class PolycentricBackupActivity : AppCompatActivity() {
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     startActivity(Intent.createChooser(shareIntent, getString(R.string.share_profile)))
-                }, UIDialogs.ActionStyle.NONE),
+                }, UIDialogs.ActionStyle.NONE, true),
                 UIDialogs.Action(getString(R.string.save_to_device), {
                     // Save to device
                     saveToDevice(fileName)
-                }, UIDialogs.ActionStyle.NONE)
+                }, UIDialogs.ActionStyle.NONE, true)
             )
         } catch (e: Exception) {
             Logger.e(TAG, "Failed to export to file", e)
