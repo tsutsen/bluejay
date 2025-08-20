@@ -647,6 +647,12 @@
     <string name="export_to_file">Export to File</string>
     <string name="save_profile_to_file_for_sharing">Save profile to file for sharing</string>
     <string name="import_from_file">Import from File</string>
+    <string name="export_profile">Export Profile</string>
+    <string name="choose_export_option">Choose export option</string>
+    <string name="save_to_device">Save to Device</string>
+    <string name="share_profile">Share Profile</string>
+    <string name="profile_saved_to_downloads">Profile saved to Downloads</string>
+    <string name="failed_to_save_profile">Failed to save profile</string>
     <string name="authority">com.futo.platformplayer.fileprovider</string>
     <string name="share_text">Share Text</string>
     <string name="copied_text">Copied Text</string>

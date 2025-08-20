@@ -44,6 +44,8 @@ import userpackage.Protocol.ExportBundle
 import userpackage.Protocol.URLInfo
 import java.io.File
 import java.io.FileWriter
+import android.content.ContentValues
+import android.provider.MediaStore
 
 class PolycentricBackupActivity : AppCompatActivity() {
     private lateinit var _buttonShare: BigButton;
@@ -270,24 +272,70 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 writer.write(_exportBundle)
             }
             
-                val uri = FileProvider.getUriForFile(
-                    this,
-                    "${packageName}.fileprovider",
-                    file
-                )
+            val uri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                file
+            )
             
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "Polycentric Profile Export")
-                putExtra(Intent.EXTRA_TEXT, "Polycentric profile export file")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            
-            startActivity(Intent.createChooser(shareIntent, "Export Profile to File"))
+            // Show dialog with options
+            UIDialogs.showDialog(
+                this,
+                R.drawable.ic_download,
+                getString(R.string.export_profile),
+                getString(R.string.choose_export_option),
+                null,
+                0,
+                UIDialogs.Action(getString(R.string.share), {
+                    // Share the file
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_SUBJECT, "Polycentric Profile Export")
+                        putExtra(Intent.EXTRA_TEXT, "Polycentric profile export file")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(Intent.createChooser(shareIntent, getString(R.string.share_profile)))
+                }, UIDialogs.ActionStyle.PRIMARY),
+                UIDialogs.Action(getString(R.string.save_to_device), {
+                    // Save to device
+                    saveToDevice(fileName)
+                }, UIDialogs.ActionStyle.NONE)
+            )
         } catch (e: Exception) {
             Logger.e(TAG, "Failed to export to file", e)
             UIDialogs.toast(this, "Failed to export profile to file")
+        }
+    }
+
+    private fun saveToDevice(fileName: String) {
+        try {
+            // Use MediaStore API to save to Downloads folder
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                put(MediaStore.Downloads.IS_PENDING, 1)
+            }
+
+            val resolver = contentResolver
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
+            uri?.let { fileUri ->
+                resolver.openOutputStream(fileUri)?.use { outputStream ->
+                    outputStream.write(_exportBundle.toByteArray())
+                }
+
+                contentValues.clear()
+                contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(fileUri, contentValues, null, null)
+
+                UIDialogs.toast(this, getString(R.string.profile_saved_to_downloads))
+            } ?: run {
+                UIDialogs.toast(this, getString(R.string.failed_to_save_profile))
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "Failed to save to device", e)
+            UIDialogs.toast(this, getString(R.string.failed_to_save_profile))
         }
     }
 
