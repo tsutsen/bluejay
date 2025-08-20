@@ -285,7 +285,7 @@ class PolycentricBackupActivity : AppCompatActivity() {
                 getString(R.string.export_profile),
                 getString(R.string.choose_export_option),
                 null,
-                0,
+                -1,
                 UIDialogs.Action(getString(R.string.share), {
                     // Share the file
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
