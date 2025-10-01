@@ -47,8 +47,10 @@ import com.google.protobuf.ByteString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import userpackage.Protocol
 import userpackage.Protocol.Reference
@@ -56,8 +58,6 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.ForkJoinPool
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 
 class StatePolycentric {
     private data class LikeDislikeEntry(val unixMilliseconds: Long, val hasLiked: Boolean, val hasDisliked: Boolean);
@@ -70,6 +70,8 @@ class StatePolycentric {
 
     private val _commentPool = ForkJoinPool(2);
     private val _commentPoolDispatcher = _commentPool.asCoroutineDispatcher();
+    private val _backgroundJob = SupervisorJob()
+    private val _backgroundScope = CoroutineScope(_backgroundJob + Dispatchers.IO)
 
     fun load(context: Context) {
         if (!enabled) {
@@ -178,7 +180,7 @@ class StatePolycentric {
             _likeDislikeMap = newMap
 
             // Ensure current server is registered & synced (runs in background)
-            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+            _backgroundScope.launch {
                 try {
                     processHandle.ensureServerAndBackfill()
                 } catch (e: Throwable) {
@@ -569,6 +571,11 @@ class StatePolycentric {
                 return@mapNotNull null;
             }
         };
+    }
+
+    fun cleanup() {
+        _backgroundJob.cancel()
+        _commentPool.shutdown()
     }
 
     companion object {
