@@ -13,8 +13,8 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.futo.platformplayer.R
 import com.futo.platformplayer.UIDialogs
@@ -42,10 +42,6 @@ import kotlinx.coroutines.withContext
 import userpackage.Protocol
 import userpackage.Protocol.ExportBundle
 import userpackage.Protocol.URLInfo
-import java.io.File
-import java.io.FileWriter
-import android.content.ContentValues
-import android.provider.MediaStore
 
 class PolycentricBackupActivity : AppCompatActivity() {
     private lateinit var _buttonShare: BigButton;
@@ -56,6 +52,20 @@ class PolycentricBackupActivity : AppCompatActivity() {
     private lateinit var _textQR: TextView;
     private lateinit var _textQRHint: TextView;
     private lateinit var _loader: View
+
+    private val _createDocumentLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        uri?.let { fileUri ->
+            try {
+                contentResolver.openOutputStream(fileUri)?.use { outputStream ->
+                    outputStream.write(_exportBundle.toByteArray())
+                }
+                UIDialogs.toast(this, getString(R.string.profile_saved_successfully))
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to write to document", e)
+                UIDialogs.toast(this, "Failed to save profile: ${e.message}")
+            }
+        }
+    }
 
     override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(StateApp.instance.getLocaleContext(newBase))
@@ -149,7 +159,8 @@ class PolycentricBackupActivity : AppCompatActivity() {
         };
 
         _buttonExportFile.onClick.subscribe {
-            exportToFile()
+            val fileName = "polycentric_profile_${System.currentTimeMillis()}.txt"
+            _createDocumentLauncher.launch(fileName)
         };
     }
 
@@ -263,81 +274,6 @@ class PolycentricBackupActivity : AppCompatActivity() {
         return "polycentric://" + data.toBase64Url()
     }
 
-    private fun exportToFile() {
-        try {
-            val fileName = "polycentric_profile_${System.currentTimeMillis()}.txt"
-            val file = File(filesDir, fileName)
-            
-            FileWriter(file).use { writer ->
-                writer.write(_exportBundle)
-            }
-            
-            val uri = FileProvider.getUriForFile(
-                this,
-                "${packageName}.fileprovider",
-                file
-            )
-            
-            // Show dialog with options
-            UIDialogs.showDialog(
-                this,
-                R.drawable.ic_download,
-                getString(R.string.export_profile),
-                getString(R.string.choose_export_option),
-                null,
-                -1,
-                UIDialogs.Action(getString(R.string.share), {
-                    // Share the file
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        putExtra(Intent.EXTRA_SUBJECT, "Polycentric Profile Export")
-                        putExtra(Intent.EXTRA_TEXT, "Polycentric profile export file")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    startActivity(Intent.createChooser(shareIntent, getString(R.string.share_profile)))
-                }, UIDialogs.ActionStyle.NONE, true),
-                UIDialogs.Action(getString(R.string.save_to_device), {
-                    // Save to device
-                    saveToDevice(fileName)
-                }, UIDialogs.ActionStyle.NONE, true)
-            )
-        } catch (e: Exception) {
-            Logger.e(TAG, "Failed to export to file", e)
-            UIDialogs.toast(this, "Failed to export profile to file")
-        }
-    }
-
-    private fun saveToDevice(fileName: String) {
-        try {
-            // Use MediaStore API to save to Downloads folder
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                put(MediaStore.Downloads.MIME_TYPE, "text/plain")
-                put(MediaStore.Downloads.IS_PENDING, 1)
-            }
-
-            val resolver = contentResolver
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-
-            uri?.let { fileUri ->
-                resolver.openOutputStream(fileUri)?.use { outputStream ->
-                    outputStream.write(_exportBundle.toByteArray())
-                }
-
-                contentValues.clear()
-                contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-                resolver.update(fileUri, contentValues, null, null)
-
-                UIDialogs.toast(this, getString(R.string.profile_saved_to_downloads))
-            } ?: run {
-                UIDialogs.toast(this, getString(R.string.failed_to_save_profile))
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, "Failed to save to device", e)
-            UIDialogs.toast(this, getString(R.string.failed_to_save_profile))
-        }
-    }
 
     companion object {
         private const val TAG = "PolycentricBackupActivity";

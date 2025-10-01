@@ -32,7 +32,13 @@ class PolycentricModerationActivity : AppCompatActivity() {
         setContentView(R.layout.activity_polycentric_moderation)
         setNavigationBarColorAndIcons()
         
-        _moderationsManager = ModerationsManager.getInstance()
+        try {
+            _moderationsManager = ModerationsManager.getInstance()
+        } catch (e: IllegalStateException) {
+            // ModerationsManager not initialized, finish activity
+            finish()
+            return
+        }
         
         _seekbarOffensive = findViewById(R.id.seekbar_offensive)
         _seekbarExplicit = findViewById(R.id.seekbar_explicit)
@@ -44,7 +50,7 @@ class PolycentricModerationActivity : AppCompatActivity() {
         _textExplicitValue = findViewById(R.id.text_explicit_value)
         _textViolenceValue = findViewById(R.id.text_violence_value)
         
-        findViewById<ImageButton>(R.id.button_back).setOnClickListener {
+        findViewById<ImageButton>(R.id.button_back)?.setOnClickListener {
             finish()
         }
         
@@ -53,6 +59,8 @@ class PolycentricModerationActivity : AppCompatActivity() {
     }
     
     private fun loadSettings() {
+        if (isFinishing || isDestroyed) return
+        
         val levels = _moderationsManager.moderationLevels.value ?: mapOf()
         
         val offensiveLevel = levels["hate"] ?: 2
@@ -71,6 +79,7 @@ class PolycentricModerationActivity : AppCompatActivity() {
     private fun setupListeners() {
         _seekbarOffensive.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (isFinishing || isDestroyed) return
                 updateDescriptionText(seekBar, _textOffensiveDesc, _textOffensiveValue, getOffensiveDescriptions())
                 if (fromUser) {
                     _moderationsManager.setModerationLevel("hate", progress)
@@ -83,6 +92,7 @@ class PolycentricModerationActivity : AppCompatActivity() {
         
         _seekbarExplicit.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (isFinishing || isDestroyed) return
                 updateDescriptionText(seekBar, _textExplicitDesc, _textExplicitValue, getExplicitDescriptions())
                 if (fromUser) {
                     _moderationsManager.setModerationLevel("sexual", progress)
@@ -95,6 +105,7 @@ class PolycentricModerationActivity : AppCompatActivity() {
         
         _seekbarViolence.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (isFinishing || isDestroyed) return
                 updateDescriptionText(seekBar, _textViolenceDesc, _textViolenceValue, getViolenceDescriptions())
                 if (fromUser) {
                     _moderationsManager.setModerationLevel("violence", progress)
@@ -107,9 +118,13 @@ class PolycentricModerationActivity : AppCompatActivity() {
     }
     
     private fun updateDescriptionText(seekBar: SeekBar?, textDesc: TextView, textValue: TextView, descriptions: Array<String>) {
+        if (isFinishing || isDestroyed) return
+        
         val progress = seekBar?.progress ?: 0
-        textDesc.text = descriptions[progress]
-        textValue.text = progress.toString()
+        if (progress in descriptions.indices) {
+            textDesc.text = descriptions[progress]
+            textValue.text = progress.toString()
+        }
     }
     
     private fun getOffensiveDescriptions(): Array<String> {

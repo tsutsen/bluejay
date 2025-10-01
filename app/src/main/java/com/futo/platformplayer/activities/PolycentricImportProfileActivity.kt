@@ -52,10 +52,46 @@ class PolycentricImportProfileActivity : AppCompatActivity() {
     private val _filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { fileUri ->
             try {
+                // Check file size before reading
+                val fileSize = contentResolver.openFileDescriptor(fileUri, "r")?.statSize ?: 0
+                val maxFileSize = 10 * 1024 * 1024 // 10MB limit
+                
+                if (fileSize > maxFileSize) {
+                    UIDialogs.toast(this, "File too large. Maximum size is 10MB.")
+                    return@let
+                }
+                
+                if (fileSize == 0L) {
+                    UIDialogs.toast(this, "Selected file is empty.")
+                    return@let
+                }
+                
                 val content = contentResolver.openInputStream(fileUri)?.bufferedReader()?.readText()
                 content?.let { fileContent ->
-                    import(fileContent.trim())
+                    val trimmedContent = fileContent.trim()
+                    
+                    // Check if content is empty after trimming
+                    if (trimmedContent.isEmpty()) {
+                        UIDialogs.toast(this, "Selected file contains no data.")
+                        return@let
+                    }
+                    
+                    // Check if content looks like a valid polycentric URL
+                    if (!trimmedContent.startsWith("polycentric://")) {
+                        UIDialogs.toast(this, "Selected file does not contain a valid polycentric profile URL.")
+                        return@let
+                    }
+                    
+                    import(trimmedContent)
+                } ?: run {
+                    UIDialogs.toast(this, "Could not read file content.")
                 }
+            } catch (e: SecurityException) {
+                Logger.e(TAG, "Security exception reading file", e)
+                UIDialogs.toast(this, "Permission denied to read file.")
+            } catch (e: OutOfMemoryError) {
+                Logger.e(TAG, "Out of memory reading file", e)
+                UIDialogs.toast(this, "File too large to process.")
             } catch (e: Exception) {
                 Logger.e(TAG, "Failed to read file", e)
                 UIDialogs.toast(this, "Failed to read file: ${e.message}")
