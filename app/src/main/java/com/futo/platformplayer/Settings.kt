@@ -25,6 +25,7 @@ import com.futo.platformplayer.states.StateCache
 import com.futo.platformplayer.states.StateMeta
 import com.futo.platformplayer.states.StatePayment
 import com.futo.platformplayer.states.StatePolycentric
+import com.futo.platformplayer.states.StateSync
 import com.futo.platformplayer.states.StateUpdate
 import com.futo.platformplayer.stores.FragmentedStorage
 import com.futo.platformplayer.stores.FragmentedStorageFileJson
@@ -34,6 +35,7 @@ import com.futo.platformplayer.views.fields.DropdownFieldOptionsId
 import com.futo.platformplayer.views.fields.FieldForm
 import com.futo.platformplayer.views.fields.FormField
 import com.futo.platformplayer.views.fields.FormFieldButton
+import com.futo.platformplayer.views.fields.FormFieldWarning
 import com.futo.platformplayer.views.overlays.slideup.SlideUpMenuItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -201,6 +203,8 @@ class Settings : FragmentedStorageFileJson() {
                 8 -> "zh";
                 9 -> "ru";
                 10 -> "ar";
+                11 -> "it";
+                12 -> "tr";
                 else -> null
             }
         }
@@ -603,6 +607,16 @@ class Settings : FragmentedStorageFileJson() {
                 else -> 2.0
             }
         }
+
+
+        @AdvancedField
+        @FormField(R.string.shorts_pregenerate, FieldForm.TOGGLE, R.string.shorts_pregenerate_description, 28)
+        var shortsPregenerate: Boolean = false;
+
+        @AdvancedField
+        @FormField(R.string.shorts_fit_video, FieldForm.TOGGLE, R.string.shorts_fit_video_description, 29)
+        @FormFieldWarning(R.string.shorts_fit_video_warning)
+        var shortsFitVideo: Boolean = false;
     }
 
     @FormField(R.string.comments, "group", R.string.comments_description, 6)
@@ -704,6 +718,11 @@ class Settings : FragmentedStorageFileJson() {
         @FormField(R.string.allow_ipv4, FieldForm.TOGGLE, R.string.allow_ipv4_description, 5)
         @Serializable(with = FlexibleBooleanSerializer::class)
         var allowLinkLocalIpv4: Boolean = false;
+
+        @AdvancedField
+        @FormField(R.string.experimental_cast, FieldForm.TOGGLE, R.string.experimental_cast_description, 6)
+        @Serializable(with = FlexibleBooleanSerializer::class)
+        var experimentalCasting: Boolean = false
 
         /*TODO: Should we have a different casting quality?
         @FormField("Preferred Casting Quality", FieldForm.DROPDOWN, "", 3)
@@ -1087,6 +1106,39 @@ class Settings : FragmentedStorageFileJson() {
 
         @FormField(R.string.local_connections, FieldForm.TOGGLE, R.string.local_connections_description, 3)
         var localConnections: Boolean = true;
+
+
+
+        var syncServerUrl: String? = null;
+        @FormField(R.string.relay_server, FieldForm.READONLYTEXT, -1, 6)
+        val syncServer: String get() = if(syncServerUrl?.isBlank() == true) StateSync.RELAY_SERVER else syncServerUrl ?: StateSync.RELAY_SERVER;
+
+        @AdvancedField
+        @FormField(R.string.configure_sync_server, FieldForm.BUTTON, R.string.configure_sync_server_description, 7)
+        fun configureSyncServer() {
+            SettingsActivity.getActivity()?.let { context ->
+                UIDialogs.showDialog(context, R.drawable.device_sync, false,
+                    "Enter the url to your relay server",
+                    "Using your own relay server requires a proper setup with portforwarding.\nUse at your own risk.",
+                    null,
+                    syncServerUrl ?: "",
+                    "YourRelayServerDomain.com", 0,
+                        UIDialogs.Action("Cancel", {}),
+                        UIDialogs.Action("Reset", {
+                            syncServerUrl = null;
+                            instance.save();
+                            context.reloadSettings();
+                            UIDialogs.toast("Sync server changes require a restart");
+                        }, UIDialogs.ActionStyle.ACCENT),
+                        UIDialogs.Action.withInput("Configure", {
+                            syncServerUrl = it?.text
+                            instance.save();
+                            context.reloadSettings();
+                            UIDialogs.toast("Sync server changes require a restart");
+                        }, UIDialogs.ActionStyle.PRIMARY),
+                    )
+            }
+        }
     }
 
     @FormField(R.string.info, FieldForm.GROUP, -1, 21)

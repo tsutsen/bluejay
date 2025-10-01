@@ -82,6 +82,8 @@
     <string name="allow_ipv6_description">If casting over IPV6 is allowed, can cause issues on some networks</string>
     <string name="allow_ipv4">Allow Link Local IPV4</string>
     <string name="allow_ipv4_description">If casting over IPV4 link local is allowed, can cause issues on some networks</string>
+    <string name="experimental_cast">Experimental</string>
+    <string name="experimental_cast_description">Use experimental casting backend (requires restart)</string>
     <string name="discover">Discover</string>
     <string name="find_new_video_sources_to_add">Find new video sources to add</string>
     <string name="these_sources_have_been_disabled">These sources have been disabled</string>
@@ -247,6 +249,7 @@
     <string name="membership">Membership</string>
     <string name="store">Store</string>
     <string name="live_chat">Live Chat</string>
+    <string name="vod_chat">VOD Chat</string>
     <string name="remove">Remove</string>
     <string name="space_videos">Videos</string>
     <string name="playlist">Playlist</string>
@@ -337,6 +340,8 @@
     <string name="test_background_worker">Test Background Worker</string>
     <string name="test_background_worker_description"></string>
     <string name="clear_payment">Clear Payment</string>
+    <string name="configure_sync_server">Configure Sync Server</string>
+    <string name="configure_sync_server_description">Allows you to change the Sync Server to a self-hosted one.</string>
     <string name="clears_cookies_when_you_log_out">Clears cookies when you log out</string>
     <string name="clears_in_app_browser_cookies">Clears in-app browser cookies</string>
     <string name="configure_browsing_behavior">Configure browsing behavior</string>
@@ -435,6 +440,11 @@
     <string name="allow_full_screen_portrait">Allow full-screen portrait when watching horizontal videos</string>
     <string name="delete_watchlist_on_finish">Delete from WatchLater when watched</string>
     <string name="delete_watchlist_on_finish_description">After you leave a video that you mostly watched, it will be removed from watch later.</string>
+    <string name="shorts_pregenerate">Pre-generate shorts sources</string>
+    <string name="shorts_pregenerate_description">Generates short sources (when applicable) one video ahead</string>
+    <string name="shorts_fit_video">Fit Shorts Video</string>
+    <string name="shorts_fit_video_description">Will scale the video to fit the view, instead of filling the view properly.</string>
+    <string name="shorts_fit_video_warning">This setting will require you to reboot Grayjay.</string>
     <string name="seek_offset">Seek duration</string>
     <string name="min_playback_speed">Minimum Playback Speed</string>
     <string name="min_playback_speed_description">Minimum Available Speed</string>
@@ -470,6 +480,7 @@
     <string name="number_of_concurrent_threads_to_multiply_download_speeds_from_throttled_sources">Number of concurrent threads to multiply download speeds from throttled sources</string>
     <string name="payment">Payment</string>
     <string name="payment_status">Payment Status</string>
+    <string name="relay_server">Sync Relay Server</string>
     <string name="bypass_rotation_prevention">Bypass Rotation Prevention</string>
     <string name="playlist_delete_confirmation">Playlist Delete Confirmation</string>
     <string name="playlist_delete_confirmation_description">Show confirmation dialog when deleting media from a playlist</string>
@@ -1049,6 +1060,8 @@
         <item>Chinese (ZH)</item>
         <item>Russian (RU)</item>
         <item>Arabic (AR)</item>
+        <item>Italian (IT)</item>
+        <item>Turkish (TR)</item>
     </string-array>
     <string-array name="player_background_behavior">
         <item>None</item>
@@ -1092,6 +1105,10 @@
         <item>FCast</item>
         <item>ChromeCast</item>
         <item>AirPlay</item>
+    </string-array>
+    <string-array name="exp_casting_device_type_array" translatable="false">
+        <item>FCast</item>
+        <item>ChromeCast</item>
     </string-array>
     <string-array name="log_levels">
         <item>None</item>
