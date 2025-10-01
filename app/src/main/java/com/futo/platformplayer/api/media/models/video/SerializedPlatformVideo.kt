@@ -3,6 +3,7 @@ package com.futo.platformplayer.api.media.models.video
 import com.futo.platformplayer.api.media.PlatformID
 import com.futo.platformplayer.api.media.Serializer
 import com.futo.platformplayer.api.media.models.PlatformAuthorLink
+import com.futo.platformplayer.api.media.models.Thumbnail
 import com.futo.platformplayer.api.media.models.Thumbnails
 import com.futo.platformplayer.api.media.models.contents.ContentType
 import com.futo.platformplayer.serializers.OffsetDateTimeNullableSerializer

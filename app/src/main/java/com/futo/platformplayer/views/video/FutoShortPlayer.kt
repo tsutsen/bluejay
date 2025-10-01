@@ -6,14 +6,17 @@ import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.animation.LinearInterpolator
+import androidx.annotation.Dimension
 import androidx.annotation.OptIn
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.TimeBar
 import com.futo.platformplayer.R
+import com.futo.platformplayer.Settings
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StatePlayer
@@ -64,6 +67,13 @@ class FutoShortPlayer(context: Context, attrs: AttributeSet? = null) :
         LayoutInflater.from(context).inflate(R.layout.view_short_player, this, true)
         videoView = findViewById(R.id.short_player_view)
         progressBar = findViewById(R.id.short_player_progress_bar)
+
+        if(Settings.instance.playback.shortsFitVideo)
+            videoView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
+        else
+            videoView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
+
+        videoView.subtitleView?.setFixedTextSize(Dimension.SP, 18F);
 
         if (!isInEditMode) {
             player = StatePlayer.instance.getShortPlayerOrCreate(context)

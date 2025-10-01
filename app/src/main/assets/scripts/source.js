@@ -67,6 +67,7 @@ class ScriptException extends Error {
             super(arguments[0]);
             this.plugin_type = "ScriptException";
             this.message = arguments[0];
+            this.msg = arguments[0];
         }
         else {
             super(msg);
@@ -467,14 +468,20 @@ class AudioUrlWidevineSource extends AudioUrlSource {
             this.getLicenseRequestExecutor = () => {
                 return {
                     executeRequest: (url, _headers, _method, license_request_data) => {
-                        return http.POST(
+                        const response = http.POST(
                            url,
                            license_request_data,
                            { Authorization: `Bearer ${obj.bearerToken}` },
                            false,
                            true
-                       ).body
-                    }
+                       );
+
+                       if (!response.body) {
+                           throw new ScriptException("Unable to acquire license key");
+                       }
+
+                       return response.body;
+                   }
                 }
             }
         }

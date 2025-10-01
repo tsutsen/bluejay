@@ -39,6 +39,7 @@ import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.api.http.ManagedHttpClient
+import com.futo.platformplayer.api.media.models.video.LocalVideoDetails
 import com.futo.platformplayer.casting.StateCasting
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.dp
@@ -775,7 +776,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             if (targetData != null) {
                 lifecycleScope.launch(Dispatchers.Main) {
                     try {
-                        handleUrlAll(targetData)
+                        handleUrlAll(targetData, intent)
                     } catch (e: Throwable) {
                         Logger.e(TAG, "Unhandled exception in handleUrlAll", e)
                     }
@@ -786,8 +787,9 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         }
     }
 
-    suspend fun handleUrlAll(url: String) {
+    suspend fun handleUrlAll(url: String, openIntent: Intent? = null) {
         val uri = Uri.parse(url)
+        val intent = openIntent ?: this.intent;
         when (uri.scheme) {
             "grayjay" -> {
                 if (url.startsWith("grayjay://license/")) {
@@ -814,11 +816,11 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             }
 
             "content" -> {
-                if (!handleContent(url, intent.type)) {
+                if (!handleContent(url, intent?.type)) {
                     UIDialogs.showSingleButtonDialog(
                         this,
                         R.drawable.ic_play,
-                        getString(R.string.unknown_content_format) + " [${url}]\n[${intent.type}]",
+                        getString(R.string.unknown_content_format) + " [${url}]\n[${intent?.type}]",
                         "Ok",
                         { });
                 }
@@ -939,6 +941,12 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         } else if (file.lowercase().endsWith(".txt") || mime == "text/plain") {
             return handleUnknownText(String(data));
         }
+        else if (mime?.let { it.startsWith("video/") || it.startsWith("audio/") } ?: false) {
+            val mediaItem = LocalVideoDetails.fromContent(file, mime);
+            navigateWhenReady(_fragVideoDetail, mediaItem);
+            return true;
+        }
+
         return false;
     }
 
@@ -1061,7 +1069,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         Logger.i(TAG, "handleFCast");
 
         try {
-            StateCasting.instance.handleUrl(this, url)
+            StateCasting.instance.handleUrl(url)
             return true;
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to parse FCast URL '${url}'.", e)

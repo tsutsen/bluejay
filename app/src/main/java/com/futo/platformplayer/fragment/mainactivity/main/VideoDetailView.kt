@@ -10,7 +10,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Bitmap
-import android.graphics.Rect
 import android.graphics.drawable.Animatable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -51,7 +50,6 @@ import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.UISlideOverlays
 import com.futo.platformplayer.activities.MainActivity
-import com.futo.platformplayer.activities.SyncShowPairingCodeActivity.Companion.activity
 import com.futo.platformplayer.api.media.IPluginSourced
 import com.futo.platformplayer.api.media.LiveChatManager
 import com.futo.platformplayer.api.media.PlatformID
@@ -82,7 +80,6 @@ import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideo
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
-import com.futo.platformplayer.api.media.platforms.js.models.JSVideo
 import com.futo.platformplayer.api.media.platforms.js.models.JSVideoDetails
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSSource
 import com.futo.platformplayer.api.media.structures.IPager
@@ -326,7 +323,7 @@ class VideoDetailView : ConstraintLayout {
     val onEnterPictureInPicture = Event0();
     val onVideoChanged = Event2<Int, Int>()
 
-    var allowBackground: Boolean = false
+    var isAudioOnlyUserAction: Boolean = false
         private set(value) {
             if (field != value) {
                 field = value
@@ -338,7 +335,7 @@ class VideoDetailView : ConstraintLayout {
         get() = !preventPictureInPicture &&
                 !StateCasting.instance.isCasting &&
                 Settings.instance.playback.isBackgroundPictureInPicture() &&
-                !allowBackground &&
+                !isAudioOnlyUserAction &&
                 isPlaying
 
     val onShouldEnterPictureInPictureChanged = Event0();
@@ -579,9 +576,8 @@ class VideoDetailView : ConstraintLayout {
                 if(chapter?.type == ChapterType.SKIPPABLE) {
                     _layoutSkip.visibility = VISIBLE;
                 } else if(chapter?.type == ChapterType.SKIP || chapter?.type == ChapterType.SKIPONCE) {
-                    val ad = StateCasting.instance.activeDevice
-                    if (ad != null) {
-                        ad.seekVideo(chapter.timeEnd)
+                    if (StateCasting.instance.activeDevice != null) {
+                        StateCasting.instance.videoSeekTo(chapter.timeEnd)
                     } else {
                         _player.seekTo((chapter.timeEnd * 1000).toLong());
                     }
@@ -764,7 +760,7 @@ class VideoDetailView : ConstraintLayout {
         MediaControlReceiver.onBackgroundReceived.subscribe(this) {
             Logger.i(TAG, "MediaControlReceiver.onBackgroundReceived")
             _player.switchToAudioMode(video);
-            allowBackground = true;
+            isAudioOnlyUserAction = true;
             StateApp.instance.contextOrNull?.let {
                 try {
                     if (it is MainActivity) {
@@ -889,7 +885,7 @@ class VideoDetailView : ConstraintLayout {
             if (ad != null) {
                 val currentChapter = _cast.getCurrentChapter((ad.time * 1000).toLong());
                 if(currentChapter?.type == ChapterType.SKIPPABLE) {
-                    ad.seekVideo(currentChapter.timeEnd);
+                    StateCasting.instance.videoSeekTo(currentChapter.timeEnd);
                 }
             } else {
                 val currentChapter = _player.getCurrentChapter(_player.position);
@@ -1008,15 +1004,26 @@ class VideoDetailView : ConstraintLayout {
                         }
                     }
                     _slideUpOverlay?.hide();
+                } else if(video is JSVideoDetails && (video as JSVideoDetails).hasVODEvents())
+                RoundButton(context, R.drawable.ic_chat, context.getString(R.string.vod_chat), TAG_VODCHAT) {
+                    video?.let {
+                        try {
+                            loadVODChat(it);
+                        }
+                        catch(ex: Throwable) {
+                            Logger.e(TAG, "Failed to reopen vod chat", ex);
+                        }
+                    }
+                    _slideUpOverlay?.hide();
                 } else null,
-            if (!isLimitedVersion) RoundButton(context, R.drawable.ic_screen_share, if (allowBackground) context.getString(R.string.background_revert) else context.getString(R.string.background), TAG_BACKGROUND) {
-                if (!allowBackground) {
+            if (!isLimitedVersion) RoundButton(context, R.drawable.ic_screen_share, if (isAudioOnlyUserAction) context.getString(R.string.background_revert) else context.getString(R.string.background), TAG_BACKGROUND) {
+                if (!isAudioOnlyUserAction) {
                     _player.switchToAudioMode(video);
-                    allowBackground = true;
+                    isAudioOnlyUserAction = true;
                     it.text.text = resources.getString(R.string.background_revert);
                 } else {
                     _player.switchToVideoMode();
-                    allowBackground = false;
+                    isAudioOnlyUserAction = false;
                     it.text.text = resources.getString(R.string.background);
                 }
                 _slideUpOverlay?.hide();
@@ -1132,9 +1139,13 @@ class VideoDetailView : ConstraintLayout {
 
 
     //Lifecycle
+    var isLoginStop = false; //TODO: This is a bit jank, but easiest solution for now without reworking flow. (Alternatively, fix MainActivity getting stopped/disposing video)
     fun onResume() {
         Logger.v(TAG, "onResume");
         _onPauseCalled = false;
+
+        val wasLoginCall = isLoginStop;
+        isLoginStop = false;
 
         Logger.i(TAG, "_video: ${video?.name ?: "no video"}");
         Logger.i(TAG, "_didStop: $_didStop");
@@ -1142,9 +1153,9 @@ class VideoDetailView : ConstraintLayout {
         //Recover cancelled loads
         if(video == null) {
             val t = (lastPositionMilliseconds / 1000.0f).roundToLong();
-            if(_searchVideo != null)
+            if(_searchVideo != null && !wasLoginCall)
                 setVideoOverview(_searchVideo!!, true, t);
-            else if(_url != null)
+            else if(_url != null && !wasLoginCall)
                 setVideo(_url!!, t, _playWhenReady);
         }
         else if(_didStop) {
@@ -1156,10 +1167,13 @@ class VideoDetailView : ConstraintLayout {
 
         if(_player.isAudioMode) {
             //Requested behavior to leave it in audio mode. leaving it commented if it causes issues, revert?
-            if(!allowBackground) {
+            if(!isAudioOnlyUserAction) {
                 _player.switchToVideoMode();
-                allowBackground = false;
+                isAudioOnlyUserAction = false;
                 _buttonPins.getButtonByTag(TAG_BACKGROUND)?.text?.text = resources.getString(R.string.background);
+            }
+            else {
+                _buttonPins.getButtonByTag(TAG_BACKGROUND)?.text?.text = resources.getString(R.string.video);
             }
         }
         if(!_player.isFitMode && !_player.isFullScreen && !fragment.isInPictureInPicture)
@@ -1176,7 +1190,7 @@ class VideoDetailView : ConstraintLayout {
         if(StateCasting.instance.isCasting)
             return;
 
-        if(allowBackground)
+        if(isAudioOnlyUserAction)
             StatePlayer.instance.startOrUpdateMediaSession(context, video);
         else {
             when (Settings.instance.playback.backgroundPlay) {
@@ -1184,7 +1198,6 @@ class VideoDetailView : ConstraintLayout {
                 1 -> {
                     if(!(video?.isLive ?: false)) {
                         _player.switchToAudioMode(video);
-                        allowBackground = true;
                     }
                     StatePlayer.instance.startOrUpdateMediaSession(context, video);
                 }
@@ -1207,6 +1220,7 @@ class VideoDetailView : ConstraintLayout {
         _taskLoadVideo.cancel();
         handleStop();
         _didStop = true;
+        onShouldEnterPictureInPictureChanged.emit()
         Logger.i(TAG, "_didStop set to true");
 
         StatePlayer.instance.rotationLock = false;
@@ -1971,10 +1985,10 @@ class VideoDetailView : ConstraintLayout {
 
                 if (isLimitedVersion && _player.isAudioMode) {
                     _player.switchToVideoMode()
-                    allowBackground = false;
+                    isAudioOnlyUserAction = false;
                 } else {
                     val thumbnail = video.thumbnails.getHQThumbnail();
-                    if ((videoSource == null || _player.isAudioMode) && !thumbnail.isNullOrBlank())
+                    if ((videoSource == null) && !thumbnail.isNullOrBlank()) // || _player.isAudioMode
                         Glide.with(context).asBitmap().load(thumbnail)
                             .into(object: CustomTarget<Bitmap>() {
                                 override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
@@ -2353,11 +2367,11 @@ class VideoDetailView : ConstraintLayout {
             ?.distinct()
             ?.toList() ?: listOf() else audioSources?.toList() ?: listOf();
 
-        val canSetSpeed = !_isCasting || StateCasting.instance.activeDevice?.canSetSpeed == true
+        val canSetSpeed = !_isCasting || StateCasting.instance.activeDevice?.canSetSpeed() == true
         val currentPlaybackRate = if (_isCasting) StateCasting.instance.activeDevice?.speed else _player.getPlaybackRate()
         val qualityPlaybackSpeedTitle = if (canSetSpeed) SlideUpMenuTitle(this.context).apply { setTitle(context.getString(R.string.playback_rate) + " (${String.format("%.2f", currentPlaybackRate)})"); } else null;
         _overlay_quality_selector = SlideUpMenuOverlay(this.context, _overlay_quality_container, context.getString(
-                    R.string.quality), null, true,
+                R.string.quality), null, true,
             qualityPlaybackSpeedTitle,
             if (canSetSpeed) SlideUpMenuButtonList(this.context, null, "playback_rate").apply {
                 val playbackSpeeds = Settings.instance.playback.getPlaybackSpeeds();
@@ -2378,7 +2392,7 @@ class VideoDetailView : ConstraintLayout {
                     val newPlaybackSpeed = playbackSpeedString.toDouble();
                     if (_isCasting) {
                         val ad = StateCasting.instance.activeDevice ?: return@subscribe
-                        if (!ad.canSetSpeed) {
+                        if (!ad.canSetSpeed()) {
                             return@subscribe
                         }
 
@@ -2502,6 +2516,7 @@ class VideoDetailView : ConstraintLayout {
         if (!StateCasting.instance.resumeVideo()) {
             _player.play();
         }
+        onShouldEnterPictureInPictureChanged.emit()
 
         //TODO: This was needed because handleLowerVolume was done.
         //_player.setVolume(1.0f);
@@ -2518,6 +2533,7 @@ class VideoDetailView : ConstraintLayout {
         if (!StateCasting.instance.pauseVideo()) {
             _player.pause();
         }
+        onShouldEnterPictureInPictureChanged.emit()
     }
     private fun handleSeek(ms: Long) {
         Logger.i(TAG, "handleSeek(ms=$ms)")
@@ -3264,8 +3280,13 @@ class VideoDetailView : ConstraintLayout {
                     val id = e.config.let { if(it is SourcePluginConfig) it.id else null };
                     val didLogin = if(id == null)
                         false
-                    else StatePlugins.instance.loginPlugin(context, id) {
-                        fetchVideo();
+                    else {
+                        isLoginStop = true;
+                        StatePlugins.instance.loginPlugin(context, id) {
+                            fragment.lifecycleScope.launch(Dispatchers.Main) {
+                                fetchVideo();
+                            }
+                        }
                     }
                     if(!didLogin)
                         UIDialogs.showDialogOk(context, R.drawable.ic_error_pred, "Failed to login");
@@ -3443,6 +3464,7 @@ class VideoDetailView : ConstraintLayout {
         const val TAG_SHARE = "share";
         const val TAG_OVERLAY = "overlay";
         const val TAG_LIVECHAT = "livechat";
+        const val TAG_VODCHAT = "vodchat";
         const val TAG_CHAPTERS = "chapters";
         const val TAG_OPEN = "open";
         const val TAG_SEND_TO_DEVICE = "send_to_device";
