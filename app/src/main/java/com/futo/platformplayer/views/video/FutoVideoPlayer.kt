@@ -54,6 +54,7 @@ import com.futo.platformplayer.states.StatePlayer
 import com.futo.platformplayer.views.TargetTapLoaderView
 import com.futo.platformplayer.views.behavior.GestureControlView
 import com.futo.platformplayer.views.others.ProgressBar
+import com.futo.platformplayer.withMaxSizePx
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -164,6 +165,8 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
 
     private val _loaderGame: TargetTapLoaderView
 
+    val loaderGameVisibilityChanged = Event1<Boolean>();
+
     @OptIn(UnstableApi::class)
     constructor(context: Context, attrs: AttributeSet? = null) : super(PLAYER_STATE_NAME, context, attrs) {
         LayoutInflater.from(context).inflate(R.layout.video_view, this, true);
@@ -206,6 +209,7 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
 
         _loaderGame = findViewById(R.id.loader_overlay)
         _loaderGame.visibility = View.GONE
+        loaderGameVisibilityChanged.emit(false)
 
         _control_chapter.setOnClickListener {
             _currentChapter?.let {
@@ -280,6 +284,15 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
                 _speedHoldPrevRate = getPlaybackRate()
                 setPlaybackRate(Settings.instance.playback.getHoldPlaybackSpeed().toFloat())
                 player.play()
+            }
+        }
+        gestureControl.onTogglePlayPause.subscribe {
+            exoPlayer?.player?.let { player ->
+                if (player.playWhenReady) {
+                    player.pause()
+                } else {
+                    player.play()
+                }
             }
         }
         gestureControl.onSpeedHoldEnd.subscribe {
@@ -894,15 +907,18 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         if (isLoading) {
             _loaderGame.visibility = View.VISIBLE
             _loaderGame.startLoader()
+            loaderGameVisibilityChanged.emit(true)
         } else {
             _loaderGame.visibility = View.GONE
             _loaderGame.stopAndResetLoader()
+            loaderGameVisibilityChanged.emit(false)
         }
     }
 
     override fun setLoading(expectedDurationMs: Int) {
         _loaderGame.visibility = View.VISIBLE
         _loaderGame.startLoader(expectedDurationMs.toLong())
+        loaderGameVisibilityChanged.emit(true)
     }
 
     override fun switchToVideoMode() {
@@ -913,11 +929,9 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
     override fun switchToAudioMode(video: IPlatformVideoDetails?) {
         super.switchToAudioMode(video)
 
-        //This causes issues, and is in general confusing, needs improvements
-        /*
         val thumbnail = video?.thumbnails?.getHQThumbnail()
         if (!thumbnail.isNullOrBlank()) {
-            Glide.with(context).asBitmap().load(thumbnail)
+            Glide.with(context).asBitmap().load(thumbnail).withMaxSizePx()
                 .into(object : CustomTarget<Bitmap>() {
                     override fun onResourceReady(
                         resource: Bitmap,
@@ -931,6 +945,5 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
                     }
                 })
         }
-        */
     }
 }

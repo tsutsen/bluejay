@@ -439,7 +439,7 @@ class StateDownloads {
         } else {
             throw NotImplementedError("Unsuported scheme");
         }
-        return if (subtitles != null) SubtitleRawSource(subtitle.name, subtitle.format, subtitles!!) else null;
+        return if (subtitles != null) SubtitleRawSource(subtitle.name, subtitle.language, subtitle.format, subtitles!!) else null;
     }
 
     fun cleanupDownloads(): Pair<Int, Long> {
@@ -543,7 +543,9 @@ class StateDownloads {
                     val file = export.export(context, { progress ->
                         val now = System.currentTimeMillis();
                         if (lastNotifyTime == -1L || now - lastNotifyTime > 100) {
-                            it.setProgress(progress);
+                            StateApp.instance.scopeOrNull?.launch(Dispatchers.Main) {
+                                it.setProgress(progress);
+                            }
                             lastNotifyTime = now;
                         }
                     }, null);

@@ -13,10 +13,12 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.annotation.OptIn
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.TimeBar
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.api.media.models.chapters.IChapter
@@ -31,6 +33,7 @@ import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StatePlayer
 import com.futo.platformplayer.views.TargetTapLoaderView
 import com.futo.platformplayer.views.behavior.GestureControlView
+import com.futo.platformplayer.withMaxSizePx
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,6 +46,7 @@ class CastView : ConstraintLayout {
     private val _buttonSettings: ImageButton;
     private val _buttonLoop: ImageButton;
     private val _buttonPlay: ImageButton;
+    private val _buttonAutoplay: ImageButton;
     private val _buttonPrevious: ImageButton;
     private val _buttonNext: ImageButton;
     private val _buttonPause: ImageButton;
@@ -68,6 +72,7 @@ class CastView : ConstraintLayout {
     val onPrevious = Event0();
     val onNext = Event0();
     val onTimeJobTimeChanged_s = Event1<Long>()
+    val loaderGameVisibilityChanged = Event1<Boolean>();
 
     @OptIn(UnstableApi::class)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
@@ -77,6 +82,7 @@ class CastView : ConstraintLayout {
         _buttonMinimize = findViewById(R.id.button_minimize);
         _buttonSettings = findViewById(R.id.button_settings);
         _buttonLoop = findViewById(R.id.button_loop);
+        _buttonAutoplay = findViewById(R.id.button_autoplay);
         _buttonPlay = findViewById(R.id.button_play);
         _buttonPrevious = findViewById(R.id.button_previous);
         _buttonNext = findViewById(R.id.button_next);
@@ -90,6 +96,7 @@ class CastView : ConstraintLayout {
         _gestureControlView = findViewById(R.id.gesture_control);
         _loaderGame = findViewById(R.id.loader_overlay)
         _loaderGame.visibility = View.GONE
+        loaderGameVisibilityChanged.emit(false)
 
         _gestureControlView.fullScreenGestureEnabled = false
         _gestureControlView.setupTouchArea();
@@ -115,6 +122,15 @@ class CastView : ConstraintLayout {
                 d.changeSpeed(_speedHoldPrevRate)
             } catch (e: Throwable) {
                 Logger.e(TAG, "Failed to change playback speed to previous hold playback speed: $e")
+            }
+        }
+        _gestureControlView.onTogglePlayPause.subscribe {
+            StateCasting.instance.activeDevice?.let { d ->
+                if (d.isPlaying) {
+                    d.pausePlayback()
+                } else {
+                    d.resumePlayback()
+                }
             }
         }
 
@@ -167,6 +183,17 @@ class CastView : ConstraintLayout {
         updateNextPrevious();
         _buttonPrevious.setOnClickListener { onPrevious.emit() };
         _buttonNext.setOnClickListener { onNext.emit() };
+
+        _buttonAutoplay.setOnClickListener {
+            StatePlayer.instance.autoplay = !StatePlayer.instance.autoplay;
+            updateAutoplayButton()
+        }
+        updateAutoplayButton()
+    }
+
+    private fun updateAutoplayButton() {
+        _buttonAutoplay.setColorFilter(ContextCompat.getColor(context, if (StatePlayer.instance.autoplay) com.futo.futopay.R.color.primary else R.color.white))
+        _buttonAutoplay.setColorFilter(ContextCompat.getColor(context, if (StatePlayer.instance.autoplay) com.futo.futopay.R.color.primary else R.color.white))
     }
 
     private fun updateCurrentChapter(chaptPos: Long, isScrub: Boolean = false): Boolean {
@@ -281,6 +308,7 @@ class CastView : ConstraintLayout {
         Glide.with(_thumbnail)
             .load(video.thumbnails.getHQThumbnail())
             .placeholder(R.drawable.placeholder_video_thumbnail)
+            .withMaxSizePx()
             .into(_thumbnail);
         _textPosition.text = (position * 1000).formatDuration();
         _textDuration.text = (video.duration * 1000).formatDuration();
@@ -319,15 +347,18 @@ class CastView : ConstraintLayout {
         if (isLoading) {
             _loaderGame.visibility = View.VISIBLE
             _loaderGame.startLoader()
+            loaderGameVisibilityChanged.emit(true)
         } else {
             _loaderGame.visibility = View.GONE
             _loaderGame.stopAndResetLoader()
+            loaderGameVisibilityChanged.emit(false)
         }
     }
 
     fun setLoading(expectedDurationMs: Int) {
         _loaderGame.visibility = View.VISIBLE
         _loaderGame.startLoader(expectedDurationMs.toLong())
+        loaderGameVisibilityChanged.emit(true)
     }
 
     companion object {

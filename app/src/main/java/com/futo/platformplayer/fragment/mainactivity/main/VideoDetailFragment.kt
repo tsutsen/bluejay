@@ -24,7 +24,6 @@ import androidx.media3.common.util.UnstableApi
 import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
-import com.futo.platformplayer.activities.SettingsActivity
 import com.futo.platformplayer.api.media.models.video.IPlatformVideo
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.casting.StateCasting
@@ -357,6 +356,16 @@ class VideoDetailFragment() : MainFragment() {
             override fun onTransitionChange(motionLayout: MotionLayout?, startId: Int, endId: Int, progress: Float) {
                 _viewDetail?.stopAllGestures()
 
+                if (!isTransitioning && (progress < 0.9 && progress > 0.1)) {
+                    isTransitioning = true;
+                    onTransitioning.emit(isTransitioning);
+
+                    if(isInPictureInPicture) leavePictureInPictureMode(false); //Workaround to prevent getting stuck in p2p
+                }
+            }
+            override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) {
+                val progress = motionLayout?.progress ?: return;
+
                 if (state != State.MINIMIZED && progress < 0.1) {
                     state = State.MINIMIZED;
                     isMinimizingFromFullScreen = false
@@ -373,22 +382,16 @@ class VideoDetailFragment() : MainFragment() {
                     }
                 }
 
-                if (isTransitioning && (progress > 0.95 || progress < 0.05)) {
+                if (isTransitioning && (progress > 0.6 || progress < 0.4)) {
                     isTransitioning = false;
                     onTransitioning.emit(isTransitioning);
 
                     if(isInPictureInPicture) leavePictureInPictureMode(false); //Workaround to prevent getting stuck in p2p
                 }
-                else if (!isTransitioning && (progress < 0.95 && progress > 0.05)) {
-                    isTransitioning = true;
-                    onTransitioning.emit(isTransitioning);
-
-                    if(isInPictureInPicture) leavePictureInPictureMode(false); //Workaround to prevent getting stuck in p2p
-                }
             }
-            override fun onTransitionCompleted(motionLayout: MotionLayout?, currentId: Int) { }
             override fun onTransitionStarted(p0: MotionLayout?, p1: Int, p2: Int) { }
-            override fun onTransitionTrigger(p0: MotionLayout?, p1: Int, p2: Boolean, p3: Float) { }
+            override fun onTransitionTrigger(p0: MotionLayout?, p1: Int, p2: Boolean, p3: Float) {
+            }
         });
 
         _view?.let {
@@ -401,9 +404,10 @@ class VideoDetailFragment() : MainFragment() {
         _loadUrlOnCreate?.let { _viewDetail?.setVideo(it.url, it.timeSeconds, it.playWhenReady) };
         maximizeVideoDetail();
 
+        /*
         SettingsActivity.settingsActivityClosed.subscribe(this) {
             updateOrientation()
-        }
+        } */
 
         StatePlayer.instance.onRotationLockChanged.subscribe(this) {
             updateOrientation()
@@ -547,7 +551,7 @@ class VideoDetailFragment() : MainFragment() {
         super.onDestroyMainView();
         Logger.v(TAG, "onDestroyMainView");
 
-        SettingsActivity.settingsActivityClosed.remove(this)
+        //SettingsActivity.settingsActivityClosed.remove(this)
         StatePlayer.instance.onRotationLockChanged.remove(this)
 
         _landscapeOrientationListener?.disableListener()

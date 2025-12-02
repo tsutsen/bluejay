@@ -581,6 +581,7 @@
     <string name="unhandled_exception_in_vs">VS\'de bilinmeyen hata (exception)</string>
     <string name="send_exception_to_developers">Geliştiricilere exception\'ı gönder…</string>
     <string name="your_license_key_has_been_set_an_app_restart_might_be_required">Lisans anahtarınız ayarlandı!\nUygulamayı yeniden başlatmanız gerekebilir.</string>
+    <string name="qr_code_too_large_use_text_below">QR kodu çok büyük. Profilinizi paylaşmak için aşağıdaki metni kullanın.</string>
     <string name="invalid_license_format">Geçersiz lisans formatı</string>
     <string name="unknown_content_format">Bilinmeyen içerik formatı</string>
     <string name="unknown_file_format">Bilinmeyen dosya formatı</string>
@@ -876,17 +877,6 @@
     <string-array name="home_screen_array">
         <item>Önerilenler</item>
         <item>Abonelikler</item>
-    </string-array>
-    <string-array name="playback_speeds" translatable="false">
-        <item>0.25</item>
-        <item>0.5</item>
-        <item>0.75</item>
-        <item>1.0</item>
-        <item>1.25</item>
-        <item>1.5</item>
-        <item>1.75</item>
-        <item>2.0</item>
-        <item>2.25</item>
     </string-array>
     <string-array name="preferred_quality_array">
         <item>Otomatik (720p)</item>

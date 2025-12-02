@@ -29,6 +29,8 @@ import androidx.media3.exoplayer.dash.manifest.DashManifestParser
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.hls.playlist.HlsPlaylistTracker
+import androidx.media3.exoplayer.source.BehindLiveWindowException
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
@@ -77,6 +79,7 @@ import com.futo.platformplayer.engine.exceptions.ScriptCaptchaRequiredException
 import com.futo.platformplayer.engine.exceptions.ScriptReloadRequiredException
 import com.futo.platformplayer.fragment.mainactivity.main.ChannelFragment
 import com.futo.platformplayer.fragment.mainactivity.main.CreatorSearchResultsFragment
+import com.futo.platformplayer.getNowDiffMiliseconds
 import com.futo.platformplayer.helpers.VideoHelper
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StateApp
@@ -914,9 +917,13 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
         return VideoHelper.selectBestAudioSource(video.video, PREFERED_AUDIO_CONTAINERS, preferredLanguage);
     }
 
+    fun getPreferredSubtitleSource(video: IPlatformVideoDetails, preferredLanguage: String?): ISubtitleSource? {
+        return VideoHelper.selectBestSubtitleSource(video.subtitles, preferredLanguage);
+    }
+
     @OptIn(UnstableApi::class)
     private fun loadSelectedSources(play: Boolean, resume: Boolean): Boolean {
-        val sourceVideo = if(!isAudioMode || _lastAudioMediaSource == null) _lastVideoMediaSource else null;
+        val sourceVideo = _lastVideoMediaSource;
         val sourceAudio = _lastAudioMediaSource;
         val sourceSubs = _lastSubtitleMediaSource;
 
@@ -1004,7 +1011,19 @@ abstract class FutoVideoPlayerBase : RelativeLayout {
 
     @Suppress("DEPRECATION")
     protected open fun onPlayerError(error: PlaybackException) {
-        Logger.i(TAG, "onPlayerError error=$error error.errorCode=${error.errorCode} connectivityLoss");
+        Logger.i(TAG, "onPlayerError error=$error error.errorCode=${error.errorCode} connectivityLoss, cause=${error.cause}");
+
+        if(error is BehindLiveWindowException) {
+            Logger.e(TAG, "BehindLiveWindowException, " + error.message);
+            reloadMediaSource(true, true);
+            return;
+        }
+        if(error != null && error.cause is HlsPlaylistTracker.PlaylistStuckException) {
+            Logger.e(TAG, "PlaylistStuckException");
+            reloadMediaSource(true, true);
+            UIDialogs.toast("Live playback error, reloading..");
+            return;
+        }
 
         when (error.errorCode) {
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> {

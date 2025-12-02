@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -52,17 +53,28 @@ import com.futo.platformplayer.fragment.mainactivity.main.CommentsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ContentSearchResultsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.CreatorSearchResultsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.CreatorsFragment
+import com.futo.platformplayer.fragment.mainactivity.main.DeveloperFragment
 import com.futo.platformplayer.fragment.mainactivity.main.DownloadsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.HistoryFragment
 import com.futo.platformplayer.fragment.mainactivity.main.HomeFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ImportPlaylistsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ImportSubscriptionsFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LibraryAlbumFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LibraryAlbumsFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LibraryArtistFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LibraryArtistsFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LibraryFilesFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LibraryFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LibrarySearchFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LibraryVideosFragment
+import com.futo.platformplayer.fragment.mainactivity.main.LoginFragment
 import com.futo.platformplayer.fragment.mainactivity.main.MainFragment
 import com.futo.platformplayer.fragment.mainactivity.main.PlaylistFragment
 import com.futo.platformplayer.fragment.mainactivity.main.PlaylistSearchResultsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.PlaylistsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.PostDetailFragment
 import com.futo.platformplayer.fragment.mainactivity.main.RemotePlaylistFragment
+import com.futo.platformplayer.fragment.mainactivity.main.SettingsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ShortsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.SourceDetailFragment
 import com.futo.platformplayer.fragment.mainactivity.main.SourcesFragment
@@ -76,6 +88,7 @@ import com.futo.platformplayer.fragment.mainactivity.main.VideoDetailFragment.St
 import com.futo.platformplayer.fragment.mainactivity.main.WatchLaterFragment
 import com.futo.platformplayer.fragment.mainactivity.main.WebDetailFragment
 import com.futo.platformplayer.fragment.mainactivity.topbar.AddTopBarFragment
+import com.futo.platformplayer.fragment.mainactivity.topbar.FilesTopBarFragment
 import com.futo.platformplayer.fragment.mainactivity.topbar.GeneralTopBarFragment
 import com.futo.platformplayer.fragment.mainactivity.topbar.ImportTopBarFragment
 import com.futo.platformplayer.fragment.mainactivity.topbar.NavigationTopBarFragment
@@ -147,6 +160,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     lateinit var _fragTopBarNavigation: NavigationTopBarFragment;
     lateinit var _fragTopBarImport: ImportTopBarFragment;
     lateinit var _fragTopBarAdd: AddTopBarFragment;
+    lateinit var _fragTopBarFiles: FilesTopBarFragment;
 
     //Frags BotBar
     lateinit var _fragBotBarMenu: MenuBottomBarFragment;
@@ -179,6 +193,17 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     lateinit var _fragBuy: BuyFragment;
     lateinit var _fragSubGroup: SubscriptionGroupFragment;
     lateinit var _fragSubGroupList: SubscriptionGroupListFragment;
+    lateinit var _fragLibrary: LibraryFragment;
+    lateinit var _fragLibraryAlbums: LibraryAlbumsFragment;
+    lateinit var _fragLibraryAlbum: LibraryAlbumFragment;
+    lateinit var _fragLibraryArtists: LibraryArtistsFragment;
+    lateinit var _fragLibraryArtist: LibraryArtistFragment;
+    lateinit var _fragLibraryVideos: LibraryVideosFragment;
+    lateinit var _fragLibrarySearch: LibrarySearchFragment;
+    lateinit var _fragLibraryFiles: LibraryFilesFragment;
+    lateinit var _fragSettings: SettingsFragment;
+    lateinit var _fragDeveloper: DeveloperFragment;
+    lateinit var _fragLogin: LoginFragment;
 
     lateinit var _fragBrowser: BrowserFragment;
 
@@ -187,7 +212,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
     //State
     private val _queue: LinkedList<Pair<MainFragment, Any?>> = LinkedList();
-    lateinit var fragCurrent: MainFragment private set;
+    var fragCurrent: MainFragment? = null; private set;
     private var _parameterCurrent: Any? = null;
 
     var fragBeforeOverlay: MainFragment? = null; private set;
@@ -275,6 +300,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     @UnstableApi
     override fun onCreate(savedInstanceState: Bundle?) {
         Logger.w(TAG, "MainActivity Starting [$mainId]");
+
         StateApp.instance.setGlobalContext(this, lifecycleScope, mainId);
         StateApp.instance.mainAppStarting(this);
 
@@ -292,6 +318,10 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             } catch (e: Throwable) {
                 Logger.e(TAG, "Unhandled exception in updateAvailableClients", e)
             }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
         }
 
         //Preload common files to memory
@@ -318,6 +348,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _fragTopBarNavigation = NavigationTopBarFragment.newInstance();
         _fragTopBarImport = ImportTopBarFragment.newInstance();
         _fragTopBarAdd = AddTopBarFragment.newInstance();
+        _fragTopBarFiles = FilesTopBarFragment.newInstance();
 
         //BotBars
         _fragBotBarMenu = MenuBottomBarFragment.newInstance();
@@ -350,6 +381,17 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _fragBuy = BuyFragment.newInstance();
         _fragSubGroup = SubscriptionGroupFragment.newInstance();
         _fragSubGroupList = SubscriptionGroupListFragment.newInstance();
+        _fragLibrary = LibraryFragment.newInstance();
+        _fragLibraryAlbums = LibraryAlbumsFragment.newInstance();
+        _fragLibraryAlbum = LibraryAlbumFragment.newInstance();
+        _fragLibraryArtists = LibraryArtistsFragment.newInstance();
+        _fragLibraryArtist = LibraryArtistFragment.newInstance();
+        _fragLibraryVideos = LibraryVideosFragment.newInstance();
+        _fragLibraryFiles = LibraryFilesFragment.newInstance();
+        _fragLibrarySearch = LibrarySearchFragment.newInstance();
+        _fragSettings = SettingsFragment.newInstance();
+        _fragDeveloper = DeveloperFragment.newInstance();
+        _fragLogin = LoginFragment.newInstance();
 
         _fragBrowser = BrowserFragment.newInstance();
 
@@ -368,12 +410,17 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             updateSegmentPaddings();
         };
         _fragVideoDetail.onTransitioning.subscribe {
-            if (it || _fragVideoDetail.state != VideoDetailFragment.State.MINIMIZED)
+            if (it || _fragVideoDetail.state != VideoDetailFragment.State.MINIMIZED) {
+                Logger.i(TAG, "onTransition Setting elevation higher");
                 _fragContainerOverlay.elevation =
                     TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 15f, resources.displayMetrics);
-            else
+            }
+            else {
+                Logger.i(TAG, "onTransition Setting elevation lower");
                 _fragContainerOverlay.elevation =
                     TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5f, resources.displayMetrics);
+            }
+
         }
 
         _fragVideoDetail.onCloseEvent.subscribe {
@@ -481,6 +528,16 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _fragImportSubscriptions.topBar = _fragTopBarImport;
         _fragImportPlaylists.topBar = _fragTopBarImport;
         _fragSubGroupList.topBar = _fragTopBarAdd;
+        _fragLibrary.topBar = _fragTopBarGeneral;
+        _fragLibraryAlbums.topBar = _fragTopBarNavigation;
+        _fragLibraryAlbum.topBar = _fragTopBarNavigation;
+        _fragLibraryArtists.topBar = _fragTopBarNavigation;
+        _fragLibraryArtist.topBar = _fragTopBarNavigation;
+        _fragLibraryVideos.topBar = _fragTopBarNavigation;
+        _fragLibraryFiles.topBar = _fragTopBarFiles;
+        _fragLibrarySearch.topBar = _fragTopBarSearch;
+        _fragSettings.topBar = _fragTopBarNavigation;
+        _fragDeveloper.topBar = _fragTopBarNavigation;
 
         _fragBrowser.topBar = _fragTopBarNavigation;
 
@@ -506,7 +563,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         defaultTab.action(_fragBotBarMenu);
         StateSubscriptions.instance;
 
-        fragCurrent.onShown(null, false);
+        fragCurrent?.onShown(null, false);
 
         //Other stuff
         rootView.progress = 0f;
@@ -559,6 +616,10 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             })
 
             sharedPreferences.edit().putBoolean("IsFirstBoot", false).apply()
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && Settings.instance.autoUpdate.isAutoUpdateEnabled()) {
+            requestNotificationPermissions("Grayjay uses notifications to inform you when a new app update is available.");
         }
 
         val submissionStatus = FragmentedStorage.get<StringStorage>("subscriptionSubmissionStatus")
@@ -708,17 +769,13 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _wasStopped = true;
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent);
         handleIntent(intent);
     }
 
-    private fun handleIntent(intent: Intent?) {
-        if (intent == null)
-            return;
+    private fun handleIntent(intent: Intent) {
         Logger.i(TAG, "handleIntent started by " + intent.action);
-
-
         var targetData: String? = null;
 
         when (intent.action) {
@@ -1097,7 +1154,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         if (_fragVideoDetail.state == VideoDetailFragment.State.MAXIMIZED && _fragVideoDetail.onBackPressed())
             return;
 
-        if (!fragCurrent.onBackPressed())
+        if (!(fragCurrent?.onBackPressed() ?: true))
             closeSegment();
     }
 
@@ -1148,6 +1205,11 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         }
     }
 
+    inline fun <reified T : Fragment> navigate(parameter: Any? = null, withHistory: Boolean = true, isBack: Boolean = false) {
+        val segment = getFragment<T>();
+        navigate(segment as MainFragment, parameter, withHistory, isBack);
+    }
+
     /**
      * Navigate takes a MainFragment, and makes them the current main visible view
      * A parameter can be provided which becomes available in the onShow of said fragment
@@ -1170,27 +1232,27 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                 return;
             }
 
-            fragCurrent.onHide();
+            fragCurrent?.onHide();
 
             if (segment.isMainView) {
                 var transaction = supportFragmentManager.beginTransaction();
                 if (segment.topBar != null) {
-                    if (segment.topBar != fragCurrent.topBar) {
+                    if (segment.topBar != fragCurrent?.topBar) {
                         transaction = transaction
                             .show(segment.topBar as Fragment)
                             .replace(R.id.fragment_top_bar, segment.topBar as Fragment);
-                        fragCurrent.topBar?.onHide();
+                        fragCurrent?.topBar?.onHide();
                     }
-                } else if (fragCurrent.topBar != null)
-                    transaction.hide(fragCurrent.topBar as Fragment);
+                } else if (fragCurrent?.topBar != null)
+                    transaction.hide(fragCurrent?.topBar as Fragment);
 
                 transaction = transaction.replace(R.id.fragment_main, segment);
 
                 if (segment.hasBottomBar) {
-                    if (!fragCurrent.hasBottomBar)
+                    if (!(fragCurrent?.hasBottomBar ?: false))
                         transaction = transaction.show(_fragBotBarMenu);
                 } else {
-                    if (fragCurrent.hasBottomBar)
+                    if (fragCurrent?.hasBottomBar ?: false)
                         transaction = transaction.hide(_fragBotBarMenu);
                 }
                 transaction.commitNow();
@@ -1203,10 +1265,10 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                 }
             }
 
-            if (fragCurrent.isHistory && withHistory && _queue.lastOrNull() != fragCurrent)
-                _queue.add(Pair(fragCurrent, _parameterCurrent));
+            if (fragCurrent?.isHistory ?: false && withHistory && _queue.lastOrNull() != fragCurrent)
+                _queue.add(Pair(fragCurrent!!, _parameterCurrent));
 
-            if (segment.isOverlay && !fragCurrent.isOverlay && withHistory)// && fragCurrent.isHistory)
+            if (segment.isOverlay && !(fragCurrent?.isOverlay ?: false) && withHistory)// && fragCurrent.isHistory)
                 fragBeforeOverlay = fragCurrent;
 
             fragCurrent = segment;
@@ -1260,6 +1322,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             VideoDetailFragment::class -> _fragVideoDetail as T;
             MenuBottomBarFragment::class -> _fragBotBarMenu as T;
             GeneralTopBarFragment::class -> _fragTopBarGeneral as T;
+            FilesTopBarFragment::class -> _fragTopBarFiles as T;
             SearchTopBarFragment::class -> _fragTopBarSearch as T;
             CreatorsFragment::class -> _fragMainSubscriptions as T;
             CommentsFragment::class -> _fragMainComments as T;
@@ -1284,6 +1347,17 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             BuyFragment::class -> _fragBuy as T;
             SubscriptionGroupFragment::class -> _fragSubGroup as T;
             SubscriptionGroupListFragment::class -> _fragSubGroupList as T;
+            LibraryFragment::class -> _fragLibrary as T;
+            LibraryAlbumsFragment::class -> _fragLibraryAlbums as T;
+            LibraryAlbumFragment::class -> _fragLibraryAlbum as T;
+            LibraryArtistsFragment::class -> _fragLibraryArtists as T;
+            LibraryArtistFragment::class -> _fragLibraryArtist as T;
+            LibraryVideosFragment::class -> _fragLibraryVideos as T;
+            LibraryFilesFragment::class -> _fragLibraryFiles as T;
+            LibrarySearchFragment::class -> _fragLibrarySearch as T;
+            SettingsFragment:: class -> _fragSettings as T;
+            DeveloperFragment::class -> _fragDeveloper as T;
+            LoginFragment::class -> _fragLogin as T;
             else -> throw IllegalArgumentException("Fragment type ${T::class.java.name} is not available in MainActivity");
         }
     }
@@ -1291,7 +1365,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
     private fun updateSegmentPaddings() {
         var paddingBottom = 0f;
-        if (fragCurrent.hasBottomBar)
+        if (fragCurrent?.hasBottomBar ?: false)
             paddingBottom += HEIGHT_MENU_DP;
 
         _fragContainerOverlay.setPadding(
@@ -1306,6 +1380,23 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             0, 0, 0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, paddingBottom, resources.displayMetrics)
                 .toInt()
         );
+    }
+
+    var _callbackPermissionAudio: ((Boolean)->Unit)? = null;
+    var _callbackPermissionVideo: ((Boolean)->Unit)? = null;
+    val permissionReqAudio = registerForActivityResult(ActivityResultContracts.RequestPermission(), { isGranted ->
+        _callbackPermissionAudio?.invoke(isGranted);
+    });
+    val permissionReqVideo = registerForActivityResult(ActivityResultContracts.RequestPermission(), { isGranted ->
+        _callbackPermissionVideo?.invoke(isGranted);
+    });
+    fun requestPermissionAudio(cb: ((Boolean)->Unit)? = null) {
+        _callbackPermissionAudio = cb;
+        permissionReqAudio.launch(android.Manifest.permission.READ_MEDIA_AUDIO);
+    }
+    fun requestPermissionVideo(cb: ((Boolean)->Unit)? = null) {
+        _callbackPermissionVideo = cb;
+        permissionReqVideo.launch(android.Manifest.permission.READ_MEDIA_VIDEO);
     }
 
 

@@ -1,5 +1,8 @@
 package com.futo.platformplayer.views.adapters
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +14,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
+import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.api.media.models.comments.IPlatformComment
 import com.futo.platformplayer.api.media.models.comments.LazyComment
 import com.futo.platformplayer.api.media.models.comments.PolycentricPlatformComment
@@ -40,6 +44,7 @@ class CommentViewHolder : ViewHolder {
     private val _imageLikeIcon: ImageView;
     private val _textLikes: TextView;
     private val _imageDislikeIcon: ImageView;
+    private val _buttonCopy: PillButton;
     private val _textDislikes: TextView;
     private val _buttonReplies: PillButton;
     private val _layoutRating: LinearLayout;
@@ -63,6 +68,7 @@ class CommentViewHolder : ViewHolder {
         _textMetadata = itemView.findViewById(R.id.text_metadata);
         _textBody = itemView.findViewById(R.id.text_body);
         _imageLikeIcon = itemView.findViewById(R.id.image_like_icon);
+        _buttonCopy = itemView.findViewById(R.id.image_copy);
         _textLikes = itemView.findViewById(R.id.text_likes);
         _imageDislikeIcon = itemView.findViewById(R.id.image_dislike_icon);
         _textDislikes = itemView.findViewById(R.id.text_dislikes);
@@ -97,6 +103,16 @@ class CommentViewHolder : ViewHolder {
             StatePolycentric.instance.updateLikeMap(c.reference, args.hasLiked, args.hasDisliked)
         };
 
+        _buttonCopy.setTransparant()
+        _buttonCopy.onClick.subscribe {
+            val clipboard = viewGroup.context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val text = comment?.message.orEmpty()
+            val clip = ClipData.newPlainText("Comment", text)
+            clipboard.setPrimaryClip(clip)
+            UIDialogs.toast(viewGroup.context, "Copied", false)
+            true
+        }
+
         _creatorThumbnail.onClick.subscribe {
             val c = comment ?: return@subscribe;
             onAuthorClick.emit(c);
@@ -120,7 +136,7 @@ class CommentViewHolder : ViewHolder {
             onDelete.emit(c);
         }
 
-        _textBody.setPlatformPlayerLinkMovementMethod(viewGroup.context);
+        _textBody.setPlatformPlayerLinkMovementMethod(viewGroup.context)
     }
 
     fun bind(comment: IPlatformComment, readonly: Boolean) {

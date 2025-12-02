@@ -1,16 +1,22 @@
 package com.futo.platformplayer.states
 
 import android.content.Context
+import android.os.Looper
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.text.TextOutput
+import androidx.media3.exoplayer.text.TextRenderer
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
-import com.futo.platformplayer.api.media.models.playlists.IPlatformPlaylistDetails
 import com.futo.platformplayer.api.media.models.video.IPlatformVideo
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideo
@@ -20,7 +26,9 @@ import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.Playlist
 import com.futo.platformplayer.services.MediaPlaybackService
 import com.futo.platformplayer.video.PlayerManager
+import com.google.common.collect.Iterables
 import kotlin.random.Random
+
 
 /***
  * Used to keep track of queue and other player related stuff
@@ -111,10 +119,20 @@ class StatePlayer {
     val onPlayerOpened = Event0();
     val onPlayerClosed = Event0();
 
-    var currentVideo: IPlatformVideoDetails? = null
+    var currentVideo: IPlatformVideo? = null
         private set;
 
-    fun setCurrentlyPlaying(video: IPlatformVideoDetails?) {
+    private var _currentPlaylistId: String? = null
+    val playlistId: String? get() = if (_queueType == TYPE_PLAYLIST) _currentPlaylistId else null
+
+    init {
+        onQueueChanged.subscribe {
+            updateLastQueue()
+        }
+    }
+
+    fun setCurrentlyPlaying(video: IPlatformVideo?) {
+        Log.i(TAG, "setCurrentlyPlaying ${video?.url} (${video?.name})")
         currentVideo = video;
     }
 
@@ -125,6 +143,7 @@ class StatePlayer {
         onPlayerOpened.emit();
     }
     fun setPlayerClosed() {
+        Log.i(TAG, "setCurrentlyPlaying (setPlayerClosed) null")
         setCurrentlyPlaying(null);
         isOpen = false;
         clearQueue();
@@ -228,16 +247,28 @@ class StatePlayer {
     }
 
     private fun createShuffledQueue() {
-        val currentItem = getCurrentQueueItem();
-        if (_queuePosition == -1 || currentItem == null) {
-            _queueShuffled = _queue.shuffled().toMutableList()
-            return;
+        if (_queue.isEmpty()) {
+            _queueShuffled = mutableListOf()
+            return
         }
 
-        val nextItems = _queue.subList(Math.min(_queuePosition + 1, _queue.size - 1), _queue.size).shuffled();
-        val previousItems = _queue.subList(0, _queuePosition).shuffled();
-        _queueShuffled = (previousItems + currentItem + nextItems).toMutableList();
+        val currentItem = getCurrentQueueItem()
+        if (currentItem == null || _queuePosition !in _queue.indices) {
+            _queueShuffled = _queue.shuffled().toMutableList()
+            return
+        }
+
+        val previousItems = _queue
+            .take(_queuePosition)
+            .shuffled()
+
+        val nextItems = _queue
+            .drop(_queuePosition + 1)
+            .shuffled()
+
+        _queueShuffled = (previousItems + currentItem + nextItems).toMutableList()
     }
+
 
     private fun addToShuffledQueue(video: IPlatformVideo) {
         val isLastVideo = _queuePosition + 1 >= _queue.size;
@@ -269,23 +300,6 @@ class StatePlayer {
         }
         onQueueChanged.emit(true);
     }
-    fun setPlaylist(playlist: IPlatformPlaylistDetails, toPlayIndex: Int = 0, focus: Boolean = false, shuffle: Boolean = false) {
-        synchronized(_queue) {
-            _queue.clear();
-            setQueueType(TYPE_PLAYLIST);
-            _queueName = playlist.name;
-            _queue.addAll(playlist.contents.getResults());
-            queueFocused = focus;
-            queueShuffle = shuffle;
-            if (shuffle) {
-                createShuffledQueue();
-            }
-            _queuePosition = toPlayIndex;
-        }
-        playlist.id.value?.let { StatePlaylists.instance.didPlay(it); };
-
-        onQueueChanged.emit(true);
-    }
     fun setPlaylist(playlist: Playlist, toPlayIndex: Int = 0, focus: Boolean = false, shuffle: Boolean = false) {
         synchronized(_queue) {
             _queue.clear();
@@ -299,6 +313,7 @@ class StatePlayer {
             }
             _queuePosition = toPlayIndex;
         }
+        _currentPlaylistId = playlist.id
         StatePlaylists.instance.didPlay(playlist.id);
 
         onQueueChanged.emit(true);
@@ -382,6 +397,27 @@ class StatePlayer {
         onQueueChanged.emit(true);
         if(playNow) {
             setQueuePosition(video);
+        }
+    }
+
+    fun updateLastQueue() {
+        val queueVideos = synchronized(_queue) {
+            if (!_queue.isEmpty()) {
+                return@synchronized _queue.map { SerializedPlatformVideo.fromVideo(it) }.toList()
+            }
+
+            return@synchronized null
+        }
+
+        if (queueVideos != null) {
+            Logger.i(TAG, "Update last queue: ${queueVideos.size} videos.")
+            val playlist = StatePlaylists.instance.getPlaylist(StatePlaylists.LAST_QUEUE_PLAYLIST_ID)?.apply {
+                videos.clear()
+                videos.addAll(queueVideos)
+            } ?: Playlist("Last Queue", queueVideos).apply {
+                id = StatePlaylists.LAST_QUEUE_PLAYLIST_ID
+            }
+            StatePlaylists.instance.createOrUpdatePlaylist(playlist)
         }
     }
     fun setQueuePosition(video: IPlatformVideo) {
@@ -645,6 +681,30 @@ class StatePlayer {
     @OptIn(UnstableApi::class)
     private fun createExoPlayer(context : Context): ExoPlayer {
         return ExoPlayer.Builder(context)
+            .setRenderersFactory(
+                object : DefaultRenderersFactory(context) {
+                    override fun buildTextRenderers(
+                        context: Context,
+                        output: TextOutput,
+                        outputLooper: Looper,
+                        extensionRendererMode: Int,
+                        out: java.util.ArrayList<Renderer>
+                    ) {
+                        super.buildTextRenderers(
+                            context,
+                            output,
+                            outputLooper,
+                            extensionRendererMode,
+                            out
+                        )
+                        (Iterables.getLast<Renderer?>(out) as TextRenderer)
+                            .experimentalSetLegacyDecodingEnabled(true)
+                    }
+                })
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(context)
+                    .experimentalParseSubtitlesDuringExtraction(false)
+            )
             .setLoadControl(
                 DefaultLoadControl.Builder()
                     .setAllocator(DefaultAllocator(true, BUFFER_SIZE))

@@ -103,7 +103,7 @@ open class JSClient : IPlatformClient {
 
     override val id: String get() = config.id;
     override val name: String get() = config.name;
-    override val icon: ImageVariable;
+    override val icon: ImageVariable get() = StatePlatform.instance.getPlatformIcon(config.id) ?: ImageVariable(config.absoluteIconUrl, null, null)
     override var capabilities: PlatformClientCapabilities = PlatformClientCapabilities();
 
     private var _busyAction = "";
@@ -147,15 +147,14 @@ open class JSClient : IPlatformClient {
     constructor(context: Context, descriptor: SourcePluginDescriptor, saveState: String? = null) {
         this._context = context;
         this.config = descriptor.config;
-        icon = StatePlatform.instance.getPlatformIcon(config.id) ?: ImageVariable(config.absoluteIconUrl, null, null);
         this.descriptor = descriptor;
         _injectedSaveState = saveState;
         _auth = descriptor.getAuth();
         _captcha = descriptor.getCaptchaData();
         flags = descriptor.flags.toTypedArray();
 
-        _httpClient = JSHttpClient(this, null, _captcha);
-        _httpClientAuth = JSHttpClient(this, _auth, _captcha);
+        _httpClient = JSHttpClient(this, null, _captcha, config);
+        _httpClientAuth = JSHttpClient(this, _auth, _captcha, config);
         _plugin = V8Plugin(context, descriptor.config, null, _httpClient, _httpClientAuth);
         _plugin.withDependency(context, "scripts/polyfil.js");
         _plugin.withDependency(context, "scripts/source.js");
@@ -178,7 +177,6 @@ open class JSClient : IPlatformClient {
     constructor(context: Context, descriptor: SourcePluginDescriptor, saveState: String?, script: String, withoutCredentials: Boolean = false) {
         this._context = context;
         this.config = descriptor.config;
-        icon = StatePlatform.instance.getPlatformIcon(config.id) ?: ImageVariable(config.absoluteIconUrl, null, null);
         this.descriptor = descriptor;
         _injectedSaveState = saveState;
         if(!withoutCredentials)
@@ -188,8 +186,8 @@ open class JSClient : IPlatformClient {
         _captcha = descriptor.getCaptchaData();
         flags = descriptor.flags.toTypedArray();
 
-        _httpClient = JSHttpClient(this, null, _captcha);
-        _httpClientAuth = JSHttpClient(this, _auth, _captcha);
+        _httpClient = JSHttpClient(this, null, _captcha, config);
+        _httpClientAuth = JSHttpClient(this, _auth, _captcha, config);
         _plugin = V8Plugin(context, descriptor.config, script, _httpClient, _httpClientAuth);
         _plugin.withDependency(context, "scripts/polyfil.js");
         _plugin.withDependency(context, "scripts/source.js");

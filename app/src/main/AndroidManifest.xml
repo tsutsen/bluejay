@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions"/>
 
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -26,6 +29,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FutoVideo"
         android:usesCleartextTraffic="true"
+        tools:replace="android:enableOnBackInvokedCallback"
+        android:enableOnBackInvokedCallback="false"
         tools:targetApi="31"
         android:largeHeap="true">
         <provider
@@ -58,6 +63,7 @@
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode"
             android:exported="true"
             android:theme="@style/Theme.FutoVideo.NoActionBar"
+            android:windowSoftInputMode="adjustPan"
             android:launchMode="singleInstance"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true">
@@ -242,5 +248,18 @@
             android:name=".activities.PolycentricModerationActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+        <activity
+            android:name=".activities.QRCodeFullscreenActivity"
+            android:screenOrientation="sensorPortrait"
+            android:theme="@style/Theme.FutoVideo.NoActionBar" />
+        <service
+            android:name=".UpdateDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <receiver
+            android:name=".UpdateActionReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>

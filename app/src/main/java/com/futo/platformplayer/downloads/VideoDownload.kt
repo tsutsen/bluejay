@@ -1,6 +1,9 @@
 package com.futo.platformplayer.downloads
 
 import android.content.Context
+import android.media.MediaCodec
+import android.media.MediaExtractor
+import android.media.MediaMuxer
 import android.util.Log
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
@@ -8,6 +11,7 @@ import com.arthenica.ffmpegkit.StatisticsCallback
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.PlatformID
+import com.futo.platformplayer.api.media.models.modifier.IRequestModifier
 import com.futo.platformplayer.api.media.models.streams.VideoUnMuxedSourceDescriptor
 import com.futo.platformplayer.api.media.models.streams.sources.AudioUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioSource
@@ -136,6 +140,8 @@ class VideoDownload {
 
     var hasVideoRequestExecutor: Boolean = false;
     var hasAudioRequestExecutor: Boolean = false;
+    var hasVideoRequestModifier: Boolean = false;
+    var hasAudioRequestModifier: Boolean = false;
 
     var progress: Double = 0.0;
     var isCancelled = false;
@@ -203,8 +209,10 @@ class VideoDownload {
         this.prepareTime = OffsetDateTime.now();
         this.hasVideoRequestExecutor = videoSource is JSSource && videoSource.hasRequestExecutor;
         this.hasAudioRequestExecutor = audioSource is JSSource && audioSource.hasRequestExecutor;
-        this.requiresLiveVideoSource = this.hasVideoRequestExecutor || (videoSource is JSDashManifestRawSource && videoSource.hasGenerate);
-        this.requiresLiveAudioSource = this.hasAudioRequestExecutor || (audioSource is JSDashManifestRawAudioSource && audioSource.hasGenerate);
+        this.hasVideoRequestModifier = videoSource is JSSource && videoSource.hasRequestModifier;
+        this.hasAudioRequestModifier = audioSource is JSSource && audioSource.hasRequestModifier;
+        this.requiresLiveVideoSource = this.hasVideoRequestModifier || this.hasVideoRequestExecutor || (videoSource is JSDashManifestRawSource && videoSource.hasGenerate);
+        this.requiresLiveAudioSource = this.hasAudioRequestModifier || this.hasAudioRequestExecutor || (audioSource is JSDashManifestRawAudioSource && audioSource.hasGenerate);
         this.targetVideoName = videoSource?.name;
         this.targetAudioName = audioSource?.name;
         this.targetPixelCount = if(videoSource != null) (videoSource.width * videoSource.height).toLong() else null;
@@ -478,8 +486,8 @@ class VideoDownload {
 
                 if(actualVideoSource is IVideoUrlSource)
                     videoFileSize = when (videoSource!!.container) {
-                        "application/vnd.apple.mpegurl" -> downloadHlsSource(context, "Video", client, videoSource!!.getVideoUrl(), File(downloadDir, videoFileName!!), progressCallback)
-                        else -> downloadFileSource("Video", client, videoSource!!.getVideoUrl(), File(downloadDir, videoFileName!!), progressCallback)
+                        "application/vnd.apple.mpegurl" -> downloadHlsSource(context, "Video", client, if (actualVideoSource is JSSource) actualVideoSource else null, videoSource!!.getVideoUrl(), File(downloadDir, videoFileName!!), progressCallback)
+                        else -> downloadFileSource("Video", client, if (actualVideoSource is JSSource) actualVideoSource else null, videoSource!!.getVideoUrl(), File(downloadDir, videoFileName!!), progressCallback)
                     }
                 else if(actualVideoSource is JSDashManifestRawSource) {
                     videoFileSize = downloadDashFileSource("Video", client, actualVideoSource, File(downloadDir, videoFileName!!), progressCallback);
@@ -518,8 +526,8 @@ class VideoDownload {
 
                 if(actualAudioSource is IAudioUrlSource)
                     audioFileSize = when (audioSource!!.container) {
-                        "application/vnd.apple.mpegurl" -> downloadHlsSource(context, "Audio", client, audioSource!!.getAudioUrl(), File(downloadDir, audioFileName!!), progressCallback)
-                        else -> downloadFileSource("Audio", client, audioSource!!.getAudioUrl(), File(downloadDir, audioFileName!!), progressCallback)
+                        "application/vnd.apple.mpegurl" -> downloadHlsSource(context, "Audio", client, if (actualAudioSource is JSSource) actualAudioSource else null, audioSource!!.getAudioUrl(), File(downloadDir, audioFileName!!), progressCallback)
+                        else -> downloadFileSource("Audio", client, if (actualAudioSource is JSSource) actualAudioSource else null, audioSource!!.getAudioUrl(), File(downloadDir, audioFileName!!), progressCallback)
                     }
                 else if(actualAudioSource is JSDashManifestRawAudioSource) {
                     audioFileSize = downloadDashFileSource("Audio", client, actualAudioSource, File(downloadDir, audioFileName!!), progressCallback);
@@ -580,83 +588,12 @@ class VideoDownload {
         return cipher.doFinal(encryptedSegment)
     }
 
-    private suspend fun downloadHlsSource(context: Context, name: String, client: ManagedHttpClient, hlsUrl: String, targetFile: File, onProgress: (Long, Long, Long) -> Unit): Long {
-        if(targetFile.exists())
-            targetFile.delete();
-
-        var downloadedTotalLength = 0L
-
-        val segmentFiles = arrayListOf<File>()
-        try {
-            val response = client.get(hlsUrl)
-            check(response.isOk) { "Failed to get variant playlist: ${response.code}" }
-
-            val vpContent = response.body?.string()
-                ?: throw Exception("Variant playlist content is empty")
-
-            val variantPlaylist = HLS.parseVariantPlaylist(vpContent, hlsUrl)
-            val decryptionInfo: DecryptionInfo? = if (variantPlaylist.decryptionInfo != null) {
-                val keyResponse = client.get(variantPlaylist.decryptionInfo.keyUrl)
-                check(keyResponse.isOk) { "HLS request failed for decryption key: ${keyResponse.code}" }
-                DecryptionInfo(keyResponse.body!!.bytes(), variantPlaylist.decryptionInfo.iv?.hexStringToByteArray())
-            } else {
-                null
-            }
-
-            variantPlaylist.segments.forEachIndexed { index, segment ->
-                if (segment !is HLS.MediaSegment) {
-                    return@forEachIndexed
-                }
-
-                Logger.i(TAG, "Download '$name' segment $index Sequential");
-                val segmentFile = File(context.cacheDir, "segment-${UUID.randomUUID()}")
-                val outputStream = segmentFile.outputStream()
-                try {
-                    segmentFiles.add(segmentFile)
-
-                    val segmentLength = downloadSource_Sequential(client, outputStream, segment.uri, if (index == 0) null else decryptionInfo, index) { segmentLength, totalRead, lastSpeed ->
-                        val averageSegmentLength = if (index == 0) segmentLength else downloadedTotalLength / index
-                        val expectedTotalLength = averageSegmentLength * (variantPlaylist.segments.size - 1) + segmentLength
-                        onProgress(expectedTotalLength, downloadedTotalLength + totalRead, lastSpeed)
-                    }
-
-                    downloadedTotalLength += segmentLength
-                } finally {
-                    outputStream.close()
-                }
-            }
-
-            Logger.i(TAG, "Combining segments into $targetFile");
-            combineSegments(context, segmentFiles, targetFile)
-
-            Logger.i(TAG, "${name} downloadSource Finished");
-        }
-        catch(ioex: IOException) {
-            if(targetFile.exists())
-                targetFile.delete();
-            if(ioex.message?.contains("ENOSPC") ?: false)
-                throw Exception("Not enough space on device", ioex);
-            else
-                throw ioex;
-        }
-        catch(ex: Throwable) {
-            if(targetFile.exists())
-                targetFile.delete();
-            throw ex;
-        }
-        finally {
-            for (segmentFile in segmentFiles) {
-                segmentFile.delete()
-            }
-        }
-        return downloadedTotalLength;
-    }
-
     private suspend fun combineSegments(context: Context, segmentFiles: List<File>, targetFile: File) = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { continuation ->
-            val cmd =
-                "-i \"concat:${segmentFiles.joinToString("|")}\" -c copy \"${targetFile.absolutePath}\""
+            val fileList = File(context.cacheDir, "fileList-${UUID.randomUUID()}.txt")
+            fileList.writeText(segmentFiles.joinToString("\n") { "file '${it.absolutePath}'" })
 
+            val cmd = "-f concat -safe 0 -i \"${fileList.absolutePath}\" -c copy \"${targetFile.absolutePath}\""
             val statisticsCallback = StatisticsCallback { _ ->
                 //TODO: Show progress?
             }
@@ -665,6 +602,7 @@ class VideoDownload {
             val session = FFmpegKit.executeAsync(cmd,
                 { session ->
                     if (ReturnCode.isSuccess(session.returnCode)) {
+                        fileList.delete()
                         continuation.resumeWith(Result.success(Unit))
                     } else {
                         val errorMessage = if (ReturnCode.isCancel(session.returnCode)) {
@@ -672,6 +610,7 @@ class VideoDownload {
                         } else {
                             "Command failed with state '${session.state}' and return code ${session.returnCode}, stack trace ${session.failStackTrace}"
                         }
+                        fileList.delete()
                         continuation.resumeWithException(RuntimeException(errorMessage))
                     }
                 },
@@ -684,6 +623,237 @@ class VideoDownload {
                 session.cancel()
             }
         }
+    }
+
+    private suspend fun downloadHlsSource(context: Context, name: String, client: ManagedHttpClient, source: JSSource?, hlsUrl: String, targetFile: File, onProgress: (Long, Long, Long) -> Unit): Long {
+        if (targetFile.exists())
+            targetFile.delete()
+
+        var downloadedTotalLength = 0L
+        val modifier = if (source is JSSource && source.hasRequestModifier)
+            source.getRequestModifier()
+        else
+            null
+
+        fun downloadBytes(url: String, rangeStart: Long? = null, rangeLength: Long? = null): ByteArray {
+            val headers = mutableMapOf<String, String>()
+
+            if (rangeStart != null) {
+                if (rangeLength != null && rangeLength > 0) {
+                    val end = rangeStart + rangeLength - 1
+                    headers["Range"] = "bytes=$rangeStart-$end"
+                } else {
+                    headers["Range"] = "bytes=$rangeStart-"
+                }
+            }
+
+            val modified = modifier?.modifyRequest(url, headers)
+            val finalUrl = modified?.url ?: url
+            val finalHeaders = modified?.headers?.toMutableMap() ?: headers
+
+            val resp = client.get(finalUrl, finalHeaders)
+            if (!resp.isOk) {
+                resp.body?.close()
+                throw IllegalStateException("Failed to download HLS resource ($finalUrl): HTTP ${resp.code}")
+            }
+
+            val body = resp.body ?: throw IllegalStateException("Failed to download HLS resource ($finalUrl): Empty body")
+            val bytes = body.bytes()
+            body.close()
+            return bytes
+        }
+
+        fun buildSequenceIv(sequenceNumber: Long): ByteArray {
+            return ByteBuffer.allocate(16)
+                .putLong(0L)
+                .putLong(sequenceNumber)
+                .array()
+        }
+
+        val segmentFiles = arrayListOf<File>()
+        try {
+            val playlistHeaders = mutableMapOf<String, String>()
+            val modifiedPlaylistReq = modifier?.modifyRequest(hlsUrl, playlistHeaders)
+            val playlistResp = client.get(
+                modifiedPlaylistReq?.url ?: hlsUrl,
+                modifiedPlaylistReq?.headers?.toMutableMap() ?: playlistHeaders
+            )
+
+            check(playlistResp.isOk) { "Failed to get variant playlist: ${playlistResp.code}" }
+
+            val vpContent = playlistResp.body?.string()
+                ?: throw IllegalStateException("Variant playlist content is empty")
+
+            val variantPlaylist = HLS.parseVariantPlaylist(vpContent, hlsUrl)
+            val hlsDec = variantPlaylist.decryptionInfo
+            val useDecryption = hlsDec != null && !hlsDec.method.equals("NONE", ignoreCase = true)
+            var keyBytes: ByteArray? = null
+            var staticIvBytes: ByteArray? = null
+
+            if (useDecryption) {
+                if (!hlsDec.method.equals("AES-128", ignoreCase = true)) {
+                    throw UnsupportedOperationException("HLS decryption method '${hlsDec.method}' is not supported.")
+                }
+
+                val keyUrl = hlsDec.keyUrl ?: throw IllegalStateException("Encrypted HLS playlist without key URI is not supported.")
+
+                keyBytes = downloadBytes(keyUrl)
+                if (!hlsDec.iv.isNullOrEmpty()) {
+                    staticIvBytes = hlsDec.iv.hexStringToByteArray()
+                }
+            }
+
+            val mediaSequence = variantPlaylist.mediaSequence ?: 0L
+            val rangeOffsets = mutableMapOf<String, Long>()
+
+            if (!variantPlaylist.mapUrl.isNullOrEmpty()) {
+                if (isCancelled) throw CancellationException("Cancelled")
+
+                Logger.i(TAG, "Downloading HLS initialization map")
+
+                var mapRangeStart: Long? = null
+                var mapRangeLength: Long? = null
+
+                if (variantPlaylist.mapBytesLength > 0) {
+                    mapRangeLength = variantPlaylist.mapBytesLength
+
+                    val mapUrl = variantPlaylist.mapUrl
+                    if (variantPlaylist.mapBytesStart >= 0) {
+                        mapRangeStart = variantPlaylist.mapBytesStart
+                        rangeOffsets[mapUrl] =
+                            variantPlaylist.mapBytesStart + variantPlaylist.mapBytesLength
+                    } else {
+                        val offset = rangeOffsets[mapUrl] ?: 0L
+                        mapRangeStart = offset
+                        rangeOffsets[mapUrl] = offset + variantPlaylist.mapBytesLength
+                    }
+                }
+
+                var mapBytes = downloadBytes(variantPlaylist.mapUrl!!, mapRangeStart, mapRangeLength)
+
+                if (useDecryption) {
+                    val kb = keyBytes ?: throw IllegalStateException("Decryption key bytes are missing.")
+                    val iv = staticIvBytes
+                        ?: throw UnsupportedOperationException("Encrypted EXT-X-MAP without explicit IV is not supported.")
+                    mapBytes = decryptSegment(mapBytes, kb, iv)
+                }
+
+                if (mapBytes.size.toLong() > Int.MAX_VALUE) {
+                    throw IllegalStateException("HLS MAP segment too large to handle.")
+                }
+
+                val segmentFile = File(context.cacheDir, "segment-${UUID.randomUUID()}")
+                val outStr = segmentFile.outputStream()
+                try {
+                    segmentFiles.add(segmentFile)
+                    outStr.write(mapBytes)
+                    outStr.flush()
+                } finally {
+                    outStr.close()
+                }
+                downloadedTotalLength += mapBytes.size
+            }
+
+            val totalSegments = variantPlaylist.segments.size
+            var mediaSegmentIndex = 0
+
+            var bytesSinceLastSpeedUpdate = 0L
+            var lastSpeedUpdateTime = System.currentTimeMillis()
+            var lastSpeed = 0L
+
+            variantPlaylist.segments.forEachIndexed { index, segment ->
+                if (segment !is HLS.MediaSegment) return@forEachIndexed
+                if (isCancelled) throw CancellationException("Cancelled")
+
+                Logger.i(TAG, "Download '$name' segment $index sequential")
+
+                var rangeStart: Long? = null
+                var rangeLength: Long? = null
+
+                if (segment.bytesLength > 0) {
+                    rangeLength = segment.bytesLength
+
+                    val urlKey = segment.uri
+                    if (segment.bytesStart >= 0) {
+                        rangeStart = segment.bytesStart
+                        rangeOffsets[urlKey] = segment.bytesStart + segment.bytesLength
+                    } else {
+                        val offset = rangeOffsets[urlKey] ?: 0L
+                        rangeStart = offset
+                        rangeOffsets[urlKey] = offset + segment.bytesLength
+                    }
+                }
+
+                var segmentBytes = downloadBytes(segment.uri, rangeStart, rangeLength)
+
+                if (useDecryption) {
+                    val kb = keyBytes ?: throw IllegalStateException("Decryption key bytes are missing.")
+                    val ivBytes = if (staticIvBytes != null) {
+                        staticIvBytes
+                    } else {
+                        val sequenceNumber = mediaSequence + mediaSegmentIndex
+                        buildSequenceIv(sequenceNumber)
+                    }
+
+                    segmentBytes = decryptSegment(segmentBytes, kb, ivBytes)
+                }
+
+                val segmentLength = segmentBytes.size.toLong()
+                if (segmentLength > Int.MAX_VALUE) {
+                    throw IllegalStateException("HLS media segment too large to handle.")
+                }
+
+                val avgLen = if (index == 0) {
+                    segmentLength
+                } else {
+                    if (index > 0) downloadedTotalLength / index else segmentLength
+                }
+                val expectedTotal = avgLen * (totalSegments - 1) + segmentLength
+
+                val segmentFile = File(context.cacheDir, "segment-${UUID.randomUUID()}")
+                val outStr = segmentFile.outputStream()
+                try {
+                    segmentFiles.add(segmentFile)
+                    outStr.write(segmentBytes)
+                } finally {
+                    outStr.close()
+                }
+                downloadedTotalLength += segmentLength
+
+                bytesSinceLastSpeedUpdate += segmentLength
+                val now = System.currentTimeMillis()
+                val elapsed = now - lastSpeedUpdateTime
+                if (elapsed >= 500 && bytesSinceLastSpeedUpdate > 0) {
+                    lastSpeed = (bytesSinceLastSpeedUpdate * 1000L / elapsed)
+                    bytesSinceLastSpeedUpdate = 0
+                    lastSpeedUpdateTime = now
+                }
+
+                onProgress(expectedTotal, downloadedTotalLength, lastSpeed)
+                mediaSegmentIndex++
+            }
+
+            combineSegments(context, segmentFiles, targetFile)
+            Logger.i(TAG, "Finished HLS Source for $name")
+        } catch (ioex: IOException) {
+            if (targetFile.exists())
+                targetFile.delete()
+            if (ioex.message?.contains("ENOSPC") == true)
+                throw Exception("Not enough space on device", ioex)
+            else
+                throw ioex
+        } catch (ex: Throwable) {
+            if (targetFile.exists())
+                targetFile.delete()
+            throw ex
+        }
+        finally {
+            for (segmentFile in segmentFiles) {
+                segmentFile.delete()
+            }
+        }
+
+        return downloadedTotalLength
     }
 
     private fun downloadDashFileSource(name: String, client: ManagedHttpClient, source: IJSDashManifestRawSource, targetFile: File, onProgress: (Long, Long, Long) -> Unit): Long {
@@ -715,6 +885,11 @@ class VideoDownload {
                 source.getRequestExecutor();
             else
                 null;
+
+            val modifier = if (source is JSSource && source.hasRequestModifier)
+                source.getRequestModifier();
+            else
+                null;
             val speedTracker = SpeedTracker(1000);
 
             Logger.i(TAG, "Download $name Dash, CueCount: " + foundCues.count().toString());
@@ -726,12 +901,14 @@ class VideoDownload {
                 val t = cue.groupValues[1];
                 val d = cue.groupValues[2];
 
+
                 val url = foundTemplateUrl.replace("\$Number\$", (indexCounter).toString());
+                val modified = modifier?.modifyRequest(url, mapOf());
 
                 val data = if(executor != null)
-                    executor.executeRequest("GET", url, null, mapOf());
+                    executor.executeRequest("GET", modified?.url ?: url, null, modified?.headers ?: mapOf());
                 else {
-                    val resp = client.get(url, mutableMapOf());
+                    val resp = client.get(modified?.url ?: url, modified?.headers?.toMutableMap() ?: mutableMapOf());
                     if(!resp.isOk)
                         throw IllegalStateException("Dash request failed for index " + indexCounter.toString() + ", with code: " + resp.code.toString());
                     resp.body!!.bytes()
@@ -766,7 +943,7 @@ class VideoDownload {
         }
         return sourceLength!!;
     }
-    private fun downloadFileSource(name: String, client: ManagedHttpClient, videoUrl: String, targetFile: File, onProgress: (Long, Long, Long) -> Unit): Long {
+    private fun downloadFileSource(name: String, client: ManagedHttpClient, source: JSSource?, videoUrl: String, targetFile: File, onProgress: (Long, Long, Long) -> Unit): Long {
         if(targetFile.exists())
             targetFile.delete();
 
@@ -775,7 +952,12 @@ class VideoDownload {
         val sourceLength: Long?;
         val fileStream = FileOutputStream(targetFile);
 
-        try{
+        val modifier = if (source is JSSource && source.hasRequestModifier)
+            source.getRequestModifier();
+        else
+            null;
+
+        try {
             val head = client.tryHead(videoUrl);
             val relatedPlugin = (video?.url ?: videoDetails?.url)?.let { StatePlatform.instance.getContentClient(it) }?.let { if(it is JSClient) it else null };
             if(Settings.instance.downloads.byteRangeDownload && head?.containsKey("accept-ranges") == true && head.containsKey("content-length"))
@@ -786,12 +968,12 @@ class VideoDownload {
                 Logger.i(TAG, "Download $name ByteRange Parallel (${concurrency}): " + videoUrl);
                 sourceLength = head["content-length"]!!.toLong();
                 onProgress(sourceLength, 0, 0);
-                downloadSource_Ranges(name, client, fileStream, videoUrl, sourceLength, 1024*512, concurrency, onProgress);
+                downloadSource_Ranges(name, client, modifier, fileStream, videoUrl, sourceLength, 1024*512, concurrency, onProgress);
             }
             else {
                 Logger.i(TAG, "Download $name Sequential");
                 try {
-                    sourceLength = downloadSource_Sequential(client, fileStream, videoUrl, null, 0, onProgress);
+                    sourceLength = downloadSource_Sequential(client, modifier, fileStream, videoUrl, null, 0, onProgress);
                 } catch (e: Throwable) {
                     Logger.w(TAG, "Failed to download sequentially (url = $videoUrl)")
                     throw e
@@ -842,7 +1024,7 @@ class VideoDownload {
         }
     }
 
-    private fun downloadSource_Sequential(client: ManagedHttpClient, fileStream: FileOutputStream, url: String, decryptionInfo: DecryptionInfo?, index: Int, onProgress: (Long, Long, Long) -> Unit): Long {
+    private fun downloadSource_Sequential(client: ManagedHttpClient, modifier: IRequestModifier? = null, fileStream: FileOutputStream, url: String, decryptionInfo: DecryptionInfo?, index: Int, onProgress: (Long, Long, Long) -> Unit): Long {
         val progressRate: Int = 4096 * 5;
         var lastProgressCount: Int = 0;
         val speedRate: Int = 4096 * 5;
@@ -851,7 +1033,12 @@ class VideoDownload {
 
         var lastSpeed: Long = 0;
 
-        val result = client.get(url);
+        val result = if (modifier != null) {
+            val modified = modifier.modifyRequest(url, mapOf())
+            client.get(modified.url!!, modified.headers.toMutableMap())
+        } else {
+            client.get(url)
+        }
         if (!result.isOk) {
             result.body?.close()
             throw IllegalStateException("Failed to download source. Web[${result.code}] Error");
@@ -988,7 +1175,7 @@ class VideoDownload {
         onProgress(sourceLength, totalRead, 0)
         return sourceLength
     }*/
-    private fun downloadSource_Ranges(name: String, client: ManagedHttpClient, fileStream: FileOutputStream, url: String, sourceLength: Long, rangeSize: Int, concurrency: Int = 1, onProgress: (Long, Long, Long) -> Unit) {
+    private fun downloadSource_Ranges(name: String, client: ManagedHttpClient, modifier: IRequestModifier?, fileStream: FileOutputStream, url: String, sourceLength: Long, rangeSize: Int, concurrency: Int = 1, onProgress: (Long, Long, Long) -> Unit) {
         val progressRate: Int = 4096 * 5;
         var lastProgressCount: Int = 0;
         val speedRate: Int = 4096 * 5;
@@ -1007,7 +1194,7 @@ class VideoDownload {
 
             Logger.i(TAG, "Download ${name} Batch #${reqCount} [${concurrency}] (${lastSpeed.toHumanBytesSpeed()})");
 
-            val byteRangeResults = requestByteRangeParallel(client, pool, url, sourceLength, concurrency, totalRead,
+            val byteRangeResults = requestByteRangeParallel(client, pool, modifier, url, sourceLength, concurrency, totalRead,
                 rangeSize, 1024 * 64);
 
             for(byteRange in byteRangeResults) {
@@ -1038,7 +1225,7 @@ class VideoDownload {
         onProgress(sourceLength, totalRead, 0);
     }
 
-    private fun requestByteRangeParallel(client: ManagedHttpClient, pool: ForkJoinPool, url: String, totalLength: Long, concurrency: Int, rangePosition: Long, rangeSize: Int, rangeVariance: Int = -1): List<Triple<ByteArray, Long, Long>> {
+    private fun requestByteRangeParallel(client: ManagedHttpClient, pool: ForkJoinPool, modifier: IRequestModifier?, url: String, totalLength: Long, concurrency: Int, rangePosition: Long, rangeSize: Int, rangeVariance: Int = -1): List<Triple<ByteArray, Long, Long>> {
         val tasks = mutableListOf<ForkJoinTask<Triple<ByteArray, Long, Long>>>();
         var readPosition = rangePosition;
         for(i in 0 until concurrency) {
@@ -1052,21 +1239,25 @@ class VideoDownload {
             else readPosition + toRead;
 
             tasks.add(pool.submit<Triple<ByteArray, Long, Long>> {
-                return@submit requestByteRange(client, url, rangeStart, rangeEnd);
+                return@submit requestByteRange(client, modifier, url, rangeStart, rangeEnd);
             });
             readPosition = rangeEnd + 1;
         }
 
         return tasks.map { it.get() };
     }
-    private fun requestByteRange(client: ManagedHttpClient, url: String, rangeStart: Long, rangeEnd: Long): Triple<ByteArray, Long, Long> {
+    private fun requestByteRange(client: ManagedHttpClient, modifier: IRequestModifier?, url: String, rangeStart: Long, rangeEnd: Long): Triple<ByteArray, Long, Long> {
         var retryCount = 0
-        var lastException: Throwable? = null
+        var lastException: Throwable? = null;
+
+        val headers = mutableMapOf(Pair("Range", "bytes=${rangeStart}-${rangeEnd}"));
+        val modified = modifier?.modifyRequest(url, headers);
 
         while (retryCount <= 3) {
             try {
                 val toRead = rangeEnd - rangeStart;
-                val req = client.get(url, mutableMapOf(Pair("Range", "bytes=${rangeStart}-${rangeEnd}")));
+
+                val req = client.get(modified?.url ?: url, modified?.headers?.toMutableMap() ?: headers);
                 if (!req.isOk) {
                     val bodyString = req.body?.string()
                     req.body?.close()
