@@ -618,8 +618,8 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             sharedPreferences.edit().putBoolean("IsFirstBoot", false).apply()
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && Settings.instance.autoUpdate.isAutoUpdateEnabled()) {
-            requestNotificationPermissions("Grayjay uses notifications to inform you when a new app update is available.");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && Settings.instance.autoUpdate.isAutoUpdateEnabled() && Settings.instance.autoUpdate.shouldBackgroundDownload) {
+            requestNotificationPermissions("You have enabled background updating.\n\nGrayjay uses notifications to inform you when a new app update is available.");
         }
 
         val submissionStatus = FragmentedStorage.get<StringStorage>("subscriptionSubmissionStatus")
@@ -1299,11 +1299,24 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
                 navigate(last.first, last.second, false, true);
             } else {
                 if (_fragVideoDetail.state == VideoDetailFragment.State.CLOSED) {
+                    Logger.i(TAG, "Closing activity because _fragVideoDetail.state == closed");
                     finish();
                 } else {
+                    //UIDialogs.toast("Grayjay continues in background because of an open video.")
+                    if(Settings.instance.playback.isBackgroundPictureInPicture()) {
+                        try {
+                            _fragVideoDetail._viewDetail?.startPictureInPicture();
+                            _fragVideoDetail?.forcePictureInPicture();
+                        } catch (ex: Throwable) {
+                        } //Fail silently
+                    }
+                    else
+                     moveTaskToBack(false);
+                    /*
                     UIDialogs.showConfirmationDialog(this, "There is a video playing, are you sure you want to exit the app?", {
                         finish();
                     })
+                    */
                 }
             }
         }

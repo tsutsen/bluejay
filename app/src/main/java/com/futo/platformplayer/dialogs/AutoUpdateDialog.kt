@@ -21,6 +21,7 @@ import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.UpdateDownloadService
+import com.futo.platformplayer.UpdateNotificationManager
 import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.copyToOutputStream
 import com.futo.platformplayer.logging.Logger
@@ -36,6 +37,8 @@ import java.io.InputStream
 class AutoUpdateDialog(context: Context?) : AlertDialog(context) {
     companion object {
         private val TAG = "AutoUpdateDialog";
+
+        var currentDialog: AutoUpdateDialog? = null
     }
 
     private lateinit var _buttonNever: Button;
@@ -62,12 +65,14 @@ class AutoUpdateDialog(context: Context?) : AlertDialog(context) {
         _buttonShowChangelog = findViewById(R.id.button_show_changelog);
 
         _buttonNever.setOnClickListener {
+            UpdateNotificationManager.cancelAll(context)
             Settings.instance.autoUpdate.check = 1;
             Settings.instance.save();
             dismiss();
         };
 
         _buttonClose.setOnClickListener {
+            UpdateNotificationManager.cancelAll(context)
             dismiss();
         };
 
@@ -77,11 +82,13 @@ class AutoUpdateDialog(context: Context?) : AlertDialog(context) {
         };
 
         _buttonUpdate.setOnClickListener {
+            UpdateNotificationManager.cancelAll(context)
+
             if (_updating) {
                 return@setOnClickListener;
             }
 
-            if (Settings.instance.autoUpdate.backgroundDownload == 1) {
+            if (Settings.instance.autoUpdate.shouldBackgroundDownload) {
                 val ctx = context.applicationContext;
                 val intent = Intent(ctx, UpdateDownloadService::class.java);
                 intent.putExtra(UpdateDownloadService.EXTRA_VERSION, _maxVersion);
@@ -94,11 +101,13 @@ class AutoUpdateDialog(context: Context?) : AlertDialog(context) {
             }
         };
 
+        currentDialog = this
     }
 
     override fun dismiss() {
         super.dismiss()
         InstallReceiver.onReceiveResult.clear();
+        currentDialog = null
         Logger.i(TAG, "Cleared InstallReceiver.onReceiveResult handler.")
     }
 

@@ -50,7 +50,7 @@ class VideoDetailFragment() : MainFragment() {
 
     private var _isActive: Boolean = false;
 
-    private var _viewDetail : VideoDetailView? = null;
+    var _viewDetail : VideoDetailView? = null;
     private var _view : SingleViewTouchableMotionLayout? = null;
 
     var isFullscreen : Boolean = false;
@@ -372,14 +372,18 @@ class VideoDetailFragment() : MainFragment() {
                     onMinimize.emit();
                 }
                 else if (state != State.MAXIMIZED && progress > 0.9) {
+                    state = State.MAXIMIZED;
+                    onMaximized.emit();
+                    /*
                     if (_isInitialMaximize) {
-                        state = State.CLOSED;
+                        //state = State.CLOSED; Causes issues? might no longer be needed
                         _isInitialMaximize = false;
                     }
                     else {
                         state = State.MAXIMIZED;
                         onMaximized.emit();
                     }
+                    */
                 }
 
                 if (isTransitioning && (progress > 0.6 || progress < 0.4)) {
@@ -450,7 +454,8 @@ class VideoDetailFragment() : MainFragment() {
         if (viewDetail.shouldEnterPictureInPicture) {
             _leavingPiP = false
         }
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S && viewDetail.preventPictureInPicture == false && !StateCasting.instance.isCasting && Settings.instance.playback.isBackgroundPictureInPicture() && !viewDetail.isAudioOnlyUserAction) {
+        val shouldPiP = Settings.instance.playback.isBackgroundPictureInPicture()
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.S && viewDetail.preventPictureInPicture == false && !StateCasting.instance.isCasting && shouldPiP && !viewDetail.isAudioOnlyUserAction) {
             val params = _viewDetail?.getPictureInPictureParams();
             if(params != null) {
                 Logger.i(TAG, "enterPictureInPictureMode")
