@@ -9,7 +9,10 @@ import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.exoplayer.LoadingInfo;
 import androidx.media3.exoplayer.SeekParameters;
+import androidx.media3.exoplayer.drm.DrmSessionEventListener;
+import androidx.media3.exoplayer.drm.DrmSessionManager;
 import androidx.media3.exoplayer.source.CompositeSequenceableLoaderFactory;
 import androidx.media3.exoplayer.source.EmptySampleStream;
 import androidx.media3.exoplayer.source.MediaPeriod;
@@ -72,6 +75,8 @@ final class SabrMediaPeriod implements MediaPeriod, SequenceableLoader.Callback<
     private int periodIndex;
     private List<EventStream> eventStreams;
     private boolean notifiedReadingStarted;
+    private final DrmSessionManager drmSessionManager;
+    private final DrmSessionEventListener.EventDispatcher drmEventDispatcher;
 
     public SabrMediaPeriod(
             int id,
@@ -107,6 +112,13 @@ final class SabrMediaPeriod implements MediaPeriod, SequenceableLoader.Callback<
         Pair<TrackGroupArray, TrackGroupInfo[]> result = buildTrackGroups(period.adaptationSets);
         trackGroups = result.first;
         trackGroupInfos = result.second;
+        this.drmSessionManager = DrmSessionManager.DRM_UNSUPPORTED;
+        this.drmEventDispatcher = new DrmSessionEventListener.EventDispatcher();
+    }
+
+    @Override
+    public boolean isLoading() {
+        return compositeSequenceableLoader.isLoading();
     }
 
     @Override
@@ -170,7 +182,6 @@ final class SabrMediaPeriod implements MediaPeriod, SequenceableLoader.Callback<
     @Override
     public long readDiscontinuity() {
         if (!notifiedReadingStarted) {
-            eventDispatcher.readingStarted();
             notifiedReadingStarted = true;
         }
         return C.TIME_UNSET;
@@ -208,8 +219,8 @@ final class SabrMediaPeriod implements MediaPeriod, SequenceableLoader.Callback<
     }
 
     @Override
-    public boolean continueLoading(long positionUs) {
-        return compositeSequenceableLoader.continueLoading(positionUs);
+    public boolean continueLoading(LoadingInfo loadingInfo) {
+        return compositeSequenceableLoader.continueLoading(loadingInfo);
     }
 
     @Override
@@ -255,8 +266,8 @@ final class SabrMediaPeriod implements MediaPeriod, SequenceableLoader.Callback<
             sampleStream.release(this);
         }
         callback = null;
-        eventDispatcher.mediaPeriodReleased();
     }
+
 
     @SuppressWarnings("unchecked")
     private static ChunkSampleStream<SabrChunkSource>[] newSampleStreamArray(int length) {
@@ -385,8 +396,11 @@ final class SabrMediaPeriod implements MediaPeriod, SequenceableLoader.Callback<
                             eventMessageTrackGroupIndex,
                             cea608TrackGroupIndex);
             if (eventMessageTrackGroupIndex != C.INDEX_UNSET) {
-                Format format = Format.createSampleFormat(firstAdaptationSet.id + ":emsg",
-                        MimeTypes.APPLICATION_EMSG, null, Format.NO_VALUE, null);
+                Format format =
+                        new Format.Builder()
+                                .setId(firstAdaptationSet.id + ":emsg")
+                                .setSampleMimeType(MimeTypes.APPLICATION_EMSG)
+                                .build();
                 trackGroups[eventMessageTrackGroupIndex] = new TrackGroup(format);
                 trackGroupInfos[eventMessageTrackGroupIndex] =
                         TrackGroupInfo.embeddedEmsgTrack(adaptationSetIndices, primaryTrackGroupIndex);
@@ -526,7 +540,11 @@ final class SabrMediaPeriod implements MediaPeriod, SequenceableLoader.Callback<
         }
     }
 
-    private ChunkSampleStream<SabrChunkSource> buildSampleStream(TrackGroupInfo trackGroupInfo, ExoTrackSelection selection, long positionUs) {
+    private ChunkSampleStream<SabrChunkSource> buildSampleStream(
+            TrackGroupInfo trackGroupInfo,
+            ExoTrackSelection selection,
+            long positionUs) {
+
         int embeddedTrackCount = 0;
         boolean enableEventMessageTrack =
                 trackGroupInfo.embeddedEventMessageTrackGroupIndex != C.INDEX_UNSET;
@@ -536,34 +554,72 @@ final class SabrMediaPeriod implements MediaPeriod, SequenceableLoader.Callback<
                     trackGroups.get(trackGroupInfo.embeddedEventMessageTrackGroupIndex);
             embeddedTrackCount++;
         }
-        boolean enableCea608Tracks = trackGroupInfo.embeddedCea608TrackGroupIndex != C.INDEX_UNSET;
+        boolean enableCea608Tracks =
+                trackGroupInfo.embeddedCea608TrackGroupIndex != C.INDEX_UNSET;
         TrackGroup embeddedCea608TrackGroup = null;
         if (enableCea608Tracks) {
-            embeddedCea608TrackGroup = trackGroups.get(trackGroupInfo.embeddedCea608TrackGroupIndex);
+            embeddedCea608TrackGroup =
+                    trackGroups.get(trackGroupInfo.embeddedCea608TrackGroupIndex);
             embeddedTrackCount += embeddedCea608TrackGroup.length;
         }
 
         Format[] embeddedTrackFormats = new Format[embeddedTrackCount];
         int[] embeddedTrackTypes = new int[embeddedTrackCount];
         embeddedTrackCount = 0;
+
         if (enableEventMessageTrack) {
-            embeddedTrackFormats[embeddedTrackCount] = embeddedEventMessageTrackGroup.getFormat(0);
+            embeddedTrackFormats[embeddedTrackCount] =
+                    embeddedEventMessageTrackGroup.getFormat(0);
             embeddedTrackTypes[embeddedTrackCount] = C.TRACK_TYPE_METADATA;
             embeddedTrackCount++;
         }
+
         List<Format> embeddedCea608TrackFormats = new ArrayList<>();
         if (enableCea608Tracks) {
             for (int i = 0; i < embeddedCea608TrackGroup.length; i++) {
-                embeddedTrackFormats[embeddedTrackCount] = embeddedCea608TrackGroup.getFormat(i);
+                embeddedTrackFormats[embeddedTrackCount] =
+                        embeddedCea608TrackGroup.getFormat(i);
                 embeddedTrackTypes[embeddedTrackCount] = C.TRACK_TYPE_TEXT;
                 embeddedCea608TrackFormats.add(embeddedTrackFormats[embeddedTrackCount]);
                 embeddedTrackCount++;
             }
         }
 
-        PlayerTrackEmsgHandler trackPlayerEmsgHandler = manifest.dynamic && enableEventMessageTrack ? playerEmsgHandler.newPlayerTrackEmsgHandler() : null;
-        SabrChunkSource chunkSource = chunkSourceFactory.createSabrChunkSource(manifestLoaderErrorThrower, manifest, periodIndex, trackGroupInfo.adaptationSetIndices, selection, trackGroupInfo.trackType, elapsedRealtimeOffsetMs, enableEventMessageTrack, embeddedCea608TrackFormats, trackPlayerEmsgHandler, transferListener);
-        ChunkSampleStream<SabrChunkSource> stream = new ChunkSampleStream<>(trackGroupInfo.trackType, embeddedTrackTypes, embeddedTrackFormats, chunkSource, this, allocator, positionUs, loadErrorHandlingPolicy, eventDispatcher);
+        PlayerTrackEmsgHandler trackPlayerEmsgHandler =
+                manifest.dynamic && enableEventMessageTrack
+                        ? playerEmsgHandler.newPlayerTrackEmsgHandler()
+                        : null;
+
+        SabrChunkSource chunkSource =
+                chunkSourceFactory.createSabrChunkSource(
+                        manifestLoaderErrorThrower,
+                        manifest,
+                        periodIndex,
+                        trackGroupInfo.adaptationSetIndices,
+                        selection,
+                        trackGroupInfo.trackType,
+                        elapsedRealtimeOffsetMs,
+                        enableEventMessageTrack,
+                        embeddedCea608TrackFormats,
+                        trackPlayerEmsgHandler,
+                        transferListener);
+
+        ChunkSampleStream<SabrChunkSource> stream =
+                new ChunkSampleStream<>(
+                        trackGroupInfo.trackType,
+                        embeddedTrackTypes,
+                        embeddedTrackFormats,
+                        chunkSource,
+                        /* callback= */ this,
+                        allocator,
+                        positionUs,
+                        drmSessionManager,
+                        drmEventDispatcher,
+                        loadErrorHandlingPolicy,
+                        eventDispatcher,
+                        /* canReportInitialDiscontinuity= */ true,
+                        /* downloadExecutor= */ null);
+
         synchronized (this) {
             // The map is also accessed on the loading thread so synchronize access.
             trackEmsgHandlerBySampleStream.put(stream, trackPlayerEmsgHandler);

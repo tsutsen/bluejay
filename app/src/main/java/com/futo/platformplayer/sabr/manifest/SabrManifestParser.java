@@ -1,27 +1,30 @@
 package com.futo.platformplayer.sabr.manifest;
 
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.DrmInitData;
 import androidx.media3.common.DrmInitData.SchemeData;
+
+import com.futo.platformplayer.sabr.ITagUtils;
+import com.futo.platformplayer.sabr.MediaFormat;
+import com.futo.platformplayer.sabr.MediaFormatComparator;
+import com.futo.platformplayer.sabr.MediaFormatUtils;
+import com.futo.platformplayer.sabr.MediaItemFormatInfo;
+import com.futo.platformplayer.sabr.MediaSubtitle;
 import com.futo.platformplayer.sabr.manifest.SegmentBase.SegmentList;
 import com.futo.platformplayer.sabr.manifest.SegmentBase.SegmentTemplate;
 import com.futo.platformplayer.sabr.manifest.SegmentBase.SegmentTimelineElement;
 import com.futo.platformplayer.sabr.manifest.SegmentBase.SingleSegmentBase;
 import androidx.media3.common.MimeTypes;
-import com.liskovsoft.mediaserviceinterfaces.data.MediaFormat;
-import com.liskovsoft.mediaserviceinterfaces.data.MediaItemFormatInfo;
-import com.liskovsoft.mediaserviceinterfaces.data.MediaSubtitle;
-import com.liskovsoft.sharedutils.helpers.Helpers;
-import com.liskovsoft.sharedutils.mylogger.Log;
-import com.liskovsoft.youtubeapi.formatbuilders.mpdbuilder.MediaFormatComparator;
-import com.liskovsoft.youtubeapi.formatbuilders.utils.ITagUtils;
-import com.liskovsoft.youtubeapi.formatbuilders.utils.MediaFormatUtils;
+import androidx.media3.common.util.UnstableApi;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+@UnstableApi
 public class SabrManifestParser {
     private static final String TAG = SabrManifestParser.class.getSimpleName();
     private int mId;
@@ -53,6 +57,50 @@ public class SabrManifestParser {
         mWEBMAudios = new HashMap<>();
         mSubs = new ArrayList<>();
         return parseSabrManifest(formatInfo);
+    }
+
+    public static boolean isInteger(String s) {
+        return s != null && s.matches("^[-+]?\\d+$");
+    }
+
+    public static boolean isNumeric(String s) {
+        return s != null && s.matches("^[-+]?\\d*\\.?\\d+$");
+    }
+
+    public static int parseInt(String numString) {
+        return parseInt(numString, -1);
+    }
+
+    public static int parseInt(String numString, int defaultValue) {
+        if (!isInteger(numString)) {
+            return defaultValue;
+        }
+
+        return Integer.parseInt(numString);
+    }
+
+    public static long parseLong(String numString) {
+        return parseLong(numString, -1);
+    }
+
+    public static long parseLong(String numString, long defaultValue) {
+        if (!isInteger(numString)) {
+            return defaultValue;
+        }
+
+        return Long.parseLong(numString);
+    }
+
+    public static float parseFloat(String numString) {
+        return parseFloat(numString, -1);
+    }
+
+    public static float parseFloat(String numString, float defaultValue) {
+        if (!isNumeric(numString)) {
+            return defaultValue;
+        }
+
+        return Float.parseFloat(numString);
     }
 
     private SabrManifest parseSabrManifest(MediaItemFormatInfo formatInfo) {
@@ -86,7 +134,7 @@ public class SabrManifestParser {
     }
 
     private static long getDurationMs(MediaItemFormatInfo formatInfo) {
-        long lenSeconds = Helpers.parseLong(formatInfo.getLengthSeconds());
+        long lenSeconds = parseLong(formatInfo.getLengthSeconds());
         return lenSeconds > 0 ? lenSeconds * 1_000 : C.TIME_UNSET;
     }
 
@@ -284,7 +332,7 @@ public class SabrManifestParser {
 
         // SegmentURL tag
         for (String segment : format.getGlobalSegmentList()) {
-            long duration = Helpers.parseLong(segment, C.TIME_UNSET);
+            long duration = parseLong(segment, C.TIME_UNSET);
             int count = 1;
             for (int i = 0; i < count; i++) {
                 timeline.add(new SegmentTimelineElement(elapsedTime, duration));
@@ -347,14 +395,14 @@ public class SabrManifestParser {
         int roleFlags = C.ROLE_FLAG_MAIN;
         int selectionFlags = C.SELECTION_FLAG_DEFAULT;
         String id = mediaFormat.isDrc() ? mediaFormat.getITag() + "-drc" : mediaFormat.getITag();
-        int bandwidth = Helpers.parseInt(mediaFormat.getBitrate(), Format.NO_VALUE);
+        int bandwidth = parseInt(mediaFormat.getBitrate(), Format.NO_VALUE);
         String mimeType = MediaFormatUtils.extractMimeType(mediaFormat);
         String codecs = MediaFormatUtils.extractCodecs(mediaFormat);
         int width = mediaFormat.getWidth();
         int height = mediaFormat.getHeight();
-        float frameRate = Helpers.parseFloat(mediaFormat.getFps(), Format.NO_VALUE);
+        float frameRate = parseFloat(mediaFormat.getFps(), Format.NO_VALUE);
         int audioChannels = Format.NO_VALUE;
-        int audioSamplingRate = Helpers.parseInt(ITagUtils.getAudioRateByTag(mediaFormat.getITag()), Format.NO_VALUE);
+        int audioSamplingRate = parseInt(ITagUtils.getAudioRateByTag(mediaFormat.getITag()), Format.NO_VALUE);
         String language = mediaFormat.getLanguage();
         String baseUrl = mediaFormat.getUrl();
         String label = null;
@@ -432,28 +480,49 @@ public class SabrManifestParser {
 
     protected Representation buildRepresentation(
             RepresentationInfo representationInfo,
-            String label,
-            String extraDrmSchemeType,
+            @Nullable String label,
+            @Nullable String extraDrmSchemeType,
             ArrayList<SchemeData> extraDrmSchemeDatas) {
-        Format format = representationInfo.format;
+
+        // Start from the existing format
+        Format.Builder formatBuilder = representationInfo.format.buildUpon();
+
+        // copyWithLabel(label)
         if (label != null) {
-            format = format.copyWithLabel(label);
+            formatBuilder.setLabel(label);
         }
-        String drmSchemeType = representationInfo.drmSchemeType != null
-                ? representationInfo.drmSchemeType : extraDrmSchemeType;
+
+        // Decide scheme type: representationInfo.drmSchemeType wins over extraDrmSchemeType
+        String drmSchemeType =
+                representationInfo.drmSchemeType != null
+                        ? representationInfo.drmSchemeType
+                        : extraDrmSchemeType;
+
+        // Accumulate DRM scheme datas (same as your old code)
         ArrayList<SchemeData> drmSchemeDatas = representationInfo.drmSchemeDatas;
-        drmSchemeDatas.addAll(extraDrmSchemeDatas);
+        if (extraDrmSchemeDatas != null && !extraDrmSchemeDatas.isEmpty()) {
+            drmSchemeDatas.addAll(extraDrmSchemeDatas);
+        }
+
         if (!drmSchemeDatas.isEmpty()) {
             filterRedundantIncompleteSchemeDatas(drmSchemeDatas);
+
             DrmInitData drmInitData = new DrmInitData(drmSchemeType, drmSchemeDatas);
-            format = format.copyWithDrmInitData(drmInitData);
+
+            // copyWithDrmInitData(drmInitData)
+            formatBuilder.setDrmInitData(drmInitData);
         }
+
+        Format format = formatBuilder.build();
+
+        // Representation.newInstance(...) still exists with this signature in Media3.:contentReference[oaicite:1]{index=1}
         return Representation.newInstance(
                 representationInfo.revisionId,
                 format,
                 representationInfo.baseUrl,
                 representationInfo.segmentBase);
     }
+
 
     protected Format buildFormat(
             String id,
@@ -468,62 +537,44 @@ public class SabrManifestParser {
             @C.RoleFlags int roleFlags,
             @C.SelectionFlags int selectionFlags,
             String codecs) {
+
         String sampleMimeType = getSampleMimeType(containerMimeType, codecs);
+
+        // Base builder: fields common to all track types
+        Format.Builder builder = new Format.Builder()
+                .setId(id)
+                .setContainerMimeType(containerMimeType)
+                .setSampleMimeType(sampleMimeType)
+                .setCodecs(codecs)
+                .setAverageBitrate(bitrate)      // same semantics as old "bitrate" arg
+                .setSelectionFlags(selectionFlags)
+                .setRoleFlags(roleFlags)
+                .setLanguage(language);
+
         if (sampleMimeType != null) {
             if (MimeTypes.isVideo(sampleMimeType)) {
-                return Format.createVideoContainerFormat(
-                        id,
-                        /* label= */ null,
-                        containerMimeType,
-                        sampleMimeType,
-                        codecs,
-                        /* metadata= */ null,
-                        bitrate,
-                        width,
-                        height,
-                        frameRate,
-                        /* initializationData= */ null,
-                        selectionFlags,
-                        roleFlags);
+                // Replacement for createVideoContainerFormat(...)
+                builder
+                        .setWidth(width)
+                        .setHeight(height)
+                        .setFrameRate(frameRate);
+
             } else if (MimeTypes.isAudio(sampleMimeType)) {
-                return Format.createAudioContainerFormat(
-                        id,
-                        /* label= */ null,
-                        containerMimeType,
-                        sampleMimeType,
-                        codecs,
-                        /* metadata= */ null,
-                        bitrate,
-                        audioChannels,
-                        audioSamplingRate,
-                        /* initializationData= */ null,
-                        selectionFlags,
-                        roleFlags,
-                        language);
+                // Replacement for createAudioContainerFormat(...)
+                builder
+                        .setChannelCount(audioChannels)
+                        .setSampleRate(audioSamplingRate);
+
             } else if (mimeTypeIsRawText(sampleMimeType)) {
-                return Format.createTextContainerFormat(
-                        id,
-                        /* label= */ null,
-                        containerMimeType,
-                        sampleMimeType,
-                        codecs,
-                        bitrate,
-                        selectionFlags,
-                        roleFlags,
-                        language,
-                        Format.NO_VALUE);
+                // Replacement for createTextContainerFormat(...)
+                // You passed Format.NO_VALUE for accessibilityChannel before,
+                // which is already the default, but we can be explicit:
+                builder.setAccessibilityChannel(Format.NO_VALUE);
             }
         }
-        return Format.createContainerFormat(
-                id,
-                /* label= */ null,
-                containerMimeType,
-                sampleMimeType,
-                codecs,
-                bitrate,
-                selectionFlags,
-                roleFlags,
-                language);
+
+        // Replacement for createContainerFormat(...) when no specialized type matched
+        return builder.build();
     }
 
     /**

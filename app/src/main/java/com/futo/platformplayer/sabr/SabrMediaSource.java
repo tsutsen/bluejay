@@ -8,8 +8,10 @@ import android.util.SparseArray;
 import androidx.annotation.Nullable;
 
 import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
 import androidx.media3.common.Timeline;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.exoplayer.drm.DrmSessionManagerProvider;
 import androidx.media3.exoplayer.source.BaseMediaSource;
 import androidx.media3.exoplayer.source.CompositeSequenceableLoaderFactory;
 import androidx.media3.exoplayer.source.DefaultCompositeSequenceableLoaderFactory;
@@ -34,17 +36,14 @@ import java.io.IOException;
 
 @UnstableApi
 public final class SabrMediaSource extends BaseMediaSource {
-    /**
-     * The interval in milliseconds between invocations of {@link
-     * SourceInfoRefreshListener#onSourceInfoRefreshed(MediaSource, Timeline, Object)} when the
-     * source's {@link Timeline} is changing dynamically (for example, for incomplete live streams).
-     */
+
     private static final int NOTIFY_MANIFEST_INTERVAL_MS = 5000;
     /**
      * The minimum default start position for live streams, relative to the start of the live window.
      */
     private static final long MIN_LIVE_DEFAULT_START_POSITION_US = 5000000;
     private final SabrManifest manifest;
+    private final MediaItem mediaItem;
     private final SabrChunkSource.Factory chunkSourceFactory;
     private final CompositeSequenceableLoaderFactory compositeSequenceableLoaderFactory;
     private final LoadErrorHandlingPolicy loadErrorHandlingPolicy;
@@ -68,6 +67,7 @@ public final class SabrMediaSource extends BaseMediaSource {
 
     private SabrMediaSource(
             SabrManifest manifest,
+            MediaItem mediaItem,
             SabrChunkSource.Factory chunkSourceFactory,
             CompositeSequenceableLoaderFactory compositeSequenceableLoaderFactory,
             LoadErrorHandlingPolicy loadErrorHandlingPolicy,
@@ -76,6 +76,7 @@ public final class SabrMediaSource extends BaseMediaSource {
             @Nullable Object tag
     ) {
         this.manifest = manifest;
+        this.mediaItem = mediaItem;
         this.chunkSourceFactory = chunkSourceFactory;
         this.compositeSequenceableLoaderFactory = compositeSequenceableLoaderFactory;
         this.loadErrorHandlingPolicy = loadErrorHandlingPolicy;
@@ -85,6 +86,11 @@ public final class SabrMediaSource extends BaseMediaSource {
         periodsById = new SparseArray<>();
         playerEmsgCallback = new DefaultPlayerEmsgCallback();
         manifestLoadErrorThrower = new ManifestLoadErrorThrower();
+    }
+
+    @Override
+    public MediaItem getMediaItem() {
+        return mediaItem;
     }
 
     @Override
@@ -217,7 +223,7 @@ public final class SabrMediaSource extends BaseMediaSource {
                         windowDefaultStartPositionUs,
                         manifest,
                         tag);
-        refreshSourceInfo(timeline, manifest);
+        refreshSourceInfo(timeline);
     }
 
     private long getNowUnixTimeUs() {
@@ -231,8 +237,10 @@ public final class SabrMediaSource extends BaseMediaSource {
     public static final class Factory implements MediaSource.Factory {
         private final SabrChunkSource.Factory chunkSourceFactory;
         @Nullable private final DataSource.Factory manifestDataSourceFactory;
-        private final DefaultLoadErrorHandlingPolicy loadErrorHandlingPolicy;
+        private LoadErrorHandlingPolicy loadErrorHandlingPolicy;
         private final DefaultCompositeSequenceableLoaderFactory compositeSequenceableLoaderFactory;
+        @Nullable private DrmSessionManagerProvider drmSessionManagerProvider;
+
         private long livePresentationDelayMs;
         private boolean livePresentationDelayOverridesManifest;
         private boolean isCreateCalled;
@@ -258,8 +266,35 @@ public final class SabrMediaSource extends BaseMediaSource {
         }
 
         @Override
-        public MediaSource createMediaSource(Uri uri) {
-            return null;
+        public Factory setDrmSessionManagerProvider(DrmSessionManagerProvider drmSessionManagerProvider) {
+            Assertions.checkState(!isCreateCalled);
+            this.drmSessionManagerProvider = drmSessionManagerProvider;
+            return this;
+        }
+
+        @Override
+        public SabrMediaSource createMediaSource(MediaItem mediaItem) {
+            Assertions.checkNotNull(mediaItem);
+            MediaItem.LocalConfiguration localConfiguration = mediaItem.localConfiguration;
+            Assertions.checkNotNull(localConfiguration, "MediaItem must have a local configuration");
+            Object localTag = localConfiguration.tag;
+            Assertions.checkArgument(
+                    localTag instanceof SabrManifest,
+                    "MediaItem.localConfiguration.tag must be a SabrManifest"
+            );
+            SabrManifest manifest = (SabrManifest) localTag;
+
+            isCreateCalled = true;
+            return new SabrMediaSource(
+                    manifest,
+                    mediaItem,
+                    chunkSourceFactory,
+                    compositeSequenceableLoaderFactory,
+                    loadErrorHandlingPolicy,
+                    livePresentationDelayMs,
+                    livePresentationDelayOverridesManifest,
+                    tag
+            );
         }
 
         /**
@@ -271,8 +306,15 @@ public final class SabrMediaSource extends BaseMediaSource {
          */
         public SabrMediaSource createMediaSource(SabrManifest manifest) {
             isCreateCalled = true;
+
+            MediaItem mediaItem = new MediaItem.Builder()
+                    .setMediaId("sabr:" + manifest.hashCode())
+                    .setTag(manifest)
+                    .build();
+
             return new SabrMediaSource(
                     manifest,
+                    mediaItem,
                     chunkSourceFactory,
                     compositeSequenceableLoaderFactory,
                     loadErrorHandlingPolicy,
@@ -301,7 +343,7 @@ public final class SabrMediaSource extends BaseMediaSource {
 
         @Override
         public int[] getSupportedTypes() {
-            return new int[0];
+            return new int[] { C.CONTENT_TYPE_OTHER };
         }
 
         /**
@@ -314,9 +356,10 @@ public final class SabrMediaSource extends BaseMediaSource {
          * @return This factory, for convenience.
          * @throws IllegalStateException If one of the {@code create} methods has already been called.
          */
+        @Override
         public Factory setLoadErrorHandlingPolicy(LoadErrorHandlingPolicy loadErrorHandlingPolicy) {
-            //Assertions.checkState(!isCreateCalled);
-            //this.loadErrorHandlingPolicy = loadErrorHandlingPolicy;
+            Assertions.checkState(!isCreateCalled);
+            this.loadErrorHandlingPolicy = loadErrorHandlingPolicy;
             return this;
         }
 
@@ -338,15 +381,6 @@ public final class SabrMediaSource extends BaseMediaSource {
             return setLoadErrorHandlingPolicy(new DefaultLoadErrorHandlingPolicy(minLoadableRetryCount));
         }
 
-        /**
-         * Sets a tag for the media source which will be published in the {@link
-         * androidx.media3.Timeline} of the source as {@link
-         * androidx.media3.Timeline.Window#tag}.
-         *
-         * @param tag A tag for the media source.
-         * @return This factory, for convenience.
-         * @throws IllegalStateException If one of the {@code create} methods has already been called.
-         */
         public Factory setTag(Object tag) {
             Assertions.checkState(!isCreateCalled);
             this.tag = tag;
@@ -466,26 +500,32 @@ public final class SabrMediaSource extends BaseMediaSource {
 
         @Override
         public Window getWindow(
-                int windowIndex, Window window, boolean setTag, long defaultPositionProjectionUs) {
+                int windowIndex, Window window, long defaultPositionProjectionUs) {
             Assertions.checkIndex(windowIndex, 0, 1);
-            long windowDefaultStartPositionUs = getAdjustedWindowDefaultStartPositionUs(
-                    defaultPositionProjectionUs);
-            Object tag = setTag ? windowTag : null;
+
+            long windowDefaultStartPositionUs =
+                    getAdjustedWindowDefaultStartPositionUs(defaultPositionProjectionUs);
+
             boolean isDynamic =
                     manifest.dynamic
                             && manifest.minUpdatePeriodMs != C.TIME_UNSET
                             && manifest.durationMs == C.TIME_UNSET;
+
             return window.set(
-                    tag,
-                    presentationStartTimeMs,
-                    windowStartTimeMs,
+                    /* uid= */ Window.SINGLE_WINDOW_UID,
+                    /* mediaItem= */ null,
+                    /* manifest= */ manifest,
+                    /* presentationStartTimeMs= */ presentationStartTimeMs,
+                    /* windowStartTimeMs= */ windowStartTimeMs,
+                    /* elapsedRealtimeEpochOffsetMs= */ C.TIME_UNSET,
                     /* isSeekable= */ true,
-                    isDynamic,
-                    windowDefaultStartPositionUs,
-                    windowDurationUs,
+                    /* isDynamic= */ isDynamic,
+                    /* liveConfiguration= */ null,
+                    /* defaultPositionUs= */ windowDefaultStartPositionUs,
+                    /* durationUs= */ windowDurationUs,
                     /* firstPeriodIndex= */ 0,
                     /* lastPeriodIndex= */ getPeriodCount() - 1,
-                    offsetInFirstPeriodUs);
+                    /* positionInFirstPeriodUs= */ offsetInFirstPeriodUs);
         }
 
         @Override
