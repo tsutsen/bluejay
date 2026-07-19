@@ -130,11 +130,13 @@
                 android:layout_marginTop="10dp"
                 android:layout_marginBottom="10dp">
 
-                <ImageView
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:srcCompat="@drawable/ic_error"
-                    app:tint="?attr/colorOnSurfaceVariant" />
+                    android:text="\uE002"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="18sp"
+                    android:includeFontPadding="false" />
 
                 <TextView
                     android:layout_width="match_parent"
@@ -153,7 +155,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="10dp"
-                app:buttonIcon="@drawable/ic_explore"
+                app:buttonIconName="ic_add"
                 app:buttonText="Add Sources"
                 app:buttonSubText="Install new sources to see more content."
                 />

@@ -1,6 +1,7 @@
 package com.futo.platformplayer.views.adapters
 
 import android.annotation.SuppressLint
+import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
@@ -9,6 +10,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import com.futo.platformplayer.R
+import com.futo.platformplayer.utils.Icons
 import com.futo.platformplayer.api.media.IPlatformClient
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.constructs.Event1
@@ -19,7 +21,7 @@ class EnabledSourceViewHolder : ViewHolder {
     private val _imageSource: ImageView;
     private val _textSource: TextView;
     private val _textSourceSubtitle: TextView;
-    private val _imageDragDrop: ImageView;
+    private val _imageDragDrop: TextView;
     private val _buttonRemove: LinearLayout;
 
     var onRemove = Event1<IPlatformClient>();
@@ -34,6 +36,14 @@ class EnabledSourceViewHolder : ViewHolder {
         _textSourceSubtitle = itemView.findViewById(R.id.text_source_subtitle);
         _imageDragDrop = view.findViewById(R.id.image_drag_drop);
         _buttonRemove = view.findViewById(R.id.button_remove);
+
+        // Set Material Symbols font and drag icon
+        try {
+            _imageDragDrop.typeface = Typeface.createFromAsset(view.context.assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
+        _imageDragDrop.text = Icons["ic_drag_indicator"] ?: "\uE945";
         val root = view.findViewById<LinearLayout>(R.id.root);
 
         root.setOnClickListener {

@@ -76,6 +76,7 @@ object Icons {
         "ic_add" to "\uE145",
         "ic_edit" to "\uF097",
         "ic_delete" to "\uE92E",
+        "ic_drag_indicator" to "\uE945",
         "ic_save" to "\uE161",
         "ic_download" to "\uF090",
         "ic_upload" to "\uF09B",

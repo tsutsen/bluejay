@@ -11,13 +11,15 @@
     android:id="@+id/root"
     android:clickable="true">
 
-    <ImageView
+    <TextView
         android:id="@+id/image_drag_drop"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:contentDescription="@string/cd_drag_drop"
-        app:srcCompat="@drawable/ic_dragdrop_white"
-        android:scaleType="fitCenter"
+        android:gravity="center"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="24sp"
+        android:includeFontPadding="false"
         android:paddingTop="10dp"
         android:paddingBottom="10dp"
         android:paddingEnd="8dp" />

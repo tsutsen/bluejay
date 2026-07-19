@@ -3,11 +3,13 @@ package com.futo.platformplayer.fragment.mainactivity.main
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -94,6 +96,19 @@ class SourcesFragment : MainFragment() {
             if(StatePlatform.instance.getAvailableClients().isEmpty()) {
                 findViewById<LinearLayout>(R.id.no_sources).isVisible = true;
                 findViewById<LinearLayout>(R.id.plugin_disclaimer).isVisible = false;
+            } else {
+                // Set Material Symbols font on warning icon TextView
+                val warningIcon = findViewById<TextView>(R.id.plugin_disclaimer).findViewById<TextView>(android.R.id.empty);
+                // The warning icon is the first child TextView in the LinearLayout
+                val disclaimerLayout = findViewById<LinearLayout>(R.id.plugin_disclaimer);
+                if (disclaimerLayout.childCount > 0 && disclaimerLayout.getChildAt(0) is TextView) {
+                    try {
+                        val matTypeface = Typeface.createFromAsset(context?.assets, "font/material_symbols_rounded.ttf");
+                        (disclaimerLayout.getChildAt(0) as TextView).typeface = matTypeface;
+                    } catch (e: Exception) {
+                        e.printStackTrace();
+                    }
+                }
             }
             findViewById<BigButton>(R.id.button_add_sources).onClick.subscribe {
                 StateApp.instance.preventPictureInPicture.emit();
