@@ -486,6 +486,22 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         }
         updateAutoplayButton()
 
+        // Set initial icon text for all icon buttons
+        _control_play.text = "\uE037"; // play_arrow
+        _control_play_fullscreen.text = "\uE037"; // play_arrow
+        _control_pause.text = "\uE034"; // pause
+        _control_pause_fullscreen.text = "\uE034"; // pause
+        _control_cast.text = "\uE307"; // cast
+        _control_cast_fullscreen.text = "\uE307"; // cast
+        _control_fullscreen.text = "\uE5D0"; // fullscreen
+        _control_fullscreen_fullscreen.text = "\uE5D0"; // fullscreen
+        _control_videosettings.text = "\uE8B8"; // settings
+        _control_videosettings_fullscreen.text = "\uE8B8"; // settings
+        _control_minimize.text = "\uE5CD"; // close
+        _control_minimize_fullscreen.text = "\uE5CD"; // close
+        _buttonPrevious.text = "\uE045"; // skip_previous
+        _buttonNext.text = "\uE044"; // skip_next
+
         val progressUpdateListener = { position: Long, bufferedPosition: Long ->
             val currentTime = position.formatDuration()
             val currentDuration = duration.formatDuration()
