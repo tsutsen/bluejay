@@ -97,9 +97,7 @@ class SourcesFragment : MainFragment() {
                 findViewById<LinearLayout>(R.id.no_sources).isVisible = true;
                 findViewById<LinearLayout>(R.id.plugin_disclaimer).isVisible = false;
             } else {
-                // Set Material Symbols font on warning icon TextView
-                val warningIcon = findViewById<TextView>(R.id.plugin_disclaimer).findViewById<TextView>(android.R.id.empty);
-                // The warning icon is the first child TextView in the LinearLayout
+                // Set Material Symbols font on warning icon TextView (first child of plugin_disclaimer)
                 val disclaimerLayout = findViewById<LinearLayout>(R.id.plugin_disclaimer);
                 if (disclaimerLayout.childCount > 0 && disclaimerLayout.getChildAt(0) is TextView) {
                     try {
