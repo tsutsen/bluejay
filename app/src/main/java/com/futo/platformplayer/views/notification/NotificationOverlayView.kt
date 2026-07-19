@@ -45,7 +45,7 @@ class NotificationOverlayView: ConstraintLayout {
         adapterNotifications = recycler.asAny<Announcement, ViewHolder>(RecyclerView.VERTICAL, false, {
 
         });
-        emptyView.setText("Nothing to see here", "You don't have any notifications", R.drawable.ic_notifications)
+        emptyView.setText("Nothing to see here", "You don't have any notifications", "ic_notifications")
 
         _buttonDismissAll.setOnClickListener {
             StateAnnouncement.instance.closeAllAnnouncements();

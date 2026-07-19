@@ -17,7 +17,7 @@ import java.lang.reflect.Method
 
 @Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class FormFieldButton(val drawable: Int = 0)
+annotation class FormFieldButton(val drawable: String = "")
 
 class ButtonField : BigButton, IField {
     override var descriptor: FormField? = null;

@@ -68,7 +68,7 @@ class Settings : FragmentedStorageFileJson() {
     val onTabsChanged = Event0();
 
     @FormField(R.string.sync_grayjay, FieldForm.BUTTON, R.string.sync_grayjay_description, -8)
-    @FormFieldButton(R.drawable.ic_update)
+    @FormFieldButton("ic_system_update")
     fun syncGrayjay() {
         StateApp?.instance?.activity?.let {
             it.startActivity(Intent(it, SyncHomeActivity::class.java))
@@ -77,7 +77,7 @@ class Settings : FragmentedStorageFileJson() {
 
 
     @FormField(R.string.manage_polycentric_identity, FieldForm.BUTTON, R.string.manage_your_polycentric_identity, -7)
-    @FormFieldButton(R.drawable.ic_person)
+    @FormFieldButton("ic_person")
     fun managePolycentricIdentity() {
         StateApp?.instance?.activity?.let {
             if (StatePolycentric.instance.enabled) {
@@ -93,7 +93,7 @@ class Settings : FragmentedStorageFileJson() {
     }
 
     @FormField(R.string.show_faq, FieldForm.BUTTON, R.string.get_answers_to_common_questions, -6)
-    @FormFieldButton(R.drawable.ic_quiz)
+    @FormFieldButton("ic_quiz")
     fun openFAQ() {
         try {
             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(Settings.URL_FAQ))
@@ -103,7 +103,7 @@ class Settings : FragmentedStorageFileJson() {
         }
     }
     @FormField(R.string.show_issues, FieldForm.BUTTON, R.string.a_list_of_user_reported_and_self_reported_issues, -5)
-    @FormFieldButton(R.drawable.ic_data_alert)
+    @FormFieldButton("ic_data_alert")
     fun openIssues() {
         try {
             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/futo-org/grayjay-android/issues"))
@@ -118,7 +118,7 @@ class Settings : FragmentedStorageFileJson() {
         R.string.submit_feedback, FieldForm.BUTTON,
         R.string.give_feedback_on_the_application, -1
     )
-    @FormFieldButton(R.drawable.ic_bug)
+    @FormFieldButton("ic_bug_report")
     fun submitFeedback() {
         try {
             val i = Intent(Intent.ACTION_VIEW);
@@ -135,7 +135,7 @@ class Settings : FragmentedStorageFileJson() {
     }*/
 
     @FormField(R.string.manage_tabs, FieldForm.BUTTON, R.string.change_tabs_visible_on_the_home_screen, -4)
-    @FormFieldButton(R.drawable.ic_tabs)
+    @FormFieldButton("ic_tab")
     fun manageTabs() {
         try {
             StateApp?.instance?.activity?.let {
@@ -149,7 +149,7 @@ class Settings : FragmentedStorageFileJson() {
 
 
     @FormField(R.string.import_data, FieldForm.BUTTON, R.string.import_data_description, -3)
-    @FormFieldButton(R.drawable.ic_move_up)
+    @FormFieldButton("ic_file_upload")
     fun import() {
         val act = StateApp.instance.activity ?: return;
         val intent = MainActivity.getImportOptionsIntent(act);
@@ -157,7 +157,7 @@ class Settings : FragmentedStorageFileJson() {
     }
 
     @FormField(R.string.link_handling, FieldForm.BUTTON, R.string.allow_grayjay_to_handle_links, -2)
-    @FormFieldButton(R.drawable.ic_link)
+    @FormFieldButton("ic_link")
     fun manageLinks() {
         try {
             StateApp.instance.activity?.let { UIDialogs.showUrlHandlingPrompt(it) }
@@ -246,7 +246,7 @@ class Settings : FragmentedStorageFileJson() {
 
 
         @FormField(R.string.clear_hidden, FieldForm.BUTTON, R.string.clear_hidden_description, 8)
-        @FormFieldButton(R.drawable.ic_visibility_off)
+        @FormFieldButton("ic_visibility_off")
         fun clearHidden() {
             StateMeta.instance.removeAllHiddenCreators();
             StateMeta.instance.removeAllHiddenVideos();
@@ -1106,10 +1106,10 @@ class Settings : FragmentedStorageFileJson() {
             val activity = StateApp.instance.activity ?: return;
             val fragView = SettingsFragment.currentView ?: return;
             UISlideOverlays.showOverlay(fragView.overlay, "Select export type", null, {},
-                SlideUpMenuItem(activity, R.drawable.ic_share, "Share", "", tag = null, call = {
+                SlideUpMenuItem(activity, "ic_share", "Share", "", tag = null, call = {
                     StateBackup.shareExternalBackup();
                 }),
-                SlideUpMenuItem(activity, R.drawable.ic_download, "File", "", tag = null, call = {
+                SlideUpMenuItem(activity, "ic_download", "File", "", tag = null, call = {
                     StateBackup.saveExternalBackup(activity);
                 })
             )
@@ -1129,9 +1129,9 @@ class Settings : FragmentedStorageFileJson() {
                 try {
                     if (StatePayment.instance.hasPaid) {
                         val paymentKey = StatePayment.instance.getPaymentKey()
-                        UIDialogs.showDialogOk(it, R.drawable.ic_paid, "License activated\n" + paymentKey.first)
+                        UIDialogs.showDialogOk(it, R.drawable.ic_add, "License activated\n" + paymentKey.first)
                     } else {
-                        UIDialogs.showDialogOk(it, R.drawable.ic_paid, "No license activated")
+                        UIDialogs.showDialogOk(it, R.drawable.ic_add, "No license activated")
                     }
                 } catch (e: Throwable) {
                     Logger.e(TAG, "Failed to show license status dialog", e)
