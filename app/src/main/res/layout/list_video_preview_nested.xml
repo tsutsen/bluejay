@@ -57,7 +57,7 @@
                     android:layout_marginEnd="4dp"
                     android:layout_marginBottom="13dp"
                     android:paddingTop="0dp"
-                    android:gravity="center_vertical"
+                    android:gravity="center"
                     android:orientation="horizontal"
                     android:background="@drawable/background_thumbnail_live"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -87,7 +87,7 @@
                     android:layout_marginEnd="4dp"
                     android:layout_marginBottom="13dp"
                     android:paddingTop="0dp"
-                    android:gravity="center_vertical"
+                    android:gravity="center"
                     android:orientation="horizontal"
                     android:background="@drawable/background_thumbnail_duration"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -162,7 +162,7 @@
             app:layout_constraintTop_toBottomOf="@id/player_container"
             app:layout_constraintBottom_toBottomOf="parent"
             android:orientation="vertical"
-            android:gravity="center_vertical">
+            android:gravity="center">
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -207,7 +207,7 @@
                         android:id="@+id/text_channel_name"
                         android:layout_width="fill_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
+                        android:gravity="center"
                         android:maxLines="1"
                         android:textSize="12dp"
                         android:textColor="?attr/colorOnSurface"
@@ -219,7 +219,7 @@
                         android:layout_width="fill_parent"
                         android:layout_height="wrap_content"
                         android:maxLines="1"
-                        android:gravity="center_vertical"
+                        android:gravity="center"
                         android:textSize="12dp"
                         android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/inter_extra_light"
@@ -236,7 +236,7 @@
                     android:layout_marginEnd="6dp"
                     android:paddingLeft="10dp"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center">
 
                     <FrameLayout android:id="@+id/layout_downloaded"
                         android:layout_width="20dp"
@@ -297,7 +297,7 @@
                         android:layout_height="30dp"
                         android:layout_marginStart="4dp"
                         android:background="@drawable/edit_text_background"
-                        android:gravity="center_vertical"
+                        android:gravity="center"
                         android:orientation="horizontal"
                         android:padding="4dp">
 
