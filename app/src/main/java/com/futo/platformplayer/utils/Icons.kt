@@ -54,6 +54,8 @@ object Icons {
         "ic_closed_caption" to "\uE996",
         "ic_picture_in_picture" to "\uE8AA",
         "ic_theater" to "\uE8DA",
+        "ic_screen_lock_rotation" to "\uE1C3",
+        "ic_open_in_new" to "\uE9DA",
         
         // Social
         "ic_like" to "\uE87E",
