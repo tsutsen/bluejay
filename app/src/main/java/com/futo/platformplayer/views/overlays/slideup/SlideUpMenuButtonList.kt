@@ -68,7 +68,10 @@ class SlideUpMenuButtonList : LinearLayout {
             text.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 8f);
             text.text = t;
             text.maxLines = 1;
-            text.setTextColor(ContextCompat.getColor(context, R.color.white));
+            val typedArray = context.theme.obtainStyledAttributes(intArrayOf(android.R.attr.textColorSecondary))
+            val colorOnSurface = typedArray.getColor(0, ContextCompat.getColor(context, R.color.white))
+            typedArray.recycle()
+            text.setTextColor(colorOnSurface);
             text.typeface = ResourcesCompat.getFont(context, R.font.inter_light);
             button.addView(text);
 

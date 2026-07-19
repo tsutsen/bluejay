@@ -2819,7 +2819,7 @@ class VideoDetailView : ConstraintLayout {
                 SlideUpMenuGroup(this.context, context.getString(R.string.offline_subtitles), "subtitles",
                     *localSubtitleSources
                         .map {
-                            SlideUpMenuItem(this.context, R.drawable.ic_edit, it.name, "", tag = it,
+                            SlideUpMenuItem(this.context, "ic_subtitles", it.name, "", tag = it,
                                 call = { handleSelectSubtitleTrack(it) })
                         }.toList().toTypedArray())
             else null,
@@ -2909,7 +2909,7 @@ class VideoDetailView : ConstraintLayout {
                 SlideUpMenuGroup(this.context, context.getString(R.string.subtitles), "subtitles",
                     *video.subtitles
                         .map {
-                            SlideUpMenuItem(this.context, R.drawable.ic_edit, it.name, "", tag = it,
+                            SlideUpMenuItem(this.context, "ic_subtitles", it.name, "", tag = it,
                                 call = { handleSelectSubtitleTrack(it) })
                         }.toList().toTypedArray())
             else null);
