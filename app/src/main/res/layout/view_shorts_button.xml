@@ -16,7 +16,8 @@
         android:gravity="center"
         android:textColor="?attr/colorOnSurface"
         android:textSize="24sp"
-        android:text="\uE87E" />
+        android:text="\uE87E"
+        android:fontFamily="@font/material_symbols_rounded" />
     <TextView
         android:id="@+id/text_title"
         android:layout_width="match_parent"

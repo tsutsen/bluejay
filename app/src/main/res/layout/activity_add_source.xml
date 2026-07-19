@@ -24,6 +24,7 @@
             android:contentDescription="@string/cd_button_back"
             android:gravity="center_vertical"
             android:text="\uE5C4"
+            android:fontFamily="@font/material_symbols_rounded"
             android:textColor="?attr/colorOnSurface"
             android:textSize="24sp"
             android:includeFontPadding="false"

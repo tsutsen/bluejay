@@ -306,6 +306,7 @@
                             android:layout_height="16dp"
                             android:gravity="center"
                             android:text="\uE5D3"
+                            android:fontFamily="@font/material_symbols_rounded"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="16sp"
                             android:includeFontPadding="false" />

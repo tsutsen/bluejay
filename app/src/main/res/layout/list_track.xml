@@ -55,6 +55,7 @@
         android:layout_height="30dp"
         android:gravity="center"
         android:text="@string/icon_settings"
+                            android:fontFamily="@font/material_symbols_rounded"
         android:textColor="?attr/colorOnSurface"
         android:textSize="18sp"
         android:includeFontPadding="false"
