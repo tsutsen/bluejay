@@ -48,6 +48,7 @@
         android:textColor="?attr/colorOnSurface"
         android:textSize="24sp"
         android:includeFontPadding="false"
+        android:fontFamily="@font/material_symbols_rounded"
         android:background="@color/transparent" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -64,6 +65,7 @@
             android:textColor="?attr/colorOnSurface"
             android:textSize="24sp"
             android:includeFontPadding="false"
+            android:fontFamily="@font/material_symbols_rounded"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
             android:paddingTop="11dp"
@@ -100,6 +102,7 @@
         android:textColor="?attr/colorOnSurface"
         android:textSize="24sp"
         android:includeFontPadding="false"
+        android:fontFamily="@font/material_symbols_rounded"
         android:paddingStart="5dp"
         android:paddingEnd="12dp"
         android:paddingTop="11dp"
