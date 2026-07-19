@@ -276,7 +276,7 @@ class UIDialogs {
                     };
                     buttonView.setTextColor(Color.WHITE);
                     buttonView.textSize = 14f;
-                    buttonView.typeface = resources.getFont(R.font.inter_semibold);
+                    buttonView.typeface = resources.getFont(R.font.inter_medium);
                     buttonView.text = act.text;
                     buttonView.setOnClickListener { act.invokeAction(DialogResult(inputView?.text?.toString())); dialog.dismiss(); };
                     when(act.style) {

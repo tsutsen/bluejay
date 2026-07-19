@@ -44,7 +44,7 @@ object ThemeManager {
 
         // Apply font override via configuration
         if (preferences.fontChoice == FontChoice.INTER) {
-            val typeface = ResourcesCompat.getFont(context, R.font.inter_semibold)
+            val typeface = ResourcesCompat.getFont(context, R.font.inter_medium)
             if (typeface != null) {
                 // Inter medium (weight 500) is applied via theme fontFamily attribute
             }
@@ -83,7 +83,7 @@ object ThemeManager {
     @FontRes
     fun getFontResource(fontChoice: FontChoice): Int {
         return when (fontChoice) {
-            FontChoice.INTER -> R.font.inter_semibold
+            FontChoice.INTER -> R.font.inter_medium
             FontChoice.SYSTEM -> 0 // Use system default
         }
     }

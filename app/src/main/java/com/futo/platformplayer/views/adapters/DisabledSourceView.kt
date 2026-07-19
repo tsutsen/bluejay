@@ -41,7 +41,7 @@ class DisabledSourceView : LinearLayout {
         if (client is JSClient && StatePlugins.instance.hasUpdateAvailable(client.config)) {
             _textSourceSubtitle.text = context.getString(R.string.update_available_exclamation)
             _textSourceSubtitle.setTextColor(context.getColor(R.color.light_blue_400))
-            _textSourceSubtitle.typeface = resources.getFont(R.font.inter_semibold)
+            _textSourceSubtitle.typeface = resources.getFont(R.font.inter_medium)
         } else {
             _textSourceSubtitle.text = context.getString(R.string.tap_to_open)
             _textSourceSubtitle.setTextColor(context.getColor(R.color.gray_ac))

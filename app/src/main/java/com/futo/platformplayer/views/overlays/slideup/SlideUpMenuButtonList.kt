@@ -72,7 +72,7 @@ class SlideUpMenuButtonList : LinearLayout {
             val colorOnSurface = typedArray.getColor(0, ContextCompat.getColor(context, R.color.white))
             typedArray.recycle()
             text.setTextColor(colorOnSurface);
-            text.typeface = ResourcesCompat.getFont(context, R.font.inter_semibold);
+            text.typeface = ResourcesCompat.getFont(context, R.font.inter_medium);
             button.addView(text);
 
             _activeText = activeText;

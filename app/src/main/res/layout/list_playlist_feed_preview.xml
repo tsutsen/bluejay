@@ -49,7 +49,7 @@
                     android:maxLines="2"
                     android:textSize="10dp"
                     android:textColor="?attr/colorOnSurface"
-                    android:fontFamily="@font/inter_thin"
+                    android:fontFamily="@font/inter_light"
                     tools:text="Aussies Rank Cinema Snacks • 6:52\nAussies Try Each Other’s Entertainer Plates • 11:50 "
                     app:layout_constraintLeft_toLeftOf="parent"
                     app:layout_constraintRight_toLeftOf="@id/text_video_count"

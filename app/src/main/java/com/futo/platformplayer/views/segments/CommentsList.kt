@@ -102,7 +102,7 @@ class CommentsList : ConstraintLayout {
             }
             textSize = 12.0f
             setTextColor(Color.WHITE)
-            typeface = resources.getFont(R.font.inter_semibold)
+            typeface = resources.getFont(R.font.inter_medium)
             gravity = Gravity.CENTER_HORIZONTAL
         }
 
