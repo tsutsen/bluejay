@@ -181,20 +181,24 @@ class PillRatingLikesDislikes : LinearLayout {
     }
 
     private fun updateColors() {
+        val typedArray = context.theme.obtainStyledAttributes(intArrayOf(android.R.attr.textColorSecondary))
+        val colorOnSurface = typedArray.getColor(0, ContextCompat.getColor(context, R.color.white))
+        typedArray.recycle()
+
         if (_hasLiked) {
-            _textLikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary));
-            _iconLikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary));
+            _textLikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary))
+            _iconLikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary))
         } else {
-            _textLikes.setTextColor(ContextCompat.getColor(context, R.color.white));
-            _iconLikes.setTextColor(ContextCompat.getColor(context, R.color.white));
+            _textLikes.setTextColor(colorOnSurface)
+            _iconLikes.setTextColor(colorOnSurface)
         }
 
         if (_hasDisliked) {
-            _textDislikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary));
-            _iconDislikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary));
+            _textDislikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary))
+            _iconDislikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary))
         } else {
-            _textDislikes.setTextColor(ContextCompat.getColor(context, R.color.white));
-            _iconDislikes.setTextColor(ContextCompat.getColor(context, R.color.white));
+            _textDislikes.setTextColor(colorOnSurface)
+            _iconDislikes.setTextColor(colorOnSurface)
         }
     }
 }
