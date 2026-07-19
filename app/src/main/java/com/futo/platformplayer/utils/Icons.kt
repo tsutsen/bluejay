@@ -59,7 +59,9 @@ object Icons {
         
         // Social
         "ic_like" to "\uE87E",
-        "ic_dislike" to "\uE87E",
+        "ic_dislike" to "\uE87F",
+        "ic_thumb_up" to "\uE87E",
+        "ic_thumb_down" to "\uE87F",
         "ic_share" to "\uE80D",
         "ic_comment" to "\uE24C",
         "ic_chat" to "\uE0C9",
