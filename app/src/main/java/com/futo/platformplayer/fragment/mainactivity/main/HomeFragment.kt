@@ -203,8 +203,8 @@ class HomeFragment : MainFragment() {
                 //Initial setup
                 return NoResultsView(context, "No enabled sources", if(pluginsExist)
                         "Enable or install some sources"
-                    else "This Grayjay version comes without any sources, install sources externally or using the button below.", R.drawable.ic_sources,
-                    listOf(BigButton(context, "Browse Online Sources", "View official sources online", R.drawable.ic_explore) {
+                    else "This Grayjay version comes without any sources, install sources externally or using the button below.", "ic_source",
+                    listOf(BigButton(context, "Browse Online Sources", "View official sources online", "ic_explore") {
                         fragment.navigate<BrowserFragment>(BrowserFragment.NavigateOptions("https://plugins.grayjay.app/phone.html", mapOf(
                             Pair("grayjay") { req ->
                                 StateApp.instance.contextOrNull?.let {
@@ -217,13 +217,13 @@ class HomeFragment : MainFragment() {
                             }
                         )));
                     }.withMargin(dp10, dp30),
-                    if(pluginsExist) BigButton(context, "Sources", "Go to the sources tab", R.drawable.ic_creators) {
+                    if(pluginsExist) BigButton(context, "Sources", "Go to the sources tab", "ic_casino") {
                         fragment.navigate<SourcesFragment>();
                     }.withMargin(dp10, dp30) else null).filterNotNull()
                 );
             else
-                return NoResultsView(context, "Nothing to see here", "The enabled sources do not have any results.", R.drawable.ic_help,
-                    listOf(BigButton(context, "Sources", "Go to the sources tab", R.drawable.ic_creators) {
+                return NoResultsView(context, "Nothing to see here", "The enabled sources do not have any results.", "ic_help",
+                    listOf(BigButton(context, "Sources", "Go to the sources tab", "ic_casino") {
                         fragment.navigate<SourcesFragment>();
                     }.withMargin(dp10, dp30))
                 )
