@@ -30,6 +30,7 @@ class MaterialIconView @JvmOverloads constructor(
 
     private var iconName: String? = null
     private var iconSize: Float = 24f
+    private var iconSizeSet: Boolean = false
 
     init {
         // Remove default padding and margins
@@ -42,6 +43,7 @@ class MaterialIconView @JvmOverloads constructor(
             val typedArray = context.obtainStyledAttributes(it, R.styleable.MaterialIconView)
             iconName = typedArray.getString(R.styleable.MaterialIconView_iconName)
             iconSize = typedArray.getDimension(R.styleable.MaterialIconView_iconSize, 24f)
+            iconSizeSet = typedArray.hasValue(R.styleable.MaterialIconView_iconSize)
             typedArray.recycle()
         }
         
