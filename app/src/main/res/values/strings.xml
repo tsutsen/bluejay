@@ -1255,4 +1255,50 @@
         <item>Dark</item>
     </string-array>
 
+    <!-- Material Symbols Rounded icon codepoints -->
+    <string name="icon_settings">\uE8B8</string>
+    <string name="icon_more_horiz">\uE5D3</string>
+    <string name="icon_more_vert">\uE5D4</string>
+    <string name="icon_more">\uE619</string>
+    <string name="icon_home">\uE88A</string>
+    <string name="icon_library">\uE02F</string>
+    <string name="icon_subscriptions">\uE064</string>
+    <string name="icon_search">\uEF7A</string>
+    <string name="icon_close">\uE5CD</string>
+    <string name="icon_back">\uE5C4</string>
+    <string name="icon_forward">\uE5C8</string>
+    <string name="icon_menu">\uE5D2</string>
+    <string name="icon_play">\uE037</string>
+    <string name="icon_pause">\uE034</string>
+    <string name="icon_stop">\uE047</string>
+    <string name="icon_skip_next">\uE044</string>
+    <string name="icon_skip_previous">\uE045</string>
+    <string name="icon_shuffle">\uE043</string>
+    <string name="icon_repeat">\uE040</string>
+    <string name="icon_repeat_one">\uE041</string>
+    <string name="icon_volume_up">\uE050</string>
+    <string name="icon_volume_down">\uE04D</string>
+    <string name="icon_volume_mute">\uE04E</string>
+    <string name="icon_volume_off">\uE04F</string>
+    <string name="icon_fullscreen">\uE5D0</string>
+    <string name="icon_fullscreen_exit">\uE5D1</string>
+    <string name="icon_cast">\uE308</string>
+    <string name="icon_cast_connected">\uE307</string>
+    <string name="icon_subtitles">\uE048</string>
+    <string name="icon_like">\uE8DC</string>
+    <string name="icon_dislike">\uE8DB</string>
+    <string name="icon_share">\uE80D</string>
+    <string name="icon_add">\uE145</string>
+    <string name="icon_edit">\uF097</string>
+    <string name="icon_delete">\uE92E</string>
+    <string name="icon_download">\uF090</string>
+    <string name="icon_refresh">\uE5D5</string>
+    <string name="icon_check">\uE668</string>
+    <string name="icon_queue">\uE03B</string>
+    <string name="icon_clock">\uE837</string>
+    <string name="icon_screen_lock_rotation">\uE1C0</string>
+    <string name="icon_open_in_new">\uE9DA</string>
+    <string name="icon_drag_indicator">\uE945</string>
+    <string name="icon_error">\uE002</string>
+    <string name="icon_movie">\uE684</string>
 </resources>
