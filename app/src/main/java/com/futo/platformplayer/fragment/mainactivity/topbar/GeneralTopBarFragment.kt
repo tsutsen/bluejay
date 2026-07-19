@@ -27,11 +27,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class GeneralTopBarFragment : TopFragment() {
-    private var _buttonSearch: ImageButton? = null;
+    private var _buttonSearch: TextView? = null;
     private var _buttonCast: CastButton? = null;
 
     private var _buttonNotifs: ConstraintLayout? = null;
-    private var _buttonNotifIcon: ImageView? = null;
+    private var _buttonNotifIcon: TextView? = null;
     private var _buttonNotifCount: TextView? = null;
 
     init {
@@ -58,15 +58,15 @@ class GeneralTopBarFragment : TopFragment() {
 
     override fun onShown(parameter: Any?) {
         if(currentMain is CreatorsFragment) {
-            _buttonSearch?.setImageResource(R.drawable.ic_person_search_300w);
+            _buttonSearch?.setText("\uF0D3");
         } else {
-            _buttonSearch?.setImageResource(R.drawable.ic_search_300w);
+            _buttonSearch?.setText("\uEF7A");
         }
         if(currentMain is NotificationOverlayView.Frag) {
-            _buttonNotifIcon?.setImageResource(R.drawable.ic_notifications_filled)
+            _buttonNotifIcon?.setText("\uE7F7")
         }
         else {
-            _buttonNotifIcon?.setImageResource(R.drawable.ic_notifications)
+            _buttonNotifIcon?.setText("\uE7F5")
         }
     }
     override fun onHide() {
@@ -80,7 +80,7 @@ class GeneralTopBarFragment : TopFragment() {
             UIDialogs.toast(getString(R.string.this_app_is_in_development_please_submit_bug_reports_and_understand_that_many_features_are_incomplete), true);
         };
 
-        val buttonSearch: ImageButton = view.findViewById(R.id.button_search);
+        val buttonSearch: TextView = view.findViewById(R.id.button_search);
         _buttonCast = view.findViewById(R.id.button_cast);
 
         _buttonNotifs = view.findViewById(R.id.button_notifs);
