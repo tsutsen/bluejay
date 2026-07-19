@@ -58,10 +58,10 @@ object Icons {
         "ic_open_in_new" to "\uE9DA",
         
         // Social
-        "ic_like" to "\uE87E",
-        "ic_dislike" to "\uE87F",
-        "ic_thumb_up" to "\uE87E",
-        "ic_thumb_down" to "\uE87F",
+        "ic_like" to "\uE87F",
+        "ic_dislike" to "\uE880",
+        "ic_thumb_up" to "\uE87F",
+        "ic_thumb_down" to "\uE880",
         "ic_share" to "\uE80D",
         "ic_comment" to "\uE24C",
         "ic_chat" to "\uE0C9",
