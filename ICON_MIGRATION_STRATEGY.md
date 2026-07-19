@@ -177,8 +177,33 @@ If a commit breaks the build:
 2. Fix the issue
 3. Re-commit with clear message about what was fixed
 
+## Current Status (Updated 2025-07-19)
+
+### Completed ✅
+- Phase 1: Infrastructure (font, Icons.kt, MaterialIconView)
+- Phase 2: Tab bar icons (MenuBottomBarFragment)
+- Phase 3: Video player controls (video_player_ui.xml, video_player_ui_fullscreen.xml)
+- Phase 4a: BigButton widget
+- Phase 4b: HomeFragment icons
+- Phase 4c: Shorts, Library, SlideUpMenuItem
+- Phase 4d: SourceDetail, Library, remaining icons
+- Phase 4e: Settings, ButtonField, NotificationOverlayView
+
+### Remaining ⏳
+~188 drawable references remain, mostly in:
+- `UIDialogs.showDialog()` calls (keep Int for now - dialogs are low priority)
+- `setImageResource()` calls in various fragments
+- Custom views that haven't been migrated yet
+
+### Migration Priority (Remaining)
+1. **High**: Views that are frequently used and visible
+2. **Medium**: Views that are used occasionally
+3. **Low**: Dialog icons, error icons, decorative icons
+
 ## Notes
 - Keep the original drawable files until all references are migrated
 - Use `git grep 'R\.drawable\.ic_'` to find remaining references
 - Test on the target device (AYN Thor) after each commit
 - The Material Symbols font is large (~15MB) - consider APK size impact
+- UIDialogs.showDialog() still uses Int resource IDs - can be migrated later
+- setImageResource() calls can be replaced with setIconName() as views are migrated
