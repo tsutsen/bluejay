@@ -2796,7 +2796,7 @@ class VideoDetailView : ConstraintLayout {
                     *localVideoSources
                         .map {
                             SlideUpMenuItem(this.context,
-                                R.drawable.ic_movie,
+                                "ic_movie",
                                 it.name,
                                 "${it.width}x${it.height}",
                                 tag = it,
@@ -2825,7 +2825,7 @@ class VideoDetailView : ConstraintLayout {
             else null,
             if (castUmpSource != null) SlideUpMenuGroup(
                 this.context, context.getString(R.string.stream_video), "video", (listOf(
-                    SlideUpMenuItem(this.context, R.drawable.ic_movie, "Auto", tag = "auto",
+                    SlideUpMenuItem(this.context, "ic_movie", "Auto", tag = "auto",
                         call = { handleSelectUmpCastQuality(-1) })
                 ) + (castUmpSource.videoFormats
                     .filter { it.height > 0 }
@@ -2835,7 +2835,7 @@ class VideoDetailView : ConstraintLayout {
                     .mapNotNull { height -> StateCasting.instance.previewCastVideoFormat(castUmpSource, height) }
                     .distinct()
                     .map { format ->
-                        SlideUpMenuItem(this.context, R.drawable.ic_movie, "${format.height}p",
+                        SlideUpMenuItem(this.context, "ic_movie", "${format.height}p",
                             "${format.width}x${format.height}",
                             SabrCodecs.codecName(format.codecs),
                             tag = format, call = { handleSelectUmpCastQuality(format.height) });
@@ -2843,9 +2843,9 @@ class VideoDetailView : ConstraintLayout {
             )
             else if (liveStreamVideoFormats?.isEmpty() == false) SlideUpMenuGroup(
                 this.context, context.getString(R.string.stream_video), "video", (listOf(
-                    SlideUpMenuItem(this.context, R.drawable.ic_movie, "Auto", tag = "auto", call = { _player.selectVideoTrack(-1) })
+                    SlideUpMenuItem(this.context, "ic_movie", "Auto", tag = "auto", call = { _player.selectVideoTrack(-1) })
                 ) + (liveStreamVideoFormats.map {
-                    SlideUpMenuItem(this.context, R.drawable.ic_movie, it.label
+                    SlideUpMenuItem(this.context, "ic_movie", it.label
                         ?: it.containerMimeType
                         ?: it.bitrate.toString(), "${it.width}x${it.height}",
                         it.codecs?.let { c -> SabrCodecs.codecName(c) } ?: "",
@@ -2876,7 +2876,7 @@ class VideoDetailView : ConstraintLayout {
                             val estSize = VideoHelper.estimateSourceSize(it);
                             val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
                             SlideUpMenuItem(this.context,
-                                R.drawable.ic_movie,
+                                "ic_movie",
                                 it!!.name,
                                 if (it.width > 0 && it.height > 0) "${it.width}x${it.height}" else "",
                                 (prefix + it.codec.trim()).trim(),
