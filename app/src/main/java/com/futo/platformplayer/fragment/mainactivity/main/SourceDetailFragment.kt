@@ -284,11 +284,11 @@ class SourceDetailFragment : MainFragment() {
 
             groups.add(
                 BigButtonGroup(c, context.getString(R.string.update),
-                    BigButton(c, context.getString(R.string.check_for_updates), context.getString(R.string.checks_for_new_versions_of_the_source), R.drawable.ic_update) {
+                    BigButton(c, context.getString(R.string.check_for_updates), context.getString(R.string.checks_for_new_versions_of_the_source), "ic_system_update") {
                         checkForUpdatesSource();
                     },
                     if(config.changelog?.any() == true)
-                        BigButton(c, context.getString(R.string.changelog), context.getString(R.string.changelog_plugin_description), R.drawable.ic_list) {
+                        BigButton(c, context.getString(R.string.changelog), context.getString(R.string.changelog_plugin_description), "ic_list") {
                             UIDialogs.showChangelogDialog(context, config.version, config.changelog!!.filterKeys { it.toIntOrNull() != null }
                                 .mapKeys { it.key.toInt() }
                                 .mapValues { config.getChangelogString(it.key.toString()) ?: "" });
@@ -305,11 +305,11 @@ class SourceDetailFragment : MainFragment() {
             if (source.isLoggedIn) {
                 groups.add(
                     BigButtonGroup(c, context.getString(R.string.authentication),
-                        BigButton(c, context.getString(R.string.logout), context.getString(R.string.sign_out_of_the_platform), R.drawable.ic_logout) {
+                        BigButton(c, context.getString(R.string.logout), context.getString(R.string.sign_out_of_the_platform), "ic_logout") {
                             logoutSource();
                         },
                         if(!Settings.instance.plugins.shouldClearWebviewCookies())
-                        BigButton(c, "Logout without Clear", "Logout but keep the browser cookies.\nThis allows for quick re-logging.", R.drawable.ic_logout) {
+                        BigButton(c, "Logout without Clear", "Logout but keep the browser cookies.\nThis allows for quick re-logging.", "ic_logout") {
                             logoutSource(false);
                         }.apply {
                             this.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
@@ -322,7 +322,7 @@ class SourceDetailFragment : MainFragment() {
                 val migrationButtons = mutableListOf<BigButton>();
                 if (isEnabled && source.capabilities.hasGetUserSubscriptions) {
                     migrationButtons.add(
-                        BigButton(c, context.getString(R.string.import_subscriptions), context.getString(R.string.import_your_subscriptions_from_this_source), R.drawable.ic_subscriptions) {
+                        BigButton(c, context.getString(R.string.import_subscriptions), context.getString(R.string.import_your_subscriptions_from_this_source), "ic_subscriptions") {
                             Logger.i(TAG, "Import subscriptions clicked.");
                             importSubscriptionsSource();
                         }
@@ -330,7 +330,7 @@ class SourceDetailFragment : MainFragment() {
                 }
 
                 if (isEnabled && source.capabilities.hasGetUserPlaylists && source.capabilities.hasGetPlaylist) {
-                    val bigButton = BigButton(c, context.getString(R.string.import_playlists), context.getString(R.string.import_your_playlists_from_this_source), R.drawable.ic_playlist) {
+                    val bigButton = BigButton(c, context.getString(R.string.import_playlists), context.getString(R.string.import_your_playlists_from_this_source), "ic_playlist_play") {
                         Logger.i(TAG, "Import playlists clicked.");
                         importPlaylistsSource();
                     };
@@ -349,7 +349,7 @@ class SourceDetailFragment : MainFragment() {
                 if(config.authentication != null) {
                     groups.add(
                         BigButtonGroup(c, context.getString(R.string.authentication),
-                            BigButton(c, context.getString(R.string.login), context.getString(R.string.sign_into_the_platform_of_this_source), R.drawable.ic_login) {
+                            BigButton(c, context.getString(R.string.login), context.getString(R.string.sign_into_the_platform_of_this_source), "ic_login") {
                                 loginSource();
                             }
                         )
@@ -358,14 +358,14 @@ class SourceDetailFragment : MainFragment() {
                     val migrationButtons = mutableListOf<BigButton>();
                     if (isEnabled && source.capabilities.hasGetUserSubscriptions) {
                         migrationButtons.add(
-                            BigButton(c, context.getString(R.string.import_subscriptions), context.getString(R.string.login_required), R.drawable.ic_subscriptions) {
+                            BigButton(c, context.getString(R.string.import_subscriptions), context.getString(R.string.login_required), "ic_subscriptions") {
 
                             }.apply { this.alpha = 0.5f }
                         );
                     }
 
                     if (isEnabled && source.capabilities.hasGetUserPlaylists && source.capabilities.hasGetPlaylist) {
-                        val bigButton = BigButton(c, context.getString(R.string.import_playlists), context.getString(R.string.login_required), R.drawable.ic_playlist) {
+                        val bigButton = BigButton(c, context.getString(R.string.import_playlists), context.getString(R.string.login_required), "ic_playlist_play") {
 
                         }.apply { this.alpha = 0.5f };
 
@@ -389,20 +389,20 @@ class SourceDetailFragment : MainFragment() {
             else null;
             groups.add(
                 BigButtonGroup(c, context.getString(R.string.management),
-                    if(!isEmbedded) BigButton(c, context.getString(R.string.uninstall), context.getString(R.string.removes_the_plugin_from_the_app), R.drawable.ic_block) {
+                    if(!isEmbedded) BigButton(c, context.getString(R.string.uninstall), context.getString(R.string.removes_the_plugin_from_the_app), "ic_block") {
                         uninstallSource();
                     }.withBackground(R.drawable.background_big_button_red).apply {
                         this.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                             setMargins(0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5f, resources.displayMetrics).toInt(), 0, 0);
                         };
-                    } else BigButton(c, context.getString(R.string.uninstall), "Cannot uninstall embedded plugins", R.drawable.ic_block, {}).apply {
+                    } else BigButton(c, context.getString(R.string.uninstall), "Cannot uninstall embedded plugins", "ic_block", {}).apply {
                         this.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                             setMargins(0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5f, resources.displayMetrics).toInt(), 0, 0);
                         };
                         this.alpha = 0.5f
                     },
                     if(clientIfExists?.captchaEncrypted != null)
-                        BigButton(c, context.getString(R.string.delete_captcha), context.getString(R.string.deletes_stored_captcha_answer_for_this_plugin), R.drawable.ic_block) {
+                        BigButton(c, context.getString(R.string.delete_captcha), context.getString(R.string.deletes_stored_captcha_answer_for_this_plugin), "ic_block") {
                             clientIfExists.updateCaptcha(null);
                             updateButtons();
                             UIDialogs.toast(context, "Captcha data deleted");
@@ -420,13 +420,13 @@ class SourceDetailFragment : MainFragment() {
             }
 
             val advancedButtons = BigButtonGroup(c, "Advanced",
-                BigButton(c, "Reset Settings", "Resets the settings to their default (deleting existing settings)", R.drawable.ic_refresh) {
+                BigButton(c, "Reset Settings", "Resets the settings to their default (deleting existing settings)", "ic_refresh") {
                         _config?.let {
                             StatePlugins.instance.setPluginSettings(it.id, hashMapOf());
                             loadConfig(it)
                         }
                     },
-                BigButton(c, "Share Settings", "Shares the settings of this plugin as json, mostly used for bug reporting", R.drawable.ic_code) {
+                BigButton(c, "Share Settings", "Shares the settings of this plugin as json, mostly used for bug reporting", "ic_code") {
 
                     val structure = Json { this.prettyPrint = true; this.prettyPrintIndent = "   " }
                         .encodeToString(_settings);
@@ -448,12 +448,12 @@ class SourceDetailFragment : MainFragment() {
                     };
                 } ,
                 /*
-                BigButton(c, "Edit Code", "Modify the source of this plugin", R.drawable.ic_code) {
+                BigButton(c, "Edit Code", "Modify the source of this plugin", "ic_code") {
 
                 }.apply {
                     this.alpha = 0.5f;
                 },*/
-                if(isEmbedded) BigButton(c, "Reinstall", "Reinstall the original version that was embedded with this version of Grayjay", R.drawable.ic_refresh) {
+                if(isEmbedded) BigButton(c, "Reinstall", "Reinstall the original version that was embedded with this version of Grayjay", "ic_refresh") {
                     val embeddedConfig = StatePlugins.instance.getEmbeddedPluginConfigFromID(context, config.id);
 
                     UIDialogs.showDialog(context, R.drawable.ic_warning_yellow, "Are you sure you want to downgrade (${config.version}=>${embeddedConfig?.version})?",
@@ -468,7 +468,7 @@ class SourceDetailFragment : MainFragment() {
                         setMargins(0, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5f, resources.displayMetrics).toInt(), 0, 0);
                     };
                 } else
-                    BigButton(c, "Reinstall", "Reinstall the current version from the remote repository", R.drawable.ic_refresh) {
+                    BigButton(c, "Reinstall", "Reinstall the current version from the remote repository", "ic_refresh") {
                         var newConfig: SourcePluginConfig? = null;
                         try {
                             newConfig = StatePlugins.instance.requestConfig(config?.sourceUrl ?: throw IllegalArgumentException("No config"));

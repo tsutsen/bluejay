@@ -189,7 +189,7 @@ class LibraryFragment : MainFragment() {
                     reloadFiles();
                 }, true)
             }
-            sectionFiles.setNavIcon(R.drawable.ic_add);
+            sectionFiles.setNavIcon("ic_add");
             //buttonFiles = findViewById<BigButton>(R.id.button_files);
             //metaInfo = findViewById(R.id.meta_info);
 
@@ -352,8 +352,8 @@ class LibraryFragment : MainFragment() {
 
         fun setMusicPermissions(access: Boolean) {
             allowMusic = access;
-            sectionAlbums.setContentEmptyMessage(R.drawable.ic_library, "No mediastore permissions");
-            sectionArtists.setContentEmptyMessage(R.drawable.ic_library, "No mediastore permissions");
+            sectionAlbums.setContentEmptyMessage("ic_library", "No mediastore permissions");
+            sectionArtists.setContentEmptyMessage("ic_library", "No mediastore permissions");
             //buttonArtists.setButtonEnabled(access);
             //metaInfo.text = listOf(
             //    if(!allowMusic) "You did not give access to local music, so these options are disabled" else null,
@@ -366,7 +366,7 @@ class LibraryFragment : MainFragment() {
         }
         fun setVideoPermissions(access: Boolean) {
             allowVideo = access;
-            sectionVideos.setContentEmptyMessage(R.drawable.ic_library, "No video permissions");
+            sectionVideos.setContentEmptyMessage("ic_library", "No video permissions");
             //metaInfo.text = listOf(
             //    if(!allowMusic) "You did not give access to local music, so these options are disabled" else null,
             //    if(!allowVideo) "You did not give access to local videos, so these options are disabled" else null
