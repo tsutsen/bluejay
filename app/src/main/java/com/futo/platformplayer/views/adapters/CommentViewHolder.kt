@@ -3,6 +3,7 @@ package com.futo.platformplayer.views.adapters
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +19,7 @@ import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.api.media.models.comments.IPlatformComment
 import com.futo.platformplayer.api.media.models.comments.LazyComment
 import com.futo.platformplayer.api.media.models.comments.PolycentricPlatformComment
+import com.futo.platformplayer.utils.Icons
 import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
 import com.futo.platformplayer.api.media.models.ratings.RatingLikes
 import com.futo.platformplayer.constructs.Event1
@@ -41,9 +43,9 @@ class CommentViewHolder : ViewHolder {
     private val _textAuthor: TextView;
     private val _textMetadata: TextView;
     private val _textBody: TextView;
-    private val _imageLikeIcon: ImageView;
+    private val _imageLikeIcon: TextView;
     private val _textLikes: TextView;
-    private val _imageDislikeIcon: ImageView;
+    private val _imageDislikeIcon: TextView;
     private val _buttonCopy: PillButton;
     private val _textDislikes: TextView;
     private val _buttonReplies: PillButton;
@@ -76,6 +78,17 @@ class CommentViewHolder : ViewHolder {
         _layoutRating = itemView.findViewById(R.id.layout_rating);
         _pillRatingLikesDislikes = itemView.findViewById(R.id.rating);
         _buttonDelete = itemView.findViewById(R.id.button_delete);
+
+        // Set Material Symbols font and icon text for like/dislike
+        try {
+            val matTypeface = Typeface.createFromAsset(viewGroup.context.assets, "font/material_symbols_rounded.ttf");
+            _imageLikeIcon.typeface = matTypeface;
+            _imageDislikeIcon.typeface = matTypeface;
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
+        _imageLikeIcon.text = Icons["ic_thumb_up"] ?: "";
+        _imageDislikeIcon.text = Icons["ic_thumb_down"] ?: "";
 
         _containerComments = itemView.findViewById(R.id.comment_container);
         _loader = itemView.findViewById(R.id.loader);

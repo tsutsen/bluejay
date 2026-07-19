@@ -114,13 +114,15 @@
                 app:layout_constraintTop_toBottomOf="@id/text_body"
                 android:gravity="center_vertical">
 
-                <ImageView
+                <TextView
                     android:id="@+id/image_like_icon"
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:contentDescription="@string/cd_image_like_icon"
-                    app:tint="?attr/colorOnSurface"
-                    app:srcCompat="@drawable/ic_thumb_up" />
+                    android:gravity="center"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="18sp"
+                    android:includeFontPadding="false" />
 
                 <TextView
                     android:id="@+id/text_likes"
@@ -132,15 +134,16 @@
                     android:textColor="@color/white"
                     android:textSize="13dp" />
 
-                <ImageView
+                <TextView
                     android:id="@+id/image_dislike_icon"
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:contentDescription="@string/cd_image_dislike_icon"
                     android:layout_marginStart="8dp"
-                    android:layout_marginTop="2dp"
-                    app:tint="?attr/colorOnSurface"
-                    app:srcCompat="@drawable/ic_thumb_down" />
+                    android:gravity="center"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="18sp"
+                    android:includeFontPadding="false" />
 
                 <TextView
                     android:id="@+id/text_dislikes"
