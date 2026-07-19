@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/black">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:id="@+id/header_error"
@@ -32,7 +32,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/app_error"
                     android:textSize="24dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_extra_light" />
             </FrameLayout>
 
@@ -58,7 +58,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
             android:textSize="17dp"
@@ -66,7 +66,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#AAAAAA"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:layout_marginTop="2dp"
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
@@ -85,9 +85,9 @@
             android:id="@+id/ex_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#1A1A1A"
+            android:background="?attr/colorSurfaceVariant"
             android:padding="10dp"
-            android:textColor="#CC2222"
+            android:textColor="?attr/colorError"
             android:text="@string/lorem_ipsum" />
     </ScrollView>
     <LinearLayout

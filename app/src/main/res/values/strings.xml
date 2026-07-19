@@ -1247,4 +1247,12 @@
         <item>High</item>
     </string-array>
 
+    <string name="theme_mode">Theme mode</string>
+    <string name="theme_mode_description">Choose between auto (follows system), light, or dark</string>
+    <string-array name="theme_modes">
+        <item>Auto (follow system)</item>
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
+
 </resources>

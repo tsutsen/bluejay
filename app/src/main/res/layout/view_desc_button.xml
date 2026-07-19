@@ -11,7 +11,7 @@
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#1B1B1B">
+        android:background="?attr/colorSurface">
         <ImageView
             android:id="@+id/image_icon"
             android:layout_width="50dp"
@@ -28,7 +28,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="14dp"
                 android:fontFamily="@font/inter_light"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:layout_marginTop="5dp"
                 android:text="@string/scan_qr" />
             <TextView
@@ -37,7 +37,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="12dp"
                 android:fontFamily="@font/inter_extra_light"
-                android:textColor="#ACACAC"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:text="@string/scan_a_qr_code_to_install" />
         </LinearLayout>
     </LinearLayout>

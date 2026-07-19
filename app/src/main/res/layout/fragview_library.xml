@@ -84,7 +84,7 @@
             android:textAlignment="center"
             android:layout_marginTop="20dp"
             android:text="Library UI is temporary, and will be replaced"
-            android:textColor="#FFAA00"  />
+            android:textColor="?attr/colorPrimary"  />
         <TextView
             android:id="@+id/meta_info"
             android:layout_width="match_parent"
@@ -92,7 +92,7 @@
             android:textAlignment="center"
             android:layout_marginTop="20dp"
             android:text=""
-            android:textColor="#AAAAAA"  />
+            android:textColor="?attr/colorOnSurfaceVariant"  />
     </LinearLayout>
  -->
 

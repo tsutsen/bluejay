@@ -47,7 +47,7 @@
                 android:includeFontPadding="false"
                 android:paddingLeft="2dp"
                 android:paddingRight="2dp"
-                android:textColor="#FFFFFF"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="10dp"
                 tools:text="\?"
                 android:layout_gravity="center"
@@ -74,7 +74,7 @@
                 android:includeFontPadding="false"
                 android:paddingLeft="2dp"
                 android:paddingRight="2dp"
-                android:textColor="#FFFFFF"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="10dp"
                 tools:text="0:00"
                 android:layout_gravity="center"
@@ -109,7 +109,7 @@
 
             android:gravity="center_vertical"
             android:textSize="11dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_light"
             tools:text="Legendary grant recipient: Marvin Wißfeld of MicroG Very loong title with a lot of words"
             android:maxLines="2"
@@ -123,7 +123,7 @@
             android:layout_width="0dp"
             android:gravity="center_vertical"
             android:textSize="9dp"
-            android:textColor="@color/gray_e0"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_extra_light"
             tools:text="ShortCircuit"
             android:maxLines="1"
@@ -140,7 +140,7 @@
             app:layout_constraintLeft_toLeftOf="@id/downloaded_video_name"
             app:layout_constraintRight_toRightOf="@id/downloaded_video_name"
             android:textSize="10dp"
-            android:textColor="@color/gray_e0"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_extra_light"
             tools:text="720P (video/mp4) • 152kbps (audio/mp4)"
             android:maxLines="1"
@@ -188,7 +188,7 @@
                 android:text="@string/export"
                 android:background="@color/transparent"
                 android:textSize="12dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_light"
                 android:layout_marginEnd="4dp"/>
         </LinearLayout>
@@ -219,7 +219,7 @@
                 android:text="@string/delete"
                 android:background="@color/transparent"
                 android:textSize="12dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_light"
                 android:layout_marginEnd="4dp"/>
         </LinearLayout>

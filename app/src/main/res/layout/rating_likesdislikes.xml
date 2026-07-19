@@ -21,12 +21,13 @@
             android:id="@+id/pill_like_icon"
             android:layout_width="30dp"
             android:layout_height="18dp"
+            app:tint="?attr/colorOnSurface"
             app:srcCompat="@drawable/ic_thumb_up" />
         <TextView
             android:id="@+id/pill_likes"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="13dp"
             android:gravity="center_vertical"
             tools:text="50K" />
@@ -45,7 +46,7 @@
         android:layout_marginTop="7dp"
         android:layout_marginBottom="7dp"
 
-        android:background="#808080"/>
+        android:background="?attr/colorOnSurfaceVariant"/>
 
 
     <LinearLayout
@@ -62,12 +63,13 @@
             android:layout_width="30dp"
             android:layout_height="18dp"
             android:layout_marginTop="2dp"
+            app:tint="?attr/colorOnSurface"
             app:srcCompat="@drawable/ic_thumb_down" />
         <TextView
             android:id="@+id/pill_dislikes"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:gravity="center_vertical"
             android:textSize="13dp"
             tools:text="50K" />

@@ -21,7 +21,7 @@
             tools:text="Do you know?"
             android:fontFamily="@font/inter_semibold"
             android:textSize="15sp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintRight_toLeftOf="@id/text_counter" />
@@ -32,7 +32,7 @@
             tools:text="1/4"
             android:fontFamily="@font/inter_regular"
             android:textSize="12dp"
-            android:textColor="#585656"
+            android:textColor="?attr/colorOnSurfaceVariant"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintRight_toRightOf="parent" />
 
@@ -42,7 +42,7 @@
             tools:text="Our app now supports dark mode for a better viewing experience. Check it out in your settings. Enjoy the new look!"
             android:fontFamily="@font/inter_light"
             android:textSize="14sp"
-            android:textColor="#9D9D9D"
+            android:textColor="?attr/colorOnSurfaceVariant"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintTop_toBottomOf="@id/text_title"/>
 
@@ -60,7 +60,7 @@
                 tools:text="2022-03-01"
                 android:fontFamily="@font/inter_regular"
                 android:textSize="12dp"
-                android:textColor="#585656"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintRight_toRightOf="parent" />
 
@@ -74,7 +74,7 @@
                 android:text="@string/never"
                 android:fontFamily="@font/inter_regular"
                 android:textSize="14sp"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorPrimary"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
                 android:paddingLeft="20dp"
@@ -88,7 +88,7 @@
                 android:text="@string/dismiss"
                 android:fontFamily="@font/inter_regular"
                 android:textSize="14sp"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorPrimary"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
                 android:paddingLeft="20dp"
@@ -109,7 +109,7 @@
                     tools:text="What's New"
                     android:fontFamily="@font/inter_regular"
                     android:textSize="14sp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"
                     android:paddingLeft="20dp"

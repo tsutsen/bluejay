@@ -3,8 +3,8 @@
     <objectAnimator
         android:propertyName="fillColor"
         android:duration="300"
-        android:valueFrom="#FF2D63ED"
-        android:valueTo="#FF2A2A2A"
+        android:valueFrom="?attr/colorPrimary"
+        android:valueTo="?attr/colorOnSurface"
         android:valueType="colorType"
         android:interpolator="@android:anim/linear_interpolator" />
 </set>

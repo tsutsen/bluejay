@@ -47,7 +47,7 @@
                 android:textSize="11dp"
                 android:layout_marginTop="2dp"
                 android:fontFamily="@font/inter_light"
-                android:textColor="@color/white" />
+                android:textColor="?attr/colorOnSurface" />
             <TextView
                 android:id="@+id/slide_up_menu_item_description"
                 android:layout_width="wrap_content"
@@ -59,7 +59,7 @@
                 android:textSize="11dp"
                 android:layout_marginTop="2dp"
                 android:fontFamily="@font/inter_light"
-                android:textColor="#ACACAC" />
+                android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
         <TextView
             android:id="@+id/slide_up_menu_item_subtext"
@@ -75,7 +75,7 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            android:textColor="#ACACAC" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

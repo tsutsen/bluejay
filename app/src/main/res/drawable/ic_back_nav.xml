@@ -7,15 +7,15 @@
       android:strokeWidth="1"
       android:pathData="M0.646,7.683L7.683,0.646"
       android:fillColor="#00000000"
-      android:strokeColor="#ffffff"/>
+      android:strokeColor="?attr/colorOnBackground"/>
   <path
       android:strokeWidth="1"
       android:pathData="M1.354,7.683L8.391,14.72"
       android:fillColor="#00000000"
-      android:strokeColor="#ffffff"/>
+      android:strokeColor="?attr/colorOnBackground"/>
   <path
       android:strokeWidth="1"
       android:pathData="M20,7.657L1,7.657"
       android:fillColor="#00000000"
-      android:strokeColor="#ffffff"/>
+      android:strokeColor="?attr/colorOnBackground"/>
 </vector>

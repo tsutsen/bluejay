@@ -20,7 +20,7 @@
             android:textSize="24dp"
             android:text="@string/comments"
             android:fontFamily="@font/inter_extra_light"
-            android:textColor="@color/white" />
+            android:textColor="?attr/colorOnSurface" />
 
         <TextView
             android:id="@+id/text_comment_count"
@@ -29,7 +29,7 @@
             android:textSize="12dp"
             android:text="@string/these_are_all_commentcount_comments_you_have_made_in_grayjay"
             android:fontFamily="@font/inter_regular"
-            android:textColor="#808080" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -42,7 +42,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="14dp"
-                android:textColor="@color/gray_ac"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:fontFamily="@font/inter_light"
                 android:text="@string/sort_by" />
 
@@ -73,14 +73,14 @@
         android:layout_height="match_parent"
         android:gravity="center"
         android:orientation="vertical"
-        android:background="@color/black">
+        android:background="?attr/colorSurface">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/login_to_view_your_comments"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
@@ -100,7 +100,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/login"
                 android:textSize="14dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_regular"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
@@ -114,14 +114,14 @@
         android:layout_height="match_parent"
         android:gravity="center"
         android:orientation="vertical"
-        android:background="@color/black">
+        android:background="?attr/colorSurface">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/polycentric_is_disabled"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"

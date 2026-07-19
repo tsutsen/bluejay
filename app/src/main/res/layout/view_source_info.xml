@@ -23,7 +23,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginTop="5dp"
             android:fontFamily="@font/inter_light"
             android:text="@string/script_url" />
@@ -32,7 +32,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="12dp"
-            android:textColor="@color/text_color_tinted"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/inter_extra_light"
             android:layout_marginBottom="5dp"
             android:text="@string/source_explain_script_url" />
@@ -45,7 +45,7 @@
             <com.futo.platformplayer.views.others.BulletPointView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:valueColor="@color/colorPrimary"
+                app:valueColor="?attr/colorPrimary"
                 app:bulletText="youtube.com" />
         </LinearLayout>
     </LinearLayout>

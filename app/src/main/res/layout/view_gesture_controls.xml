@@ -31,7 +31,7 @@
             android:layout_height="wrap_content"
             tools:text="0 Seconds"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:layout_marginTop="8dp" />
     </LinearLayout>
@@ -59,10 +59,10 @@
             android:layout_height="wrap_content"
             tools:text="0 Seconds"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:layout_marginTop="8dp"
-            app:activeColor="@color/white"
+            app:activeColor="?attr/colorOnSurface"
             app:inactiveColor="@color/transparent" />
     </LinearLayout>
 
@@ -85,7 +85,7 @@
             android:layout_margin="10dp"
             android:layout_gravity="center"
             app:inactiveColor="@color/transparent"
-            app:activeColor="@color/white"
+            app:activeColor="?attr/colorOnSurface"
             app:progress="60%" />
 
         <ImageView
@@ -116,7 +116,7 @@
             android:layout_margin="10dp"
             android:layout_gravity="center"
             app:inactiveColor="@color/transparent"
-            app:activeColor="@color/white"
+            app:activeColor="?attr/colorOnSurface"
             app:progress="60%" />
 
         <ImageView
@@ -148,7 +148,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/inter_regular"
             android:text="@string/toggle_fullscreen"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="16dp"/>
     </FrameLayout>
 
@@ -173,7 +173,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/inter_regular"
             tools:text="@string/zoom"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="16dp"/>
     </FrameLayout>
 
@@ -218,7 +218,7 @@
             android:layout_height="wrap_content"
             tools:text="2x"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular" />
 
         <ImageView

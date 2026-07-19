@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:layout_gravity="bottom"
     android:orientation="vertical"
-    android:background="@color/black">
+    android:background="?attr/colorSurface">
 
     <ImageView
         android:id="@+id/image_thumbnail"
@@ -21,7 +21,7 @@
         android:id="@+id/layout_background"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#cc000000"
+        android:background="#55000000"
         android:layout_marginBottom="6dp" />
 
     <com.futo.platformplayer.views.behavior.GestureControlView
@@ -144,7 +144,7 @@
         android:includeFontPadding="false"
         android:paddingStart="24dp"
         android:paddingEnd="4dp"
-        android:textColor="#FFFFFF"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="12sp"
         tools:text="00:00"
         android:layout_gravity="bottom"
@@ -157,7 +157,7 @@
         android:id="@+id/text_divider"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#AAAAAA"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="13sp"
         android:layout_gravity="bottom"
         android:text="/"
@@ -173,7 +173,7 @@
         android:includeFontPadding="false"
         android:paddingLeft="4dp"
         android:paddingRight="4dp"
-        android:textColor="#AAAAAA"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="12sp"
         tools:text="00:00"
         android:layout_gravity="bottom"
@@ -192,9 +192,9 @@
         app:scrubber_disabled_size="0dp"
         app:scrubber_enabled_size="16dp"
         app:scrubber_dragged_size="20dp"
-        app:played_color="@color/colorPrimary"
+        app:played_color="?attr/colorPrimary"
         app:buffered_color="@color/transparent"
-        app:unplayed_color="#7F7F7F"
+        app:unplayed_color="?attr/colorOnSurfaceVariant"
         android:layout_marginStart="-6dp"
         android:layout_marginEnd="-6dp"
         app:layout_constraintBottom_toBottomOf="parent"

@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/gray_1d"
+    android:background="?attr/colorSurface"
     android:padding="20dp">
 
     <LinearLayout
@@ -18,7 +18,7 @@
             android:layout_height="wrap_content"
             android:text="@string/add_casting_device"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular" />
 
         <TextView
@@ -40,7 +40,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:layout_marginBottom="12dp"
-        android:backgroundTint="@color/white" />
+        android:backgroundTint="?attr/colorOnSurface" />
 
     <EditText
         android:id="@+id/edit_name"
@@ -71,7 +71,7 @@
         android:layout_height="wrap_content"
         android:fontFamily="@font/inter_regular"
         android:textSize="14dp"
-        android:textColor="@color/pastel_red"
+        android:textColor="?attr/colorError"
         android:layout_marginTop="5dp"
         android:text="@string/error_message_here"/>
 
@@ -95,7 +95,7 @@
             android:layout_marginEnd="28dp"
             android:textSize="14dp"
             android:fontFamily="@font/inter_regular"
-            android:textColor="@color/colorPrimary"
+            android:textColor="?attr/colorPrimary"
             android:background="@color/transparent" />
 
         <LinearLayout
@@ -110,7 +110,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/confirm"
                 android:textSize="14dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_regular"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"

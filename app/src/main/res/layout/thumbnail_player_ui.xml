@@ -71,7 +71,7 @@
                 android:includeFontPadding="false"
                 android:paddingLeft="2dp"
                 android:paddingRight="2dp"
-                android:textColor="#FFFFFF"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="12dp"
                 android:text="@string/live_capitalized"
                 android:layout_gravity="center"
@@ -97,7 +97,7 @@
                 android:includeFontPadding="false"
                 android:paddingLeft="2dp"
                 android:paddingRight="2dp"
-                android:textColor="#FFFFFF"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="12dp"
                 tools:text="00:00"
                 android:layout_gravity="center"
@@ -115,9 +115,9 @@
             app:scrubber_disabled_size="0dp"
             app:scrubber_enabled_size="16dp"
             app:scrubber_dragged_size="20dp"
-            app:played_color="@color/colorPrimary"
-            app:buffered_color="#DDEEEEEE"
-            app:unplayed_color="#55EEEEEE" />
+            app:played_color="?attr/colorPrimary"
+            app:buffered_color="?attr/colorSurfaceVariant"
+            app:unplayed_color="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 
 </RelativeLayout>

@@ -61,5 +61,5 @@
         android:paddingLeft="20dp"
         android:paddingRight="20dp"
         android:textSize="9dp"
-        android:textColor="@color/pastel_red" />
+        android:textColor="?attr/colorError" />
 </LinearLayout>

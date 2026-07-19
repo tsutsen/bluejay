@@ -48,7 +48,7 @@
                         android:layout_marginEnd="15dp"
                         android:paddingTop="5dp"
                         android:paddingBottom="5dp"
-                        app:tint="@color/gray_ac" />
+                        app:tint="?attr/colorOnSurfaceVariant" />
 
                     <EditText
                         android:id="@+id/edit_search"
@@ -69,7 +69,7 @@
                         android:contentDescription="@string/cd_button_clear_search"
                         android:scaleType="fitCenter"
                         app:srcCompat="@drawable/ic_close_thin"
-                        app:tint="@color/gray_ac"
+                        app:tint="?attr/colorOnSurfaceVariant"
                         android:paddingTop="5dp"
                         android:paddingBottom="5dp"
                         android:paddingStart="10dp"
@@ -85,7 +85,7 @@
                     app:layout_constraintTop_toTopOf="parent"
                     android:fontFamily="@font/inter_light"
                     android:textSize="16dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:paddingStart="5dp"
                     android:paddingTop="15dp"
                     android:paddingBottom="8dp" />
@@ -104,7 +104,7 @@
                     app:layout_constraintTop_toTopOf="parent"
                     android:fontFamily="@font/inter_light"
                     android:textSize="16dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:paddingStart="5dp"
                     android:paddingTop="15dp"
                     android:paddingBottom="8dp" />

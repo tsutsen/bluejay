@@ -62,6 +62,18 @@ enum class ContrastLevel {
 }
 
 /**
+ * Theme mode for light/dark switching.
+ */
+enum class ThemeMode {
+    /** Follow system setting */
+    AUTO,
+    /** Force light theme */
+    LIGHT,
+    /** Force dark theme */
+    DARK
+}
+
+/**
  * Data class holding all appearance preferences.
  */
 data class AppearancePreferences(
@@ -70,7 +82,8 @@ data class AppearancePreferences(
     val presetColorName: String? = null,
     val fontChoice: FontChoice = FontChoice.INTER,
     val iconStyle: IconStyle = IconStyle.ROUNDED,
-    val contrastLevel: ContrastLevel = ContrastLevel.STANDARD
+    val contrastLevel: ContrastLevel = ContrastLevel.STANDARD,
+    val themeMode: ThemeMode = ThemeMode.AUTO
 )
 
 /**
@@ -85,6 +98,7 @@ class AppearancePreferencesManager(private val context: Context) {
         private val FONT_CHOICE = stringPreferencesKey("font_choice")
         private val ICON_STYLE = stringPreferencesKey("icon_style")
         private val CONTRAST_LEVEL = stringPreferencesKey("contrast_level")
+        private val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     /** Flow of current appearance preferences. */
@@ -96,7 +110,8 @@ class AppearancePreferencesManager(private val context: Context) {
                 presetColorName = prefs[PRESET_COLOR_NAME],
                 fontChoice = parseFontChoice(prefs[FONT_CHOICE]),
                 iconStyle = parseIconStyle(prefs[ICON_STYLE]),
-                contrastLevel = parseContrastLevel(prefs[CONTRAST_LEVEL])
+                contrastLevel = parseContrastLevel(prefs[CONTRAST_LEVEL]),
+                themeMode = parseThemeMode(prefs[THEME_MODE])
             )
         }
 
@@ -171,5 +186,20 @@ class AppearancePreferencesManager(private val context: Context) {
     private fun parseContrastLevel(value: String?): ContrastLevel {
         return try { ContrastLevel.valueOf(value ?: ContrastLevel.STANDARD.name) }
         catch (e: IllegalArgumentException) { ContrastLevel.STANDARD }
+    }
+
+    private fun parseThemeMode(value: String?): ThemeMode {
+        return try { ThemeMode.valueOf(value ?: ThemeMode.AUTO.name) }
+        catch (e: IllegalArgumentException) { ThemeMode.AUTO }
+    }
+
+    suspend fun setThemeMode(mode: ThemeMode) {
+        android.util.Log.d("GrayjayTheme", "setThemeMode called: $mode")
+        withContext(Dispatchers.IO) {
+            context.dataStore.edit { prefs ->
+                prefs[THEME_MODE] = mode.name
+                android.util.Log.d("GrayjayTheme", "Saved theme_mode=${mode.name} to DataStore")
+            }
+        }
     }
 }

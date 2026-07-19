@@ -12,7 +12,7 @@
         android:rotation="0.0">
       <path
           android:pathData="M57.31,63.67C25.81,94.29 24.91,144.64 55.38,176.37C85.84,208.1 136.19,209.24 168.06,179.01L158.36,168.92C132.07,193.79 90.59,192.83 65.47,166.67C40.36,140.52 41.09,99.03 67.01,73.77L57.31,63.67Z"
-          android:fillColor="#2D63ED"
+          android:fillColor="?attr/colorPrimary"
           android:fillType="evenOdd"/>
     </group>
     <group

@@ -25,10 +25,10 @@
             app:scrubber_enabled_size="1dp"
             app:scrubber_disabled_size="1dp"
             app:scrubber_dragged_size="1dp"
-            app:scrubber_color="@color/colorPrimary"
-            app:played_color="@color/colorPrimary"
-            app:buffered_color="#BBEEEEEE"
-            app:unplayed_color="#88EEEEEE" />
+            app:scrubber_color="?attr/colorPrimary"
+            app:played_color="?attr/colorPrimary"
+            app:buffered_color="?attr/colorSurfaceVariant"
+            app:unplayed_color="?attr/colorOnSurfaceVariant" />
     </com.futo.platformplayer.views.behavior.TouchInterceptFrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

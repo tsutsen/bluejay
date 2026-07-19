@@ -8,7 +8,7 @@
         android:id="@+id/video_player"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/black"
+        android:background="?attr/colorSurface"
         app:default_artwork="@drawable/placeholder_video_thumbnail"
         app:use_artwork="true"
         app:use_controller="false"

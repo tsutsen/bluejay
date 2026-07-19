@@ -69,7 +69,7 @@
                     android:background="@drawable/background_button_primary"
                     android:clickable="true"
                     android:gravity="center"
-                    android:backgroundTint="#006600"
+                    android:backgroundTint="?attr/colorPrimary"
                     android:layout_weight="1">
 
                     <TextView
@@ -78,7 +78,7 @@
                         android:layout_height="wrap_content"
                         android:text="$19 + Tax"
                         android:textSize="14dp"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/inter_regular"
                         android:textAlignment="center" />
                 </LinearLayout>
@@ -90,7 +90,7 @@
                     android:layout_marginEnd="15dp"
                     android:layout_marginStart="5dp"
                     android:background="@drawable/background_button_primary"
-                    android:backgroundTint="#252525"
+                    android:backgroundTint="?attr/colorSurfaceVariant"
                     android:clickable="true"
                     android:gravity="center"
                     android:layout_weight="1">
@@ -100,7 +100,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/i_already_paid"
                         android:textSize="14dp"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/inter_regular"
                         android:textAlignment="center"/>
                 </LinearLayout>

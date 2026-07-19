@@ -15,6 +15,7 @@
         android:layout_marginRight="5dp"
         android:layout_marginLeft="5dp"
         android:padding="10dp"
+        app:tint="?attr/colorOnSurface"
         app:srcCompat="@drawable/ic_thumb_up"
         android:scaleType="fitCenter" />
 
@@ -22,7 +23,7 @@
         android:id="@+id/pill_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:layout_marginTop="5dp"
         android:textSize="9sp"
         android:textAlignment="center"

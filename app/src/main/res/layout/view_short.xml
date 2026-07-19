@@ -22,7 +22,7 @@
         android:id="@+id/short_view_loading_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#77000000"
+        android:background="?attr/colorSurfaceVariant"
         android:clickable="true"
         android:elevation="4dp"
         android:visibility="gone">

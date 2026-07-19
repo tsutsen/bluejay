@@ -26,7 +26,7 @@
         android:layout_height="wrap_content"
         tools:text="Home"
         android:fontFamily="@font/inter_light"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="16dp"
         android:layout_marginEnd="20dp"
         android:maxLines="1"

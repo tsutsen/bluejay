@@ -20,7 +20,7 @@
         android:gravity="center_vertical"
         android:textSize="13dp"
         android:layout_marginTop="15dp"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:fontFamily="@font/inter_regular"
         tools:text="Example Artist"
         android:maxLines="1"
@@ -38,7 +38,7 @@
         android:gravity="center_vertical"
         android:textSize="10dp"
         android:layout_marginBottom="15dp"
-        android:textColor="#595959"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:fontFamily="@font/inter_regular"
         tools:text="3 videos"
         android:maxLines="1"
@@ -77,5 +77,5 @@
         app:layout_constraintRight_toRightOf="parent"
         android:layout_width="match_parent"
         android:layout_height="1px"
-        android:background="#181818" />
+        android:background="?attr/colorSurface" />
 </androidx.constraintlayout.widget.ConstraintLayout>

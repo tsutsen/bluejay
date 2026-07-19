@@ -20,13 +20,14 @@
         android:layout_marginLeft="5dp"
         android:layout_marginTop="0dp"
         android:scaleType="fitCenter"
+        app:tint="?attr/colorOnSurface"
         app:srcCompat="@drawable/ic_thumb_up" />
 
     <TextView
         android:id="@+id/pill_text"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="13dp"
         android:gravity="center_vertical"
         android:fontFamily="@font/inter_light"

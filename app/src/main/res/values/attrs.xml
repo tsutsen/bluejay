@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Custom attribute: always-black color for video player overlays -->
+    <!-- Video player controls are overlaid on video content which can be dark or light -->
+    <!-- This ensures they remain visible (black) in both light and dark themes -->
+    <attr name="colorVideoOverlay" format="color" />
+</resources>

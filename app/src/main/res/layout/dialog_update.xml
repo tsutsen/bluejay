@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center"
-    android:background="@color/gray_1d">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -33,7 +33,7 @@
                 android:text=""
                 android:layout_gravity="center"
                 android:textSize="14dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_regular" />
 
         </FrameLayout>
@@ -44,7 +44,7 @@
             android:layout_height="wrap_content"
             android:text="@string/there_is_an_update_available_do_you_wish_to_update"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:layout_marginTop="30dp"
             android:layout_marginStart="30dp"
@@ -57,7 +57,7 @@
             android:text="@string/view_changelog"
             android:textSize="14dp"
             android:fontFamily="@font/inter_regular"
-            android:textColor="@color/colorPrimary"
+            android:textColor="?attr/colorPrimary"
             android:background="@color/transparent"
             android:layout_marginTop="8dp"/>
 
@@ -81,7 +81,7 @@
                 android:text="@string/never"
                 android:textSize="14dp"
                 android:fontFamily="@font/inter_regular"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorPrimary"
                 android:background="@color/transparent" />
 
             <Button
@@ -92,7 +92,7 @@
                 android:layout_marginEnd="10dp"
                 android:textSize="14dp"
                 android:fontFamily="@font/inter_regular"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorPrimary"
                 android:background="@color/transparent" />
 
             <LinearLayout
@@ -108,7 +108,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/download"
                     android:textSize="14dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_regular"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"

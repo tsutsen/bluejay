@@ -21,7 +21,7 @@
         android:layout_height="wrap_content"
         tools:text="Louis Rossman"
         android:fontFamily="@font/inter_medium"
-        android:textColor="@color/gray_ac"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="9dp"
         android:maxLines="1"
         android:layout_marginTop="8dp"

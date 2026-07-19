@@ -80,7 +80,7 @@
                 android:layout_marginEnd="10dp"
                 android:maxLines="1"
                 android:fontFamily="@font/inter_medium"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="12dp"
                 tools:text="Some video titles or whatever"/>
             <!--Meta (Views+Time)-->
@@ -91,7 +91,7 @@
                 android:layout_marginEnd="10dp"
                 android:maxLines="1"
                 android:fontFamily="@font/inter_regular"
-                android:textColor="#ACACAC"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="8dp"
                 tools:text="Louis Rossman"/>
 
@@ -193,7 +193,7 @@
             android:id="@+id/videodetail_container_main"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/black"
+            android:background="?attr/colorSurface"
             tools:ignore="SpeakableTextPresentCheck">
 
             <LinearLayout
@@ -222,7 +222,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="10dp"
                             android:fontFamily="@font/inter_medium"
-                            android:textColor="@color/white"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="17dp"
                             tools:text="Some Text"
                             app:layout_constraintLeft_toLeftOf="parent"
@@ -235,7 +235,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="10dp"
                             android:fontFamily="@font/inter_regular"
-                            android:textColor="#ACACAC"
+                            android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="10dp"
                             tools:text="51K views - 3 years ago"
                             app:layout_constraintLeft_toLeftOf="@id/videodetail_title"
@@ -275,7 +275,7 @@
                                         android:id="@+id/image_like_icon"
                                         android:layout_width="14dp"
                                         android:layout_height="14dp"
-                                        app:tint="#ACACAC"
+                                        app:tint="?attr/colorOnSurfaceVariant"
                                         app:srcCompat="@drawable/ic_thumb_up" />
 
                                     <TextView
@@ -285,7 +285,7 @@
                                         android:gravity="center_vertical"
                                         android:layout_marginStart="4dp"
                                         tools:text="500K"
-                                        android:textColor="#ACACAC"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
                                         android:textSize="10dp" />
                                 </LinearLayout>
 
@@ -298,7 +298,7 @@
                                         android:layout_width="14dp"
                                         android:layout_height="14dp"
                                         android:layout_marginTop="2dp"
-                                        app:tint="#ACACAC"
+                                        app:tint="?attr/colorOnSurfaceVariant"
                                         app:srcCompat="@drawable/ic_thumb_down" />
 
                                     <TextView
@@ -308,7 +308,7 @@
                                         android:gravity="center_vertical"
                                         android:layout_marginStart="4dp"
                                         tools:text="500K"
-                                        android:textColor="#ACACAC"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
                                         android:textSize="10dp" />
                                 </LinearLayout>
                             </LinearLayout>
@@ -353,7 +353,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:paddingEnd="10dp"
-                                android:textColor="@color/white"
+                                android:textColor="?attr/colorOnSurface"
                                 android:layout_gravity="center"
                                 android:ellipsize="end"
                                 android:maxLines="1"
@@ -363,7 +363,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_weight="1"
                                 android:layout_height="wrap_content"
-                                android:textColor="#ACACAC"
+                                android:textColor="?attr/colorOnSurfaceVariant"
                                 android:textSize="9sp"
                                 android:layout_gravity="center"
                                 android:ellipsize="end"
@@ -428,7 +428,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/inter_light"
                         android:background="@color/transparent"
                         android:isScrollContainer="false"

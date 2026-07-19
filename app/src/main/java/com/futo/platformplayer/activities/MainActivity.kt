@@ -308,10 +308,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         StateApp.instance.mainAppStarting(this);
 
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val uiMode = getSystemService(UiModeManager::class.java)
-            uiMode.setApplicationNightMode(UiModeManager.MODE_NIGHT_YES)
-        }
+        // Removed forced night mode — let system light/dark theme control it
         setContentView(R.layout.activity_main);
         setNavigationBarColorAndIcons();
 

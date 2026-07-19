@@ -36,7 +36,7 @@
             tools:text="Downloading v123 - 42%"
             android:fontFamily="@font/inter_semibold"
             android:textSize="14sp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:ellipsize="end"
             android:maxLines="1" />
 
@@ -63,7 +63,7 @@
                 tools:text="Install"
                 android:fontFamily="@font/inter_regular"
                 android:textSize="12sp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:paddingLeft="13dp"
                 android:paddingRight="13dp" />
         </FrameLayout>

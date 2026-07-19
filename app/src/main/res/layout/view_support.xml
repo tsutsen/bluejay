@@ -14,7 +14,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="13dp"
-        android:textColor="#909090"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:fontFamily="@font/inter_light"
         android:gravity="center_horizontal"
         android:text="@string/this_creator_has_not_set_any_support_options_on_harbor_polycentric" />
@@ -29,7 +29,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="16dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:text="@string/store"/>
 
@@ -37,7 +37,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="13dp"
-            android:textColor="#909090"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/inter_light"
             android:text="@string/a_store_by_the_creator" />
 
@@ -62,7 +62,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="16dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:text="@string/memberships" />
 
@@ -76,7 +76,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="13dp"
-                android:textColor="#909090"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:fontFamily="@font/inter_light"
                 android:text="@string/a_monthly_recurring_payment_with_often" />
 
@@ -87,7 +87,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="13dp"
-                android:textColor="#909090"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:fontFamily="@font/inter_bold"
                 android:text="@string/additional_perks" />
         </com.google.android.flexbox.FlexboxLayout>
@@ -113,7 +113,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="16dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:text="@string/promotions" />
 
@@ -121,7 +121,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="13dp"
-            android:textColor="#909090"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/inter_light"
             android:text="@string/current_promotions_by_this_creator" />
 
@@ -163,7 +163,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="16dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:text="@string/donation" />
 
@@ -171,7 +171,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="13dp"
-            android:textColor="#909090"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/inter_light"
             android:text="@string/a_one_time_payment_to_support_the_creator" />
 

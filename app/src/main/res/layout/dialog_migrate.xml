@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center"
-    android:background="@color/gray_1d">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -48,7 +48,7 @@
                 tools:text="10/100"
                 android:layout_gravity="center"
                 android:textSize="14dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_regular" />
 
         </FrameLayout>
@@ -58,7 +58,7 @@
             android:layout_height="wrap_content"
             android:text="@string/migration"
             android:textSize="15sp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_extra_light"
             android:layout_marginTop="15dp"
             android:layout_marginStart="30dp"
@@ -69,7 +69,7 @@
             android:layout_height="wrap_content"
             android:text="@string/playlists"
             android:textSize="18sp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:layout_marginStart="30dp"
             android:layout_marginEnd="30dp" />
@@ -79,7 +79,7 @@
             android:layout_height="wrap_content"
             tools:text="10 items"
             android:textSize="15sp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_light"
             android:layout_marginStart="30dp"
             android:layout_marginEnd="30dp" />
@@ -96,7 +96,7 @@
                 android:textAlignment="center"
                 android:text="@string/items_require_migration_or_are_corrupted_would_you_like_to_restore_them_from_backup_now"
                 android:textSize="14sp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_regular"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
@@ -107,7 +107,7 @@
                 android:textAlignment="center"
                 android:text="@string/if_ignored_you_will_be_asked_again_next_startup"
                 android:textSize="13sp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_light"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
@@ -119,7 +119,7 @@
                 android:textAlignment="center"
                 android:text="@string/sources_required_need_to_be_enabled"
                 android:textSize="13sp"
-                android:textColor="@color/pastel_red"
+                android:textColor="?attr/colorError"
                 android:fontFamily="@font/inter_regular"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
@@ -144,7 +144,7 @@
                     android:text="@string/ignore"
                     android:textSize="14dp"
                     android:fontFamily="@font/inter_regular"
-                    android:textColor="@color/colorPrimary"
+                    android:textColor="?attr/colorPrimary"
                     android:background="@color/transparent" />
 
 
@@ -155,7 +155,7 @@
                     android:text="@string/delete"
                     android:textSize="14dp"
                     android:fontFamily="@font/inter_regular"
-                    android:textColor="@color/pastel_red"
+                    android:textColor="?attr/colorError"
                     android:background="@color/transparent" />
 
                 <LinearLayout
@@ -171,7 +171,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/restore"
                         android:textSize="14dp"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/inter_regular"
                         android:paddingTop="10dp"
                         android:paddingBottom="10dp"
@@ -202,7 +202,7 @@
                     android:textAlignment="center"
                     tools:text="Restored 7 items"
                     android:textSize="14sp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_regular"
                     android:layout_marginEnd="8dp" />
 
@@ -213,7 +213,7 @@
                     android:textAlignment="center"
                     tools:text="(7 failed)"
                     android:textSize="14sp"
-                    android:textColor="@color/pastel_red"
+                    android:textColor="?attr/colorError"
                     android:fontFamily="@font/inter_regular" />
             </LinearLayout>
 
@@ -223,7 +223,7 @@
                 android:textAlignment="textStart"
                 tools:text="Failed to restore 2 items"
                 android:textSize="14sp"
-                android:textColor="@color/pastel_red"
+                android:textColor="?attr/colorError"
                 android:fontFamily="@font/inter_regular"
                 android:maxLines="6"
                 android:layout_marginStart="10dp"
@@ -240,7 +240,7 @@
                 android:textAlignment="center"
                 tools:text="Required plugin for 1 items"
                 android:textSize="14sp"
-                android:textColor="#FFA500"
+                android:textColor="?attr/colorPrimary"
                 android:fontFamily="@font/inter_regular"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -264,7 +264,7 @@
                     android:text="@string/retry"
                     android:textSize="14dp"
                     android:fontFamily="@font/inter_regular"
-                    android:textColor="@color/colorPrimary"
+                    android:textColor="?attr/colorPrimary"
                     android:background="@color/transparent" />
 
                 <Button
@@ -274,7 +274,7 @@
                     android:text="@string/delete"
                     android:textSize="14dp"
                     android:fontFamily="@font/inter_regular"
-                    android:textColor="@color/pastel_red"
+                    android:textColor="?attr/colorError"
                     android:background="@color/transparent" />
 
                 <LinearLayout
@@ -290,7 +290,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/ok"
                         android:textSize="14dp"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/inter_regular"
                         android:paddingTop="10dp"
                         android:paddingBottom="10dp"

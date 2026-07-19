@@ -5,20 +5,20 @@
     </style>
 
     <style name="Theme.FutoVideo.TextView" parent="Widget.AppCompat.TextView">
-        <item name="android:textColor">@color/white</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:textSize">14dp</item>
-        <item name="android:fontFamily">@font/inter_regular</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
     </style>
 
     <style name="Theme.FutoVideo.CheckedTextView" parent="Widget.AppCompat.TextView">
-        <item name="android:textColor">@color/white</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:textSize">14dp</item>
-        <item name="android:fontFamily">@font/inter_regular</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
     </style>
 
     <style name="Theme.FutoVideo.EditText" parent="Widget.AppCompat.EditText">
-        <item name="android:textColor">@color/white</item>
-        <item name="android:textColorHint">@color/gray_ac</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textColorHint">?attr/colorOnSurfaceVariant</item>
         <item name="android:background">@drawable/edit_text_background</item>
         <item name="android:textCursorDrawable">@drawable/edit_text_cursor</item>
         <item name="android:paddingTop">8dp</item>
@@ -33,14 +33,9 @@
         <item name="android:dividerHeight">0dp</item>
     </style>
 
-    <style name="Theme.FutoVideo" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-
-        <item name="colorSecondary">@color/gray_e0</item>
-        <item name="colorSecondaryVariant">@color/gray_30</item>
-        <item name="colorOnSecondary">@color/black</item>
+    <style name="Theme.FutoVideo" parent="Theme.Material3.DynamicColors.DayNight">
+        <!-- DynamicColors automatically applies wallpaper-derived colors -->
+        <!-- DarkUi keeps the dark video-player aesthetic with dynamic accent colors -->
 
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -51,53 +46,25 @@
         <item name="android:textViewStyle">@style/Theme.FutoVideo.TextView</item>
         <item name="android:checkedTextViewStyle">@style/Theme.FutoVideo.CheckedTextView</item>
 
-        <!-- Material3 attributes (needed if parent="Theme.MaterialComponents"). -->
-        <item name="colorPrimaryInverse">@color/md_theme_inversePrimary</item>
-        <item name="colorPrimaryContainer">@color/md_theme_primaryContainer</item>
-        <item name="colorOnPrimaryContainer">@color/md_theme_onPrimaryContainer</item>
-        <item name="colorSecondaryContainer">@color/md_theme_secondaryContainer</item>
-        <item name="colorOnSecondaryContainer">@color/md_theme_onSecondaryContainer</item>
-        <item name="colorTertiary">@color/md_theme_tertiary</item>
-        <item name="colorOnTertiary">@color/md_theme_onTertiary</item>
-        <item name="colorTertiaryContainer">@color/md_theme_tertiaryContainer</item>
-        <item name="colorOnTertiaryContainer">@color/md_theme_onTertiaryContainer</item>
-        <item name="colorSurfaceVariant">@color/md_theme_surfaceVariant</item>
-        <item name="colorOnSurfaceVariant">@color/md_theme_onSurfaceVariant</item>
-        <item name="colorSurfaceInverse">@color/md_theme_inverseSurface</item>
-        <item name="colorOnSurfaceInverse">@color/md_theme_inverseOnSurface</item>
-        <item name="colorOutline">@color/md_theme_outline</item>
-        <item name="colorErrorContainer">@color/md_theme_errorContainer</item>
-        <item name="colorOnErrorContainer">@color/md_theme_onErrorContainer</item>
-        <item name="textAppearanceDisplayLarge">@style/TextAppearance.Material3.DisplayLarge</item>
-        <item name="textAppearanceDisplayMedium">@style/TextAppearance.Material3.DisplayMedium</item>
-        <item name="textAppearanceDisplaySmall">@style/TextAppearance.Material3.DisplaySmall</item>
-        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Material3.HeadlineLarge</item>
-        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.Material3.HeadlineMedium</item>
-        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.Material3.HeadlineSmall</item>
-        <item name="textAppearanceTitleLarge">@style/TextAppearance.Material3.TitleLarge</item>
-        <item name="textAppearanceTitleMedium">@style/TextAppearance.Material3.TitleMedium</item>
-        <item name="textAppearanceTitleSmall">@style/TextAppearance.Material3.TitleSmall</item>
-        <item name="textAppearanceBodyLarge">@style/TextAppearance.Material3.BodyLarge</item>
-        <item name="textAppearanceBodyMedium">@style/TextAppearance.Material3.BodyMedium</item>
-        <item name="textAppearanceBodySmall">@style/TextAppearance.Material3.BodySmall</item>
-        <item name="textAppearanceLabelLarge">@style/TextAppearance.Material3.LabelLarge</item>
-        <item name="textAppearanceLabelMedium">@style/TextAppearance.Material3.LabelMedium</item>
-        <item name="textAppearanceLabelSmall">@style/TextAppearance.Material3.LabelSmall</item>
-        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.Material3.SmallComponent</item>
-        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Material3.MediumComponent</item>
-        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Material3.LargeComponent</item>
+        <!-- Custom attribute: always-white color for video player overlays -->
+        <!-- Video player controls are overlaid on video content which can be dark or light -->
+        <!-- This ensures they remain visible (white) in both light and dark themes -->
+        <item name="colorVideoOverlay">#FFFFFFFF</item>
+
+        <!-- Material3 text appearances inherited from parent -->
+        <!-- Material3 shape appearances inherited from parent -->
     </style>
 
     <style name="Theme.FutoVideo.NoActionBar" parent="Theme.FutoVideo">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:windowBackground">@color/black</item>
-        <item name="android:statusBarColor">@color/black</item>
-        <item name="android:navigationBarColor">@color/black</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
         <item name="android:navigationBarDividerColor">@color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="android:windowLightNavigationBar">?attr/isLightTheme</item>
     </style>
 
     <style name="Theme.FutoVideo.NoActionBarFitsSystem" parent="Theme.FutoVideo.NoActionBar">
@@ -106,17 +73,17 @@
 
     <style name="Theme.FutoVideo.TextAppearance.TabLayout" parent="@android:style/TextAppearance.Medium">
         <item name="android:textSize">12dp</item>
-        <item name="android:textColor">@color/gray_8c</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
         <item name="android:fontFamily">@font/inter_medium</item>
     </style>
 
     <style name="Theme.FutoVideo.TextAppearance.EditText" parent="@android:style/TextAppearance.Medium">
         <item name="android:textSize">20dp</item>
-        <item name="android:textColor">@color/white</item>
-        <item name="android:fontFamily">@font/inter_regular</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
     </style>
 
-    <style name="Theme.App.TransparentNoUi" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.App.TransparentNoUi" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>
@@ -126,25 +93,11 @@
         <item name="windowActionBar">false</item>
     </style>
 
-    <!-- Material You Dynamic Colors theme variant -->
-    <!-- On Android 13+ (API 33+), DynamicColors will override colors from wallpaper -->
-    <style name="Theme.FutoVideo.DynamicColors" parent="Theme.Material3.DynamicColors.DayNight">
-        <!-- Material3 text appearances are inherited from parent -->
-        <!-- Material3 shape appearances are inherited from parent -->
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="imageButtonStyle">@style/Theme.FutoVideo.ImageButton</item>
-        <item name="editTextStyle">@style/Theme.FutoVideo.EditText</item>
-        <item name="android:listViewStyle">@style/Theme.FutoVideo.ListView</item>
-        <item name="android:textViewStyle">@style/Theme.FutoVideo.TextView</item>
-        <item name="android:checkedTextViewStyle">@style/Theme.FutoVideo.CheckedTextView</item>
-    </style>
-
     <!-- Material Symbols icon style settings -->
     <style name="Theme.FutoVideo.MaterialSymbol" parent="Widget.AppCompat.TextView">
         <item name="android:textSize">24sp</item>
         <item name="android:textColor">?attr/colorOnBackground</item>
-        <item name="fontFamily">@font/inter_regular</item>
+        <item name="fontFamily">@font/inter_medium</item>
     </style>
 
 </resources>

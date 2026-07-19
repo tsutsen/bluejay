@@ -18,7 +18,7 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true"
         android:layout_marginBottom="0dp"
-        android:background="#1D1D1D"
+        android:background="?attr/colorSurface"
         android:paddingLeft="15dp"
         android:paddingRight="15dp"
         android:paddingTop="15dp"
@@ -37,7 +37,7 @@
                 android:fontFamily="@font/inter_extra_light"
                 android:textSize="16dp"
                 android:text="@string/add_to"
-                android:textColor="@color/white"/>
+                android:textColor="?attr/colorOnSurface"/>
 
             <TextView
                 android:id="@+id/overlay_slide_up_menu_cancel"
@@ -45,7 +45,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="end"
                 android:text="@string/cancel"
-                android:textColor="#585656"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:padding="10dp" />
 
             <TextView
@@ -54,7 +54,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="end"
                 android:text="@string/ok"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorPrimary"
                 android:layout_marginStart="20dp"
                 android:padding="10dp" />
         </LinearLayout>

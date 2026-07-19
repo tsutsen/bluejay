@@ -22,7 +22,7 @@
         android:layout_weight="1"
         android:layout_height="wrap_content"
         android:textSize="20dp"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:fontFamily="@font/inter_extra_light"
         tools:text="FUTO"
         android:layout_marginRight="8dp"
@@ -33,7 +33,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="20dp"
-        android:textColor="@color/gray_67"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:fontFamily="@font/inter_extra_light"
         android:text="@string/str_import"
         android:paddingRight="16dp" />

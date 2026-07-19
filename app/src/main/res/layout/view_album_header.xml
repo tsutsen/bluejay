@@ -75,7 +75,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/inter_medium"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="18dp"
                         tools:text="Playlist name"
                         android:layout_marginTop="10dp"
@@ -89,7 +89,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/inter_extra_light"
-                        android:textColor="#595959"
+                        android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="14dp"
                         tools:text="15 tracks - 1h 15 minutes"
                         android:layout_marginBottom="15dp"
@@ -127,7 +127,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/inter_light"
-                                android:textColor="@color/white"
+                                android:textColor="?attr/colorOnSurface"
                                 android:textSize="16dp"
                                 android:text="@string/play_all" />
                         </LinearLayout>
@@ -147,13 +147,13 @@
                                 android:scaleType="fitCenter"
                                 app:srcCompat="@drawable/ic_shuffle"
                                 android:layout_marginEnd="5dp"
-                                app:tint="@color/white" />
+                                app:tint="?attr/colorOnSurface" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:fontFamily="@font/inter_light"
-                                android:textColor="@color/white"
+                                android:textColor="?attr/colorOnSurface"
                                 android:textSize="16dp"
                                 android:text="@string/shuffle" />
                         </LinearLayout>

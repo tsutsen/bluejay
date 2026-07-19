@@ -33,7 +33,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom"
                 android:gravity="center_vertical"
-                android:background="#CC000000"
+                android:background="#AA000000"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp">
 
@@ -66,7 +66,7 @@
                     android:textSize="8dp"
                     android:fontFamily="@font/inter_regular"
                     tools:text="100"
-                    android:textColor="@color/gray_7f"/>
+                    android:textColor="?attr/colorOnSurfaceVariant"/>
 
                 <TextView
                     android:id="@+id/text_video_count_label"
@@ -76,7 +76,7 @@
                     android:fontFamily="@font/inter_regular"
                     android:text="@string/space_videos"
                     android:layout_marginRight="10dp"
-                    android:textColor="@color/gray_7f" />
+                    android:textColor="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
         </FrameLayout>
 
@@ -93,7 +93,7 @@
                 android:paddingBottom="2dp"
                 android:layout_weight="1"
                 android:textSize="13dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_light"
                 tools:text="Legendary grant recipient: Marvin Wißfeld of MicroG Very loong title"
                 android:maxLines="2"
@@ -110,7 +110,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textSize="10dp"
-                android:textColor="@color/gray_e0"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_extra_light"
                 tools:text="Two Minute Papers"
                 app:layout_constrainedWidth="true"
@@ -127,7 +127,7 @@
                 android:maxLines="2"
                 android:textSize="8dp"
                 android:ellipsize="end"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_extra_light"
                 tools:text="Aussies Rank Cinema Snacks • 6:52\nAussies Try Each Other’s Entertainer Plates • 11:50 "
                 app:layout_constraintLeft_toLeftOf="parent"
@@ -141,7 +141,7 @@
                 android:maxLines="1"
                 android:textSize="10dp"
                 android:ellipsize="end"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_light"
                 tools:text="View full playlist"
                 app:layout_constraintLeft_toLeftOf="parent"

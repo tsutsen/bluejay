@@ -7,7 +7,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@+id/short_player_progress_bar"
-        android:background="@color/black"
+        android:background="?attr/colorSurface"
         app:default_artwork="@drawable/placeholder_video_thumbnail"
         app:resize_mode="zoom"
         app:show_buffering="when_playing"
@@ -20,10 +20,10 @@
         android:layout_height="3dp"
         android:layout_alignParentBottom="true"
         app:bar_height="3dp"
-        app:buffered_color="#DDEEEEEE"
-        app:played_color="@color/colorPrimary"
+        app:buffered_color="?attr/colorSurfaceVariant"
+        app:played_color="?attr/colorPrimary"
         app:scrubber_disabled_size="0dp"
         app:scrubber_dragged_size="0dp"
         app:scrubber_enabled_size="0dp"
-        app:unplayed_color="#55EEEEEE" />
+        app:unplayed_color="?attr/colorOnSurfaceVariant" />
 </merge>

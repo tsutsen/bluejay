@@ -14,7 +14,7 @@
         android:id="@+id/text_tag"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:layout_gravity="center"
         android:gravity="center"
         android:textSize="11dp"

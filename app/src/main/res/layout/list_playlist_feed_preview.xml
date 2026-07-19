@@ -37,7 +37,7 @@
                 android:layout_gravity="bottom"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:background="#CC000000"
+                android:background="#AA000000"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp">
 
@@ -48,7 +48,7 @@
                     android:layout_weight="1"
                     android:maxLines="2"
                     android:textSize="10dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_thin"
                     tools:text="Aussies Rank Cinema Snacks • 6:52\nAussies Try Each Other’s Entertainer Plates • 11:50 "
                     app:layout_constraintLeft_toLeftOf="parent"
@@ -65,7 +65,7 @@
                     android:textSize="12dp"
                     android:fontFamily="@font/inter_light"
                     tools:text="100"
-                    android:textColor="@color/gray_7f"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     app:layout_constraintRight_toLeftOf="@id/text_video_count_label"
                     app:layout_constraintBottom_toBottomOf="@id/text_video_count_label" />
 
@@ -77,7 +77,7 @@
                     android:fontFamily="@font/inter_regular"
                     android:text="@string/playlist"
                     android:layout_marginEnd="8dp"
-                    android:textColor="@color/gray_e0"
+                    android:textColor="?attr/colorOnSurface"
                     app:layout_constraintRight_toRightOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toTopOf="@id/text_video_count_label"/>
@@ -90,7 +90,7 @@
                     android:fontFamily="@font/inter_light"
                     android:text="@string/space_videos"
                     android:layout_marginEnd="8dp"
-                    android:textColor="@color/gray_7f"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     app:layout_constraintRight_toRightOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/text_playlist"
                     app:layout_constraintBottom_toBottomOf="parent"/>
@@ -130,7 +130,7 @@
                     android:textAlignment="viewStart"
                     android:layout_marginTop="-3dp"
                     android:textSize="14dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_regular"
                     tools:text="I Thought FSD is Terrible in SNOW | 8 inch SNOW | FSD Beta 10.69.2.4"
                     android:maxLines="2" />
@@ -142,7 +142,7 @@
                     android:gravity="center_vertical"
                     android:maxLines="1"
                     android:textSize="12dp"
-                    android:textColor="@color/gray_e0"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_extra_light"
                     tools:text="Two Minute Papers" />
             </LinearLayout>

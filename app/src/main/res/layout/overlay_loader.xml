@@ -7,7 +7,7 @@
     android:layout_marginBottom="4dp"
     android:orientation="vertical"
     android:id="@+id/container"
-    android:background="#77000000"
+    android:background="?attr/colorSurfaceVariant"
     android:elevation="4dp"
     android:clickable="true">
     <ImageView

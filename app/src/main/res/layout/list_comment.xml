@@ -119,6 +119,7 @@
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:contentDescription="@string/cd_image_like_icon"
+                    app:tint="?attr/colorOnSurface"
                     app:srcCompat="@drawable/ic_thumb_up" />
 
                 <TextView
@@ -138,6 +139,7 @@
                     android:contentDescription="@string/cd_image_dislike_icon"
                     android:layout_marginStart="8dp"
                     android:layout_marginTop="2dp"
+                    app:tint="?attr/colorOnSurface"
                     app:srcCompat="@drawable/ic_thumb_down" />
 
                 <TextView

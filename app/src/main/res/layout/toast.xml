@@ -22,7 +22,7 @@
 
         <TextView
             android:id="@+id/title"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             toolNs:text="Some Title"
             android:fontFamily="@font/inter_bold"
             android:textSize="15dp"
@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"/>
         <TextView
             android:id="@+id/text"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="14dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

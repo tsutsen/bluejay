@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:tools="http://schemas.android.com/tools"
-    android:background="@color/black"
+    android:background="?attr/colorSurface"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -14,7 +14,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         android:animateLayoutChanges="true"
-        android:background="#161616">
+        android:background="?attr/colorSurface">
 
         <TextView
             android:id="@+id/text_name"
@@ -24,7 +24,7 @@
             android:layout_marginBottom="5dp"
             android:fontFamily="@font/inter_semibold"
             android:textSize="18dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             android:layout_margin="10dp"
@@ -77,7 +77,7 @@
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/chatContainer"
-        android:background="@color/black"
+        android:background="?attr/colorSurface"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginStart="0dp"
@@ -88,7 +88,7 @@
         app:layout_constraintBottom_toBottomOf="parent" />
     <WebView
         android:id="@+id/chatWindowContainer"
-        android:background="@color/black"
+        android:background="?attr/colorSurface"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginStart="0dp"
@@ -107,7 +107,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        android:background="#AA000000">
+        android:background="?attr/colorSurfaceVariant">
 
 
         <androidx.constraintlayout.widget.ConstraintLayout
@@ -174,7 +174,7 @@
                 app:layout_constraintLeft_toLeftOf="@+id/donation_author_image"
                 app:layout_constraintRight_toRightOf="@id/donation_amount_container"
                 android:layout_margin="10dp"
-                android:textColor="#838383"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="@string/lorem_ipsum"/>
 
             <TextView
@@ -187,7 +187,7 @@
                 tools:text="Source: Somesite"
                 android:paddingBottom="10dp"
                 android:textSize="12sp"
-                android:textColor="#4F4B4B"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:layout_margin="10dp" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
@@ -211,7 +211,7 @@
             android:id="@+id/textRaidMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#737070"
+            android:textColor="?attr/colorOnSurfaceVariant"
             app:layout_constraintTop_toTopOf="parent"
             android:text="@string/viewers_are_raiding"
             android:gravity="center"
@@ -264,7 +264,7 @@
                 android:letterSpacing="0"
                 android:fontFamily="@font/inter_regular"
                 android:layout_marginStart="5dp"
-                android:backgroundTint="@color/colorPrimary"
+                android:backgroundTint="?attr/colorPrimary"
                 android:layout_marginEnd="5dp"
                 android:text="@string/go_now"/>
             <Button
@@ -278,7 +278,7 @@
                 android:letterSpacing="0"
                 android:layout_marginStart="5dp"
                 android:layout_marginEnd="5dp"
-                android:backgroundTint="#2F2F2F"
+                android:backgroundTint="?attr/colorSurfaceVariant"
                 android:text="@string/dismiss"/>
         </LinearLayout>
 

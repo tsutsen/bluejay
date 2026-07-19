@@ -65,7 +65,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="14dp"
-                        android:textColor="@color/gray_ac"
+                        android:textColor="?attr/colorOnSurfaceVariant"
                         android:fontFamily="@font/inter_light"
                         android:text="@string/sort_by"
                         android:paddingStart="20dp" />
@@ -85,7 +85,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="9dp"
                     android:textAlignment="center"
-                    android:textColor="#333333"
+                    android:textColor="?attr/colorOutlineVariant"
                     android:text="0 creators" />
             </LinearLayout>
 

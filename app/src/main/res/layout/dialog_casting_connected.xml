@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/gray_1d">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -20,7 +20,7 @@
             android:text="@string/connected_to"
             android:layout_marginStart="20dp"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular" />
 
         <ImageView
@@ -42,7 +42,7 @@
             android:text="@string/close"
             android:textSize="14dp"
             android:fontFamily="@font/inter_regular"
-            android:textColor="@color/colorPrimary"
+            android:textColor="?attr/colorPrimary"
             android:background="@color/transparent" />
     </LinearLayout>
 
@@ -75,7 +75,7 @@
             android:ellipsize="end"
             android:textSize="12dp"
             android:fontFamily="@font/inter_light"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginStart="10dp"
             android:layout_marginEnd="10dp"
             android:includeFontPadding="false"
@@ -90,7 +90,7 @@
             tools:text="Chromecast"
             android:textSize="10dp"
             android:fontFamily="@font/inter_extra_light"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:includeFontPadding="false"
             android:layout_marginStart="10dp"
             android:layout_marginEnd="10dp"
@@ -116,16 +116,16 @@
             android:layout_height="wrap_content"
             android:text="@string/volume"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular" />
 
         <com.google.android.material.slider.Slider
             android:id="@+id/slider_volume"
             android:layout_width="match_parent"
             android:layout_height="20dp"
-            app:thumbColor="@color/colorPrimary"
-            app:trackColorActive="@color/colorPrimary"
-            app:trackColorInactive="@color/gray_67"
+            app:thumbColor="?attr/colorPrimary"
+            app:trackColorActive="?attr/colorPrimary"
+            app:trackColorInactive="?attr/colorOnSurfaceVariant"
             android:value="0.2"
             android:valueFrom="0"
             android:valueTo="1"
@@ -148,16 +148,16 @@
             android:layout_height="wrap_content"
             android:text="@string/position"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular" />
 
         <com.google.android.material.slider.Slider
             android:id="@+id/slider_position"
             android:layout_width="match_parent"
             android:layout_height="20dp"
-            app:thumbColor="@color/colorPrimary"
-            app:trackColorActive="@color/colorPrimary"
-            app:trackColorInactive="@color/gray_67"
+            app:thumbColor="?attr/colorPrimary"
+            app:trackColorActive="?attr/colorPrimary"
+            app:trackColorInactive="?attr/colorOnSurfaceVariant"
             android:value="0.2"
             android:valueFrom="0"
             android:valueTo="1"
@@ -255,7 +255,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="12dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_light"
             android:text="@string/stop_casting" />
     </LinearLayout>

@@ -7,7 +7,7 @@
     android:orientation="vertical"
     android:paddingStart="20dp"
     android:paddingEnd="20dp"
-    android:background="@color/black">
+    android:background="?attr/colorSurface">
 
 
     <LinearLayout
@@ -36,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/developer"
                 android:textSize="24dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_extra_light" />
         </FrameLayout>
 

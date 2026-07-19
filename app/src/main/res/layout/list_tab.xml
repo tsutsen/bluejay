@@ -31,7 +31,7 @@
         android:layout_height="match_parent"
         android:fontFamily="@font/inter_light"
         android:textSize="16dp"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         tools:text="Recommendations"
         android:gravity="center_vertical"
         android:paddingEnd="8dp"/>

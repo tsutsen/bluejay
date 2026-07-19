@@ -36,7 +36,7 @@
                 android:layout_gravity="bottom"
                 android:layout_marginBottom="6dp"
                 app:progress="60%"
-                app:inactiveColor="#55EEEEEE"
+                app:inactiveColor="?attr/colorOnSurfaceVariant"
                 app:radiusBottomLeft="0dp"
                 app:radiusBottomRight="0dp"
                 app:radiusTopLeft="0dp"
@@ -72,7 +72,7 @@
                         android:paddingLeft="2dp"
                         android:paddingRight="2dp"
                         android:text="@string/live"
-                        android:textColor="#FFFFFF"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="12dp"
                         android:textStyle="normal" />
                 </LinearLayout>
@@ -102,7 +102,7 @@
                         android:paddingLeft="2dp"
                         android:paddingRight="2dp"
                         tools:text="0:00"
-                        android:textColor="#FFFFFF"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="12dp"
                         android:textStyle="normal" />
                 </LinearLayout>
@@ -154,7 +154,7 @@
                         android:fontFamily="@font/inter_regular"
                         android:maxLines="2"
                         android:textAlignment="viewStart"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14dp"
                         tools:text="I Thought FSD is Terrible in SNOW | 8 inch SNOW | FSD Beta 10.69.2.4" />
 
@@ -165,7 +165,7 @@
                         android:fontFamily="@font/inter_extra_light"
                         android:gravity="center_vertical"
                         android:maxLines="1"
-                        android:textColor="@color/gray_e0"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="12dp"
                         tools:text="Two Minute Papers" />
 
@@ -176,7 +176,7 @@
                         android:fontFamily="@font/inter_extra_light"
                         android:gravity="center_vertical"
                         android:maxLines="1"
-                        android:textColor="@color/gray_e0"
+                        android:textColor="?attr/colorOnSurface"
                         android:layout_marginBottom="5dp"
                         android:textSize="12dp"
                         tools:text="57K views • 1 day ago" />
@@ -272,7 +272,7 @@
                             android:background="@color/transparent"
                             android:fontFamily="@font/inter_light"
                             android:text="@string/options"
-                            android:textColor="@color/white"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="12dp" />
                     </LinearLayout>
                 </LinearLayout>

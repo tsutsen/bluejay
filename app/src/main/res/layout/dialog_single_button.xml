@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center"
-    android:background="@color/gray_1d">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/failed_to_retrieve_data_are_you_connected"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="14dp"
             android:fontFamily="@font/inter_regular"
             android:layout_marginTop="30dp"
@@ -54,7 +54,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/ok"
                     android:textSize="14dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_regular"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"

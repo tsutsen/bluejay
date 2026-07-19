@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:tools="http://schemas.android.com/tools"
-    android:background="@color/black"
+    android:background="?attr/colorSurface"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <com.futo.platformplayer.views.overlays.OverlayTopbar
@@ -30,7 +30,7 @@
             android:id="@+id/text_description"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_light"
             android:background="@color/transparent"
             android:isScrollContainer="false"

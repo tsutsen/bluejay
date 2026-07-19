@@ -13,7 +13,7 @@
             android:layout_width="140dp"
             android:layout_height="wrap_content"
             android:textSize="14dp"
-            android:textColor="@color/gray_ac"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/inter_light"
             android:text="@string/home_screen" />
         <TextView
@@ -21,7 +21,7 @@
             android:layout_width="140dp"
             android:layout_height="wrap_content"
             android:textSize="11dp"
-            android:textColor="#666666"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/inter_light"
             android:text="" />
     </LinearLayout>

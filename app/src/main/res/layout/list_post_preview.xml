@@ -145,7 +145,8 @@
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 android:contentDescription="@string/cd_image_like_icon"
-                app:srcCompat="@drawable/ic_thumb_up" />
+                app:tint="?attr/colorOnSurface"
+                    app:srcCompat="@drawable/ic_thumb_up" />
 
             <TextView
                 android:id="@+id/text_likes"
@@ -164,7 +165,8 @@
                 android:contentDescription="@string/cd_image_dislike_icon"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="2dp"
-                app:srcCompat="@drawable/ic_thumb_down" />
+                app:tint="?attr/colorOnSurface"
+                    app:srcCompat="@drawable/ic_thumb_down" />
 
             <TextView
                 android:id="@+id/text_dislikes"

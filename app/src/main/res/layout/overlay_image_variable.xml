@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:tools="http://schemas.android.com/tools"
-    android:background="@color/black"
+    android:background="?attr/colorSurface"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <com.futo.platformplayer.views.overlays.OverlayTopbar
@@ -70,7 +70,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
-                    android:textColor="@color/gray_ac"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12dp"
                     android:text="Pick a preset image" />
 
@@ -101,7 +101,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
-                    android:textColor="@color/gray_ac"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12dp"
                     android:text="Pick a creator as group image" />
 

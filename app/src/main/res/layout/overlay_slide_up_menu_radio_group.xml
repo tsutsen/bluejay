@@ -14,7 +14,7 @@
         tools:text="Headers"
         android:textSize="11dp"
         android:fontFamily="@font/inter_semibold"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:layout_marginStart="8dp"
         android:layout_marginBottom="8dp" />
 

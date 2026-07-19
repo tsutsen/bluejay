@@ -10,7 +10,7 @@
     android:paddingEnd="20dp"
     android:paddingTop="10dp"
     android:animateLayoutChanges="true"
-    android:background="@color/black">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:id="@+id/downloads_top"
@@ -21,7 +21,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/storage_space"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginBottom="8dp"
             android:textSize="20dp" />
 
@@ -29,9 +29,9 @@
             android:id="@+id/downloads_usage_progress"
             android:layout_width="match_parent"
             android:layout_height="10dp"
-            app:activeColor="@color/colorPrimary"
-            app:inactiveColor="#333333"
-            android:background="#333333" /> <!--TODO: Implement Storage view-->
+            app:activeColor="?attr/colorPrimary"
+            app:inactiveColor="?attr/colorOutlineVariant"
+            android:background="?attr/colorOutlineVariant" /> <!--TODO: Implement Storage view-->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -40,7 +40,7 @@
                 android:id="@+id/downloads_usage_used"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="#E0E0E0"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_extra_light"
                 android:textSize="11dp"
                 tools:text="5.64GB Used" />
@@ -48,7 +48,7 @@
                 android:id="@+id/downloads_usage_available"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="#E0E0E0"
+                android:textColor="?attr/colorOnSurface"
                 android:gravity="end"
                 android:layout_gravity="end"
                 android:fontFamily="@font/inter_extra_light"
@@ -76,7 +76,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="18dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:text="@string/downloading"
                     />
                 <TextView
@@ -85,7 +85,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="5dp"
                     android:fontFamily="@font/inter_extra_light"
-                    android:textColor="#ACACAC"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="15dp"
                     tools:text="(5)"
                     />
@@ -113,7 +113,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="18dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:text="@string/playlists"
                     />
                 <TextView
@@ -123,7 +123,7 @@
                     android:layout_marginLeft="5dp"
                     android:textSize="15dp"
                     android:fontFamily="@font/inter_extra_light"
-                    android:textColor="#ACACAC"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     tools:text="(7 playlists, 85 videos)"
                     />
             </LinearLayout>
@@ -150,7 +150,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="18dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:text="@string/videos" />
             <TextView
                 android:id="@+id/downloads_videos_meta"
@@ -159,7 +159,7 @@
                 android:layout_marginLeft="5dp"
                 android:textSize="15dp"
                 android:fontFamily="@font/inter_extra_light"
-                android:textColor="#ACACAC"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="(12 videos)" />
         </LinearLayout>
         <EditText
@@ -180,7 +180,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="14dp"
-                android:textColor="@color/gray_ac"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:fontFamily="@font/inter_light"
                 android:text="@string/sort_by"
                 android:paddingStart="20dp" />

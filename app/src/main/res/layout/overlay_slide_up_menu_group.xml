@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         tools:text="Recently Used Playlist"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:fontFamily="@font/inter_semibold"
         android:textSize="11dp" />
     <TextView
@@ -20,7 +20,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         tools:text="Recently Used Playlist"
-        android:textColor="@color/text_color_tinted"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:fontFamily="@font/inter_light"
         android:textSize="10dp" />
 

@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="1px"
         app:layout_constraintTop_toTopOf="parent"
-        android:background="#474747" />
+        android:background="?attr/colorSurfaceVariant" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="0dp"
@@ -45,7 +45,7 @@
             android:fontFamily="@font/inter_extra_light"
             android:gravity="center_vertical"
             android:maxLines="1"
-            android:textColor="@color/gray_e0"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="10dp"
             app:layout_constrainedWidth="true"
             app:layout_constraintHorizontal_bias="0"
@@ -64,7 +64,7 @@
             android:gravity="center_vertical"
             android:textSize="10dp"
             android:ellipsize="end"
-            android:textColor="@color/gray_e0"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_extra_light"
             tools:text="1 day ago"
             app:layout_constraintLeft_toRightOf="@id/image_author_thumbnail"
@@ -92,7 +92,7 @@
             tools:text="To be more specific, the negative impact of the vital decisions will possibly result in The Trace of Dependent Customization (Mohamed Stiles in The Book of the Software Engineering."
             android:textSize="11sp"
             android:fontFamily="@font/inter_semibold"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginTop="4dp"
             android:gravity="bottom"
             android:layout_marginStart="8dp"
@@ -111,7 +111,7 @@
             tools:text="To be more specific, the negative impact of the vital decisions will possibly result in The Trace of Dependent Customization (Mohamed Stiles in The Book of the Software Engineering."
             android:textSize="11sp"
             android:fontFamily="@font/inter_regular"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginTop="2dp"
             android:gravity="top"
             android:layout_marginStart="8dp"
@@ -177,7 +177,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/inter_light"
             android:textSize="11dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             tools:text="3 Images"
             android:layout_marginStart="2dp"/>
     </LinearLayout>
@@ -186,5 +186,5 @@
         android:layout_width="match_parent"
         android:layout_height="1px"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:background="#474747" />
+        android:background="?attr/colorSurfaceVariant" />
 </androidx.constraintlayout.widget.ConstraintLayout>

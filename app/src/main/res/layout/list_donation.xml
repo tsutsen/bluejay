@@ -36,7 +36,7 @@
             android:layout_marginLeft="3dp"
             app:layout_constraintLeft_toRightOf="@id/donation_author_image"
             app:layout_constraintTop_toTopOf="parent"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="13dp"
             android:gravity="center_vertical"
             android:fontFamily="@font/inter_light"
@@ -45,7 +45,7 @@
 
     <View
         android:id="@+id/expire_bar"
-        android:background="#AAFFFFFF"
+        android:background="?attr/colorSurfaceVariant"
         android:scaleX="0"
         android:layout_width="match_parent"
         android:layout_height="2dp"

@@ -68,7 +68,7 @@
                             android:scaleType="fitCenter"
                             app:srcCompat="@drawable/ic_edit"
                             android:padding="10dp"
-                            app:tint="@color/white" />
+                            app:tint="?attr/colorOnSurface" />
 
                         <ImageButton
                             android:id="@+id/button_export"
@@ -82,7 +82,7 @@
                             app:srcCompat="@drawable/ic_export"
                             app:layout_constraintRight_toLeftOf="@id/button_share"
                             app:layout_constraintTop_toTopOf="@id/button_share"
-                            app:tint="@color/white"
+                            app:tint="?attr/colorOnSurface"
                             android:padding="8dp"
                             android:layout_marginRight="10dp"
                             android:scaleType="fitCenter" />
@@ -96,7 +96,7 @@
                             android:layout_marginStart="5dp"
                             android:orientation="horizontal"
                             app:srcCompat="@drawable/ic_share"
-                            app:tint="@color/white"
+                            app:tint="?attr/colorOnSurface"
                             android:padding="10dp"
                             app:layout_constraintRight_toRightOf="parent"
                             app:layout_constraintTop_toTopOf="parent"
@@ -114,7 +114,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/inter_medium"
-                            android:textColor="@color/white"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="18dp"
                             tools:text="Playlist name"
                             app:layout_constraintLeft_toLeftOf="@id/container_buttons"
@@ -125,7 +125,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/inter_extra_light"
-                            android:textColor="@color/gray_e0"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="14dp"
                             tools:text="3 videos"
                             android:layout_marginBottom="15dp"
@@ -162,7 +162,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/inter_light"
-                                    android:textColor="@color/white"
+                                    android:textColor="?attr/colorOnSurface"
                                     android:textSize="16dp"
                                     android:text="@string/play_all" />
                             </LinearLayout>
@@ -182,13 +182,13 @@
                                     android:scaleType="fitCenter"
                                     app:srcCompat="@drawable/ic_shuffle"
                                     android:layout_marginEnd="5dp"
-                                    app:tint="@color/white" />
+                                    app:tint="?attr/colorOnSurface" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:fontFamily="@font/inter_light"
-                                    android:textColor="@color/white"
+                                    android:textColor="?attr/colorOnSurface"
                                     android:textSize="16dp"
                                     android:text="@string/shuffle" />
                             </LinearLayout>
@@ -203,7 +203,7 @@
                                 android:layout_marginStart="10dp"
                                 android:orientation="horizontal"
                                 app:srcCompat="@drawable/ic_search"
-                                app:tint="@color/white"
+                                app:tint="?attr/colorOnSurface"
                                 android:padding="5dp"
                                 android:scaleType="fitCenter" />
 
@@ -217,7 +217,7 @@
                                 android:layout_marginStart="10dp"
                                 android:orientation="horizontal"
                                 app:srcCompat="@drawable/ic_download"
-                                app:tint="@color/white"
+                                app:tint="?attr/colorOnSurface"
                                 android:padding="5dp"
                                 android:scaleType="fitCenter" />
                         </LinearLayout>
@@ -255,7 +255,7 @@
         android:id="@+id/layout_loading_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#77000000"
+        android:background="?attr/colorSurfaceVariant"
         android:visibility="gone">
         <ImageView
             android:id="@+id/image_loader"

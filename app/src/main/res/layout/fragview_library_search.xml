@@ -55,7 +55,7 @@
         android:layout_marginBottom="3dp"
         android:gravity="center_vertical"
         android:textSize="13sp"
-        android:textColor="#D0D0D0"
+        android:textColor="?attr/colorOnSurface"
         android:text="0 artists"
         app:layout_constraintLeft_toLeftOf="@id/container_tags"
         app:layout_constraintTop_toBottomOf="@id/container_tags"

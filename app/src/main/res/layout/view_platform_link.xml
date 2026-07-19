@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         tools:text="Twitter"
         android:fontFamily="@font/inter_regular"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="12dp"
         android:maxLines="1"
         android:ellipsize="end"

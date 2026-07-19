@@ -3,51 +3,67 @@ package com.futo.platformplayer.theming
 import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
-import android.graphics.Typeface
-import android.util.TypedValue
 import androidx.annotation.FontRes
-import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.res.ResourcesCompat
 import com.futo.platformplayer.R
 
 /**
  * Manages theme application across the app.
- * Handles font switching, icon style, and contrast level.
+ * Handles font switching, icon style, contrast level, and theme mode (light/dark/auto).
  * Applied in Activity.onCreate() before setContentView().
  */
 object ThemeManager {
 
     /**
-     * Apply appearance preferences to an activity's context.
-     * Must be called before setContentView().
+     * Apply theme mode (light/dark/auto) based on user preference.
+     * This should be called early, before any UI is drawn.
      */
-    fun applyToContext(context: Context, preferences: AppearancePreferences) {
-        val res = context.resources
-        val config = res.configuration
+    fun applyThemeMode(themeMode: ThemeMode) {
+        when (themeMode) {
+            ThemeMode.AUTO -> {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            }
+            ThemeMode.LIGHT -> {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+            }
+            ThemeMode.DARK -> {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+            }
+        }
+    }
 
-        // Apply font
-        val fontRes = getFontResource(preferences.fontChoice)
-        if (fontRes != 0) {
-            val typeface = ResourcesCompat.getFont(context, fontRes)
+    /**
+     * Apply appearance preferences to a Context.
+     * Must be called before setContentView().
+     * Returns a context with modified configuration.
+     */
+    fun applyToContext(context: Context, preferences: AppearancePreferences): Context {
+        val res = context.resources
+        val config = Configuration(res.configuration)
+
+        // Apply font override via configuration
+        if (preferences.fontChoice == FontChoice.INTER) {
+            val typeface = ResourcesCompat.getFont(context, R.font.inter_medium)
             if (typeface != null) {
-                config.fontFamily = typeface
+                // Inter medium (weight 500) is applied via theme fontFamily attribute
             }
         }
 
-        // Apply contrast level via ui mode flags
-        // High contrast can be applied via system settings or custom theme overlay
+        // Apply contrast level
         when (preferences.contrastLevel) {
             ContrastLevel.HIGH -> {
-                // High contrast: use a higher contrast theme overlay
-                // This can be implemented by applying a themed context
+                // High contrast: could apply a themed context overlay
             }
             ContrastLevel.MEDIUM -> {
-                // Medium contrast: subtle adjustments
+                // Medium contrast adjustments
             }
             ContrastLevel.STANDARD -> {
                 // Standard: no changes needed
             }
         }
+
+        return context.createConfigurationContext(config)
     }
 
     /**
@@ -55,7 +71,9 @@ object ThemeManager {
      * This is the main entry point called from Activity.onCreate().
      */
     fun apply(activity: Activity, preferences: AppearancePreferences) {
-        // Apply font to the activity's context before setting content view
+        // Apply theme mode first (light/dark/auto)
+        applyThemeMode(preferences.themeMode)
+        // Then apply context-level preferences
         applyToContext(activity, preferences)
     }
 
@@ -65,14 +83,13 @@ object ThemeManager {
     @FontRes
     fun getFontResource(fontChoice: FontChoice): Int {
         return when (fontChoice) {
-            FontChoice.INTER -> R.font.inter_regular
+            FontChoice.INTER -> R.font.inter_medium
             FontChoice.SYSTEM -> 0 // Use system default
         }
     }
 
     /**
      * Get the Material Symbols icon style name for the given icon style.
-     * Used for setting the font weight/variation settings on Material Icons.
      */
     fun getIconStyleName(iconStyle: IconStyle): String {
         return when (iconStyle) {
@@ -84,11 +101,10 @@ object ThemeManager {
 
     /**
      * Get the font weight for the given icon style.
-     * Material Symbols use weight to control visual appearance.
      */
     fun getIconFontWeight(iconStyle: IconStyle): Int {
         return when (iconStyle) {
-            IconStyle.ROUNDED -> 400 // Regular weight for rounded
+            IconStyle.ROUNDED -> 400
             IconStyle.SHARP -> 400
             IconStyle.OUTLINED -> 400
         }

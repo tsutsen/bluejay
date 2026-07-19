@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#101010">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,7 +26,7 @@
                 android:text="@string/discovered_devices"
                 android:layout_marginStart="20dp"
                 android:textSize="14dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_regular" />
 
             <LinearLayout
@@ -40,7 +40,7 @@
                     android:text="@string/available_devices"
                     android:layout_marginStart="20dp"
                     android:textSize="11dp"
-                    android:textColor="@color/gray_ac"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:fontFamily="@font/inter_medium" />
 
                 <ImageView
@@ -65,7 +65,7 @@
             android:text="@string/close"
             android:textSize="14dp"
             android:fontFamily="@font/inter_regular"
-            android:textColor="@color/colorPrimary"
+            android:textColor="?attr/colorPrimary"
             android:background="@color/transparent" />
     </LinearLayout>
 
@@ -85,7 +85,7 @@
             android:layout_marginBottom="20dp"
             android:layout_marginStart="20dp"
             android:layout_marginEnd="20dp"
-            android:textColor="@color/gray_e0" />
+            android:textColor="?attr/colorOnSurface" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_devices"
@@ -102,7 +102,7 @@
         android:layout_height="1px"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
-        android:background="@color/gray_ac" />
+        android:background="?attr/colorOnSurfaceVariant" />
 
     <TextView
         android:id="@+id/text_remembered_devices"
@@ -113,7 +113,7 @@
         android:layout_marginEnd="20dp"
         android:textSize="9dp"
         android:ellipsize="end"
-        android:textColor="@color/gray_c3"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:maxLines="3"
         android:fontFamily="@font/inter_light"
         android:layout_marginTop="12dp"/>
@@ -153,7 +153,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/add_manually"
                 android:textSize="12dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_medium"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
@@ -180,7 +180,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/scan_qr"
                 android:textSize="12dp"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/inter_medium"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"

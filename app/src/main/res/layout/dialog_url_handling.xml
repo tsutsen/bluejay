@@ -7,7 +7,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center"
-    android:background="@color/gray_1d">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,7 +21,7 @@
             android:layout_height="wrap_content"
             android:text="@string/allow_grayjay_to_handle_specific_urls"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             android:textAlignment="center"
             android:layout_marginTop="25dp"
@@ -30,7 +30,7 @@
         <TextView
             android:id="@+id/dialog_text_details"
             android:layout_width="match_parent"
-            android:textColor="#AAAAAA"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/inter_regular"
             android:text="@string/allow_grayjay_to_handle_specific_urls_please_set_it_as_default_in_the_app_settings"
             android:layout_marginStart="30dp"
@@ -74,7 +74,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/yes"
                     android:textSize="14dp"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/inter_regular"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"

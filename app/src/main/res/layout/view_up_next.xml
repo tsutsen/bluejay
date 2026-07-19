@@ -17,7 +17,7 @@
             android:id="@+id/videodetail_up_next"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -29,7 +29,7 @@
             android:id="@+id/videodetail_queue_type"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:textColor="@color/gray_ac"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/inter_extra_light"
             android:includeFontPadding="false"
             app:layout_constraintLeft_toRightOf="@id/videodetail_up_next"
@@ -45,7 +45,7 @@
             android:id="@+id/videodetail_queue_position"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#585656"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:includeFontPadding="false"
             android:fontFamily="@font/inter_regular"
             app:layout_constraintRight_toRightOf="parent"
@@ -102,7 +102,7 @@
                         android:clickable="true"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/inter_light"
                         android:textSize="14dp"
                         android:maxLines="2"
@@ -112,7 +112,7 @@
                         android:id="@+id/videodetail_queue_meta"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="@color/gray_ac"
+                        android:textColor="?attr/colorOnSurfaceVariant"
                         android:fontFamily="@font/inter_light"
                         android:maxLines="1"
                         android:ellipsize="end"
@@ -137,7 +137,7 @@
                             android:layout_width="0dp"
                             android:layout_weight="1"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/white"
+                            android:textColor="?attr/colorOnSurface"
                             android:fontFamily="@font/inter_extra_light"
                             android:textSize="12dp"
                             android:layout_gravity="center"
@@ -164,7 +164,7 @@
                     android:layout_gravity="center"
                     android:textSize="14dp"
                     android:fontFamily="@font/inter_light"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:text="@string/reached_the_end_of_the_playlist"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintLeft_toLeftOf="parent"
@@ -199,7 +199,7 @@
                         android:layout_height="wrap_content"
                         android:textSize="16dp"
                         android:fontFamily="@font/inter_light"
-                        android:textColor="@color/white"
+                        android:textColor="?attr/colorOnSurface"
                         android:text="@string/restart_now"/>
                 </LinearLayout>
             </androidx.constraintlayout.widget.ConstraintLayout>
@@ -209,7 +209,7 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="@color/gray_1f" />
+            android:background="?attr/colorSurface" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -228,7 +228,7 @@
                 <ImageView
                     android:layout_width="10dp"
                     android:layout_height="10dp"
-                    app:tint="#B0ADAD"
+                    app:tint="?attr/colorOnSurfaceVariant"
                     app:srcCompat="@drawable/ic_clear_16dp"
                     android:scaleType="centerCrop" />
                 <TextView
@@ -238,14 +238,14 @@
                     android:includeFontPadding="false"
                     android:fontFamily="@font/inter_light"
                     android:textSize="14dp"
-                    android:textColor="@color/gray_8f"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginStart="6dp" />
             </LinearLayout>
 
             <FrameLayout
                 android:layout_width="1dp"
                 android:layout_height="match_parent"
-                android:background="@color/gray_1f" />
+                android:background="?attr/colorSurface" />
 
             <LinearLayout
                 android:id="@+id/button_shuffle"
@@ -259,7 +259,7 @@
                 <ImageView
                     android:layout_width="14dp"
                     android:layout_height="14dp"
-                    app:tint="#B0ADAD"
+                    app:tint="?attr/colorOnSurfaceVariant"
                     app:srcCompat="@drawable/ic_shuffle"
                     android:scaleType="centerCrop"/>
                 <TextView
@@ -269,7 +269,7 @@
                     android:includeFontPadding="false"
                     android:fontFamily="@font/inter_light"
                     android:textSize="14dp"
-                    android:textColor="@color/gray_8f"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginStart="6dp" />
             </LinearLayout>
 
@@ -277,7 +277,7 @@
                 android:id="@+id/layout_repeat_divider"
                 android:layout_width="1dp"
                 android:layout_height="match_parent"
-                android:background="@color/gray_1f" />
+                android:background="?attr/colorSurface" />
 
             <LinearLayout
                 android:id="@+id/button_repeat"
@@ -291,7 +291,7 @@
                 <ImageView
                     android:layout_width="12dp"
                     android:layout_height="12dp"
-                    app:tint="#B0ADAD"
+                    app:tint="?attr/colorOnSurfaceVariant"
                     app:srcCompat="@drawable/ic_repeat"
                     android:scaleType="centerCrop"
                     android:layout_marginTop="0.5dp"/>
@@ -303,14 +303,14 @@
                     android:fontFamily="@font/inter_light"
                     android:includeFontPadding="false"
                     android:text="@string/repeat"
-                    android:textColor="@color/gray_8f"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14dp" />
             </LinearLayout>
 
             <FrameLayout
                 android:layout_width="1dp"
                 android:layout_height="match_parent"
-                android:background="@color/gray_1f" />
+                android:background="?attr/colorSurface" />
 
             <LinearLayout
                 android:id="@+id/button_view"
@@ -324,7 +324,7 @@
                 <ImageView
                     android:layout_width="10dp"
                     android:layout_height="10dp"
-                    app:tint="#B0ADAD"
+                    app:tint="?attr/colorOnSurfaceVariant"
                     app:srcCompat="@drawable/ic_view_queue"
                     android:scaleType="centerCrop"
                     android:layout_marginTop="1dp"/>
@@ -335,7 +335,7 @@
                     android:includeFontPadding="false"
                     android:fontFamily="@font/inter_light"
                     android:textSize="14dp"
-                    android:textColor="@color/gray_8f"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginStart="6dp" />
             </LinearLayout>
         </LinearLayout>

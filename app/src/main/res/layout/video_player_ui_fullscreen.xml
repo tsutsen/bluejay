@@ -20,6 +20,7 @@
         android:clickable="true"
         android:padding="3dp"
         android:layout_marginStart="5dp"
+        app:tint="?attr/colorVideoOverlay"
         app:srcCompat="@drawable/ic_minimize"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -31,7 +32,7 @@
         tools:text="Long title name"
         android:maxLines="1"
         android:textSize="15dp"
-        android:textColor="@color/white"
+        android:textColor="#FFFFFFFF"
         android:fontFamily="@font/inter_bold"
         app:layout_constraintTop_toTopOf="@id/button_minimize"
         app:layout_constraintLeft_toRightOf="@id/button_minimize"
@@ -46,7 +47,7 @@
         tools:text="Author"
         android:maxLines="1"
         android:textSize="10dp"
-        android:textColor="@color/gray_c3"
+        android:textColor="#FFFFFFFF"
         android:fontFamily="@font/inter_medium"
         app:layout_constraintTop_toBottomOf="@id/text_title"
         app:layout_constraintLeft_toRightOf="@id/button_minimize"
@@ -66,6 +67,7 @@
             android:scaleType="fitCenter"
             android:clickable="true"
             android:padding="12dp"
+            app:tint="?attr/colorVideoOverlay"
             app:srcCompat="@drawable/autoplay_24px" />
         <ImageButton
             android:id="@+id/button_cast"
@@ -75,6 +77,7 @@
             android:scaleType="fitCenter"
             android:clickable="true"
             android:padding="12dp"
+            app:tint="?attr/colorVideoOverlay"
             app:srcCompat="@drawable/ic_cast" />
         <ImageButton
             android:id="@+id/button_rotate_lock"
@@ -84,6 +87,7 @@
             android:scaleType="fitCenter"
             android:clickable="true"
             android:padding="12dp"
+            app:tint="?attr/colorVideoOverlay"
             app:srcCompat="@drawable/ic_screen_lock_rotation" />
         <ImageButton
             android:id="@+id/button_loop"
@@ -93,6 +97,7 @@
             android:scaleType="fitCenter"
             android:clickable="true"
             android:padding="12dp"
+            app:tint="?attr/colorVideoOverlay"
             app:srcCompat="@drawable/ic_repeat_one" />
         <ImageButton
             android:id="@+id/button_settings"
@@ -102,6 +107,7 @@
             android:scaleType="fitCenter"
             android:clickable="true"
             android:padding="12dp"
+            app:tint="?attr/colorVideoOverlay"
             app:srcCompat="@drawable/ic_settings" />
     </LinearLayout>
 
@@ -114,6 +120,7 @@
         android:clickable="true"
         android:layout_marginRight="40dp"
         android:padding="5dp"
+        app:tint="?attr/colorVideoOverlay"
         app:srcCompat="@drawable/ic_skip_previous"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintRight_toLeftOf="@id/layout_play_pause"
@@ -134,6 +141,7 @@
             android:layout_height="60dp"
             android:padding="10dp"
             android:clickable="true"
+            app:tint="?attr/colorVideoOverlay"
             app:srcCompat="@drawable/ic_play_white_nopad" />
 
         <ImageButton
@@ -142,6 +150,7 @@
             android:layout_height="60dp"
             android:padding="10dp"
             android:clickable="true"
+            app:tint="?attr/colorVideoOverlay"
             app:srcCompat="@drawable/ic_pause_white"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
@@ -158,6 +167,7 @@
         android:scaleType="centerCrop"
         android:padding="5dp"
         android:layout_marginLeft="40dp"
+        app:tint="?attr/colorVideoOverlay"
         app:srcCompat="@drawable/ic_skip_next"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintLeft_toRightOf="@id/layout_play_pause"
@@ -169,6 +179,7 @@
         android:layout_height="40dp"
         android:contentDescription="@string/cd_button_fullscreen"
         android:clickable="true"
+        app:tint="?attr/colorVideoOverlay"
         app:srcCompat="@drawable/ic_expand"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -186,7 +197,7 @@
         android:includeFontPadding="false"
         android:paddingStart="24dp"
         android:paddingEnd="4dp"
-        android:textColor="#FFFFFF"
+        android:textColor="#FFFFFFFF"
         android:textSize="12sp"
         tools:text="00:00"
         android:layout_gravity="bottom"
@@ -199,7 +210,7 @@
         android:id="@+id/text_divider"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#AAAAAA"
+        android:textColor="#FFFFFFFF"
         android:textSize="13sp"
         android:layout_gravity="bottom"
         android:text="/"
@@ -215,7 +226,7 @@
         android:includeFontPadding="false"
         android:paddingLeft="4dp"
         android:paddingRight="4dp"
-        android:textColor="#AAAAAA"
+        android:textColor="#FFFFFFFF"
         android:textSize="12sp"
         tools:text="00:00"
         android:layout_gravity="bottom"
@@ -229,7 +240,7 @@
         android:id="@+id/text_chapter_current"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
+        android:textColor="#FFFFFFFF"
         android:paddingRight="10dp"
         android:layout_marginTop="-2dp"
         android:textSize="11sp"
@@ -256,9 +267,9 @@
         app:scrubber_disabled_size="0dp"
         app:scrubber_enabled_size="16dp"
         app:scrubber_dragged_size="20dp"
-        app:played_color="@color/colorPrimary"
-        app:buffered_color="#AAEEEEEE"
-        app:unplayed_color="#88EEEEEE"
+        app:played_color="?attr/colorPrimary"
+        app:buffered_color="?attr/colorSurfaceVariant"
+        app:unplayed_color="?attr/colorOnSurfaceVariant"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintRight_toRightOf="parent" />

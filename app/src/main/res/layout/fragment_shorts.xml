@@ -58,7 +58,7 @@
             android:fontFamily="@font/inter_bold"
             android:gravity="center"
             android:text="@string/no_results"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="22dp" />
 
         <TextView
@@ -72,7 +72,7 @@
             android:fontFamily="@font/inter_regular"
             android:gravity="center"
             android:text="@string/no_results_shorts"
-            android:textColor="@color/gray_ac"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="13dp" />
 
         <com.futo.platformplayer.views.buttons.BigButton

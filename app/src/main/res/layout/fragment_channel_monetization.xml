@@ -23,7 +23,7 @@
         android:layout_gravity="center"
         android:text="@string/this_creator_has_not_setup_any_monetization_features"
         android:fontFamily="@font/inter_light"
-        android:textColor="#ACACAC"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="12dp"
         android:visibility="gone" />
 </FrameLayout>

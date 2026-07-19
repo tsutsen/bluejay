@@ -9,7 +9,7 @@
         android:pathData="M0.5,0h64v64h-64z"/>
     <path
         android:pathData="M31.833,8L3.833,56.667H58.5L31.833,8Z"
-        android:fillColor="#D9D9D9"/>
+        android:fillColor="?attr/colorOnSurfaceVariant"/>
     <path
         android:pathData="M37.396,7.36C36.966,6.394 36.285,5.562 35.424,4.948C34.563,4.335 33.553,3.963 32.5,3.872C31.453,3.969 30.45,4.343 29.595,4.956C28.74,5.569 28.064,6.399 27.636,7.36L1.652,52.352C-1.036,56.992 1.172,60.8 6.516,60.8H58.484C63.828,60.8 66.036,56.992 63.348,52.352L37.396,7.36ZM35.7,51.2H29.3V44.8H35.7V51.2ZM35.7,38.4H29.3V19.2H35.7V38.4Z">
       <aapt:attr name="android:fillColor">
@@ -29,6 +29,6 @@
         android:strokeAlpha="0.19"
         android:strokeWidth="1.33333"
         android:fillColor="#00000000"
-        android:strokeColor="#F9F9F9"/>
+        android:strokeColor="?attr/colorOnSurface"/>
   </group>
 </vector>

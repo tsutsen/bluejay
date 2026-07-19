@@ -42,6 +42,7 @@ import com.futo.platformplayer.theming.ColorSchemeMode
 import com.futo.platformplayer.theming.ContrastLevel
 import com.futo.platformplayer.theming.FontChoice
 import com.futo.platformplayer.theming.IconStyle
+import com.futo.platformplayer.theming.ThemeMode
 import com.futo.platformplayer.views.overlays.slideup.SlideUpMenuItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -328,6 +329,20 @@ class Settings : FragmentedStorageFileJson() {
                 1 -> ContrastLevel.MEDIUM
                 2 -> ContrastLevel.HIGH
                 else -> ContrastLevel.STANDARD
+            }
+        }
+
+        // Theme mode: 0=Auto (follow system), 1=Light, 2=Dark
+        @FormField(R.string.theme_mode, FieldForm.DROPDOWN, R.string.theme_mode_description, 6)
+        @DropdownFieldOptionsId(R.array.theme_modes)
+        var themeMode: Int = 0;
+
+        fun getThemeMode(): ThemeMode {
+            return when(themeMode) {
+                0 -> ThemeMode.AUTO
+                1 -> ThemeMode.LIGHT
+                2 -> ThemeMode.DARK
+                else -> ThemeMode.AUTO
             }
         }
     }

@@ -24,7 +24,7 @@
             android:fontFamily="@font/inter_light"
             android:textSize="15dp"
             tools:text="Select All"
-            android:textColor="@color/colorPrimary" />
+            android:textColor="?attr/colorPrimary" />
 
         <ImageView
             android:id="@+id/channel_loader"
@@ -46,7 +46,7 @@
             android:fontFamily="@font/inter_light"
             android:textSize="15dp"
             android:text=""
-            android:textColor="#58595B" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <!--
         <TextView
@@ -56,7 +56,7 @@
             android:fontFamily="@font/inter_light"
             android:textSize="15dp"
             android:text="@string/load_more"
-            android:textColor="@color/colorPrimary" /> -->
+            android:textColor="?attr/colorPrimary" /> -->
 
         <Space android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -69,7 +69,7 @@
             android:fontFamily="@font/inter_light"
             android:textSize="15dp"
             tools:text="3 out of 4 selected"
-            android:textColor="#58595B" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
 
@@ -85,7 +85,7 @@
             android:fontFamily="@font/inter_light"
             android:textSize="15dp"
             android:text="@string/nothing_to_import"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:layout_gravity="center"/>
 
         <androidx.recyclerview.widget.RecyclerView

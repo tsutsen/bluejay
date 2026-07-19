@@ -21,7 +21,7 @@
         tools:text="Home"
         android:gravity="center"
         android:fontFamily="@font/inter_extra_light"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="10dp"
         android:maxLines="1"
         android:ellipsize="end" />

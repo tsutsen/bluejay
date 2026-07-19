@@ -57,7 +57,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textSize="14dp"
-                            android:textColor="@color/gray_ac"
+                            android:textColor="?attr/colorOnSurfaceVariant"
                             android:fontFamily="@font/inter_light"
                             android:text="@string/sort_by"
                             android:paddingStart="12dp" />
@@ -114,7 +114,7 @@
                     android:layout_marginEnd="20dp"
                     android:fontFamily="@font/inter_regular"
                     android:gravity="center"
-                    android:textColor="@color/gray_ac"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12dp" />
                 <FrameLayout
                     android:visibility="gone"

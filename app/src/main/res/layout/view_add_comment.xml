@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/add_a_comment"
-        android:textColor="@color/gray_ae"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:gravity="top|start"
         android:textSize="14sp"
         android:paddingStart="16dp"

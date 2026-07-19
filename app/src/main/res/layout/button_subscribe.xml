@@ -19,7 +19,7 @@
             android:layout_height="wrap_content"
             android:text="@string/subscribe"
             android:textSize="14dp"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:fontFamily="@font/inter_regular" />
 
         <ImageView
@@ -30,6 +30,6 @@
             android:layout_gravity="center"
             android:contentDescription="@string/loading"
             android:layout_marginStart="8dp"
-            app:tint="@color/white" />
+            app:tint="?attr/colorOnSurface" />
     </LinearLayout>
 </FrameLayout>
