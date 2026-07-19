@@ -904,22 +904,22 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         _control_rotate_lock_fullscreen.visibility = View.VISIBLE;
 
         if(StatePlayer.instance.rotationLock) {
-            _control_rotate_lock_fullscreen.text = "\uE1C3"; // ic_screen_lock_rotation_active
-            _control_rotate_lock.text = "\uE1C3"; // ic_screen_lock_rotation_active
+            _control_rotate_lock_fullscreen.text = "\uE1C0"; // mobile_rotate_lock (locked)
+            _control_rotate_lock.text = "\uE1C0"; // mobile_rotate_lock (locked)
         }
         else {
-            _control_rotate_lock_fullscreen.text = "\uE1C3"; // ic_screen_lock_rotation
-            _control_rotate_lock.text = "\uE1C3"; // ic_screen_lock_rotation
+            _control_rotate_lock_fullscreen.text = "\uE1C1"; // mobile_rotate (unlocked)
+            _control_rotate_lock.text = "\uE1C1"; // mobile_rotate (unlocked)
         }
     }
     fun updateLoopVideoUI() {
         if(StatePlayer.instance.loopVideo) {
-            _control_loop.text = "\uE040"; // ic_repeat_one_active
-            _control_loop_fullscreen.text = "\uE040"; // ic_repeat_one_active
+            _control_loop.text = "\uE041"; // repeat_one
+            _control_loop_fullscreen.text = "\uE041"; // repeat_one
         }
         else {
-            _control_loop.text = "\uE040"; // ic_repeat_one
-            _control_loop_fullscreen.text = "\uE040"; // ic_repeat_one
+            _control_loop.text = "\uE040"; // repeat
+            _control_loop_fullscreen.text = "\uE040"; // repeat
         }
     }
 
