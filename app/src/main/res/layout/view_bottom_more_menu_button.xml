@@ -1,4 +1,5 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="50dp"
@@ -11,14 +12,14 @@
     android:id="@+id/root"
     android:background="@drawable/background_pill_black">
 
-    <ImageView
+    <com.futo.platformplayer.widget.MaterialIconView
         android:id="@+id/image_button"
         android:layout_width="25dp"
         android:layout_height="25dp"
         android:layout_marginStart="10dp"
         android:layout_marginEnd="10dp"
-        android:scaleType="fitCenter"
-        tools:srcCompat="@drawable/ic_home"/>
+        app:iconSize="25sp"
+        tools:text="\uE88A"/>
 
     <TextView
         android:id="@+id/text_button"
