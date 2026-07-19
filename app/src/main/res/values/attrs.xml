@@ -4,4 +4,10 @@
     <!-- Video player controls are overlaid on video content which can be dark or light -->
     <!-- This ensures they remain visible (black) in both light and dark themes -->
     <attr name="colorVideoOverlay" format="color" />
+
+    <!-- Material Icon View attributes -->
+    <declare-styleable name="MaterialIconView">
+        <attr name="iconName" format="string" />
+        <attr name="iconSize" format="dimension" />
+    </declare-styleable>
 </resources>
