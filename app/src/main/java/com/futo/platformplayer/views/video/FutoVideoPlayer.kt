@@ -18,7 +18,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
-import android.widget.ImageButton
 import android.widget.TextView
 import androidx.annotation.OptIn
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -86,38 +85,38 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
     val gestureControl: GestureControlView;
 
     //Custom buttons
-    private val _control_fullscreen: ImageButton;
-    private val _control_autoplay: ImageButton;
-    private val _control_videosettings: ImageButton;
-    private val _control_minimize: ImageButton;
-    private val _control_rotate_lock: ImageButton;
-    private val _control_loop: ImageButton;
-    private val _control_cast: ImageButton;
-    private val _control_play: ImageButton;
-    private val _control_pause: ImageButton;
+    private val _control_fullscreen: TextView;
+    private val _control_autoplay: TextView;
+    private val _control_videosettings: TextView;
+    private val _control_minimize: TextView;
+    private val _control_rotate_lock: TextView;
+    private val _control_loop: TextView;
+    private val _control_cast: TextView;
+    private val _control_play: TextView;
+    private val _control_pause: TextView;
     private val _control_chapter: TextView;
     private val _control_time: TextView;
     private val _control_duration: TextView;
     private val _time_bar: TimeBar;
-    private val _buttonPrevious: ImageButton;
-    private val _buttonNext: ImageButton;
+    private val _buttonPrevious: TextView;
+    private val _buttonNext: TextView;
 
-    private val _control_fullscreen_fullscreen: ImageButton;
-    private val _control_videosettings_fullscreen: ImageButton;
-    private val _control_minimize_fullscreen: ImageButton;
-    private val _control_rotate_lock_fullscreen: ImageButton;
-    private val _control_autoplay_fullscreen: ImageButton;
-    private val _control_loop_fullscreen: ImageButton;
-    private val _control_cast_fullscreen: ImageButton;
-    private val _control_play_fullscreen: ImageButton;
+    private val _control_fullscreen_fullscreen: TextView;
+    private val _control_videosettings_fullscreen: TextView;
+    private val _control_minimize_fullscreen: TextView;
+    private val _control_rotate_lock_fullscreen: TextView;
+    private val _control_autoplay_fullscreen: TextView;
+    private val _control_loop_fullscreen: TextView;
+    private val _control_cast_fullscreen: TextView;
+    private val _control_play_fullscreen: TextView;
     private val _time_bar_fullscreen: TimeBar;
     private val _overlay_brightness: FrameLayout;
     private val _control_chapter_fullscreen: TextView;
-    private val _buttonPrevious_fullscreen: ImageButton;
-    private val _buttonNext_fullscreen: ImageButton;
+    private val _buttonPrevious_fullscreen: TextView;
+    private val _buttonNext_fullscreen: TextView;
     private val _control_time_fullscreen: TextView;
     private val _control_duration_fullscreen: TextView;
-    private val _control_pause_fullscreen: ImageButton;
+    private val _control_pause_fullscreen: TextView;
 
     private val _title_fullscreen: TextView;
     private val _author_fullscreen: TextView;
@@ -507,8 +506,9 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
     }
 
     private fun updateAutoplayButton() {
-        _control_autoplay.setColorFilter(ContextCompat.getColor(context, if (StatePlayer.instance.autoplay) com.futo.futopay.R.color.primary else R.color.white))
-        _control_autoplay_fullscreen.setColorFilter(ContextCompat.getColor(context, if (StatePlayer.instance.autoplay) com.futo.futopay.R.color.primary else R.color.white))
+        val autoplayColor = ContextCompat.getColor(context, if (StatePlayer.instance.autoplay) com.futo.futopay.R.color.primary else R.color.white)
+        _control_autoplay.setTextColor(autoplayColor)
+        _control_autoplay_fullscreen.setTextColor(autoplayColor)
     }
 
     fun getVideoRect(): Rect {
@@ -775,11 +775,11 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
 
     fun setIsReplay(isReplay: Boolean) {
         if (isReplay) {
-            _control_play.setImageResource(R.drawable.ic_replay);
-            _control_play_fullscreen.setImageResource(R.drawable.ic_replay);
+            _control_play.text = "\uE037"; // ic_play_arrow
+            _control_play_fullscreen.text = "\uE037";
         } else {
-            _control_play.setImageResource(R.drawable.ic_play_white_nopad);
-            _control_play_fullscreen.setImageResource(R.drawable.ic_play_white_nopad);
+            _control_play.text = "\uE037"; // ic_play_arrow
+            _control_play_fullscreen.text = "\uE037";
         }
     }
 
@@ -876,22 +876,22 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         _control_rotate_lock_fullscreen.visibility = View.VISIBLE;
 
         if(StatePlayer.instance.rotationLock) {
-            _control_rotate_lock_fullscreen.setImageResource(R.drawable.ic_screen_lock_rotation_active);
-            _control_rotate_lock.setImageResource(R.drawable.ic_screen_lock_rotation_active);
+            _control_rotate_lock_fullscreen.text = "\uE1C3"; // ic_screen_lock_rotation_active
+            _control_rotate_lock.text = "\uE1C3"; // ic_screen_lock_rotation_active
         }
         else {
-            _control_rotate_lock_fullscreen.setImageResource(R.drawable.ic_screen_lock_rotation);
-            _control_rotate_lock.setImageResource(R.drawable.ic_screen_lock_rotation);
+            _control_rotate_lock_fullscreen.text = "\uE1C3"; // ic_screen_lock_rotation
+            _control_rotate_lock.text = "\uE1C3"; // ic_screen_lock_rotation
         }
     }
     fun updateLoopVideoUI() {
         if(StatePlayer.instance.loopVideo) {
-            _control_loop.setImageResource(R.drawable.ic_repeat_one_active);
-            _control_loop_fullscreen.setImageResource(R.drawable.ic_repeat_one_active);
+            _control_loop.text = "\uE040"; // ic_repeat_one_active
+            _control_loop_fullscreen.text = "\uE040"; // ic_repeat_one_active
         }
         else {
-            _control_loop.setImageResource(R.drawable.ic_repeat_one);
-            _control_loop_fullscreen.setImageResource(R.drawable.ic_repeat_one);
+            _control_loop.text = "\uE040"; // ic_repeat_one
+            _control_loop_fullscreen.text = "\uE040"; // ic_repeat_one
         }
     }
 
