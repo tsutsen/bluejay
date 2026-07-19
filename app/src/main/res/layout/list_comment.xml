@@ -157,7 +157,7 @@
                 android:id="@+id/image_copy"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:pillIcon="@drawable/ic_copy"
+                app:pillIcon="ic_copy"
                 app:pillText=""
                 android:layout_marginStart="15dp"
                 android:layout_marginEnd="0dp"/>
@@ -166,7 +166,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:contentDescription="@string/cd_button_replies"
-                app:pillIcon="@drawable/ic_forum"
+                app:pillIcon="ic_comment"
                 app:pillText="55 Replies"
                 android:layout_marginStart="2dp" />
 

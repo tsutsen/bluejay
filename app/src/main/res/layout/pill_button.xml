@@ -12,16 +12,17 @@
     android:id="@+id/root"
     android:gravity="center_vertical">
 
-    <ImageView
+    <TextView
         android:id="@+id/pill_icon"
         android:layout_width="18dp"
         android:layout_height="18dp"
         android:layout_marginRight="5dp"
         android:layout_marginLeft="5dp"
         android:layout_marginTop="0dp"
-        android:scaleType="fitCenter"
-        app:tint="?attr/colorOnSurface"
-        app:srcCompat="@drawable/ic_thumb_up" />
+        android:gravity="center"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="18sp"
+        android:includeFontPadding="false" />
 
     <TextView
         android:id="@+id/pill_text"

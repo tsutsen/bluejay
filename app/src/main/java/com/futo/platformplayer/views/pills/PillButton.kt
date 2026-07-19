@@ -1,6 +1,7 @@
 package com.futo.platformplayer.views.pills
 
 import android.content.Context
+import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
@@ -12,11 +13,12 @@ import androidx.core.view.isVisible
 import com.futo.platformplayer.R
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.dp
+import com.futo.platformplayer.utils.Icons
 import com.futo.platformplayer.views.LoaderView
 
 class PillButton : LinearLayout {
     val root: LinearLayout;
-    val icon: ImageView;
+    val icon: TextView;
     val text: TextView;
     val loaderView: LoaderView;
     val onClick = Event0();
@@ -29,12 +31,21 @@ class PillButton : LinearLayout {
         loaderView = findViewById(R.id.loader)
         root = findViewById<LinearLayout>(R.id.root);
 
+        // Set Material Symbols font on icon TextView
+        try {
+            icon.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
+
         val attrArr = context.obtainStyledAttributes(attrs, R.styleable.PillButton, 0, 0);
-        val attrIconRef = attrArr.getResourceId(R.styleable.PillButton_pillIcon, -1);
-        if(attrIconRef != -1)
-            icon.setImageResource(attrIconRef);
-        else
+        val attrIconName = attrArr.getString(R.styleable.PillButton_pillIcon);
+        if(attrIconName != null && !attrIconName.isNullOrEmpty()) {
+            icon.text = Icons[attrIconName];
+            icon.visibility = View.VISIBLE;
+        } else {
             icon.visibility = View.GONE;
+        }
 
         val attrText = attrArr.getText(R.styleable.PillButton_pillText) ?: "";
         text.text = attrText;

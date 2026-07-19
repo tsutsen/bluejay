@@ -113,7 +113,7 @@ object Icons {
         "ic_person" to "\uF0D3",
         "ic_people" to "\uEA21",
         "ic_group" to "\uEA21",
-        "ic_forum" to "\uE8AF",
+        "ic_forum" to "\uE0BF",
         "ic_mood" to "\uEA22",
         "ic_psychology" to "\uEA4A",
         "ic_mood_bad" to "\uE7F3",
@@ -200,7 +200,7 @@ object Icons {
         "ic_inbox" to "\uE156",
         "ic_outbox" to "\uEF5F",
         "ic_send" to "\uE163",
-        "ic_forum" to "\uE8AF",
+        "ic_forum" to "\uE0BF",
         "ic_notifications_active" to "\uE7F7",
         "ic_notification_important" to "\uE004",
         
