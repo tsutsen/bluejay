@@ -64,7 +64,7 @@
         android:layout_height="40dp"
         android:contentDescription="@string/cd_button_settings"
         android:gravity="center"
-        android:text="\uE5D3"
+        android:text="\uE8B8"
         android:textColor="?attr/colorOnSurface"
         android:textSize="24sp"
         android:includeFontPadding="false"
