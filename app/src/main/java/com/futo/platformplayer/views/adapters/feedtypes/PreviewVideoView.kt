@@ -2,6 +2,7 @@ package com.futo.platformplayer.views.adapters.feedtypes
 
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.graphics.Typeface
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
@@ -98,6 +99,16 @@ open class PreviewVideoView : LinearLayout {
         _button_add_to = findViewById(R.id.button_add_to);
         _layoutDownloaded = findViewById(R.id.layout_downloaded);
         _timeBar = findViewById(R.id.time_bar)
+
+        // Set Material Symbols font on icon TextViews
+        try {
+            val matTypeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+            listOf(_button_add_to_queue, _button_add_to_watch_later, _button_add_to).forEach { v ->
+                if (v is TextView) v.typeface = matTypeface;
+            }
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
 
         this._exoPlayer = exoPlayer
 
