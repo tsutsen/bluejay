@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:text="@string/dismiss_all"
         android:visibility="gone"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         android:textSize="14sp"
         android:textColor="?attr/colorPrimary"
         android:paddingTop="10dp"

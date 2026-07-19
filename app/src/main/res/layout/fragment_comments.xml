@@ -28,7 +28,7 @@
             android:layout_height="wrap_content"
             android:textSize="12dp"
             android:text="@string/these_are_all_commentcount_comments_you_have_made_in_grayjay"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
         <LinearLayout
@@ -43,7 +43,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="14dp"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:text="@string/sort_by" />
 
             <Spinner
@@ -81,7 +81,7 @@
             android:text="@string/login_to_view_your_comments"
             android:textSize="14dp"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
             android:paddingStart="28dp"
@@ -101,7 +101,7 @@
                 android:text="@string/login"
                 android:textSize="14dp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
                 android:paddingStart="28dp"
@@ -122,7 +122,7 @@
             android:text="@string/polycentric_is_disabled"
             android:textSize="14dp"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
             android:paddingStart="28dp"

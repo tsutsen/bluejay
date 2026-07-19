@@ -39,7 +39,7 @@
         android:layout_height="150dp"
         android:background="@drawable/background_1b_round_6dp"
         android:padding="16dp"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         android:textSize="14dp"
         app:layout_constraintTop_toBottomOf="@id/text_description"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -76,7 +76,7 @@
             android:layout_height="wrap_content"
             android:text="Scan QR"
             android:lines="1"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:textSize="16dp"/>
     </LinearLayout>
 
@@ -107,7 +107,7 @@
             android:layout_height="wrap_content"
             android:text="Link new device"
             android:lines="1"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:textSize="16dp"/>
     </LinearLayout>
 
@@ -134,7 +134,7 @@
             android:layout_height="wrap_content"
             android:text="Pairing..."
             android:textSize="16dp"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:layout_marginTop="16dp" />
     </LinearLayout>
 
@@ -172,14 +172,14 @@
                 android:text="Device linked"
                 android:textSize="20dp"
                 android:layout_marginTop="8dp"
-                android:fontFamily="@font/inter_semibold"/>
+                android:fontFamily="@font/inter_medium"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:textSize="14dp"
                 android:text="The device has been successfully linked" />
         </LinearLayout>
@@ -219,7 +219,7 @@
                 android:text="Failed to link device"
                 android:textSize="20dp"
                 android:layout_marginTop="8dp"
-                android:fontFamily="@font/inter_semibold"/>
+                android:fontFamily="@font/inter_medium"/>
 
             <TextView
                 android:id="@+id/text_error"
@@ -228,7 +228,7 @@
                 android:background="?attr/colorSurface"
                 android:layout_marginTop="16dp"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:textSize="12dp"
                 android:isScrollContainer="true"
                 android:scrollbars="vertical"

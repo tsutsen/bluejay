@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         tools:text="Recently Used Playlist"
         android:textColor="?attr/colorOnSurface"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         android:textSize="11dp" />
     <TextView
         android:id="@+id/slide_up_menu_group_description"
@@ -21,7 +21,7 @@
         android:layout_height="wrap_content"
         tools:text="Recently Used Playlist"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         android:textSize="10dp" />
 
     <LinearLayout

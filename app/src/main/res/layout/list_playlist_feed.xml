@@ -51,7 +51,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="8dp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:text="@string/playlist"
                     android:layout_marginStart="8dp"/>
 
@@ -64,7 +64,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="8dp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     tools:text="100"
                     android:textColor="?attr/colorOnSurfaceVariant"/>
 
@@ -73,7 +73,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="8dp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:text="@string/space_videos"
                     android:layout_marginRight="10dp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
@@ -94,7 +94,7 @@
                 android:layout_weight="1"
                 android:textSize="13dp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 tools:text="Legendary grant recipient: Marvin Wißfeld of MicroG Very loong title"
                 android:maxLines="2"
                 android:ellipsize="end"
@@ -142,7 +142,7 @@
                 android:textSize="10dp"
                 android:ellipsize="end"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 tools:text="View full playlist"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/text_playlist_items"

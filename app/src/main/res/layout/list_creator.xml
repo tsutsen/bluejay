@@ -20,7 +20,7 @@
         tools:text="This is a very long channel name that is supposed to be even longer"
         android:maxLines="2"
         android:ellipsize="end"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         android:textSize="16dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"

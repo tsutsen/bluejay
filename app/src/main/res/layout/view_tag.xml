@@ -18,7 +18,7 @@
         android:layout_gravity="center"
         android:gravity="center"
         android:textSize="11dp"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         tools:text="Tag text" />
 
 </FrameLayout>

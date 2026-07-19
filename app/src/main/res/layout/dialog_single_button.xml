@@ -28,7 +28,7 @@
             android:text="@string/failed_to_retrieve_data_are_you_connected"
             android:textColor="?attr/colorOnSurface"
             android:textSize="14dp"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:layout_marginTop="30dp"
             android:layout_marginStart="30dp"
             android:layout_marginEnd="30dp" />
@@ -55,7 +55,7 @@
                     android:text="@string/ok"
                     android:textSize="14dp"
                     android:textColor="?attr/colorOnSurface"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"
                     android:paddingStart="28dp"

@@ -36,7 +36,7 @@
             android:textColor="?attr/colorOnSurface"
             android:textSize="14dp"
             android:gravity="center_vertical"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:maxLines="1"
             android:ellipsize="end"
             tools:text="Import Subscriptions" />

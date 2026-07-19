@@ -25,7 +25,7 @@
             android:textSize="14dp"
             android:textColor="?attr/colorOnSurface"
             android:layout_marginTop="5dp"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:text="@string/script_url" />
         <TextView
             android:id="@+id/description"

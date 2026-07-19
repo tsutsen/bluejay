@@ -14,7 +14,7 @@
             android:layout_height="wrap_content"
             android:textSize="14dp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:text="@string/home_screen" />
         <TextView
             android:id="@+id/field_description"
@@ -22,7 +22,7 @@
             android:layout_height="wrap_content"
             android:textSize="11dp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:text="" />
     </LinearLayout>
 

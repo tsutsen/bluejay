@@ -48,7 +48,7 @@
                 tools:text="Cat videos"
                 android:textSize="11dp"
                 android:layout_marginTop="2dp"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:textColor="?attr/colorOnSurface" />
             <TextView
                 android:id="@+id/slide_up_menu_item_description"
@@ -60,7 +60,7 @@
                 tools:text="test Description"
                 android:textSize="11dp"
                 android:layout_marginTop="2dp"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
         <TextView
@@ -73,7 +73,7 @@
             tools:text="3 videos"
             android:textSize="11dp"
             android:layout_marginTop="2dp"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintRight_toRightOf="parent"

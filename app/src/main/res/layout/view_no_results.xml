@@ -38,7 +38,7 @@
             android:layout_marginStart="20dp"
             android:layout_marginEnd="20dp"
             android:layout_marginBottom="10dp"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:text="No results were found for this page"
             android:gravity="center"
             android:textColor="?attr/colorOnSurfaceVariant"

@@ -24,7 +24,7 @@
         android:layout_height="wrap_content"
         android:textSize="14dp"
         android:autoSizeTextType="uniform"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         android:textColor="?attr/colorOnSurface"
         android:textAlignment="center"
         android:maxLines="1"

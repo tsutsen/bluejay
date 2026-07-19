@@ -71,7 +71,7 @@
             android:text="Some Plugin Name"
             android:textSize="18sp"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:layout_marginStart="30dp"
             android:layout_marginEnd="30dp" />
 
@@ -88,7 +88,7 @@
                 android:text="A new update is available.\nWould you like to update this plugin?"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -120,7 +120,7 @@
                 android:text="Updates may be critical to functionality"
                 android:textSize="13sp"
                 android:textColor="?attr/colorError"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -143,7 +143,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/cancel"
                     android:textSize="14dp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:textColor="?attr/colorPrimary"
                     android:background="@color/transparent" />
 
@@ -161,7 +161,7 @@
                         android:text="Always"
                         android:textSize="14dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_semibold"
+                        android:fontFamily="@font/inter_medium"
                         android:paddingTop="10dp"
                         android:paddingBottom="10dp"
                         android:paddingStart="15dp"
@@ -181,7 +181,7 @@
                         android:text="Update"
                         android:textSize="14dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_semibold"
+                        android:fontFamily="@font/inter_medium"
                         android:paddingTop="10dp"
                         android:paddingBottom="10dp"
                         android:paddingStart="20dp"
@@ -203,7 +203,7 @@
                 android:text="This plugin has modified its permissions"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -222,7 +222,7 @@
                 android:text="This plugin has modified its permissions"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -234,7 +234,7 @@
                 android:text="Make sure you read the installation screen"
                 android:textSize="13sp"
                 android:textColor="?attr/colorError"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -257,7 +257,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/cancel"
                     android:textSize="14dp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:textColor="?attr/colorPrimary"
                     android:background="@color/transparent" />
 
@@ -275,7 +275,7 @@
                         android:text="Reinstall"
                         android:textSize="14dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_semibold"
+                        android:fontFamily="@font/inter_medium"
                         android:paddingTop="10dp"
                         android:paddingBottom="10dp"
                         android:paddingStart="28dp"
@@ -297,7 +297,7 @@
                 android:text=""
                 android:textSize="13sp"
                 android:textColor="?attr/colorError"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -310,7 +310,7 @@
                 android:text="Succesfully updated plugin."
                 android:textSize="13sp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -361,7 +361,7 @@
                         android:text="Ok"
                         android:textSize="14dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_semibold"
+                        android:fontFamily="@font/inter_medium"
                         android:paddingTop="10dp"
                         android:paddingBottom="10dp"
                         android:paddingStart="28dp"

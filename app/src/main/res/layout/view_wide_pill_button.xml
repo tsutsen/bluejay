@@ -37,7 +37,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:gravity="center_vertical"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             tools:text="500K" />
 
         <TextView
@@ -49,7 +49,7 @@
             android:maxLines="2"
             android:ellipsize="end"
             android:gravity="center_vertical"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             tools:text="500K" />
     </LinearLayout>
 

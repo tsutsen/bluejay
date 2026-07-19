@@ -29,7 +29,7 @@
         android:layout_width="0dp"
         android:layout_weight="1"
         android:layout_height="match_parent"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         android:textSize="16dp"
         android:textColor="?attr/colorOnSurface"
         tools:text="Recommendations"

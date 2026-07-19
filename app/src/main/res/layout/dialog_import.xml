@@ -49,7 +49,7 @@
                 android:layout_gravity="center"
                 android:textSize="14dp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold" />
+                android:fontFamily="@font/inter_medium" />
 
         </FrameLayout>
 
@@ -70,7 +70,7 @@
             android:text="@string/my_playlist_name"
             android:textSize="18sp"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:layout_marginStart="30dp"
             android:layout_marginEnd="30dp" />
         <TextView
@@ -80,7 +80,7 @@
             android:text="@string/playlists"
             android:textSize="15sp"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:layout_marginStart="30dp"
             android:layout_marginEnd="30dp" />
 
@@ -97,7 +97,7 @@
                 android:text="@string/do_you_want_to_import_this_store"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -109,7 +109,7 @@
                 android:text="@string/sources_required_need_to_be_enabled"
                 android:textSize="13sp"
                 android:textColor="?attr/colorError"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginTop="10dp"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
@@ -132,7 +132,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/cancel"
                     android:textSize="14dp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:textColor="?attr/colorPrimary"
                     android:background="@color/transparent" />
 
@@ -150,7 +150,7 @@
                         android:text="@string/str_import"
                         android:textSize="14dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_semibold"
+                        android:fontFamily="@font/inter_medium"
                         android:paddingTop="10dp"
                         android:paddingBottom="10dp"
                         android:paddingStart="28dp"
@@ -181,7 +181,7 @@
                     tools:text="Restored 7 items"
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurface"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:layout_marginEnd="8dp" />
 
                 <TextView
@@ -192,7 +192,7 @@
                     tools:text="(7 failed)"
                     android:textSize="14sp"
                     android:textColor="?attr/colorError"
-                    android:fontFamily="@font/inter_semibold" />
+                    android:fontFamily="@font/inter_medium" />
             </LinearLayout>
 
             <TextView android:id="@+id/import_result_failed_text"
@@ -202,7 +202,7 @@
                 tools:text="Failed to restore 2 items"
                 android:textSize="14sp"
                 android:textColor="?attr/colorError"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:maxLines="6"
                 android:layout_marginStart="10dp"
                 android:layout_marginTop="10dp"
@@ -218,7 +218,7 @@
                 tools:text="Required plugin for 1 items"
                 android:textSize="14sp"
                 android:textColor="?attr/colorPrimary"
-                android:fontFamily="@font/inter_semibold"
+                android:fontFamily="@font/inter_medium"
                 android:layout_marginStart="30dp"
                 android:layout_marginEnd="30dp" />
 
@@ -240,7 +240,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/retry"
                     android:textSize="14dp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:textColor="?attr/colorPrimary"
                     android:background="@color/transparent" />
 
@@ -250,7 +250,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/cancel"
                     android:textSize="14dp"
-                    android:fontFamily="@font/inter_semibold"
+                    android:fontFamily="@font/inter_medium"
                     android:textColor="?attr/colorError"
                     android:background="@color/transparent" />
 
@@ -268,7 +268,7 @@
                         android:text="@string/ok"
                         android:textSize="14dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_semibold"
+                        android:fontFamily="@font/inter_medium"
                         android:paddingTop="10dp"
                         android:paddingBottom="10dp"
                         android:paddingStart="28dp"

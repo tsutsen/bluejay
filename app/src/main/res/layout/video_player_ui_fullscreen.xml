@@ -50,7 +50,7 @@
         android:maxLines="1"
         android:textSize="10dp"
         android:textColor="@color/gray_c3"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         app:layout_constraintTop_toBottomOf="@id/text_title"
         app:layout_constraintLeft_toRightOf="@id/button_minimize"
         app:layout_constraintRight_toLeftOf="@id/button_container" />

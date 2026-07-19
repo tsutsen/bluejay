@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:text="@string/recently_used_playlist"
         android:textColor="?attr/colorOnSurface"
-        android:fontFamily="@font/inter_semibold"
+        android:fontFamily="@font/inter_medium"
         android:textSize="11dp" />
 
 </LinearLayout>

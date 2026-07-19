@@ -39,7 +39,7 @@
             android:textColor="?attr/colorOnSurface"
             android:textSize="13dp"
             android:gravity="center_vertical"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             tools:text="$100" />
     </LinearLayout>
 

@@ -49,7 +49,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fontFamily="@font/inter_semibold"
+            android:fontFamily="@font/inter_medium"
             android:text="@string/select"
             android:textSize="16dp"
             android:gravity="center"
