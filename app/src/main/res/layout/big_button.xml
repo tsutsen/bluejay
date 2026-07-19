@@ -10,15 +10,17 @@
     android:background="@drawable/background_big_button"
     android:id="@+id/root">
 
-    <com.google.android.material.imageview.ShapeableImageView
+    <TextView
         android:id="@+id/button_icon"
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:layout_marginRight="10dp"
         android:layout_marginLeft="5dp"
         android:layout_marginTop="0dp"
-        android:scaleType="fitCenter"
-        app:srcCompat="@drawable/ic_playlist" />
+        android:gravity="center"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="24sp"
+        tools:text="\uE8C9" />
 
     <LinearLayout
         android:layout_width="0dp"
