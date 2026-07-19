@@ -1301,4 +1301,5 @@
     <string name="icon_drag_indicator">\uE945</string>
     <string name="icon_error">\uE002</string>
     <string name="icon_movie">\uE684</string>
+    <string name="icon_notifications">\uE7F5</string>
 </resources>
