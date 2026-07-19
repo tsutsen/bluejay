@@ -58,15 +58,15 @@ class GeneralTopBarFragment : TopFragment() {
 
     override fun onShown(parameter: Any?) {
         if(currentMain is CreatorsFragment) {
-            _buttonSearch?.setText("\uF0D3");
+            _buttonSearch?.setText(com.futo.platformplayer.utils.Icons["ic_person"]);
         } else {
-            _buttonSearch?.setText("\uEF7A");
+            _buttonSearch?.setText(com.futo.platformplayer.utils.Icons["ic_search"]);
         }
         if(currentMain is NotificationOverlayView.Frag) {
-            _buttonNotifIcon?.setText("\uE7F7")
+            _buttonNotifIcon?.setText(com.futo.platformplayer.utils.Icons["ic_notifications_active"])
         }
         else {
-            _buttonNotifIcon?.setText("\uE7F5")
+            _buttonNotifIcon?.setText(com.futo.platformplayer.utils.Icons["ic_notifications"])
         }
     }
     override fun onHide() {
