@@ -91,7 +91,7 @@
             android:layout_height="wrap_content"
             android:text="Scan the code on another mobile or desktop device using Grayjay and sync settings"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             android:textSize="12dp"
             android:textAlignment="center"
             android:layout_marginTop="12dp"

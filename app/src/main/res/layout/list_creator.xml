@@ -42,7 +42,7 @@
         android:layout_width="match_parent"
         android:layout_height="14dp"
         android:textAlignment="center"
-        android:fontFamily="@font/inter_extra_light"
+        android:fontFamily="@font/inter_light"
         android:textSize="10dp"
         tools:text="1.76M subscribers"
         android:maxLines="1"

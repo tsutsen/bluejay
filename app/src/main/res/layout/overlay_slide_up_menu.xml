@@ -34,7 +34,7 @@
                 android:layout_width="1dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:fontFamily="@font/inter_extra_light"
+                android:fontFamily="@font/inter_light"
                 android:textSize="16dp"
                 android:text="@string/add_to"
                 android:textColor="?attr/colorOnSurface"/>

@@ -47,7 +47,7 @@
         android:gravity="center_vertical"
         android:textSize="10dp"
         android:textColor="?attr/colorOnSurface"
-        android:fontFamily="@font/inter_extra_light"
+        android:fontFamily="@font/inter_light"
         android:layout_marginBottom="5dp"
         tools:text="3 videos"
         android:maxLines="1"

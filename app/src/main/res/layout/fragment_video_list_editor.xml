@@ -124,7 +124,7 @@
                             android:id="@+id/text_metadata"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:fontFamily="@font/inter_extra_light"
+                            android:fontFamily="@font/inter_light"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="14dp"
                             tools:text="3 videos"

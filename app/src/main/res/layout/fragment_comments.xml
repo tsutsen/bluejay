@@ -19,7 +19,7 @@
             android:layout_height="wrap_content"
             android:textSize="24dp"
             android:text="@string/comments"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             android:textColor="?attr/colorOnSurface" />
 
         <TextView

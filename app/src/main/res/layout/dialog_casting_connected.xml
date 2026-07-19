@@ -89,7 +89,7 @@
             android:layout_height="wrap_content"
             tools:text="Chromecast"
             android:textSize="10dp"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             android:textColor="?attr/colorOnSurface"
             android:includeFontPadding="false"
             android:layout_marginStart="10dp"

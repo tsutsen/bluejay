@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         tools:text="Home"
         android:gravity="center"
-        android:fontFamily="@font/inter_extra_light"
+        android:fontFamily="@font/inter_light"
         android:textColor="?attr/colorOnSurface"
         android:textSize="10dp"
         android:maxLines="1"

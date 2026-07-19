@@ -229,7 +229,7 @@
                         android:maxLines="1"
                         android:textSize="12dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_extra_light"
+                        android:fontFamily="@font/inter_light"
                         tools:text="Two Minute Papers" />
 
                     <TextView
@@ -240,7 +240,7 @@
                         android:gravity="center_vertical"
                         android:textSize="12dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_extra_light"
+                        android:fontFamily="@font/inter_light"
                         tools:text="57K views • 1 day ago" />
                 </LinearLayout>
 

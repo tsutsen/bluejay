@@ -48,7 +48,7 @@
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12dp"
             android:gravity="center_vertical"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             android:maxLines="2"
             android:ellipsize="end"
             tools:text="Attempts to fetch your subscriptions from this source" />

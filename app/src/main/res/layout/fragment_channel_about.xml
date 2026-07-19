@@ -37,7 +37,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_extra_light"
+                android:fontFamily="@font/inter_light"
                 android:textSize="20dp"
                 tools:text="FUTO" />
 
@@ -46,7 +46,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_extra_light"
+                android:fontFamily="@font/inter_light"
                 android:textSize="12dp"
                 tools:text="10.7M subscribers • 17 videos" />
         </LinearLayout>

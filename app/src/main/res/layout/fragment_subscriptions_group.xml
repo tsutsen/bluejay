@@ -171,7 +171,7 @@
             android:layout_marginLeft="20dp"
             android:layout_marginRight="20dp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             android:text="@string/these_creators_in_group" /> -->
     </LinearLayout>
 

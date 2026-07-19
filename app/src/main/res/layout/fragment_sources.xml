@@ -72,7 +72,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="12dp"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:fontFamily="@font/inter_extra_light"
+                    android:fontFamily="@font/inter_light"
                     android:text="@string/the_top_source_will_be_considered_primary" />
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -103,7 +103,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="12dp"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:fontFamily="@font/inter_extra_light"
+                    android:fontFamily="@font/inter_light"
                     android:text="@string/these_sources_have_been_disabled" />
 
                 <LinearLayout

@@ -36,7 +36,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="12dp"
-                android:fontFamily="@font/inter_extra_light"
+                android:fontFamily="@font/inter_light"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:text="@string/scan_a_qr_code_to_install" />
         </LinearLayout>

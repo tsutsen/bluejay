@@ -45,7 +45,7 @@
                     android:text="@string/add_source"
                     android:textSize="24dp"
                     android:textColor="?attr/colorOnSurface"
-                    android:fontFamily="@font/inter_extra_light" />
+                    android:fontFamily="@font/inter_light" />
             </FrameLayout>
 
             <Space

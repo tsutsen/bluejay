@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:textSize="20dp"
         android:textColor="?attr/colorOnSurface"
-        android:fontFamily="@font/inter_extra_light"
+        android:fontFamily="@font/inter_light"
         tools:text="FUTO"
         android:maxLines="1" />
 

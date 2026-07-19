@@ -45,7 +45,7 @@ class DisabledSourceView : LinearLayout {
         } else {
             _textSourceSubtitle.text = context.getString(R.string.tap_to_open)
             _textSourceSubtitle.setTextColor(context.getColor(R.color.gray_ac))
-            _textSourceSubtitle.typeface = resources.getFont(R.font.inter_extra_light)
+            _textSourceSubtitle.typeface = resources.getFont(R.font.inter_light)
         }
 
         _buttonAdd.setOnClickListener { onAdd.emit(source) }

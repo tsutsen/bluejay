@@ -33,7 +33,7 @@
             android:layout_height="wrap_content"
             android:textSize="12dp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             android:layout_marginBottom="5dp"
             android:text="@string/source_explain_script_url" />
 

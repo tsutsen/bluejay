@@ -60,7 +60,7 @@
             android:text="Plugin Update"
             android:textSize="15sp"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             android:layout_marginTop="15dp"
             android:layout_marginStart="30dp"
             android:layout_marginEnd="30dp" />

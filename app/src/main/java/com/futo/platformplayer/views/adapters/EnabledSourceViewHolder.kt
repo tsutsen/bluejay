@@ -79,7 +79,7 @@ class EnabledSourceViewHolder : ViewHolder {
         } else {
             _textSourceSubtitle.text = itemView.context.getString(R.string.tap_to_open)
             _textSourceSubtitle.setTextColor(itemView.context.getColor(R.color.gray_ac))
-            _textSourceSubtitle.typeface = itemView.resources.getFont(R.font.inter_extra_light)
+            _textSourceSubtitle.typeface = itemView.resources.getFont(R.font.inter_light)
         }
 
         source = client

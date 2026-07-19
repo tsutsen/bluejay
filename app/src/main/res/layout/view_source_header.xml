@@ -44,7 +44,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/by"
-                android:fontFamily="@font/inter_extra_light"
+                android:fontFamily="@font/inter_light"
                 android:textSize="15dp"
                 android:textColor="?attr/colorOnSurfaceVariant" />
             <TextView
@@ -52,7 +52,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:text="FUTO"
-                android:fontFamily="@font/inter_extra_light"
+                android:fontFamily="@font/inter_light"
                 android:layout_marginLeft="5dp"
                 android:textSize="15dp"
                 android:textColor="?attr/colorOnSurface" />
@@ -61,7 +61,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 tools:text="(a5f64b3)"
-                android:fontFamily="@font/inter_extra_light"
+                android:fontFamily="@font/inter_light"
                 android:layout_marginLeft="7dp"
                 android:textSize="15dp"
                 android:textColor="?attr/colorOnSurfaceVariant" />
@@ -74,7 +74,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:fontFamily="@font/inter_extra_light"
+        android:fontFamily="@font/inter_light"
         tools:text="A plugin that adds Youtube as a source" />
 
     <!--Version-->
@@ -96,7 +96,7 @@
             android:layout_height="wrap_content"
             android:textSize="14dp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             tools:text="3" />
     </LinearLayout>
 
@@ -120,7 +120,7 @@
             android:layout_height="wrap_content"
             android:textSize="14dp"
             android:textColor="?attr/colorPrimary"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             tools:text="https://some.platform.url" />
     </LinearLayout>
 
@@ -143,7 +143,7 @@
             android:layout_height="wrap_content"
             android:textSize="14dp"
             android:textColor="?attr/colorPrimary"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             tools:text="https://some.repository.url/whatever/something" />
     </LinearLayout>
 
@@ -166,7 +166,7 @@
             android:layout_height="wrap_content"
             android:textSize="14dp"
             android:textColor="?attr/colorPrimary"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             tools:text="https://some.repository.url/whatever/someScript.js" />
     </LinearLayout>
 
@@ -188,7 +188,7 @@
             android:layout_height="wrap_content"
             android:textSize="14dp"
             android:textColor="?attr/colorPrimary"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             tools:text="https://some.repository.url/whatever/someScript.js" />
     </LinearLayout>
 
@@ -211,7 +211,7 @@
             android:layout_height="wrap_content"
             android:textSize="14dp"
             android:textColor="?attr/colorPrimary"
-            android:fontFamily="@font/inter_extra_light"
+            android:fontFamily="@font/inter_light"
             android:text="@string/valid" />
     </LinearLayout>
 </LinearLayout>
