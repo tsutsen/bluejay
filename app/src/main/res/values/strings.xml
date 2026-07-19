@@ -1263,7 +1263,7 @@
     <string name="icon_home">\uE88A</string>
     <string name="icon_library">\uE02F</string>
     <string name="icon_subscriptions">\uE064</string>
-    <string name="icon_search">\uEF7A</string>
+    <string name="icon_search">\uE8B6</string>
     <string name="icon_close">\uE5CD</string>
     <string name="icon_back">\uE5C4</string>
     <string name="icon_forward">\uE5C8</string>
@@ -1301,5 +1301,6 @@
     <string name="icon_drag_indicator">\uE945</string>
     <string name="icon_error">\uE002</string>
     <string name="icon_movie">\uE684</string>
+    <string name="icon_favorite">\uE87D</string>
     <string name="icon_notifications">\uE7F5</string>
 </resources>

@@ -23,7 +23,7 @@
             android:layout_height="match_parent"
             android:contentDescription="@string/cd_button_back"
             android:gravity="center_vertical"
-            android:text="\uE5C4"
+            android:text="@string/icon_back"
             android:fontFamily="@font/material_symbols_rounded"
             android:textColor="?attr/colorOnSurface"
             android:textSize="24sp"

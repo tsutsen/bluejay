@@ -263,7 +263,7 @@
                             android:layout_width="20dp"
                             android:layout_height="16dp"
                             android:gravity="center"
-                            android:text="\uE5D3"
+                            android:text="@string/icon_more_horiz"
                             android:fontFamily="@font/material_symbols_rounded"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="16sp"

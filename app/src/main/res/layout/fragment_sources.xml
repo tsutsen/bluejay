@@ -133,7 +133,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="\uE002"
+                    android:text="@string/icon_error"
                     android:fontFamily="@font/material_symbols_rounded"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="18sp"
