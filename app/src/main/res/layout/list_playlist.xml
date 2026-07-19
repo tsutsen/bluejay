@@ -204,13 +204,16 @@
             android:scaleType="fitCenter"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"/>
-        <ImageButton
+        <TextView
             android:id="@+id/image_settings"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:contentDescription="@string/cd_button_settings"
-            app:srcCompat="@drawable/ic_settings"
-            android:scaleType="fitCenter"
+            android:gravity="center"
+            android:text="\uE5D3"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="20sp"
+            android:includeFontPadding="false"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"  />
 

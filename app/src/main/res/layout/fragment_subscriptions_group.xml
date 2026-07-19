@@ -53,18 +53,21 @@
                         android:visibility="visible"
                         android:scaleType="fitCenter" />
 
-                    <ImageButton
+                    <TextView
                         android:id="@+id/button_settings"
                         android:layout_width="50dp"
                         android:layout_height="50dp"
                         android:contentDescription="@string/cd_button_settings"
                         android:layout_marginLeft="5dp"
                         android:layout_marginRight="5dp"
-                        android:src="@drawable/ic_settings"
+                        android:gravity="center"
+                        android:text="\uE5D3"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="24sp"
+                        android:includeFontPadding="false"
                         android:padding="10dp"
                         android:background="@color/transparent"
-                        android:visibility="visible"
-                        android:scaleType="fitCenter" />
+                        android:visibility="visible" />
                 </LinearLayout>
 
                 <com.google.android.material.imageview.ShapeableImageView
