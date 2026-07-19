@@ -10,7 +10,7 @@ object Icons {
         "ic_home" to "\uE88A",
         "ic_home_filled" to "\uE9B2",
         "ic_settings" to "\uE8B8",
-        "ic_search" to "\uEF7A",
+        "ic_search" to "\uE8B6",
         "ic_menu" to "\uE5D2",
         "ic_close" to "\uE5CD",
         "ic_back" to "\uE5C4",
@@ -30,7 +30,7 @@ object Icons {
         "ic_downloads" to "\uF090",
         "ic_favorite" to "\uE87E",
         "ic_bookmark" to "\uE8E7",
-        "ic_notifications" to "\uE7F5",
+        "ic_notifications" to "\uE7F4",
         "ic_account" to "\uE851",
         "ic_profile" to "\uE851",
         
@@ -113,7 +113,7 @@ object Icons {
         "ic_hls_off" to "\uEB8C",
         
         // User
-        "ic_person" to "\uF0D3",
+        "ic_person" to "\uE7FD",
         "ic_people" to "\uEA21",
         "ic_group" to "\uEA21",
         "ic_forum" to "\uE0BF",
