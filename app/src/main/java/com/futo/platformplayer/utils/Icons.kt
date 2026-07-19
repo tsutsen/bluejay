@@ -25,6 +25,7 @@ object Icons {
         "ic_casino" to "\uE87E",
         "ic_source" to "\uE8D1",
         "ic_smart_display" to "\uE30B",
+        "ic_star" to "\uF8DF",
         "ic_history" to "\uE8B3",
         "ic_downloads" to "\uF090",
         "ic_favorite" to "\uE87E",
