@@ -9,18 +9,21 @@
     android:orientation="vertical"
     tools:targetApi="28">
 
-    <ImageButton
+    <TextView
         android:id="@+id/button_minimize"
         android:layout_width="50dp"
         android:layout_height="50dp"
         android:contentDescription="@string/cd_button_minimize"
         android:layout_centerVertical="true"
         android:layout_centerHorizontal="true"
-        android:scaleType="fitCenter"
+        
         android:clickable="true"
         android:padding="3dp"
         android:layout_marginStart="5dp"
-        app:srcCompat="@drawable/ic_minimize"
+        android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -58,63 +61,81 @@
         android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintRight_toRightOf="parent">
-        <ImageButton
+        <TextView
             android:id="@+id/button_autoplay"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:contentDescription="@string/cd_button_autoplay"
-            android:scaleType="fitCenter"
+            
             android:clickable="true"
             android:padding="12dp"
-            app:srcCompat="@drawable/autoplay_24px" />
-        <ImageButton
+            android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center" />
+        <TextView
             android:id="@+id/button_cast"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:contentDescription="@string/cd_cast_button"
-            android:scaleType="fitCenter"
+            
             android:clickable="true"
             android:padding="12dp"
-            app:srcCompat="@drawable/ic_cast" />
-        <ImageButton
+            android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center" />
+        <TextView
             android:id="@+id/button_rotate_lock"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:contentDescription="@string/cd_button_rotate_lock"
-            android:scaleType="fitCenter"
+            
             android:clickable="true"
             android:padding="12dp"
-            app:srcCompat="@drawable/ic_screen_lock_rotation" />
-        <ImageButton
+            android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center" />
+        <TextView
             android:id="@+id/button_loop"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:contentDescription="@string/cd_button_loop"
-            android:scaleType="fitCenter"
+            
             android:clickable="true"
             android:padding="12dp"
-            app:srcCompat="@drawable/ic_repeat_one" />
-        <ImageButton
+            android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center" />
+        <TextView
             android:id="@+id/button_settings"
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:contentDescription="@string/cd_button_settings"
-            android:scaleType="fitCenter"
+            
             android:clickable="true"
             android:padding="12dp"
-            app:srcCompat="@drawable/ic_settings" />
+            android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center" />
     </LinearLayout>
 
-    <ImageButton
+    <TextView
         android:id="@+id/button_previous"
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:contentDescription="@string/cd_button_previous"
-        android:scaleType="centerCrop"
+        
         android:clickable="true"
         android:layout_marginRight="40dp"
         android:padding="5dp"
-        app:srcCompat="@drawable/ic_skip_previous"
+        android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintRight_toLeftOf="@id/layout_play_pause"
         app:layout_constraintBottom_toBottomOf="parent" />
@@ -128,55 +149,67 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintRight_toRightOf="parent">
 
-        <ImageButton
+        <TextView
             android:id="@+id/button_play"
             android:layout_width="60dp"
             android:layout_height="60dp"
             android:padding="10dp"
             android:clickable="true"
-            app:srcCompat="@drawable/ic_play_white_nopad" />
+            android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center" />
 
-        <ImageButton
+        <TextView
             android:id="@+id/button_pause"
             android:layout_width="60dp"
             android:layout_height="60dp"
             android:padding="10dp"
             android:clickable="true"
-            app:srcCompat="@drawable/ic_pause_white"
+            android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintRight_toRightOf="parent" />
     </FrameLayout>
 
-    <ImageButton
+    <TextView
         android:id="@+id/button_next"
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:contentDescription="@string/cd_button_next"
         android:clickable="true"
-        android:scaleType="centerCrop"
+        
         android:padding="5dp"
         android:layout_marginLeft="40dp"
-        app:srcCompat="@drawable/ic_skip_next"
+        android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintLeft_toRightOf="@id/layout_play_pause"
         app:layout_constraintBottom_toBottomOf="parent" />
 
-    <ImageButton
+    <TextView
         android:id="@+id/button_fullscreen"
         android:layout_width="55dp"
         android:layout_height="40dp"
         android:contentDescription="@string/cd_button_fullscreen"
         android:clickable="true"
-        app:srcCompat="@drawable/ic_expand"
+        android:textSize="24sp"
+            android:textColor="#FFFFFF"
+            android:includeFontPadding="false"
+            android:gravity="center"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:paddingStart="5dp"
         android:paddingTop="15dp"
         android:paddingEnd="5dp"
         android:layout_marginRight="5dp"
-        android:scaleType="fitCenter"
+        
         android:layout_marginBottom="38dp" />
 
     <TextView
