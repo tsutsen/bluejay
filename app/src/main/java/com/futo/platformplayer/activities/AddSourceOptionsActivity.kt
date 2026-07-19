@@ -2,6 +2,7 @@ package com.futo.platformplayer.activities
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.widget.*
@@ -14,7 +15,7 @@ import com.futo.platformplayer.views.overlays.slideup.SlideUpMenuTextInput
 import com.google.zxing.integration.android.IntentIntegrator
 
 class AddSourceOptionsActivity : AppCompatActivity() {
-    lateinit var _buttonBack: ImageButton;
+    lateinit var _buttonBack: TextView;
 
     lateinit var _overlayContainer: FrameLayout;
     lateinit var _buttonQR: BigButton;
@@ -58,6 +59,12 @@ class AddSourceOptionsActivity : AppCompatActivity() {
 
         _overlayContainer = findViewById(R.id.overlay_container);
         _buttonBack = findViewById(R.id.button_back);
+        // Set Material Symbols font on back button
+        try {
+            _buttonBack.typeface = Typeface.createFromAsset(assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
 
         _buttonQR = findViewById(R.id.option_qr);
         _buttonBrowse = findViewById(R.id.option_browse);

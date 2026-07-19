@@ -2,6 +2,7 @@ package com.futo.platformplayer.activities
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.graphics.drawable.Animatable
 import android.os.Bundle
 import android.view.View
@@ -34,7 +35,7 @@ import kotlinx.serialization.SerializationException
 class AddSourceActivity : AppCompatActivity() {
     private val TAG = "AddSourceActivity";
 
-    private lateinit var _buttonBack: ImageButton;
+    private lateinit var _buttonBack: TextView;
 
     private lateinit var _sourceHeader: SourceHeaderView;
 
@@ -77,6 +78,12 @@ class AddSourceActivity : AppCompatActivity() {
         setNavigationBarColorAndIcons();
 
         _buttonBack = findViewById(R.id.button_back);
+        // Set Material Symbols font on back button
+        try {
+            _buttonBack.typeface = Typeface.createFromAsset(assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
 
         _sourceHeader = findViewById(R.id.source_header);
 
