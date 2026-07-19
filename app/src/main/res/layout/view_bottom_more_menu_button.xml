@@ -2,15 +2,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
-    android:layout_height="50dp"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:padding="7dp"
-    android:layout_marginEnd="4dp"
-    android:layout_marginBottom="4dp"
+    android:layout_height="52dp"
+    android:orientation="vertical"
+    android:gravity="center"
     android:clickable="true"
-    android:id="@+id/root"
-    android:background="@drawable/background_pill_black">
+    android:id="@+id/root">
 
     <com.futo.platformplayer.widget.MaterialIconView
         android:id="@+id/image_icon"
@@ -18,8 +14,7 @@
         android:layout_height="24dp"
         android:gravity="center"
         android:includeFontPadding="false"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
+        app:iconSize="10sp"
         tools:text="\uE88A"/>
 
     <TextView
@@ -27,10 +22,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         tools:text="Home"
-        android:fontFamily="@font/inter_medium"
+        android:gravity="center"
+        android:fontFamily="@font/inter_light"
         android:textColor="?attr/colorOnSurface"
-        android:textSize="16dp"
-        android:layout_marginEnd="20dp"
+        android:textSize="10dp"
         android:maxLines="1"
         android:ellipsize="end" />
 </LinearLayout>
