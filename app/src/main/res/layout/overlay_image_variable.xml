@@ -63,7 +63,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/inter_regular"
+                    android:fontFamily="@font/inter_semibold"
                     android:textSize="20dp"
                     android:text="Preset" />
                 <TextView
@@ -94,7 +94,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/inter_regular"
+                    android:fontFamily="@font/inter_semibold"
                     android:textSize="20dp"
                     android:text="Creator" />
                 <TextView
@@ -134,7 +134,7 @@
             android:id="@+id/button_select"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fontFamily="@font/inter_regular"
+            android:fontFamily="@font/inter_semibold"
             android:text="@string/select"
             android:textSize="16dp"
             android:gravity="center"

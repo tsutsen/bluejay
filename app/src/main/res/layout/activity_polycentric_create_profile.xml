@@ -51,7 +51,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:fontFamily="@font/inter_light"
+                android:fontFamily="@font/inter_semibold"
                 android:text="@string/polycentric"
                 android:textSize="32dp"
                 app:layout_constraintLeft_toLeftOf="@id/image_polycentric"
@@ -63,7 +63,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:fontFamily="@font/inter_light"
+                android:fontFamily="@font/inter_semibold"
                 android:text="@string/profile_name"
                 android:textSize="16dp"
                 app:layout_constraintBottom_toTopOf="@id/edit_profile_name"
@@ -100,7 +100,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/inter_light"
+                    android:fontFamily="@font/inter_semibold"
                     android:text="@string/create_profile"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16dp" />

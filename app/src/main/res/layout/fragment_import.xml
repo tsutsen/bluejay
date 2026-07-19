@@ -21,7 +21,7 @@
             android:id="@+id/text_select_deselect_all"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/inter_light"
+            android:fontFamily="@font/inter_semibold"
             android:textSize="15dp"
             tools:text="Select All"
             android:textColor="?attr/colorPrimary" />
@@ -43,7 +43,7 @@
             android:id="@+id/text_load_progress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/inter_light"
+            android:fontFamily="@font/inter_semibold"
             android:textSize="15dp"
             android:text=""
             android:textColor="?attr/colorOnSurfaceVariant" />
@@ -53,7 +53,7 @@
             android:id="@+id/text_load_more"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/inter_light"
+            android:fontFamily="@font/inter_semibold"
             android:textSize="15dp"
             android:text="@string/load_more"
             android:textColor="?attr/colorPrimary" /> -->
@@ -66,7 +66,7 @@
             android:id="@+id/text_select_counter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/inter_light"
+            android:fontFamily="@font/inter_semibold"
             android:textSize="15dp"
             tools:text="3 out of 4 selected"
             android:textColor="?attr/colorOnSurfaceVariant" />
@@ -82,7 +82,7 @@
             android:id="@+id/nothing_to_import"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/inter_light"
+            android:fontFamily="@font/inter_semibold"
             android:textSize="15dp"
             android:text="@string/nothing_to_import"
             android:textColor="?attr/colorOnSurface"

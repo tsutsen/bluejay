@@ -34,7 +34,7 @@
             android:textSize="14dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/inter_light"
+            android:fontFamily="@font/inter_semibold"
             toolNs:text="This is a test" />
     </LinearLayout>
 

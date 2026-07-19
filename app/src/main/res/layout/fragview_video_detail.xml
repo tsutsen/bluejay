@@ -79,7 +79,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="10dp"
                 android:maxLines="1"
-                android:fontFamily="@font/inter_medium"
+                android:fontFamily="@font/inter_semibold"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="12dp"
                 tools:text="Some video titles or whatever"/>
@@ -90,7 +90,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="10dp"
                 android:maxLines="1"
-                android:fontFamily="@font/inter_regular"
+                android:fontFamily="@font/inter_semibold"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="8dp"
                 tools:text="Louis Rossman"/>
@@ -150,7 +150,7 @@
             android:layout_height="wrap_content"
             tools:text="Resume at 00:00"
             android:textSize="12dp"
-            android:fontFamily="@font/inter_light" />
+            android:fontFamily="@font/inter_semibold" />
     </LinearLayout>
     <LinearLayout
         android:id="@+id/layout_skip"
@@ -174,7 +174,7 @@
             android:layout_height="wrap_content"
             android:text="Skip"
             android:textSize="12dp"
-            android:fontFamily="@font/inter_light" />
+            android:fontFamily="@font/inter_semibold" />
     </LinearLayout>
 
     <FrameLayout
@@ -221,7 +221,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="10dp"
-                            android:fontFamily="@font/inter_medium"
+                            android:fontFamily="@font/inter_semibold"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="17dp"
                             tools:text="Some Text"
@@ -234,7 +234,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="10dp"
-                            android:fontFamily="@font/inter_regular"
+                            android:fontFamily="@font/inter_semibold"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="10dp"
                             tools:text="51K views - 3 years ago"
@@ -432,7 +432,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_light"
+                        android:fontFamily="@font/inter_semibold"
                         android:background="@color/transparent"
                         android:isScrollContainer="false"
                         android:textSize="11dp"
@@ -444,7 +444,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
                         android:background="@color/transparent"
-                        android:fontFamily="@font/inter_regular"
+                        android:fontFamily="@font/inter_semibold"
                         android:textSize="12dp"
                         android:textColor="#585656"
                         android:textAlignment="center"

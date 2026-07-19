@@ -37,7 +37,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/fcast"
-            android:fontFamily="@font/inter_light"
+            android:fontFamily="@font/inter_semibold"
             android:includeFontPadding="false"
             android:textSize="32dp"
             android:layout_marginLeft="12dp"/>
@@ -74,7 +74,7 @@
                 android:paddingTop="5dp"
                 android:paddingBottom="5dp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_light"
+                android:fontFamily="@font/inter_semibold"
                 android:background="@color/transparent"
                 android:textSize="14sp" />
         </ScrollView>

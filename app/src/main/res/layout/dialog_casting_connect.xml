@@ -27,7 +27,7 @@
                 android:layout_marginStart="20dp"
                 android:textSize="14dp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_regular" />
+                android:fontFamily="@font/inter_semibold" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -41,7 +41,7 @@
                     android:layout_marginStart="20dp"
                     android:textSize="11dp"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:fontFamily="@font/inter_medium" />
+                    android:fontFamily="@font/inter_semibold" />
 
                 <ImageView
                     android:id="@+id/image_loader"
@@ -64,7 +64,7 @@
             android:layout_height="match_parent"
             android:text="@string/close"
             android:textSize="14dp"
-            android:fontFamily="@font/inter_regular"
+            android:fontFamily="@font/inter_semibold"
             android:textColor="?attr/colorPrimary"
             android:background="@color/transparent" />
     </LinearLayout>
@@ -115,7 +115,7 @@
         android:ellipsize="end"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:maxLines="3"
-        android:fontFamily="@font/inter_light"
+        android:fontFamily="@font/inter_semibold"
         android:layout_marginTop="12dp"/>
 
     <LinearLayout
@@ -154,7 +154,7 @@
                 android:text="@string/add_manually"
                 android:textSize="12dp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_medium"
+                android:fontFamily="@font/inter_semibold"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
                 android:paddingStart="4dp"
@@ -181,7 +181,7 @@
                 android:text="@string/scan_qr"
                 android:textSize="12dp"
                 android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/inter_medium"
+                android:fontFamily="@font/inter_semibold"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
                 android:paddingStart="4dp"

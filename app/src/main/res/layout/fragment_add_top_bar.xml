@@ -32,7 +32,7 @@
         android:layout_height="match_parent"
         android:textSize="22dp"
         android:layout_marginTop="-2dp"
-        android:fontFamily="@font/inter_light"
+        android:fontFamily="@font/inter_semibold"
         android:text="Grayjay"
         android:textColor="?attr/colorOnSurface"
         android:gravity="center_vertical"

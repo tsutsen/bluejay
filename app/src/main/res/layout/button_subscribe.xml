@@ -20,7 +20,7 @@
             android:text="@string/subscribe"
             android:textSize="14dp"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_regular" />
+            android:fontFamily="@font/inter_semibold" />
 
         <ImageView
             android:id="@+id/channel_loader"

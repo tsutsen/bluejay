@@ -22,7 +22,7 @@
         android:layout_gravity="center"
         android:gravity="center"
         android:textSize="11dp"
-        android:fontFamily="@font/inter_light"
+        android:fontFamily="@font/inter_semibold"
         tools:text="Artist" />
 
 </FrameLayout>

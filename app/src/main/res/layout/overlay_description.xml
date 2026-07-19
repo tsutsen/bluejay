@@ -31,7 +31,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_light"
+            android:fontFamily="@font/inter_semibold"
             android:background="@color/transparent"
             android:isScrollContainer="false"
             android:textSize="13sp"

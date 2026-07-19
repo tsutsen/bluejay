@@ -21,7 +21,7 @@
         android:layout_height="wrap_content"
         tools:text="Recently Used Playlist"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:fontFamily="@font/inter_light"
+        android:fontFamily="@font/inter_semibold"
         android:textSize="10dp" />
 
     <LinearLayout

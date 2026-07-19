@@ -31,7 +31,7 @@
             android:layout_height="wrap_content"
             android:textSize="14dp"
             android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/inter_regular"
+            android:fontFamily="@font/inter_semibold"
             tools:text="FUTO"
             android:maxLines="1"
             android:ellipsize="end" />
@@ -51,7 +51,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="11dp"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                android:fontFamily="@font/inter_light"
+                android:fontFamily="@font/inter_semibold"
                 android:layout_marginTop="5dp"
                 android:layout_marginLeft="5dp"
                 android:text="Testing " />

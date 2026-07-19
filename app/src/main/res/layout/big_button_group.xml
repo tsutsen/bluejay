@@ -9,7 +9,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/migration"
-        android:fontFamily="@font/inter_light"
+        android:fontFamily="@font/inter_semibold"
         android:textSize="18dp"
         android:layout_marginTop="12dp"
         android:layout_marginBottom="8dp"/>

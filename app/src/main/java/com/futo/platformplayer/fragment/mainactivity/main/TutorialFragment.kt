@@ -97,7 +97,7 @@ class TutorialFragment : MainFragment() {
         private fun createHeader(t: String): TextView {
             return TextView(context).apply {
                 textSize = 24.0f
-                typeface = resources.getFont(R.font.inter_regular)
+                typeface = resources.getFont(R.font.inter_semibold)
                 text = t
                 layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
                     setMargins(15.dp(resources), 10.dp(resources), 15.dp(resources), 12.dp(resources))

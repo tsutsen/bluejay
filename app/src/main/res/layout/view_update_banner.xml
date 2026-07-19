@@ -61,7 +61,7 @@
                 android:layout_height="match_parent"
                 android:gravity="center"
                 tools:text="Install"
-                android:fontFamily="@font/inter_regular"
+                android:fontFamily="@font/inter_semibold"
                 android:textSize="12sp"
                 android:textColor="?attr/colorOnSurface"
                 android:paddingLeft="13dp"

@@ -75,7 +75,7 @@ class EnabledSourceViewHolder : ViewHolder {
         if (client is JSClient && StatePlugins.instance.hasUpdateAvailable(client.config)) {
             _textSourceSubtitle.text = itemView.context.getString(R.string.update_available_exclamation)
             _textSourceSubtitle.setTextColor(itemView.context.getColor(R.color.light_blue_400))
-            _textSourceSubtitle.typeface = itemView.resources.getFont(R.font.inter_regular)
+            _textSourceSubtitle.typeface = itemView.resources.getFont(R.font.inter_semibold)
         } else {
             _textSourceSubtitle.text = itemView.context.getString(R.string.tap_to_open)
             _textSourceSubtitle.setTextColor(itemView.context.getColor(R.color.gray_ac))

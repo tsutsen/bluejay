@@ -28,7 +28,7 @@
         android:layout_marginTop="5dp"
         android:textSize="9sp"
         android:textAlignment="center"
-        android:fontFamily="@font/inter_light"
+        android:fontFamily="@font/inter_semibold"
         tools:text="Background" />
 
 </LinearLayout>

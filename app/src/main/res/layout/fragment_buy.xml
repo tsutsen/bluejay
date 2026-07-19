@@ -45,7 +45,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAlignment="center"
-                android:fontFamily="@font/inter_light"
+                android:fontFamily="@font/inter_semibold"
                 android:textSize="16sp"
                 android:layout_margin="20dp"
                 android:text="@string/buy_text"/>
@@ -79,7 +79,7 @@
                         android:text="$19 + Tax"
                         android:textSize="14dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_regular"
+                        android:fontFamily="@font/inter_semibold"
                         android:textAlignment="center" />
                 </LinearLayout>
 
@@ -101,7 +101,7 @@
                         android:text="@string/i_already_paid"
                         android:textSize="14dp"
                         android:textColor="?attr/colorOnSurface"
-                        android:fontFamily="@font/inter_regular"
+                        android:fontFamily="@font/inter_semibold"
                         android:textAlignment="center"/>
                 </LinearLayout>
 

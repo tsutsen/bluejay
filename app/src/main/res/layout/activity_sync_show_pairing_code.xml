@@ -33,7 +33,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="Copy this info code to another device you want to sync"
-                android:fontFamily="@font/inter_light"
+                android:fontFamily="@font/inter_semibold"
                 android:textSize="12dp"
                 android:textColor="?attr/colorOnSurface"
                 android:layout_marginStart="20dp"
@@ -48,7 +48,7 @@
                 android:layout_height="150dp"
                 android:background="@drawable/background_1b_round_6dp"
                 android:padding="16dp"
-                android:fontFamily="@font/inter_regular"
+                android:fontFamily="@font/inter_semibold"
                 android:textSize="14dp"
                 app:layout_constraintTop_toBottomOf="@id/text_devices"
                 app:layout_constraintLeft_toLeftOf="parent"
@@ -86,7 +86,7 @@
                     android:layout_height="wrap_content"
                     android:text="Copy code"
                     android:lines="1"
-                    android:fontFamily="@font/inter_regular"
+                    android:fontFamily="@font/inter_semibold"
                     android:textSize="16dp"/>
             </LinearLayout>
 
@@ -95,7 +95,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="Scan this QR code on another device you want to sync"
-                android:fontFamily="@font/inter_light"
+                android:fontFamily="@font/inter_semibold"
                 android:textSize="12dp"
                 android:textColor="?attr/colorOnSurface"
                 android:layout_marginTop="33dp"

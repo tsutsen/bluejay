@@ -27,7 +27,7 @@
             android:layout_marginRight="5dp"
             android:maxLines="2"
             android:ellipsize="end"
-            android:fontFamily="@font/inter_medium"
+            android:fontFamily="@font/inter_semibold"
             android:textSize="13dp"
             android:textAlignment="center"
             android:text="Explore Subscription Groups" />

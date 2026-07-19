@@ -20,7 +20,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         tools:text="Louis Rossman"
-        android:fontFamily="@font/inter_medium"
+        android:fontFamily="@font/inter_semibold"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="9dp"
         android:maxLines="1"

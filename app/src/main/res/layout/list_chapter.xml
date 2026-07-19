@@ -38,7 +38,7 @@
                 android:ellipsize="end"
                 android:gravity="center_vertical"
                 android:maxLines="1"
-                android:fontFamily="@font/inter_regular"
+                android:fontFamily="@font/inter_semibold"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="14sp"
                 tools:text="Some chapter text" />
@@ -51,7 +51,7 @@
                 android:ellipsize="end"
                 android:gravity="center_vertical"
                 android:maxLines="1"
-                android:fontFamily="@font/inter_regular"
+                android:fontFamily="@font/inter_semibold"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="11sp"
                 tools:text="test" />
@@ -64,7 +64,7 @@
             android:ellipsize="end"
             android:gravity="center_vertical"
             android:maxLines="1"
-            android:fontFamily="@font/inter_regular"
+            android:fontFamily="@font/inter_semibold"
             android:background="@drawable/background_thumbnail_duration"
             android:paddingLeft="10dp"
             android:paddingRight="10dp"
