@@ -27,7 +27,7 @@ class SubscriptionViewHolder : ViewHolder {
     private val _textName: TextView;
     private val _creatorThumbnail: CreatorThumbnail;
     private val _buttonTrash: ImageButton;
-    private val _buttonSettings: ImageButton;
+    private val _buttonSettings: TextView;
     private val _platformIndicator : PlatformIndicator;
     private val _textMeta: TextView;
 

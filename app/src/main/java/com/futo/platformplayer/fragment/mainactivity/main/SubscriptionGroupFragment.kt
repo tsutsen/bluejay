@@ -82,7 +82,7 @@ class SubscriptionGroupFragment : MainFragment() {
 
         private val _textGroupMeta: TextView;
 
-        private val _buttonSettings: ImageButton;
+        private val _buttonSettings: TextView;
         private val _buttonDelete: ImageButton;
 
         private val _buttonAddCreator: FrameLayout;

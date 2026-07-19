@@ -36,7 +36,7 @@ class VideoListEditorViewHolder : ViewHolder {
     private val _containerDuration: LinearLayout;
     private val _containerLive: LinearLayout;
     private val _imageRemove: ImageButton;
-    private val _imageOptions: ImageButton;
+    private val _imageOptions: TextView;
     private val _imageDragDrop: ImageButton;
     private val _platformIndicator: PlatformIndicator;
     private val _layoutDownloaded: FrameLayout;

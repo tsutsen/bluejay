@@ -116,7 +116,7 @@ class ChannelFragment : MainFragment() {
         //        private var _adapter: ChannelViewPagerAdapter;
         private var _tabLayoutMediator: TabLayoutMediator
         private var _buttonSubscribe: SubscribeButton
-        private var _buttonSubscriptionSettings: ImageButton
+        private var _buttonSubscriptionSettings: TextView
 
         private var _overlayContainer: FrameLayout
         private var _overlayLoading: LinearLayout

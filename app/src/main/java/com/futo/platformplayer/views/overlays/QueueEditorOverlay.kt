@@ -3,8 +3,8 @@ package com.futo.platformplayer.views.overlays
 import android.content.Context
 import android.util.AttributeSet
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import com.futo.platformplayer.states.StatePlayer
 import com.futo.platformplayer.R
 import com.futo.platformplayer.UISlideOverlays
@@ -20,7 +20,7 @@ class QueueEditorOverlay : LinearLayout {
 
     private val _topbar : OverlayTopbar;
     private val _editor : VideoListEditorView;
-    private val _btnSettings: ImageView;
+    private val _btnSettings: TextView;
 
     private val _overlayContainer: FrameLayout;
 

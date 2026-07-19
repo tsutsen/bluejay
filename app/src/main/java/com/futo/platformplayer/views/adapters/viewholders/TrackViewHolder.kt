@@ -25,7 +25,7 @@ class TrackViewHolder(private val _viewGroup: ViewGroup) : AnyAdapter.AnyViewHol
     protected val _textName: TextView
     protected val _textMetadata: TextView
 
-    protected val _imageSettings: ImageView;
+    protected val _imageSettings: TextView;
 
     init {
         //_imageThumbnail = _view.findViewById(R.id.image_thumbnail);

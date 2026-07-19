@@ -38,7 +38,7 @@ class SubscriptionGroupListViewHolder(private val _viewGroup: ViewGroup) : AnyAd
     private val _textSubGroup: TextView;
     private val _textSubGroupMeta: TextView;
 
-    private val _buttonSettings: ImageButton;
+    private val _buttonSettings: TextView;
     private val _buttonDelete: ImageButton;
 
     val onClick = Event1<SubscriptionGroup>();
