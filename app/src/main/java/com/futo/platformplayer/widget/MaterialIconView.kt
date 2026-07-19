@@ -41,7 +41,7 @@ class MaterialIconView @JvmOverloads constructor(
         attrs?.let {
             val typedArray = context.obtainStyledAttributes(it, R.styleable.MaterialIconView)
             iconName = typedArray.getString(R.styleable.MaterialIconView_iconName)
-            iconSize = typedArray.getDimensionPixelSize(R.styleable.MaterialIconView_iconSize, 24).toFloat()
+            iconSize = typedArray.getDimension(R.styleable.MaterialIconView_iconSize, 24f)
             typedArray.recycle()
         }
         

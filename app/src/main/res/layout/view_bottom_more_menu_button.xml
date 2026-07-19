@@ -20,8 +20,8 @@
         android:includeFontPadding="false"
         android:layout_marginStart="10dp"
         android:layout_marginEnd="10dp"
-        app:iconSize="10sp"
-        tools:text="\uE88A"/>
+        app:iconName="ic_home"
+        app:iconSize="10sp"/>
 
     <TextView
         android:id="@+id/text_button"
