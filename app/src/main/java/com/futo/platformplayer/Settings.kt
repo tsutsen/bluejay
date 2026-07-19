@@ -37,6 +37,11 @@ import com.futo.platformplayer.views.fields.FieldForm
 import com.futo.platformplayer.views.fields.FormField
 import com.futo.platformplayer.views.fields.FormFieldButton
 import com.futo.platformplayer.views.fields.FormFieldWarning
+import com.futo.platformplayer.theming.AppearancePreferencesManager
+import com.futo.platformplayer.theming.ColorSchemeMode
+import com.futo.platformplayer.theming.ContrastLevel
+import com.futo.platformplayer.theming.FontChoice
+import com.futo.platformplayer.theming.IconStyle
 import com.futo.platformplayer.views.overlays.slideup.SlideUpMenuItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -246,6 +251,83 @@ class Settings : FragmentedStorageFileJson() {
             StateMeta.instance.removeAllHiddenVideos();
             StateApp.instance.activity?.let {
                 UIDialogs.toast(it, "Creators and videos should show up again");
+            }
+        }
+    }
+
+    @FormField(R.string.appearance, "group", R.string.configure_appearance_settings, 1)
+    var appearance = AppearanceSettings();
+    @Serializable
+    class AppearanceSettings {
+        // Color scheme mode: 0=Dynamic (wallpaper), 1=Custom seed, 2=Preset
+        @FormField(R.string.color_scheme, FieldForm.DROPDOWN, R.string.color_scheme_description, 1)
+        @DropdownFieldOptionsId(R.array.color_scheme_modes)
+        var colorSchemeMode: Int = 0;
+
+        fun getColorSchemeMode(): ColorSchemeMode {
+            return when(colorSchemeMode) {
+                0 -> ColorSchemeMode.DYNAMIC
+                1 -> ColorSchemeMode.CUSTOM_SEED
+                2 -> ColorSchemeMode.PRESET
+                else -> ColorSchemeMode.DYNAMIC
+            }
+        }
+
+        // Custom seed color (stored as string hex for serialization)
+        @FormField(R.string.custom_seed_color, FieldForm.DROPDOWN, R.string.custom_seed_color_description, 2)
+        @DropdownFieldOptionsId(R.array.seed_colors)
+        var customSeedColorIndex: Int = 0;
+
+        fun getSeedColorHex(): String {
+            return when(customSeedColorIndex) {
+                0 -> "#6750A4" // Default purple
+                1 -> "#0061A4" // Blue
+                2 -> "#006D40" // Green
+                3 -> "#9C4146" // Red
+                4 -> "#7E5323" // Brown
+                5 -> "#395BPE" // Indigo
+                else -> "#6750A4"
+            }
+        }
+
+        // Font choice: 0=Inter, 1=System
+        @FormField(R.string.font, FieldForm.DROPDOWN, R.string.font_description, 3)
+        @DropdownFieldOptionsId(R.array.font_choices)
+        var fontChoice: Int = 0;
+
+        fun getFontChoice(): FontChoice {
+            return when(fontChoice) {
+                0 -> FontChoice.INTER
+                1 -> FontChoice.SYSTEM
+                else -> FontChoice.INTER
+            }
+        }
+
+        // Icon style: 0=Rounded, 1=Sharp, 2=Outlined
+        @FormField(R.string.icon_style, FieldForm.DROPDOWN, R.string.icon_style_description, 4)
+        @DropdownFieldOptionsId(R.array.icon_styles)
+        var iconStyle: Int = 0;
+
+        fun getIconStyle(): IconStyle {
+            return when(iconStyle) {
+                0 -> IconStyle.ROUNDED
+                1 -> IconStyle.SHARP
+                2 -> IconStyle.OUTLINED
+                else -> IconStyle.ROUNDED
+            }
+        }
+
+        // Contrast level: 0=Standard, 1=Medium, 2=High
+        @FormField(R.string.contrast, FieldForm.DROPDOWN, R.string.contrast_description, 5)
+        @DropdownFieldOptionsId(R.array.contrast_levels)
+        var contrastLevel: Int = 0;
+
+        fun getContrastLevel(): ContrastLevel {
+            return when(contrastLevel) {
+                0 -> ContrastLevel.STANDARD
+                1 -> ContrastLevel.MEDIUM
+                2 -> ContrastLevel.HIGH
+                else -> ContrastLevel.STANDARD
             }
         }
     }

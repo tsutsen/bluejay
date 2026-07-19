@@ -1200,4 +1200,51 @@
     <string name="import_from_file">Import from File</string>
     <string name="save_profile_to_file_for_sharing">Save profile to file for sharing</string>
     <string name="profile_saved_successfully">Profile saved successfully</string>
+
+    <!-- Appearance Settings -->
+    <string name="appearance">Appearance</string>
+    <string name="configure_appearance_settings">Configure how Grayjay looks and feels</string>
+
+    <string name="color_scheme">Color scheme</string>
+    <string name="color_scheme_description">Choose how colors are applied to the app</string>
+    <string-array name="color_scheme_modes">
+        <item>Dynamic (wallpaper)</item>
+        <item>Custom seed color</item>
+        <item>Preset colors</item>
+    </string-array>
+
+    <string name="custom_seed_color">Seed color</string>
+    <string name="custom_seed_color_description">Choose a color to derive the theme from</string>
+    <string-array name="seed_colors">
+        <item>Default purple</item>
+        <item>Blue</item>
+        <item>Green</item>
+        <item>Red</item>
+        <item>Brown</item>
+        <item>Indigo</item>
+    </string-array>
+
+    <string name="font">Font</string>
+    <string name="font_description">Choose the default font for the app</string>
+    <string-array name="font_choices">
+        <item>Inter</item>
+        <item>System default</item>
+    </string-array>
+
+    <string name="icon_style">Icon style</string>
+    <string name="icon_style_description">Choose the style for app icons</string>
+    <string-array name="icon_styles">
+        <item>Rounded</item>
+        <item>Sharp</item>
+        <item>Outlined</item>
+    </string-array>
+
+    <string name="contrast">Contrast</string>
+    <string name="contrast_description">Adjust contrast level for better visibility</string>
+    <string-array name="contrast_levels">
+        <item>Standard</item>
+        <item>Medium</item>
+        <item>High</item>
+    </string-array>
+
 </resources>

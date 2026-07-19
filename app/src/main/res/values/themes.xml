@@ -126,4 +126,25 @@
         <item name="windowActionBar">false</item>
     </style>
 
+    <!-- Material You Dynamic Colors theme variant -->
+    <!-- On Android 13+ (API 33+), DynamicColors will override colors from wallpaper -->
+    <style name="Theme.FutoVideo.DynamicColors" parent="Theme.Material3.DynamicColors.DayNight">
+        <!-- Material3 text appearances are inherited from parent -->
+        <!-- Material3 shape appearances are inherited from parent -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="imageButtonStyle">@style/Theme.FutoVideo.ImageButton</item>
+        <item name="editTextStyle">@style/Theme.FutoVideo.EditText</item>
+        <item name="android:listViewStyle">@style/Theme.FutoVideo.ListView</item>
+        <item name="android:textViewStyle">@style/Theme.FutoVideo.TextView</item>
+        <item name="android:checkedTextViewStyle">@style/Theme.FutoVideo.CheckedTextView</item>
+    </style>
+
+    <!-- Material Symbols icon style settings -->
+    <style name="Theme.FutoVideo.MaterialSymbol" parent="Widget.AppCompat.TextView">
+        <item name="android:textSize">24sp</item>
+        <item name="android:textColor">?attr/colorOnBackground</item>
+        <item name="fontFamily">@font/inter_regular</item>
+    </style>
+
 </resources>
