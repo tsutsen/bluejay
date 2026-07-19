@@ -13,7 +13,7 @@
     android:background="@drawable/background_pill_black">
 
     <com.futo.platformplayer.widget.MaterialIconView
-        android:id="@+id/image_button"
+        android:id="@+id/image_icon"
         android:layout_width="25dp"
         android:layout_height="25dp"
         android:layout_marginStart="10dp"

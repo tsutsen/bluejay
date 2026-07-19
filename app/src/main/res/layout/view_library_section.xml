@@ -20,7 +20,7 @@
         android:layout_marginLeft="10dp"
         android:textSize="17sp"
         android:text="Albums" />
-    <ImageView
+    <TextView
         android:id="@+id/image_nav"
         android:layout_width="25dp"
         android:layout_height="25dp"
@@ -28,8 +28,9 @@
         app:layout_constraintTop_toTopOf="@id/text_label"
         app:layout_constraintBottom_toBottomOf="@id/text_label"
         app:layout_constraintRight_toRightOf="parent"
-
-        android:src="@drawable/ic_arrow_right" />
+        android:gravity="center"
+        android:textSize="25sp"
+        android:textColor="?attr/colorOnSurface" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_collection"

@@ -9,7 +9,7 @@
     android:id="@+id/root">
 
     <com.futo.platformplayer.widget.MaterialIconView
-        android:id="@+id/image_button"
+        android:id="@+id/image_icon"
         android:layout_width="wrap_content"
         android:layout_height="25dp"
         app:iconSize="25sp"

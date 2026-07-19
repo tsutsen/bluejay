@@ -13,14 +13,12 @@
     android:id="@+id/root"
     android:clickable="true">
 
-    <ImageView
+    <com.futo.platformplayer.widget.MaterialIconView
         android:id="@+id/image_icon"
         android:layout_height="50dp"
         android:layout_width="50dp"
-        android:scaleType="centerCrop"
+        app:iconSize="50sp"
         app:layout_constraintDimensionRatio="H,1,1"
-        app:shapeAppearanceOverlay="@style/roundedCorners_4dp"
-        app:srcCompat="@drawable/unknown_music"
         android:background="@drawable/video_thumbnail_outline"
         android:layout_marginTop="12dp"
         app:layout_constraintTop_toTopOf="parent"

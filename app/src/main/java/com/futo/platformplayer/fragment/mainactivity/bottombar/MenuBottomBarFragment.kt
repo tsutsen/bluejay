@@ -557,7 +557,7 @@ class MenuBottomBarFragment : MainActivityFragment() {
 
                 this.definition = def;
 
-                _buttonImage = findViewById(R.id.image_button);
+                _buttonImage = findViewById(R.id.image_icon);
                 _buttonImage.setIconName(definition.iconActive);
                 if(definition.isActive(fragment) || isMore) {
                     this.alpha = 1f;

@@ -10,12 +10,14 @@
         android:gravity="center"
         android:orientation="vertical">
 
-        <ImageView
+        <TextView
             android:id="@+id/icon"
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:layout_marginBottom="10dp"
-            android:scaleType="fitCenter" />
+            android:gravity="center"
+            android:textSize="60sp"
+            android:textColor="?attr/colorOnSurface" />
         <TextView
             android:id="@+id/text_title"
             android:layout_width="match_parent"
