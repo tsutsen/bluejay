@@ -1,10 +1,10 @@
 package com.futo.platformplayer.views.pills
 
 import android.content.Context
+import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -16,6 +16,7 @@ import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.constructs.Event3
 import com.futo.platformplayer.states.StatePolycentric
 import com.futo.platformplayer.toHumanNumber
+import com.futo.platformplayer.utils.Icons
 import com.futo.platformplayer.views.LoaderView
 import com.futo.polycentric.core.ProcessHandle
 
@@ -33,8 +34,8 @@ class PillRatingLikesDislikes : LinearLayout {
     private val _loaderViewLikes: LoaderView;
     private val _loaderViewDislikes: LoaderView;
     private val _seperator: View;
-    private val _iconLikes: ImageView;
-    private val _iconDislikes: ImageView;
+    private val _iconLikes: TextView;
+    private val _iconDislikes: TextView;
     private var _isLoading: Boolean = false;
 
     private var _likes = 0L;
@@ -53,6 +54,17 @@ class PillRatingLikesDislikes : LinearLayout {
         _iconLikes = findViewById(R.id.pill_like_icon);
         _loaderViewLikes = findViewById(R.id.loader_likes)
         _loaderViewDislikes = findViewById(R.id.loader_dislikes)
+
+        // Set Material Symbols font
+        try {
+            _iconLikes.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+            _iconDislikes.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
+
+        _iconLikes.text = Icons["ic_thumb_up"] ?: "";
+        _iconDislikes.text = Icons["ic_thumb_down"] ?: "";
 
         findViewById<LinearLayout>(R.id.layout_like).setOnClickListener { if (!_isLoading) StatePolycentric.instance.requireLogin(context, context.getString(R.string.please_login_to_like)) { like(it) }; };
         findViewById<LinearLayout>(R.id.layout_dislike).setOnClickListener { if (!_isLoading) StatePolycentric.instance.requireLogin(context, context.getString(R.string.please_login_to_dislike)) { dislike(it) }; };
@@ -171,18 +183,18 @@ class PillRatingLikesDislikes : LinearLayout {
     private fun updateColors() {
         if (_hasLiked) {
             _textLikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary));
-            _iconLikes.setColorFilter(ContextCompat.getColor(context, R.color.colorPrimary));
+            _iconLikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary));
         } else {
             _textLikes.setTextColor(ContextCompat.getColor(context, R.color.white));
-            _iconLikes.setColorFilter(ContextCompat.getColor(context, R.color.white));
+            _iconLikes.setTextColor(ContextCompat.getColor(context, R.color.white));
         }
 
         if (_hasDisliked) {
             _textDislikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary));
-            _iconDislikes.setColorFilter(ContextCompat.getColor(context, R.color.colorPrimary));
+            _iconDislikes.setTextColor(ContextCompat.getColor(context, R.color.colorPrimary));
         } else {
             _textDislikes.setTextColor(ContextCompat.getColor(context, R.color.white));
-            _iconDislikes.setColorFilter(ContextCompat.getColor(context, R.color.white));
+            _iconDislikes.setTextColor(ContextCompat.getColor(context, R.color.white));
         }
     }
 }

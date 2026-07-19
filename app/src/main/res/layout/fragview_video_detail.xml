@@ -271,12 +271,14 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:orientation="horizontal">
-                                    <ImageView
+                                    <TextView
                                         android:id="@+id/image_like_icon"
-                                        android:layout_width="14dp"
-                                        android:layout_height="14dp"
-                                        app:tint="?attr/colorOnSurfaceVariant"
-                                        app:srcCompat="@drawable/ic_thumb_up" />
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="match_parent"
+                                        android:gravity="center_vertical"
+                                        android:textSize="12sp"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:includeFontPadding="false" />
 
                                     <TextView
                                         android:id="@+id/text_likes"
@@ -293,13 +295,14 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:orientation="horizontal">
-                                    <ImageView
+                                    <TextView
                                         android:id="@+id/image_dislike_icon"
-                                        android:layout_width="14dp"
-                                        android:layout_height="14dp"
-                                        android:layout_marginTop="2dp"
-                                        app:tint="?attr/colorOnSurfaceVariant"
-                                        app:srcCompat="@drawable/ic_thumb_down" />
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="match_parent"
+                                        android:gravity="center_vertical"
+                                        android:textSize="12sp"
+                                        android:textColor="?attr/colorOnSurfaceVariant"
+                                        android:includeFontPadding="false" />
 
                                     <TextView
                                         android:id="@+id/text_dislikes"

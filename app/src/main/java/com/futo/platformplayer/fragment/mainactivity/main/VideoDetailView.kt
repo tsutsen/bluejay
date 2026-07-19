@@ -1,5 +1,6 @@
 package com.futo.platformplayer.fragment.mainactivity.main
 
+import android.graphics.Typeface
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
 import android.content.ClipData
@@ -49,6 +50,7 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.futo.platformplayer.BuildConfig
 import com.futo.platformplayer.R
+import com.futo.platformplayer.utils.Icons
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.UISlideOverlays
@@ -302,8 +304,8 @@ class VideoDetailView : ConstraintLayout {
     private val _textLikes: TextView;
     private val _textDislikes: TextView;
     private val _layoutRating: LinearLayout;
-    private val _imageDislikeIcon: ImageView;
-    private val _imageLikeIcon: ImageView;
+    private val _imageDislikeIcon: TextView;
+    private val _imageLikeIcon: TextView;
 
     private val _monetization: MonetizationView;
 
@@ -482,6 +484,17 @@ class VideoDetailView : ConstraintLayout {
         _textLikes = findViewById(R.id.text_likes);
         _imageLikeIcon = findViewById(R.id.image_like_icon);
         _imageDislikeIcon = findViewById(R.id.image_dislike_icon);
+        
+        // Set Material Symbols font
+        try {
+            _imageLikeIcon.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+            _imageDislikeIcon.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
+        
+        _imageLikeIcon.text = Icons["ic_thumb_up"] ?: "";
+        _imageDislikeIcon.text = Icons["ic_thumb_down"] ?: "";
 
         _buttonPolycentric = findViewById(R.id.button_polycentric)
         _buttonPlatform = findViewById(R.id.button_platform)

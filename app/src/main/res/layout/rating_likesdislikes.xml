@@ -17,12 +17,14 @@
         android:paddingBottom="7dp"
         android:paddingEnd="8dp">
 
-        <ImageView
+        <TextView
             android:id="@+id/pill_like_icon"
-            android:layout_width="30dp"
-            android:layout_height="18dp"
-            app:tint="?attr/colorOnSurface"
-            app:srcCompat="@drawable/ic_thumb_up" />
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"
+            android:includeFontPadding="false" />
         <TextView
             android:id="@+id/pill_likes"
             android:layout_width="wrap_content"
@@ -58,13 +60,14 @@
         android:paddingTop="6dp"
         android:paddingBottom="7dp">
 
-        <ImageView
+        <TextView
             android:id="@+id/pill_dislike_icon"
-            android:layout_width="30dp"
-            android:layout_height="18dp"
-            android:layout_marginTop="2dp"
-            app:tint="?attr/colorOnSurface"
-            app:srcCompat="@drawable/ic_thumb_down" />
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"
+            android:includeFontPadding="false" />
         <TextView
             android:id="@+id/pill_dislikes"
             android:layout_width="wrap_content"
