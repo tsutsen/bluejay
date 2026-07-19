@@ -7,6 +7,7 @@ import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
+import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.media.AudioManager
@@ -205,6 +206,33 @@ class FutoVideoPlayer : FutoVideoPlayerBase {
         _control_time_fullscreen = _videoControls_fullscreen.findViewById(R.id.text_position);
         _control_duration_fullscreen = _videoControls_fullscreen.findViewById(R.id.text_duration);
         _control_pause_fullscreen = _videoControls_fullscreen.findViewById(R.id.button_pause);
+
+        // Set Material Symbols font on all icon TextViews
+        val matTypeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+        _control_fullscreen.typeface = matTypeface;
+        _control_autoplay.typeface = matTypeface;
+        _control_videosettings.typeface = matTypeface;
+        _control_minimize.typeface = matTypeface;
+        _control_rotate_lock.typeface = matTypeface;
+        _control_loop.typeface = matTypeface;
+        _control_cast.typeface = matTypeface;
+        _control_play.typeface = matTypeface;
+        _control_pause.typeface = matTypeface;
+        _buttonPrevious.typeface = matTypeface;
+        _buttonNext.typeface = matTypeface;
+
+        // Set Material Symbols font on all fullscreen icon TextViews
+        _control_autoplay_fullscreen.typeface = matTypeface;
+        _control_fullscreen_fullscreen.typeface = matTypeface;
+        _control_minimize_fullscreen.typeface = matTypeface;
+        _control_videosettings_fullscreen.typeface = matTypeface;
+        _control_rotate_lock_fullscreen.typeface = matTypeface;
+        _control_loop_fullscreen.typeface = matTypeface;
+        _control_cast_fullscreen.typeface = matTypeface;
+        _control_play_fullscreen.typeface = matTypeface;
+        _buttonPrevious_fullscreen.typeface = matTypeface;
+        _buttonNext_fullscreen.typeface = matTypeface;
+        _control_pause_fullscreen.typeface = matTypeface;
 
         _loaderGame = findViewById(R.id.loader_overlay)
         _loaderGame.visibility = View.GONE
