@@ -8,6 +8,7 @@ object Icons {
     private val map = mapOf(
         // Navigation
         "ic_home" to "\uE88A",
+        "ic_home_filled" to "\uE9B2",
         "ic_settings" to "\uE8B8",
         "ic_search" to "\uEF7A",
         "ic_menu" to "\uE5D2",
@@ -20,6 +21,10 @@ object Icons {
         "ic_library" to "\uE02F",
         "ic_subscriptions" to "\uE064",
         "ic_playlist" to "\uE05F",
+        "ic_playlist_play" to "\uE050",
+        "ic_casino" to "\uE87E",
+        "ic_source" to "\uE8D1",
+        "ic_smart_display" to "\uE30B",
         "ic_history" to "\uE8B3",
         "ic_downloads" to "\uF090",
         "ic_favorite" to "\uE87E",

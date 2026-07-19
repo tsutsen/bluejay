@@ -380,53 +380,95 @@ class VideoDetailView : ConstraintLayout {
     @androidx.annotation.OptIn(UnstableApi::class)
     constructor(context: Context, attrs : AttributeSet? = null) : super(context, attrs) {
         inflate(context, R.layout.fragview_video_detail, this);
+        android.util.Log.d("VideoDetailView", "Starting findViewById initialization...");
 
         //Declare Views
         rootView = findViewById(R.id.videodetail_root);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_root (${rootView?.javaClass?.simpleName})");
         _cast = findViewById(R.id.videodetail_cast);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_cast (${_cast?.javaClass?.simpleName})");
         _player = findViewById(R.id.videodetail_player);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_player (${_player?.javaClass?.simpleName})");
         _playerProgress = findViewById(R.id.videodetail_progress);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_progress (${_playerProgress?.javaClass?.simpleName})");
         _timeBar = _playerProgress.findViewById(androidx.media3.ui.R.id.exo_progress);
+        android.util.Log.d("VideoDetailView", "Found: exo_progress (${_timeBar?.javaClass?.simpleName})");
         _title = findViewById(R.id.videodetail_title);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_title (${_title?.javaClass?.simpleName})");
         _subTitle = findViewById(R.id.videodetail_meta);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_meta (${_subTitle?.javaClass?.simpleName})");
         _platform = findViewById(R.id.videodetail_platform);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_platform (${_platform?.javaClass?.simpleName})");
         _description = findViewById(R.id.videodetail_description);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_description (${_description?.javaClass?.simpleName})");
         _descriptionContainer = findViewById(R.id.videodetail_description_container);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_description_container (${_descriptionContainer?.javaClass?.simpleName})");
         _channelName = findViewById(R.id.videodetail_channel_name);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_channel_name (${_channelName?.javaClass?.simpleName})");
         _channelMeta = findViewById(R.id.videodetail_channel_meta);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_channel_meta (${_channelMeta?.javaClass?.simpleName})");
         _creatorThumbnail = findViewById(R.id.creator_thumbnail);
+        android.util.Log.d("VideoDetailView", "Found: creator_thumbnail (${_creatorThumbnail?.javaClass?.simpleName})");
         _channelButton = findViewById(R.id.videodetail_channel_button);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_channel_button (${_channelButton?.javaClass?.simpleName})");
         _description_viewMore = findViewById(R.id.videodetail_description_view_more);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_description_view_more (${_description_viewMore?.javaClass?.simpleName})");
         _overlay_loading = findViewById(R.id.videodetail_loading_overlay);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_loading_overlay (${_overlay_loading?.javaClass?.simpleName})");
         _overlay_loading_spinner = findViewById(R.id.videodetail_loader);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_loader (${_overlay_loading_spinner?.javaClass?.simpleName})");
         _rating = findViewById(R.id.videodetail_rating);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_rating (${_rating?.javaClass?.simpleName})");
         _upNext = findViewById(R.id.up_next);
+        android.util.Log.d("VideoDetailView", "Found: up_next (${_upNext?.javaClass?.simpleName})");
         _layoutChangeBottomSection = findViewById(R.id.layout_change_bottom_section);
+        android.util.Log.d("VideoDetailView", "Found: layout_change_bottom_section (${_layoutChangeBottomSection?.javaClass?.simpleName})");
         _layoutRecommended = findViewById(R.id.layout_recommended)
+        android.util.Log.d("VideoDetailView", "Found: layout_recommended (${_layoutRecommended?.javaClass?.simpleName})");
 
         _overlayContainer = findViewById(R.id.overlay_container);
+        android.util.Log.d("VideoDetailView", "Found: overlay_container (${_overlayContainer?.javaClass?.simpleName})");
         _overlay_quality_container = findViewById(R.id.videodetail_quality_overview);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_quality_overview (${_overlay_quality_container?.javaClass?.simpleName})");
 
         _minimize_controls = findViewById(R.id.minimize_controls);
+        android.util.Log.d("VideoDetailView", "Found: minimize_controls (${_minimize_controls?.javaClass?.simpleName})");
         _minimize_controls_pause = findViewById(R.id.minimize_pause);
+        android.util.Log.d("VideoDetailView", "Found: minimize_pause (${_minimize_controls_pause?.javaClass?.simpleName})");
         _minimize_controls_close = findViewById(R.id.minimize_close);
+        android.util.Log.d("VideoDetailView", "Found: minimize_close (${_minimize_controls_close?.javaClass?.simpleName})");
         _minimize_controls_play = findViewById(R.id.minimize_play);
+        android.util.Log.d("VideoDetailView", "Found: minimize_play (${_minimize_controls_play?.javaClass?.simpleName})");
         _minimize_title = findViewById(R.id.videodetail_title_minimized);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_title_minimized (${_minimize_title?.javaClass?.simpleName})");
         _minimize_meta = findViewById(R.id.videodetail_meta_minimized);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_meta_minimized (${_minimize_meta?.javaClass?.simpleName})");
         _buttonSubscribe = findViewById(R.id.button_subscribe);
+        android.util.Log.d("VideoDetailView", "Found: button_subscribe (${_buttonSubscribe?.javaClass?.simpleName})");
 
         _container_content = findViewById(R.id.contentContainer);
+        android.util.Log.d("VideoDetailView", "Found: contentContainer (${_container_content?.javaClass?.simpleName})");
         _container_content_main = findViewById(R.id.videodetail_container_main);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_container_main (${_container_content_main?.javaClass?.simpleName})");
         _container_content_queue = findViewById(R.id.videodetail_container_queue);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_container_queue (${_container_content_queue?.javaClass?.simpleName})");
         _container_content_replies = findViewById(R.id.videodetail_container_replies);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_container_replies (${_container_content_replies?.javaClass?.simpleName})");
         _container_content_description = findViewById(R.id.videodetail_container_description);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_container_description (${_container_content_description?.javaClass?.simpleName})");
         _container_content_liveChat = findViewById(R.id.videodetail_container_livechat);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_container_livechat (${_container_content_liveChat?.javaClass?.simpleName})");
         _container_content_support = findViewById(R.id.videodetail_container_support);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_container_support (${_container_content_support?.javaClass?.simpleName})");
         _container_content_browser = findViewById(R.id.videodetail_container_webview)
+        android.util.Log.d("VideoDetailView", "Found: videodetail_container_webview (${_container_content_browser?.javaClass?.simpleName})");
         _container_content_chapters = findViewById(R.id.videodetail_container_chapters);
+        android.util.Log.d("VideoDetailView", "Found: videodetail_container_chapters (${_container_content_chapters?.javaClass?.simpleName})");
 
         _addCommentView = findViewById(R.id.add_comment_view);
+        android.util.Log.d("VideoDetailView", "Found: add_comment_view (${_addCommentView?.javaClass?.simpleName})");
         _commentsList = findViewById(R.id.comments_list);
+        android.util.Log.d("VideoDetailView", "Found: comments_list (${_commentsList?.javaClass?.simpleName})");
 
         _layoutSkip = findViewById(R.id.layout_skip);
         _textSkip = findViewById(R.id.text_skip);

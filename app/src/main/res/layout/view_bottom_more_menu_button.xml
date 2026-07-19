@@ -14,11 +14,13 @@
 
     <com.futo.platformplayer.widget.MaterialIconView
         android:id="@+id/image_icon"
-        android:layout_width="25dp"
-        android:layout_height="25dp"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
         android:layout_marginStart="10dp"
         android:layout_marginEnd="10dp"
-        app:iconSize="25sp"
+        app:iconSize="10sp"
         tools:text="\uE88A"/>
 
     <TextView

@@ -609,10 +609,10 @@ class MenuBottomBarFragment : MainActivityFragment() {
             //if(Build.VERSION.SDK_INT > Build.VERSION_CODES.P)
                 ButtonDefinition(12, "ic_library", "ic_library", R.string.library, canToggle = false, { it.currentMain is LibraryFragment }, { it.navigateTab<LibraryFragment>() })
             ,//else null,
-            ButtonDefinition(2, "ic_casino", "ic_casino", R.string.creators, canToggle = false, { it.currentMain is CreatorsFragment }, { it.navigateTab<CreatorsFragment>() }),
+            ButtonDefinition(2, "ic_star", "ic_star", R.string.creators, canToggle = false, { it.currentMain is CreatorsFragment }, { it.navigateTab<CreatorsFragment>() }),
             ButtonDefinition(3, "ic_source", "ic_source", R.string.sources, canToggle = false, { it.currentMain is SourcesFragment }, { it.navigateTab<SourcesFragment>() }),
             ButtonDefinition(4, "ic_playlist_play", "ic_playlist_play", R.string.playlists, canToggle = false, { it.currentMain is PlaylistsFragment }, { it.navigateTab<PlaylistsFragment>() }),
-            ButtonDefinition(11, "ic_smart_display", "ic_smart_display", R.string.shorts, canToggle = true, { it.currentMain is ShortsFragment && !(it.currentMain as ShortsFragment).isChannelShortsMode }, { it.navigateTab<ShortsFragment>() }),
+            ButtonDefinition(11, "ic_ondemand_video", "ic_ondemand_video", R.string.shorts, canToggle = true, { it.currentMain is ShortsFragment && !(it.currentMain as ShortsFragment).isChannelShortsMode }, { it.navigateTab<ShortsFragment>() }),
             ButtonDefinition(5, "ic_history", "ic_history", R.string.history, canToggle = false, { it.currentMain is HistoryFragment }, { it.navigateTab<HistoryFragment>() }),
             ButtonDefinition(6, "ic_download", "ic_download", R.string.downloads, canToggle = false, { it.currentMain is DownloadsFragment }, { it.navigateTab<DownloadsFragment>() }),
             ButtonDefinition(8, "ic_chat", "ic_chat", R.string.comments, canToggle = true, { it.currentMain is CommentsFragment }, { it.navigateTab<CommentsFragment>() }),

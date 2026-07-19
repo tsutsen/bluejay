@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.TypedArray
 import android.graphics.Typeface
 import android.util.AttributeSet
+import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
 import com.futo.platformplayer.R
 import com.futo.platformplayer.utils.Icons
@@ -31,6 +32,12 @@ class MaterialIconView @JvmOverloads constructor(
     private var iconSize: Float = 24f
 
     init {
+        // Remove default padding and margins
+        setPadding(0, 0, 0, 0)
+        layoutParams = ViewGroup.LayoutParams(-2, -2)
+        gravity = android.view.Gravity.CENTER
+        setLineSpacing(0f, 1f)
+        
         attrs?.let {
             val typedArray = context.obtainStyledAttributes(it, R.styleable.MaterialIconView)
             iconName = typedArray.getString(R.styleable.MaterialIconView_iconName)
