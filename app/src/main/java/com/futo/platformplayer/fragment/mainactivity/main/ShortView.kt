@@ -239,7 +239,7 @@ class ShortView : FrameLayout {
                 playPauseIcon.setImageResource(R.drawable.ic_play)
                 playPauseIcon.contentDescription = context.getString(R.string.play)
             } else {
-                playPauseIcon.setImageResource(R.drawable.ic_pause)
+                playPauseIcon.setImageResource(R.drawable.ic_pause_white)
                 playPauseIcon.contentDescription = context.getString(R.string.pause)
             }
             showPlayPauseIcon()
@@ -297,7 +297,7 @@ class ShortView : FrameLayout {
         }
 
         likeButton.onClick.subscribe {
-            val checked = likeButton.iconId == R.drawable.ic_thumb_up_s // !likeButton.isChecked
+            val checked = likeButton.iconName == "ic_thumb_up" // !likeButton.isChecked
             StatePolycentric.instance.requireLogin(context, context.getString(R.string.please_login_to_like)) {
                 if (checked) {
                     likes++
@@ -306,13 +306,13 @@ class ShortView : FrameLayout {
                 }
 
                 if(checked)
-                    likeButton.withIcon(R.drawable.ic_thumb_up_s_filled) //.isChecked = checked
+                    likeButton.withIcon("ic_thumb_up") //.isChecked = checked
                 else
-                    likeButton.withIcon(R.drawable.ic_thumb_up_s)
+                    likeButton.withIcon("ic_thumb_up")
 
-                if (dislikeButton.iconId == R.drawable.ic_thumb_down_s_filled && checked) {
+                if (dislikeButton.iconName == "ic_thumb_down" && checked) {
                     //dislikeButton.isChecked = false
-                    dislikeButton.withIcon(R.drawable.ic_thumb_down_s)
+                    dislikeButton.withIcon("ic_thumb_down")
                     dislikes--
                 }
 
@@ -325,7 +325,7 @@ class ShortView : FrameLayout {
         }
 
         dislikeButton.onClick.subscribe {
-            val checked =  dislikeButton.iconId == R.drawable.ic_thumb_down_s //!dislikeButton.isChecked
+            val checked =  dislikeButton.iconName == "ic_thumb_down" //!dislikeButton.isChecked
             StatePolycentric.instance.requireLogin(context, context.getString(R.string.please_login_to_like)) {
                 if (checked) {
                     dislikes++
@@ -335,13 +335,13 @@ class ShortView : FrameLayout {
 
                 //dislikeButton.isChecked = checked
                 if(checked)
-                    dislikeButton.withIcon(R.drawable.ic_thumb_down_s_filled) //.isChecked = checked
+                    dislikeButton.withIcon("ic_thumb_down") //.isChecked = checked
                 else
-                    dislikeButton.withIcon(R.drawable.ic_thumb_down_s)
+                    dislikeButton.withIcon("ic_thumb_down")
 
-                if (likeButton.iconId == R.drawable.ic_thumb_up_s_filled && checked) {
+                if (likeButton.iconName == "ic_thumb_up" && checked) {
                     //likeButton.isChecked = false
-                    likeButton.withIcon(R.drawable.ic_thumb_up_s);
+                    likeButton.withIcon("ic_thumb_up");
                     likes--
                 }
 
@@ -482,7 +482,7 @@ class ShortView : FrameLayout {
                     }
                 } else null, if (localVideoSources?.isNotEmpty() == true) SlideUpMenuGroup(
                     this.context, context.getString(R.string.offline_video), "video", *localVideoSources.map {
-                        SlideUpMenuItem(this.context, R.drawable.ic_movie, it.name, "${it.width}x${it.height}", tag = it, call = { handleSelectVideoTrack(it) })
+                        SlideUpMenuItem(this.context, "ic_movie", it.name, "${it.width}x${it.height}", tag = it, call = { handleSelectVideoTrack(it) })
                     }.toList().toTypedArray()
                 )
                 else null, if (localAudioSource?.isNotEmpty() == true) SlideUpMenuGroup(
@@ -497,10 +497,10 @@ class ShortView : FrameLayout {
                 )
                 else null, if (liveStreamVideoFormats?.isEmpty() == false) SlideUpMenuGroup(
                     this.context, context.getString(R.string.stream_video), "video", (listOf(
-                        SlideUpMenuItem(this.context, R.drawable.ic_movie, "Auto", tag = "auto", call = { player.selectVideoTrack(-1) })
+                        SlideUpMenuItem(this.context, "ic_movie", "Auto", tag = "auto", call = { player.selectVideoTrack(-1) })
                     ) + (liveStreamVideoFormats.map {
                         SlideUpMenuItem(
-                            this.context, R.drawable.ic_movie, it.label ?: it.containerMimeType
+                            this.context, "ic_movie", it.label ?: it.containerMimeType
                             ?: it.bitrate.toString(), "${it.width}x${it.height}", tag = it, call = { player.selectVideoTrack(it.height) })
                     }))
                 )
@@ -513,7 +513,7 @@ class ShortView : FrameLayout {
                     this.context, context.getString(R.string.video), "video", *bestVideoSources.map {
                         val estSize = VideoHelper.estimateSourceSize(it)
                         val prefix = if (estSize > 0) "±" + estSize.toHumanBytesSize() + " " else ""
-                        SlideUpMenuItem(this.context, R.drawable.ic_movie, it.name, if (it.width > 0 && it.height > 0) "${it.width}x${it.height}" else "", (prefix + it.codec.trim()).trim(), tag = it, call = { handleSelectVideoTrack(it) })
+                        SlideUpMenuItem(this.context, "ic_movie", it.name, if (it.width > 0 && it.height > 0) "${it.width}x${it.height}" else "", (prefix + it.codec.trim()).trim(), tag = it, call = { handleSelectVideoTrack(it) })
                     }.toList().toTypedArray()
                 )
                 else null, if (bestAudioSources.isNotEmpty()) SlideUpMenuGroup(

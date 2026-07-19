@@ -9,11 +9,14 @@
     android:paddingTop="3dp"
     android:paddingLeft="10dp"
     android:paddingRight="10dp">
-    <ImageView
-        android:id="@+id/image_icon"
+    <TextView
+        android:id="@+id/button_icon"
         android:layout_width="32dp"
         android:layout_height="32dp"
-        android:src="@drawable/ic_qr" />
+        android:gravity="center"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="24sp"
+        android:text="\uE87E" />
     <TextView
         android:id="@+id/text_title"
         android:layout_width="match_parent"

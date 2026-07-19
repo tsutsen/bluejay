@@ -261,7 +261,8 @@
             android:layout_height="64dp"
             android:layout_gravity="center"
             android:contentDescription="@string/play"
-            android:src="@drawable/ic_play"
+            android:text="\uE037"
+        android:gravity="center"
             app:tint="?attr/colorOnSurface" />
     </FrameLayout>
 </FrameLayout>

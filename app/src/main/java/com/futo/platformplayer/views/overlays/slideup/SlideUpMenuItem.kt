@@ -1,6 +1,7 @@
 package com.futo.platformplayer.views.overlays.slideup
 
 import android.content.Context
+import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.widget.ImageView
@@ -9,11 +10,12 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
 import com.futo.platformplayer.R
+import com.futo.platformplayer.utils.Icons
 
 class SlideUpMenuItem : ConstraintLayout {
 
     private lateinit var _root: ConstraintLayout;
-    private lateinit var _image: ImageView;
+    private lateinit var _image: TextView;
     private lateinit var _text: TextView;
     private lateinit var _subtext: TextView;
     private lateinit var _description: TextView;
@@ -30,7 +32,7 @@ class SlideUpMenuItem : ConstraintLayout {
 
     constructor(
         context: Context,
-        imageRes: Int = 0,
+        iconName: String,
         mainText: String,
         subText: String = "",
         description: String? = "",
@@ -39,7 +41,40 @@ class SlideUpMenuItem : ConstraintLayout {
         invokeParent: Boolean = true
     ): super(context){
         init();
-        _image.setImageResource(imageRes);
+        _image.text = Icons[iconName];
+        _text.text = mainText;
+        _subtext.text = subText;
+
+        if(description.isNullOrEmpty())
+            _description.isVisible = false;
+        else {
+            _description.text = description;
+            _description.isVisible = true;
+        }
+        this.itemTag = tag;
+
+        if (call != null) {
+            setOnClickListener {
+                call.invoke();
+                if(invokeParent)
+                    _parentClickListener?.invoke();
+            };
+        }
+    }
+
+    // Backward compatibility constructor
+    constructor(
+        context: Context,
+        imageRes: Int,
+        mainText: String,
+        subText: String = "",
+        description: String? = "",
+        tag: Any?,
+        call: (() -> Unit)? = null,
+        invokeParent: Boolean = true
+    ): super(context){
+        init();
+        _image.text = Icons["ic_image"];
         _text.text = mainText;
         _subtext.text = subText;
 
@@ -68,6 +103,13 @@ class SlideUpMenuItem : ConstraintLayout {
         _text = findViewById(R.id.slide_up_menu_item_text);
         _subtext = findViewById(R.id.slide_up_menu_item_subtext);
         _description = findViewById(R.id.slide_up_menu_item_description);
+        
+        // Set Material Symbols font
+        try {
+            _image.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         setOptionSelected(false);
     }
