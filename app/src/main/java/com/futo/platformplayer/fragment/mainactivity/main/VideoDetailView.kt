@@ -599,7 +599,7 @@ class VideoDetailView : ConstraintLayout {
         _buttonPins.alwaysShowLastButton = true;
 
         var buttonMore: RoundButton? = null;
-        buttonMore = RoundButton(context, R.drawable.ic_menu, context.getString(R.string.more), TAG_MORE) {
+        buttonMore = RoundButton(context, "ic_menu", context.getString(R.string.more), TAG_MORE) {
             _slideUpOverlay = UISlideOverlays.showMoreButtonOverlay(_overlayContainer, _buttonPins, listOf(TAG_MORE), false) {selected ->
                 _buttonPins.setButtons(*(selected + listOf(buttonMore!!)).toTypedArray());
                 _buttonPinStore.set(*selected.filter { it.tagRef is String }.map{ it.tagRef as String }.toTypedArray())
@@ -1081,7 +1081,7 @@ class VideoDetailView : ConstraintLayout {
             else false;
         } ?: false;
 
-        val buttons = listOf(RoundButton(context, R.drawable.ic_add, context.getString(R.string.add), TAG_ADD) {
+        val buttons = listOf(RoundButton(context, "ic_add", context.getString(R.string.add), TAG_ADD) {
             (video ?: _searchVideo)?.let {
                 _slideUpOverlay = UISlideOverlays.showAddToOverlay(it, _overlayContainer) {
                     _slideUpOverlay = it
@@ -1090,13 +1090,13 @@ class VideoDetailView : ConstraintLayout {
         },
             _chapters?.let {
               if(it != null && it.size > 0)
-                  RoundButton(context, R.drawable.ic_list, "Chapters", TAG_CHAPTERS) {
+                  RoundButton(context, "ic_list", "Chapters", TAG_CHAPTERS) {
                       showChaptersUI();
                   }
               else null
             },
             if(video?.isLive ?: false)
-                RoundButton(context, R.drawable.ic_chat, context.getString(R.string.live_chat), TAG_LIVECHAT) {
+                RoundButton(context, "ic_chat", context.getString(R.string.live_chat), TAG_LIVECHAT) {
                     video?.let {
                         try {
                             loadLiveChat(it);
@@ -1107,7 +1107,7 @@ class VideoDetailView : ConstraintLayout {
                     }
                     _slideUpOverlay?.hide();
                 } else if(video is JSVideoDetails && (video as JSVideoDetails).hasVODEvents())
-                RoundButton(context, R.drawable.ic_chat, context.getString(R.string.vod_chat), TAG_VODCHAT) {
+                RoundButton(context, "ic_chat", context.getString(R.string.vod_chat), TAG_VODCHAT) {
                     video?.let {
                         try {
                             loadVODChat(it);
@@ -1118,7 +1118,7 @@ class VideoDetailView : ConstraintLayout {
                     }
                     _slideUpOverlay?.hide();
                 } else null,
-            if (!isLimitedVersion) RoundButton(context, R.drawable.ic_screen_share, if (isAudioOnlyUserAction) context.getString(R.string.background_revert) else context.getString(R.string.background), TAG_BACKGROUND) {
+            if (!isLimitedVersion) RoundButton(context, "ic_screen_lock_rotation", if (isAudioOnlyUserAction) context.getString(R.string.background_revert) else context.getString(R.string.background), TAG_BACKGROUND) {
                 if (!isAudioOnlyUserAction) {
                     _player.switchToAudioMode(video);
                     isAudioOnlyUserAction = true;
@@ -1132,13 +1132,13 @@ class VideoDetailView : ConstraintLayout {
             }
             else null,
             if(!isLimitedVersion && !(video?.isLive ?: false) && !(video is LocalVideoDetails))
-                RoundButton(context, R.drawable.ic_download, context.getString(R.string.download), TAG_DOWNLOAD) {
+                RoundButton(context, "ic_download", context.getString(R.string.download), TAG_DOWNLOAD) {
                     video?.let {
                         _slideUpOverlay = UISlideOverlays.showDownloadVideoOverlay(it, _overlayContainer, context.contentResolver);
                     };
                 }
             else null,
-                RoundButton(context, R.drawable.ic_share, context.getString(R.string.share), TAG_SHARE) {
+                RoundButton(context, "ic_share", context.getString(R.string.share), TAG_SHARE) {
                     video?.let {
                         Logger.i(TAG, "Share preventPictureInPicture = true");
                         preventPictureInPicture = true;
@@ -1147,7 +1147,7 @@ class VideoDetailView : ConstraintLayout {
                     _slideUpOverlay?.hide();
                 },
             if(!isLimitedVersion)
-                RoundButton(context, R.drawable.ic_screen_share, context.getString(R.string.overlay), TAG_OVERLAY) {
+                RoundButton(context, "ic_screen_lock_rotation", context.getString(R.string.overlay), TAG_OVERLAY) {
                     this.startPictureInPicture();
                     fragment.forcePictureInPicture();
                     //PiPActivity.startPiP(context);
@@ -1155,7 +1155,7 @@ class VideoDetailView : ConstraintLayout {
                 }
             else null,
             if(!(video is LocalVideoDetails))
-                RoundButton(context, R.drawable.ic_export, context.getString(R.string.page), TAG_OPEN) {
+                RoundButton(context, "ic_open_in_new", context.getString(R.string.page), TAG_OPEN) {
                 video?.let {
                     val url = video?.shareUrl ?: _searchVideo?.shareUrl ?: _url;
                     fragment.navigate<BrowserFragment>(url);
@@ -1164,7 +1164,7 @@ class VideoDetailView : ConstraintLayout {
                 _slideUpOverlay?.hide();
             } else null,
             if (StateSync.instance.hasAuthorizedDevice() && !(video is LocalVideoDetails)) {
-                RoundButton(context, R.drawable.ic_device, context.getString(R.string.send_to_device), TAG_SEND_TO_DEVICE) {
+                RoundButton(context, "ic_cast", context.getString(R.string.send_to_device), TAG_SEND_TO_DEVICE) {
                     val devices = StateSync.instance.getAuthorizedSessions();
                     val videoToSend = video ?: return@RoundButton;
                     if(devices.size > 1) {
@@ -1187,7 +1187,7 @@ class VideoDetailView : ConstraintLayout {
                     }
                 }} else null,
             if(!(video is LocalVideoDetails))
-                RoundButton(context, R.drawable.ic_refresh, context.getString(R.string.reload), "Reload") {
+                RoundButton(context, "ic_refresh", context.getString(R.string.reload), "Reload") {
                 reloadVideo();
                 _slideUpOverlay?.hide();
             } else null).filterNotNull();
@@ -2795,7 +2795,7 @@ class VideoDetailView : ConstraintLayout {
                     *localAudioSource
                         .map {
                             SlideUpMenuItem(this.context,
-                                R.drawable.ic_music,
+                                "ic_music_note",
                                 it.name,
                                 it.bitrate.toHumanBitrate(),
                                 tag = it,
@@ -2842,13 +2842,13 @@ class VideoDetailView : ConstraintLayout {
             else null,
             if(liveStreamAudioFormats?.isEmpty() == false)
                 SlideUpMenuGroup(this.context, context.getString(R.string.stream_audio), "audio", (listOf(
-                    SlideUpMenuItem(this.context, R.drawable.ic_music, "Auto", tag = "auto",
+                    SlideUpMenuItem(this.context, "ic_music_note", "Auto", tag = "auto",
                         call = { _player.clearAudioTrackSelection() })
                 ) + liveStreamAudioFormats
                         .map { option ->
                             val format = option.format;
                             SlideUpMenuItem(this.context,
-                                R.drawable.ic_music,
+                                "ic_music_note",
                                 audioTrackLabel(format),
                                 "",
                                 format.codecs?.let { c -> SabrCodecs.codecName(c) } ?: "",
@@ -2884,7 +2884,7 @@ class VideoDetailView : ConstraintLayout {
                             val estSize = VideoHelper.estimateSourceSize(it);
                             val prefix = if(estSize > 0) "±" + estSize.toHumanBytesSize() + " " else "";
                             SlideUpMenuItem(this.context,
-                                R.drawable.ic_music,
+                                "ic_music_note",
                                 it.name,
                                 it.bitrate.toHumanBitrate(),
                                 (prefix + it.codec.trim()).trim(),

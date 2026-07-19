@@ -1,19 +1,20 @@
 package com.futo.platformplayer.views.pills
 
 import android.content.Context
+import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.futo.platformplayer.R
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.states.StateApp
+import com.futo.platformplayer.utils.Icons
 
 class RoundButton : LinearLayout {
-    val icon: ImageView;
+    val icon: TextView;
     val text: TextView;
 
     val onClick = Event0();
@@ -22,6 +23,33 @@ class RoundButton : LinearLayout {
     val iconResource: Int;
     val tagRef: Any?;
 
+    constructor(context : Context, iconName: String, title: String, tag: Any? = null, handler: ((RoundButton)->Unit)? = null) : super(context) {
+        LayoutInflater.from(context).inflate(R.layout.button_round, this, true);
+        this.tagRef = tag;
+        this.handler = handler;
+        this.iconResource = -1;
+
+        icon = findViewById(R.id.pill_icon);
+        text = findViewById(R.id.pill_text);
+
+        // Set Material Symbols font
+        try {
+            icon.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
+
+        icon.text = Icons[iconName] ?: "";
+        text.text = title;
+
+        icon.setOnClickListener {
+            onClick.emit();
+            if(handler != null)
+                handler(this@RoundButton);
+        };
+    }
+
+    // Backward compatibility constructor
     constructor(context : Context, iconRes: Int, title: String, tag: Any? = null, handler: ((RoundButton)->Unit)? = null) : super(context) {
         LayoutInflater.from(context).inflate(R.layout.button_round, this, true);
         this.tagRef = tag;
@@ -31,7 +59,14 @@ class RoundButton : LinearLayout {
         icon = findViewById(R.id.pill_icon);
         text = findViewById(R.id.pill_text);
 
-        icon.setImageResource(iconRes);
+        // Set Material Symbols font
+        try {
+            icon.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
+
+        icon.text = Icons["ic_image"] ?: "";
         text.text = title;
 
         icon.setOnClickListener {
@@ -49,6 +84,13 @@ class RoundButton : LinearLayout {
 
         icon = findViewById(R.id.pill_icon);
         text = findViewById(R.id.pill_text);
+
+        // Set Material Symbols font
+        try {
+            icon.typeface = Typeface.createFromAsset(context.assets, "font/material_symbols_rounded.ttf");
+        } catch (e: Exception) {
+            e.printStackTrace();
+        }
 
         findViewById<LinearLayout>(R.id.root).setOnClickListener {
             onClick.emit();

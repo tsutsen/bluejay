@@ -7,7 +7,7 @@
     android:orientation="vertical"
     android:id="@+id/root">
 
-    <ImageButton
+    <TextView
         android:id="@+id/pill_icon"
         android:background="@drawable/background_pill"
         android:layout_width="45dp"
@@ -15,9 +15,10 @@
         android:layout_marginRight="5dp"
         android:layout_marginLeft="5dp"
         android:padding="10dp"
-        app:tint="?attr/colorOnSurface"
-        app:srcCompat="@drawable/ic_thumb_up"
-        android:scaleType="fitCenter" />
+        android:gravity="center"
+        android:textSize="20sp"
+        android:textColor="?attr/colorOnSurface"
+        android:includeFontPadding="false" />
 
     <TextView
         android:id="@+id/pill_text"
