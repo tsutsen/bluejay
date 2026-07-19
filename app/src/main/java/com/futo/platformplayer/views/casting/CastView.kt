@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 class CastView : ConstraintLayout {
     private val _thumbnail: ImageView;
     private val _buttonMinimize: ImageButton;
-    private val _buttonSettings: ImageButton;
+    private val _buttonSettings: TextView;
     private val _buttonLoop: ImageButton;
     private val _buttonPlay: ImageButton;
     private val _buttonAutoplay: ImageButton;
