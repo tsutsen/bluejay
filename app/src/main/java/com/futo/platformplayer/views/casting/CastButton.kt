@@ -35,7 +35,9 @@ class CastButton : androidx.appcompat.widget.AppCompatImageButton {
         val c = context ?: return;
         val activeColor = ContextCompat.getColor(c, R.color.colorPrimary);
         val connectingColor = ContextCompat.getColor(c, R.color.gray_c3);
-        val inactiveColor = ContextCompat.getColor(c, R.color.white);
+        val ta = c.obtainStyledAttributes(intArrayOf(com.google.android.material.R.attr.colorOnSurface))
+        val inactiveColor = ta.getColor(0, ContextCompat.getColor(c, R.color.white))
+        ta.recycle()
 
         if (d != null) {
             when (d.connectionState) {
