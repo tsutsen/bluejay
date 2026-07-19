@@ -99,6 +99,7 @@ object Icons {
         "ic_photo" to "\uE403",
         "ic_video" to "\uE04B",
         "ic_music" to "\uE01D",
+        "ic_music_note" to "\uE405",
         "ic_movie" to "\uE684",
         "ic_image" to "\uE3F4",
         "ic_audiotrack" to "\uE405",
