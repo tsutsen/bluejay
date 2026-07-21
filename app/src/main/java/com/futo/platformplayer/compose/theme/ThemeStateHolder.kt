@@ -25,24 +25,24 @@ import kotlinx.coroutines.flow.map
  */
 
 // ThemeMode enum values match AppearancePreferences
-enum class ComposeThemeMode {
-    AUTO, LIGHT, DARK
+enum class ComposeThemeMode(val label: String) {
+    AUTO("Auto"), LIGHT("Light"), DARK("Dark")
 }
 
-enum class ComposeColorSchemeMode {
-    DYNAMIC, CUSTOM_SEED, PRESET
+enum class ComposeColorSchemeMode(val label: String) {
+    DYNAMIC("Dynamic"), CUSTOM_SEED("Custom"), PRESET("Preset")
 }
 
-enum class ComposeContrastLevel {
-    STANDARD, MEDIUM, HIGH
+enum class ComposeContrastLevel(val label: String) {
+    STANDARD("Standard"), MEDIUM("Medium"), HIGH("High")
 }
 
-enum class ComposeFontChoice {
-    INTER, SYSTEM
+enum class ComposeFontChoice(val label: String) {
+    INTER("Inter"), SYSTEM("System")
 }
 
-enum class ComposeIconStyle {
-    ROUNDED, SHARP, OUTLINED
+enum class ComposeIconStyle(val label: String) {
+    ROUNDED("Rounded"), SHARP("Sharp"), OUTLINED("Outlined")
 }
 
 // Extension functions to convert Compose enums to legacy enums
