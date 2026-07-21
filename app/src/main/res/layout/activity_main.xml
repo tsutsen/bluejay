@@ -35,15 +35,11 @@
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/fragment_bottom_bar"
         android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_height="56dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        android:layout_marginLeft="-1dp"
-        android:layout_marginRight="-1dp"
-        android:elevation="10dp"
-        tools:layout="@layout/fragment_overview_bottom_bar" />
+        android:elevation="10dp" />
 
 
     <FrameLayout
