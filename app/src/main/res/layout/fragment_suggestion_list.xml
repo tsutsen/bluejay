@@ -37,6 +37,22 @@
                     android:layout_height="wrap_content"
                     android:visibility="gone" /> -->
 
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/search_input_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="8dp"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/search_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Search"
+                        android:inputType="text"
+                        android:imeOptions="actionSearch" />
+                </com.google.android.material.textfield.TextInputLayout>
+
                 <com.futo.platformplayer.views.others.RadioGroupView
                     android:id="@+id/radio_group"
                     android:layout_width="match_parent"

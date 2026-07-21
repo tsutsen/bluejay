@@ -31,6 +31,7 @@ class SuggestionsFragment : MainFragment {
     private var _recyclerSuggestions: RecyclerView? = null;
     private var _llmSuggestions: LinearLayoutManager? = null;
     private var _radioGroupView: RadioGroupView? = null;
+    private var _searchInput: android.widget.EditText? = null;
     private val _suggestions: ArrayList<String> = ArrayList();
     private var _query: String? = null;
     private var _searchType: SearchType = SearchType.VIDEO;
@@ -74,6 +75,19 @@ class SuggestionsFragment : MainFragment {
         recyclerSuggestions.layoutManager = _llmSuggestions;
         recyclerSuggestions.adapter = _adapterSuggestions;
         _recyclerSuggestions = recyclerSuggestions;
+
+        _searchInput = view.findViewById(R.id.search_input);
+        _searchInput?.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                val query = _searchInput?.text?.toString()?.trim() ?: ""
+                if (query.isNotEmpty()) {
+                    navigate<ContentSearchResultsFragment>(SuggestionsFragmentData(query, _searchType))
+                }
+                true
+            } else {
+                false
+            }
+        }
 
         _radioGroupView = view.findViewById<RadioGroupView>(R.id.radio_group).apply {
             onSelectedChange.subscribe {

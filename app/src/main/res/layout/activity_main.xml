@@ -31,6 +31,7 @@
         android:layout_marginBottom="64dp"
         android:elevation="8dp" />
 
+    <!-- Update banner hidden - handled separately -->
     <com.futo.platformplayer.views.announcements.UpdateBannerView
         android:id="@+id/update_banner"
         android:layout_width="0dp"
@@ -38,7 +39,8 @@
         android:orientation="vertical"
         app:layout_constraintTop_toBottomOf="@id/fragment_top_bar"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent" />
+        app:layout_constraintRight_toRightOf="parent"
+        android:visibility="gone" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/fragment_main"
