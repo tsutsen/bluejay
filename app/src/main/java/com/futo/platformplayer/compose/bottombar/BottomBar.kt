@@ -32,8 +32,6 @@ fun BottomBar(
 ) {
     NavigationBar(
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
         windowInsets = WindowInsets(0)
     ) {

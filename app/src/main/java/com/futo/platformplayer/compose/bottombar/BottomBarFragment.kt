@@ -33,7 +33,12 @@ class BottomBarFragment : Fragment() {
             setContent {
                 MaterialTheme {
                     val ma = activity as? MainActivity ?: return@MaterialTheme
-                    val currentFragment = ma.fragCurrent
+                    val currentFragment by produceState<MainFragment?>(initialValue = null, ma) {
+                        while (true) {
+                            value = ma.fragCurrent
+                            kotlinx.coroutines.delay(100)
+                        }
+                    }
 
                     val items = listOf(
                         BottomNavItem(
