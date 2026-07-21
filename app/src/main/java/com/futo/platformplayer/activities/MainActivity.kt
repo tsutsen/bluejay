@@ -95,7 +95,7 @@ import com.futo.platformplayer.fragment.mainactivity.topbar.FilesTopBarFragment
 import com.futo.platformplayer.fragment.mainactivity.topbar.GeneralTopBarFragment
 import com.futo.platformplayer.fragment.mainactivity.topbar.ImportTopBarFragment
 import com.futo.platformplayer.fragment.mainactivity.topbar.NavigationTopBarFragment
-import com.futo.platformplayer.fragment.mainactivity.topbar.SearchTopBarFragment
+
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.ImportCache
 import com.futo.platformplayer.models.UrlVideoWithTime
@@ -160,7 +160,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
     //Frags TopBar
     lateinit var _fragTopBarGeneral: GeneralTopBarFragment;
-    lateinit var _fragTopBarSearch: SearchTopBarFragment;
+    lateinit var _fragTopBarSearch: com.futo.platformplayer.compose.topbar.SearchFabFragment;
     lateinit var _fragTopBarNavigation: NavigationTopBarFragment;
     lateinit var _fragTopBarImport: ImportTopBarFragment;
     lateinit var _fragTopBarAdd: AddTopBarFragment;
@@ -349,7 +349,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
         //TopBars
         _fragTopBarGeneral = GeneralTopBarFragment.newInstance();
-        _fragTopBarSearch = SearchTopBarFragment.newInstance();
+        _fragTopBarSearch = com.futo.platformplayer.compose.topbar.SearchFabFragment.newInstance();
         _fragTopBarNavigation = NavigationTopBarFragment.newInstance();
         _fragTopBarImport = ImportTopBarFragment.newInstance();
         _fragTopBarAdd = AddTopBarFragment.newInstance();
@@ -1370,7 +1370,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             MenuBottomBarFragment::class -> _fragBotBarMenu as T;
             GeneralTopBarFragment::class -> _fragTopBarGeneral as T;
             FilesTopBarFragment::class -> _fragTopBarFiles as T;
-            SearchTopBarFragment::class -> _fragTopBarSearch as T;
+            com.futo.platformplayer.compose.topbar.SearchFabFragment::class -> _fragTopBarSearch as T;
             CreatorsFragment::class -> _fragMainSubscriptions as T;
             CommentsFragment::class -> _fragMainComments as T;
             SubscriptionsFeedFragment::class -> _fragMainSubscriptionsFeed as T;
