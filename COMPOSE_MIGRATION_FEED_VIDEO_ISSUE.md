@@ -138,8 +138,11 @@ Check `VideoDetailView.setVideoOverview` to ensure it populates the UI.
 3. Add logging to `setVideoOverview` to verify it's being called
 4. Check if `_view` is null in `onShownWithView`
 
-## Definition of Done
-- Tapping a video card in the Compose feed opens the VideoDetailFragment
-- Video detail page shows title, description, comments, etc.
-- Video loads and plays within the detail page
-- Non-video content (playlists, posts, articles) still opens correctly
+## Definition of Done ✅
+- ✅ Tapping a video card in the Compose feed opens the VideoDetailFragment
+- ✅ Video detail page shows title, description, comments, etc.
+- ✅ Video loads and plays within the detail page
+- ✅ Non-video content (playlists, posts, articles) still opens correctly
+
+## Resolution
+The issue was that `FeedFragment` called `ma._fragVideoDetail.onShown(content, false)` directly, bypassing `MainActivity.navigate()` which is responsible for making the `fragment_overlay` container visible. The fix uses `ma.navigate(ma._fragVideoDetail, content, true, false)` which properly handles container visibility and maximization.
