@@ -22,6 +22,7 @@ class FeedFragment : MainFragment() {
     override val isOverlay: Boolean = false
     override val isHistory: Boolean = false
     override val hasBottomBar: Boolean = true
+    override val isComposeMode: Boolean = true
 
     @Composable
     override fun ComposeContent() {
