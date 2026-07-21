@@ -6,11 +6,9 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.appcompat.app.AppCompatDelegate
+import com.futo.platformplayer.theming.AppearancePreferences
+import com.futo.platformplayer.theming.AppearancePreferencesManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -25,13 +23,6 @@ import kotlinx.coroutines.flow.map
  * - Color scheme, contrast level, and other tokens are exposed as State<T>
  * - No Activity recreation needed — Compose handles the rest
  */
-
-// DataStore key for theme mode (mirrors AppearancePreferencesManager)
-private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
-private val COLOR_SCHEME_KEY = stringPreferencesKey("color_scheme_mode")
-private val CONTRAST_LEVEL_KEY = stringPreferencesKey("contrast_level")
-private val FONT_CHOICE_KEY = stringPreferencesKey("font_choice")
-private val ICON_STYLE_KEY = stringPreferencesKey("icon_style")
 
 // ThemeMode enum values match AppearancePreferences
 enum class ComposeThemeMode {
@@ -112,51 +103,39 @@ data class ComposeThemeState(
 }
 
 /**
- * Use the existing AppearancePreferences DataStore for consistency.
- * This ensures Compose screens read the same theme state as the legacy system.
- */
-private val Context.dataStore: DataStore<Preferences>
-    by preferencesDataStore(name = "appearance")
-
-/**
- * Read the current theme state from DataStore as a Flow.
+ * Read the current theme state from the existing AppearancePreferences DataStore.
  * This is the bridge from the existing persistence layer to Compose.
+ * Uses AppearancePreferencesManager to avoid creating a second DataStore instance.
  */
 fun Context.themeStateFlow(): Flow<ComposeThemeState> {
-    return dataStore.data.map { prefs ->
+    return AppearancePreferencesManager(this).preferences.map { prefs ->
         ComposeThemeState(
-            themeMode = parseThemeMode(prefs[THEME_MODE_KEY]),
-            colorSchemeMode = parseColorSchemeMode(prefs[COLOR_SCHEME_KEY]),
-            contrastLevel = parseContrastLevel(prefs[CONTRAST_LEVEL_KEY]),
-            fontChoice = parseFontChoice(prefs[FONT_CHOICE_KEY]),
-            iconStyle = parseIconStyle(prefs[ICON_STYLE_KEY])
+            themeMode = when (prefs.themeMode) {
+                com.futo.platformplayer.theming.ThemeMode.AUTO -> ComposeThemeMode.AUTO
+                com.futo.platformplayer.theming.ThemeMode.LIGHT -> ComposeThemeMode.LIGHT
+                com.futo.platformplayer.theming.ThemeMode.DARK -> ComposeThemeMode.DARK
+            },
+            colorSchemeMode = when (prefs.colorSchemeMode) {
+                com.futo.platformplayer.theming.ColorSchemeMode.DYNAMIC -> ComposeColorSchemeMode.DYNAMIC
+                com.futo.platformplayer.theming.ColorSchemeMode.CUSTOM_SEED -> ComposeColorSchemeMode.CUSTOM_SEED
+                com.futo.platformplayer.theming.ColorSchemeMode.PRESET -> ComposeColorSchemeMode.PRESET
+            },
+            contrastLevel = when (prefs.contrastLevel) {
+                com.futo.platformplayer.theming.ContrastLevel.STANDARD -> ComposeContrastLevel.STANDARD
+                com.futo.platformplayer.theming.ContrastLevel.MEDIUM -> ComposeContrastLevel.MEDIUM
+                com.futo.platformplayer.theming.ContrastLevel.HIGH -> ComposeContrastLevel.HIGH
+            },
+            fontChoice = when (prefs.fontChoice) {
+                com.futo.platformplayer.theming.FontChoice.INTER -> ComposeFontChoice.INTER
+                com.futo.platformplayer.theming.FontChoice.SYSTEM -> ComposeFontChoice.SYSTEM
+            },
+            iconStyle = when (prefs.iconStyle) {
+                com.futo.platformplayer.theming.IconStyle.ROUNDED -> ComposeIconStyle.ROUNDED
+                com.futo.platformplayer.theming.IconStyle.SHARP -> ComposeIconStyle.SHARP
+                com.futo.platformplayer.theming.IconStyle.OUTLINED -> ComposeIconStyle.OUTLINED
+            }
         )
     }
-}
-
-private fun parseThemeMode(value: String?): ComposeThemeMode {
-    return try { ComposeThemeMode.valueOf(value ?: ComposeThemeMode.AUTO.name) }
-    catch (e: IllegalArgumentException) { ComposeThemeMode.AUTO }
-}
-
-private fun parseColorSchemeMode(value: String?): ComposeColorSchemeMode {
-    return try { ComposeColorSchemeMode.valueOf(value ?: ComposeColorSchemeMode.DYNAMIC.name) }
-    catch (e: IllegalArgumentException) { ComposeColorSchemeMode.DYNAMIC }
-}
-
-private fun parseContrastLevel(value: String?): ComposeContrastLevel {
-    return try { ComposeContrastLevel.valueOf(value ?: ComposeContrastLevel.STANDARD.name) }
-    catch (e: IllegalArgumentException) { ComposeContrastLevel.STANDARD }
-}
-
-private fun parseFontChoice(value: String?): ComposeFontChoice {
-    return try { ComposeFontChoice.valueOf(value ?: ComposeFontChoice.INTER.name) }
-    catch (e: IllegalArgumentException) { ComposeFontChoice.INTER }
-}
-
-private fun parseIconStyle(value: String?): ComposeIconStyle {
-    return try { ComposeIconStyle.valueOf(value ?: ComposeIconStyle.ROUNDED.name) }
-    catch (e: IllegalArgumentException) { ComposeIconStyle.ROUNDED }
 }
 
 /**
