@@ -241,6 +241,8 @@ dependencies {
     implementation 'androidx.compose.material3.adaptive:adaptive'
     implementation 'androidx.compose.material3.adaptive:adaptive-layout'
     implementation 'androidx.compose.material3.adaptive:adaptive-navigation'
+    // Material3 adaptive navigation suite (not in BOM — explicit version needed)
+    implementation 'androidx.compose.material3:material3-adaptive-navigation-suite-android:1.3.2'
     // Coil for image loading in Compose
     implementation 'io.coil-kt:coil-compose:2.7.0'
     implementation 'androidx.compose.foundation:foundation'

@@ -11,15 +11,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
 import com.futo.platformplayer.activities.MainActivity
 import com.futo.platformplayer.fragment.mainactivity.main.*
 import com.futo.platformplayer.fragment.settings.SettingsHubFragment
-import kotlinx.coroutines.launch
 
 /**
- * Compose-based bottom bar fragment — replaces MenuBottomBarFragment.
- * Uses Material3 NavigationBar + NavigationBarItem for native look/feel.
+ * Compose-based adaptive bottom bar fragment — replaces MenuBottomBarFragment.
+ * Uses Material3 NavigationSuiteScaffold for native adaptive behavior:
+ * - Compact/medium: Bottom Navigation Bar
+ * - Expanded: Navigation Rail
  */
 class BottomBarFragment : Fragment() {
 
@@ -42,44 +42,44 @@ class BottomBarFragment : Fragment() {
 
                     val items = listOf(
                         BottomNavItem(
-                            "Home", Icons.Outlined.Home, Icons.Filled.Home,
-                            currentFragment is com.futo.platformplayer.compose.feed.FeedFragment
-                        ) { navigateToTab(0, ma) }
+                            "Home", Icons.Outlined.Home, Icons.Filled.Home, 0,
+                            onClick = { navigateToTab(0, ma) }
+                        )
                         ,
                         BottomNavItem(
-                            "Subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions,
-                            currentFragment is SubscriptionsFeedFragment
-                        ) { navigateToTab(1, ma) }
+                            "Subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, 1,
+                            onClick = { navigateToTab(1, ma) }
+                        )
                         ,
                         BottomNavItem(
-                            "Creators", Icons.Outlined.People, Icons.Filled.People,
-                            currentFragment is CreatorsFragment
-                        ) { navigateToTab(2, ma) }
+                            "Creators", Icons.Outlined.People, Icons.Filled.People, 2,
+                            onClick = { navigateToTab(2, ma) }
+                        )
                         ,
                         BottomNavItem(
-                            "Sources", Icons.Outlined.Source, Icons.Filled.Source,
-                            currentFragment is SourcesFragment
-                        ) { navigateToTab(3, ma) }
+                            "Sources", Icons.Outlined.Source, Icons.Filled.Source, 3,
+                            onClick = { navigateToTab(3, ma) }
+                        )
                         ,
                         BottomNavItem(
-                            "Playlists", Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay,
-                            currentFragment is PlaylistsFragment
-                        ) { navigateToTab(4, ma) }
+                            "Playlists", Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay, 4,
+                            onClick = { navigateToTab(4, ma) }
+                        )
                         ,
                         BottomNavItem(
-                            "History", Icons.Outlined.History, Icons.Filled.History,
-                            currentFragment is HistoryFragment
-                        ) { navigateToTab(5, ma) }
+                            "History", Icons.Outlined.History, Icons.Filled.History, 5,
+                            onClick = { navigateToTab(5, ma) }
+                        )
                         ,
                         BottomNavItem(
-                            "Downloads", Icons.Outlined.Download, Icons.Filled.Download,
-                            currentFragment is DownloadsFragment
-                        ) { navigateToTab(6, ma) }
+                            "Downloads", Icons.Outlined.Download, Icons.Filled.Download, 6,
+                            onClick = { navigateToTab(6, ma) }
+                        )
                         ,
                         BottomNavItem(
-                            "Settings", Icons.Outlined.Settings, Icons.Filled.Settings,
-                            currentFragment is SettingsHubFragment
-                        ) { navigateToTab(7, ma) }
+                            "Settings", Icons.Outlined.Settings, Icons.Filled.Settings, 7,
+                            onClick = { navigateToTab(7, ma) }
+                        )
                     )
 
                     BottomBar(items = items)
