@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -27,7 +28,8 @@ fun FeedScreen(
     onItemClicked: (String) -> Unit,
     onSortChanged: (String) -> Unit,
     onTagClicked: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomBarHeight: Dp = 56.dp
 ) {
     val listState = rememberLazyListState()
 
@@ -44,7 +46,9 @@ fun FeedScreen(
 
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .padding(bottom = bottomBarHeight)
     ) {
         when {
             state.isLoading && state.items.isEmpty() -> {

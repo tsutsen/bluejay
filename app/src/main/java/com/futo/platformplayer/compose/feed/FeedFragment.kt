@@ -1,9 +1,5 @@
 package com.futo.platformplayer.compose.feed
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,15 +14,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+import com.futo.platformplayer.api.media.models.playlists.IPlatformPlaylist
+import com.futo.platformplayer.api.media.models.post.IPlatformPost
+import com.futo.platformplayer.api.media.models.video.IPlatformVideo
 import com.futo.platformplayer.api.media.structures.IRefreshPager
 import com.futo.platformplayer.api.media.structures.ReusableRefreshPager
+import com.futo.platformplayer.fragment.mainactivity.main.ArticleDetailFragment
 import com.futo.platformplayer.fragment.mainactivity.main.MainFragment
+import com.futo.platformplayer.fragment.mainactivity.main.PostDetailFragment
+import com.futo.platformplayer.fragment.mainactivity.main.RemotePlaylistFragment
 import com.futo.platformplayer.fragment.mainactivity.main.VideoDetailFragment
-import com.futo.platformplayer.states.StatePlayer
+import com.futo.platformplayer.fragment.mainactivity.main.WebDetailFragment
 import com.futo.platformplayer.states.StatePlatform
 import kotlinx.coroutines.launch
 
@@ -66,11 +66,13 @@ class FeedFragment : MainFragment() {
             onDispose {
                 pager = null
                 items = emptyList()
+                contentList = emptyList()
             }
         }
 
         FeedScreen(
             state = uiState,
+            bottomBarHeight = 56.dp,
             onRefresh = {
                 pager?.let { p ->
                     p.nextPage()
@@ -96,12 +98,23 @@ class FeedFragment : MainFragment() {
             onItemClicked = { id ->
                 val content = contentList.find { it.id?.value == id }
                 if (content != null) {
-                    val video = content as? com.futo.platformplayer.api.media.models.video.IPlatformVideo
-                    if (video != null) {
-                        (activity as? com.futo.platformplayer.activities.MainActivity)?.let { ma ->
-                            val videoDetail = ma._fragVideoDetail
-                            videoDetail.onShown(video, false)
-                            videoDetail.maximizeVideoDetail(true)
+                    val ma = activity as? com.futo.platformplayer.activities.MainActivity
+                    when (content) {
+                        is IPlatformVideo -> {
+                            ma?._fragVideoDetail?.onShown(content, false)
+                            ma?._fragVideoDetail?.maximizeVideoDetail(true)
+                        }
+                        is IPlatformPlaylist -> {
+                            ma?.navigate(RemotePlaylistFragment.newInstance(), content, true, false)
+                        }
+                        is IPlatformPost -> {
+                            ma?.navigate(PostDetailFragment.newInstance(), content, true, false)
+                        }
+                        is com.futo.platformplayer.api.media.models.article.IPlatformArticle -> {
+                            ma?.navigate(ArticleDetailFragment.newInstance(), content, true, false)
+                        }
+                        is com.futo.platformplayer.api.media.platforms.js.models.JSWeb -> {
+                            ma?.navigate(WebDetailFragment.newInstance(), content, true, false)
                         }
                     }
                 }
@@ -114,7 +127,7 @@ class FeedFragment : MainFragment() {
 
     private fun toFeedItem(content: com.futo.platformplayer.api.media.models.contents.IPlatformContent): FeedItem {
         val thumbnailUrl = when (content) {
-            is com.futo.platformplayer.api.media.models.video.IPlatformVideo -> content.thumbnails.getHQThumbnail()
+            is IPlatformVideo -> content.thumbnails.getHQThumbnail()
             else -> null
         }
         return FeedItem(
