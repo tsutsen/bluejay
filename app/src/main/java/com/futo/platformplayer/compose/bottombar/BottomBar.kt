@@ -1,9 +1,12 @@
 package com.futo.platformplayer.compose.bottombar
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 
 /**
  * Bottom navigation item with icon and label.
@@ -29,7 +32,10 @@ fun BottomBar(
 ) {
     NavigationBar(
         modifier = modifier,
-        tonalElevation = NavigationBarDefaults.Elevation
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp,
+        windowInsets = WindowInsets(0)
     ) {
         items.forEach { item ->
             NavigationBarItem(
