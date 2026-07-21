@@ -597,14 +597,9 @@ class MenuBottomBarFragment : MainActivityFragment() {
         @UnstableApi
         //Add configurable buttons here
         var buttonDefinitions = listOf(
-            ButtonDefinition(0, "ic_home", "ic_home_filled", R.string.home, canToggle = true, { it.currentMain is HomeFragment }, {
-                val currentMain = it.currentMain
-                if (currentMain is HomeFragment) {
-                    currentMain.scrollToTop(false)
-                    currentMain.reloadFeed()
-                } else {
-                    it.navigateTab<HomeFragment>()
-                }
+            ButtonDefinition(0, "ic_home", "ic_home_filled", R.string.home, canToggle = true, { true }, {
+                val ma = it.activity as? com.futo.platformplayer.activities.MainActivity
+                ma?.let { m -> m.navigate(m._fragMainHome as com.futo.platformplayer.fragment.mainactivity.main.MainFragment, null, true, false) }
             }),
             ButtonDefinition(1, "ic_subscriptions", "ic_subscriptions", R.string.subscriptions, canToggle = true, { it.currentMain is SubscriptionsFeedFragment }, { it.navigateTab<SubscriptionsFeedFragment>() }),
             //if(Build.VERSION.SDK_INT > Build.VERSION_CODES.P)
