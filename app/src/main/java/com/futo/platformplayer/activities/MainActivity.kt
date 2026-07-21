@@ -58,6 +58,7 @@ import com.futo.platformplayer.fragment.mainactivity.main.CreatorsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.DeveloperFragment
 import com.futo.platformplayer.fragment.mainactivity.main.DownloadsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.HistoryFragment
+import com.futo.platformplayer.compose.feed.FeedFragment
 import com.futo.platformplayer.fragment.mainactivity.main.HomeFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ImportPlaylistsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ImportSubscriptionsFragment
@@ -158,7 +159,8 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     lateinit var _fragBotBarMenu: MenuBottomBarFragment;
 
     //Frags Main
-    lateinit var _fragMainHome: HomeFragment;
+    @Suppress("UNCHECKED_CAST")
+    lateinit var _fragMainHome: androidx.fragment.app.Fragment;
     lateinit var _fragPostDetail: PostDetailFragment;
     lateinit var _fragArticleDetail: ArticleDetailFragment;
     lateinit var _fragWebDetail: WebDetailFragment;
@@ -342,7 +344,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _fragBotBarMenu = MenuBottomBarFragment.newInstance();
 
         //Main
-        _fragMainHome = HomeFragment.newInstance();
+        _fragMainHome = com.futo.platformplayer.compose.feed.FeedFragment();
         _fragMainTutorial = TutorialFragment.newInstance()
         _fragMainSuggestions = SuggestionsFragment.newInstance();
         _fragMainVideoSearchResults = ContentSearchResultsFragment.newInstance();
@@ -391,7 +393,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         //Overlay Init
         _fragVideoDetail.onMinimize.subscribe { };
         _fragVideoDetail.onShownEvent.subscribe {
-            _fragMainHome.setPreviewsEnabled(false);
             _fragMainVideoSearchResults.setPreviewsEnabled(false);
             _fragMainSubscriptionsFeed.setPreviewsEnabled(false);
         };
@@ -415,7 +416,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         }
 
         _fragVideoDetail.onCloseEvent.subscribe {
-            _fragMainHome.setPreviewsEnabled(true);
             _fragMainVideoSearchResults.setPreviewsEnabled(true);
             _fragMainSubscriptionsFeed.setPreviewsEnabled(true);
             _fragContainerVideoDetail.visibility = View.INVISIBLE;
@@ -497,7 +497,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         //Set top bars — all use Search FAB
 
 
-        fragCurrent = _fragMainHome;
+        fragCurrent = _fragMainHome as? MainFragment;
 
         val defaultTab = getDefaultTab();
 
