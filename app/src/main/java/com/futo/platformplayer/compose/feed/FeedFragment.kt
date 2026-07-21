@@ -97,7 +97,14 @@ class FeedFragment : MainFragment() {
                 val content = contentList.find { it.id?.value == id }
                 if (content != null) {
                     (activity as? com.futo.platformplayer.activities.MainActivity)?.let { ma ->
-                        ma.navigate(VideoDetailFragment.newInstance(), content, true, false)
+                        val videoDetail = VideoDetailFragment.newInstance()
+                        ma.navigate(videoDetail, content, true, false)
+                        // Try to maximize video detail if this is a video
+                        if (content is com.futo.platformplayer.api.media.models.video.IPlatformVideo) {
+                            (activity as? com.futo.platformplayer.activities.MainActivity)?.let { ma2 ->
+                                ma2._fragVideoDetail.maximizeVideoDetail()
+                            }
+                        }
                     }
                 }
             },
