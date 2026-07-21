@@ -170,11 +170,12 @@ fun rememberComposeThemeState(): State<ComposeThemeState> {
  * so it survives app restarts.
  */
 fun applyThemeModeToLegacy(context: Context, mode: ComposeThemeMode) {
-    when (mode) {
-        ComposeThemeMode.AUTO -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-        ComposeThemeMode.LIGHT -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-        ComposeThemeMode.DARK -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+    val nightMode = when (mode) {
+        ComposeThemeMode.AUTO -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        ComposeThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
+        ComposeThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
     }
+    AppCompatDelegate.setDefaultNightMode(nightMode)
     // Persist to the existing AppearancePreferences DataStore
     val prefMode = when (mode) {
         ComposeThemeMode.AUTO -> com.futo.platformplayer.theming.ThemeMode.AUTO
@@ -184,5 +185,9 @@ fun applyThemeModeToLegacy(context: Context, mode: ComposeThemeMode) {
     // Use runBlocking since this is called from non-suspend contexts (clickable lambdas)
     kotlinx.coroutines.runBlocking {
         com.futo.platformplayer.theming.AppearancePreferencesManager(context).setThemeMode(prefMode)
+    }
+    // Recreate the Activity to apply theme to XML screens
+    if (context is android.app.Activity) {
+        context.recreate()
     }
 }
