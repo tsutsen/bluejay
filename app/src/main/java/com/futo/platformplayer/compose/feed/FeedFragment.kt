@@ -72,7 +72,7 @@ class FeedFragment : MainFragment() {
 
         FeedScreen(
             state = uiState,
-            bottomBarHeight = 64.dp,
+            bottomBarHeight = 0.dp,
             onRefresh = {
                 pager?.let { p ->
                     p.nextPage()
