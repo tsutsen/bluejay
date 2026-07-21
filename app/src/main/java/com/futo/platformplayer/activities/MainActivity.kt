@@ -511,44 +511,44 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         }
 
 
-        //Set top bars
-        _fragMainHome.topBar = _fragTopBarGeneral;
-        _fragMainSubscriptions.topBar = _fragTopBarGeneral;
-        _fragMainComments.topBar = _fragTopBarGeneral;
+        //Set top bars — all use Search FAB
+        _fragMainHome.topBar = _fragTopBarSearch;
+        _fragMainSubscriptions.topBar = _fragTopBarSearch;
+        _fragMainComments.topBar = _fragTopBarSearch;
         _fragMainSuggestions.topBar = _fragTopBarSearch;
         _fragMainVideoSearchResults.topBar = _fragTopBarSearch;
         _fragMainCreatorSearchResults.topBar = _fragTopBarSearch;
         _fragMainPlaylistSearchResults.topBar = _fragTopBarSearch;
-        _fragMainChannel.topBar = _fragTopBarNavigation;
-        _fragMainTutorial.topBar = _fragTopBarNavigation;
-        _fragMainSubscriptionsFeed.topBar = _fragTopBarGeneral;
-        _fragMainSources.topBar = _fragTopBarAdd;
-        _fragMainPlaylists.topBar = _fragTopBarGeneral;
-        _fragMainPlaylist.topBar = _fragTopBarNavigation;
-        _fragMainRemotePlaylist.topBar = _fragTopBarNavigation;
-        _fragPostDetail.topBar = _fragTopBarNavigation;
-        _fragArticleDetail.topBar = _fragTopBarNavigation;
-        _fragWebDetail.topBar = _fragTopBarNavigation;
-        _fragWatchlist.topBar = _fragTopBarNavigation;
-        _fragHistory.topBar = _fragTopBarNavigation;
-        _fragSourceDetail.topBar = _fragTopBarNavigation;
-        _fragDownloads.topBar = _fragTopBarGeneral;
-        _fragImportSubscriptions.topBar = _fragTopBarImport;
-        _fragImportPlaylists.topBar = _fragTopBarImport;
-        _fragSubGroupList.topBar = _fragTopBarAdd;
-        _fragLibrary.topBar = _fragTopBarGeneral;
-        _fragLibraryAlbums.topBar = _fragTopBarNavigation;
-        _fragLibraryAlbum.topBar = _fragTopBarNavigation;
-        _fragLibraryArtists.topBar = _fragTopBarNavigation;
-        _fragLibraryArtist.topBar = _fragTopBarNavigation;
-        _fragLibraryVideos.topBar = _fragTopBarNavigation;
-        _fragLibraryFiles.topBar = _fragTopBarFiles;
+        _fragMainChannel.topBar = _fragTopBarSearch;
+        _fragMainTutorial.topBar = _fragTopBarSearch;
+        _fragMainSubscriptionsFeed.topBar = _fragTopBarSearch;
+        _fragMainSources.topBar = _fragTopBarSearch;
+        _fragMainPlaylists.topBar = _fragTopBarSearch;
+        _fragMainPlaylist.topBar = _fragTopBarSearch;
+        _fragMainRemotePlaylist.topBar = _fragTopBarSearch;
+        _fragPostDetail.topBar = _fragTopBarSearch;
+        _fragArticleDetail.topBar = _fragTopBarSearch;
+        _fragWebDetail.topBar = _fragTopBarSearch;
+        _fragWatchlist.topBar = _fragTopBarSearch;
+        _fragHistory.topBar = _fragTopBarSearch;
+        _fragSourceDetail.topBar = _fragTopBarSearch;
+        _fragDownloads.topBar = _fragTopBarSearch;
+        _fragImportSubscriptions.topBar = _fragTopBarSearch;
+        _fragImportPlaylists.topBar = _fragTopBarSearch;
+        _fragSubGroupList.topBar = _fragTopBarSearch;
+        _fragLibrary.topBar = _fragTopBarSearch;
+        _fragLibraryAlbums.topBar = _fragTopBarSearch;
+        _fragLibraryAlbum.topBar = _fragTopBarSearch;
+        _fragLibraryArtists.topBar = _fragTopBarSearch;
+        _fragLibraryArtist.topBar = _fragTopBarSearch;
+        _fragLibraryVideos.topBar = _fragTopBarSearch;
+        _fragLibraryFiles.topBar = _fragTopBarSearch;
         _fragLibrarySearch.topBar = _fragTopBarSearch;
-        _fragSettings.topBar = _fragTopBarNavigation;
-        _fragDeveloper.topBar = _fragTopBarNavigation;
-        _fragNotifications.topBar = _fragTopBarGeneral;
+        _fragSettings.topBar = _fragTopBarSearch;
+        _fragDeveloper.topBar = _fragTopBarSearch;
+        _fragNotifications.topBar = _fragTopBarSearch;
 
-        _fragBrowser.topBar = _fragTopBarNavigation;
+        _fragBrowser.topBar = _fragTopBarSearch;
 
         fragCurrent = _fragMainHome;
 
