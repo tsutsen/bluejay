@@ -47,7 +47,7 @@ class SuggestionsFragment : MainFragment {
     };
 
     constructor(): super() {
-        _adapterSuggestions.onAddToQuery.subscribe { suggestion -> (topBar as SearchTopBarFragment?)?.setText(suggestion); };
+        _adapterSuggestions.onAddToQuery.subscribe { suggestion -> (topBar as? SearchTopBarFragment)?.setText(suggestion); };
         _adapterSuggestions.onClicked.subscribe { suggestion ->
             val storage = FragmentedStorage.get<SearchHistoryStorage>();
             storage.add(suggestion);

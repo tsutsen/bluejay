@@ -57,7 +57,7 @@ class HistoryFragment : MainFragment() {
     override fun onShownWithView(parameter: Any?, isBack: Boolean) {
         super.onShownWithView(parameter, isBack)
         _view?.setPager(StateHistory.instance.getHistoryPager());
-        (topBar as NavigationTopBarFragment?)?.onShown("History");
+        (topBar as? NavigationTopBarFragment)?.onShown("History");
     }
 
     @SuppressLint("ViewConstructor")

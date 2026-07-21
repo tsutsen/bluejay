@@ -44,7 +44,7 @@ class TutorialFragment : MainFragment() {
 
     override fun onShownWithView(parameter: Any?, isBack: Boolean) {
         super.onShownWithView(parameter, isBack);
-        (topBar as NavigationTopBarFragment?)?.onShown(getString(R.string.tutorials));
+        (topBar as? NavigationTopBarFragment)?.onShown(getString(R.string.tutorials));
     }
 
     override fun onCreateMainView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
