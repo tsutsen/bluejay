@@ -112,10 +112,11 @@ data class ComposeThemeState(
 }
 
 /**
- * Extension property to get a DataStore for appearance settings.
+ * Use the existing AppearancePreferences DataStore for consistency.
+ * This ensures Compose screens read the same theme state as the legacy system.
  */
 private val Context.dataStore: DataStore<Preferences>
-    by preferencesDataStore(name = "compose_theme")
+    by preferencesDataStore(name = "appearance")
 
 /**
  * Read the current theme state from DataStore as a Flow.
@@ -186,11 +187,23 @@ fun rememberComposeThemeState(): State<ComposeThemeState> {
  * Helper to apply theme mode changes to the legacy AppCompat delegate.
  * This bridges Compose state changes back to the Activity-level theme system
  * so that XML-based screens also react to theme changes.
+ * Also persists the setting to the existing AppearancePreferences DataStore
+ * so it survives app restarts.
  */
 fun applyThemeModeToLegacy(context: Context, mode: ComposeThemeMode) {
     when (mode) {
         ComposeThemeMode.AUTO -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         ComposeThemeMode.LIGHT -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         ComposeThemeMode.DARK -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+    }
+    // Persist to the existing AppearancePreferences DataStore
+    val prefMode = when (mode) {
+        ComposeThemeMode.AUTO -> com.futo.platformplayer.theming.ThemeMode.AUTO
+        ComposeThemeMode.LIGHT -> com.futo.platformplayer.theming.ThemeMode.LIGHT
+        ComposeThemeMode.DARK -> com.futo.platformplayer.theming.ThemeMode.DARK
+    }
+    // Use runBlocking since this is called from non-suspend contexts (clickable lambdas)
+    kotlinx.coroutines.runBlocking {
+        com.futo.platformplayer.theming.AppearancePreferencesManager(context).setThemeMode(prefMode)
     }
 }
