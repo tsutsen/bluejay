@@ -17,6 +17,8 @@ import com.futo.platformplayer.Settings
 import com.futo.platformplayer.SettingsDev
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.activities.MainActivity
+import com.futo.platformplayer.compose.test.TestComposeFragment
+import com.futo.platformplayer.fragment.settings.SettingsHubFragment
 import com.futo.platformplayer.assume
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.logging.Logger
@@ -126,6 +128,11 @@ class SettingsFragment : MainFragment() {
             _buttonDev.setOnClickListener {
                 //startActivity(Intent(this, DeveloperActivity::class.java));
                 fragment.navigate<DeveloperFragment>(null, true);
+            }
+
+            findViewById<MaterialButton>(R.id.button_test_compose)?.setOnClickListener {
+                Logger.i("SettingsFragment", "Navigate to TestComposeFragment (Phase 0)");
+                fragment.navigate<TestComposeFragment>(null, true);
             }
 
             //_lastActivity = this;

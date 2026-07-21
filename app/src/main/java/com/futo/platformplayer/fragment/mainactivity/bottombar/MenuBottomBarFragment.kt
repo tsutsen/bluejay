@@ -30,6 +30,7 @@ import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.dp
 import com.futo.platformplayer.fragment.mainactivity.MainActivityFragment
 import com.futo.platformplayer.fragment.mainactivity.main.*
+import com.futo.platformplayer.fragment.settings.SettingsHubFragment
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePayment
@@ -618,8 +619,8 @@ class MenuBottomBarFragment : MainActivityFragment() {
             ButtonDefinition(8, "ic_chat", "ic_chat", R.string.comments, canToggle = true, { it.currentMain is CommentsFragment }, { it.navigateTab<CommentsFragment>() }),
             ButtonDefinition(9, "ic_subscriptions", "ic_subscriptions", R.string.subscription_group_menu, canToggle = true, { it.currentMain is SubscriptionGroupListFragment }, { it.navigateTab<SubscriptionGroupListFragment>() }),
             ButtonDefinition(10, "ic_help", "ic_help", R.string.tutorials, canToggle = true, { it.currentMain is TutorialFragment }, { it.navigateTab<TutorialFragment>() }),
-            ButtonDefinition(7, "ic_settings", "ic_settings", R.string.settings, canToggle = false, { it.currentMain is SettingsFragment }, {
-                it.navigateTab<SettingsFragment>();
+            ButtonDefinition(7, "ic_settings", "ic_settings", R.string.settings, canToggle = false, { it.currentMain is SettingsHubFragment }, {
+                it.navigateTab<SettingsHubFragment>();
                 /*
                 val c = it.context ?: return@ButtonDefinition;
                 Logger.i(TAG, "settings preventPictureInPicture()");

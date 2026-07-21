@@ -45,7 +45,9 @@ import com.futo.platformplayer.casting.StateCasting
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.dp
 import com.futo.platformplayer.fragment.mainactivity.bottombar.MenuBottomBarFragment
+import com.futo.platformplayer.compose.test.TestComposeFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ArticleDetailFragment
+import com.futo.platformplayer.fragment.settings.SettingsHubFragment
 import com.futo.platformplayer.fragment.mainactivity.main.BrowserFragment
 import com.futo.platformplayer.fragment.mainactivity.main.BuyFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ChannelFragment
@@ -204,8 +206,10 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     lateinit var _fragLibraryFiles: LibraryFilesFragment;
     lateinit var _fragNotifications: NotificationOverlayView.Frag;
     lateinit var _fragSettings: SettingsFragment;
+    lateinit var _fragSettingsHub: SettingsHubFragment;
     lateinit var _fragDeveloper: DeveloperFragment;
     lateinit var _fragLogin: LoginFragment;
+    lateinit var _fragTestCompose: TestComposeFragment;
 
     lateinit var _fragBrowser: BrowserFragment;
 
@@ -391,8 +395,10 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _fragLibrarySearch = LibrarySearchFragment.newInstance();
         _fragNotifications = NotificationOverlayView.Frag();
         _fragSettings = SettingsFragment.newInstance();
+        _fragSettingsHub = SettingsHubFragment.newInstance();
         _fragDeveloper = DeveloperFragment.newInstance();
         _fragLogin = LoginFragment.newInstance();
+        _fragTestCompose = TestComposeFragment.newInstance();
 
         _fragBrowser = BrowserFragment.newInstance();
 
@@ -1397,8 +1403,10 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             LibrarySearchFragment::class -> _fragLibrarySearch as T;
             NotificationOverlayView.Frag::class -> _fragNotifications as T;
             SettingsFragment:: class -> _fragSettings as T;
+            SettingsHubFragment::class -> _fragSettingsHub as T;
             DeveloperFragment::class -> _fragDeveloper as T;
             LoginFragment::class -> _fragLogin as T;
+            TestComposeFragment::class -> _fragTestCompose as T;
             else -> throw IllegalArgumentException("Fragment type ${T::class.java.name} is not available in MainActivity");
         }
     }

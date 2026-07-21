@@ -85,6 +85,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/developer_settings" />
+                    <!-- Phase 0 Compose Migration Test Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_test_compose"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Test Compose (Phase 0)" />
                 </LinearLayout>
             </LinearLayout>
 
