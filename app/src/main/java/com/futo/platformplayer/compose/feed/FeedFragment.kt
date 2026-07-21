@@ -98,11 +98,15 @@ class FeedFragment : MainFragment() {
     }
 
     private fun toFeedItem(content: com.futo.platformplayer.api.media.models.contents.IPlatformContent): FeedItem {
+        val thumbnailUrl = when (content) {
+            is com.futo.platformplayer.api.media.models.video.IPlatformVideo -> content.thumbnails.getHQThumbnail()
+            else -> null
+        }
         return FeedItem(
             id = content.id?.value ?: "",
             title = content.name ?: "",
             subtitle = content.author?.name,
-            thumbnailUrl = null,
+            thumbnailUrl = thumbnailUrl,
             timestamp = null
         )
     }
