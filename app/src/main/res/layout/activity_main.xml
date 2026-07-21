@@ -20,6 +20,17 @@
         app:layout_constraintRight_toRightOf="parent"
         tools:layout="@layout/fragment_overview_top_bar" />
 
+    <!-- Global Search FAB - always visible, bottom-right -->
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragment_search_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="64dp"
+        android:elevation="8dp" />
+
     <com.futo.platformplayer.views.announcements.UpdateBannerView
         android:id="@+id/update_banner"
         android:layout_width="0dp"

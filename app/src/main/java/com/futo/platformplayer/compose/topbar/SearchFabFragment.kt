@@ -14,12 +14,12 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.Fragment
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.fragment.mainactivity.main.CreatorsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.LibraryFragment
@@ -28,12 +28,11 @@ import com.futo.platformplayer.fragment.mainactivity.main.PlaylistFragment
 import com.futo.platformplayer.fragment.mainactivity.main.PlaylistsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.SuggestionsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.SuggestionsFragmentData
-import com.futo.platformplayer.fragment.mainactivity.topbar.TopFragment
 import com.futo.platformplayer.models.SearchType
 import com.futo.platformplayer.theming.AppearancePreferencesManager
 import com.futo.platformplayer.theming.ThemeMode
 
-class SearchFabFragment : TopFragment() {
+class SearchFabFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -44,7 +43,12 @@ class SearchFabFragment : TopFragment() {
             setId(android.R.id.content)
             setContent {
                 val context = requireContext()
-                val themeMode by rememberThemeMode()
+                val themeMode = try {
+                    val prefs = com.futo.platformplayer.theming.AppearancePreferences()
+                    prefs.themeMode
+                } catch (_: Exception) {
+                    ThemeMode.AUTO
+                }
                 val isDark = when (themeMode) {
                     ThemeMode.AUTO -> {
                         context.resources.configuration.uiMode and
@@ -70,23 +74,18 @@ class SearchFabFragment : TopFragment() {
                 }
                 MaterialTheme(colorScheme = colorScheme) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.align(Alignment.CenterEnd)
+                        FloatingActionButton(
+                            onClick = { openSearch() },
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.align(Alignment.Center)
                         ) {
-                            FloatingActionButton(
-                                onClick = { openSearch() },
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search"
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search"
+                            )
                         }
                     }
                 }
@@ -95,23 +94,24 @@ class SearchFabFragment : TopFragment() {
     }
 
     private fun openSearch() {
-        val current = currentMain
+        val activity = activity as? com.futo.platformplayer.activities.MainActivity ?: return
+        val current = activity.fragCurrent
         when {
             current is CreatorsFragment -> {
-                navigate<SuggestionsFragment>(SuggestionsFragmentData("", SearchType.CREATOR))
+                activity.navigate(SuggestionsFragment(), SuggestionsFragmentData("", SearchType.CREATOR))
             }
             current is PlaylistsFragment || current is PlaylistFragment -> {
-                navigate<SuggestionsFragment>(SuggestionsFragmentData("", SearchType.PLAYLIST))
+                activity.navigate(SuggestionsFragment(), SuggestionsFragmentData("", SearchType.PLAYLIST))
             }
             current is LibraryFragment -> {
                 if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
                     UIDialogs.toast("Your Android version is too old for Mediastore search", true)
                 } else {
-                    navigate<LibrarySearchFragment>()
+                    activity.navigate(LibrarySearchFragment(), null)
                 }
             }
             else -> {
-                navigate<SuggestionsFragment>(SuggestionsFragmentData("", SearchType.VIDEO))
+                activity.navigate(SuggestionsFragment(), SuggestionsFragmentData("", SearchType.VIDEO))
             }
         }
     }

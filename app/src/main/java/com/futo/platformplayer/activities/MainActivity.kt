@@ -160,11 +160,12 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
     //Frags TopBar
     lateinit var _fragTopBarGeneral: GeneralTopBarFragment;
-    lateinit var _fragTopBarSearch: com.futo.platformplayer.compose.topbar.SearchFabFragment;
     lateinit var _fragTopBarNavigation: NavigationTopBarFragment;
     lateinit var _fragTopBarImport: ImportTopBarFragment;
     lateinit var _fragTopBarAdd: AddTopBarFragment;
     lateinit var _fragTopBarFiles: FilesTopBarFragment;
+    private lateinit var _fragSearchFab: com.futo.platformplayer.compose.topbar.SearchFabFragment;
+    private lateinit var _fragContainerSearchFab: FragmentContainerView;
 
     //Frags BotBar
     lateinit var _fragBotBarMenu: MenuBottomBarFragment;
@@ -338,6 +339,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _rootInsetsController.setLightSystemBarAppearance(lightStatus = false, lightNav = false)
 
         _fragContainerTopBar = findViewById(R.id.fragment_top_bar);
+        _fragContainerSearchFab = findViewById(R.id.fragment_search_fab);
         _fragContainerMain = findViewById(R.id.fragment_main);
         _fragContainerBotBar = findViewById(R.id.fragment_bottom_bar);
         _fragContainerVideoDetail = findViewById(R.id.fragment_overlay);
@@ -349,11 +351,13 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
         //TopBars
         _fragTopBarGeneral = GeneralTopBarFragment.newInstance();
-        _fragTopBarSearch = com.futo.platformplayer.compose.topbar.SearchFabFragment.newInstance();
         _fragTopBarNavigation = NavigationTopBarFragment.newInstance();
         _fragTopBarImport = ImportTopBarFragment.newInstance();
         _fragTopBarAdd = AddTopBarFragment.newInstance();
         _fragTopBarFiles = FilesTopBarFragment.newInstance();
+
+        //Global Search FAB (permanent overlay)
+        _fragSearchFab = com.futo.platformplayer.compose.topbar.SearchFabFragment.newInstance();
 
         //BotBars
         _fragBotBarMenu = MenuBottomBarFragment.newInstance();
@@ -512,43 +516,43 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
 
         //Set top bars — all use Search FAB
-        _fragMainHome.topBar = _fragTopBarSearch;
-        _fragMainSubscriptions.topBar = _fragTopBarSearch;
-        _fragMainComments.topBar = _fragTopBarSearch;
-        _fragMainSuggestions.topBar = _fragTopBarSearch;
-        _fragMainVideoSearchResults.topBar = _fragTopBarSearch;
-        _fragMainCreatorSearchResults.topBar = _fragTopBarSearch;
-        _fragMainPlaylistSearchResults.topBar = _fragTopBarSearch;
-        _fragMainChannel.topBar = _fragTopBarSearch;
-        _fragMainTutorial.topBar = _fragTopBarSearch;
-        _fragMainSubscriptionsFeed.topBar = _fragTopBarSearch;
-        _fragMainSources.topBar = _fragTopBarSearch;
-        _fragMainPlaylists.topBar = _fragTopBarSearch;
-        _fragMainPlaylist.topBar = _fragTopBarSearch;
-        _fragMainRemotePlaylist.topBar = _fragTopBarSearch;
-        _fragPostDetail.topBar = _fragTopBarSearch;
-        _fragArticleDetail.topBar = _fragTopBarSearch;
-        _fragWebDetail.topBar = _fragTopBarSearch;
-        _fragWatchlist.topBar = _fragTopBarSearch;
-        _fragHistory.topBar = _fragTopBarSearch;
-        _fragSourceDetail.topBar = _fragTopBarSearch;
-        _fragDownloads.topBar = _fragTopBarSearch;
-        _fragImportSubscriptions.topBar = _fragTopBarSearch;
-        _fragImportPlaylists.topBar = _fragTopBarSearch;
-        _fragSubGroupList.topBar = _fragTopBarSearch;
-        _fragLibrary.topBar = _fragTopBarSearch;
-        _fragLibraryAlbums.topBar = _fragTopBarSearch;
-        _fragLibraryAlbum.topBar = _fragTopBarSearch;
-        _fragLibraryArtists.topBar = _fragTopBarSearch;
-        _fragLibraryArtist.topBar = _fragTopBarSearch;
-        _fragLibraryVideos.topBar = _fragTopBarSearch;
-        _fragLibraryFiles.topBar = _fragTopBarSearch;
-        _fragLibrarySearch.topBar = _fragTopBarSearch;
-        _fragSettings.topBar = _fragTopBarSearch;
-        _fragDeveloper.topBar = _fragTopBarSearch;
-        _fragNotifications.topBar = _fragTopBarSearch;
+        _fragMainHome.topBar = _fragTopBarGeneral;
+        _fragMainSubscriptions.topBar = _fragTopBarGeneral;
+        _fragMainComments.topBar = _fragTopBarGeneral;
+        _fragMainSuggestions.topBar = _fragTopBarGeneral;
+        _fragMainVideoSearchResults.topBar = _fragTopBarGeneral;
+        _fragMainCreatorSearchResults.topBar = _fragTopBarGeneral;
+        _fragMainPlaylistSearchResults.topBar = _fragTopBarGeneral;
+        _fragMainChannel.topBar = _fragTopBarGeneral;
+        _fragMainTutorial.topBar = _fragTopBarGeneral;
+        _fragMainSubscriptionsFeed.topBar = _fragTopBarGeneral;
+        _fragMainSources.topBar = _fragTopBarGeneral;
+        _fragMainPlaylists.topBar = _fragTopBarGeneral;
+        _fragMainPlaylist.topBar = _fragTopBarGeneral;
+        _fragMainRemotePlaylist.topBar = _fragTopBarGeneral;
+        _fragPostDetail.topBar = _fragTopBarGeneral;
+        _fragArticleDetail.topBar = _fragTopBarGeneral;
+        _fragWebDetail.topBar = _fragTopBarGeneral;
+        _fragWatchlist.topBar = _fragTopBarGeneral;
+        _fragHistory.topBar = _fragTopBarGeneral;
+        _fragSourceDetail.topBar = _fragTopBarGeneral;
+        _fragDownloads.topBar = _fragTopBarGeneral;
+        _fragImportSubscriptions.topBar = _fragTopBarGeneral;
+        _fragImportPlaylists.topBar = _fragTopBarGeneral;
+        _fragSubGroupList.topBar = _fragTopBarGeneral;
+        _fragLibrary.topBar = _fragTopBarGeneral;
+        _fragLibraryAlbums.topBar = _fragTopBarGeneral;
+        _fragLibraryAlbum.topBar = _fragTopBarGeneral;
+        _fragLibraryArtists.topBar = _fragTopBarGeneral;
+        _fragLibraryArtist.topBar = _fragTopBarGeneral;
+        _fragLibraryVideos.topBar = _fragTopBarGeneral;
+        _fragLibraryFiles.topBar = _fragTopBarGeneral;
+        _fragLibrarySearch.topBar = _fragTopBarGeneral;
+        _fragSettings.topBar = _fragTopBarGeneral;
+        _fragDeveloper.topBar = _fragTopBarGeneral;
+        _fragNotifications.topBar = _fragTopBarGeneral;
 
-        _fragBrowser.topBar = _fragTopBarSearch;
+        _fragBrowser.topBar = _fragTopBarGeneral;
 
         fragCurrent = _fragMainHome;
 
@@ -556,6 +560,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_top_bar, _fragTopBarGeneral)
+            .replace(R.id.fragment_search_fab, _fragSearchFab)
             .replace(R.id.fragment_main, _fragMainHome)
             .replace(R.id.fragment_bottom_bar, _fragBotBarMenu)
             .replace(R.id.fragment_overlay, _fragVideoDetail)
@@ -1370,7 +1375,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             MenuBottomBarFragment::class -> _fragBotBarMenu as T;
             GeneralTopBarFragment::class -> _fragTopBarGeneral as T;
             FilesTopBarFragment::class -> _fragTopBarFiles as T;
-            com.futo.platformplayer.compose.topbar.SearchFabFragment::class -> _fragTopBarSearch as T;
             CreatorsFragment::class -> _fragMainSubscriptions as T;
             CommentsFragment::class -> _fragMainComments as T;
             SubscriptionsFeedFragment::class -> _fragMainSubscriptionsFeed as T;
