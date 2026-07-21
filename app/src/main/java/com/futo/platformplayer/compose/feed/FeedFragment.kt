@@ -100,8 +100,9 @@ class FeedFragment : MainFragment() {
                 val ma = activity as? com.futo.platformplayer.activities.MainActivity ?: return@FeedScreen
                 when (content) {
                     is IPlatformVideo -> {
-                        // Use MainActivity.navigate() to properly handle VideoDetailFragment
-                        ma.navigate(VideoDetailFragment.newInstance(), content, true, false)
+                        // Use the pre-existing VideoDetailFragment instance
+                        ma._fragVideoDetail.onShown(content, false)
+                        ma._fragVideoDetail.maximizeVideoDetail(true)
                     }
                     is IPlatformPlaylist -> {
                         ma.navigate(RemotePlaylistFragment.newInstance(), content, true, false)
