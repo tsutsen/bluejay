@@ -42,6 +42,7 @@ class FeedFragment : MainFragment() {
         var uiState by remember { mutableStateOf(FeedUiState(isLoading = true)) }
         var pager by remember { mutableStateOf<ReusableRefreshPager<com.futo.platformplayer.api.media.models.contents.IPlatformContent>?>(null) }
         var items by remember { mutableStateOf<List<FeedItem>>(emptyList()) }
+        var contentList by remember { mutableStateOf<List<com.futo.platformplayer.api.media.models.contents.IPlatformContent>>(emptyList()) }
 
         // Initialize pager
         DisposableEffect(Unit) {
@@ -52,9 +53,11 @@ class FeedFragment : MainFragment() {
                         val rp = ReusableRefreshPager(p)
                         pager = rp
                         rp.nextPage()
-                        val loaded = rp.getResults().map { toFeedItem(it) }
-                        items = loaded
-                        uiState = FeedUiState(isLoading = false, items = loaded)
+                        val loaded = rp.getResults()
+                        val feedItems = loaded.map { toFeedItem(it) }
+                        contentList = loaded
+                        items = feedItems
+                        uiState = FeedUiState(isLoading = false, items = feedItems)
                     }
                 } catch (e: Exception) {
                     uiState = uiState.copy(isLoading = false, error = e.message)
@@ -71,24 +74,31 @@ class FeedFragment : MainFragment() {
             onRefresh = {
                 pager?.let { p ->
                     p.nextPage()
-                    val loaded = p.getResults().map { toFeedItem(it) }
-                    items = loaded
-                    uiState = uiState.copy(items = loaded)
+                    val loaded = p.getResults()
+                    val feedItems = loaded.map { toFeedItem(it) }
+                    contentList = loaded
+                    items = feedItems
+                    uiState = uiState.copy(items = feedItems)
                 }
             },
             onLoadMore = {
                 pager?.let { p ->
                     if (p.hasMorePages()) {
                         p.nextPage()
-                        val loaded = p.getResults().map { toFeedItem(it) }
-                        items = loaded
-                        uiState = uiState.copy(items = loaded)
+                        val loaded = p.getResults()
+                        val feedItems = loaded.map { toFeedItem(it) }
+                        contentList = loaded
+                        items = feedItems
+                        uiState = uiState.copy(items = feedItems)
                     }
                 }
             },
             onItemClicked = { id ->
-                (activity as? com.futo.platformplayer.activities.MainActivity)?.let { ma ->
-                    ma.navigate(VideoDetailFragment(), null, true, false)
+                val content = contentList.find { it.id?.value == id }
+                if (content != null) {
+                    (activity as? com.futo.platformplayer.activities.MainActivity)?.let { ma ->
+                        ma.navigate(VideoDetailFragment.newInstance(), content, true, false)
+                    }
                 }
             },
             onSortChanged = {},
