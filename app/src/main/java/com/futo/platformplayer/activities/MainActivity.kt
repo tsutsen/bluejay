@@ -90,12 +90,6 @@ import com.futo.platformplayer.fragment.mainactivity.main.VideoDetailFragment
 import com.futo.platformplayer.fragment.mainactivity.main.VideoDetailFragment.State
 import com.futo.platformplayer.fragment.mainactivity.main.WatchLaterFragment
 import com.futo.platformplayer.fragment.mainactivity.main.WebDetailFragment
-import com.futo.platformplayer.fragment.mainactivity.topbar.AddTopBarFragment
-import com.futo.platformplayer.fragment.mainactivity.topbar.FilesTopBarFragment
-import com.futo.platformplayer.fragment.mainactivity.topbar.GeneralTopBarFragment
-import com.futo.platformplayer.fragment.mainactivity.topbar.ImportTopBarFragment
-import com.futo.platformplayer.fragment.mainactivity.topbar.NavigationTopBarFragment
-
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.ImportCache
 import com.futo.platformplayer.models.UrlVideoWithTime
@@ -149,7 +143,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     private lateinit var _toastView: ToastView;
 
     //Segment Containers
-    private lateinit var _fragContainerTopBar: FragmentContainerView;
     private lateinit var _fragContainerMain: FragmentContainerView;
     private lateinit var _fragContainerBotBar: FragmentContainerView;
     private lateinit var _fragContainerVideoDetail: FragmentContainerView;
@@ -158,12 +151,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     //Views
     private lateinit var _buttonIncognito: ImageView;
 
-    //Frags TopBar
-    lateinit var _fragTopBarGeneral: GeneralTopBarFragment;
-    lateinit var _fragTopBarNavigation: NavigationTopBarFragment;
-    lateinit var _fragTopBarImport: ImportTopBarFragment;
-    lateinit var _fragTopBarAdd: AddTopBarFragment;
-    lateinit var _fragTopBarFiles: FilesTopBarFragment;
     private lateinit var _fragSearchFab: com.futo.platformplayer.compose.topbar.SearchFabFragment;
     private lateinit var _fragContainerSearchFab: FragmentContainerView;
 
@@ -338,7 +325,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _rootInsetsController = RootInsetsController.attach(this, rootView)
         _rootInsetsController.setLightSystemBarAppearance(lightStatus = false, lightNav = false)
 
-        _fragContainerTopBar = findViewById(R.id.fragment_top_bar);
         _fragContainerSearchFab = findViewById(R.id.fragment_search_fab);
         _fragContainerMain = findViewById(R.id.fragment_main);
         _fragContainerBotBar = findViewById(R.id.fragment_bottom_bar);
@@ -348,13 +334,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _toastView = findViewById(R.id.toast_view);
 
         //Initialize fragments
-
-        //TopBars
-        _fragTopBarGeneral = GeneralTopBarFragment.newInstance();
-        _fragTopBarNavigation = NavigationTopBarFragment.newInstance();
-        _fragTopBarImport = ImportTopBarFragment.newInstance();
-        _fragTopBarAdd = AddTopBarFragment.newInstance();
-        _fragTopBarFiles = FilesTopBarFragment.newInstance();
 
         //Global Search FAB (permanent overlay)
         _fragSearchFab = com.futo.platformplayer.compose.topbar.SearchFabFragment.newInstance();
@@ -516,50 +495,13 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
 
         //Set top bars — all use Search FAB
-        _fragMainHome.topBar = _fragTopBarGeneral;
-        _fragMainSubscriptions.topBar = _fragTopBarGeneral;
-        _fragMainComments.topBar = _fragTopBarGeneral;
-        _fragMainSuggestions.topBar = _fragTopBarGeneral;
-        _fragMainVideoSearchResults.topBar = _fragTopBarGeneral;
-        _fragMainCreatorSearchResults.topBar = _fragTopBarGeneral;
-        _fragMainPlaylistSearchResults.topBar = _fragTopBarGeneral;
-        _fragMainChannel.topBar = _fragTopBarGeneral;
-        _fragMainTutorial.topBar = _fragTopBarGeneral;
-        _fragMainSubscriptionsFeed.topBar = _fragTopBarGeneral;
-        _fragMainSources.topBar = _fragTopBarGeneral;
-        _fragMainPlaylists.topBar = _fragTopBarGeneral;
-        _fragMainPlaylist.topBar = _fragTopBarGeneral;
-        _fragMainRemotePlaylist.topBar = _fragTopBarGeneral;
-        _fragPostDetail.topBar = _fragTopBarGeneral;
-        _fragArticleDetail.topBar = _fragTopBarGeneral;
-        _fragWebDetail.topBar = _fragTopBarGeneral;
-        _fragWatchlist.topBar = _fragTopBarGeneral;
-        _fragHistory.topBar = _fragTopBarGeneral;
-        _fragSourceDetail.topBar = _fragTopBarGeneral;
-        _fragDownloads.topBar = _fragTopBarGeneral;
-        _fragImportSubscriptions.topBar = _fragTopBarGeneral;
-        _fragImportPlaylists.topBar = _fragTopBarGeneral;
-        _fragSubGroupList.topBar = _fragTopBarGeneral;
-        _fragLibrary.topBar = _fragTopBarGeneral;
-        _fragLibraryAlbums.topBar = _fragTopBarGeneral;
-        _fragLibraryAlbum.topBar = _fragTopBarGeneral;
-        _fragLibraryArtists.topBar = _fragTopBarGeneral;
-        _fragLibraryArtist.topBar = _fragTopBarGeneral;
-        _fragLibraryVideos.topBar = _fragTopBarGeneral;
-        _fragLibraryFiles.topBar = _fragTopBarGeneral;
-        _fragLibrarySearch.topBar = _fragTopBarGeneral;
-        _fragSettings.topBar = _fragTopBarGeneral;
-        _fragDeveloper.topBar = _fragTopBarGeneral;
-        _fragNotifications.topBar = _fragTopBarGeneral;
 
-        _fragBrowser.topBar = _fragTopBarGeneral;
 
         fragCurrent = _fragMainHome;
 
         val defaultTab = getDefaultTab();
 
         supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_top_bar, _fragTopBarGeneral)
             .replace(R.id.fragment_search_fab, _fragSearchFab)
             .replace(R.id.fragment_main, _fragMainHome)
             .replace(R.id.fragment_bottom_bar, _fragBotBarMenu)
@@ -1260,15 +1202,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
             if (segment.isMainView) {
                 var transaction = supportFragmentManager.beginTransaction();
-                if (segment.topBar != null) {
-                    if (segment.topBar != fragCurrent?.topBar) {
-                        transaction = transaction
-                            .show(segment.topBar as Fragment)
-                            .replace(R.id.fragment_top_bar, segment.topBar as Fragment);
-                        fragCurrent?.topBar?.onHide();
-                    }
-                } else if (fragCurrent?.topBar != null)
-                    transaction.hide(fragCurrent?.topBar as Fragment);
+                // Top bar removed - using Search FAB overlay instead
 
                 transaction = transaction.replace(R.id.fragment_main, segment);
 
@@ -1299,8 +1233,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             _parameterCurrent = parameter;
         }
 
-        segment.topBar?.onShown(parameter);
-        (segment.topBar as? NavigationTopBarFragment)?.setBackVisible(!_fragBotBarMenu.isAtTabRoot());
         segment.onShown(parameter, isBack);
         onNavigated.emit(segment);
     }
@@ -1373,8 +1305,6 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             SuggestionsFragment::class -> _fragMainSuggestions as T;
             VideoDetailFragment::class -> _fragVideoDetail as T;
             MenuBottomBarFragment::class -> _fragBotBarMenu as T;
-            GeneralTopBarFragment::class -> _fragTopBarGeneral as T;
-            FilesTopBarFragment::class -> _fragTopBarFiles as T;
             CreatorsFragment::class -> _fragMainSubscriptions as T;
             CommentsFragment::class -> _fragMainComments as T;
             SubscriptionsFeedFragment::class -> _fragMainSubscriptionsFeed as T;
