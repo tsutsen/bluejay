@@ -8,26 +8,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import com.futo.platformplayer.R
 import com.futo.platformplayer.activities.MainActivity
 import com.futo.platformplayer.fragment.mainactivity.main.MainFragment
 import com.futo.platformplayer.fragment.mainactivity.main.*
+import com.futo.platformplayer.fragment.settings.SettingsHubFragment
 import kotlinx.coroutines.launch
 
 /**
  * Compose-based bottom bar fragment — replaces MenuBottomBarFragment.
  *
  * Hosts the BottomBar composable and handles navigation to different tabs.
- * This fragment is hosted in the fragment_bottom_bar container in activity_main.xml.
+ * Tracks the active tab based on which fragment is currently shown.
  */
 class BottomBarFragment : Fragment() {
 
@@ -39,28 +37,43 @@ class BottomBarFragment : Fragment() {
         return ComposeView(requireContext()).apply {
             setId(android.R.id.content)
             setContent {
-                MaterialTheme {
-                    val items = listOf(
-                        BottomNavItem(0, "Home", Icons.Default.Home, true) { navigateToTab(0) },
-                        BottomNavItem(1, "Subscriptions", Icons.Default.Subscriptions, false) { navigateToTab(1) },
-                        BottomNavItem(2, "Creators", Icons.Default.People, false) { navigateToTab(2) },
-                        BottomNavItem(3, "Sources", Icons.Default.Source, false) { navigateToTab(3) },
-                        BottomNavItem(4, "Playlists", Icons.Default.PlaylistPlay, false) { navigateToTab(4) },
-                        BottomNavItem(5, "History", Icons.Default.History, false) { navigateToTab(5) },
-                        BottomNavItem(6, "Downloads", Icons.Default.Download, false) { navigateToTab(6) },
-                        BottomNavItem(7, "Settings", Icons.Default.Settings, false) { navigateToTab(7) },
-                    )
-                    BottomBar(
-                        items = items,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                val ma = activity as? MainActivity ?: return@setContent
+                val currentFragment = ma.fragCurrent
+
+                val items = listOf(
+                    BottomNavItem(0, "Home", Icons.Default.Home, isTabActive(currentFragment, 0)) { navigateToTab(0) },
+                    BottomNavItem(1, "Subscriptions", Icons.Default.Subscriptions, isTabActive(currentFragment, 1)) { navigateToTab(1) },
+                    BottomNavItem(2, "Creators", Icons.Default.People, isTabActive(currentFragment, 2)) { navigateToTab(2) },
+                    BottomNavItem(3, "Sources", Icons.Default.Source, isTabActive(currentFragment, 3)) { navigateToTab(3) },
+                    BottomNavItem(4, "Playlists", Icons.Default.PlaylistPlay, isTabActive(currentFragment, 4)) { navigateToTab(4) },
+                    BottomNavItem(5, "History", Icons.Default.History, isTabActive(currentFragment, 5)) { navigateToTab(5) },
+                    BottomNavItem(6, "Downloads", Icons.Default.Download, isTabActive(currentFragment, 6)) { navigateToTab(6) },
+                    BottomNavItem(7, "Settings", Icons.Default.Settings, isTabActive(currentFragment, 7)) { navigateToTab(7) },
+                )
+                BottomBar(
+                    items = items,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }.also { view ->
             view.layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
+        }
+    }
+
+    private fun isTabActive(currentFragment: MainFragment?, tabId: Int): Boolean {
+        return when (tabId) {
+            0 -> currentFragment is com.futo.platformplayer.compose.feed.FeedFragment
+            1 -> currentFragment is SubscriptionsFeedFragment
+            2 -> currentFragment is CreatorsFragment
+            3 -> currentFragment is SourcesFragment
+            4 -> currentFragment is PlaylistsFragment
+            5 -> currentFragment is HistoryFragment
+            6 -> currentFragment is DownloadsFragment
+            7 -> currentFragment is SettingsHubFragment
+            else -> false
         }
     }
 
@@ -78,13 +91,6 @@ class BottomBarFragment : Fragment() {
         }
     }
 
-    /**
-     * Handle back press — no more overlay in Compose version, always returns false.
-     */
     fun onBackPressed(): Boolean = false
-
-    /**
-     * Check if we're at a tab root — always true for Compose bottom bar.
-     */
     fun isAtTabRoot(): Boolean = true
 }
