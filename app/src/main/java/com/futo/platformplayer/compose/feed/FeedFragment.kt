@@ -97,25 +97,23 @@ class FeedFragment : MainFragment() {
             },
             onItemClicked = { id ->
                 val content = contentList.find { it.id?.value == id }
-                if (content != null) {
-                    val ma = activity as? com.futo.platformplayer.activities.MainActivity
-                    when (content) {
-                        is IPlatformVideo -> {
-                            ma?._fragVideoDetail?.onShown(content, false)
-                            ma?._fragVideoDetail?.maximizeVideoDetail(true)
-                        }
-                        is IPlatformPlaylist -> {
-                            ma?.navigate(RemotePlaylistFragment.newInstance(), content, true, false)
-                        }
-                        is IPlatformPost -> {
-                            ma?.navigate(PostDetailFragment.newInstance(), content, true, false)
-                        }
-                        is com.futo.platformplayer.api.media.models.article.IPlatformArticle -> {
-                            ma?.navigate(ArticleDetailFragment.newInstance(), content, true, false)
-                        }
-                        is com.futo.platformplayer.api.media.platforms.js.models.JSWeb -> {
-                            ma?.navigate(WebDetailFragment.newInstance(), content, true, false)
-                        }
+                val ma = activity as? com.futo.platformplayer.activities.MainActivity ?: return@FeedScreen
+                when (content) {
+                    is IPlatformVideo -> {
+                        // Use MainActivity.navigate() to properly handle VideoDetailFragment
+                        ma.navigate(VideoDetailFragment.newInstance(), content, true, false)
+                    }
+                    is IPlatformPlaylist -> {
+                        ma.navigate(RemotePlaylistFragment.newInstance(), content, true, false)
+                    }
+                    is IPlatformPost -> {
+                        ma.navigate(PostDetailFragment.newInstance(), content, true, false)
+                    }
+                    is com.futo.platformplayer.api.media.models.article.IPlatformArticle -> {
+                        ma.navigate(ArticleDetailFragment.newInstance(), content, true, false)
+                    }
+                    is com.futo.platformplayer.api.media.platforms.js.models.JSWeb -> {
+                        ma.navigate(WebDetailFragment.newInstance(), content, true, false)
                     }
                 }
             },
