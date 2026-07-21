@@ -21,6 +21,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import com.futo.platformplayer.activities.MainActivity
+import com.futo.platformplayer.compose.theme.ComposeThemeMode
+import com.futo.platformplayer.compose.theme.rememberComposeThemeState
+import com.futo.platformplayer.theming.AppearancePreferences
+import com.futo.platformplayer.theming.AppearancePreferencesManager
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.fragment.mainactivity.MainActivityFragment
 import com.futo.platformplayer.fragment.mainactivity.topbar.TopFragment
@@ -155,15 +159,22 @@ abstract class MainFragment : MainActivityFragment() {
 
     companion object {
         /**
-         * Creates a Material3 ColorScheme that matches the current system night mode.
-         * Used by Compose-based fragments to get the correct light/dark colors.
+         * Creates a Material3 ColorScheme based on the saved theme preference.
+         * Respects the user's theme choice (light/dark/auto) from AppearancePreferences.
          */
         @Composable
         fun getComposeColorScheme(): ColorScheme {
             val context = LocalContext.current
-            val isDark = context.resources.configuration.uiMode and
-                    android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
-                    android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val themeState = rememberComposeThemeState().value
+            val isDark = when (themeState.themeMode) {
+                ComposeThemeMode.AUTO -> {
+                    context.resources.configuration.uiMode and
+                            android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
+                            android.content.res.Configuration.UI_MODE_NIGHT_YES
+                }
+                ComposeThemeMode.LIGHT -> false
+                ComposeThemeMode.DARK -> true
+            }
 
             return if (isDark) darkColorScheme(
                 primary = Color(0xFFBB86FC),
