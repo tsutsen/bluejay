@@ -15,31 +15,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.fragment.app.Fragment
+import com.futo.platformplayer.fragment.mainactivity.main.MainFragment
 
-class FeedFragment : Fragment() {
+class FeedFragment : MainFragment() {
+    override val isMainView: Boolean = true
+    override val isOverlay: Boolean = false
+    override val isHistory: Boolean = false
+    override val hasBottomBar: Boolean = true
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return ComposeView(requireContext()).apply {
-            setId(android.R.id.content)
-            setContent {
-                MaterialTheme {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Feed Screen (Compose)\n\nComing soon...",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                }
+    @Composable
+    override fun ComposeContent() {
+        MaterialTheme(colorScheme = MainFragment.getComposeColorScheme()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Feed Screen (Compose)\n\nComing soon...",
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
     }
