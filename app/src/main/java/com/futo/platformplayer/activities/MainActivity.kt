@@ -156,7 +156,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     private lateinit var _fragContainerSearchFab: FragmentContainerView;
 
     //Frags BotBar
-    lateinit var _fragBotBarMenu: MenuBottomBarFragment;
+    lateinit var _fragBotBarMenu: com.futo.platformplayer.compose.bottombar.BottomBarFragment;
 
     //Frags Main
     @Suppress("UNCHECKED_CAST")
@@ -341,7 +341,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _fragSearchFab = com.futo.platformplayer.compose.topbar.SearchFabFragment.newInstance();
 
         //BotBars
-        _fragBotBarMenu = MenuBottomBarFragment.newInstance();
+        _fragBotBarMenu = com.futo.platformplayer.compose.bottombar.BottomBarFragment();
 
         //Main
         _fragMainHome = com.futo.platformplayer.compose.feed.FeedFragment();
@@ -508,7 +508,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             .replace(R.id.fragment_overlay, _fragVideoDetail)
             .commitNow();
 
-        defaultTab.action(_fragBotBarMenu);
+        // Compose bottom bar handles its own navigation
         StateSubscriptions.instance;
 
         fragCurrent?.onShown(null, false);
@@ -1238,15 +1238,8 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     }
 
     private fun navigateToDefaultTab(): Boolean {
-        if (!_fragBotBarMenu.isAtTabRoot())
-            return false;
-
-        val defaultTab = getDefaultTab();
-        if (defaultTab.isActive(_fragBotBarMenu))
-            return false;
-
-        defaultTab.action(_fragBotBarMenu);
-        return true;
+        // Compose bottom bar handles its own navigation, skip default tab logic
+        return false;
     }
 
     /**
@@ -1305,6 +1298,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             SuggestionsFragment::class -> _fragMainSuggestions as T;
             VideoDetailFragment::class -> _fragVideoDetail as T;
             MenuBottomBarFragment::class -> _fragBotBarMenu as T;
+            com.futo.platformplayer.compose.bottombar.BottomBarFragment::class -> _fragBotBarMenu as T;
             CreatorsFragment::class -> _fragMainSubscriptions as T;
             CommentsFragment::class -> _fragMainComments as T;
             SubscriptionsFeedFragment::class -> _fragMainSubscriptionsFeed as T;
