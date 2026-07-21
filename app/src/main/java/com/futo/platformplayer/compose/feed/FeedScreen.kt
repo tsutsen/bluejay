@@ -36,7 +36,7 @@ fun FeedScreen(
         val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
         if (lastVisible?.index == listState.layoutInfo.totalItemsCount - 1 &&
             listState.layoutInfo.totalItemsCount > 0 &&
-            !state.isLoadingMore
+            state.items.isNotEmpty()
         ) {
             onLoadMore()
         }
