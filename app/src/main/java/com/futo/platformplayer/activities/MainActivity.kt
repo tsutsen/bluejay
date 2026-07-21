@@ -76,7 +76,8 @@ import com.futo.platformplayer.fragment.mainactivity.main.PlaylistSearchResultsF
 import com.futo.platformplayer.fragment.mainactivity.main.PlaylistsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.PostDetailFragment
 import com.futo.platformplayer.fragment.mainactivity.main.RemotePlaylistFragment
-import com.futo.platformplayer.fragment.mainactivity.main.SettingsFragment
+import com.futo.platformplayer.fragment.mainactivity.main.SettingsFragment as OldSettingsFragment
+import com.futo.platformplayer.fragment.settings.SettingsFragment as NewSettingsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.ShortsFragment
 import com.futo.platformplayer.fragment.mainactivity.main.SourceDetailFragment
 import com.futo.platformplayer.fragment.mainactivity.main.SourcesFragment
@@ -205,7 +206,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
     lateinit var _fragLibrarySearch: LibrarySearchFragment;
     lateinit var _fragLibraryFiles: LibraryFilesFragment;
     lateinit var _fragNotifications: NotificationOverlayView.Frag;
-    lateinit var _fragSettings: SettingsFragment;
+    lateinit var _fragSettings: OldSettingsFragment;
     lateinit var _fragSettingsHub: SettingsHubFragment;
     lateinit var _fragDeveloper: DeveloperFragment;
     lateinit var _fragLogin: LoginFragment;
@@ -394,7 +395,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         _fragLibraryFiles = LibraryFilesFragment.newInstance();
         _fragLibrarySearch = LibrarySearchFragment.newInstance();
         _fragNotifications = NotificationOverlayView.Frag();
-        _fragSettings = SettingsFragment.newInstance();
+        _fragSettings = OldSettingsFragment.newInstance();
         _fragSettingsHub = SettingsHubFragment.newInstance();
         _fragDeveloper = DeveloperFragment.newInstance();
         _fragLogin = LoginFragment.newInstance();
@@ -1402,7 +1403,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
             LibraryFilesFragment::class -> _fragLibraryFiles as T;
             LibrarySearchFragment::class -> _fragLibrarySearch as T;
             NotificationOverlayView.Frag::class -> _fragNotifications as T;
-            SettingsFragment:: class -> _fragSettings as T;
+            OldSettingsFragment:: class -> _fragSettings as T;
             SettingsHubFragment::class -> _fragSettingsHub as T;
             DeveloperFragment::class -> _fragDeveloper as T;
             LoginFragment::class -> _fragLogin as T;
