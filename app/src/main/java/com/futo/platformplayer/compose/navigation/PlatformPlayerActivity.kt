@@ -20,6 +20,7 @@ package com.futo.platformplayer.compose.navigation
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -812,27 +813,28 @@ private fun FragmentFallback(fragment: Fragment, activity: FragmentActivity) {
     AndroidView(
         factory = { context ->
             Log.d("PlatformPlayer", "Creating FragmentContainerView for ${fragment.javaClass.simpleName}")
-            androidx.fragment.app.FragmentContainerView(context).apply {
-                id = android.R.id.content
+            // Use a unique ID for the container, not android.R.id.content
+            val containerView = androidx.fragment.app.FragmentContainerView(context).apply {
+                id = View.generateViewId()
                 layoutParams = android.view.ViewGroup.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT
                 )
             }
-        },
-        update = { view ->
-            Log.d("PlatformPlayer", "Updating FragmentContainerView for ${fragment.javaClass.simpleName}")
+            
+            // Perform fragment transaction on this container
             val fragmentManager = activity.supportFragmentManager
-            Log.d("PlatformPlayer", "FragmentManager: $fragmentManager")
             if (fragmentManager != null) {
                 val transaction = fragmentManager.beginTransaction()
-                Log.d("PlatformPlayer", "Transaction created, replacing with ${fragment.javaClass.simpleName}")
-                transaction.replace(android.R.id.content, fragment)
+                Log.d("PlatformPlayer", "Transaction created, replacing container ${containerView.id} with ${fragment.javaClass.simpleName}")
+                transaction.replace(containerView.id, fragment)
                 transaction.commit()
                 Log.d("PlatformPlayer", "Transaction committed")
             } else {
                 Log.e("PlatformPlayer", "Failed to get FragmentManager from activity")
             }
+            
+            containerView
         }
     )
 }
