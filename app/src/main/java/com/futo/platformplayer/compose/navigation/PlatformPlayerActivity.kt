@@ -72,6 +72,8 @@ import com.futo.platformplayer.compose.settings.SettingsScreen
 import com.futo.platformplayer.compose.settings.SettingsSection
 import com.futo.platformplayer.compose.plugins.PluginBrowserScene
 import com.futo.platformplayer.compose.player.VideoPlayerScene
+import com.futo.platformplayer.compose.player.MiniPlayerBar
+import com.futo.platformplayer.compose.player.MiniPlayerState
 import com.futo.platformplayer.fragment.mainactivity.main.*
 import com.futo.platformplayer.fragment.settings.getItemsForCategory
 import com.futo.platformplayer.fragment.settings.SettingsItem
@@ -162,31 +164,41 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
     val currentBackStack = navigationState.currentBackStack
 
     if (isWide) {
-        // Landscape: Navigation Rail on left + content
+        // Landscape: Navigation Rail on left + content + mini player
         Row(modifier = Modifier.fillMaxSize()) {
             GrayjayNavRail(
                 items = grayjayNavItems,
                 topLevelRoute = navigationState.topLevelRoute.value,
                 onNavItemClick = { navigator.navigateToTab(it) }
             )
-            if (currentBackStack != null) {
-                val activity = LocalContext.current as FragmentActivity
-                NavDisplay(
-                    backStack = currentBackStack,
-                    onBack = {
-                        if (!navigator.goBack()) {
-                            navigationState.topLevelRoute.value = navigationState.startRoute
+            Column(modifier = Modifier.weight(1f).fillMaxSize()) {
+                if (currentBackStack != null) {
+                    val activity = LocalContext.current as FragmentActivity
+                    NavDisplay(
+                        backStack = currentBackStack,
+                        onBack = {
+                            if (!navigator.goBack()) {
+                                navigationState.topLevelRoute.value = navigationState.startRoute
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        entryProvider = { key ->
+                            createGrayjayNavEntry(key, navigator, activity)
                         }
-                    },
-                    modifier = Modifier.weight(1f),
-                    entryProvider = { key ->
-                        createGrayjayNavEntry(key, navigator, activity)
-                    }
-                )
+                    )
+                }
+                
+                // Mini Player Bar (shown when video is minimized)
+                if (MiniPlayerState.isMiniPlayerActive && MiniPlayerState.currentVideo != null) {
+                    MiniPlayerBar(
+                        video = MiniPlayerState.currentVideo!!,
+                        onExpand = { MiniPlayerState.hide() }
+                    )
+                }
             }
         }
     } else {
-        // Portrait: Content + Bottom Navigation Bar
+        // Portrait: Content + Mini Player (if active) + Bottom Navigation Bar
         Column(modifier = Modifier.fillMaxSize()) {
             if (currentBackStack != null) {
                 val activity = LocalContext.current as FragmentActivity
@@ -203,6 +215,15 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
                     }
                 )
             }
+            
+            // Mini Player Bar (shown when video is minimized)
+            if (MiniPlayerState.isMiniPlayerActive && MiniPlayerState.currentVideo != null) {
+                MiniPlayerBar(
+                    video = MiniPlayerState.currentVideo!!,
+                    onExpand = { MiniPlayerState.hide() }
+                )
+            }
+            
             GrayjayBottomNavBar(
                 items = grayjayNavItems,
                 topLevelRoute = navigationState.topLevelRoute.value,
