@@ -90,6 +90,7 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
             // Check if plugin has auth configured
             val descriptor = StatePlugins.instance.getPlugin(config.id)
             val isAuthenticated = descriptor?.getAuth() != null
+            Log.d(TAG, "Plugin ${config.name} (${config.id}): descriptor=${descriptor != null}, auth=${descriptor?.getAuth() != null}")
             
             PluginInfo(
                 id = config.id,
@@ -278,7 +279,8 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
@@ -321,13 +323,15 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                             
                             Button(
                                 onClick = {
-                                    Log.d(TAG, "Opening login activity for: ${config!!.name}")
+                                    Log.d(TAG, "Opening login activity for: ${config!!.name} (id: ${config!!.id})")
                                     try {
                                         LoginActivity.showLogin(context, config!!) { auth ->
                                             if (auth != null) {
-                                                Log.d(TAG, "Login successful, saving auth")
+                                                Log.d(TAG, "Login successful, saving auth for ${config!!.name}")
+                                                Log.d(TAG, "Auth cookieMap size: ${auth.cookieMap?.size}, headers size: ${auth.headers?.size}")
                                                 try {
                                                     StatePlugins.instance.setPluginAuth(config!!.id, auth)
+                                                    Log.d(TAG, "Auth saved successfully")
                                                     // Reload the client to apply the new auth
                                                     StateApp.instance.scope.launch(Dispatchers.IO) {
                                                         StatePlatform.instance.reloadClient(context, config!!.id) {
