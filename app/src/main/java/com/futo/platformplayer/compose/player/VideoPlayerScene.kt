@@ -64,8 +64,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.exoplayer.source.ConcatenatingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.dash.DashMediaSource
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import coil.compose.AsyncImage
 import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
@@ -164,79 +165,79 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         StatePlatform.instance.getContentDetails(video.url).await()
                     }
                     
-                    // Step 2: Get the preferred video and audio sources using VideoHelper
-                    val (videoSource, audioSource) = withContext(Dispatchers.IO) {
+                    // Step 2: Get the preferred video source using VideoHelper
+                    // For DASH streams, use the DASH manifest which has both video and audio
+                    val videoSource = withContext(Dispatchers.IO) {
                         if (resolvedVideo is IPlatformVideoDetails) {
-                            val video = VideoHelper.selectBestVideoSource(
-                                resolvedVideo.video,
-                                -1,
-                                arrayOf("mp4", "webm", "mkv")
-                            )
-                            val audio = VideoHelper.selectBestAudioSource(
-                                resolvedVideo.video,
-                                arrayOf("mp4", "webm", "mkv"),
-                                null
-                            )
-                            Pair(video, audio)
+                            // Prefer DASH manifest (has both video and audio)
+                            if (resolvedVideo.dash != null) {
+                                Log.d("VideoPlayer", "Using DASH manifest")
+                                resolvedVideo.dash
+                            } else {
+                                // Fallback to VideoHelper.selectBestVideoSource
+                                VideoHelper.selectBestVideoSource(
+                                    resolvedVideo.video,
+                                    -1,
+                                    arrayOf("mp4", "webm", "mkv")
+                                )
+                            }
                         } else {
-                            Pair(null, null)
+                            null
                         }
                     }
                     
-                    // Step 3: Extract URLs from sources on background thread
-                    val (videoUrl, audioUrl) = withContext(Dispatchers.IO) {
-                        val vUrl = when (videoSource) {
-                            is IVideoUrlSource -> {
-                                Log.d("VideoPlayer", "Video URL: ${videoSource.getVideoUrl()}")
-                                videoSource.getVideoUrl()
+                    // Step 3: Extract URL from source on background thread
+                    val videoUrl = withContext(Dispatchers.IO) {
+                        if (videoSource != null) {
+                            when (videoSource) {
+                                is IDashManifestSource -> {
+                                    // DASH manifest has both video and audio tracks
+                                    Log.d("VideoPlayer", "DASH manifest URL: ${videoSource.url}")
+                                    videoSource.url
+                                }
+                                is IVideoUrlSource -> {
+                                    Log.d("VideoPlayer", "Video URL: ${videoSource.getVideoUrl()}")
+                                    videoSource.getVideoUrl()
+                                }
+                                is IHLSManifestSource -> {
+                                    Log.d("VideoPlayer", "HLS manifest URL: ${videoSource.url}")
+                                    videoSource.url
+                                }
+                                else -> {
+                                    Log.w("VideoPlayer", "Unsupported video source type: ${videoSource.javaClass.simpleName}")
+                                    null
+                                }
                             }
-                            is IDashManifestSource -> {
-                                (videoSource as? IVideoUrlSource)?.getVideoUrl()
-                            }
-                            is IHLSManifestSource -> {
-                                (videoSource as? IVideoUrlSource)?.getVideoUrl()
-                            }
-                            else -> {
-                                Log.w("VideoPlayer", "Unsupported video source type: ${videoSource?.javaClass?.simpleName}")
-                                null
-                            }
+                        } else {
+                            null
                         }
-                        
-                        val aUrl = when (audioSource) {
-                            is IAudioUrlSource -> {
-                                Log.d("VideoPlayer", "Audio URL: ${audioSource.getAudioUrl()}")
-                                audioSource.getAudioUrl()
-                            }
-                            is IHLSManifestSource -> {
-                                (audioSource as? IAudioUrlSource)?.getAudioUrl()
-                            }
-                            else -> null
-                        }
-                        
-                        Pair(vUrl, aUrl)
                     }
                     
                     // Step 4: Set up the player on main thread
                     withContext(Dispatchers.Main) {
                         if (videoUrl != null) {
-                            Log.d("VideoPlayer", "Setting media item: $videoUrl (audio: $audioUrl)")
+                            Log.d("VideoPlayer", "Setting media item: $videoUrl")
                             
-                            // Create MediaSource for video
-                            val videoMediaSource = ProgressiveMediaSource.Factory(
-                                DefaultHttpDataSource.Factory()
-                            ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
-                            
-                            // If audio URL exists, create a concatenated source
-                            val mediaSource = if (audioUrl != null) {
-                                Log.d("VideoPlayer", "Merging video and audio streams")
-                                ConcatenatingMediaSource(
-                                    videoMediaSource,
+                            // Create MediaSource - DASH manifests have both video and audio tracks
+                            val mediaSource = when {
+                                videoSource is IDashManifestSource -> {
+                                    Log.d("VideoPlayer", "Creating DASH media source")
+                                    DashMediaSource.Factory(
+                                        DefaultHttpDataSource.Factory()
+                                    ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
+                                }
+                                videoSource is IHLSManifestSource -> {
+                                    Log.d("VideoPlayer", "Creating HLS media source")
+                                    HlsMediaSource.Factory(
+                                        DefaultHttpDataSource.Factory()
+                                    ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
+                                }
+                                else -> {
+                                    Log.d("VideoPlayer", "Creating progressive media source")
                                     ProgressiveMediaSource.Factory(
                                         DefaultHttpDataSource.Factory()
-                                    ).createMediaSource(MediaItem.fromUri(Uri.parse(audioUrl)))
-                                )
-                            } else {
-                                videoMediaSource
+                                    ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
+                                }
                             }
                             
                             exoPlayer.setMediaSource(mediaSource)
