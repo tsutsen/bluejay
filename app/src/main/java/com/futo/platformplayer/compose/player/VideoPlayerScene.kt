@@ -64,9 +64,11 @@ import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
 import coil.compose.AsyncImage
 import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
+import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
+import com.futo.platformplayer.helpers.VideoHelper
 import com.futo.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -148,27 +150,61 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 try {
                     withContext(Dispatchers.IO) {
                         // Resolve the video URL through the plugin system
-                        val resolvedUrl = StatePlatform.instance.getContentDetails(video.url).await()
+                        val resolvedVideo = StatePlatform.instance.getContentDetails(video.url).await()
                         
-                        if (resolvedUrl is IPlatformVideoDetails) {
-                            // Create MediaItem from the resolved video details
-                            val mediaItem = MediaItem.fromUri(resolvedUrl.url)
+                        if (resolvedVideo is IPlatformVideoDetails) {
+                            // Extract the best video source URL
+                            val videoSource = VideoHelper.selectBestVideoSource(
+                                resolvedVideo.video,
+                                -1, // Don't filter by pixel count
+                                arrayOf("mp4", "webm", "mkv") // Preferred containers
+                            )
                             
-                            // Set up the player
-                            exoPlayer.setMediaItem(mediaItem)
-                            exoPlayer.prepare()
-                            
-                            // Seek to position if specified
-                            d.position?.let { position ->
-                                exoPlayer.seekTo(position)
+                            // Get the actual URL from the source
+                            val videoUrl = when {
+                                resolvedVideo.live != null -> {
+                                    // Live stream
+                                    (resolvedVideo.live as? IVideoUrlSource)?.getVideoUrl()
+                                }
+                                resolvedVideo.dash != null -> {
+                                    // DASH stream - use the DASH manifest URL
+                                    (resolvedVideo.dash as? IVideoUrlSource)?.getVideoUrl()
+                                }
+                                resolvedVideo.hls != null -> {
+                                    // HLS stream - use the HLS manifest URL
+                                    (resolvedVideo.hls as? IVideoUrlSource)?.getVideoUrl()
+                                }
+                                videoSource != null -> {
+                                    // Regular video source
+                                    (videoSource as? IVideoUrlSource)?.getVideoUrl()
+                                }
+                                else -> null
                             }
                             
-                            // Start playing
-                            exoPlayer.playWhenReady = true
+                            if (videoUrl != null) {
+                                // Create MediaItem from the resolved video URL
+                                val mediaItem = MediaItem.fromUri(videoUrl)
+                                
+                                // Set up the player
+                                exoPlayer.setMediaItem(mediaItem)
+                                exoPlayer.prepare()
+                                
+                                // Seek to position if specified
+                                d.position?.let { position ->
+                                    exoPlayer.seekTo(position)
+                                }
+                                
+                                // Start playing
+                                exoPlayer.playWhenReady = true
+                            } else {
+                                // No playable URL found
+                                errorMessage = "No playable video source found"
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     // Handle error
+                    errorMessage = "Failed to load video: ${e.message}"
                 }
             }
             
