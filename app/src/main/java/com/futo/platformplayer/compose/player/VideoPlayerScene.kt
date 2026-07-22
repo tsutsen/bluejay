@@ -64,6 +64,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.exoplayer.source.ConcatenatingMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import coil.compose.AsyncImage
 import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioSource
@@ -218,11 +221,25 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         if (videoUrl != null) {
                             Log.d("VideoPlayer", "Setting media item: $videoUrl (audio: $audioUrl)")
                             
-                            // For DASH/HLS with separate audio, we need to create a merged source
-                            // For now, just use the video URL (audio is usually muxed)
-                            val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
+                            // Create MediaSource for video
+                            val videoMediaSource = ProgressiveMediaSource.Factory(
+                                DefaultHttpDataSource.Factory()
+                            ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
                             
-                            exoPlayer.setMediaItem(mediaItem)
+                            // If audio URL exists, create a concatenated source
+                            val mediaSource = if (audioUrl != null) {
+                                Log.d("VideoPlayer", "Merging video and audio streams")
+                                ConcatenatingMediaSource(
+                                    videoMediaSource,
+                                    ProgressiveMediaSource.Factory(
+                                        DefaultHttpDataSource.Factory()
+                                    ).createMediaSource(MediaItem.fromUri(Uri.parse(audioUrl)))
+                                )
+                            } else {
+                                videoMediaSource
+                            }
+                            
+                            exoPlayer.setMediaSource(mediaSource)
                             exoPlayer.prepare()
                             
                             d.position?.let { position ->
@@ -317,21 +334,29 @@ private fun FullVideoPlayerView(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Minimize button overlay
-        IconButton(
-            onClick = onMinimize,
+        // Minimize button overlay - more visible
+        Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(8.dp)
-                )
+                .padding(16.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.ExpandLess,
-                contentDescription = "Minimize"
-            )
+            IconButton(
+                onClick = {
+                    Log.d("VideoPlayer", "Minimize button clicked")
+                    onMinimize()
+                },
+                modifier = Modifier
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ExpandLess,
+                    contentDescription = "Minimize",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
         }
     }
 }
