@@ -20,10 +20,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.futo.platformplayer.activities.LoginActivity
 import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.IPlatformClient
@@ -47,6 +50,17 @@ data class PluginInfo(
     val isInstalled: Boolean,
     val isEnabled: Boolean,
     val isAuthenticated: Boolean = false
+)
+
+data class ChannelImportItem(
+    val url: String,
+    val name: String,
+    val thumbnail: String?
+)
+
+data class PlaylistImportItem(
+    val url: String,
+    val name: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -401,8 +415,8 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                             var showImportDialog by remember { mutableStateOf(false) }
                             var importType by remember { mutableStateOf<String?>(null) }
                             var isLoading by remember { mutableStateOf(false) }
-                            var items by remember { mutableStateOf<List<String>>(emptyList()) }
-                            var selectedItems by remember { mutableStateOf<Set<String>>(emptySet()) }
+                            var items by remember { mutableStateOf<List<Any>>(emptyList()) }
+                            var selectedItems by remember { mutableStateOf<Set<Any>>(emptySet()) }
 
                             Button(
                                 onClick = {
@@ -420,7 +434,23 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                             }
                                             Log.d(TAG, "Got ${subs?.size ?: 0} subscriptions")
                                             if (subs != null) {
-                                                items = subs.toList()
+                                                // Convert URLs to channel objects with name and thumbnail
+                                                val channels = withContext(Dispatchers.IO) {
+                                                    subs.map { url ->
+                                                        try {
+                                                            val channel = StatePlatform.instance.getChannelLive(url, false)
+                                                            ChannelImportItem(
+                                                                url = url,
+                                                                name = channel.name,
+                                                                thumbnail = channel.thumbnail
+                                                            )
+                                                        } catch (e: Exception) {
+                                                            Log.w(TAG, "Failed to get channel for $url", e)
+                                                            ChannelImportItem(url = url, name = url, thumbnail = null)
+                                                        }
+                                                    }
+                                                }
+                                                items = channels
                                             } else {
                                                 items = emptyList()
                                             }
@@ -453,7 +483,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                             val playlists = withContext(Dispatchers.IO) {
                                                 client.getUserPlaylists()
                                             }
-                                            items = playlists?.toList() ?: emptyList()
+                                            items = playlists?.map { PlaylistImportItem(url = it, name = it) } ?: emptyList()
                                             isLoading = false
                                         } catch (e: Exception) {
                                             Log.e(TAG, "Failed to get playlists", e)
@@ -488,26 +518,62 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                             ) {
                                                 Text("Select items to import:")
                                                 items.forEach { item ->
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .padding(vertical = 4.dp),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
-                                                        Checkbox(
-                                                            checked = selectedItems.contains(item),
-                                                            onCheckedChange = { checked ->
-                                                                if (checked) {
-                                                                    selectedItems = selectedItems + item
-                                                                } else {
-                                                                    selectedItems = selectedItems - item
+                                                    when (item) {
+                                                        is ChannelImportItem -> {
+                                                            Row(
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(vertical = 4.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Checkbox(
+                                                                    checked = selectedItems.contains(item),
+                                                                    onCheckedChange = { checked ->
+                                                                        if (checked) {
+                                                                            selectedItems = selectedItems + item
+                                                                        } else {
+                                                                            selectedItems = selectedItems - item
+                                                                        }
+                                                                    }
+                                                                )
+                                                                if (item.thumbnail != null) {
+                                                                    AsyncImage(
+                                                                        model = item.thumbnail,
+                                                                        contentDescription = null,
+                                                                        modifier = Modifier
+                                                                            .size(40.dp)
+                                                                            .padding(start = 8.dp)
+                                                                    )
                                                                 }
+                                                                Text(
+                                                                    text = item.name,
+                                                                    modifier = Modifier.padding(start = 8.dp)
+                                                                )
                                                             }
-                                                        )
-                                                        Text(
-                                                            text = item,
-                                                            modifier = Modifier.padding(start = 8.dp)
-                                                        )
+                                                        }
+                                                        is PlaylistImportItem -> {
+                                                            Row(
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(vertical = 4.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Checkbox(
+                                                                    checked = selectedItems.contains(item),
+                                                                    onCheckedChange = { checked ->
+                                                                        if (checked) {
+                                                                            selectedItems = selectedItems + item
+                                                                        } else {
+                                                                            selectedItems = selectedItems - item
+                                                                        }
+                                                                    }
+                                                                )
+                                                                Text(
+                                                                    text = item.name,
+                                                                    modifier = Modifier.padding(start = 8.dp)
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -520,9 +586,11 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                                     try {
                                                         when (importType) {
                                                             "subscriptions" -> {
-                                                                for (sub in selectedItems) {
-                                                                    val channel = StatePlatform.instance.getChannelLive(sub, false)
-                                                                    StateSubscriptions.instance.addSubscription(channel)
+                                                                for (item in selectedItems) {
+                                                                    if (item is ChannelImportItem) {
+                                                                        val channel = StatePlatform.instance.getChannelLive(item.url, false)
+                                                                        StateSubscriptions.instance.addSubscription(channel)
+                                                                    }
                                                                 }
                                                             }
                                                             "playlists" -> {
