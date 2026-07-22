@@ -7,6 +7,8 @@
 
 package com.futo.platformplayer.compose.plugins
 
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -294,10 +297,19 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
 
                         // Authentication buttons
                         if (config!!.authentication != null) {
+                            val context = LocalContext.current
+                            val loginUrl = config!!.authentication!!.loginUrl
+                            
                             Button(
                                 onClick = {
-                                    Log.d(TAG, "Login button clicked")
-                                    // TODO: Implement login functionality
+                                    Log.d(TAG, "Opening login URL: $loginUrl")
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(loginUrl))
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Failed to open login URL", e)
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -307,6 +319,24 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                 )
                             ) {
                                 Text("Login")
+                            }
+                            
+                            // Show login warning if present
+                            config!!.authentication!!.loginWarning?.let { warning ->
+                                Text(
+                                    text = warning,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                            
+                            // Show additional warnings
+                            config!!.authentication!!.loginWarnings?.forEach { warning ->
+                                Text(
+                                    text = warning.text ?: warning.url,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
 
