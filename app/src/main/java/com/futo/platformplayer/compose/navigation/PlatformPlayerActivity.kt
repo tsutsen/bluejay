@@ -123,8 +123,6 @@ private data class NavItemDef(
 private val grayjayNavItems = listOf(
     NavItemDef(Home, Icons.Outlined.Home, Icons.Filled.Home, "Home"),
     NavItemDef(Subscriptions, Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subscriptions"),
-    NavItemDef(Creators, Icons.Outlined.People, Icons.Filled.People, "Creators"),
-    NavItemDef(Sources, Icons.Outlined.Source, Icons.Filled.Source, "Sources"),
     NavItemDef(Playlists, Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay, "Playlists"),
     NavItemDef(History, Icons.Outlined.History, Icons.Filled.History, "History"),
     NavItemDef(Downloads, Icons.Outlined.Download, Icons.Filled.Download, "Downloads"),
@@ -145,8 +143,8 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
             Log.d("PlatformPlayer", "LaunchedEffect: navigating to tab: $tab")
             when (tab) {
                 "BROWSE_PLUGINS" -> {
-                    Log.d("PlatformPlayer", "Navigating to Sources tab")
-                    navigator.navigateToTab(Sources)
+                    Log.d("PlatformPlayer", "Navigating to Settings tab (Sources removed)")
+                    navigator.navigateToTab(Settings)
                 }
                 else -> {
                     Log.w("PlatformPlayer", "Unknown tab: $tab")
@@ -277,22 +275,6 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator, acti
                 NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { SubscriptionsScene(navigator) }
-            }
-        }
-        is Creators -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { CreatorsScene(navigator) }
-            }
-        }
-        is Sources -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { SourcesScene(navigator) }
             }
         }
         is Playlists -> {
@@ -585,8 +567,6 @@ private fun getXmlFragmentForNavKey(key: NavKey): Fragment? {
     val fragment = when (key) {
         is Home -> HomeFragment()
         is Subscriptions -> SubscriptionsFeedFragment.newInstance()
-        is Creators -> CreatorsFragment.newInstance()
-        is Sources -> SourcesFragment.newInstance()
         is Playlists -> PlaylistsFragment.newInstance()
         is History -> HistoryFragment.newInstance()
         is Downloads -> DownloadsFragment()
@@ -724,8 +704,7 @@ private fun HomeScene(navigator: GrayjayNavigator) {
 }
 
 @Composable private fun SubscriptionsScene(n: GrayjayNavigator) = placeholder(n, "Subscriptions")
-@Composable private fun CreatorsScene(n: GrayjayNavigator) = placeholder(n, "Creators")
-@Composable private fun SourcesScene(n: GrayjayNavigator) = placeholder(n, "Sources")
+@Composable private fun SourcesScene(n: GrayjayNavigator) = placeholder(n, "Sources (removed)")
 @Composable private fun PlaylistsScene(n: GrayjayNavigator) = placeholder(n, "Playlists")
 @Composable private fun HistoryScene(n: GrayjayNavigator) = placeholder(n, "History")
 @Composable private fun DownloadsScene(n: GrayjayNavigator) = placeholder(n, "Downloads")

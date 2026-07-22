@@ -52,33 +52,23 @@ class BottomBarFragment : Fragment() {
                         )
                         ,
                         BottomNavItem(
-                            "Creators", Icons.Outlined.People, Icons.Filled.People, 2,
+                            "Playlists", Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay, 2,
                             onClick = { navigateToTab(2, ma) }
                         )
                         ,
                         BottomNavItem(
-                            "Sources", Icons.Outlined.Source, Icons.Filled.Source, 3,
+                            "History", Icons.Outlined.History, Icons.Filled.History, 3,
                             onClick = { navigateToTab(3, ma) }
                         )
                         ,
                         BottomNavItem(
-                            "Playlists", Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay, 4,
+                            "Downloads", Icons.Outlined.Download, Icons.Filled.Download, 4,
                             onClick = { navigateToTab(4, ma) }
                         )
                         ,
                         BottomNavItem(
-                            "History", Icons.Outlined.History, Icons.Filled.History, 5,
+                            "Settings", Icons.Outlined.Settings, Icons.Filled.Settings, 5,
                             onClick = { navigateToTab(5, ma) }
-                        )
-                        ,
-                        BottomNavItem(
-                            "Downloads", Icons.Outlined.Download, Icons.Filled.Download, 6,
-                            onClick = { navigateToTab(6, ma) }
-                        )
-                        ,
-                        BottomNavItem(
-                            "Settings", Icons.Outlined.Settings, Icons.Filled.Settings, 7,
-                            onClick = { navigateToTab(7, ma) }
                         )
                     )
 
@@ -97,12 +87,10 @@ class BottomBarFragment : Fragment() {
         when (tabId) {
             0 -> ma.navigate(ma._fragMainHome as com.futo.platformplayer.fragment.mainactivity.main.MainFragment, null, true, false)
             1 -> ma.navigate(ma._fragMainSubscriptionsFeed, null, true, false)
-            2 -> ma.navigate(ma._fragMainSubscriptions, null, true, false)
-            3 -> ma.navigate(ma._fragMainSources, null, true, false)
-            4 -> ma.navigate(ma._fragMainPlaylists, null, true, false)
-            5 -> ma.navigate(ma._fragHistory, null, true, false)
-            6 -> ma.navigate(ma._fragDownloads, null, true, false)
-            7 -> ma.navigate(ma._fragSettingsHub, null, true, false)
+            2 -> ma.navigate(ma._fragMainPlaylists, null, true, false)
+            3 -> ma.navigate(ma._fragHistory, null, true, false)
+            4 -> ma.navigate(ma._fragDownloads, null, true, false)
+            5 -> ma.navigate(ma._fragSettingsHub, null, true, false)
         }
     }
 

@@ -24,7 +24,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 @Composable
 fun rememberGrayjayNavigationState(
     startRoute: NavKey = Home,
-    topLevelRoutes: Set<NavKey> = setOf(Home, Subscriptions, Creators, Sources, Playlists, History, Downloads, Settings)
+    topLevelRoutes: Set<NavKey> = setOf(Home, Subscriptions, Playlists, History, Downloads, Settings)
 ): GrayjayNavigationState {
 
     val topLevelRoute = remember { mutableStateOf(startRoute) }

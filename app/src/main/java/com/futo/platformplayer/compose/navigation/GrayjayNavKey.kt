@@ -23,14 +23,6 @@ data object Home : NavKey
 @Serializable
 data object Subscriptions : NavKey
 
-/** Creators / Browse tab — discover creators */
-@Serializable
-data object Creators : NavKey
-
-/** Sources tab — manage content sources */
-@Serializable
-data object Sources : NavKey
-
 /** Playlists tab — user-created and remote playlists */
 @Serializable
 data object Playlists : NavKey
@@ -189,7 +181,7 @@ data class SettingsFragment(val category: String) : NavKey
  * All top-level (tab) routes. Used by NavigationState to manage per-tab back stacks.
  */
 val topLevelRoutes: Set<NavKey> = setOf(
-    Home, Subscriptions, Creators, Sources, Playlists,
+    Home, Subscriptions, Playlists,
     History, Downloads, Settings, Library, Search
 )
 
