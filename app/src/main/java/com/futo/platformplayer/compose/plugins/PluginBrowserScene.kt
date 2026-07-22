@@ -578,7 +578,9 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                                                 for (item in selectedItems) {
                                                                     if (item is ChannelImportItem) {
                                                                         try {
-                                                                            val channel = StatePlatform.instance.getChannelLive(item.url, false)
+                                                                            val channel = withContext(Dispatchers.IO) {
+                                                                                StatePlatform.instance.getChannelLive(item.url, false)
+                                                                            }
                                                                             StateSubscriptions.instance.addSubscription(channel)
                                                                             successCount++
                                                                             Log.d(TAG, "Added subscription: ${channel.name}")
