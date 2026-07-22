@@ -148,10 +148,13 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
             // Load video source by resolving through plugin system
             LaunchedEffect(video.url, exoPlayer) {
                 try {
-                    withContext(Dispatchers.IO) {
-                        // Resolve the video URL through the plugin system
-                        val resolvedVideo = StatePlatform.instance.getContentDetails(video.url).await()
-                        
+                    // Step 1: Resolve the video URL on background thread
+                    val resolvedVideo = withContext(Dispatchers.IO) {
+                        StatePlatform.instance.getContentDetails(video.url).await()
+                    }
+                    
+                    // Step 2: Extract the actual video URL on background thread
+                    val videoUrl = withContext(Dispatchers.IO) {
                         if (resolvedVideo is IPlatformVideoDetails) {
                             // Extract the best video source URL
                             val videoSource = VideoHelper.selectBestVideoSource(
@@ -161,7 +164,7 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                             )
                             
                             // Get the actual URL from the source
-                            val videoUrl = when {
+                            when {
                                 resolvedVideo.live != null -> {
                                     // Live stream
                                     (resolvedVideo.live as? IVideoUrlSource)?.getVideoUrl()
@@ -180,31 +183,38 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                                 }
                                 else -> null
                             }
+                        } else {
+                            null
+                        }
+                    }
+                    
+                    // Step 3: Set up the player on main thread
+                    withContext(Dispatchers.Main) {
+                        if (videoUrl != null) {
+                            // Create MediaItem from the resolved video URL
+                            val mediaItem = MediaItem.fromUri(videoUrl)
                             
-                            if (videoUrl != null) {
-                                // Create MediaItem from the resolved video URL
-                                val mediaItem = MediaItem.fromUri(videoUrl)
-                                
-                                // Set up the player
-                                exoPlayer.setMediaItem(mediaItem)
-                                exoPlayer.prepare()
-                                
-                                // Seek to position if specified
-                                d.position?.let { position ->
-                                    exoPlayer.seekTo(position)
-                                }
-                                
-                                // Start playing
-                                exoPlayer.playWhenReady = true
-                            } else {
-                                // No playable URL found
-                                errorMessage = "No playable video source found"
+                            // Set up the player
+                            exoPlayer.setMediaItem(mediaItem)
+                            exoPlayer.prepare()
+                            
+                            // Seek to position if specified
+                            d.position?.let { position ->
+                                exoPlayer.seekTo(position)
                             }
+                            
+                            // Start playing
+                            exoPlayer.playWhenReady = true
+                        } else {
+                            // No playable URL found
+                            errorMessage = "No playable video source found"
                         }
                     }
                 } catch (e: Exception) {
-                    // Handle error
-                    errorMessage = "Failed to load video: ${e.message}"
+                    // Handle error on main thread
+                    withContext(Dispatchers.Main) {
+                        errorMessage = "Failed to load video: ${e.message}"
+                    }
                 }
             }
             
