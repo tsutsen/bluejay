@@ -29,7 +29,10 @@ import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.IPlatformClient
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
+import com.futo.platformplayer.states.StateApp
+import com.futo.platformplayer.states.StatePlugins
 import com.futo.platformplayer.states.StatePlatform
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 private const val TAG = "PluginBrowserScene"
@@ -302,7 +305,24 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                 onClick = {
                                     Log.d(TAG, "Opening login activity for: ${config!!.name}")
                                     try {
-                                        LoginActivity.showLogin(context, config!!)
+                                        LoginActivity.showLogin(context, config!!) { auth ->
+                                            if (auth != null) {
+                                                Log.d(TAG, "Login successful, saving auth")
+                                                try {
+                                                    StatePlugins.instance.setPluginAuth(config!!.id, auth)
+                                                    // Reload the client to apply the new auth
+                                                    StateApp.instance.scope.launch(Dispatchers.IO) {
+                                                        StatePlatform.instance.reloadClient(context, config!!.id) {
+                                                            Log.d(TAG, "Client reloaded after login")
+                                                        }
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Log.e(TAG, "Failed to set plugin auth", e)
+                                                }
+                                            } else {
+                                                Log.d(TAG, "Login cancelled")
+                                            }
+                                        }
                                     } catch (e: Exception) {
                                         Log.e(TAG, "Failed to open login activity", e)
                                     }
