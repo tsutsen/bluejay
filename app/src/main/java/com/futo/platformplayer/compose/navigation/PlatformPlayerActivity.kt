@@ -20,7 +20,6 @@ package com.futo.platformplayer.compose.navigation
 
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +34,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,7 +73,7 @@ import com.futo.platformplayer.fragment.settings.SettingsItem
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePlatform
 
-class PlatformPlayerActivity : ComponentActivity() {
+class PlatformPlayerActivity : FragmentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -131,6 +131,7 @@ fun PlatformPlayerNavHost() {
                 onNavItemClick = { navigator.navigateToTab(it) }
             )
             if (currentBackStack != null) {
+                val activity = LocalContext.current as FragmentActivity
                 NavDisplay(
                     backStack = currentBackStack,
                     onBack = {
@@ -140,7 +141,7 @@ fun PlatformPlayerNavHost() {
                     },
                     modifier = Modifier.weight(1f),
                     entryProvider = { key ->
-                        createGrayjayNavEntry(key, navigator)
+                        createGrayjayNavEntry(key, navigator, activity)
                     }
                 )
             }
@@ -149,6 +150,7 @@ fun PlatformPlayerNavHost() {
         // Portrait: Content + Bottom Navigation Bar
         Column(modifier = Modifier.fillMaxSize()) {
             if (currentBackStack != null) {
+                val activity = LocalContext.current as FragmentActivity
                 NavDisplay(
                     backStack = currentBackStack,
                     onBack = {
@@ -158,7 +160,7 @@ fun PlatformPlayerNavHost() {
                     },
                     modifier = Modifier.weight(1f),
                     entryProvider = { key ->
-                        createGrayjayNavEntry(key, navigator)
+                        createGrayjayNavEntry(key, navigator, activity)
                     }
                 )
             }
@@ -225,14 +227,14 @@ private fun GrayjayNavRail(
 
 // ==================== Nav Entry Creation ====================
 
-private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): NavEntry<NavKey> {
+private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator, activity: FragmentActivity): NavEntry<NavKey> {
     return when (key) {
         is Home -> NavEntry(key) { HomeScene(navigator) }
         // Fall back to XML fragments for top-level tabs that don't have Compose implementations
         is Subscriptions -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { SubscriptionsScene(navigator) }
             }
@@ -240,7 +242,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Creators -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { CreatorsScene(navigator) }
             }
@@ -248,7 +250,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Sources -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { SourcesScene(navigator) }
             }
@@ -256,7 +258,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Playlists -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { PlaylistsScene(navigator) }
             }
@@ -264,7 +266,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is History -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { HistoryScene(navigator) }
             }
@@ -272,7 +274,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Downloads -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { DownloadsScene(navigator) }
             }
@@ -280,7 +282,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Library -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LibraryScene(navigator) }
             }
@@ -288,7 +290,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Search -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { SearchScene(navigator) }
             }
@@ -300,7 +302,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is SourceDetail -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { SourceDetailScene(key, navigator) }
             }
@@ -308,7 +310,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is ContentSearchResults -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { ContentSearchScene(key, navigator) }
             }
@@ -316,7 +318,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is CreatorSearchResults -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { CreatorSearchScene(key, navigator) }
             }
@@ -324,7 +326,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is PlaylistSearchResults -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { PlaylistSearchScene(key, navigator) }
             }
@@ -332,7 +334,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is PostDetail -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { PostDetailScene(key, navigator) }
             }
@@ -340,7 +342,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is ArticleDetail -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { ArticleDetailScene(key, navigator) }
             }
@@ -348,7 +350,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is WebDetail -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { WebDetailScene(key, navigator) }
             }
@@ -356,7 +358,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Tutorial -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { TutorialScene(navigator) }
             }
@@ -364,7 +366,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Buy -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { BuyScene(navigator) }
             }
@@ -372,7 +374,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is ImportSubscriptions -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { ImportSubscriptionsScene(navigator) }
             }
@@ -380,7 +382,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is ImportPlaylists -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { ImportPlaylistsScene(navigator) }
             }
@@ -388,7 +390,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is WatchLater -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { WatchLaterScene(navigator) }
             }
@@ -396,7 +398,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Shorts -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { ShortsScene(navigator) }
             }
@@ -404,7 +406,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Notifications -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { NotificationsScene(navigator) }
             }
@@ -412,7 +414,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is SubscriptionGroupDetail -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { SubscriptionGroupDetailScene(key, navigator) }
             }
@@ -420,7 +422,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is SubscriptionGroupList -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { SubscriptionGroupListScene(navigator) }
             }
@@ -428,7 +430,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is LibraryAlbums -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LibraryAlbumsScene(navigator) }
             }
@@ -436,7 +438,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is LibraryAlbumDetail -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LibraryAlbumDetailScene(key, navigator) }
             }
@@ -444,7 +446,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is LibraryArtists -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LibraryArtistsScene(navigator) }
             }
@@ -452,7 +454,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is LibraryArtistDetail -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LibraryArtistDetailScene(key, navigator) }
             }
@@ -460,7 +462,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is LibraryVideos -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LibraryVideosScene(navigator) }
             }
@@ -468,7 +470,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is LibraryFiles -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LibraryFilesScene(navigator) }
             }
@@ -476,7 +478,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is LibrarySearch -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LibrarySearchScene(navigator) }
             }
@@ -484,7 +486,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Login -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { LoginScene(navigator) }
             }
@@ -492,7 +494,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Developer -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { DeveloperScene(navigator) }
             }
@@ -500,7 +502,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Browser -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { BrowserScene(key, navigator) }
             }
@@ -508,7 +510,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Comments -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { CommentsScene(key, navigator) }
             }
@@ -516,7 +518,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Suggestions -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment) }
+                NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { SuggestionsScene(navigator) }
             }
@@ -527,7 +529,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         else -> {
             val xmlFragment = getXmlFragmentForNavKey(key)
             if (xmlFragment != null) {
-                NavEntry(key) { FragmentFallback(xmlFragment) }
+                NavEntry(key) { FragmentFallback(xmlFragment, activity) }
             } else {
                 NavEntry(key) { UnknownScene(key) }
             }
@@ -540,7 +542,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
  * Returns null if no XML fragment exists for this route.
  */
 private fun getXmlFragmentForNavKey(key: NavKey): Fragment? {
-    return when (key) {
+    val fragment = when (key) {
         is Home -> HomeFragment()
         is Subscriptions -> SubscriptionsFeedFragment.newInstance()
         is Creators -> CreatorsFragment.newInstance()
@@ -583,6 +585,14 @@ private fun getXmlFragmentForNavKey(key: NavKey): Fragment? {
         is Suggestions -> SuggestionsFragment.newInstance()
         else -> null
     }
+    
+    if (fragment != null) {
+        Log.d("PlatformPlayer", "getXmlFragmentForNavKey: ${key.javaClass.simpleName} -> ${fragment.javaClass.simpleName}")
+    } else {
+        Log.w("PlatformPlayer", "getXmlFragmentForNavKey: No fragment for ${key.javaClass.simpleName}")
+    }
+    
+    return fragment
 }
 
 // ==================== Scene Composables ====================
@@ -795,10 +805,13 @@ private fun UnknownScene(key: NavKey) {
 }
 
 @Composable
-private fun FragmentFallback(fragment: Fragment) {
+private fun FragmentFallback(fragment: Fragment, activity: FragmentActivity) {
+    Log.d("PlatformPlayer", "FragmentFallback: ${fragment.javaClass.simpleName}")
+    
     // Host the XML fragment in a FragmentContainerView
     AndroidView(
         factory = { context ->
+            Log.d("PlatformPlayer", "Creating FragmentContainerView for ${fragment.javaClass.simpleName}")
             androidx.fragment.app.FragmentContainerView(context).apply {
                 id = android.R.id.content
                 layoutParams = android.view.ViewGroup.LayoutParams(
@@ -808,11 +821,17 @@ private fun FragmentFallback(fragment: Fragment) {
             }
         },
         update = { view ->
-            val fragmentManager = (view.context as? FragmentActivity)?.supportFragmentManager
+            Log.d("PlatformPlayer", "Updating FragmentContainerView for ${fragment.javaClass.simpleName}")
+            val fragmentManager = activity.supportFragmentManager
+            Log.d("PlatformPlayer", "FragmentManager: $fragmentManager")
             if (fragmentManager != null) {
                 val transaction = fragmentManager.beginTransaction()
+                Log.d("PlatformPlayer", "Transaction created, replacing with ${fragment.javaClass.simpleName}")
                 transaction.replace(android.R.id.content, fragment)
                 transaction.commit()
+                Log.d("PlatformPlayer", "Transaction committed")
+            } else {
+                Log.e("PlatformPlayer", "Failed to get FragmentManager from activity")
             }
         }
     )
