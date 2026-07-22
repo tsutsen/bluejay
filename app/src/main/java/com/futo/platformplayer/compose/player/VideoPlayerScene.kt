@@ -4,7 +4,8 @@
  * YouTube-like video player scene with collapsible mini player.
  * Features:
  *   - Full video player with title, channel info, and tab bar
- *   - Minimize button shrinks video to a global mini player bar
+ *   - Collapse button top-left inside player
+ *   - Swipe down to collapse player
  *   - Mini player persists when navigating to other tabs
  *   - Video continues playing in background when minimized
  *   - Merges video and audio sources like FutoVideoPlayer does
@@ -15,6 +16,7 @@ package com.futo.platformplayer.compose.player
 import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,8 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -52,6 +52,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,7 +89,8 @@ import kotlinx.coroutines.withContext
  * 
  * Features:
  *   - Full video player with title, channel info, and tab bar
- *   - Minimize button shrinks video to a global mini player bar
+ *   - Collapse button top-left inside player
+ *   - Swipe down to collapse player
  *   - Mini player persists when navigating to other tabs
  *   - Video continues playing in background when minimized
  *   - Uses modern ExoPlayer with media3-ui-compose
@@ -284,7 +287,7 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // Full video player with minimize button
+                // Full video player with collapse button (top-left) and swipe-down
                 FullVideoPlayerView(
                     exoPlayer = exoPlayer,
                     video = video,
@@ -320,8 +323,7 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 }
 
 /**
- * Full video player view with minimize button.
- * Uses modern ExoPlayer with PlayerView for rendering.
+ * Full video player view with collapse button (top-left) and swipe-down gesture.
  */
 @Composable
 private fun FullVideoPlayerView(
@@ -346,10 +348,10 @@ private fun FullVideoPlayerView(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Minimize button overlay - more visible
+        // Collapse button overlay - top left
         Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
+                .align(Alignment.TopStart)
                 .padding(16.dp)
         ) {
             IconButton(
@@ -370,6 +372,22 @@ private fun FullVideoPlayerView(
                 )
             }
         }
+
+        // Swipe down to collapse gesture
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onVerticalDrag = { _, dragAmount ->
+                            // Swipe down threshold: 200 pixels
+                            if (dragAmount > 200) {
+                                onMinimize()
+                            }
+                        }
+                    )
+                }
+        )
     }
 }
 
