@@ -71,6 +71,7 @@ import com.futo.platformplayer.compose.settings.SettingsOptionCard
 import com.futo.platformplayer.compose.settings.SettingsScreen
 import com.futo.platformplayer.compose.settings.SettingsSection
 import com.futo.platformplayer.compose.plugins.PluginBrowserScene
+import com.futo.platformplayer.compose.player.VideoPlayerScene
 import com.futo.platformplayer.fragment.mainactivity.main.*
 import com.futo.platformplayer.fragment.settings.getItemsForCategory
 import com.futo.platformplayer.fragment.settings.SettingsItem
@@ -774,7 +775,7 @@ private fun SettingsSubScene(category: String, n: GrayjayNavigator) {
 @Composable private fun LibraryScene(n: GrayjayNavigator) = placeholder(n, "Library")
 @Composable private fun SearchScene(n: GrayjayNavigator) = placeholder(n, "Search")
 
-@Composable private fun VideoDetailScene(d: VideoDetail, n: GrayjayNavigator) = placeholder(n, "Video Player", d.url, true, { n.goBack() })
+@Composable private fun VideoDetailScene(d: VideoDetail, n: GrayjayNavigator) = VideoPlayerScene(d, n)
 @Composable private fun ChannelDetailScene(d: ChannelDetail, n: GrayjayNavigator) = placeholder(n, "Channel", d.url, true, { n.goBack() })
 @Composable private fun PlaylistDetailScene(d: PlaylistDetail, n: GrayjayNavigator) = placeholder(n, "Playlist", d.url, true, { n.goBack() })
 @Composable private fun SourceDetailScene(d: SourceDetail, n: GrayjayNavigator) = placeholder(n, "Source", d.url, true, { n.goBack() })
