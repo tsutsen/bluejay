@@ -238,22 +238,19 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                 }
             )
         }
-    ) {
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (isLoading) {
                 CircularProgressIndicator()
-            }
-        } else if (error != null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            } else if (error != null) {
                 Text("Error: $error")
-            }
-        } else if (config != null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            } else if (config != null) {
                 Text(
                     text = config!!.name,
                     style = MaterialTheme.typography.headlineMedium
