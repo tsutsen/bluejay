@@ -124,8 +124,6 @@ private val grayjayNavItems = listOf(
     NavItemDef(Home, Icons.Outlined.Home, Icons.Filled.Home, "Home"),
     NavItemDef(Subscriptions, Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subscriptions"),
     NavItemDef(Playlists, Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay, "Playlists"),
-    NavItemDef(History, Icons.Outlined.History, Icons.Filled.History, "History"),
-    NavItemDef(Downloads, Icons.Outlined.Download, Icons.Filled.Download, "Downloads"),
     NavItemDef(Settings, Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
 )
 
@@ -283,22 +281,6 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator, acti
                 NavEntry(key) { FragmentFallback(fragment, activity) }
             } else {
                 NavEntry(key) { PlaylistsScene(navigator) }
-            }
-        }
-        is History -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { HistoryScene(navigator) }
-            }
-        }
-        is Downloads -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { DownloadsScene(navigator) }
             }
         }
         is Library -> {
@@ -568,8 +550,6 @@ private fun getXmlFragmentForNavKey(key: NavKey): Fragment? {
         is Home -> HomeFragment()
         is Subscriptions -> SubscriptionsFeedFragment.newInstance()
         is Playlists -> PlaylistsFragment.newInstance()
-        is History -> HistoryFragment.newInstance()
-        is Downloads -> DownloadsFragment()
         is Library -> LibraryFragment.newInstance()
         is Search -> ContentSearchResultsFragment.newInstance()
         is VideoDetail -> VideoDetailFragment.newInstance()
@@ -706,8 +686,6 @@ private fun HomeScene(navigator: GrayjayNavigator) {
 @Composable private fun SubscriptionsScene(n: GrayjayNavigator) = placeholder(n, "Subscriptions")
 @Composable private fun SourcesScene(n: GrayjayNavigator) = placeholder(n, "Sources (removed)")
 @Composable private fun PlaylistsScene(n: GrayjayNavigator) = placeholder(n, "Playlists")
-@Composable private fun HistoryScene(n: GrayjayNavigator) = placeholder(n, "History")
-@Composable private fun DownloadsScene(n: GrayjayNavigator) = placeholder(n, "Downloads")
 @Composable
 private fun SettingsScene(n: GrayjayNavigator) {
     SettingsScreen(

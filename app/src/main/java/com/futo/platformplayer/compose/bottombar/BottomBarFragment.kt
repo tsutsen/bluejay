@@ -57,18 +57,8 @@ class BottomBarFragment : Fragment() {
                         )
                         ,
                         BottomNavItem(
-                            "History", Icons.Outlined.History, Icons.Filled.History, 3,
+                            "Settings", Icons.Outlined.Settings, Icons.Filled.Settings, 3,
                             onClick = { navigateToTab(3, ma) }
-                        )
-                        ,
-                        BottomNavItem(
-                            "Downloads", Icons.Outlined.Download, Icons.Filled.Download, 4,
-                            onClick = { navigateToTab(4, ma) }
-                        )
-                        ,
-                        BottomNavItem(
-                            "Settings", Icons.Outlined.Settings, Icons.Filled.Settings, 5,
-                            onClick = { navigateToTab(5, ma) }
                         )
                     )
 
@@ -88,9 +78,7 @@ class BottomBarFragment : Fragment() {
             0 -> ma.navigate(ma._fragMainHome as com.futo.platformplayer.fragment.mainactivity.main.MainFragment, null, true, false)
             1 -> ma.navigate(ma._fragMainSubscriptionsFeed, null, true, false)
             2 -> ma.navigate(ma._fragMainPlaylists, null, true, false)
-            3 -> ma.navigate(ma._fragHistory, null, true, false)
-            4 -> ma.navigate(ma._fragDownloads, null, true, false)
-            5 -> ma.navigate(ma._fragSettingsHub, null, true, false)
+            3 -> ma.navigate(ma._fragSettingsHub, null, true, false)
         }
     }
 

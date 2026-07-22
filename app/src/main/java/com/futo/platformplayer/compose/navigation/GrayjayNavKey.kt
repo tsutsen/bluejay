@@ -23,17 +23,9 @@ data object Home : NavKey
 @Serializable
 data object Subscriptions : NavKey
 
-/** Playlists tab — user-created and remote playlists */
+/** Playlists tab — user-created and remote playlists, history, and downloads */
 @Serializable
 data object Playlists : NavKey
-
-/** History tab — watch history */
-@Serializable
-data object History : NavKey
-
-/** Downloads tab — downloaded content */
-@Serializable
-data object Downloads : NavKey
 
 /** Settings tab — app settings */
 @Serializable
@@ -182,7 +174,7 @@ data class SettingsFragment(val category: String) : NavKey
  */
 val topLevelRoutes: Set<NavKey> = setOf(
     Home, Subscriptions, Playlists,
-    History, Downloads, Settings, Library, Search
+    Settings, Library, Search
 )
 
 /**

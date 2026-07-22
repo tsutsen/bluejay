@@ -140,15 +140,7 @@ class GrayjayNavigator(val state: GrayjayNavigationState) {
         navigateToTab(Settings)
     }
 
-    /** Navigate to downloads */
-    fun navigateToDownloads() {
-        navigateToTab(Downloads)
-    }
-
-    /** Navigate to history */
-    fun navigateToHistory() {
-        navigateToTab(History)
-    }
+    // Downloads and History tabs removed - consolidated into Playlists tab
 
     /** Navigate to library */
     fun navigateToLibrary() {
