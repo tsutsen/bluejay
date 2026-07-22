@@ -38,7 +38,7 @@ data class PluginInfo(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PluginBrowserScene() {
+fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
     val coroutineScope = rememberCoroutineScope()
     val enabledClientIds = remember { mutableStateOf(setOf<String>()) }
     val installedPlugins = remember { mutableStateOf<List<SourcePluginConfig>>(emptyList()) }
@@ -120,6 +120,10 @@ fun PluginBrowserScene() {
                                     Log.e(TAG, "Error toggling plugin", e)
                                 }
                             }
+                        },
+                        onClick = {
+                            Log.d(TAG, "Clicked plugin: ${plugin.name}, URL: ${plugin.configUrl}")
+                            onPluginClick(plugin.configUrl)
                         }
                     )
                 }
@@ -131,12 +135,14 @@ fun PluginBrowserScene() {
 @Composable
 fun PluginCard(
     plugin: PluginInfo,
-    onToggle: (Boolean) -> Unit
+    onToggle: (Boolean) -> Unit,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(

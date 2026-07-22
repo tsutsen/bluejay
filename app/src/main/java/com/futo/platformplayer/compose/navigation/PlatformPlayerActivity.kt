@@ -846,7 +846,9 @@ private fun SettingsSubScene(category: String, n: GrayjayNavigator) {
 @Composable private fun CommentsScene(d: Comments, n: GrayjayNavigator) = placeholder(n, "Comments", d.url, true, { n.goBack() })
 @Composable private fun SuggestionsScene(n: GrayjayNavigator) = placeholder(n, "Suggestions", showBack = true, onBack = { n.goBack() })
 @Composable private fun TestComposeScene(n: GrayjayNavigator) = placeholder(n, "Test Compose", showBack = true, onBack = { n.goBack() })
-@Composable private fun SettingsFragmentScene(d: SettingsFragment, n: GrayjayNavigator) = SettingsSubScene(d.category, n)
+@Composable private fun SettingsFragmentScene(d: SettingsFragment, n: GrayjayNavigator) {
+    SettingsSubScene(d.category, n)
+}
 
 @Composable
 private fun UnknownScene(key: NavKey) {
