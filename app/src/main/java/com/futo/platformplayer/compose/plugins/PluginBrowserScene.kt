@@ -32,6 +32,7 @@ import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.IPlatformClient
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
+import com.futo.platformplayer.models.Playlist
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePlugins
 import com.futo.platformplayer.states.StatePlatform
@@ -597,16 +598,13 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                                                 for (item in selectedItems) {
                                                                     if (item is PlaylistImportItem) {
                                                                         try {
-                                                                            Log.d(TAG, "Importing playlist: ${item.name}")
-                                                                            val playlistDetails = withContext(Dispatchers.IO) {
-                                                                                StatePlatform.instance.getPlaylist(item.url)
-                                                                            }
-                                                                            val playlist = withContext(Dispatchers.IO) {
-                                                                                playlistDetails.toPlaylist()
-                                                                            }
+                                                                            Log.d(TAG, "Adding playlist: ${item.name}")
+                                                                            // Create a simple playlist with just the URL
+                                                                            // Videos will be loaded later when user opens the playlist
+                                                                            val playlist = Playlist(item.name, emptyList())
                                                                             StatePlaylists.instance.createOrUpdatePlaylist(playlist, true)
                                                                             successCount++
-                                                                            Log.d(TAG, "Added playlist: ${playlist.name}")
+                                                                            Log.d(TAG, "Added playlist: ${item.name}")
                                                                         } catch (e: Exception) {
                                                                             Log.e(TAG, "Failed to add playlist: ${item.url}", e)
                                                                         }
