@@ -1474,10 +1474,12 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
         private const val FRAGMENTS_TAG = "android:support:fragments"
 
         fun getTabIntent(context: Context, tab: String): Intent {
+            Log.d("MainActivity", "getTabIntent called with tab: $tab")
             val sourcesIntent = Intent(context, MainActivity::class.java);
             sourcesIntent.action = "TAB";
             sourcesIntent.putExtra("TAB", tab);
             sourcesIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            Log.d("MainActivity", "Intent created: action=${sourcesIntent.action}, component=${sourcesIntent.component}, tab=$tab")
             return sourcesIntent;
         }
 

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -87,7 +88,10 @@ class AddSourceOptionsActivity : AppCompatActivity() {
             _qrCodeResultLauncher.launch(integrator.createScanIntent())
         }
         _buttonBrowse.onClick.subscribe {
-            startActivity(MainActivity.getTabIntent(this, "BROWSE_PLUGINS"));
+            Log.d("AddSourceOptions", "Browse button clicked - calling MainActivity.getTabIntent(BROWSE_PLUGINS)")
+            val intent = MainActivity.getTabIntent(this, "BROWSE_PLUGINS")
+            Log.d("AddSourceOptions", "Intent action: ${intent.action}, component: ${intent.component}")
+            startActivity(intent)
         }
 
         _buttonURL.onClick.subscribe {

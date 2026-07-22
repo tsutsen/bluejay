@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -48,6 +49,7 @@ class SourcesFragment : MainFragment() {
         if(topBar is AddTopBarFragment) {
             (topBar as AddTopBarFragment).onAdd.clear();
             (topBar as AddTopBarFragment).onAdd.subscribe {
+                Log.d("SourcesFragment", "Add button clicked - launching AddSourceOptionsActivity")
                 StateApp.instance.preventPictureInPicture.emit();
                 startActivity(Intent(requireContext(), AddSourceOptionsActivity::class.java));
             };
