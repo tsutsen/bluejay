@@ -35,6 +35,7 @@ import com.futo.platformplayer.states.StatePlatform
 import com.futo.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val TAG = "PluginBrowserScene"
 
@@ -411,9 +412,18 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                     selectedItems = emptySet()
                                     coroutineScope.launch {
                                         try {
+                                            Log.d(TAG, "Getting subscriptions for plugin: ${config!!.name}")
                                             val client = StatePlatform.instance.getClient(config!!.id)
-                                            val subs = client.getUserSubscriptions().toList()
-                                            items = subs
+                                            Log.d(TAG, "Client type: ${client::class.simpleName}")
+                                            val subs = withContext(Dispatchers.IO) {
+                                                client.getUserSubscriptions()
+                                            }
+                                            Log.d(TAG, "Got ${subs?.size ?: 0} subscriptions")
+                                            if (subs != null) {
+                                                items = subs.toList()
+                                            } else {
+                                                items = emptyList()
+                                            }
                                             isLoading = false
                                         } catch (e: Exception) {
                                             Log.e(TAG, "Failed to get subscriptions", e)
@@ -440,8 +450,10 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                     coroutineScope.launch {
                                         try {
                                             val client = StatePlatform.instance.getClient(config!!.id)
-                                            val playlists = client.getUserPlaylists().toList()
-                                            items = playlists
+                                            val playlists = withContext(Dispatchers.IO) {
+                                                client.getUserPlaylists()
+                                            }
+                                            items = playlists?.toList() ?: emptyList()
                                             isLoading = false
                                         } catch (e: Exception) {
                                             Log.e(TAG, "Failed to get playlists", e)
