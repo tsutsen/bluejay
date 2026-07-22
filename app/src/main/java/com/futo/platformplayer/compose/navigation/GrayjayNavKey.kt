@@ -31,6 +31,10 @@ data object Creators : NavKey
 @Serializable
 data object Sources : NavKey
 
+/** Plugin Browser tab — browse and install plugins */
+@Serializable
+data object PluginBrowser : NavKey
+
 /** Playlists tab — user-created and remote playlists */
 @Serializable
 data object Playlists : NavKey

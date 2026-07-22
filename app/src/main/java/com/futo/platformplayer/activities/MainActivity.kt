@@ -1475,7 +1475,7 @@ class MainActivity : AppCompatActivity, IWithResultLauncher {
 
         fun getTabIntent(context: Context, tab: String): Intent {
             Log.d("MainActivity", "getTabIntent called with tab: $tab")
-            val sourcesIntent = Intent(context, MainActivity::class.java);
+            val sourcesIntent = Intent(context, com.futo.platformplayer.compose.navigation.PlatformPlayerActivity::class.java);
             sourcesIntent.action = "TAB";
             sourcesIntent.putExtra("TAB", tab);
             sourcesIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);

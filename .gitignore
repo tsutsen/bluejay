@@ -17,3 +17,7 @@
 local.properties
 
 app/com.futo.platformplayer.stores.SubscriptionStorage.json
+
+# Graphify cache
+graphify-out/
+app/graphify-out/

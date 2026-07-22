@@ -48,6 +48,8 @@ import androidx.fragment.app.FragmentContainerView
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import com.futo.platformplayer.logging.Logger
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.NavDisplay
@@ -68,6 +70,7 @@ import com.futo.platformplayer.compose.settings.RadioButtonDialog
 import com.futo.platformplayer.compose.settings.SettingsOptionCard
 import com.futo.platformplayer.compose.settings.SettingsScreen
 import com.futo.platformplayer.compose.settings.SettingsSection
+import com.futo.platformplayer.compose.plugins.PluginBrowserScene
 import com.futo.platformplayer.fragment.mainactivity.main.*
 import com.futo.platformplayer.fragment.settings.getItemsForCategory
 import com.futo.platformplayer.fragment.settings.SettingsItem
@@ -76,14 +79,32 @@ import com.futo.platformplayer.states.StatePlatform
 
 class PlatformPlayerActivity : FragmentActivity() {
 
+    private var pendingTab: String? = null
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")
         StateApp.instance.mainAppStarting(this)
 
+        // Load plugins
+        runBlocking {
+            try {
+                StatePlatform.instance.updateAvailableClients(this@PlatformPlayerActivity)
+            } catch (e: Throwable) {
+                Logger.e("PlatformPlayer", "Failed to update available clients", e)
+            }
+        }
+
+        // Handle intent to navigate to specific tab
+        val tab = intent.getStringExtra("TAB")
+        if (tab != null) {
+            Log.d("PlatformPlayer", "Received TAB intent: $tab")
+            pendingTab = tab
+        }
+
         setContent {
-            PlatformPlayerNavHost()
+            PlatformPlayerNavHost(pendingTab)
         }
     }
 }
@@ -105,6 +126,7 @@ private val grayjayNavItems = listOf(
     NavItemDef(Playlists, Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay, "Playlists"),
     NavItemDef(History, Icons.Outlined.History, Icons.Filled.History, "History"),
     NavItemDef(Downloads, Icons.Outlined.Download, Icons.Filled.Download, "Downloads"),
+    NavItemDef(PluginBrowser, Icons.Outlined.Add, Icons.Filled.Add, "Plugins"),
     NavItemDef(Settings, Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
 )
 
@@ -112,9 +134,25 @@ private val grayjayNavItems = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlatformPlayerNavHost() {
+fun PlatformPlayerNavHost(pendingTab: String?) {
     val navigationState = rememberGrayjayNavigationState()
     val navigator = remember(navigationState) { GrayjayNavigator(navigationState) }
+
+    // Handle pending tab navigation
+    LaunchedEffect(pendingTab) {
+        pendingTab?.let { tab ->
+            Log.d("PlatformPlayer", "LaunchedEffect: navigating to tab: $tab")
+            when (tab) {
+                "BROWSE_PLUGINS" -> {
+                    Log.d("PlatformPlayer", "Navigating to PluginBrowser tab")
+                    navigator.navigateToTab(PluginBrowser)
+                }
+                else -> {
+                    Log.w("PlatformPlayer", "Unknown tab: $tab")
+                }
+            }
+        }
+    }
 
     val windowAdaptiveInfo = currentWindowAdaptiveInfo()
     val isWide = windowAdaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
@@ -525,6 +563,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator, acti
             }
         }
         is TestCompose -> NavEntry(key) { TestComposeScene(navigator) }
+        is PluginBrowser -> NavEntry(key) { PluginBrowserScene() }
         is SettingsFragment -> NavEntry(key) { SettingsFragmentScene(key, navigator) }
         // Fallback to XML fragments for backwards compatibility
         else -> {
