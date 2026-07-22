@@ -202,7 +202,9 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
     LaunchedEffect(configUrl) {
         try {
             Log.d(TAG, "Fetching plugin config from: $configUrl")
-            val response = ManagedHttpClient().get(configUrl)
+            val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                ManagedHttpClient().get(configUrl)
+            }
             if (response.isOk && response.body != null) {
                 val configJson = response.body.string()
                 val loadedConfig = SourcePluginConfig.fromJson(configJson)
