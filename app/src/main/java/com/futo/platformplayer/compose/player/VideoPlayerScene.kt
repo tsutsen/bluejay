@@ -7,7 +7,7 @@
  *   - Minimize button shrinks video to a global mini player bar
  *   - Mini player persists when navigating to other tabs
  *   - Video continues playing in background when minimized
- *   - No top app bar
+ *   - Merges video and audio sources like FutoVideoPlayer does
  */
 
 package com.futo.platformplayer.compose.player
@@ -15,13 +15,11 @@ package com.futo.platformplayer.compose.player
 import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
@@ -45,9 +42,6 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -58,7 +52,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,22 +64,21 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import coil.compose.AsyncImage
 import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
-import com.futo.platformplayer.api.media.models.streams.sources.IAudioSource
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
-import com.futo.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
 import com.futo.platformplayer.helpers.VideoHelper
-import com.futo.platformplayer.helpers.VideoQuality
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlRangeSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlRangeSource
 import com.futo.platformplayer.states.StatePlatform
-import com.futo.platformplayer.views.video.FutoVideoPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -162,80 +154,95 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 ExoPlayer.Builder(context).build()
             }
             
-            // Quality selector state
-            var showQualityDialog by remember { mutableStateOf(false) }
-            var availableQualities by remember { mutableStateOf<List<VideoQuality>>(emptyList()) }
-            var selectedQuality by remember { mutableStateOf<String?>(null) }
-            
-            // Load available qualities
-            LaunchedEffect(video.url) {
-                val qualities = withContext(Dispatchers.IO) {
-                    val resolvedVideo = StatePlatform.instance.getContentDetails(video.url).await()
-                    if (resolvedVideo is IPlatformVideoDetails) {
-                        VideoHelper.getAvailableVideoQualities(resolvedVideo.video)
-                    } else {
-                        emptyList()
-                    }
-                }
-                availableQualities = qualities
-                if (qualities.isNotEmpty()) {
-                    selectedQuality = qualities.first().label
-                }
-            }
-            
-            // Load video with selected quality
-            LaunchedEffect(video.url, selectedQuality, exoPlayer) {
+            // Load video with FutoVideoPlayer's approach: merge video and audio
+            LaunchedEffect(video.url, exoPlayer) {
                 try {
+                    // Step 1: Resolve video details
                     val resolvedVideo = withContext(Dispatchers.IO) {
                         StatePlatform.instance.getContentDetails(video.url).await()
                     }
                     
-                    // Find the selected quality
-                    val targetQuality = withContext(Dispatchers.IO) {
-                        if (resolvedVideo is IPlatformVideoDetails && selectedQuality != null) {
-                            val target = availableQualities.find { it.label == selectedQuality }
-                            target?.pixelCount ?: -1
-                        } else {
-                            -1
-                        }
-                    }
-                    
-                    val videoSource = withContext(Dispatchers.IO) {
+                    // Step 2: Get video and audio sources using FutoVideoPlayer's approach
+                    val (videoSource, audioSource) = withContext(Dispatchers.IO) {
                         if (resolvedVideo is IPlatformVideoDetails) {
-                            if (resolvedVideo.dash != null) {
-                                Log.d("VideoPlayer", "Using DASH manifest")
-                                resolvedVideo.dash
-                            } else {
-                                VideoHelper.selectBestVideoSource(
-                                    resolvedVideo.video,
-                                    targetQuality,
-                                    arrayOf("mp4", "webm", "mkv")
-                                )
-                            }
+                            val video = VideoHelper.selectBestVideoSource(
+                                resolvedVideo.video,
+                                -1,
+                                arrayOf("mp4", "webm", "mkv")
+                            )
+                            val audio = VideoHelper.selectBestAudioSource(
+                                resolvedVideo.video,
+                                arrayOf("mp4", "webm", "mkv"),
+                                null
+                            )
+                            Pair(video, audio)
                         } else {
-                            null
+                            Pair(null, null)
                         }
                     }
                     
-                    val videoUrl = withContext(Dispatchers.IO) {
-                        if (videoSource != null) {
-                            when (videoSource) {
-                                is IDashManifestSource -> {
-                                    Log.d("VideoPlayer", "DASH manifest URL: ${videoSource.url}")
-                                    videoSource.url
-                                }
-                                is IVideoUrlSource -> {
-                                    Log.d("VideoPlayer", "Video URL: ${videoSource.getVideoUrl()}")
-                                    videoSource.getVideoUrl()
-                                }
-                                is IHLSManifestSource -> {
-                                    Log.d("VideoPlayer", "HLS manifest URL: ${videoSource.url}")
-                                    videoSource.url
-                                }
-                                else -> {
-                                    Log.w("VideoPlayer", "Unsupported video source type: ${videoSource.javaClass.simpleName}")
-                                    null
-                                }
+                    // Step 3: Create MediaSources for video and audio separately
+                    val (videoMediaSource, audioMediaSource) = withContext(Dispatchers.IO) {
+                        val videoMs = when (videoSource) {
+                            is JSVideoUrlRangeSource -> {
+                                // Use FutoVideoPlayer's itag-to-DASH conversion
+                                Log.d("VideoPlayer", "Converting itag video to DASH")
+                                VideoHelper.convertItagSourceToChunkedDashSource(videoSource).first
+                            }
+                            is IDashManifestSource -> {
+                                Log.d("VideoPlayer", "Using DASH manifest")
+                                DashMediaSource.Factory(
+                                    DefaultHttpDataSource.Factory()
+                                ).createMediaSource(MediaItem.fromUri(Uri.parse((videoSource as? IVideoUrlSource)?.getVideoUrl() ?: videoSource.url)))
+                            }
+                            is IVideoUrlSource -> {
+                                Log.d("VideoPlayer", "Creating progressive video source")
+                                ProgressiveMediaSource.Factory(
+                                    DefaultHttpDataSource.Factory()
+                                ).createMediaSource(MediaItem.fromUri(Uri.parse(videoSource.getVideoUrl())))
+                            }
+                            is IHLSManifestSource -> {
+                                Log.d("VideoPlayer", "Creating HLS video source")
+                                HlsMediaSource.Factory(
+                                    DefaultHttpDataSource.Factory()
+                                ).createMediaSource(MediaItem.fromUri(Uri.parse(videoSource.url)))
+                            }
+                            else -> null
+                        }
+                        
+                        val audioMs = when (audioSource) {
+                            is JSAudioUrlRangeSource -> {
+                                // Use FutoVideoPlayer's itag-to-DASH conversion
+                                Log.d("VideoPlayer", "Converting itag audio to DASH")
+                                VideoHelper.convertItagSourceToChunkedDashSource(audioSource)
+                            }
+                            is IAudioUrlSource -> {
+                                Log.d("VideoPlayer", "Creating progressive audio source")
+                                ProgressiveMediaSource.Factory(
+                                    DefaultHttpDataSource.Factory()
+                                ).createMediaSource(MediaItem.fromUri(Uri.parse(audioSource.getAudioUrl())))
+                            }
+                            is IHLSManifestSource -> {
+                                Log.d("VideoPlayer", "Creating HLS audio source")
+                                HlsMediaSource.Factory(
+                                    DefaultHttpDataSource.Factory()
+                                ).createMediaSource(MediaItem.fromUri(Uri.parse(audioSource.url)))
+                            }
+                            else -> null
+                        }
+                        
+                        Pair(videoMs, audioMs)
+                    }
+                    
+                    // Step 4: Merge video and audio sources
+                    val mergedMediaSource = withContext(Dispatchers.Main) {
+                        if (videoMediaSource != null) {
+                            if (audioMediaSource != null) {
+                                Log.d("VideoPlayer", "Merging video and audio sources")
+                                MergingMediaSource(videoMediaSource, audioMediaSource)
+                            } else {
+                                Log.d("VideoPlayer", "Using video-only source")
+                                videoMediaSource
                             }
                         } else {
                             null
@@ -243,28 +250,8 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                     }
                     
                     withContext(Dispatchers.Main) {
-                        if (videoUrl != null) {
-                            Log.d("VideoPlayer", "Setting media item: $videoUrl (quality: $selectedQuality)")
-                            
-                            val mediaSource = when {
-                                videoSource is IDashManifestSource -> {
-                                    DashMediaSource.Factory(
-                                        DefaultHttpDataSource.Factory()
-                                    ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
-                                }
-                                videoSource is IHLSManifestSource -> {
-                                    HlsMediaSource.Factory(
-                                        DefaultHttpDataSource.Factory()
-                                    ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
-                                }
-                                else -> {
-                                    ProgressiveMediaSource.Factory(
-                                        DefaultHttpDataSource.Factory()
-                                    ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
-                                }
-                            }
-                            
-                            exoPlayer.setMediaSource(mediaSource)
+                        if (mergedMediaSource != null) {
+                            exoPlayer.setMediaSource(mergedMediaSource)
                             exoPlayer.prepare()
                             
                             d.position?.let { position ->
@@ -274,7 +261,7 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                             exoPlayer.playWhenReady = true
                         } else {
                             errorMessage = "No playable video source found"
-                            Log.e("VideoPlayer", "No playable video URL found")
+                            Log.e("VideoPlayer", "No playable video source found")
                         }
                     }
                 } catch (e: Exception) {
@@ -283,47 +270,6 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         Log.e("VideoPlayer", "Failed to load video", e)
                     }
                 }
-            }
-            
-            // Quality selector dialog
-            if (showQualityDialog && availableQualities.isNotEmpty()) {
-                AlertDialog(
-                    onDismissRequest = { showQualityDialog = false },
-                    title = { Text("Video Quality") },
-                    text = {
-                        Column {
-                            availableQualities.forEach { quality ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            selectedQuality = quality.label
-                                            showQualityDialog = false
-                                        }
-                                        .padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = selectedQuality == quality.label,
-                                        onClick = {
-                                            selectedQuality = quality.label
-                                            showQualityDialog = false
-                                        }
-                                    )
-                                    Text(
-                                        text = quality.label,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showQualityDialog = false }) {
-                            Text("Cancel")
-                        }
-                    }
-                )
             }
             
             // Cleanup player when leaving
@@ -361,28 +307,6 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 
                 // Channel row
                 ChannelRow(video = video)
-
-                // Quality selector button
-                if (availableQualities.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showQualityDialog = true }) {
-                            Text(
-                                text = selectedQuality ?: "Quality",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Icon(
-                                imageVector = Icons.Default.ExpandMore,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
 
                 // Tab bar
                 VideoPlayerTabs(
