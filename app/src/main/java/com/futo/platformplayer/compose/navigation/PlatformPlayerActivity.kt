@@ -241,9 +241,7 @@ private fun GrayjayNavRail(
     onNavItemClick: (NavKey) -> Unit
 ) {
     NavigationRail(
-        modifier = Modifier
-            .width(80.dp)
-            .verticalScroll(rememberScrollState())
+        modifier = Modifier.width(100.dp)
     ) {
         items.forEach { item ->
             NavigationRailItem(
