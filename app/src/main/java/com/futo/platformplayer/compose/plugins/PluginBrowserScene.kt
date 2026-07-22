@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.dropUnlessResumed
 import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.IPlatformClient
 import com.futo.platformplayer.api.media.platforms.js.JSClient
@@ -232,13 +233,8 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                     }
                 }
             )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+        },
+        content = {
             when {
                 isLoading -> {
                     Box(
@@ -260,7 +256,6 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -287,7 +282,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
 
                         // Update button
                         Button(
-                            onClick = {
+                            onClick = dropUnlessResumed {
                                 Log.d(TAG, "Update button clicked")
                                 // TODO: Implement update functionality
                             },
@@ -301,7 +296,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                         // Authentication buttons
                         if (config!!.authentication != null) {
                             Button(
-                                onClick = {
+                                onClick = dropUnlessResumed {
                                     Log.d(TAG, "Login button clicked")
                                     // TODO: Implement login functionality
                                 },
@@ -319,7 +314,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                         // Import buttons (shown when enabled)
                         if (isEnabled) {
                             Button(
-                                onClick = {
+                                onClick = dropUnlessResumed {
                                     Log.d(TAG, "Import subscriptions button clicked")
                                     // TODO: Implement import subscriptions
                                 },
@@ -334,7 +329,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                             }
 
                             Button(
-                                onClick = {
+                                onClick = dropUnlessResumed {
                                     Log.d(TAG, "Import playlists button clicked")
                                     // TODO: Implement import playlists
                                 },
@@ -351,7 +346,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
 
                         // Uninstall button
                         OutlinedButton(
-                            onClick = {
+                            onClick = dropUnlessResumed {
                                 Log.d(TAG, "Uninstall button clicked")
                                 // TODO: Implement uninstall functionality
                             },
@@ -368,5 +363,5 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                 }
             }
         }
-    }
+    )
 }
