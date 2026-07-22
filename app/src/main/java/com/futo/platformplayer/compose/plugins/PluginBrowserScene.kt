@@ -32,6 +32,7 @@ import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePlugins
 import com.futo.platformplayer.states.StatePlatform
+import com.futo.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -214,6 +215,7 @@ fun PluginCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
+    val coroutineScope = rememberCoroutineScope()
     var config by remember { mutableStateOf<SourcePluginConfig?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -234,6 +236,11 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                 // Check if this plugin is enabled
                 val enabledClients = StatePlatform.instance.getEnabledClients()
                 isEnabled = enabledClients.any { it.id == loadedConfig.id }
+                
+                // Check if plugin has auth
+                val descriptor = StatePlugins.instance.getPlugin(loadedConfig.id)
+                val hasAuth = descriptor?.getAuth() != null
+                Log.d(TAG, "Plugin ${loadedConfig.name} auth status: $hasAuth")
             } else {
                 error = "Failed to load config"
                 Log.e(TAG, "Failed to load config: ${response.isOk}, ${response.body}")
@@ -332,6 +339,14 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                                 try {
                                                     StatePlugins.instance.setPluginAuth(config!!.id, auth)
                                                     Log.d(TAG, "Auth saved successfully")
+                                                    // Enable the plugin if not already enabled
+                                                    val currentEnabled = StatePlatform.instance.getEnabledClients()
+                                                    if (!currentEnabled.any { it.id == config!!.id }) {
+                                                        Log.d(TAG, "Enabling plugin ${config!!.name} after login")
+                                                        StateApp.instance.scope.launch(Dispatchers.IO) {
+                                                            StatePlatform.instance.enableClient(listOf(config!!.id))
+                                                        }
+                                                    }
                                                     // Reload the client to apply the new auth
                                                     StateApp.instance.scope.launch(Dispatchers.IO) {
                                                         StatePlatform.instance.reloadClient(context, config!!.id) {
@@ -378,12 +393,33 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                             }
                         }
 
-                        // Import buttons (shown when enabled)
-                        if (isEnabled) {
+                        // Import buttons (shown when plugin has auth)
+                        val descriptor = StatePlugins.instance.getPlugin(config!!.id)
+                        val hasAuth = descriptor?.getAuth() != null
+                        if (hasAuth) {
+                            var showImportDialog by remember { mutableStateOf(false) }
+                            var importType by remember { mutableStateOf<String?>(null) }
+                            var isLoading by remember { mutableStateOf(false) }
+                            var items by remember { mutableStateOf<List<String>>(emptyList()) }
+                            var selectedItems by remember { mutableStateOf<Set<String>>(emptySet()) }
+
                             Button(
                                 onClick = {
-                                    Log.d(TAG, "Import subscriptions button clicked")
-                                    // TODO: Implement import subscriptions
+                                    importType = "subscriptions"
+                                    showImportDialog = true
+                                    isLoading = true
+                                    selectedItems = emptySet()
+                                    coroutineScope.launch {
+                                        try {
+                                            val client = StatePlatform.instance.getClient(config!!.id)
+                                            val subs = client.getUserSubscriptions().toList()
+                                            items = subs
+                                            isLoading = false
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "Failed to get subscriptions", e)
+                                            isLoading = false
+                                        }
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -397,8 +433,21 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
 
                             Button(
                                 onClick = {
-                                    Log.d(TAG, "Import playlists button clicked")
-                                    // TODO: Implement import playlists
+                                    importType = "playlists"
+                                    showImportDialog = true
+                                    isLoading = true
+                                    selectedItems = emptySet()
+                                    coroutineScope.launch {
+                                        try {
+                                            val client = StatePlatform.instance.getClient(config!!.id)
+                                            val playlists = client.getUserPlaylists().toList()
+                                            items = playlists
+                                            isLoading = false
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "Failed to get playlists", e)
+                                            isLoading = false
+                                        }
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -408,6 +457,84 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                 )
                             ) {
                                 Text("Import Playlists")
+                            }
+
+                            // Import dialog
+                            if (showImportDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showImportDialog = false },
+                                    title = { Text("Import $importType") },
+                                    text = {
+                                        if (isLoading) {
+                                            CircularProgressIndicator()
+                                        } else {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(300.dp)
+                                                    .verticalScroll(rememberScrollState())
+                                            ) {
+                                                Text("Select items to import:")
+                                                items.forEach { item ->
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(vertical = 4.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Checkbox(
+                                                            checked = selectedItems.contains(item),
+                                                            onCheckedChange = { checked ->
+                                                                if (checked) {
+                                                                    selectedItems = selectedItems + item
+                                                                } else {
+                                                                    selectedItems = selectedItems - item
+                                                                }
+                                                            }
+                                                        )
+                                                        Text(
+                                                            text = item,
+                                                            modifier = Modifier.padding(start = 8.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    confirmButton = {
+                                        Button(
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    try {
+                                                        when (importType) {
+                                                            "subscriptions" -> {
+                                                                for (sub in selectedItems) {
+                                                                    val channel = StatePlatform.instance.getChannelLive(sub, false)
+                                                                    StateSubscriptions.instance.addSubscription(channel)
+                                                                }
+                                                            }
+                                                            "playlists" -> {
+                                                                // TODO: Implement playlist import
+                                                            }
+                                                        }
+                                                        Log.d(TAG, "Import completed: ${selectedItems.size} items")
+                                                        showImportDialog = false
+                                                    } catch (e: Exception) {
+                                                        Log.e(TAG, "Failed to import", e)
+                                                    }
+                                                }
+                                            },
+                                            enabled = selectedItems.isNotEmpty()
+                                        ) {
+                                            Text("Import (${selectedItems.size})")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showImportDialog = false }) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
                             }
                         }
 
