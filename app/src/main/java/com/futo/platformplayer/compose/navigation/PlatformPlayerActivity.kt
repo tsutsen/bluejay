@@ -228,46 +228,299 @@ private fun GrayjayNavRail(
 private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): NavEntry<NavKey> {
     return when (key) {
         is Home -> NavEntry(key) { HomeScene(navigator) }
-        is Subscriptions -> NavEntry(key) { SubscriptionsScene(navigator) }
-        is Creators -> NavEntry(key) { CreatorsScene(navigator) }
-        is Sources -> NavEntry(key) { SourcesScene(navigator) }
-        is Playlists -> NavEntry(key) { PlaylistsScene(navigator) }
-        is History -> NavEntry(key) { HistoryScene(navigator) }
-        is Downloads -> NavEntry(key) { DownloadsScene(navigator) }
+        // Fall back to XML fragments for top-level tabs that don't have Compose implementations
+        is Subscriptions -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { SubscriptionsScene(navigator) }
+            }
+        }
+        is Creators -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { CreatorsScene(navigator) }
+            }
+        }
+        is Sources -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { SourcesScene(navigator) }
+            }
+        }
+        is Playlists -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { PlaylistsScene(navigator) }
+            }
+        }
+        is History -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { HistoryScene(navigator) }
+            }
+        }
+        is Downloads -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { DownloadsScene(navigator) }
+            }
+        }
+        is Library -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LibraryScene(navigator) }
+            }
+        }
+        is Search -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { SearchScene(navigator) }
+            }
+        }
         is Settings -> NavEntry(key) { SettingsScene(navigator) }
-        is Library -> NavEntry(key) { LibraryScene(navigator) }
-        is Search -> NavEntry(key) { SearchScene(navigator) }
         is VideoDetail -> NavEntry(key) { VideoDetailScene(key, navigator) }
         is ChannelDetail -> NavEntry(key) { ChannelDetailScene(key, navigator) }
         is PlaylistDetail -> NavEntry(key) { PlaylistDetailScene(key, navigator) }
-        is SourceDetail -> NavEntry(key) { SourceDetailScene(key, navigator) }
-        is ContentSearchResults -> NavEntry(key) { ContentSearchScene(key, navigator) }
-        is CreatorSearchResults -> NavEntry(key) { CreatorSearchScene(key, navigator) }
-        is PlaylistSearchResults -> NavEntry(key) { PlaylistSearchScene(key, navigator) }
-        is PostDetail -> NavEntry(key) { PostDetailScene(key, navigator) }
-        is ArticleDetail -> NavEntry(key) { ArticleDetailScene(key, navigator) }
-        is WebDetail -> NavEntry(key) { WebDetailScene(key, navigator) }
-        is Tutorial -> NavEntry(key) { TutorialScene(navigator) }
-        is Buy -> NavEntry(key) { BuyScene(navigator) }
-        is ImportSubscriptions -> NavEntry(key) { ImportSubscriptionsScene(navigator) }
-        is ImportPlaylists -> NavEntry(key) { ImportPlaylistsScene(navigator) }
-        is WatchLater -> NavEntry(key) { WatchLaterScene(navigator) }
-        is Shorts -> NavEntry(key) { ShortsScene(navigator) }
-        is Notifications -> NavEntry(key) { NotificationsScene(navigator) }
-        is SubscriptionGroupDetail -> NavEntry(key) { SubscriptionGroupDetailScene(key, navigator) }
-        is SubscriptionGroupList -> NavEntry(key) { SubscriptionGroupListScene(navigator) }
-        is LibraryAlbums -> NavEntry(key) { LibraryAlbumsScene(navigator) }
-        is LibraryAlbumDetail -> NavEntry(key) { LibraryAlbumDetailScene(key, navigator) }
-        is LibraryArtists -> NavEntry(key) { LibraryArtistsScene(navigator) }
-        is LibraryArtistDetail -> NavEntry(key) { LibraryArtistDetailScene(key, navigator) }
-        is LibraryVideos -> NavEntry(key) { LibraryVideosScene(navigator) }
-        is LibraryFiles -> NavEntry(key) { LibraryFilesScene(navigator) }
-        is LibrarySearch -> NavEntry(key) { LibrarySearchScene(navigator) }
-        is Login -> NavEntry(key) { LoginScene(navigator) }
-        is Developer -> NavEntry(key) { DeveloperScene(navigator) }
-        is Browser -> NavEntry(key) { BrowserScene(key, navigator) }
-        is Comments -> NavEntry(key) { CommentsScene(key, navigator) }
-        is Suggestions -> NavEntry(key) { SuggestionsScene(navigator) }
+        is SourceDetail -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { SourceDetailScene(key, navigator) }
+            }
+        }
+        is ContentSearchResults -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { ContentSearchScene(key, navigator) }
+            }
+        }
+        is CreatorSearchResults -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { CreatorSearchScene(key, navigator) }
+            }
+        }
+        is PlaylistSearchResults -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { PlaylistSearchScene(key, navigator) }
+            }
+        }
+        is PostDetail -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { PostDetailScene(key, navigator) }
+            }
+        }
+        is ArticleDetail -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { ArticleDetailScene(key, navigator) }
+            }
+        }
+        is WebDetail -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { WebDetailScene(key, navigator) }
+            }
+        }
+        is Tutorial -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { TutorialScene(navigator) }
+            }
+        }
+        is Buy -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { BuyScene(navigator) }
+            }
+        }
+        is ImportSubscriptions -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { ImportSubscriptionsScene(navigator) }
+            }
+        }
+        is ImportPlaylists -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { ImportPlaylistsScene(navigator) }
+            }
+        }
+        is WatchLater -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { WatchLaterScene(navigator) }
+            }
+        }
+        is Shorts -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { ShortsScene(navigator) }
+            }
+        }
+        is Notifications -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { NotificationsScene(navigator) }
+            }
+        }
+        is SubscriptionGroupDetail -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { SubscriptionGroupDetailScene(key, navigator) }
+            }
+        }
+        is SubscriptionGroupList -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { SubscriptionGroupListScene(navigator) }
+            }
+        }
+        is LibraryAlbums -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LibraryAlbumsScene(navigator) }
+            }
+        }
+        is LibraryAlbumDetail -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LibraryAlbumDetailScene(key, navigator) }
+            }
+        }
+        is LibraryArtists -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LibraryArtistsScene(navigator) }
+            }
+        }
+        is LibraryArtistDetail -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LibraryArtistDetailScene(key, navigator) }
+            }
+        }
+        is LibraryVideos -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LibraryVideosScene(navigator) }
+            }
+        }
+        is LibraryFiles -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LibraryFilesScene(navigator) }
+            }
+        }
+        is LibrarySearch -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LibrarySearchScene(navigator) }
+            }
+        }
+        is Login -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { LoginScene(navigator) }
+            }
+        }
+        is Developer -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { DeveloperScene(navigator) }
+            }
+        }
+        is Browser -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { BrowserScene(key, navigator) }
+            }
+        }
+        is Comments -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { CommentsScene(key, navigator) }
+            }
+        }
+        is Suggestions -> {
+            val fragment = getXmlFragmentForNavKey(key)
+            if (fragment != null) {
+                NavEntry(key) { FragmentFallback(fragment) }
+            } else {
+                NavEntry(key) { SuggestionsScene(navigator) }
+            }
+        }
         is TestCompose -> NavEntry(key) { TestComposeScene(navigator) }
         is SettingsFragment -> NavEntry(key) { SettingsFragmentScene(key, navigator) }
         // Fallback to XML fragments for backwards compatibility
