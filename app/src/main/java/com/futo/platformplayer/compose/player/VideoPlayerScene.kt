@@ -1,8 +1,8 @@
 /*
  * VideoPlayerScene
  *
- * Compose-based video player scene that wraps the existing ExoPlayer infrastructure.
- * Uses AndroidView to host Media3's PlayerView for video playback.
+ * Compose-based video player scene that uses the existing FutoVideoPlayer
+ * for proper video stream loading via the plugin system.
  */
 
 package com.futo.platformplayer.compose.player
@@ -10,7 +10,6 @@ package com.futo.platformplayer.compose.player
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -27,21 +26,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.ui.PlayerView
+import androidx.media3.common.util.UnstableApi
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
 import com.futo.platformplayer.states.StatePlatform
-import com.futo.platformplayer.states.StatePlayer
+import com.futo.platformplayer.views.video.FutoVideoPlayer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Video player scene that displays a video using Media3's PlayerView.
+ * Video player scene that displays a video using the existing FutoVideoPlayer.
+ * This properly uses the plugin system to resolve video streams.
  *
  * @param d VideoDetail nav key containing the video URL and optional resume position
  * @param n Navigator for back navigation
@@ -102,7 +104,7 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                     style = MaterialTheme.typography.bodyLarge
                 )
             } else {
-                VideoPlayerView(
+                FutoVideoPlayerView(
                     videoUrl = d.url,
                     startPosition = d.position,
                     modifier = Modifier.fillMaxSize()
@@ -113,47 +115,54 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 }
 
 /**
- * AndroidView that hosts Media3's PlayerView for video playback.
+ * AndroidView that hosts FutoVideoPlayer for video playback.
+ * Uses the existing plugin system to resolve video streams.
  *
  * @param videoUrl URL of the video to play
  * @param startPosition Optional position to resume from (in milliseconds)
  * @param modifier Modifier for the view
  */
+@OptIn(UnstableApi::class)
 @Composable
-fun VideoPlayerView(
+fun FutoVideoPlayerView(
     videoUrl: String,
     startPosition: Long? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     AndroidView(
         factory = { ctx ->
-            PlayerView(ctx).apply {
+            FutoVideoPlayer(ctx).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                useController = true
-                setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
             }
         },
-        update = { playerView ->
-            val playerManager = StatePlayer.instance.getPlayerOrCreate(context)
-            playerView.player = playerManager.player
+        update = { player ->
+            // Launch coroutine to load video and set source
+            scope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        val result = StatePlatform.instance.getContentDetails(videoUrl).await()
+                        if (result !is com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails) {
+                            throw IllegalStateException("Expected video content, found ${result.contentType}")
+                        }
+                        val video = result
+                        val videoSource = player.getPreferredVideoSource(video)
+                        val audioSource = player.getPreferredAudioSource(video, null)
 
-            // Load the video
-            val mediaItem = androidx.media3.common.MediaItem.fromUri(videoUrl)
-            playerManager.player.setMediaItem(mediaItem)
-            playerManager.player.prepare()
-
-            // Set resume position if provided
-            startPosition?.let { position ->
-                playerManager.player.seekTo(position)
+                        player.setSource(videoSource, audioSource, play = true, resume = startPosition != null)
+                        startPosition?.let {
+                            player.seekTo(it)
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Handle error
+                }
             }
-
-            // Auto-play
-            playerManager.player.playWhenReady = true
         },
         modifier = modifier
     )
