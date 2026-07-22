@@ -33,8 +33,35 @@ import com.futo.platformplayer.others.Language
 import getHttpDataSourceFactory
 import kotlin.math.abs
 
+data class VideoQuality(
+    val label: String,
+    val pixelCount: Int,
+    val width: Int,
+    val height: Int
+)
+
 class VideoHelper {
     companion object {
+
+        fun getAvailableVideoQualities(descriptor: IVideoSourceDescriptor): List<VideoQuality> {
+            val qualities = descriptor.videoSources.map { source ->
+                val width = source.width
+                val height = source.height
+                val pixelCount = width * height
+                val label = when {
+                    height >= 2160 -> "4K (${width}x${height})"
+                    height >= 1440 -> "1440p (${width}x${height})"
+                    height >= 1080 -> "1080p (${width}x${height})"
+                    height >= 720 -> "720p (${width}x${height})"
+                    height >= 480 -> "480p (${width}x${height})"
+                    height >= 360 -> "360p (${width}x${height})"
+                    height >= 240 -> "240p (${width}x${height})"
+                    else -> "${width}x${height}"
+                }
+                VideoQuality(label, pixelCount, width, height)
+            }.distinctBy { it.pixelCount }.sortedByDescending { it.pixelCount }
+            return qualities
+        }
 
         fun isDownloadable(detail: IPlatformVideoDetails): Boolean {
             if (detail.video.videoSources.any { isDownloadable(it) }) {

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -44,6 +45,9 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +84,7 @@ import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
 import com.futo.platformplayer.helpers.VideoHelper
+import com.futo.platformplayer.helpers.VideoQuality
 import com.futo.platformplayer.states.StatePlatform
 import com.futo.platformplayer.views.video.FutoVideoPlayer
 import kotlinx.coroutines.Dispatchers
@@ -157,27 +162,53 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 ExoPlayer.Builder(context).build()
             }
             
-            // Load video and audio sources by resolving through plugin system
-            LaunchedEffect(video.url, exoPlayer) {
+            // Quality selector state
+            var showQualityDialog by remember { mutableStateOf(false) }
+            var availableQualities by remember { mutableStateOf<List<VideoQuality>>(emptyList()) }
+            var selectedQuality by remember { mutableStateOf<String?>(null) }
+            
+            // Load available qualities
+            LaunchedEffect(video.url) {
+                val qualities = withContext(Dispatchers.IO) {
+                    val resolvedVideo = StatePlatform.instance.getContentDetails(video.url).await()
+                    if (resolvedVideo is IPlatformVideoDetails) {
+                        VideoHelper.getAvailableVideoQualities(resolvedVideo.video)
+                    } else {
+                        emptyList()
+                    }
+                }
+                availableQualities = qualities
+                if (qualities.isNotEmpty()) {
+                    selectedQuality = qualities.first().label
+                }
+            }
+            
+            // Load video with selected quality
+            LaunchedEffect(video.url, selectedQuality, exoPlayer) {
                 try {
-                    // Step 1: Resolve the video details on background thread
                     val resolvedVideo = withContext(Dispatchers.IO) {
                         StatePlatform.instance.getContentDetails(video.url).await()
                     }
                     
-                    // Step 2: Get the preferred video source using VideoHelper
-                    // For DASH streams, use the DASH manifest which has both video and audio
+                    // Find the selected quality
+                    val targetQuality = withContext(Dispatchers.IO) {
+                        if (resolvedVideo is IPlatformVideoDetails && selectedQuality != null) {
+                            val target = availableQualities.find { it.label == selectedQuality }
+                            target?.pixelCount ?: -1
+                        } else {
+                            -1
+                        }
+                    }
+                    
                     val videoSource = withContext(Dispatchers.IO) {
                         if (resolvedVideo is IPlatformVideoDetails) {
-                            // Prefer DASH manifest (has both video and audio)
                             if (resolvedVideo.dash != null) {
                                 Log.d("VideoPlayer", "Using DASH manifest")
                                 resolvedVideo.dash
                             } else {
-                                // Fallback to VideoHelper.selectBestVideoSource
                                 VideoHelper.selectBestVideoSource(
                                     resolvedVideo.video,
-                                    -1,
+                                    targetQuality,
                                     arrayOf("mp4", "webm", "mkv")
                                 )
                             }
@@ -186,12 +217,10 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         }
                     }
                     
-                    // Step 3: Extract URL from source on background thread
                     val videoUrl = withContext(Dispatchers.IO) {
                         if (videoSource != null) {
                             when (videoSource) {
                                 is IDashManifestSource -> {
-                                    // DASH manifest has both video and audio tracks
                                     Log.d("VideoPlayer", "DASH manifest URL: ${videoSource.url}")
                                     videoSource.url
                                 }
@@ -213,27 +242,22 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         }
                     }
                     
-                    // Step 4: Set up the player on main thread
                     withContext(Dispatchers.Main) {
                         if (videoUrl != null) {
-                            Log.d("VideoPlayer", "Setting media item: $videoUrl")
+                            Log.d("VideoPlayer", "Setting media item: $videoUrl (quality: $selectedQuality)")
                             
-                            // Create MediaSource - DASH manifests have both video and audio tracks
                             val mediaSource = when {
                                 videoSource is IDashManifestSource -> {
-                                    Log.d("VideoPlayer", "Creating DASH media source")
                                     DashMediaSource.Factory(
                                         DefaultHttpDataSource.Factory()
                                     ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
                                 }
                                 videoSource is IHLSManifestSource -> {
-                                    Log.d("VideoPlayer", "Creating HLS media source")
                                     HlsMediaSource.Factory(
                                         DefaultHttpDataSource.Factory()
                                     ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
                                 }
                                 else -> {
-                                    Log.d("VideoPlayer", "Creating progressive media source")
                                     ProgressiveMediaSource.Factory(
                                         DefaultHttpDataSource.Factory()
                                     ).createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
@@ -259,6 +283,47 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         Log.e("VideoPlayer", "Failed to load video", e)
                     }
                 }
+            }
+            
+            // Quality selector dialog
+            if (showQualityDialog && availableQualities.isNotEmpty()) {
+                AlertDialog(
+                    onDismissRequest = { showQualityDialog = false },
+                    title = { Text("Video Quality") },
+                    text = {
+                        Column {
+                            availableQualities.forEach { quality ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedQuality = quality.label
+                                            showQualityDialog = false
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = selectedQuality == quality.label,
+                                        onClick = {
+                                            selectedQuality = quality.label
+                                            showQualityDialog = false
+                                        }
+                                    )
+                                    Text(
+                                        text = quality.label,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showQualityDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
             
             // Cleanup player when leaving
@@ -296,6 +361,28 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 
                 // Channel row
                 ChannelRow(video = video)
+
+                // Quality selector button
+                if (availableQualities.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showQualityDialog = true }) {
+                            Text(
+                                text = selectedQuality ?: "Quality",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
 
                 // Tab bar
                 VideoPlayerTabs(
