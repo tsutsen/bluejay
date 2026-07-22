@@ -243,7 +243,7 @@ private fun GrayjayNavRail(
     onNavItemClick: (NavKey) -> Unit
 ) {
     NavigationRail(
-        modifier = Modifier.width(60.dp)
+        modifier = Modifier.width(80.dp)
     ) {
         items.forEach { item ->
             NavigationRailItem(
