@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -255,120 +257,112 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                     }
                 }
                 config != null -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        item {
-                            Text(
-                                text = config!!.name,
-                                style = MaterialTheme.typography.headlineMedium
-                            )
-                        }
-                        item {
-                            Text(
-                                text = config!!.description ?: "No description",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                        item {
-                            Text(
-                                text = "Version: ${config!!.version}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        item {
-                            Text(
-                                text = "Author: ${config!!.author ?: "Unknown"}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        item {
-                            Text(
-                                text = "URL: ${configUrl}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                        Text(
+                            text = config!!.name,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                        Text(
+                            text = config!!.description ?: "No description",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Version: ${config!!.version}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Author: ${config!!.author ?: "Unknown"}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "URL: ${configUrl}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
 
                         // Update button
-                        item {
-                            Button(
-                                onClick = {
-                                    Log.d(TAG, "Update button clicked")
-                                    // TODO: Implement update functionality
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Check for Updates")
-                            }
+                        Button(
+                            onClick = {
+                                Log.d(TAG, "Update button clicked")
+                                // TODO: Implement update functionality
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text("Check for Updates")
                         }
 
                         // Authentication buttons
                         if (config!!.authentication != null) {
-                            item {
-                                Button(
-                                    onClick = {
-                                        Log.d(TAG, "Login button clicked")
-                                        // TODO: Implement login functionality
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary
-                                    )
-                                ) {
-                                    Text("Login")
-                                }
+                            Button(
+                                onClick = {
+                                    Log.d(TAG, "Login button clicked")
+                                    // TODO: Implement login functionality
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Text("Login")
                             }
                         }
 
                         // Import buttons (shown when enabled)
                         if (isEnabled) {
-                            item {
-                                Button(
-                                    onClick = {
-                                        Log.d(TAG, "Import subscriptions button clicked")
-                                        // TODO: Implement import subscriptions
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary
-                                    )
-                                ) {
-                                    Text("Import Subscriptions")
-                                }
+                            Button(
+                                onClick = {
+                                    Log.d(TAG, "Import subscriptions button clicked")
+                                    // TODO: Implement import subscriptions
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text("Import Subscriptions")
                             }
 
-                            item {
-                                Button(
-                                    onClick = {
-                                        Log.d(TAG, "Import playlists button clicked")
-                                        // TODO: Implement import playlists
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary
-                                    )
-                                ) {
-                                    Text("Import Playlists")
-                                }
+                            Button(
+                                onClick = {
+                                    Log.d(TAG, "Import playlists button clicked")
+                                    // TODO: Implement import playlists
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text("Import Playlists")
                             }
                         }
 
                         // Uninstall button
-                        item {
-                            OutlinedButton(
-                                onClick = {
-                                    Log.d(TAG, "Uninstall button clicked")
-                                    // TODO: Implement uninstall functionality
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Text("Uninstall")
-                            }
+                        OutlinedButton(
+                            onClick = {
+                                Log.d(TAG, "Uninstall button clicked")
+                                // TODO: Implement uninstall functionality
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Uninstall")
                         }
                     }
                 }
