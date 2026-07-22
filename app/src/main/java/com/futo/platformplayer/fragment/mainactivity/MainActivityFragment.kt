@@ -9,7 +9,15 @@ open class MainActivityFragment : Fragment() {
     protected val currentMain : MainFragment?
         get() {
         isValidMainActivity();
-        return (activity as MainActivity).fragCurrent;
+        return when (activity) {
+            is MainActivity -> (activity as MainActivity).fragCurrent
+            is androidx.fragment.app.FragmentActivity -> {
+                // In PlatformPlayerActivity, get current fragment from supportFragmentManager
+                val fragmentManager = (activity as androidx.fragment.app.FragmentActivity).supportFragmentManager
+                fragmentManager.primaryNavigationFragment as? MainFragment
+            }
+            else -> null
+        }
     }
 
     fun closeSegment() {
@@ -17,7 +25,7 @@ open class MainActivityFragment : Fragment() {
         if (a is MainActivity)
             return a.closeSegment()
         else
-            Log.e(TAG, "Failed to close segment due to activity not being a main activity.")
+            Log.d(TAG, "closeSegment not supported in PlatformPlayerActivity")
     }
 
     fun navigate(frag: MainFragment, parameter: Any? = null, withHistory: Boolean = true) {
@@ -25,7 +33,7 @@ open class MainActivityFragment : Fragment() {
         if (a is MainActivity)
             (activity as MainActivity).navigate(frag, parameter, withHistory, false)
         else
-            Log.e(TAG, "Failed to navigate due to activity not being a main activity.")
+            Log.d(TAG, "navigate not supported in PlatformPlayerActivity")
     }
 
     inline fun <reified T : MainFragment> navigate(parameter: Any? = null, withHistory: Boolean = true): T {
@@ -39,7 +47,7 @@ open class MainActivityFragment : Fragment() {
         if (a is MainActivity)
             a.navigateTab(frag, parameter)
         else
-            Log.e(TAG, "Failed to navigate to tab due to activity not being a main activity.")
+            Log.d(TAG, "navigateTab not supported in PlatformPlayerActivity")
     }
 
     inline fun <reified T : MainFragment> navigateTab(parameter: Any? = null): T {
@@ -50,14 +58,23 @@ open class MainActivityFragment : Fragment() {
 
     inline fun <reified T : Fragment> requireFragment() : T {
         isValidMainActivity();
-        return (activity as MainActivity).getFragment<T>();
+        return when (activity) {
+            is MainActivity -> (activity as MainActivity).getFragment<T>()
+            is androidx.fragment.app.FragmentActivity -> {
+                val fragmentManager = (activity as androidx.fragment.app.FragmentActivity).supportFragmentManager
+                fragmentManager.findFragmentByTag(T::class.java.simpleName) as? T
+                    ?: throw java.lang.IllegalStateException("Fragment ${T::class.java.simpleName} not found")
+            }
+            else -> throw java.lang.IllegalStateException("Invalid activity")
+        }
     }
 
     fun isValidMainActivity(){
         if(activity == null)
             throw java.lang.IllegalStateException("Attempted to use fragment without an activity");
-        if(!(activity is MainActivity))
-            throw java.lang.IllegalStateException("Attempted to use fragment without a MainActivty");
+        // Allow both old MainActivity and new PlatformPlayerActivity during migration
+        if(!(activity is MainActivity || activity is androidx.fragment.app.FragmentActivity))
+            throw java.lang.IllegalStateException("Attempted to use fragment without a valid activity");
     }
 
     companion object {

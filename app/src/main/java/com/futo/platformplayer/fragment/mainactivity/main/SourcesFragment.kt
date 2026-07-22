@@ -58,6 +58,12 @@ class SourcesFragment : MainFragment() {
         _view?.reloadSources();
     }
 
+    override fun onResume() {
+        super.onResume()
+        Log.d("SourcesFragment", "onResume - reloading sources")
+        _view?.reloadSources()
+    }
+
     override fun onCreateMainView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = SourcesView(requireContext(), this);
         _view = view;
