@@ -62,6 +62,7 @@ import com.futo.platformplayer.compose.feed.FeedItem
 import com.futo.platformplayer.compose.feed.FeedScreen
 import com.futo.platformplayer.compose.feed.FeedUiState
 import com.futo.platformplayer.compose.settings.SettingsOption
+import com.futo.platformplayer.compose.settings.RadioButtonDialog
 import com.futo.platformplayer.compose.settings.SettingsOptionCard
 import com.futo.platformplayer.compose.settings.SettingsScreen
 import com.futo.platformplayer.compose.settings.SettingsSection
@@ -458,6 +459,8 @@ private fun SettingsScene(n: GrayjayNavigator) {
 @Composable
 private fun SettingsSubScene(category: String, n: GrayjayNavigator) {
     val items = getItemsForCategory(category)
+    var dialogItem by remember { mutableStateOf<SettingsItem?>(null) }
+    
     SettingsScreen(
         title = category.replace("_", " ").replaceFirstChar { it.uppercase() },
         onBack = { n.goBack() }
@@ -468,10 +471,30 @@ private fun SettingsSubScene(category: String, n: GrayjayNavigator) {
                 title = item.title,
                 subtitle = item.subtitle
             ) {
-                if (item.subCategory != null) {
-                    n.navigate(SettingsFragment(item.subCategory))
+                when {
+                    item.subCategory != null -> {
+                        n.navigate(SettingsFragment(item.subCategory))
+                    }
+                    item.dialogOptions != null -> {
+                        dialogItem = item
+                    }
                 }
             }
+        }
+        
+        // Show dialog for items with options
+        dialogItem?.let { item ->
+            val options = item.dialogOptions!!
+            val selected = SettingsOption(item.subtitle)
+            RadioButtonDialog(
+                title = item.title,
+                options = options,
+                selected = selected,
+                onSelected = { selectedOption ->
+                    dialogItem = null
+                },
+                onDismiss = { dialogItem = null }
+            )
         }
     }
 }
