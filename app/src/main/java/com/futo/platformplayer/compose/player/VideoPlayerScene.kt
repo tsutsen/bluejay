@@ -58,6 +58,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
 import coil.compose.AsyncImage
@@ -65,9 +67,7 @@ import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
-import com.futo.platformplayer.states.StatePlayer
 import com.futo.platformplayer.states.StatePlatform
-import com.futo.platformplayer.views.video.FutoVideoPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -79,6 +79,7 @@ import kotlinx.coroutines.withContext
  *   - Minimize button shrinks video to a global mini player bar
  *   - Mini player persists when navigating to other tabs
  *   - Video continues playing in background when minimized
+ *   - Uses modern ExoPlayer with media3-ui-compose
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,29 +138,44 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
         } else if (videoDetails != null) {
             val video = videoDetails!!
             
-            // Create FutoVideoPlayer instance
-            val futoPlayer = remember(video.url) {
-                FutoVideoPlayer(context)
+            // Create modern ExoPlayer instance
+            val exoPlayer = remember(video.url) {
+                ExoPlayer.Builder(context).build()
             }
             
-            // Load video source
-            LaunchedEffect(video.url, futoPlayer) {
+            // Load video source by resolving through plugin system
+            LaunchedEffect(video.url, exoPlayer) {
                 try {
                     withContext(Dispatchers.IO) {
-                        // Get video sources using FutoVideoPlayer's built-in methods
-                        val videoSource = futoPlayer.getPreferredVideoSource(video)
-                        val audioSource = futoPlayer.getPreferredAudioSource(video, null)
+                        // Resolve the video URL through the plugin system
+                        val resolvedUrl = StatePlatform.instance.getContentDetails(video.url).await()
                         
-                        // Set source and play
-                        futoPlayer.setSource(videoSource, audioSource, true, false, d.position != null)
-                        
-                        // Seek to position if specified
-                        d.position?.let { position ->
-                            futoPlayer.seekTo(position)
+                        if (resolvedUrl is IPlatformVideoDetails) {
+                            // Create MediaItem from the resolved video details
+                            val mediaItem = MediaItem.fromUri(resolvedUrl.url)
+                            
+                            // Set up the player
+                            exoPlayer.setMediaItem(mediaItem)
+                            exoPlayer.prepare()
+                            
+                            // Seek to position if specified
+                            d.position?.let { position ->
+                                exoPlayer.seekTo(position)
+                            }
+                            
+                            // Start playing
+                            exoPlayer.playWhenReady = true
                         }
                     }
                 } catch (e: Exception) {
                     // Handle error
+                }
+            }
+            
+            // Cleanup player when leaving
+            DisposableEffect(Unit) {
+                onDispose {
+                    exoPlayer.release()
                 }
             }
             
@@ -170,13 +186,13 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
             ) {
                 // Full video player with minimize button
                 FullVideoPlayerView(
-                    futoPlayer = futoPlayer,
+                    exoPlayer = exoPlayer,
                     video = video,
                     onMinimize = {
                         // Save position before minimizing
-                        MiniPlayerState.show(video, futoPlayer.position)
+                        MiniPlayerState.show(video, exoPlayer.currentPosition)
                         // Pause the player when minimizing
-                        futoPlayer.pause()
+                        exoPlayer.pause()
                     }
                 )
 
@@ -205,10 +221,11 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 
 /**
  * Full video player view with minimize button.
+ * Uses modern ExoPlayer with PlayerView for rendering.
  */
 @Composable
 private fun FullVideoPlayerView(
-    futoPlayer: FutoVideoPlayer,
+    exoPlayer: ExoPlayer,
     video: IPlatformVideoDetails,
     onMinimize: () -> Unit
 ) {
@@ -217,15 +234,14 @@ private fun FullVideoPlayerView(
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
     ) {
-        // Video player using FutoVideoPlayer (legacy but works with Grayjay plugin system)
+        // Video player using modern ExoPlayer with PlayerView
         AndroidView(
             factory = { ctx ->
-                FutoVideoPlayer(ctx).apply {
-                    // Will be set up in LaunchedEffect
+                PlayerView(ctx).apply {
+                    this.player = exoPlayer
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }
-            },
-            update = { player ->
-                // Update player when video changes
             },
             modifier = Modifier.fillMaxSize()
         )
