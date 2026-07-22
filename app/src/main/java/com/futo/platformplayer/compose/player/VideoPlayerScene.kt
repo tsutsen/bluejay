@@ -64,14 +64,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.dash.DashMediaSource
-import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import coil.compose.AsyncImage
 import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
+import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
+import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
@@ -161,46 +159,49 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         StatePlatform.instance.getContentDetails(video.url).await()
                     }
                     
-                    // Step 2: Get the preferred video source using FutoVideoPlayer's logic
+                    // Step 2: Get the preferred video source using VideoHelper
                     val videoSource = withContext(Dispatchers.IO) {
                         if (resolvedVideo is IPlatformVideoDetails) {
-                            // Use FutoVideoPlayer to get the preferred source
-                            val futoPlayer = FutoVideoPlayer(context)
-                            futoPlayer.getPreferredVideoSource(resolvedVideo)
+                            // Use VideoHelper to select the best video source
+                            VideoHelper.selectBestVideoSource(
+                                resolvedVideo.video,
+                                -1, // Don't filter by pixel count
+                                arrayOf("mp4", "webm", "mkv") // Preferred containers
+                            )
                         } else {
                             null
                         }
                     }
                     
-                    // Step 3: Create MediaSource based on source type on background thread
+                    // Step 3: Extract URL from the video source on background thread
                     val mediaItem = withContext(Dispatchers.IO) {
                         if (videoSource != null) {
-                            when (videoSource) {
+                            // Try to get URL from the source
+                            val url = when (videoSource) {
                                 is IVideoUrlSource -> {
-                                    // Direct URL source - use ProgressiveMediaSource
-                                    val url = videoSource.getVideoUrl()
-                                    Log.d("VideoPlayer", "Direct URL source: $url")
-                                    MediaItem.fromUri(Uri.parse(url))
+                                    // Direct URL source (mp4, webm, etc.)
+                                    Log.d("VideoPlayer", "Direct URL source: ${videoSource.getVideoUrl()}")
+                                    videoSource.getVideoUrl()
+                                }
+                                is IDashManifestSource -> {
+                                    // DASH manifest
+                                    (videoSource as? IVideoUrlSource)?.getVideoUrl()
+                                }
+                                is IHLSManifestSource -> {
+                                    // HLS manifest
+                                    (videoSource as? IVideoUrlSource)?.getVideoUrl()
                                 }
                                 else -> {
-                                    // For other source types, try to extract URL
-                                    val url = when {
-                                        videoSource is com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource -> {
-                                            (videoSource as? IVideoUrlSource)?.getVideoUrl()
-                                        }
-                                        videoSource is com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource -> {
-                                            (videoSource as? IVideoUrlSource)?.getVideoUrl()
-                                        }
-                                        else -> null
-                                    }
-                                    
-                                    if (url != null) {
-                                        Log.d("VideoPlayer", "Manifest source: $url")
-                                        MediaItem.fromUri(Uri.parse(url))
-                                    } else {
-                                        null
-                                    }
+                                    Log.w("VideoPlayer", "Unsupported video source type: ${videoSource.javaClass.simpleName}")
+                                    null
                                 }
+                            }
+                            
+                            if (url != null) {
+                                MediaItem.fromUri(Uri.parse(url))
+                            } else {
+                                Log.e("VideoPlayer", "Failed to extract URL from video source")
+                                null
                             }
                         } else {
                             null
