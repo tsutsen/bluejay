@@ -35,6 +35,7 @@ import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePlugins
 import com.futo.platformplayer.states.StatePlatform
+import com.futo.platformplayer.states.StatePlaylists
 import com.futo.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -592,7 +593,26 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                                                 Log.d(TAG, "Import completed: $successCount/${selectedItems.size} items")
                                                             }
                                                             "playlists" -> {
-                                                                // TODO: Implement playlist import
+                                                                var successCount = 0
+                                                                for (item in selectedItems) {
+                                                                    if (item is PlaylistImportItem) {
+                                                                        try {
+                                                                            Log.d(TAG, "Importing playlist: ${item.name}")
+                                                                            val playlistDetails = withContext(Dispatchers.IO) {
+                                                                                StatePlatform.instance.getPlaylist(item.url)
+                                                                            }
+                                                                            val playlist = withContext(Dispatchers.IO) {
+                                                                                playlistDetails.toPlaylist()
+                                                                            }
+                                                                            StatePlaylists.instance.createOrUpdatePlaylist(playlist, true)
+                                                                            successCount++
+                                                                            Log.d(TAG, "Added playlist: ${playlist.name}")
+                                                                        } catch (e: Exception) {
+                                                                            Log.e(TAG, "Failed to add playlist: ${item.url}", e)
+                                                                        }
+                                                                    }
+                                                                }
+                                                                Log.d(TAG, "Playlist import completed: $successCount/${selectedItems.size} items")
                                                             }
                                                         }
                                                         showImportDialog = false
