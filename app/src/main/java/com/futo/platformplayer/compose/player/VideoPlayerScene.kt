@@ -1,10 +1,12 @@
 /*
  * VideoPlayerScene
  *
- * Compose-based video player scene with collapsible video player.
+ * YouTube-like collapsible video player using Media3 Compose UI.
  * Features:
- *   - Collapsible video player with minimize button
- *   - Minimized PiP-style player with controls
+ *   - Collapsible video player with minimize/expand button
+ *   - Mini player bar when collapsed (thumbnail, title, expand button)
+ *   - Player continues playing when collapsed
+ *   - Smooth animations between states
  *   - Title, channel info, and tab bar below
  *   - No top app bar
  */
@@ -13,11 +15,11 @@ package com.futo.platformplayer.compose.player
 
 import android.view.ViewGroup
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,19 +27,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,12 +49,12 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,7 +64,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.util.UnstableApi
 import coil.compose.AsyncImage
 import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
@@ -76,7 +72,6 @@ import com.futo.platformplayer.compose.navigation.VideoDetail
 import com.futo.platformplayer.states.StatePlatform
 import com.futo.platformplayer.views.video.FutoVideoPlayer
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -84,7 +79,8 @@ import kotlinx.coroutines.withContext
  * 
  * Features:
  *   - Collapsible video player with minimize/expand button
- *   - Minimized PiP-style player with thumbnail and controls
+ *   - Mini player bar when collapsed (thumbnail, title, expand button)
+ *   - Player continues playing when collapsed
  *   - Title, channel info, and tab bar below
  *   - No top app bar
  */
@@ -92,13 +88,13 @@ import kotlinx.coroutines.withContext
 @Composable
 fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var videoDetails by remember { mutableStateOf<IPlatformVideoDetails?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isMinimized by remember { mutableStateOf(false) }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
+    // Load video details
     LaunchedEffect(d.url) {
         isLoading = true
         errorMessage = null
@@ -183,7 +179,8 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 }
 
 /**
- * Collapsible video player that maintains state when minimizing/expanding.
+ * Collapsible video player that maintains the ExoPlayer instance across minimize/expand.
+ * The player continues playing when collapsed.
  */
 @Composable
 private fun CollapsibleVideoPlayer(
@@ -192,48 +189,107 @@ private fun CollapsibleVideoPlayer(
     onMinimizeToggle: () -> Unit,
     startPosition: Long?
 ) {
-    // Keep the player instance alive across minimize/expand
-    var playerView by remember(video.url) { mutableStateOf<FutoVideoPlayer?>(null) }
+    val context = LocalContext.current
     
-    if (!isMinimized) {
-        // Full player view - create once and keep
+    // Keep the player instance alive across minimize/expand
+    var futoPlayer by remember(video.url) { mutableStateOf<FutoVideoPlayer?>(null) }
+    
+    LaunchedEffect(video.url) {
+        if (futoPlayer == null) {
+            futoPlayer = FutoVideoPlayer(context)
+        }
+    }
+
+    // Load video source
+    LaunchedEffect(video.url, futoPlayer) {
+        if (futoPlayer != null) {
+            try {
+                withContext(Dispatchers.IO) {
+                    val result = StatePlatform.instance.getContentDetails(video.url).await()
+                    if (result is IPlatformVideoDetails) {
+                        val videoSource = futoPlayer!!.getPreferredVideoSource(result)
+                        val audioSource = futoPlayer!!.getPreferredAudioSource(result, null)
+                        
+                        futoPlayer!!.setSource(videoSource, audioSource, play = true, resume = startPosition != null)
+                        startPosition?.let {
+                            futoPlayer!!.seekTo(it)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    // Lifecycle-aware playback
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> futoPlayer?.pause()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> futoPlayer?.play()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Full player view when expanded
+    AnimatedVisibility(
+        visible = !isMinimized,
+        enter = expandVertically(animationSpec = tween(300)),
+        exit = shrinkVertically(animationSpec = tween(300))
+    ) {
         FullVideoPlayerView(
-            video = video,
-            onMinimize = onMinimizeToggle,
-            startPosition = startPosition,
-            onPlayerReady = { playerView = it }
+            futoPlayer = futoPlayer,
+            onMinimize = onMinimizeToggle
         )
     }
-    
-    // Minimized PiP-style player
-    MinimizedPlayer(
-        video = video,
-        onExpand = onMinimizeToggle,
-        player = playerView
-    )
+
+    // Mini player bar when collapsed
+    AnimatedVisibility(
+        visible = isMinimized,
+        enter = expandVertically(animationSpec = tween(300)),
+        exit = shrinkVertically(animationSpec = tween(300))
+    ) {
+        MiniPlayerBar(
+            video = video,
+            onExpand = onMinimizeToggle
+        )
+    }
 }
 
 /**
- * Full video player with collapse button.
+ * Full video player view with collapse button.
  */
 @Composable
 private fun FullVideoPlayerView(
-    video: IPlatformVideoDetails,
-    onMinimize: () -> Unit,
-    startPosition: Long?,
-    onPlayerReady: (FutoVideoPlayer) -> Unit
+    futoPlayer: FutoVideoPlayer?,
+    onMinimize: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
     ) {
-        // Video player
-        FutoVideoPlayerView(
-            videoUrl = video.url,
-            startPosition = startPosition,
-            modifier = Modifier.fillMaxSize(),
-            onPlayerReady = onPlayerReady
+        // Video player - FutoVideoPlayer is a RelativeLayout that contains everything
+        AndroidView(
+            factory = { ctx ->
+                FutoVideoPlayer(ctx).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            },
+            update = { player ->
+                // FutoVideoPlayer manages its own ExoPlayer internally
+            },
+            modifier = Modifier.fillMaxSize()
         )
 
         // Collapse button overlay
@@ -256,112 +312,10 @@ private fun FullVideoPlayerView(
 }
 
 /**
- * Minimized PiP-style player with thumbnail and controls.
+ * Mini player bar with thumbnail, title, and expand button.
  */
 @Composable
-private fun MinimizedPlayer(
-    video: IPlatformVideoDetails,
-    onExpand: () -> Unit,
-    player: FutoVideoPlayer?
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .clickable(onClick = onExpand),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Thumbnail
-            AsyncImage(
-                model = video.thumbnails.getHQThumbnail(),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(120.dp, 68.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
-            )
-
-            // Title and channel
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 12.dp)
-            ) {
-                Text(
-                    text = video.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = video.author.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Expand icon
-            Icon(
-                imageVector = Icons.Default.ExpandMore,
-                contentDescription = "Expand",
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-/**
- * Video player section with collapse/expand functionality.
- */
-@Composable
-private fun VideoPlayerSection(
-    video: IPlatformVideoDetails,
-    isMinimized: Boolean,
-    onMinimizeToggle: () -> Unit,
-    startPosition: Long?
-) {
-    Column {
-        // Minimized PiP player
-        AnimatedVisibility(
-            visible = isMinimized,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            MinimizedPlayer(
-                video = video,
-                onExpand = onMinimizeToggle
-            )
-        }
-
-        // Full video player
-        AnimatedVisibility(
-            visible = !isMinimized,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            FullVideoPlayer(
-                video = video,
-                onMinimize = onMinimizeToggle,
-                startPosition = startPosition
-            )
-        }
-    }
-}
-
-/**
- * Minimized PiP-style player.
- */
-@Composable
-private fun MinimizedPlayer(
+private fun MiniPlayerBar(
     video: IPlatformVideoDetails,
     onExpand: () -> Unit
 ) {
@@ -416,44 +370,6 @@ private fun MinimizedPlayer(
                 contentDescription = "Expand",
                 modifier = Modifier.size(24.dp)
             )
-        }
-    }
-}
-
-/**
- * Full video player with collapse button.
- */
-@Composable
-private fun FullVideoPlayer(
-    video: IPlatformVideoDetails,
-    onMinimize: () -> Unit,
-    startPosition: Long?
-) {
-    Column {
-        // Video player with collapse button overlay
-        Box {
-            FutoVideoPlayerView(
-                videoUrl = video.url,
-                startPosition = startPosition,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // Collapse button
-            IconButton(
-                onClick = onMinimize,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ExpandLess,
-                    contentDescription = "Minimize"
-                )
-            }
         }
     }
 }
@@ -602,56 +518,6 @@ private fun VideoPlayerTabs(
             }
         }
     }
-}
-
-/**
- * AndroidView that hosts FutoVideoPlayer for video playback.
- */
-@OptIn(UnstableApi::class)
-@Composable
-fun FutoVideoPlayerView(
-    videoUrl: String,
-    startPosition: Long? = null,
-    modifier: Modifier = Modifier,
-    onPlayerReady: ((FutoVideoPlayer) -> Unit)? = null
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    AndroidView(
-        factory = { ctx ->
-            FutoVideoPlayer(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                onPlayerReady?.invoke(this)
-            }
-        },
-        update = { player ->
-            scope.launch {
-                try {
-                    withContext(Dispatchers.IO) {
-                        val result = StatePlatform.instance.getContentDetails(videoUrl).await()
-                        if (result !is IPlatformVideoDetails) {
-                            throw IllegalStateException("Expected video content, found ${result.contentType}")
-                        }
-                        val video = result
-                        val videoSource = player.getPreferredVideoSource(video)
-                        val audioSource = player.getPreferredAudioSource(video, null)
-
-                        player.setSource(videoSource, audioSource, play = true, resume = startPosition != null)
-                        startPosition?.let {
-                            player.seekTo(it)
-                        }
-                    }
-                } catch (e: Exception) {
-                    // Handle error
-                }
-            }
-        },
-        modifier = modifier
-    )
 }
 
 /**
