@@ -179,6 +179,10 @@ data object Suggestions : NavKey
 @Serializable
 data object TestCompose : NavKey
 
+/** Settings sub-screen — category parameter specifies which settings page */
+@Serializable
+data class SettingsFragment(val category: String) : NavKey
+
 // ==================== Helpers ====================
 
 /**

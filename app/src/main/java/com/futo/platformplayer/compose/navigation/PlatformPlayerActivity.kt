@@ -19,12 +19,14 @@
 package com.futo.platformplayer.compose.navigation
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,23 +34,50 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentContainerView
+import androidx.fragment.app.commit
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowWidthSizeClass
+import com.futo.platformplayer.api.media.models.article.IPlatformArticle
+import com.futo.platformplayer.api.media.models.contents.IPlatformContent
+import com.futo.platformplayer.api.media.models.playlists.IPlatformPlaylist
+import com.futo.platformplayer.api.media.models.post.IPlatformPost
+import com.futo.platformplayer.api.media.models.video.IPlatformVideo
+import com.futo.platformplayer.api.media.platforms.js.models.JSWeb
+import com.futo.platformplayer.api.media.structures.IRefreshPager
+import com.futo.platformplayer.api.media.structures.ReusableRefreshPager
+import com.futo.platformplayer.compose.feed.FeedItem
 import com.futo.platformplayer.compose.feed.FeedScreen
+import com.futo.platformplayer.compose.feed.FeedUiState
+import com.futo.platformplayer.compose.settings.SettingsOption
+import com.futo.platformplayer.compose.settings.SettingsOptionCard
+import com.futo.platformplayer.compose.settings.SettingsScreen
+import com.futo.platformplayer.compose.settings.SettingsSection
+import com.futo.platformplayer.fragment.mainactivity.main.*
+import com.futo.platformplayer.fragment.settings.getItemsForCategory
+import com.futo.platformplayer.fragment.settings.SettingsItem
+import com.futo.platformplayer.states.StateApp
+import com.futo.platformplayer.states.StatePlatform
 
 class PlatformPlayerActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")
+        StateApp.instance.mainAppStarting(this)
 
         setContent {
             PlatformPlayerNavHost()
@@ -238,7 +267,66 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
         is Comments -> NavEntry(key) { CommentsScene(key, navigator) }
         is Suggestions -> NavEntry(key) { SuggestionsScene(navigator) }
         is TestCompose -> NavEntry(key) { TestComposeScene(navigator) }
-        else -> NavEntry(key) { UnknownScene(key) }
+        is SettingsFragment -> NavEntry(key) { SettingsFragmentScene(key, navigator) }
+        // Fallback to XML fragments for backwards compatibility
+        else -> {
+            val xmlFragment = getXmlFragmentForNavKey(key)
+            if (xmlFragment != null) {
+                NavEntry(key) { FragmentFallback(xmlFragment) }
+            } else {
+                NavEntry(key) { UnknownScene(key) }
+            }
+        }
+    }
+}
+
+/**
+ * Map a NavKey to its corresponding XML fragment for backwards compatibility.
+ * Returns null if no XML fragment exists for this route.
+ */
+private fun getXmlFragmentForNavKey(key: NavKey): Fragment? {
+    return when (key) {
+        is Home -> HomeFragment()
+        is Subscriptions -> SubscriptionsFeedFragment()
+        is Creators -> CreatorsFragment()
+        is Sources -> SourcesFragment()
+        is Playlists -> PlaylistsFragment()
+        is History -> HistoryFragment()
+        is Downloads -> DownloadsFragment()
+        is Library -> LibraryFragment()
+        is Search -> ContentSearchResultsFragment()
+        is VideoDetail -> VideoDetailFragment()
+        is ChannelDetail -> ChannelFragment()
+        is PlaylistDetail -> PlaylistFragment()
+        is SourceDetail -> SourceDetailFragment()
+        is ContentSearchResults -> ContentSearchResultsFragment()
+        is CreatorSearchResults -> CreatorSearchResultsFragment()
+        is PlaylistSearchResults -> PlaylistSearchResultsFragment()
+        is PostDetail -> PostDetailFragment()
+        is ArticleDetail -> ArticleDetailFragment()
+        is WebDetail -> WebDetailFragment()
+        is Tutorial -> TutorialFragment()
+        is Buy -> BuyFragment()
+        is ImportSubscriptions -> ImportSubscriptionsFragment()
+        is ImportPlaylists -> ImportPlaylistsFragment()
+        is WatchLater -> WatchLaterFragment()
+        is Shorts -> ShortsFragment()
+        is Notifications -> SuggestionsFragment() // Fallback to suggestions if no notifications fragment
+        is SubscriptionGroupDetail -> SubscriptionGroupFragment()
+        is SubscriptionGroupList -> SubscriptionGroupListFragment()
+        is LibraryAlbums -> LibraryAlbumsFragment()
+        is LibraryAlbumDetail -> LibraryAlbumFragment()
+        is LibraryArtists -> LibraryArtistsFragment()
+        is LibraryArtistDetail -> LibraryArtistFragment()
+        is LibraryVideos -> LibraryVideosFragment()
+        is LibraryFiles -> LibraryFilesFragment()
+        is LibrarySearch -> LibrarySearchFragment()
+        is Login -> LoginFragment()
+        is Developer -> DeveloperFragment()
+        is Browser -> BrowserFragment()
+        is Comments -> CommentsFragment()
+        is Suggestions -> SuggestionsFragment()
+        else -> null
     }
 }
 
@@ -246,11 +334,84 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
 
 @Composable
 private fun HomeScene(navigator: GrayjayNavigator) {
+    var uiState by remember { mutableStateOf(FeedUiState(isLoading = true)) }
+    var pager by remember { mutableStateOf<com.futo.platformplayer.api.media.structures.ReusableRefreshPager<com.futo.platformplayer.api.media.models.contents.IPlatformContent>?>(null) }
+    var items by remember { mutableStateOf<List<com.futo.platformplayer.compose.feed.FeedItem>>(emptyList()) }
+    var contentList by remember { mutableStateOf<List<com.futo.platformplayer.api.media.models.contents.IPlatformContent>>(emptyList()) }
+
+    val scope = rememberCoroutineScope()
+    DisposableEffect(Unit) {
+        val job = scope.launch {
+            try {
+                Log.d("HomeScene", "Loading feed...")
+                val p = com.futo.platformplayer.states.StatePlatform.instance.getHomeRefresh(this)
+                Log.d("HomeScene", "Got pager: $p")
+                if (p is com.futo.platformplayer.api.media.structures.IRefreshPager) {
+                    val rp = com.futo.platformplayer.api.media.structures.ReusableRefreshPager(p)
+                    pager = rp
+                    rp.nextPage()
+                    val loaded = rp.getResults()
+                    Log.d("HomeScene", "Loaded ${loaded.size} items")
+                    val feedItems = loaded.map { toFeedItem(it) }
+                    contentList = loaded
+                    items = feedItems
+                    uiState = FeedUiState(isLoading = false, items = feedItems)
+                } else {
+                    Log.w("HomeScene", "No refreshable pager: ${p?.javaClass}")
+                    uiState = FeedUiState(isLoading = false, items = emptyList())
+                }
+            } catch (e: Exception) {
+                Log.e("HomeScene", "Error loading feed", e)
+                uiState = uiState.copy(isLoading = false, error = e.message)
+            }
+        }
+        onDispose { job.cancel() }
+    }
+
     FeedScreen(
-        state = com.futo.platformplayer.compose.feed.FeedUiState(isLoading = true),
-        onRefresh = {},
-        onLoadMore = {},
-        onItemClicked = { /* TODO: Navigate to video */ },
+        state = uiState,
+        onRefresh = {
+            pager?.let { p ->
+                p.nextPage()
+                val loaded = p.getResults()
+                val feedItems = loaded.map { toFeedItem(it) }
+                contentList = loaded
+                items = feedItems
+                uiState = uiState.copy(items = feedItems)
+            }
+        },
+        onLoadMore = {
+            pager?.let { p ->
+                if (p.hasMorePages()) {
+                    p.nextPage()
+                    val loaded = p.getResults()
+                    val feedItems = loaded.map { toFeedItem(it) }
+                    contentList = loaded
+                    items = feedItems
+                    uiState = uiState.copy(items = feedItems)
+                }
+            }
+        },
+        onItemClicked = { id ->
+            val content = contentList.find { it.id?.value == id }
+            when (content) {
+                is IPlatformVideo -> {
+                    navigator.navigateToVideo(content.url)
+                }
+                is IPlatformPlaylist -> {
+                    navigator.navigateToPlaylist(content.url)
+                }
+                is IPlatformPost -> {
+                    navigator.navigateToPost(content.url)
+                }
+                is IPlatformArticle -> {
+                    navigator.navigateToArticle(content.url)
+                }
+                is JSWeb -> {
+                    navigator.navigateToWeb(content.url)
+                }
+            }
+        },
         onSortChanged = {},
         onTagClicked = {},
         modifier = Modifier.fillMaxSize()
@@ -263,7 +424,57 @@ private fun HomeScene(navigator: GrayjayNavigator) {
 @Composable private fun PlaylistsScene(n: GrayjayNavigator) = placeholder(n, "Playlists")
 @Composable private fun HistoryScene(n: GrayjayNavigator) = placeholder(n, "History")
 @Composable private fun DownloadsScene(n: GrayjayNavigator) = placeholder(n, "Downloads")
-@Composable private fun SettingsScene(n: GrayjayNavigator) = placeholder(n, "Settings")
+@Composable
+private fun SettingsScene(n: GrayjayNavigator) {
+    SettingsScreen(
+        title = "Settings",
+        onBack = { n.goBack() }
+    ) {
+        SettingsSection("General")
+        SettingsOptionCard(Icons.Default.Palette, "Appearance", "Theme, colors, typography, icons, contrast") {
+            n.navigate(SettingsFragment("appearance"))
+        }
+        SettingsOptionCard(Icons.Default.Feed, "Feed & Content", "Home feed, search, channels, subscriptions") {
+            n.navigate(SettingsFragment("feed"))
+        }
+        SettingsOptionCard(Icons.Default.PlayArrow, "Player", "Playback, downloads, gestures, casting") {
+            n.navigate(SettingsFragment("player"))
+        }
+        SettingsOptionCard(Icons.Default.Lock, "Privacy & Data", "Privacy, data management, backup & restore") {
+            n.navigate(SettingsFragment("privacy"))
+        }
+        SettingsOptionCard(Icons.Default.Sync, "Sync & Identity", "Synchronization, Polycentric") {
+            n.navigate(SettingsFragment("sync"))
+        }
+        SettingsOptionCard(Icons.Default.Settings, "General", "Language, tabs, link handling, FAQ") {
+            n.navigate(SettingsFragment("general"))
+        }
+        SettingsOptionCard(Icons.Default.Info, "About", "Version, license, payment") {
+            n.navigate(SettingsFragment("about"))
+        }
+    }
+}
+
+@Composable
+private fun SettingsSubScene(category: String, n: GrayjayNavigator) {
+    val items = getItemsForCategory(category)
+    SettingsScreen(
+        title = category.replace("_", " ").replaceFirstChar { it.uppercase() },
+        onBack = { n.goBack() }
+    ) {
+        items.forEach { item ->
+            SettingsOptionCard(
+                icon = item.icon,
+                title = item.title,
+                subtitle = item.subtitle
+            ) {
+                if (item.subCategory != null) {
+                    n.navigate(SettingsFragment(item.subCategory))
+                }
+            }
+        }
+    }
+}
 @Composable private fun LibraryScene(n: GrayjayNavigator) = placeholder(n, "Library")
 @Composable private fun SearchScene(n: GrayjayNavigator) = placeholder(n, "Search")
 
@@ -299,10 +510,37 @@ private fun HomeScene(navigator: GrayjayNavigator) {
 @Composable private fun CommentsScene(d: Comments, n: GrayjayNavigator) = placeholder(n, "Comments", d.url, true, { n.goBack() })
 @Composable private fun SuggestionsScene(n: GrayjayNavigator) = placeholder(n, "Suggestions", showBack = true, onBack = { n.goBack() })
 @Composable private fun TestComposeScene(n: GrayjayNavigator) = placeholder(n, "Test Compose", showBack = true, onBack = { n.goBack() })
+@Composable private fun SettingsFragmentScene(d: SettingsFragment, n: GrayjayNavigator) = SettingsSubScene(d.category, n)
 
 @Composable
 private fun UnknownScene(key: NavKey) {
     placeholder(GrayjayNavigator(rememberGrayjayNavigationState()), "Unknown Route", key.toString())
+}
+
+@Composable
+private fun FragmentFallback(fragment: Fragment) {
+    // Simple placeholder for XML fragment fallback
+    // In a full implementation, this would host the XML fragment in a FragmentContainerView
+    androidx.compose.material3.Text(
+        text = "XML Fragment: ${fragment.javaClass.simpleName}\n(Compose replacement not yet available)",
+        modifier = Modifier.padding(16.dp)
+    )
+}
+
+// ==================== Helper Functions ====================
+
+private fun toFeedItem(content: com.futo.platformplayer.api.media.models.contents.IPlatformContent): com.futo.platformplayer.compose.feed.FeedItem {
+    val thumbnailUrl = when (content) {
+        is com.futo.platformplayer.api.media.models.video.IPlatformVideo -> content.thumbnails.getHQThumbnail()
+        else -> null
+    }
+    return com.futo.platformplayer.compose.feed.FeedItem(
+        id = content.id?.value ?: "",
+        title = content.name ?: "",
+        subtitle = content.author?.name,
+        thumbnailUrl = thumbnailUrl,
+        timestamp = null
+    )
 }
 
 // ==================== Reusable Placeholder ====================
