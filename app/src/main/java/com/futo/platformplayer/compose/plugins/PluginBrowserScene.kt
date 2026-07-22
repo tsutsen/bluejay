@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.IPlatformClient
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
@@ -43,6 +46,16 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
     val enabledClientIds = remember { mutableStateOf(setOf<String>()) }
     val installedPlugins = remember { mutableStateOf<List<SourcePluginConfig>>(emptyList()) }
     var refreshKey by remember { mutableIntStateOf(0) }
+    var selectedPluginUrl by remember { mutableStateOf<String?>(null) }
+
+    // If a plugin is selected, show its details
+    if (selectedPluginUrl != null) {
+        PluginDetailScene(
+            configUrl = selectedPluginUrl!!,
+            onBack = { selectedPluginUrl = null }
+        )
+        return
+    }
 
     fun loadPluginsAndEnabledState() {
         val clients = StatePlatform.instance.getAvailableClients()
@@ -123,7 +136,7 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
                         },
                         onClick = {
                             Log.d(TAG, "Clicked plugin: ${plugin.name}, URL: ${plugin.configUrl}")
-                            onPluginClick(plugin.configUrl)
+                            selectedPluginUrl = plugin.configUrl
                         }
                     )
                 }
@@ -142,7 +155,10 @@ fun PluginCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable(onClick = onClick),
+            .clickable {
+                Log.d(TAG, "PluginCard clickable triggered: ${plugin.name}")
+                onClick()
+            },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -169,8 +185,99 @@ fun PluginCard(
             Spacer(modifier = Modifier.width(16.dp))
             Switch(
                 checked = plugin.isEnabled,
-                onCheckedChange = onToggle
+                onCheckedChange = onToggle,
+                enabled = true
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
+    var config by remember { mutableStateOf<SourcePluginConfig?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(configUrl) {
+        try {
+            Log.d(TAG, "Fetching plugin config from: $configUrl")
+            val response = ManagedHttpClient().get(configUrl)
+            if (response.isOk && response.body != null) {
+                val configJson = response.body.string()
+                val loadedConfig = SourcePluginConfig.fromJson(configJson)
+                config = loadedConfig
+                Log.d(TAG, "Loaded config: ${loadedConfig.name}")
+            } else {
+                error = "Failed to load config"
+                Log.e(TAG, "Failed to load config: ${response.isOk}, ${response.body}")
+            }
+            isLoading = false
+        } catch (e: Exception) {
+            error = e.message
+            Log.e(TAG, "Error loading config", e)
+            isLoading = false
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Plugin Details") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) {
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (error != null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Error: $error")
+            }
+        } else if (config != null) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    Text(
+                        text = config!!.name,
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                }
+                item {
+                    Text(
+                        text = config!!.description ?: "No description",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                item {
+                    Text(
+                        text = "Version: ${config!!.version}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                item {
+                    Text(
+                        text = "Author: ${config!!.author ?: "Unknown"}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                item {
+                    Text(
+                        text = "URL: ${configUrl}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
     }
 }

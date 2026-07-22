@@ -77,6 +77,8 @@ import com.futo.platformplayer.fragment.settings.SettingsItem
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePlatform
 
+private const val TAG = "PlatformPlayer"
+
 class PlatformPlayerActivity : FragmentActivity() {
 
     private var pendingTab: String? = null
@@ -143,9 +145,8 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
             Log.d("PlatformPlayer", "LaunchedEffect: navigating to tab: $tab")
             when (tab) {
                 "BROWSE_PLUGINS" -> {
-                    Log.d("PlatformPlayer", "Navigating to Settings > Plugins")
-                    navigator.navigateToTab(Settings)
-                    navigator.navigate(SettingsFragment("feed"))
+                    Log.d("PlatformPlayer", "Navigating to Sources tab")
+                    navigator.navigateToTab(Sources)
                 }
                 else -> {
                     Log.w("PlatformPlayer", "Unknown tab: $tab")
@@ -767,6 +768,7 @@ private fun SettingsScene(n: GrayjayNavigator) {
 private fun SettingsSubScene(category: String, n: GrayjayNavigator) {
     // Special case for Plugins
     if (category == "plugins") {
+        Log.d(TAG, "Rendering PluginBrowserScene")
         PluginBrowserScene()
         return
     }
