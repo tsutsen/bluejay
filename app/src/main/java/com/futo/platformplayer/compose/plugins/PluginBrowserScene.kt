@@ -434,23 +434,10 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                             }
                                             Log.d(TAG, "Got ${subs?.size ?: 0} subscriptions")
                                             if (subs != null) {
-                                                // Convert URLs to channel objects with name and thumbnail
-                                                val channels = withContext(Dispatchers.IO) {
-                                                    subs.map { url ->
-                                                        try {
-                                                            val channel = StatePlatform.instance.getChannelLive(url, false)
-                                                            ChannelImportItem(
-                                                                url = url,
-                                                                name = channel.name,
-                                                                thumbnail = channel.thumbnail
-                                                            )
-                                                        } catch (e: Exception) {
-                                                            Log.w(TAG, "Failed to get channel for $url", e)
-                                                            ChannelImportItem(url = url, name = url, thumbnail = null)
-                                                        }
-                                                    }
+                                                // Store URLs directly, resolve channels on demand
+                                                items = subs.map { url ->
+                                                    ChannelImportItem(url = url, name = url, thumbnail = null)
                                                 }
-                                                items = channels
                                             } else {
                                                 items = emptyList()
                                             }
@@ -584,20 +571,28 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                             onClick = {
                                                 coroutineScope.launch {
                                                     try {
+                                                        Log.d(TAG, "Starting import of ${selectedItems.size} items")
                                                         when (importType) {
                                                             "subscriptions" -> {
+                                                                var successCount = 0
                                                                 for (item in selectedItems) {
                                                                     if (item is ChannelImportItem) {
-                                                                        val channel = StatePlatform.instance.getChannelLive(item.url, false)
-                                                                        StateSubscriptions.instance.addSubscription(channel)
+                                                                        try {
+                                                                            val channel = StatePlatform.instance.getChannelLive(item.url, false)
+                                                                            StateSubscriptions.instance.addSubscription(channel)
+                                                                            successCount++
+                                                                            Log.d(TAG, "Added subscription: ${channel.name}")
+                                                                        } catch (e: Exception) {
+                                                                            Log.e(TAG, "Failed to add subscription: ${item.url}", e)
+                                                                        }
                                                                     }
                                                                 }
+                                                                Log.d(TAG, "Import completed: $successCount/${selectedItems.size} items")
                                                             }
                                                             "playlists" -> {
                                                                 // TODO: Implement playlist import
                                                             }
                                                         }
-                                                        Log.d(TAG, "Import completed: ${selectedItems.size} items")
                                                         showImportDialog = false
                                                     } catch (e: Exception) {
                                                         Log.e(TAG, "Failed to import", e)
