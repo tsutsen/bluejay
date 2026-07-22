@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
@@ -542,11 +543,25 @@ private fun UnknownScene(key: NavKey) {
 
 @Composable
 private fun FragmentFallback(fragment: Fragment) {
-    // Simple placeholder for XML fragment fallback
-    // In a full implementation, this would host the XML fragment in a FragmentContainerView
-    androidx.compose.material3.Text(
-        text = "XML Fragment: ${fragment.javaClass.simpleName}\n(Compose replacement not yet available)",
-        modifier = Modifier.padding(16.dp)
+    // Host the XML fragment in a FragmentContainerView
+    AndroidView(
+        factory = { context ->
+            androidx.fragment.app.FragmentContainerView(context).apply {
+                id = android.R.id.content
+                layoutParams = android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+        },
+        update = { view ->
+            val fragmentManager = (view.context as? FragmentActivity)?.supportFragmentManager
+            if (fragmentManager != null) {
+                val transaction = fragmentManager.beginTransaction()
+                transaction.replace(android.R.id.content, fragment)
+                transaction.commit()
+            }
+        }
     )
 }
 
