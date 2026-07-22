@@ -66,10 +66,12 @@ import androidx.media3.ui.PlayerView
 import androidx.media3.ui.AspectRatioFrameLayout
 import coil.compose.AsyncImage
 import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
+import com.futo.platformplayer.api.media.models.streams.sources.IAudioSource
+import com.futo.platformplayer.api.media.models.streams.sources.IAudioUrlSource
+import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
-import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
@@ -151,7 +153,7 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 ExoPlayer.Builder(context).build()
             }
             
-            // Load video source by resolving through plugin system
+            // Load video and audio sources by resolving through plugin system
             LaunchedEffect(video.url, exoPlayer) {
                 try {
                     // Step 1: Resolve the video details on background thread
@@ -159,79 +161,81 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         StatePlatform.instance.getContentDetails(video.url).await()
                     }
                     
-                    // Step 2: Get the preferred video source using VideoHelper
-                    val videoSource = withContext(Dispatchers.IO) {
+                    // Step 2: Get the preferred video and audio sources using VideoHelper
+                    val (videoSource, audioSource) = withContext(Dispatchers.IO) {
                         if (resolvedVideo is IPlatformVideoDetails) {
-                            // Use VideoHelper to select the best video source
-                            VideoHelper.selectBestVideoSource(
+                            val video = VideoHelper.selectBestVideoSource(
                                 resolvedVideo.video,
-                                -1, // Don't filter by pixel count
-                                arrayOf("mp4", "webm", "mkv") // Preferred containers
+                                -1,
+                                arrayOf("mp4", "webm", "mkv")
                             )
+                            val audio = VideoHelper.selectBestAudioSource(
+                                resolvedVideo.video,
+                                arrayOf("mp4", "webm", "mkv"),
+                                null
+                            )
+                            Pair(video, audio)
                         } else {
-                            null
+                            Pair(null, null)
                         }
                     }
                     
-                    // Step 3: Extract URL from the video source on background thread
-                    val mediaItem = withContext(Dispatchers.IO) {
-                        if (videoSource != null) {
-                            // Try to get URL from the source
-                            val url = when (videoSource) {
-                                is IVideoUrlSource -> {
-                                    // Direct URL source (mp4, webm, etc.)
-                                    Log.d("VideoPlayer", "Direct URL source: ${videoSource.getVideoUrl()}")
-                                    videoSource.getVideoUrl()
-                                }
-                                is IDashManifestSource -> {
-                                    // DASH manifest
-                                    (videoSource as? IVideoUrlSource)?.getVideoUrl()
-                                }
-                                is IHLSManifestSource -> {
-                                    // HLS manifest
-                                    (videoSource as? IVideoUrlSource)?.getVideoUrl()
-                                }
-                                else -> {
-                                    Log.w("VideoPlayer", "Unsupported video source type: ${videoSource.javaClass.simpleName}")
-                                    null
-                                }
+                    // Step 3: Extract URLs from sources on background thread
+                    val (videoUrl, audioUrl) = withContext(Dispatchers.IO) {
+                        val vUrl = when (videoSource) {
+                            is IVideoUrlSource -> {
+                                Log.d("VideoPlayer", "Video URL: ${videoSource.getVideoUrl()}")
+                                videoSource.getVideoUrl()
                             }
-                            
-                            if (url != null) {
-                                MediaItem.fromUri(Uri.parse(url))
-                            } else {
-                                Log.e("VideoPlayer", "Failed to extract URL from video source")
+                            is IDashManifestSource -> {
+                                (videoSource as? IVideoUrlSource)?.getVideoUrl()
+                            }
+                            is IHLSManifestSource -> {
+                                (videoSource as? IVideoUrlSource)?.getVideoUrl()
+                            }
+                            else -> {
+                                Log.w("VideoPlayer", "Unsupported video source type: ${videoSource?.javaClass?.simpleName}")
                                 null
                             }
-                        } else {
-                            null
                         }
+                        
+                        val aUrl = when (audioSource) {
+                            is IAudioUrlSource -> {
+                                Log.d("VideoPlayer", "Audio URL: ${audioSource.getAudioUrl()}")
+                                audioSource.getAudioUrl()
+                            }
+                            is IHLSManifestSource -> {
+                                (audioSource as? IAudioUrlSource)?.getAudioUrl()
+                            }
+                            else -> null
+                        }
+                        
+                        Pair(vUrl, aUrl)
                     }
                     
                     // Step 4: Set up the player on main thread
                     withContext(Dispatchers.Main) {
-                        if (mediaItem != null) {
-                            Log.d("VideoPlayer", "Setting media item: ${mediaItem.localConfiguration?.uri}")
+                        if (videoUrl != null) {
+                            Log.d("VideoPlayer", "Setting media item: $videoUrl (audio: $audioUrl)")
                             
-                            // Set up the player
+                            // For DASH/HLS with separate audio, we need to create a merged source
+                            // For now, just use the video URL (audio is usually muxed)
+                            val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
+                            
                             exoPlayer.setMediaItem(mediaItem)
                             exoPlayer.prepare()
                             
-                            // Seek to position if specified
                             d.position?.let { position ->
                                 exoPlayer.seekTo(position)
                             }
                             
-                            // Start playing
                             exoPlayer.playWhenReady = true
                         } else {
-                            // No playable source found
                             errorMessage = "No playable video source found"
-                            Log.e("VideoPlayer", "No playable video source found")
+                            Log.e("VideoPlayer", "No playable video URL found")
                         }
                     }
                 } catch (e: Exception) {
-                    // Handle error on main thread
                     withContext(Dispatchers.Main) {
                         errorMessage = "Failed to load video: ${e.message}"
                         Log.e("VideoPlayer", "Failed to load video", e)
@@ -306,7 +310,7 @@ private fun FullVideoPlayerView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     this.player = exoPlayer
-                    useController = false
+                    useController = true
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }
             },
