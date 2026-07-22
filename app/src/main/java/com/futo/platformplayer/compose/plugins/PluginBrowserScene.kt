@@ -42,18 +42,26 @@ fun PluginBrowserScene() {
     val coroutineScope = rememberCoroutineScope()
     val enabledClientIds = remember { mutableStateOf(setOf<String>()) }
     val installedPlugins = remember { mutableStateOf<List<SourcePluginConfig>>(emptyList()) }
+    var refreshKey by remember { mutableIntStateOf(0) }
 
-    // Load installed plugins
-    LaunchedEffect(Unit) {
-        Log.d(TAG, "Loading plugins...")
+    fun loadPluginsAndEnabledState() {
         val clients = StatePlatform.instance.getAvailableClients()
-        Log.d(TAG, "Available clients: ${clients.size}")
         val enabledIds = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
-        Log.d(TAG, "Enabled clients: ${enabledIds.size}, IDs: $enabledIds")
         val installed = clients.filterIsInstance<JSClient>().map { it.config }
-        Log.d(TAG, "Installed plugins: ${installed.size}")
         installedPlugins.value = installed
         enabledClientIds.value = enabledIds
+    }
+
+    // Load installed plugins on first composition
+    LaunchedEffect(Unit) {
+        Log.d(TAG, "Loading plugins (first time)...")
+        loadPluginsAndEnabledState()
+    }
+
+    // Refresh when tab becomes visible (when refreshKey changes)
+    LaunchedEffect(refreshKey) {
+        Log.d(TAG, "Refreshing plugins (key: $refreshKey)...")
+        loadPluginsAndEnabledState()
     }
 
     val plugins = remember(installedPlugins.value, enabledClientIds.value) {
@@ -107,6 +115,7 @@ fun PluginBrowserScene() {
                                     val updatedEnabled = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
                                     Log.d(TAG, "Updated enabled: $updatedEnabled")
                                     enabledClientIds.value = updatedEnabled
+                                    refreshKey++
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Error toggling plugin", e)
                                 }
