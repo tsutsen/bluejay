@@ -198,6 +198,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
     var config by remember { mutableStateOf<SourcePluginConfig?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var isEnabled by remember { mutableStateOf(false) }
 
     LaunchedEffect(configUrl) {
         try {
@@ -210,6 +211,10 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                 val loadedConfig = SourcePluginConfig.fromJson(configJson)
                 config = loadedConfig
                 Log.d(TAG, "Loaded config: ${loadedConfig.name}")
+                
+                // Check if this plugin is enabled
+                val enabledClients = StatePlatform.instance.getEnabledClients()
+                isEnabled = enabledClients.any { it.id == loadedConfig.id }
             } else {
                 error = "Failed to load config"
                 Log.e(TAG, "Failed to load config: ${response.isOk}, ${response.body}")
@@ -278,6 +283,86 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                         text = "URL: ${configUrl}",
                         style = MaterialTheme.typography.bodySmall
                     )
+                }
+
+                // Update button
+                item {
+                    Button(
+                        onClick = {
+                            Log.d(TAG, "Update button clicked")
+                            // TODO: Implement update functionality
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Check for Updates")
+                    }
+                }
+
+                // Authentication buttons
+                if (config!!.authentication != null) {
+                    item {
+                        Button(
+                            onClick = {
+                                Log.d(TAG, "Login button clicked")
+                                // TODO: Implement login functionality
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text("Login")
+                        }
+                    }
+                }
+
+                // Import buttons (shown when enabled)
+                if (isEnabled) {
+                    item {
+                        Button(
+                            onClick = {
+                                Log.d(TAG, "Import subscriptions button clicked")
+                                // TODO: Implement import subscriptions
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Text("Import Subscriptions")
+                        }
+                    }
+
+                    item {
+                        Button(
+                            onClick = {
+                                Log.d(TAG, "Import playlists button clicked")
+                                // TODO: Implement import playlists
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Text("Import Playlists")
+                        }
+                    }
+                }
+
+                // Uninstall button
+                item {
+                    OutlinedButton(
+                        onClick = {
+                            Log.d(TAG, "Uninstall button clicked")
+                            // TODO: Implement uninstall functionality
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Uninstall")
+                    }
                 }
             }
         }
