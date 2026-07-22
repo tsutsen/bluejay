@@ -126,7 +126,6 @@ private val grayjayNavItems = listOf(
     NavItemDef(Playlists, Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay, "Playlists"),
     NavItemDef(History, Icons.Outlined.History, Icons.Filled.History, "History"),
     NavItemDef(Downloads, Icons.Outlined.Download, Icons.Filled.Download, "Downloads"),
-    NavItemDef(PluginBrowser, Icons.Outlined.Add, Icons.Filled.Add, "Plugins"),
     NavItemDef(Settings, Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
 )
 
@@ -144,8 +143,9 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
             Log.d("PlatformPlayer", "LaunchedEffect: navigating to tab: $tab")
             when (tab) {
                 "BROWSE_PLUGINS" -> {
-                    Log.d("PlatformPlayer", "Navigating to PluginBrowser tab")
-                    navigator.navigateToTab(PluginBrowser)
+                    Log.d("PlatformPlayer", "Navigating to Settings > Plugins")
+                    navigator.navigateToTab(Settings)
+                    navigator.navigate(SettingsFragment("feed"))
                 }
                 else -> {
                     Log.w("PlatformPlayer", "Unknown tab: $tab")
@@ -563,7 +563,6 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator, acti
             }
         }
         is TestCompose -> NavEntry(key) { TestComposeScene(navigator) }
-        is PluginBrowser -> NavEntry(key) { PluginBrowserScene() }
         is SettingsFragment -> NavEntry(key) { SettingsFragmentScene(key, navigator) }
         // Fallback to XML fragments for backwards compatibility
         else -> {
@@ -739,6 +738,10 @@ private fun SettingsScene(n: GrayjayNavigator) {
         SettingsOptionCard(Icons.Default.Palette, "Appearance", "Theme, colors, typography, icons, contrast") {
             n.navigate(SettingsFragment("appearance"))
         }
+        SettingsSection("Feed & Content")
+        SettingsOptionCard(Icons.Default.Add, "Plugins", "Browse and manage plugins") {
+            n.navigate(SettingsFragment("plugins"))
+        }
         SettingsOptionCard(Icons.Default.Feed, "Feed & Content", "Home feed, search, channels, subscriptions") {
             n.navigate(SettingsFragment("feed"))
         }
@@ -762,6 +765,12 @@ private fun SettingsScene(n: GrayjayNavigator) {
 
 @Composable
 private fun SettingsSubScene(category: String, n: GrayjayNavigator) {
+    // Special case for Plugins
+    if (category == "plugins") {
+        PluginBrowserScene()
+        return
+    }
+    
     val items = getItemsForCategory(category)
     var dialogItem by remember { mutableStateOf<SettingsItem?>(null) }
     
