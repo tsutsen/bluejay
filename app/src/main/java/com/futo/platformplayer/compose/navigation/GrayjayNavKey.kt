@@ -27,6 +27,14 @@ data object Subscriptions : NavKey
 @Serializable
 data object Playlists : NavKey
 
+/** Notifications tab — app notifications */
+@Serializable
+data object Notifications : NavKey
+
+/** Search tab — search across all content */
+@Serializable
+data object Search : NavKey
+
 /** Settings tab — app settings */
 @Serializable
 data object Settings : NavKey
@@ -34,10 +42,6 @@ data object Settings : NavKey
 /** Library tab — local media library */
 @Serializable
 data object Library : NavKey
-
-/** Search results (shown as overlay from any tab) */
-@Serializable
-data object Search : NavKey
 
 // ==================== Sub-Routes (pushed onto tab back stacks) ====================
 
@@ -105,10 +109,6 @@ data object WatchLater : NavKey
 @Serializable
 data object Shorts : NavKey
 
-/** Notification overlay */
-@Serializable
-data object Notifications : NavKey
-
 /** Subscription group detail */
 @Serializable
 data class SubscriptionGroupDetail(val groupId: String) : NavKey
@@ -173,8 +173,8 @@ data class SettingsFragment(val category: String) : NavKey
  * All top-level (tab) routes. Used by NavigationState to manage per-tab back stacks.
  */
 val topLevelRoutes: Set<NavKey> = setOf(
-    Home, Subscriptions, Playlists,
-    Settings, Library, Search
+    Home, Subscriptions, Playlists, Notifications, Search,
+    Settings, Library
 )
 
 /**

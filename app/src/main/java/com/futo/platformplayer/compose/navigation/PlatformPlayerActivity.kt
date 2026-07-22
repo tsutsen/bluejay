@@ -124,6 +124,8 @@ private val grayjayNavItems = listOf(
     NavItemDef(Home, Icons.Outlined.Home, Icons.Filled.Home, "Home"),
     NavItemDef(Subscriptions, Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subscriptions"),
     NavItemDef(Playlists, Icons.Outlined.PlaylistPlay, Icons.Filled.PlaylistPlay, "Playlists"),
+    NavItemDef(Notifications, Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
+    NavItemDef(Search, Icons.Outlined.Search, Icons.Filled.Search, "Search"),
     NavItemDef(Settings, Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
 )
 
@@ -241,7 +243,7 @@ private fun GrayjayNavRail(
     onNavItemClick: (NavKey) -> Unit
 ) {
     NavigationRail(
-        modifier = Modifier.width(100.dp)
+        modifier = Modifier.width(60.dp)
     ) {
         items.forEach { item ->
             NavigationRailItem(
@@ -281,6 +283,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator, acti
                 NavEntry(key) { PlaylistsScene(navigator) }
             }
         }
+        is Notifications -> NavEntry(key) { NotificationsScene(navigator) }
         is Library -> {
             val fragment = getXmlFragmentForNavKey(key)
             if (fragment != null) {
