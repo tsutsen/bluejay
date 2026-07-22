@@ -49,6 +49,13 @@ class LoginActivity : AppCompatActivity() {
         _webView = findViewById(R.id.web_view);
         _webView.settings.javaScriptEnabled = true;
         CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(_webView, true);
+        _webView.settings.allowFileAccess = true;
+        _webView.settings.allowContentAccess = true;
+        _webView.settings.domStorageEnabled = true;
+        _webView.settings.databaseEnabled = true;
+        _webView.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW;
+        _webView.settings.setSupportMultipleWindows(true);
 
         val config = if(intent.hasExtra("plugin"))
             Json.decodeFromString<SourcePluginConfig>(intent.getStringExtra("plugin")!!);
