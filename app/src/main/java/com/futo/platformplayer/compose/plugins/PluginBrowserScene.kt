@@ -43,7 +43,8 @@ data class PluginInfo(
     val description: String,
     val configUrl: String,
     val isInstalled: Boolean,
-    val isEnabled: Boolean
+    val isEnabled: Boolean,
+    val isAuthenticated: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,13 +87,18 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
 
     val plugins = remember(installedPlugins.value, enabledClientIds.value) {
         val result = installedPlugins.value.map { config ->
+            // Check if plugin has auth configured
+            val descriptor = StatePlugins.instance.getPlugin(config.id)
+            val isAuthenticated = descriptor?.getAuth() != null
+            
             PluginInfo(
                 id = config.id,
                 name = config.name,
                 description = config.description ?: "",
                 configUrl = config.sourceUrl ?: "",
                 isInstalled = true,
-                isEnabled = enabledClientIds.value.contains(config.id)
+                isEnabled = enabledClientIds.value.contains(config.id),
+                isAuthenticated = isAuthenticated
             )
         }
         Log.d(TAG, "Plugins list created with ${result.size} items")
@@ -171,11 +177,23 @@ fun PluginCard(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            Text(
-                text = plugin.name,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = plugin.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                if (plugin.isAuthenticated) {
+                    Text(
+                        text = "✓ Logged In",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = plugin.description,
