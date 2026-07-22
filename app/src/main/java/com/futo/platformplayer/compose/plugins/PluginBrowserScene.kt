@@ -151,7 +151,7 @@ fun PluginCard(
     onToggle: (Boolean) -> Unit,
     onClick: () -> Unit = {}
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
@@ -159,36 +159,29 @@ fun PluginCard(
                 Log.d(TAG, "PluginCard clickable triggered: ${plugin.name}")
                 onClick()
             },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = plugin.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = plugin.description,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Switch(
-                checked = plugin.isEnabled,
-                onCheckedChange = onToggle,
-                enabled = true
+            Text(
+                text = plugin.name,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = plugin.description,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        Spacer(modifier = Modifier.width(16.dp))
+        Switch(
+            checked = plugin.isEnabled,
+            onCheckedChange = onToggle,
+            enabled = true
+        )
     }
 }
 
@@ -239,107 +232,145 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator()
-            } else if (error != null) {
-                Text("Error: $error")
-            } else if (config != null) {
-                Text(
-                    text = config!!.name,
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Text(
-                    text = config!!.description ?: "No description",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "Version: ${config!!.version}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Author: ${config!!.author ?: "Unknown"}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "URL: ${configUrl}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-
-                // Update button
-                Button(
-                    onClick = {
-                        Log.d(TAG, "Update button clicked")
-                        // TODO: Implement update functionality
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Check for Updates")
-                }
-
-                // Authentication buttons
-                if (config!!.authentication != null) {
-                    Button(
-                        onClick = {
-                            Log.d(TAG, "Login button clicked")
-                            // TODO: Implement login functionality
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Login")
+                        CircularProgressIndicator()
                     }
                 }
-
-                // Import buttons (shown when enabled)
-                if (isEnabled) {
-                    Button(
-                        onClick = {
-                            Log.d(TAG, "Import subscriptions button clicked")
-                            // TODO: Implement import subscriptions
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        )
+                error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Import Subscriptions")
-                    }
-
-                    Button(
-                        onClick = {
-                            Log.d(TAG, "Import playlists button clicked")
-                            // TODO: Implement import playlists
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        )
-                    ) {
-                        Text("Import Playlists")
+                        Text("Error: $error")
                     }
                 }
+                config != null -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        item {
+                            Text(
+                                text = config!!.name,
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                        }
+                        item {
+                            Text(
+                                text = config!!.description ?: "No description",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        item {
+                            Text(
+                                text = "Version: ${config!!.version}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        item {
+                            Text(
+                                text = "Author: ${config!!.author ?: "Unknown"}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        item {
+                            Text(
+                                text = "URL: ${configUrl}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
 
-                // Uninstall button
-                OutlinedButton(
-                    onClick = {
-                        Log.d(TAG, "Uninstall button clicked")
-                        // TODO: Implement uninstall functionality
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Uninstall")
+                        // Update button
+                        item {
+                            Button(
+                                onClick = {
+                                    Log.d(TAG, "Update button clicked")
+                                    // TODO: Implement update functionality
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Check for Updates")
+                            }
+                        }
+
+                        // Authentication buttons
+                        if (config!!.authentication != null) {
+                            item {
+                                Button(
+                                    onClick = {
+                                        Log.d(TAG, "Login button clicked")
+                                        // TODO: Implement login functionality
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Text("Login")
+                                }
+                            }
+                        }
+
+                        // Import buttons (shown when enabled)
+                        if (isEnabled) {
+                            item {
+                                Button(
+                                    onClick = {
+                                        Log.d(TAG, "Import subscriptions button clicked")
+                                        // TODO: Implement import subscriptions
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary
+                                    )
+                                ) {
+                                    Text("Import Subscriptions")
+                                }
+                            }
+
+                            item {
+                                Button(
+                                    onClick = {
+                                        Log.d(TAG, "Import playlists button clicked")
+                                        // TODO: Implement import playlists
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary
+                                    )
+                                ) {
+                                    Text("Import Playlists")
+                                }
+                            }
+                        }
+
+                        // Uninstall button
+                        item {
+                            OutlinedButton(
+                                onClick = {
+                                    Log.d(TAG, "Uninstall button clicked")
+                                    // TODO: Implement uninstall functionality
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Uninstall")
+                            }
+                        }
+                    }
                 }
             }
         }
