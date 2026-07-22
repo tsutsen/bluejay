@@ -243,6 +243,13 @@ dependencies {
     implementation 'androidx.compose.material3.adaptive:adaptive-navigation'
     // Material3 adaptive navigation suite (not in BOM — explicit version needed)
     implementation 'androidx.compose.material3:material3-adaptive-navigation-suite-android:1.3.2'
+    // Navigation3 — type-safe Compose navigation with adaptive layouts
+    implementation 'androidx.navigation3:navigation3-runtime:1.0.0'
+    implementation 'androidx.navigation3:navigation3-ui:1.0.0'
+    // SavedState for navigation3 state preservation (navigation3-ui pulls 1.4.0, but we keep 1.2.1 for compat)
+    implementation 'androidx.savedstate:savedstate:1.2.1'
+    implementation 'androidx.savedstate:savedstate-ktx:1.2.1'
+    implementation 'androidx.savedstate:savedstate-compose:1.2.1'
     // Coil for image loading in Compose
     implementation 'io.coil-kt:coil-compose:2.7.0'
     implementation 'androidx.compose.foundation:foundation'
