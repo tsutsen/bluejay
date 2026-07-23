@@ -160,9 +160,9 @@ fun PlayerScreen(
                     )
                 }
 
-                // Volume Indicator (left side)
+                // Brightness Indicator (left side)
                 AnimatedVisibility(
-                    visible = showVolumeIndicator,
+                    visible = showBrightnessIndicator,
                     enter = fadeIn(),
                     exit = fadeOut(),
                     modifier = Modifier.align(Alignment.CenterStart)
@@ -172,16 +172,16 @@ fun PlayerScreen(
                             .fillMaxHeight()
                             .width(120.dp)
                     ) {
-                        VolumeIndicator(
-                            volume = volumeValue,
+                        BrightnessIndicator(
+                            brightness = brightnessValue,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
                 }
 
-                // Brightness Indicator (right side)
+                // Volume Indicator (right side)
                 AnimatedVisibility(
-                    visible = showBrightnessIndicator,
+                    visible = showVolumeIndicator,
                     enter = fadeIn(),
                     exit = fadeOut(),
                     modifier = Modifier.align(Alignment.CenterEnd)
@@ -191,8 +191,8 @@ fun PlayerScreen(
                             .fillMaxHeight()
                             .width(120.dp)
                     ) {
-                        BrightnessIndicator(
-                            brightness = brightnessValue,
+                        VolumeIndicator(
+                            volume = volumeValue,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
@@ -590,13 +590,13 @@ private fun GestureHandler(
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->
                         val delta = -dragAmount / 500f
-                        // Left half: volume
+                        // Left half: brightness
                         if (isLeftSide) {
-                            onVolumeChange(delta)
-                        }
-                        // Right half: brightness
-                        else {
                             onBrightnessChange(delta)
+                        }
+                        // Right half: volume
+                        else {
+                            onVolumeChange(delta)
                         }
                     },
                     onDragStart = { isLeftSide = it.x < size.width / 2 }
