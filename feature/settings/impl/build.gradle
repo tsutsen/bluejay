@@ -2,6 +2,8 @@ plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android' version '2.2.21'
     id 'org.jetbrains.kotlin.plugin.compose' version '2.2.21'
+    id 'com.google.dagger.hilt.android'
+    id 'com.google.devtools.ksp'
 }
 
 android {
@@ -36,6 +38,7 @@ dependencies {
     implementation platform('androidx.compose:compose-bom:2025.12.01')
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.foundation:foundation-layout'
     implementation 'androidx.compose.runtime:runtime'
     implementation 'androidx.compose.material3:material3'
     implementation 'androidx.compose.material:material-icons-extended'
@@ -45,4 +48,9 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose'
     implementation 'androidx.activity:activity-compose'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    
+    // Hilt
+    implementation "com.google.dagger:hilt-android:2.58"
+    ksp "com.google.dagger:hilt-compiler:2.58"
+    implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
 }

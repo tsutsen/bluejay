@@ -8,6 +8,7 @@ import com.futo.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.futo.platformplayer.core.navigation.NavDestination
 import com.futo.platformplayer.core.navigation.Navigator
 import com.futo.platformplayer.feature.home.impl.HomeScreen
+import com.futo.platformplayer.feature.settings.impl.SettingsScreen
 
 /**
  * App-level NavHost configuration for Grayjay.
@@ -40,7 +41,7 @@ fun GrayjayNavGraph(
         is NavDestination.Subscriptions -> PlaceholderScreen("Subscriptions", "Coming soon")
         is NavDestination.Library -> PlaceholderScreen("Library", "Coming soon")
         is NavDestination.Notifications -> PlaceholderScreen("Notifications", "Coming soon")
-        is NavDestination.Settings -> PlaceholderScreen("Settings", "Coming soon")
+        is NavDestination.Settings -> SettingsScreen()
         is NavDestination.VideoDetail -> PlaceholderScreen("Video Detail", "Coming soon")
         is NavDestination.ChannelDetail -> PlaceholderScreen("Channel Detail", "Coming soon")
         is NavDestination.PlaylistDetail -> PlaceholderScreen("Playlist Detail", "Coming soon")
