@@ -2,7 +2,8 @@
  * VideoPlayerScene
  *
  * Video player with clean state machine:
- * - FULL: Player embedded in video detail page
+ * - FULL: Player in fullscreen mode
+ * - DEFAULT: Player embedded in video detail page (normal mode, smaller height)
  * - MINI: Player floating as mini player
  *
  * Transitions between states are smooth animations.
@@ -30,6 +31,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -274,64 +278,87 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // Full video player with collapse button (top-left) and swipe-down
-                FullVideoPlayerView(
+                // Video player view - handles all three states
+                VideoPlayerView(
                     exoPlayer = exoPlayer,
                     video = video,
                     n = n
                 )
 
-                // Title
-                Text(
-                    text = video.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                // Title - only show when not in fullscreen
+                if (VideoPlayerState.state != VideoPlayerState.PlayerState.FULL) {
+                    Text(
+                        text = video.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
 
-                // Channel row
-                ChannelRow(video = video)
+                    // Channel row
+                    ChannelRow(video = video)
 
-                // Tab bar
-                VideoPlayerTabs(
-                    videoUrl = video.url,
-                    selectedTabIndex = selectedTabIndex,
-                    onTabSelected = { selectedTabIndex = it }
-                )
+                    // Tab bar
+                    VideoPlayerTabs(
+                        videoUrl = video.url,
+                        selectedTabIndex = selectedTabIndex,
+                        onTabSelected = { selectedTabIndex = it }
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * Full video player view with collapse button (top-left) and swipe-down gesture.
- * Uses PlayerView.
+ * Video player view that handles all three states:
+ * - FULL: Fullscreen mode
+ * - DEFAULT: Embedded in video page (smaller height)
+ * - MINI: Not shown here (handled by MiniPlayerOverlay)
  */
 @Composable
-private fun FullVideoPlayerView(
+private fun VideoPlayerView(
     exoPlayer: ExoPlayer,
     video: IPlatformVideoDetails,
     n: GrayjayNavigator
 ) {
-    var swipeTriggered by remember { mutableStateOf(0f) }
     val context = LocalContext.current
+    var swipeTriggered by remember { mutableStateOf(0f) }
+    
+    // Determine player height based on state
+    val playerHeight = when (VideoPlayerState.state) {
+        VideoPlayerState.PlayerState.FULL -> 0.5f // 50% of screen height
+        VideoPlayerState.PlayerState.DEFAULT -> 0.25f // 25% of screen height
+        VideoPlayerState.PlayerState.MINI -> 0f // Not shown here
+    }
     
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(16f / 9f)
+            .height((playerHeight * 1080).dp) // Approximate height based on 1080p height
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->
                         swipeTriggered += dragAmount
-                        if (swipeTriggered > 200) {
-                            // Minimize to mini player
-                            VideoPlayerState.minimize()
-                            MiniPlayerState.show()
-                            n.goBack()
-                            Log.d("VideoPlayer", "Minimized to mini player via swipe")
-                            swipeTriggered = 0f
+                        when (VideoPlayerState.state) {
+                            VideoPlayerState.PlayerState.DEFAULT -> {
+                                // Swipe down to minimize
+                                if (swipeTriggered > 200) {
+                                    VideoPlayerState.minimize()
+                                    MiniPlayerState.show()
+                                    n.goBack()
+                                    Log.d("VideoPlayer", "Minimized to mini player via swipe")
+                                    swipeTriggered = 0f
+                                }
+                            }
+                            VideoPlayerState.PlayerState.FULL -> {
+                                // Swipe down to exit fullscreen
+                                if (swipeTriggered > 200) {
+                                    VideoPlayerState.exitFullscreen()
+                                    swipeTriggered = 0f
+                                }
+                            }
+                            else -> {}
                         }
                     },
                     onDragEnd = {
@@ -352,32 +379,87 @@ private fun FullVideoPlayerView(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Collapse button overlay - top left
+        // Overlay controls
         Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(16.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
-            IconButton(
-                onClick = {
-                    Log.d("VideoPlayer", "Minimize button clicked")
-                    // Minimize to mini player
-                    VideoPlayerState.minimize()
-                    MiniPlayerState.show()
-                    n.goBack()
-                    Log.d("VideoPlayer", "Minimized to mini player")
-                },
+            // Collapse/Expand button - top left
+            Box(
                 modifier = Modifier
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.ExpandLess,
-                    contentDescription = "Minimize",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                IconButton(
+                    onClick = {
+                        when (VideoPlayerState.state) {
+                            VideoPlayerState.PlayerState.DEFAULT -> {
+                                // Minimize to mini player
+                                VideoPlayerState.minimize()
+                                MiniPlayerState.show()
+                                n.goBack()
+                                Log.d("VideoPlayer", "Minimized to mini player")
+                            }
+                            VideoPlayerState.PlayerState.FULL -> {
+                                // Exit fullscreen
+                                VideoPlayerState.exitFullscreen()
+                            }
+                            else -> {}
+                        }
+                    },
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (VideoPlayerState.state == VideoPlayerState.PlayerState.DEFAULT) {
+                            Icons.Default.ExpandLess
+                        } else {
+                            Icons.Default.ExpandMore
+                        },
+                        contentDescription = if (VideoPlayerState.state == VideoPlayerState.PlayerState.DEFAULT) "Minimize" else "Exit Fullscreen",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            // Fullscreen button - top right
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                IconButton(
+                    onClick = {
+                        when (VideoPlayerState.state) {
+                            VideoPlayerState.PlayerState.DEFAULT -> {
+                                // Enter fullscreen
+                                VideoPlayerState.enterFullscreen()
+                            }
+                            VideoPlayerState.PlayerState.FULL -> {
+                                // Exit fullscreen
+                                VideoPlayerState.exitFullscreen()
+                            }
+                            else -> {}
+                        }
+                    },
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (VideoPlayerState.state == VideoPlayerState.PlayerState.FULL) {
+                            Icons.Default.FullscreenExit
+                        } else {
+                            Icons.Default.Fullscreen
+                        },
+                        contentDescription = if (VideoPlayerState.state == VideoPlayerState.PlayerState.FULL) "Exit Fullscreen" else "Fullscreen",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
         }
     }
