@@ -104,6 +104,13 @@ private fun HomeFeedContent(
     var isRefreshing by remember { mutableStateOf(false) }
     val refreshingState = rememberPullToRefreshState()
 
+    // Reset refresh state when loading completes
+    LaunchedEffect(isLoading) {
+        if (!isLoading) {
+            isRefreshing = false
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         PullToRefreshBox(
             isRefreshing = isRefreshing,
