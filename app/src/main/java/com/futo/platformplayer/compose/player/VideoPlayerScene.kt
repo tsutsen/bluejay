@@ -294,7 +294,8 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                     // Full video player with collapse button (top-left) and swipe-down
                     FullVideoPlayerView(
                         exoPlayer = exoPlayer,
-                        video = video
+                        video = video,
+                        navigator = n
                     )
 
                     // Title
@@ -328,7 +329,8 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 @Composable
 private fun FullVideoPlayerView(
     exoPlayer: ExoPlayer,
-    video: IPlatformVideoDetails
+    video: IPlatformVideoDetails,
+    navigator: GrayjayNavigator
 ) {
     var swipeTriggered by remember { mutableFloatStateOf(0f) }
     val context = LocalContext.current
@@ -345,6 +347,8 @@ private fun FullVideoPlayerView(
                             // Collapse to mini player
                             val position = exoPlayer.currentPosition
                             MiniPlayerState.show(video, position)
+                            // Navigate back to previous screen so feed is visible
+                            navigator.goBack()
                             Log.d("VideoPlayer", "Collapsed to mini player via swipe")
                             swipeTriggered = 0f
                         }
@@ -379,6 +383,8 @@ private fun FullVideoPlayerView(
                     // Collapse to mini player
                     val position = exoPlayer.currentPosition
                     MiniPlayerState.show(video, position)
+                    // Navigate back to previous screen so feed is visible
+                    navigator.goBack()
                     Log.d("VideoPlayer", "Collapsed to mini player")
                 },
                 modifier = Modifier
