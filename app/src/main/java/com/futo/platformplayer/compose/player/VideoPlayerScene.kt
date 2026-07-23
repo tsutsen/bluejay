@@ -284,41 +284,39 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 }
             }
             
-                    // Only show big video player if mini player is not active
-            if (!MiniPlayerState.isMiniPlayerActive) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    // Title
-                    Text(
-                        text = video.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    // Always show the content, but hide video player when mini player is active
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Full video player with collapse button (top-left) and swipe-down
+                // Only show when mini player is NOT active
+                if (!MiniPlayerState.isMiniPlayerActive) {
+                    FullVideoPlayerView(
+                        exoPlayer = exoPlayer,
+                        video = video
                     )
-
-                    // Channel row
-                    ChannelRow(video = video)
-
-                    // Tab bar
-                    VideoPlayerTabs(
-                        videoUrl = video.url,
-                        selectedTabIndex = selectedTabIndex,
-                        onTabSelected = { selectedTabIndex = it }
-                    )
-
-                    // Full video player with collapse button (top-left) and swipe-down
-                    // Only show when mini player is NOT active
-                    if (!MiniPlayerState.isMiniPlayerActive) {
-                        FullVideoPlayerView(
-                            exoPlayer = exoPlayer,
-                            video = video
-                        )
-                    }
                 }
+
+                // Title
+                Text(
+                    text = video.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                // Channel row
+                ChannelRow(video = video)
+
+                // Tab bar
+                VideoPlayerTabs(
+                    videoUrl = video.url,
+                    selectedTabIndex = selectedTabIndex,
+                    onTabSelected = { selectedTabIndex = it }
+                )
             }
         }
     }
