@@ -98,6 +98,8 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
         // Ensure embedded plugins are installed before loading
         StatePlugins.instance.updateEmbeddedPlugins(context)
         StatePlugins.instance.installMissingEmbeddedPlugins(context)
+        // Reload available clients to pick up newly installed plugins
+        StatePlatform.instance.updateAvailableClients(context)
         loadPluginsAndEnabledState()
     }
 
