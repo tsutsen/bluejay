@@ -297,6 +297,13 @@ private fun TopOverlay(
             .statusBarsPadding()
             .padding(16.dp)
     ) {
+        IconButton(onClick = onMinimize) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Minimize",
+                tint = Color.White
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -313,13 +320,7 @@ private fun TopOverlay(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        IconButton(onClick = onMinimize) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = "Minimize",
-                tint = Color.White
-            )
-        }
+        Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onReplayToggle) {
             Icon(
                 imageVector = Icons.Default.Replay,
