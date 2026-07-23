@@ -75,6 +75,7 @@ import com.futo.platformplayer.compose.plugins.PluginBrowserScene
 import com.futo.platformplayer.compose.player.VideoPlayerScene
 import com.futo.platformplayer.compose.player.MiniPlayerOverlay
 import com.futo.platformplayer.compose.player.MiniPlayerState
+import com.futo.platformplayer.compose.player.VideoPlayerState
 import com.futo.platformplayer.fragment.mainactivity.main.*
 import com.futo.platformplayer.fragment.settings.getItemsForCategory
 import com.futo.platformplayer.fragment.settings.SettingsItem
@@ -218,20 +219,23 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
         }
     }
     
-    // Floating mini player overlay (shown when video is collapsed)
-    if (MiniPlayerState.isMiniPlayerActive && !MiniPlayerState.isExpanded && MiniPlayerState.currentVideo != null) {
-        val video = MiniPlayerState.currentVideo!!
+    // Floating mini player overlay (shown when video is minimized)
+    if (VideoPlayerState.state == VideoPlayerState.PlayerState.MINI && VideoPlayerState.currentVideo != null) {
+        val video = VideoPlayerState.currentVideo!!
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
             MiniPlayerOverlay(
                 video = video,
                 onExpand = {
-                    // Navigate back to video player scene
-                    MiniPlayerState.expand()
+                    // Expand back to full player
+                    VideoPlayerState.expand()
                     navigator.navigateToVideo(video.url)
                 },
-                onClose = { MiniPlayerState.hide() },
+                onClose = {
+                    VideoPlayerState.hide()
+                    MiniPlayerState.hide()
+                },
                 modifier = Modifier
                     .graphicsLayer {
                         translationX = MiniPlayerState.positionX

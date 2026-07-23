@@ -1,10 +1,8 @@
 /*
  * MiniPlayerOverlay
  *
- * A floating, draggable mini player that overlays any screen.
- * When collapsed, the video shrinks to a small floating box that the user
- * can drag anywhere on screen. Position persists across app sessions.
- * Uses the global ExoPlayer instance from VideoPlayerGlobalState.
+ * Floating mini player that overlays any screen.
+ * Uses the global ExoPlayer from VideoPlayerState.
  */
 
 package com.futo.platformplayer.compose.player
@@ -40,18 +38,15 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Floating mini player overlay.
@@ -67,12 +62,12 @@ fun MiniPlayerOverlay(
     val context = LocalContext.current
     
     // Get the global ExoPlayer
-    val exoPlayer = remember { VideoPlayerGlobalState.exoPlayer }
+    val exoPlayer = remember { VideoPlayerState.exoPlayer }
     var isPlaying by remember { mutableStateOf(exoPlayer?.isPlaying == true) }
     
     // Update playing state when player changes
     LaunchedEffect(exoPlayer) {
-        exoPlayer?.addListener(object : androidx.media3.common.Player.Listener {
+        exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 isPlaying = exoPlayer?.isPlaying == true
             }

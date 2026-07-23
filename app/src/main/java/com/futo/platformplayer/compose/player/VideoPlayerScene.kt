@@ -1,20 +1,19 @@
 /*
  * VideoPlayerScene
  *
- * YouTube-like video player scene with collapsible mini player.
- * Features:
- *   - Full video player with title, channel info, and tab bar
- *   - Collapse button top-left inside player
- *   - Swipe down to enter PiP mode (Picture-in-Picture)
- *   - Big video hides when in PiP mode
- *   - Merges video and audio sources like FutoVideoPlayer does
- *   - Uses global ExoPlayer that persists across navigation
+ * Video player with clean state machine:
+ * - FULL: Player embedded in video detail page
+ * - MINI: Player floating as mini player
+ *
+ * Transitions between states are smooth animations.
  */
 
 package com.futo.platformplayer.compose.player
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -45,7 +44,6 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,7 +56,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,8 +86,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Video player scene with collapsible mini player.
- * Uses global ExoPlayer that persists across navigation.
+ * Video player scene with clean state machine.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,17 +145,16 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
         } else if (videoDetails != null) {
             val video = videoDetails!!
             
+            // Set video in state machine
+            LaunchedEffect(video.url) {
+                VideoPlayerState.setVideo(video)
+            }
+            
             // Use global ExoPlayer if available, otherwise create new one
             val exoPlayer = remember(video.url) {
-                if (VideoPlayerGlobalState.exoPlayer != null && VideoPlayerGlobalState.currentVideo?.url == video.url) {
-                    // Reuse existing player
-                    Log.d("VideoPlayer", "Reusing existing ExoPlayer")
-                    VideoPlayerGlobalState.exoPlayer!!
-                } else {
-                    // Create new player
-                    Log.d("VideoPlayer", "Creating new ExoPlayer")
+                VideoPlayerState.exoPlayer ?: run {
                     val newPlayer = ExoPlayer.Builder(context).build()
-                    VideoPlayerGlobalState.setVideo(video, newPlayer)
+                    VideoPlayerState.exoPlayer = newPlayer
                     newPlayer
                 }
             }
@@ -273,30 +268,18 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 }
             }
             
-            // Cleanup player when leaving
-            DisposableEffect(Unit) {
-                onDispose {
-                    // Don't release the player here - it's managed globally
-                    // Just pause playback when leaving the scene
-                    exoPlayer?.pause()
-                }
-            }
-            
-            // Always show the content, but hide video player when mini player is active
+            // Always show the content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
                 // Full video player with collapse button (top-left) and swipe-down
-                // Only show when mini player is NOT active
-                if (!MiniPlayerState.isMiniPlayerActive) {
-                    FullVideoPlayerView(
-                        exoPlayer = exoPlayer,
-                        video = video,
-                        n = n
-                    )
-                }
+                FullVideoPlayerView(
+                    exoPlayer = exoPlayer,
+                    video = video,
+                    n = n
+                )
 
                 // Title
                 Text(
@@ -343,13 +326,11 @@ private fun FullVideoPlayerView(
                     onVerticalDrag = { _, dragAmount ->
                         swipeTriggered += dragAmount
                         if (swipeTriggered > 200) {
-                            // Collapse to mini player and navigate back
-                            val position = exoPlayer.currentPosition
-                            MiniPlayerState.show(video, position)
-                            MiniPlayerState.collapse()
-                            VideoPlayerGlobalState.collapse()
+                            // Minimize to mini player
+                            VideoPlayerState.minimize()
+                            MiniPlayerState.show()
                             n.goBack()
-                            Log.d("VideoPlayer", "Collapsed to mini player via swipe")
+                            Log.d("VideoPlayer", "Minimized to mini player via swipe")
                             swipeTriggered = 0f
                         }
                     },
@@ -380,13 +361,11 @@ private fun FullVideoPlayerView(
             IconButton(
                 onClick = {
                     Log.d("VideoPlayer", "Minimize button clicked")
-                    // Collapse to mini player and navigate back
-                    val position = exoPlayer.currentPosition
-                    MiniPlayerState.show(video, position)
-                    MiniPlayerState.collapse()
-                    VideoPlayerGlobalState.collapse()
+                    // Minimize to mini player
+                    VideoPlayerState.minimize()
+                    MiniPlayerState.show()
                     n.goBack()
-                    Log.d("VideoPlayer", "Collapsed to mini player")
+                    Log.d("VideoPlayer", "Minimized to mini player")
                 },
                 modifier = Modifier
                     .background(
