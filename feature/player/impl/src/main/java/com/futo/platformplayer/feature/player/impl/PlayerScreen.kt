@@ -104,22 +104,24 @@ fun PlayerScreen(
                     .fillMaxSize()
                     .background(Color.Black)
             ) {
-                // ExoPlayer view
-                AndroidView(
-                    factory = { ctx ->
-                        FrameLayout(ctx).apply {
-                            addView(PlayerView(ctx).apply {
+                // ExoPlayer view - use a regular Box to ensure proper sizing
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    AndroidView(
+                        factory = { ctx ->
+                            PlayerView(ctx).apply {
                                 this.player = player
                                 useController = false
-                                layoutParams = FrameLayout.LayoutParams(
-                                    FrameLayout.LayoutParams.MATCH_PARENT,
-                                    FrameLayout.LayoutParams.MATCH_PARENT
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
                                 )
-                            })
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 // Top Overlay
                 AnimatedVisibility(
@@ -351,7 +353,6 @@ private fun BottomOverlay(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
             .padding(16.dp)
     ) {
         // Timeline
