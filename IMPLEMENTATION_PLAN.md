@@ -9,20 +9,22 @@
 
 ## Plan Summary
 
-| Phase | Focus | Est. Effort | Dependencies |
-|-------|-------|-------------|--------------|
-| **0** | Foundation & Infrastructure | 3–4 weeks | None |
-| **0.5** | State Machine & Cross-Activity State | 1 week | Phase 0 |
-| **1** | App Chrome (Layout + MainActivity) | 1–2 weeks | Phase 0.5 |
-| **2** | Settings + Appearance | 1 week | Phase 0 |
-| **3** | Home Feed | 2 weeks | Phase 1 |
-| **4** | Video Player | 2–3 weeks | Phase 3 |
-| **5** | Library, Subscriptions, Search | 3–4 weeks | Phase 3 |
-| **6** | Detail Screens + Deep Links | 2–3 weeks | Phase 4 |
-| **7** | Companion Content + Gamepad | 2 weeks | Phase 4 |
-| **8** | Cleanup & Migration Bridge Removal | 1–2 weeks | Phase 7 |
+| Phase | Focus | Est. Effort | Status |
+|-------|-------|-------------|--------|
+| **0** | Foundation & Infrastructure | 3–4 weeks | ✅ Complete |
+| **0.5** | State Machine & Cross-Activity State | 1 week | ✅ Complete |
+| **1** | App Chrome (Layout + MainActivity) | 1–2 weeks | ✅ Complete |
+| **2** | Settings + Appearance | 1 week | ⬜ Next |
+| **3** | Home Feed | 2 weeks | ⬜ |
+| **4** | Video Player | 2–3 weeks | ⬜ |
+| **5** | Library, Subscriptions, Search | 3–4 weeks | ⬜ |
+| **6** | Detail Screens + Deep Links | 2–3 weeks | ⬜ |
+| **7** | Companion Content + Gamepad | 2 weeks | ⬜ |
+| **8** | Cleanup & Migration Bridge Removal | 1–2 weeks | ⬜ |
 
 **Total estimated effort**: 15–20 weeks
+
+**Current progress**: Phase 0–1 complete (4–7 weeks). App launches with navigation chrome, 6-tab navigation works, placeholder screens render. Ready for Phase 2 (Settings).
 
 ---
 
@@ -30,68 +32,77 @@
 
 **Goal**: Set up the new module structure, DI, database, repositories, and design system. Nothing user-visible yet.
 
+**Status**: ✅ Complete
+
 ### 0.1 — Hilt Dependency Injection Setup
 
-| Task | Description | Files |
-|------|-------------|-------|
-| Create `PlatformPlayerApp` | `@HiltAndroidApp` application class, `DynamicColors` init | `app/PlatformPlayerApp.kt` |
-| Create `DatabaseModule` | Room DB provider, DAO providers | `app/di/DatabaseModule.kt` |
-| Create `RepositoryModule` | Repository interface → impl bindings | `app/di/RepositoryModule.kt` |
-| Create `DataSourceModule` | Engine bridge providers (`StatePlayer`, etc.) | `app/di/DataSourceModule.kt` |
-| Create `NavigationModule` | `NavHostController` provider | `app/di/NavigationModule.kt` |
-| Create `DualScreenModule` | `CompanionWindowManager` provider | `app/di/DualScreenModule.kt` |
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `PlatformPlayerApp` | `@HiltAndroidApp` application class, `DynamicColors` init | ✅ |
+| Create `DatabaseModule` | Room DB provider, DAO providers | ✅ |
+| Create `RepositoryModule` | Repository interface → impl bindings | ✅ |
+| Create `DataSourceModule` | Engine bridge providers (`StatePlayer`, etc.) | ✅ |
+| Create `NavigationModule` | `NavHostController` provider | ✅ |
+| Create `DualScreenModule` | `CompanionWindowManager` provider | ✅ |
 
-**Acceptance**: App compiles with Hilt, no runtime DI errors.
+**Acceptance**: App compiles with Hilt, no runtime DI errors. ✅
 
 ### 0.2 — Room Database Schema
 
-| Task | Description | Files |
-|------|-------------|-------|
-| Define `AppDatabase` | Room database with all DAOs | `core/database/AppDatabase.kt` |
-| Define `QueueEntity` | Playback queue items | `core/database/entity/QueueEntity.kt` |
-| Define `HistoryEntity` | Watch history records | `core/database/entity/HistoryEntity.kt` |
-| Define `PlaylistEntity` | User playlists | `core/database/entity/PlaylistEntity.kt` |
-| Define `PlaylistVideoEntity` | Playlist membership | `core/database/entity/PlaylistVideoEntity.kt` |
-| Define `HomeFeedCacheEntity` | Cached home feed items | `core/database/entity/HomeFeedCacheEntity.kt` |
-| Define `SubscriptionEntity` | Subscribed channels | `core/database/entity/SubscriptionEntity.kt` |
-| Define DAOs | `QueueDao`, `HistoryDao`, `PlaylistDao`, `HomeFeedCacheDao`, `SubscriptionDao` | `core/database/dao/*.kt` |
-| Define `AppPreferencesEntity` | DataStore-backed settings | `core/datastore/model/AppearancePreferences.kt` |
+| Task | Description | Status |
+|------|-------------|--------|
+| Define `AppDatabase` | Room database with all DAOs | ✅ |
+| Define `QueueEntity` | Playback queue items | ✅ |
+| Define `HistoryEntity` | Watch history records | ✅ |
+| Define `PlaylistEntity` | User playlists | ✅ |
+| Define `PlaylistVideoEntity` | Playlist membership | ✅ |
+| Define `HomeFeedCacheEntity` | Cached home feed items | ✅ |
+| Define `SubscriptionEntity` | Subscribed channels | ✅ |
+| Define DAOs | `QueueDao`, `HistoryDao`, `PlaylistDao`, `HomeFeedCacheDao`, `SubscriptionDao` | ✅ |
+| Define `AppPreferencesEntity` | DataStore-backed settings | ✅ |
 
-**Acceptance**: All entities compile, DAOs have `@Query` annotations, fallback-to-destructive-migration enabled.
+**Acceptance**: All entities compile, DAOs have `@Query` annotations, fallback-to-destructive-migration enabled. ✅
 
 ### 0.3 — Repository Interfaces + Bridge Implementations
 
-| Task | Description | Files |
-|------|-------------|-------|
-| Define `PlayerRepository` | Interface (§4 in ARCHITECTURE.md) | `core/data/repository/PlayerRepository.kt` |
-| Define `HomeRepository` | Interface | `core/data/repository/HomeRepository.kt` |
-| Define `SearchRepository` | Interface | `core/data/repository/SearchRepository.kt` |
-| Define `LibraryRepository` | Interface | `core/data/repository/LibraryRepository.kt` |
-| Define `SubscriptionRepository` | Interface | `core/data/repository/SubscriptionRepository.kt` |
-| Define `SettingsRepository` | Interface | `core/data/repository/SettingsRepository.kt` |
-| Implement `PlayerRepositoryImpl` | Bridges to `StatePlayer` + `PlayerManager` | `core/data/repository/impl/PlayerRepositoryImpl.kt` |
-| Implement `HomeRepositoryImpl` | Bridges to `StatePlatform` | `core/data/repository/impl/HomeRepositoryImpl.kt` |
-| Implement `SearchRepositoryImpl` | Bridges to engine | `core/data/repository/impl/SearchRepositoryImpl.kt` |
-| Implement `LibraryRepositoryImpl` | Bridges to `StatePlayer` history | `core/data/repository/impl/LibraryRepositoryImpl.kt` |
-| Implement `SubscriptionRepositoryImpl` | Bridges to `StateSubscriptions` | `core/data/repository/impl/SubscriptionRepositoryImpl.kt` |
-| Implement `SettingsRepositoryImpl` | DataStore-backed | `core/data/repository/impl/SettingsRepositoryImpl.kt` |
+| Task | Description | Status |
+|------|-------------|--------|
+| Define `PlayerRepository` | Interface (§4 in ARCHITECTURE.md) | ✅ |
+| Define `HomeRepository` | Interface | ✅ |
+| Define `SearchRepository` | Interface | ✅ |
+| Define `LibraryRepository` | Interface | ✅ |
+| Define `SubscriptionRepository` | Interface | ✅ |
+| Define `SettingsRepository` | Interface | ✅ |
+| Implement `PlayerRepositoryImpl` | Bridges to `StatePlayer` + `PlayerManager` | ✅ |
+| Implement `HomeRepositoryImpl` | Bridges to `StatePlatform` | ✅ |
+| Implement `SearchRepositoryImpl` | Bridges to engine | ✅ |
+| Implement `LibraryRepositoryImpl` | Bridges to `StatePlayer` history | ✅ |
+| Implement `SubscriptionRepositoryImpl` | Bridges to `StateSubscriptions` | ✅ |
+| Implement `SettingsRepositoryImpl` | DataStore-backed | ✅ |
 
-**Acceptance**: All repositories expose `StateFlow`, bridge implementations compile, no UI code touches legacy singletons directly.
+**Acceptance**: All repositories expose `StateFlow`, bridge implementations compile, no UI code touches legacy singletons directly. ✅
 
 ### 0.4 — Design System
 
-| Task | Description | Files |
-|------|-------------|-------|
-| Create `GrayjayTheme` | Material You theme with dynamic color, Inter font | `core/designsystem/theme/GrayjayTheme.kt` |
-| Define `GrayjayTypography` | Inter font family, typography scale | `core/designsystem/theme/Typography.kt` |
-| Define color tokens | `GrayjayColorTokens` for light/dark schemes | `core/designsystem/theme/Color.kt` |
-| Define icon system | Material Symbols + custom font mapping | `core/designsystem/icons/Icons.kt` |
-| Create shared components | `VideoCard`, `CompactVideoCard`, `FilterChip`, `EmptyState`, `LoadingSkeleton`, `CardContainer`, `SectionHeader`, `TabRow`, `ModalBottomSheet`, `DescriptionExpandable`, `PaginationControls`, `SettingsRow`, `NotificationCard`, `CreatorAvatar`, `Comment`, `ChannelHero` | `core/designsystem/component/*.kt` |
-| Create `AppLayout` | Orientation-aware rail/bottom bar (placeholder) | `core/designsystem/layout/AppLayout.kt` |
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `GrayjayTheme` | Material You theme with dynamic color, Inter font | ✅ |
+| Define `GrayjayTypography` | Inter font family, typography scale | ✅ |
+| Define color tokens | `GrayjayColorTokens` for light/dark schemes | ✅ |
+| Define icon system | Material Symbols + custom font mapping | ✅ |
+| Create shared components | `VideoCard`, `CompactVideoCard`, `FilterChip`, `EmptyState`, `LoadingSkeleton`, `CardContainer`, `SectionHeader`, `TabRow`, `ModalBottomSheet`, `DescriptionExpandable`, `PaginationControls`, `SettingsRow`, `NotificationCard`, `CreatorAvatar`, `Comment`, `ChannelHero` | ✅ |
+| Create `AppLayout` | Orientation-aware rail/bottom bar | ✅ |
 
-**Acceptance**: `GrayjayTheme` applies to a test composable, all components render in previews.
+**Acceptance**: `GrayjayTheme` applies to a test composable, all components render in previews. ✅
 
 ### 0.5 — Navigation Infrastructure
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Define `NavDestination` | Sealed class with all routes (§6) | ✅ |
+| Create `Navigator` | Hilt singleton wrapping `NavHostController` | ✅ |
+| Create `GrayjayNavGraph` | NavHost with all composable registrations | ✅ |
+| Create `NavigationState` | Current route tracking for chrome | ✅ |
 
 | Task | Description | Files |
 |------|-------------|-------|
@@ -101,6 +112,18 @@
 | Create `NavigationState` | Current route tracking for chrome | `core/navigation/NavigationState.kt` |
 
 **Acceptance**: Navigation compiles, all routes registered, `Navigator.navigate()` works.
+
+### 0.6 — Core UI Utilities
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `RelativeTime` formatter | §13 in DESIGN.md (45m ago, 3h ago, etc.) | ✅ |
+| Create `AsyncImage` wrapper | Thumbnail loading with placeholder/error | ✅ |
+| Create `Shimmer` composable | Loading skeleton animation | ✅ |
+| Create `Card` sealed interface | Data-only card types (§11.2) | ✅ |
+| Create data classes | `VideoCard`, `ShortCard`, `PlaylistCard`, `ChannelCard` | ✅ |
+
+**Acceptance**: Utilities work in previews, no Android context required.
 
 ### 0.6 — Core UI Utilities
 
@@ -120,13 +143,15 @@
 
 **Goal**: Enable dual-screen coordination before building the companion window.
 
-| Task | Description | Files |
-|------|-------------|-------|
-| Define `AppScreenState` | Sealed class: Browsing/VideoOpen/VideoMinimized | `feature/dualscreen/AppScreenState.kt` |
-| Create `ScreenCoordinator` | `@Singleton`, `StateFlow<AppScreenState>` | `feature/dualscreen/ScreenCoordinator.kt` |
-| Create `PlayerViewModel` | Application-scoped, observes `PlayerRepository` | `feature/player/impl/PlayerViewModel.kt` |
+**Status**: ✅ Complete
 
-**Acceptance**: `ScreenCoordinator` is the same instance injected into both `MainActivity` and `CompanionActivity`. `PlayerViewModel` exposes `StateFlow<PlaybackState>`.
+| Task | Description | Status |
+|------|-------------|--------|
+| Define `AppScreenState` | Sealed class: Browsing/VideoOpen/VideoMinimized | ✅ |
+| Create `ScreenCoordinator` | `@Singleton`, `StateFlow<AppScreenState>` | ✅ |
+| Create `PlayerViewModel` | Application-scoped, observes `PlayerRepository` | ✅ |
+
+**Acceptance**: `ScreenCoordinator` is the same instance injected into both `MainActivity` and `CompanionActivity`. `PlayerViewModel` exposes `StateFlow<PlaybackState>`. ✅
 
 ---
 
@@ -134,16 +159,18 @@
 
 **Goal**: The user can launch the app and navigate between the 6 main tabs. No content yet.
 
-| Task | Description | Files |
-|------|-------------|-------|
-| Create `MainActivity` | Thin wrapper, hosts `AppLayout`, observes `ScreenCoordinator` | `activities/MainActivity.kt` |
-| Create `CompanionActivity` | Secondary display window, hosts `CompanionScreen` | `activities/CompanionActivity.kt` |
-| Implement `AppLayout` | Orientation detection, NavigationRail/NavigationBar | `core/designsystem/layout/AppLayout.kt` |
-| Create `CompanionWindowManager` | `DisplayManager` detection, auto-launch companion | `feature/dualscreen/CompanionWindowManager.kt` |
-| Wire `GrayjayNavGraph` | Register all 6 main destinations + detail routes | `core/navigation/GrayjayNavGraph.kt` |
-| Create placeholder screens | Empty composable for each tab (Home, Search, Subs, Library, Notifications, Settings) | `feature/*/impl/PlaceholderScreen.kt` |
+**Status**: ✅ Complete
 
-**Acceptance**: App launches on primary display with nav chrome. Companion window opens on secondary display. Orientation change swaps between rail and bottom bar.
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `MainActivity` | Thin wrapper, hosts `AppLayout`, observes `ScreenCoordinator` | ✅ |
+| Create `CompanionActivity` | Secondary display window, hosts `CompanionScreen` | ✅ |
+| Implement `AppLayout` | Orientation detection, NavigationRail/NavigationBar | ✅ |
+| Create `CompanionWindowManager` | `DisplayManager` detection, auto-launch companion | ✅ |
+| Wire `GrayjayNavGraph` | Register all 6 main destinations + detail routes | ✅ |
+| Create placeholder screens | Empty composable for each tab (Home, Search, Subs, Library, Notifications, Settings) | ✅ |
+
+**Acceptance**: App launches on primary display with nav chrome. Companion window opens on secondary display. Orientation change swaps between rail and bottom bar. ✅
 
 ---
 
@@ -397,32 +424,32 @@
 ## Execution Order (Critical Path)
 
 ```
-Phase 0 (Foundation)
-  ├── 0.1 Hilt DI
-  ├── 0.2 Room Database
-  ├── 0.3 Repository Interfaces + Bridges
-  ├── 0.4 Design System
-  ├── 0.5 Navigation Infrastructure
-  └── 0.6 Core UI Utilities
+Phase 0 (Foundation) ✅
+  ├── 0.1 Hilt DI ✅
+  ├── 0.2 Room Database ✅
+  ├── 0.3 Repository Interfaces + Bridges ✅
+  ├── 0.4 Design System ✅
+  ├── 0.5 Navigation Infrastructure ✅
+  └── 0.6 Core UI Utilities ✅
         │
         ▼
-Phase 0.5 (State Machine)
+Phase 0.5 (State Machine) ✅
         │
         ▼
-Phase 1 (Chrome) ─────────────────────────────────┐
+Phase 1 (Chrome) ✅ ──────────────────────────────┐
         │                                         │
         ▼                                         │
-Phase 2 (Settings)                                  │
+Phase 2 (Settings) ⬜ ← NEXT                       │
         │                                         │
         ▼                                         │
-Phase 3 (Home Feed)                                │
+Phase 3 (Home Feed) ⬜                              │
         │                                         │
         ▼                                         │
 Phase 4 (Player) ──────────────────────────────────┤
         │                                         │
-        ├──► Phase 5.1 (Search)                    │
-        ├──► Phase 5.2 (Subscriptions)             │
-        └──► Phase 5.3 (Library)                   │
+        ├──► Phase 5.1 (Search) ⬜                 │
+        ├──► Phase 5.2 (Subscriptions) ⬜          │
+        └──► Phase 5.3 (Library) ⬜                │
         │                                         │
         ▼                                         │
 Phase 6 (Detail Screens) ──────────────────────────┤
