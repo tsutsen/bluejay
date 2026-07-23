@@ -102,7 +102,7 @@ private fun HomeFeedContent(
             columns = columns,
             onCardClick = onCardClick,
             onEndReached = {
-                if (isLoading && hasMorePages) {
+                if (!isLoading && hasMorePages) {
                     onLoadMore()
                 }
             },

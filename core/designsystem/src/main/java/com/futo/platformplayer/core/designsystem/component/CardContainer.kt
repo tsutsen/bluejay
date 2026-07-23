@@ -56,7 +56,11 @@ fun VideoContainer(
             val listState = rememberLazyListState()
             var hasReachedEnd by remember { mutableStateOf(false) }
 
-            LaunchedEffect(listState) {
+            LaunchedEffect(items.size) {
+                hasReachedEnd = false
+            }
+
+            LaunchedEffect(listState, items.size) {
                 listState.layoutInfo.visibleItemsInfo.forEachIndexed { index: Int, item ->
                     if (index == item.index && item.index == listState.layoutInfo.totalItemsCount - 1) {
                         if (!hasReachedEnd) {
@@ -96,7 +100,11 @@ fun VideoContainer(
             val gridState = rememberLazyGridState()
             var hasReachedEnd by remember { mutableStateOf(false) }
 
-            LaunchedEffect(gridState) {
+            LaunchedEffect(items.size) {
+                hasReachedEnd = false
+            }
+
+            LaunchedEffect(gridState, items.size) {
                 gridState.layoutInfo.visibleItemsInfo.forEachIndexed { index: Int, item ->
                     if (index == item.index && item.index == gridState.layoutInfo.totalItemsCount - 1) {
                         if (!hasReachedEnd) {
