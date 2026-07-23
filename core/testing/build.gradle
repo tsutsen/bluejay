@@ -1,0 +1,33 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.futo.platformplayer.core.testing'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 28
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    implementation project(':core:model')
+    implementation project(':core:data')
+    implementation project(':core:datastore')
+    implementation project(':core:database')
+    implementation 'androidx.core:core-ktx:1.17.0'
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2"
+    implementation "org.jetbrains.kotlin:kotlin-test:2.0.21"
+    testImplementation "org.mockito:mockito-core:5.20.0"
+}

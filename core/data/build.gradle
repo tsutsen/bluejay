@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.futo.platformplayer.core.data'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 28
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    implementation project(':core:model')
+    implementation project(':core:database')
+    implementation project(':core:datastore')
+    implementation 'androidx.core:core-ktx:1.17.0'
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
+    implementation 'androidx.media3:media3-exoplayer:1.9.0'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.9.0'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.9.0'
+    implementation 'androidx.media3:media3-exoplayer-rtsp:1.9.0'
+    implementation 'androidx.media3:media3-exoplayer-smoothstreaming:1.9.0'
+    implementation 'androidx.media3:media3-datasource:1.9.0'
+    implementation 'androidx.media:media:1.7.1'
+}

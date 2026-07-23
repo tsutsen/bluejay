@@ -28,3 +28,26 @@ includeBuild('dep/futopay/android') {
 
 rootProject.name = "FutoVideo"
 include ':app'
+
+// Core modules
+include ':core:model'
+include ':core:data'
+include ':core:datastore'
+include ':core:database'
+include ':core:designsystem'
+include ':core:navigation'
+include ':core:ui'
+include ':core:testing'
+include ':core:sync'
+include ':core:notifications'
+
+// Feature modules
+include ':feature:dualscreen'
+include ':feature:home:impl'
+include ':feature:search:impl'
+include ':feature:player:impl'
+include ':feature:library:impl'
+include ':feature:subscriptions:impl'
+include ':feature:settings:impl'
+include ':feature:feed:impl'
+include ':feature:companion:impl'

@@ -7,6 +7,8 @@ plugins {
     id 'com.google.protobuf'
     id 'kotlin-parcelize'
     id 'com.google.devtools.ksp'
+    id 'com.google.dagger.hilt.android' version '2.48'
+    kotlin('kapt') version '2.2.21'
 }
 
 ext {
@@ -156,10 +158,12 @@ android {
 }
 
 dependencies {
-    //implementation 'com.google.dagger:dagger:2.48'
     implementation 'androidx.test:monitor:1.8.0'
     implementation 'com.google.android.material:material:1.13.0'
-    //annotationProcessor 'com.google.dagger:dagger-compiler:2.48'
+
+    //Hilt Dependency Injection
+    implementation 'com.google.dagger:hilt-android:2.48'
+    kapt 'com.google.dagger:hilt-android-compiler:2.48'
 
     //Core
     implementation 'androidx.core:core-ktx:1.17.0'
