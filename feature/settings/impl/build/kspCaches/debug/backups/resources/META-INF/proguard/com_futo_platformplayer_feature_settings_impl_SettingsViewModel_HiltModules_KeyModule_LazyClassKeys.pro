@@ -1,0 +1,1 @@
+-keep,allowobfuscation,allowshrinking class com.futo.platformplayer.feature.settings.impl.SettingsViewModel

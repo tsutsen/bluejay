@@ -271,6 +271,7 @@ private fun GrayjayMainActivity(
                         "library" -> navigator.navigateLibrary()
                         "notifications" -> navigator.navigateNotifications()
                         "settings" -> navigator.navigateSettings()
+                        "plugins" -> navigator.navigateToPluginBrowser()
                     }
                 }
             )

@@ -90,6 +90,7 @@ class Navigator @Inject constructor() {
     fun navigateToComments(url: String) = navigate(NavDestination.Comments(url))
     fun navigateToSuggestions() = navigate(NavDestination.Suggestions)
     fun navigateToSettingsFragment(category: String) = navigate(NavDestination.SettingsFragment(category))
+    fun navigateToPluginBrowser() = navigate(NavDestination.PluginBrowser)
     fun navigateToTestCompose() = navigate(NavDestination.TestCompose)
 
     // Generic navigation

@@ -73,6 +73,7 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
     val installedPlugins = remember { mutableStateOf<List<SourcePluginConfig>>(emptyList()) }
     var refreshKey by remember { mutableIntStateOf(0) }
     var selectedPluginUrl by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
 
     // If a plugin is selected, show its details
     if (selectedPluginUrl != null) {
@@ -94,6 +95,9 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
     // Load installed plugins on first composition
     LaunchedEffect(Unit) {
         Log.d(TAG, "Loading plugins (first time)...")
+        // Ensure embedded plugins are installed before loading
+        StatePlugins.instance.updateEmbeddedPlugins(context)
+        StatePlugins.instance.installMissingEmbeddedPlugins(context)
         loadPluginsAndEnabledState()
     }
 

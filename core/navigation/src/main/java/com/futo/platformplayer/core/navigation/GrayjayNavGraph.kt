@@ -69,6 +69,7 @@ fun GrayjayNavGraph(
         is NavDestination.Comments -> PlaceholderScreen("Comments", "Coming soon")
         is NavDestination.Suggestions -> PlaceholderScreen("Suggestions", "Coming soon")
         is NavDestination.SettingsFragment -> PlaceholderScreen("Settings", "Coming soon")
+        is NavDestination.PluginBrowser -> PlaceholderScreen("Plugin Browser", "Coming soon")
         is NavDestination.TestCompose -> PlaceholderScreen("Test Compose", "Coming soon")
     }
 }

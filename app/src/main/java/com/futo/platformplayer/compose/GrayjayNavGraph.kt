@@ -8,6 +8,7 @@ import com.futo.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.futo.platformplayer.core.navigation.NavDestination
 import com.futo.platformplayer.core.navigation.Navigator
 import com.futo.platformplayer.feature.home.impl.HomeScreen
+import com.futo.platformplayer.compose.plugins.PluginBrowserScene
 import com.futo.platformplayer.feature.settings.impl.SettingsScreen
 
 /**
@@ -73,6 +74,7 @@ fun GrayjayNavGraph(
         is NavDestination.Comments -> PlaceholderScreen("Comments", "Coming soon")
         is NavDestination.Suggestions -> PlaceholderScreen("Suggestions", "Coming soon")
         is NavDestination.SettingsFragment -> PlaceholderScreen("Settings", "Coming soon")
+        is NavDestination.PluginBrowser -> PluginBrowserScene()
         is NavDestination.TestCompose -> PlaceholderScreen("Test Compose", "Coming soon")
     }
 }

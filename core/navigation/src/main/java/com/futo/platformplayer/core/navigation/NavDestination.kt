@@ -52,5 +52,6 @@ sealed class NavDestination {
     data class Comments(val url: String) : NavDestination()
     data object Suggestions : NavDestination()
     data class SettingsFragment(val category: String) : NavDestination()
+    data object PluginBrowser : NavDestination()
     data object TestCompose : NavDestination()
 }
