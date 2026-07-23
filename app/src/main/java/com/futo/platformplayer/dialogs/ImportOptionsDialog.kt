@@ -97,7 +97,8 @@ class ImportOptionsDialog: AlertDialog {
         };
         _button_import_platform.onClick.subscribe  {
             dismiss();
-            _context.navigate(_context.getFragment<SourcesFragment>());
+            val fragment = _context.getFragment<SourcesFragment>()
+            fragment?.let { _context.navigate(it) }
         };
         _button_close.setOnClickListener {
             dismiss();

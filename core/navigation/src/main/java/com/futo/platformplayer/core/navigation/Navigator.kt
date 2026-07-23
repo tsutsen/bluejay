@@ -1,11 +1,6 @@
 package com.futo.platformplayer.core.navigation
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.navigation3.runtime.NavController
-import androidx.navigation3.runtime.NavEntry
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.navController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +8,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Hilt singleton navigator wrapping the NavHostController.
+ * Hilt singleton navigator.
  * Provides type-safe navigation methods for all destinations.
  */
 @Singleton
@@ -23,10 +18,30 @@ class Navigator @Inject constructor() {
     private val _currentRoute = MutableStateFlow<NavDestination?>(null)
     val currentRoute: StateFlow<NavDestination?> = _currentRoute.asStateFlow()
 
-    private var controller: NavController? = null
+    private var onNavigate: ((NavDestination) -> Unit)? = null
+    private var onBack: (() -> Boolean)? = null
 
-    fun setController(navController: NavController) {
-        controller = navController
+    fun setOnNavigate(action: (NavDestination) -> Unit) {
+        onNavigate = action
+    }
+
+    fun setOnBack(action: () -> Boolean) {
+        onBack = action
+    }
+
+    /**
+     * Update the current route from external sources.
+     */
+    fun updateCurrentRoute(route: String) {
+        _currentRoute.value = when {
+            route == "home" -> NavDestination.Home
+            route == "search" -> NavDestination.Search
+            route == "subscriptions" -> NavDestination.Subscriptions
+            route == "library" -> NavDestination.Library
+            route == "notifications" -> NavDestination.Notifications
+            route == "settings" -> NavDestination.Settings
+            else -> null
+        }
     }
 
     // Top-level navigation
@@ -79,16 +94,15 @@ class Navigator @Inject constructor() {
 
     // Generic navigation
     fun navigate(destination: NavDestination) {
-        controller?.navigate {
-            _currentRoute.value = destination
-        }
+        onNavigate?.invoke(destination)
     }
 
     fun goBack(): Boolean {
-        return controller?.goBack() ?: false
+        return onBack?.invoke() ?: false
     }
 
     fun popToRoot() {
-        controller?.popBackStack()
+        // Pop to root by navigating to home
+        navigateHome()
     }
 }

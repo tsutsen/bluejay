@@ -190,8 +190,10 @@ class ContentSearchResultsFragment : MainFragment() {
                                 val url = it;
                                 activity?.let {
                                     close()
-                                    if(it is MainActivity)
-                                        it.navigate(it.getFragment<VideoDetailFragment>(), url);
+                                    if(it is MainActivity) {
+                                        val fragment = it.getFragment<VideoDetailFragment>()
+                                        fragment?.let { f -> it.navigate(f, url) }
+                                    }
                                 }
                             }
                         }

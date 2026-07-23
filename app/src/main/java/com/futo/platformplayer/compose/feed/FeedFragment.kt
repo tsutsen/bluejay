@@ -101,7 +101,7 @@ class FeedFragment : MainFragment() {
                 when (content) {
                     is IPlatformVideo -> {
                         // Use MainActivity.navigate() which handles container visibility and maximization
-                        ma.navigate(ma._fragVideoDetail, content, true, false)
+                        ma._fragVideoDetail?.let { ma.navigate(it, content, true, false) }
                     }
                     is IPlatformPlaylist -> {
                         ma.navigate(RemotePlaylistFragment.newInstance(), content, true, false)

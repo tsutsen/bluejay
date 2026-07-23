@@ -6,8 +6,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.navigation3.runtime.NavBackStackEntry
-import androidx.navigation3.runtime.NavKey
 
 /**
  * Tracks the current navigation state for the app chrome.
@@ -16,21 +14,14 @@ import androidx.navigation3.runtime.NavKey
 @Stable
 class NavigationState {
 
-    var topLevelRoute: NavKey? by mutableStateOf(null)
+    var topLevelRoute: NavDestination? by mutableStateOf(null)
         internal set
 
-    var currentBackStack: NavBackStackEntry? by mutableStateOf(null)
+    var startRoute: NavDestination = NavDestination.Home
         internal set
 
-    var startRoute: NavKey = NavDestination.Home
-        internal set
-
-    fun updateRoute(route: NavKey) {
+    fun updateRoute(route: NavDestination) {
         topLevelRoute = route
-    }
-
-    fun updateBackStack(entry: NavBackStackEntry?) {
-        currentBackStack = entry
     }
 }
 

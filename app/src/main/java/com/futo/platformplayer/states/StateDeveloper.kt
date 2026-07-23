@@ -182,7 +182,7 @@ class StateDeveloper {
                 pager.getResults()[pagerIndex];
 
             StateApp.instance.scope.launch(Dispatchers.Main) {
-                mainActivity.navigate(mainActivity._fragVideoDetail, video);
+                mainActivity._fragVideoDetail?.let { mainActivity.navigate(it, video) };
             }
         }
     }

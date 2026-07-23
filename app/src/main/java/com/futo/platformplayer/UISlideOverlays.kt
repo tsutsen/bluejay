@@ -338,7 +338,7 @@ class UISlideOverlays {
                                             UIDialogs.Action("Cancel", {}),
                                             UIDialogs.Action("Configure", {
                                                 StateApp.instance.activity?.let {
-                                                    it.navigate(it.getFragment<SettingsFragment>(), mainContext.getString(R.string.background_update))
+                                                    it.getFragment<SettingsFragment>()?.let { f -> it.navigate(f, mainContext.getString(R.string.background_update)) }
                                                 }
                                             }, UIDialogs.ActionStyle.PRIMARY)
                                         );
@@ -1123,7 +1123,7 @@ class UISlideOverlays {
                                 if(initialChannel.thumbnail != null)
                                     subGroup.image = ImageVariable(initialChannel.thumbnail);
                             }
-                            it.navigate(it.getFragment<SubscriptionGroupFragment>(), subGroup);
+                            it.getFragment<SubscriptionGroupFragment>()?.let { f -> it.navigate(f, subGroup) };
                         }
                     }
                 }

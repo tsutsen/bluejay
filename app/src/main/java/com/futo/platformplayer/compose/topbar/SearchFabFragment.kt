@@ -95,7 +95,7 @@ class SearchFabFragment : Fragment() {
 
     private fun openSearch() {
         val activity = activity as? com.futo.platformplayer.activities.MainActivity ?: return
-        val current = activity.fragCurrent
+        val current = activity.fragCurrent ?: return
         when {
             current is CreatorsFragment -> {
                 activity.navigate(SuggestionsFragment(), SuggestionsFragmentData("", SearchType.CREATOR))

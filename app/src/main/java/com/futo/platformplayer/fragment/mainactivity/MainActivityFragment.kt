@@ -10,7 +10,7 @@ open class MainActivityFragment : Fragment() {
         get() {
         isValidMainActivity();
         return when (activity) {
-            is MainActivity -> (activity as MainActivity).fragCurrent
+            is MainActivity -> (activity as MainActivity).fragCurrent as? MainFragment
             is androidx.fragment.app.FragmentActivity -> {
                 // In PlatformPlayerActivity, get current fragment from supportFragmentManager
                 val fragmentManager = (activity as androidx.fragment.app.FragmentActivity).supportFragmentManager
@@ -45,7 +45,7 @@ open class MainActivityFragment : Fragment() {
     fun navigateTab(frag: MainFragment, parameter: Any? = null) {
         val a = activity
         if (a is MainActivity)
-            a.navigateTab(frag, parameter)
+            a.navigateTab(frag.javaClass as Class<out Fragment>, parameter)
         else
             Log.d(TAG, "navigateTab not supported in PlatformPlayerActivity")
     }
@@ -60,6 +60,7 @@ open class MainActivityFragment : Fragment() {
         isValidMainActivity();
         return when (activity) {
             is MainActivity -> (activity as MainActivity).getFragment<T>()
+                ?: throw java.lang.IllegalStateException("Fragment ${T::class.java.simpleName} not found")
             is androidx.fragment.app.FragmentActivity -> {
                 val fragmentManager = (activity as androidx.fragment.app.FragmentActivity).supportFragmentManager
                 fragmentManager.findFragmentByTag(T::class.java.simpleName) as? T

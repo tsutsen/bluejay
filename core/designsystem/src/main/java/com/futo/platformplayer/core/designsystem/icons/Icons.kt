@@ -38,7 +38,6 @@ object GrayjayIcons {
     val BrightnessHigh: ImageVector get() = Icons.Filled.BrightnessHigh
     val BrightnessLow: ImageVector get() = Icons.Filled.BrightnessLow
     val Speed: ImageVector get() = Icons.Filled.Speed
-    val QualityHigh: ImageVector get() = Icons.Filled.QualityHigh
     val Close: ImageVector get() = Icons.Filled.Close
     val MoreVert: ImageVector get() = Icons.Filled.MoreVert
     val MoreHoriz: ImageVector get() = Icons.Filled.MoreHoriz
@@ -71,7 +70,7 @@ object GrayjayIcons {
     val Visibility: ImageVector get() = Icons.Filled.Visibility
     val VisibilityOff: ImageVector get() = Icons.Filled.VisibilityOff
     val Lock: ImageVector get() = Icons.Filled.Lock
-    val Unlock: ImageVector get() = Icons.Filled.Unlock
+    val Unlock: ImageVector get() = Icons.Filled.LockOpen
     val Palette: ImageVector get() = Icons.Filled.Palette
     val DarkMode: ImageVector get() = Icons.Filled.DarkMode
     val LightMode: ImageVector get() = Icons.Filled.LightMode
@@ -89,12 +88,11 @@ object GrayjayIcons {
     val castConnected: ImageVector get() = Icons.Filled.CastConnected
     val QueuePlayNext: ImageVector get() = Icons.Filled.QueuePlayNext
     val PlaylistAdd: ImageVector get() = Icons.Filled.PlaylistAdd
-    val History: ImageVector get() = Icons.AutoMirrored.Filled.History
+    val History: ImageVector get() = Icons.Filled.History
     val Menu: ImageVector get() = Icons.Filled.Menu
     val Dashboard: ImageVector get() = Icons.Filled.Dashboard
     val Analytics: ImageVector get() = Icons.Filled.Analytics
     val Code: ImageVector get() = Icons.Filled.Code
     val Extension: ImageVector get() = Icons.Filled.Extension
     val Help: ImageVector get() = Icons.Filled.Help
-    val GitHub: ImageVector get() = Icons.Filled.GitHub
 }

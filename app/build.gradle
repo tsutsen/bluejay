@@ -1,14 +1,13 @@
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.android' version '2.2.21'
     id 'org.jetbrains.kotlin.plugin.serialization' version '2.2.21'
     id 'org.jetbrains.kotlin.plugin.compose' version '2.2.21'
     id 'org.ajoberstar.grgit' version '5.3.3'
     id 'com.google.protobuf'
     id 'kotlin-parcelize'
+    id 'com.google.dagger.hilt.android' version '2.58'
     id 'com.google.devtools.ksp'
-    id 'com.google.dagger.hilt.android' version '2.48'
-    kotlin('kapt') version '2.2.21'
 }
 
 ext {
@@ -162,8 +161,18 @@ dependencies {
     implementation 'com.google.android.material:material:1.13.0'
 
     //Hilt Dependency Injection
-    implementation 'com.google.dagger:hilt-android:2.48'
-    kapt 'com.google.dagger:hilt-android-compiler:2.48'
+    implementation 'com.google.dagger:hilt-android:2.58'
+    ksp 'com.google.dagger:hilt-android-compiler:2.58'
+
+    //Core Modules
+    implementation project(':core:model')
+    implementation project(':core:data')
+    implementation project(':core:datastore')
+    implementation project(':core:database')
+    implementation project(':core:designsystem')
+    implementation project(':core:navigation')
+    implementation project(':core:ui')
+    implementation project(':feature:dualscreen')
 
     //Core
     implementation 'androidx.core:core-ktx:1.17.0'

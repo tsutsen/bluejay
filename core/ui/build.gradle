@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.plugin.compose'
+    id 'org.jetbrains.kotlin.android' version '2.2.21'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.2.21'
 }
 
 android {
@@ -37,6 +37,7 @@ dependencies {
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.compose.runtime:runtime'
     implementation 'androidx.compose.animation:animation'
+    implementation 'androidx.compose.material3:material3'
     implementation 'io.coil-kt:coil-compose:2.7.0'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 }

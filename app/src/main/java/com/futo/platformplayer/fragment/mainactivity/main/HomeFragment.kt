@@ -210,7 +210,7 @@ class HomeFragment : MainFragment() {
                                 StateApp.instance.contextOrNull?.let {
                                     if(it is MainActivity) {
                                         runBlocking {
-                                            it.handleUrlAll(req.url.toString());
+                                            it.handleUrlAll(listOf(req.url.toString()));
                                         }
                                     }
                                 };

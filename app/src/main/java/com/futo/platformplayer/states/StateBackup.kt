@@ -576,7 +576,7 @@ class StateBackup {
         fun importTxt(context: MainActivity, text: String, allowFailure: Boolean = false): Boolean {
             if(text.startsWith("@/Subscription") || text.startsWith("Subscriptions")) {
                 val lines = text.split("\n").map { it.trim() }.drop(1).filter { it.isNotEmpty() };
-                context.navigate(context.getFragment<ImportSubscriptionsFragment>(), lines);
+                context.getFragment<ImportSubscriptionsFragment>()?.let { context.navigate(it, lines) };
                 return true;
             }
             else if(allowFailure) {
@@ -605,7 +605,7 @@ class StateBackup {
                         subs.add(jsonSubObj["url"].asString);
                 }
 
-                context.navigate(context.getFragment<ImportSubscriptionsFragment>(), subs);
+                context.getFragment<ImportSubscriptionsFragment>()?.let { context.navigate(it, subs) };
             }
             catch(ex: Exception) {
                 Logger.e("StateBackup", ex.message, ex);

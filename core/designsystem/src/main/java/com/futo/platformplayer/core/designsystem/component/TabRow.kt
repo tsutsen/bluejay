@@ -1,8 +1,8 @@
 package com.futo.platformplayer.core.designsystem.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -31,9 +31,13 @@ fun GrayjayTabRow(
         contentColor = MaterialTheme.colorScheme.onSurface,
         indicator = { tabPositions ->
             if (selectedTabIndex in tabPositions.indices) {
-                TabRowDefaults.Indicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                    color = MaterialTheme.colorScheme.primary
+                val selectedTabPosition = tabPositions[selectedTabIndex]
+                Box(
+                    modifier = Modifier
+                        .offset(x = selectedTabPosition.left)
+                        .fillMaxHeight()
+                        .width(selectedTabPosition.right - selectedTabPosition.left)
+                        .background(MaterialTheme.colorScheme.primary)
                 )
             }
         }
@@ -43,7 +47,6 @@ fun GrayjayTabRow(
                 selected = index == selectedTabIndex,
                 onClick = {
                     onTabSelected(index)
-                    // Scroll tab into view
                     scope.launch {
                         listState.animateScrollToItem(index)
                     }

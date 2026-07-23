@@ -12,11 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.futo.platformplayer.core.model.VideoCard
+import com.futo.platformplayer.core.ui.AsyncImage
 
 /**
  * Standard 16:9 video card with thumbnail, title, and metadata.
@@ -27,6 +28,12 @@ fun VideoCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val title = card.title
+    val author = card.author
+    val viewCount = card.viewCount
+    val durationMs = card.durationMs
+    val thumbnailUrl = card.thumbnailUrl
+
     Card(
         modifier = modifier
             .width(320.dp)
@@ -37,8 +44,8 @@ fun VideoCard(
         Column {
             // Thumbnail
             AsyncImage(
-                model = card.thumbnailUrl,
-                contentDescription = card.title,
+                url = thumbnailUrl,
+                contentDescription = title,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
@@ -53,14 +60,14 @@ fun VideoCard(
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = card.title,
+                    text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (card.author != null) {
+                if (author != null) {
                     Text(
-                        text = card.author,
+                        text = author,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -74,16 +81,16 @@ fun VideoCard(
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    if (card.viewCount != null) {
+                    if (viewCount != null) {
                         Text(
-                            text = formatViewCount(card.viewCount),
+                            text = formatViewCount(viewCount),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    if (card.durationMs != null) {
+                    if (durationMs != null) {
                         Text(
-                            text = formatDuration(card.durationMs),
+                            text = formatDuration(durationMs),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -103,6 +110,10 @@ fun CompactVideoCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val title = card.title
+    val author = card.author
+    val thumbnailUrl = card.thumbnailUrl
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -112,8 +123,8 @@ fun CompactVideoCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
-            model = card.thumbnailUrl,
-            contentDescription = card.title,
+            url = thumbnailUrl,
+            contentDescription = title,
             modifier = Modifier
                 .size(128.dp, 72.dp)
                 .clip(RoundedCornerShape(8.dp)),
@@ -125,14 +136,14 @@ fun CompactVideoCard(
                 .weight(1f)
         ) {
             Text(
-                text = card.title,
+                text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            if (card.author != null) {
+            if (author != null) {
                 Text(
-                    text = card.author,
+                    text = author,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

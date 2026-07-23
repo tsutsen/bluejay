@@ -35,7 +35,7 @@ class BottomBarFragment : Fragment() {
                     val ma = activity as? MainActivity ?: return@MaterialTheme
                     val currentFragment by produceState<MainFragment?>(initialValue = null, ma) {
                         while (true) {
-                            value = ma.fragCurrent
+                            value = ma.fragCurrent as? MainFragment
                             kotlinx.coroutines.delay(100)
                         }
                     }
@@ -75,10 +75,10 @@ class BottomBarFragment : Fragment() {
 
     private fun navigateToTab(tabId: Int, ma: MainActivity) {
         when (tabId) {
-            0 -> ma.navigate(ma._fragMainHome as com.futo.platformplayer.fragment.mainactivity.main.MainFragment, null, true, false)
-            1 -> ma.navigate(ma._fragMainSubscriptionsFeed, null, true, false)
-            2 -> ma.navigate(ma._fragMainPlaylists, null, true, false)
-            3 -> ma.navigate(ma._fragSettingsHub, null, true, false)
+            0 -> ma._fragMainHome?.let { ma.navigate(it as com.futo.platformplayer.fragment.mainactivity.main.MainFragment, null, true, false) }
+            1 -> ma._fragMainSubscriptionsFeed?.let { ma.navigate(it, null, true, false) }
+            2 -> ma._fragMainPlaylists?.let { ma.navigate(it, null, true, false) }
+            3 -> ma._fragMainSettingsHub?.let { ma.navigate(it, null, true, false) }
         }
     }
 

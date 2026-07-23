@@ -1,9 +1,11 @@
 package com.futo.platformplayer.di
 
+import android.content.Context
 import com.futo.platformplayer.feature.dualscreen.CompanionWindowManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -13,7 +15,7 @@ object DualScreenModule {
 
     @Provides
     @Singleton
-    fun provideCompanionWindowManager(): CompanionWindowManager {
-        return CompanionWindowManager()
+    fun provideCompanionWindowManager(@ApplicationContext context: Context): CompanionWindowManager {
+        return CompanionWindowManager(context)
     }
 }

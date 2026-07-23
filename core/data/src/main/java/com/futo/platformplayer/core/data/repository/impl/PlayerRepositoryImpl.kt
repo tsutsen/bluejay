@@ -6,7 +6,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.futo.platformplayer.core.data.repository.PlayerRepository
 import com.futo.platformplayer.core.model.ContentItem
 import com.futo.platformplayer.core.model.PlayerState
-import com.futo.platformplayer.states.StatePlayer
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,8 +15,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * PlayerRepository implementation that bridges to the legacy StatePlayer engine.
- * This is a temporary bridge — Phase 8 will replace this with direct ExoPlayer usage.
+ * PlayerRepository implementation.
+ * TODO: Phase 4 - Replace with direct ExoPlayer usage.
  */
 @Singleton
 class PlayerRepositoryImpl @Inject constructor(
@@ -28,25 +27,6 @@ class PlayerRepositoryImpl @Inject constructor(
     override val playerState: StateFlow<PlayerState> = _playerState.asStateFlow()
 
     private var exoPlayer: ExoPlayer? = null
-
-    init {
-        // Initialize ExoPlayer through StatePlayer bridge
-        try {
-            val statePlayer = StatePlayer.instance
-            exoPlayer = statePlayer.player
-            observePlayerState()
-        } catch (e: Exception) {
-            // StatePlayer not available yet — will be wired in Phase 4
-            android.util.Log.w("PlayerRepo", "StatePlayer not available: ${e.message}")
-        }
-    }
-
-    private fun observePlayerState() {
-        exoPlayer?.let { player ->
-            // Observe player state changes and update StateFlow
-            // This is a simplified bridge — full implementation in Phase 4
-        }
-    }
 
     override suspend fun play(videoId: String) {
         _playerState.update { it.copy(isPlaying = true, currentVideo = ContentItem(
@@ -80,7 +60,7 @@ class PlayerRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setVideoQuality(quality: String) {
-        // Bridge to StatePlayer quality selection
+        // TODO: Implement
     }
 
     override suspend fun toggleFullscreen() {
