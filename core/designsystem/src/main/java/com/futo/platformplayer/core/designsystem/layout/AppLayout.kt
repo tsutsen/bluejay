@@ -122,12 +122,10 @@ fun AppNavigationBar(
 @Composable
 fun AppNavigationChrome(
     currentDestination: String?,
-    onTabSelected: (String) -> Unit
+    onTabSelected: (String) -> Unit,
+    isWide: Boolean = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
+                  currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 ) {
-    val adaptiveInfo = currentWindowAdaptiveInfo()
-    val isWide = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
-                  adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
-
     if (isWide) {
         AppNavigationRail(
             items = grayjayNavItems,

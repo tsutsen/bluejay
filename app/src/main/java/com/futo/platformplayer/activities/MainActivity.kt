@@ -273,7 +273,8 @@ private fun GrayjayMainActivity(
                         "settings" -> navigator.navigateSettings()
                         "plugins" -> navigator.navigateToPluginBrowser()
                     }
-                }
+                },
+                isWide = config.isWide
             )
         },
         content = {
