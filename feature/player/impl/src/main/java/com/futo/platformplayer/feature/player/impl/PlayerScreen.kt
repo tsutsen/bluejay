@@ -211,8 +211,7 @@ fun PlayerScreen(
                         showBottomOverlay = !showBottomOverlay
                     },
                     onBrightnessChange = { delta ->
-                        // Dragging up (negative delta) should increase brightness
-                        brightnessValue = (brightnessValue - delta).coerceIn(0f, 1f)
+                        brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
                         viewModel.setBrightness(brightnessValue)
                         showBrightnessIndicator = true
                         coroutineScope.launch {
@@ -221,8 +220,7 @@ fun PlayerScreen(
                         }
                     },
                     onVolumeChange = { delta ->
-                        // Dragging up (negative delta) should increase volume
-                        volumeValue = (volumeValue - delta).coerceIn(0f, 1f)
+                        volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
                         viewModel.setVolume(volumeValue)
                         showVolumeIndicator = true
                         coroutineScope.launch {
@@ -589,13 +587,14 @@ private fun GestureHandler(
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->
+                        val delta = -dragAmount / 500f
                         // Left half: brightness
                         if (isLeftSide) {
-                            onBrightnessChange(dragAmount / 500f)
+                            onBrightnessChange(delta)
                         }
                         // Right half: volume
                         else {
-                            onVolumeChange(-dragAmount / 500f)
+                            onVolumeChange(delta)
                         }
                     },
                     onDragStart = { isLeftSide = it.x < size.width / 2 }
