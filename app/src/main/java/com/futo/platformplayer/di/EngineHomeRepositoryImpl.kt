@@ -15,7 +15,9 @@ import com.futo.platformplayer.core.model.PlaylistCard
 import com.futo.platformplayer.core.model.PostCard
 import com.futo.platformplayer.core.model.VideoCard
 import com.futo.platformplayer.logging.Logger
+import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePlatform
+import com.futo.platformplayer.states.StatePlugins
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +44,18 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
     override suspend fun loadInitial() {
         Logger.i("EngineHomeRepository", "loadInitial")
         _feed.update { it.copy(isLoading = true, error = null) }
+
+        // Ensure plugins are initialized before loading feed
+        try {
+            val context = StateApp.instance.contextOrNull
+            if (context != null) {
+                StatePlugins.instance.updateEmbeddedPlugins(context)
+                StatePlugins.instance.installMissingEmbeddedPlugins(context)
+                StatePlatform.instance.updateAvailableClients(context)
+            }
+        } catch (e: Exception) {
+            Logger.w("EngineHomeRepository", "Plugin initialization failed", e)
+        }
 
         try {
             val pager = StatePlatform.instance.getHomeRefresh(CoroutineScope(Dispatchers.IO))
