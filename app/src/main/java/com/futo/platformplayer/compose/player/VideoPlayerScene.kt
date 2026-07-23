@@ -291,15 +291,6 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    // Full video player with collapse button (top-left) and swipe-down
-                    // When mini player is active, hide the video player but keep screen content visible
-                    if (!MiniPlayerState.isMiniPlayerActive) {
-                        FullVideoPlayerView(
-                            exoPlayer = exoPlayer,
-                            video = video
-                        )
-                    }
-
                     // Title
                     Text(
                         text = video.name,
@@ -318,6 +309,15 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         selectedTabIndex = selectedTabIndex,
                         onTabSelected = { selectedTabIndex = it }
                     )
+
+                    // Full video player with collapse button (top-left) and swipe-down
+                    // Only show when mini player is NOT active
+                    if (!MiniPlayerState.isMiniPlayerActive) {
+                        FullVideoPlayerView(
+                            exoPlayer = exoPlayer,
+                            video = video
+                        )
+                    }
                 }
             }
         }
@@ -333,8 +333,6 @@ private fun FullVideoPlayerView(
     exoPlayer: ExoPlayer,
     video: IPlatformVideoDetails
 ) {
-    // When mini player is active, this composable returns nothing
-    if (MiniPlayerState.isMiniPlayerActive) return
     var swipeTriggered by remember { mutableFloatStateOf(0f) }
     val context = LocalContext.current
     
