@@ -143,7 +143,8 @@ fun PlayerScreen(
                 AnimatedVisibility(
                     visible = showBottomOverlay,
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                    modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
                     BottomOverlay(
                         currentPositionMs = state.currentPositionMs,
