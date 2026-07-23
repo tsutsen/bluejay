@@ -589,7 +589,7 @@ private fun GestureHandler(
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->
-                        val delta = dragAmount / 500f
+                        val delta = -dragAmount / 500f
                         // Left half: brightness
                         if (isLeftSide) {
                             onBrightnessChange(delta)
