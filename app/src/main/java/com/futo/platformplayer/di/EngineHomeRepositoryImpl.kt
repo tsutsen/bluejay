@@ -77,17 +77,23 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
 
         try {
             val pager = _lastPager ?: return
+            Logger.i("EngineHomeRepository", "hasMorePages=${pager.hasMorePages()}, currentResults=${pager.getResults().size}")
             if (!pager.hasMorePages()) {
+                Logger.i("EngineHomeRepository", "No more pages, returning")
                 _feed.update { it.copy(isLoading = false) }
                 return
             }
 
+            Logger.i("EngineHomeRepository", "Calling nextPage()...")
             pager.nextPage()
-            val items = convertToCards(pager.getResults())
+            val newItems = convertToCards(pager.getResults())
+            val previousItems = _feed.value.items
+            val accumulatedItems = previousItems + newItems
+            Logger.i("EngineHomeRepository", "Got ${newItems.size} new items, ${accumulatedItems.size} total, hasMore=${pager.hasMorePages()}")
             _feed.update {
                 it.copy(
                     isLoading = false,
-                    items = it.items + items,
+                    items = accumulatedItems,
                     hasMorePages = pager.hasMorePages(),
                     error = null,
                     currentPage = it.currentPage + 1

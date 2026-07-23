@@ -54,19 +54,16 @@ fun VideoContainer(
     when (layoutMode) {
         LayoutMode.List -> {
             val listState = rememberLazyListState()
-            var hasReachedEnd by remember { mutableStateOf(false) }
+            var isLoading by remember { mutableStateOf(false) }
 
-            LaunchedEffect(items.size) {
-                hasReachedEnd = false
-            }
-
-            LaunchedEffect(listState, items.size) {
-                listState.layoutInfo.visibleItemsInfo.forEachIndexed { index: Int, item ->
-                    if (index == item.index && item.index == listState.layoutInfo.totalItemsCount - 1) {
-                        if (!hasReachedEnd) {
-                            hasReachedEnd = true
-                            onEndReached()
-                        }
+            LaunchedEffect(listState.isScrollInProgress, items.size) {
+                if (listState.isScrollInProgress) {
+                    val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    val totalItems = listState.layoutInfo.totalItemsCount
+                    if (lastVisibleIndex == totalItems - 1 && totalItems > 0 && !isLoading) {
+                        isLoading = true
+                        onEndReached()
+                        isLoading = false
                     }
                 }
             }
@@ -98,19 +95,16 @@ fun VideoContainer(
         }
         LayoutMode.Grid -> {
             val gridState = rememberLazyGridState()
-            var hasReachedEnd by remember { mutableStateOf(false) }
+            var isLoading by remember { mutableStateOf(false) }
 
-            LaunchedEffect(items.size) {
-                hasReachedEnd = false
-            }
-
-            LaunchedEffect(gridState, items.size) {
-                gridState.layoutInfo.visibleItemsInfo.forEachIndexed { index: Int, item ->
-                    if (index == item.index && item.index == gridState.layoutInfo.totalItemsCount - 1) {
-                        if (!hasReachedEnd) {
-                            hasReachedEnd = true
-                            onEndReached()
-                        }
+            LaunchedEffect(gridState.isScrollInProgress, items.size) {
+                if (gridState.isScrollInProgress) {
+                    val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                    val totalItems = gridState.layoutInfo.totalItemsCount
+                    if (lastVisibleIndex == totalItems - 1 && totalItems > 0 && !isLoading) {
+                        isLoading = true
+                        onEndReached()
+                        isLoading = false
                     }
                 }
             }
