@@ -466,6 +466,7 @@ private fun BrightnessIndicator(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(brightness)
+                    .align(Alignment.BottomCenter)
                     .background(Color.White)
             )
         }
@@ -504,6 +505,7 @@ private fun VolumeIndicator(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(volume)
+                    .align(Alignment.BottomCenter)
                     .background(Color.White)
             )
         }
@@ -587,7 +589,7 @@ private fun GestureHandler(
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->
-                        val delta = -dragAmount / 500f
+                        val delta = dragAmount / 500f
                         // Left half: brightness
                         if (isLeftSide) {
                             onBrightnessChange(delta)
