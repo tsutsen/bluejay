@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -85,6 +86,18 @@ fun PlayerScreen(
             VideoCardSkeleton(count = 1)
         }
         is PlayerUiState.Loaded -> {
+            val context = LocalContext.current
+            val player = remember { ExoPlayer.Builder(context).build() }
+            LaunchedEffect(state.currentVideo) {
+                if (state.currentVideo != null) {
+                    player.setMediaItem(
+                        MediaItem.fromUri(state.currentVideo!!.url)
+                    )
+                    player.prepare()
+                    player.playWhenReady = true
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -92,10 +105,10 @@ fun PlayerScreen(
             ) {
                 // ExoPlayer view
                 AndroidView(
-                    factory = { context ->
-                        PlayerView(context).apply {
-                            player = ExoPlayer.Builder(context).build()
-                            useController = false // We'll implement our own controls
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            this.player = player
+                            useController = false
                             layoutParams = ViewGroup.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.MATCH_PARENT
