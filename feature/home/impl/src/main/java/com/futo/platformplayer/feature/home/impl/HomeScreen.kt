@@ -4,10 +4,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -65,7 +70,8 @@ fun HomeScreen(
                     onCardClick = { card ->
                         if (card is VideoCard) navigator.navigateToVideo(card.url)
                     },
-                    onLoadMore = { viewModel.loadNextPage() }
+                    onLoadMore = { viewModel.loadNextPage() },
+                    onRefresh = { viewModel.refresh() }
                 )
             }
         }
@@ -90,39 +96,52 @@ private fun HomeFeedContent(
     isWide: Boolean,
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val layoutMode = if (isWide) LayoutMode.Grid else LayoutMode.List
     val columns = if (isWide) 3 else 1
+    var isRefreshing by remember { mutableStateOf(false) }
+    val refreshingState = rememberPullToRefreshState()
 
     Box(modifier = modifier.fillMaxSize()) {
-        VideoContainer(
-            items = cards,
-            layoutMode = layoutMode,
-            columns = columns,
-            onCardClick = onCardClick,
-            onEndReached = {
-                if (!isLoading && hasMorePages) {
-                    onLoadMore()
-                }
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            state = refreshingState,
+            onRefresh = {
+                isRefreshing = true
+                onRefresh()
             },
-            modifier = Modifier.fillMaxSize()
-        ) { card ->
-            VideoCard(
-                card = card as VideoCard,
-                onClick = { onCardClick(card) }
-            )
-        }
+            content = {
+                VideoContainer(
+                    items = cards,
+                    layoutMode = layoutMode,
+                    columns = columns,
+                    onCardClick = onCardClick,
+                    onEndReached = {
+                        if (!isLoading && hasMorePages) {
+                            onLoadMore()
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                ) { card ->
+                    VideoCard(
+                        card = card as VideoCard,
+                        onClick = { onCardClick(card) }
+                    )
+                }
 
-        // Show loading indicator at bottom when loading more pages
-        if (isLoading && hasMorePages && cards.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                // Could add a circular progress indicator here
+                // Show loading indicator at bottom when loading more pages
+                if (isLoading && hasMorePages && cards.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        // Could add a circular progress indicator here
+                    }
+                }
             }
-        }
+        )
     }
 }
