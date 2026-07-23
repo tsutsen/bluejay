@@ -158,7 +158,8 @@
         <activity
             android:name=".compose.navigation.PlatformPlayerActivity"
             android:theme="@style/Theme.FutoVideo.NoActionBar"
-            android:exported="true">
+            android:exported="true"
+            android:supportsPictureInPicture="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

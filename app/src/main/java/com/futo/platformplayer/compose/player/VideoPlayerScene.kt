@@ -5,15 +5,17 @@
  * Features:
  *   - Full video player with title, channel info, and tab bar
  *   - Collapse button top-left inside player
- *   - Swipe down to collapse player
- *   - Mini player persists when navigating to other tabs
- *   - Video continues playing in background when minimized
+ *   - Swipe down to enter PiP mode (Picture-in-Picture)
+ *   - Big video hides when in PiP mode
  *   - Merges video and audio sources like FutoVideoPlayer does
  */
 
 package com.futo.platformplayer.compose.player
 
+import android.app.PictureInPictureParams
+import android.content.pm.ActivityInfo
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -55,6 +57,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -91,9 +95,8 @@ import kotlinx.coroutines.withContext
  * Features:
  *   - Full video player with title, channel info, and tab bar
  *   - Collapse button top-left inside player
- *   - Swipe down to collapse player
- *   - Mini player persists when navigating to other tabs
- *   - Video continues playing in background when minimized
+ *   - Swipe down to enter PiP mode (Picture-in-Picture)
+ *   - Big video hides when in PiP mode
  *   - Uses modern ExoPlayer with media3-ui-compose
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -283,41 +286,38 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 }
             }
             
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                // Full video player with collapse button (top-left) and swipe-down
-                FullVideoPlayerView(
-                    exoPlayer = exoPlayer,
-                    video = video,
-                    onMinimize = {
-                        // Save position before minimizing
-                        MiniPlayerState.show(video, exoPlayer.currentPosition)
-                        // Pause the player when minimizing
-                        exoPlayer.pause()
-                    }
-                )
+            // Only show big video player if mini player is not active
+            if (!MiniPlayerState.isMiniPlayerActive) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    // Full video player with collapse button (top-left) and swipe-down
+                    FullVideoPlayerView(
+                        exoPlayer = exoPlayer,
+                        video = video
+                    )
 
-                // Title
-                Text(
-                    text = video.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                    // Title
+                    Text(
+                        text = video.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
 
-                // Channel row
-                ChannelRow(video = video)
+                    // Channel row
+                    ChannelRow(video = video)
 
-                // Tab bar
-                VideoPlayerTabs(
-                    videoUrl = video.url,
-                    selectedTabIndex = selectedTabIndex,
-                    onTabSelected = { selectedTabIndex = it }
-                )
+                    // Tab bar
+                    VideoPlayerTabs(
+                        videoUrl = video.url,
+                        selectedTabIndex = selectedTabIndex,
+                        onTabSelected = { selectedTabIndex = it }
+                    )
+                }
             }
         }
     }
@@ -325,19 +325,47 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 
 /**
  * Full video player view with collapse button (top-left) and swipe-down gesture.
+ * Uses PlayerView.
  */
 @Composable
 private fun FullVideoPlayerView(
     exoPlayer: ExoPlayer,
-    video: IPlatformVideoDetails,
-    onMinimize: () -> Unit
+    video: IPlatformVideoDetails
 ) {
+    var swipeTriggered by remember { mutableFloatStateOf(0f) }
+    val context = LocalContext.current
+    
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onVerticalDrag = { _, dragAmount ->
+                        swipeTriggered += dragAmount
+                        if (swipeTriggered > 200) {
+                            // Enter PiP mode
+                            val position = exoPlayer.currentPosition
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                val params = PictureInPictureParams.Builder()
+                                    .setAspectRatio(android.util.Rational(16, 9))
+                                    .build()
+                                (context as? android.app.Activity)?.setPictureInPictureParams(params)
+                            }
+                            (context as? android.app.Activity)?.enterPictureInPictureMode()
+                            MiniPlayerState.show(video, position)
+                            exoPlayer.pause()
+                            Log.d("VideoPlayer", "Entered PiP mode")
+                            swipeTriggered = 0f
+                        }
+                    },
+                    onDragEnd = {
+                        swipeTriggered = 0f
+                    }
+                )
+            }
     ) {
-        // Video player using modern ExoPlayer with PlayerView
+        // Video player using PlayerView
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -358,7 +386,18 @@ private fun FullVideoPlayerView(
             IconButton(
                 onClick = {
                     Log.d("VideoPlayer", "Minimize button clicked")
-                    onMinimize()
+                    // Enter PiP mode
+                    val position = exoPlayer.currentPosition
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val params = PictureInPictureParams.Builder()
+                            .setAspectRatio(android.util.Rational(16, 9))
+                            .build()
+                        (context as? android.app.Activity)?.setPictureInPictureParams(params)
+                    }
+                    (context as? android.app.Activity)?.enterPictureInPictureMode()
+                    MiniPlayerState.show(video, position)
+                    exoPlayer.pause()
+                    Log.d("VideoPlayer", "Entered PiP mode")
                 },
                 modifier = Modifier
                     .background(
@@ -373,24 +412,6 @@ private fun FullVideoPlayerView(
                 )
             }
         }
-
-        // Swipe down to collapse gesture - only on top portion of player
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .align(Alignment.TopCenter)
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onVerticalDrag = { _, dragAmount ->
-                            // Swipe down threshold: 200 pixels
-                            if (dragAmount > 200) {
-                                onMinimize()
-                            }
-                        }
-                    )
-                }
-        )
     }
 }
 
