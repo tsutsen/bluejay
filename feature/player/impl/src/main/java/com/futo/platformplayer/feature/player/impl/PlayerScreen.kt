@@ -160,26 +160,7 @@ fun PlayerScreen(
                     )
                 }
 
-                // Brightness Indicator (left side)
-                AnimatedVisibility(
-                    visible = showBrightnessIndicator,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(120.dp)
-                            .align(Alignment.CenterStart)
-                    ) {
-                        BrightnessIndicator(
-                            brightness = brightnessValue,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-                }
-
-                // Volume Indicator (right side)
+                // Volume Indicator (left side)
                 AnimatedVisibility(
                     visible = showVolumeIndicator,
                     enter = fadeIn(),
@@ -189,10 +170,29 @@ fun PlayerScreen(
                         modifier = Modifier
                             .fillMaxHeight()
                             .width(120.dp)
-                            .align(Alignment.CenterEnd)
+                            .align(Alignment.CenterStart)
                     ) {
                         VolumeIndicator(
                             volume = volumeValue,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                }
+
+                // Brightness Indicator (right side)
+                AnimatedVisibility(
+                    visible = showBrightnessIndicator,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(120.dp)
+                            .align(Alignment.CenterEnd)
+                    ) {
+                        BrightnessIndicator(
+                            brightness = brightnessValue,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
@@ -590,13 +590,13 @@ private fun GestureHandler(
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->
                         val delta = -dragAmount / 500f
-                        // Left half: brightness
+                        // Left half: volume
                         if (isLeftSide) {
-                            onBrightnessChange(delta)
-                        }
-                        // Right half: volume
-                        else {
                             onVolumeChange(delta)
+                        }
+                        // Right half: brightness
+                        else {
+                            onBrightnessChange(delta)
                         }
                     },
                     onDragStart = { isLeftSide = it.x < size.width / 2 }
