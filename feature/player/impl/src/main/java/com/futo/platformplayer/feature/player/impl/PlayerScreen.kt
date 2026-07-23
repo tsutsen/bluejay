@@ -160,32 +160,42 @@ fun PlayerScreen(
                     )
                 }
 
-                // Brightness Indicator
+                // Brightness Indicator (left side)
                 AnimatedVisibility(
                     visible = showBrightnessIndicator,
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
-                    BrightnessIndicator(
-                        brightness = brightnessValue,
+                    Box(
                         modifier = Modifier
+                            .fillMaxHeight()
+                            .width(120.dp)
                             .align(Alignment.CenterStart)
-                            .padding(start = 32.dp)
-                    )
+                    ) {
+                        BrightnessIndicator(
+                            brightness = brightnessValue,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
                 }
 
-                // Volume Indicator
+                // Volume Indicator (right side)
                 AnimatedVisibility(
                     visible = showVolumeIndicator,
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
-                    VolumeIndicator(
-                        volume = volumeValue,
+                    Box(
                         modifier = Modifier
+                            .fillMaxHeight()
+                            .width(120.dp)
                             .align(Alignment.CenterEnd)
-                            .padding(end = 32.dp)
-                    )
+                    ) {
+                        VolumeIndicator(
+                            volume = volumeValue,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
                 }
 
                 // Double-tap seek indicators
@@ -201,7 +211,8 @@ fun PlayerScreen(
                         showBottomOverlay = !showBottomOverlay
                     },
                     onBrightnessChange = { delta ->
-                        brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
+                        // Dragging up (negative delta) should increase brightness
+                        brightnessValue = (brightnessValue - delta).coerceIn(0f, 1f)
                         viewModel.setBrightness(brightnessValue)
                         showBrightnessIndicator = true
                         coroutineScope.launch {
@@ -210,7 +221,8 @@ fun PlayerScreen(
                         }
                     },
                     onVolumeChange = { delta ->
-                        volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
+                        // Dragging up (negative delta) should increase volume
+                        volumeValue = (volumeValue - delta).coerceIn(0f, 1f)
                         viewModel.setVolume(volumeValue)
                         showVolumeIndicator = true
                         coroutineScope.launch {
@@ -570,7 +582,7 @@ private fun GestureHandler(
     onDoubleTapLeft: () -> Unit,
     onDoubleTapRight: () -> Unit
 ) {
-    var touchX by remember { mutableStateOf(0f) }
+    var isLeftSide by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -578,7 +590,7 @@ private fun GestureHandler(
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->
                         // Left half: brightness
-                        if (touchX < size.width / 2) {
+                        if (isLeftSide) {
                             onBrightnessChange(dragAmount / 500f)
                         }
                         // Right half: volume
@@ -586,7 +598,7 @@ private fun GestureHandler(
                             onVolumeChange(-dragAmount / 500f)
                         }
                     },
-                    onDragStart = { touchX = it.x }
+                    onDragStart = { isLeftSide = it.x < size.width / 2 }
                 )
             }
             .pointerInput(Unit) {
