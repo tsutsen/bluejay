@@ -2,6 +2,8 @@ plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android' version '2.2.21'
     id 'org.jetbrains.kotlin.plugin.compose' version '2.2.21'
+    id 'com.google.dagger.hilt.android'
+    id 'com.google.devtools.ksp'
 }
 
 android {
@@ -41,6 +43,11 @@ dependencies {
     implementation 'androidx.compose.animation:animation'
     implementation 'androidx.compose.material3:material3'
     implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.compose.material3.adaptive:adaptive'
+    implementation 'androidx.compose.material3.adaptive:adaptive-layout'
+    implementation 'androidx.compose.material3.adaptive:adaptive-navigation'
+    implementation 'androidx.media3:media3-exoplayer:1.9.0'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.9.0'
     implementation 'androidx.media3:media3-ui-compose:1.9.0'
     implementation 'androidx.media3:media3-ui:1.9.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
@@ -48,4 +55,9 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose'
     implementation 'androidx.activity:activity-compose'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    
+    // Hilt
+    implementation 'com.google.dagger:hilt-android:2.58'
+    ksp 'com.google.dagger:hilt-android-compiler:2.58'
+    implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
 }

@@ -2,6 +2,8 @@ package com.futo.platformplayer.core.data.repository.impl
 
 import android.content.Context
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.futo.platformplayer.core.data.repository.PlayerRepository
 import com.futo.platformplayer.core.model.ContentItem
@@ -15,8 +17,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * PlayerRepository implementation.
- * TODO: Phase 4 - Replace with direct ExoPlayer usage.
+ * PlayerRepository implementation with actual ExoPlayer usage.
  */
 @Singleton
 class PlayerRepositoryImpl @Inject constructor(
@@ -28,39 +29,83 @@ class PlayerRepositoryImpl @Inject constructor(
 
     private var exoPlayer: ExoPlayer? = null
 
+    private val playerListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            _playerState.update { it.copy(isPlaying = isPlaying) }
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            _playerState.update { it.copy(currentPositionMs = newPosition.positionMs) }
+        }
+
+        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+            _playerState.update { it.copy(playbackSpeed = playbackParameters.speed) }
+        }
+    }
+
     override suspend fun play(videoId: String) {
-        _playerState.update { it.copy(isPlaying = true, currentVideo = ContentItem(
-            id = videoId, url = videoId, title = "Loading...", author = null,
-            thumbnailUrl = null, contentType = com.futo.platformplayer.core.model.ContentType.VIDEO
-        )) }
+        if (exoPlayer == null) {
+            exoPlayer = ExoPlayer.Builder(context).build()
+            exoPlayer?.addListener(playerListener)
+        }
+
+        val mediaItem = MediaItem.fromUri(videoId)
+        exoPlayer?.setMediaItem(mediaItem)
+        exoPlayer?.prepare()
+        exoPlayer?.playWhenReady = true
+
+        _playerState.update {
+            it.copy(
+                isPlaying = true,
+                currentVideo = ContentItem(
+                    id = videoId,
+                    url = videoId,
+                    title = "Loading...",
+                    author = null,
+                    thumbnailUrl = null,
+                    contentType = com.futo.platformplayer.core.model.ContentType.VIDEO
+                )
+            )
+        }
     }
 
     override suspend fun pause() {
+        exoPlayer?.playWhenReady = false
         _playerState.update { it.copy(isPlaying = false) }
     }
 
     override suspend fun resume() {
+        exoPlayer?.playWhenReady = true
         _playerState.update { it.copy(isPlaying = true) }
     }
 
     override suspend fun seekTo(positionMs: Long) {
+        exoPlayer?.seekTo(positionMs)
         _playerState.update { it.copy(currentPositionMs = positionMs) }
     }
 
     override suspend fun setVolume(volume: Float) {
+        exoPlayer?.volume = volume
         _playerState.update { it.copy(volume = volume) }
     }
 
     override suspend fun setBrightness(brightness: Float) {
+        // Brightness is controlled by the activity/window, not ExoPlayer directly
         _playerState.update { it.copy(brightness = brightness) }
     }
 
     override suspend fun setPlaybackSpeed(speed: Float) {
+        exoPlayer?.playbackParameters = exoPlayer?.playbackParameters?.withSpeed(speed)
+            ?: androidx.media3.common.PlaybackParameters(speed)
         _playerState.update { it.copy(playbackSpeed = speed) }
     }
 
     override suspend fun setVideoQuality(quality: String) {
-        // TODO: Implement
+        // TODO: Implement quality selection based on available tracks
     }
 
     override suspend fun toggleFullscreen() {

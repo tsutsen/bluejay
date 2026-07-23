@@ -175,6 +175,7 @@ dependencies {
     implementation project(':feature:dualscreen')
     implementation project(':feature:home:impl')
     implementation project(':feature:settings:impl')
+    implementation project(':feature:player:impl')
 
     //Core
     implementation 'androidx.core:core-ktx:1.17.0'

@@ -22,6 +22,7 @@ sealed class NavDestination {
     data class PostDetail(val url: String) : NavDestination()
     data class ArticleDetail(val url: String) : NavDestination()
     data class WebDetail(val url: String) : NavDestination()
+    data class Player(val videoId: String) : NavDestination()
 
     // Search results
     data class ContentSearchResults(val query: String) : NavDestination()

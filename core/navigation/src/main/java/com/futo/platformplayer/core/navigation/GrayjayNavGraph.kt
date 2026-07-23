@@ -71,5 +71,7 @@ fun GrayjayNavGraph(
         is NavDestination.SettingsFragment -> PlaceholderScreen("Settings", "Coming soon")
         is NavDestination.PluginBrowser -> PlaceholderScreen("Plugin Browser", "Coming soon")
         is NavDestination.TestCompose -> PlaceholderScreen("Test Compose", "Coming soon")
+        is NavDestination.Player -> PlaceholderScreen("Player", "Coming soon")
+        else -> PlaceholderScreen("Unknown", "Coming soon")
     }
 }
