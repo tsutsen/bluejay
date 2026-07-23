@@ -18,7 +18,7 @@ import com.futo.platformplayer.core.designsystem.layout.AppLayout
 import com.futo.platformplayer.core.designsystem.layout.AppNavigationChrome
 import com.futo.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
 import com.futo.platformplayer.core.designsystem.theme.GrayjayTheme
-import com.futo.platformplayer.core.navigation.GrayjayNavGraph
+import com.futo.platformplayer.compose.GrayjayNavGraph
 import com.futo.platformplayer.core.navigation.NavDestination
 import com.futo.platformplayer.core.navigation.Navigator
 import com.futo.platformplayer.feature.dualscreen.CompanionWindowManager

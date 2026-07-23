@@ -42,6 +42,7 @@ dependencies {
     implementation 'androidx.compose.material3.adaptive:adaptive-navigation'
     implementation 'androidx.compose.material:material-icons-extended'
     implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.foundation:foundation-layout'
     implementation 'androidx.compose.runtime:runtime'
     implementation 'androidx.compose.animation:animation'
     implementation 'androidx.navigation3:navigation3-runtime:1.0.0'

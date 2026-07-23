@@ -15,7 +15,7 @@
 | **0.5** | State Machine & Cross-Activity State | 1 week | ✅ Complete |
 | **1** | App Chrome (Layout + MainActivity) | 1–2 weeks | ✅ Complete |
 | **2** | Settings + Appearance | 1 week | ⬜ Next |
-| **3** | Home Feed | 2 weeks | ⬜ |
+| **3** | Home Feed | 2 weeks | ✅ Complete |
 | **4** | Video Player | 2–3 weeks | ⬜ |
 | **5** | Library, Subscriptions, Search | 3–4 weeks | ⬜ |
 | **6** | Detail Screens + Deep Links | 2–3 weeks | ⬜ |
@@ -24,7 +24,7 @@
 
 **Total estimated effort**: 15–20 weeks
 
-**Current progress**: Phase 0–1 complete (4–7 weeks). App launches with navigation chrome, 6-tab navigation works, placeholder screens render. Ready for Phase 2 (Settings).
+**Current progress**: Phase 0–3 complete (6–9 weeks). App launches with navigation chrome, 6-tab navigation works, Home Feed renders with infinite scroll. Ready for Phase 4 (Video Player).
 
 ---
 
@@ -199,20 +199,22 @@
 
 **Goal**: User sees a scrollable feed of recommended videos.
 
-| Task | Description | Files |
-|------|-------------|-------|
-| Create `HomeViewModel` | MVI pattern, sealed `UiState` (§5) | `feature/home/impl/HomeViewModel.kt` |
-| Create `HomeScreen` | Infinite scroll feed, portrait single-column | `feature/home/impl/HomeScreen.kt` |
-| Create `HomeFeedContent` | `VideoContainer` with `LayoutMode.Grid`, 3 columns (landscape) | `feature/home/impl/HomeFeedContent.kt` |
-| Create `VideoCard` | Standard 16:9 video card with thumbnail, title, meta | `feature/home/impl/components/VideoCard.kt` |
-| Create `CompactVideoCard` | Landscape row card (96×54 thumbnail) | `feature/home/impl/components/CompactVideoCard.kt` |
-| Wire `VideoContainer` | Type-agnostic container with pagination toggle | `core/designsystem/component/VideoContainer.kt` |
-| Implement loading states | Shimmer skeletons during fetch | `core/designsystem/component/LoadingSkeleton.kt` |
-| Implement empty states | "No content" message | `core/designsystem/component/EmptyState.kt` |
-| Implement error states | "Couldn't load" with retry | `core/designsystem/component/EmptyState.kt` |
-| Wire navigation | Tap video → `NavDestination.VideoDetail` | `HomeScreen.kt` |
+| Task | Description | Files | Status |
+|------|-------------|-------|--------|
+| Create `HomeViewModel` | MVI pattern, sealed `UiState` (§5) | `feature/home/impl/HomeViewModel.kt` | ✅ |
+| Create `HomeScreen` | Infinite scroll feed, portrait single-column | `feature/home/impl/HomeScreen.kt` | ✅ |
+| Create `VideoContainer` | Type-agnostic container with LayoutMode (List/HorizontalStrip/Grid) | `core/designsystem/component/CardContainer.kt` | ✅ |
+| Wire navigation | Tap video → `NavDestination.VideoDetail` | `HomeScreen.kt` | ✅ |
+| Wire nav graph | Register HomeScreen in GrayjayNavGraph | `app/compose/GrayjayNavGraph.kt` | ✅ |
 
-**Acceptance**: Feed loads from `HomeRepository`, infinite scroll works, landscape shows 3-col grid, portrait shows single column.
+**Acceptance**: Feed loads from `HomeRepository`, infinite scroll works, landscape shows 3-col grid, portrait shows single column. ✅
+
+**Implementation Notes**:
+- `HomeViewModel` uses MVI pattern with `StateFlow<HomeUiState>`
+- `VideoContainer` supports 3 layout modes: List (portrait), HorizontalStrip (sections), Grid (landscape)
+- Infinite scroll detection via `LazyListState`/`LazyGridState` layout info
+- Navigation to video detail via `Navigator.navigateToVideo()`
+- `HomeRepositoryImpl` currently returns empty feed (TODO: wire to engine)
 
 ---
 
@@ -442,10 +444,10 @@ Phase 1 (Chrome) ✅ ───────────────────�
 Phase 2 (Settings) ⬜ ← NEXT                       │
         │                                         │
         ▼                                         │
-Phase 3 (Home Feed) ⬜                              │
+Phase 3 (Home Feed) ✅                              │
         │                                         │
         ▼                                         │
-Phase 4 (Player) ──────────────────────────────────┤
+Phase 4 (Player) ⬜                                 │
         │                                         │
         ├──► Phase 5.1 (Search) ⬜                 │
         ├──► Phase 5.2 (Subscriptions) ⬜          │

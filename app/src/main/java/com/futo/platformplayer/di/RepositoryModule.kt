@@ -26,9 +26,7 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindPlayerRepository(impl: PlayerRepositoryImpl): PlayerRepository
 
-    @Binds
-    @Singleton
-    abstract fun bindHomeRepository(impl: HomeRepositoryImpl): HomeRepository
+    // HomeRepository is now bound by HomeEngineModule (EngineHomeRepositoryImpl)
 
     @Binds
     @Singleton

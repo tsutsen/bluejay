@@ -1,25 +1,28 @@
-package com.futo.platformplayer.core.navigation
+package com.futo.platformplayer.compose
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.futo.platformplayer.core.designsystem.component.PlaceholderScreen
+import com.futo.platformplayer.core.navigation.NavDestination
+import com.futo.platformplayer.core.navigation.Navigator
+import com.futo.platformplayer.feature.home.impl.HomeScreen
 
 /**
- * NavHost configuration for Grayjay.
- * Uses a state-based navigation approach with the Navigator's StateFlow.
+ * App-level NavHost configuration for Grayjay.
+ * Wires all feature screens into the navigation graph.
+ * Lives in the app module to avoid core module depending on feature modules.
  */
 @Composable
 fun GrayjayNavGraph(
     navigator: Navigator,
-    startDestination: NavDestination = NavDestination.Home,
-    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
+    startDestination: NavDestination = NavDestination.Home
 ) {
-    // Set up navigator callbacks to update internal state
+    // Set up navigator callbacks
     LaunchedEffect(Unit) {
         navigator.setOnNavigate { destination ->
-            // Update current route (navigation handled by collecting StateFlow)
+            // Navigation handled by collecting StateFlow below
         }
         navigator.setOnBack {
             false
@@ -30,9 +33,9 @@ fun GrayjayNavGraph(
     val currentRoute by navigator.currentRoute.collectAsState(initial = startDestination)
 
     // Render the current destination
-    when (currentRoute) {
+    when (val destination = currentRoute) {
         null -> PlaceholderScreen("Grayjay", "Welcome")
-        is NavDestination.Home -> PlaceholderScreen("Home", "Coming soon")
+        is NavDestination.Home -> HomeScreen(navigator = navigator)
         is NavDestination.Search -> PlaceholderScreen("Search", "Coming soon")
         is NavDestination.Subscriptions -> PlaceholderScreen("Subscriptions", "Coming soon")
         is NavDestination.Library -> PlaceholderScreen("Library", "Coming soon")

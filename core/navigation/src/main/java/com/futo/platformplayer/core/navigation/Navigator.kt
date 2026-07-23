@@ -94,6 +94,7 @@ class Navigator @Inject constructor() {
 
     // Generic navigation
     fun navigate(destination: NavDestination) {
+        _currentRoute.value = destination
         onNavigate?.invoke(destination)
     }
 

@@ -1,62 +1,155 @@
 package com.futo.platformplayer.core.designsystem.component
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.futo.platformplayer.core.model.Card
 import com.futo.platformplayer.core.model.VideoCard
 
 /**
- * Type-agnostic container for video cards with layout mode support.
+ * Layout mode for the video container.
  */
-enum class LayoutMode { LIST, GRID }
+enum class LayoutMode {
+    /** Single-column vertical scroll (portrait). */
+    List,
+    /** Horizontal scrollable row (for sections). */
+    HorizontalStrip,
+    /** Multi-column grid (landscape). */
+    Grid
+}
 
+/**
+ * Type-agnostic video container composable.
+ * Supports List, HorizontalStrip, and Grid layout modes.
+ * Handles infinite scroll pagination via onEndReached callback.
+ */
 @Composable
 fun VideoContainer(
-    cards: List<VideoCard>,
-    layoutMode: LayoutMode = LayoutMode.LIST,
+    items: kotlin.collections.List<Card>,
+    layoutMode: LayoutMode = LayoutMode.List,
     columns: Int = 3,
-    onCardClick: (VideoCard) -> Unit,
-    modifier: Modifier = Modifier
+    onCardClick: (Card) -> Unit,
+    onEndReached: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(16.dp),
+    cardContent: @Composable (Card) -> Unit
 ) {
     when (layoutMode) {
-        LayoutMode.LIST -> {
+        LayoutMode.List -> {
+            val listState = rememberLazyListState()
+            var hasReachedEnd by remember { mutableStateOf(false) }
+
+            LaunchedEffect(listState) {
+                listState.layoutInfo.visibleItemsInfo.forEachIndexed { index: Int, item ->
+                    if (index == item.index && item.index == listState.layoutInfo.totalItemsCount - 1) {
+                        if (!hasReachedEnd) {
+                            hasReachedEnd = true
+                            onEndReached()
+                        }
+                    }
+                }
+            }
+
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = contentPadding,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(items, key = { it.id }) { card ->
+                    cardContent(card)
+                }
+            }
+        }
+        LayoutMode.HorizontalStrip -> {
+            val listState = rememberLazyListState()
+
             LazyRow(
                 modifier = modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
+                state = listState,
+                contentPadding = contentPadding,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(cards) { card ->
-                    VideoCard(
-                        card = card,
-                        onClick = { onCardClick(card) }
-                    )
+                items(items, key = { it.id }) { card ->
+                    cardContent(card)
                 }
             }
         }
-        LayoutMode.GRID -> {
+        LayoutMode.Grid -> {
+            val gridState = rememberLazyGridState()
+            var hasReachedEnd by remember { mutableStateOf(false) }
+
+            LaunchedEffect(gridState) {
+                gridState.layoutInfo.visibleItemsInfo.forEachIndexed { index: Int, item ->
+                    if (index == item.index && item.index == gridState.layoutInfo.totalItemsCount - 1) {
+                        if (!hasReachedEnd) {
+                            hasReachedEnd = true
+                            onEndReached()
+                        }
+                    }
+                }
+            }
+
             LazyVerticalGrid(
+                modifier = modifier.fillMaxSize(),
+                state = gridState,
                 columns = GridCells.Fixed(columns),
-                modifier = modifier.fillMaxWidth(),
+                contentPadding = contentPadding,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(cards) { card ->
-                    VideoCard(
-                        card = card,
-                        onClick = { onCardClick(card) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                items(items, key = { it.id }) { card ->
+                    cardContent(card)
                 }
             }
         }
+    }
+}
+
+/**
+ * Convenience composable for rendering a list of VideoCards.
+ */
+@Composable
+fun VideoCardList(
+    cards: kotlin.collections.List<VideoCard>,
+    layoutMode: LayoutMode = LayoutMode.List,
+    columns: Int = 3,
+    onCardClick: (VideoCard) -> Unit,
+    onEndReached: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(16.dp)
+) {
+    VideoContainer(
+        items = cards,
+        layoutMode = layoutMode,
+        columns = columns,
+        onCardClick = { card ->
+            if (card is VideoCard) onCardClick(card)
+        },
+        onEndReached = onEndReached,
+        modifier = modifier,
+        contentPadding = contentPadding
+    ) { card ->
+        VideoCard(
+            card = card as VideoCard,
+            onClick = { onCardClick(card as VideoCard) }
+        )
     }
 }
