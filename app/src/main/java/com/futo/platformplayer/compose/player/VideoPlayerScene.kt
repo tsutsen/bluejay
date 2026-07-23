@@ -295,7 +295,8 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 if (!MiniPlayerState.isMiniPlayerActive) {
                     FullVideoPlayerView(
                         exoPlayer = exoPlayer,
-                        video = video
+                        video = video,
+                        n = n
                     )
                 }
 
@@ -329,7 +330,8 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 @Composable
 private fun FullVideoPlayerView(
     exoPlayer: ExoPlayer,
-    video: IPlatformVideoDetails
+    video: IPlatformVideoDetails,
+    n: GrayjayNavigator
 ) {
     var swipeTriggered by remember { mutableFloatStateOf(0f) }
     val context = LocalContext.current
@@ -343,9 +345,11 @@ private fun FullVideoPlayerView(
                     onVerticalDrag = { _, dragAmount ->
                         swipeTriggered += dragAmount
                         if (swipeTriggered > 200) {
-                            // Collapse to mini player
+                            // Collapse to mini player and navigate back
                             val position = exoPlayer.currentPosition
                             MiniPlayerState.show(video, position)
+                            MiniPlayerState.collapse()
+                            n.goBack()
                             Log.d("VideoPlayer", "Collapsed to mini player via swipe")
                             swipeTriggered = 0f
                         }
@@ -377,9 +381,11 @@ private fun FullVideoPlayerView(
             IconButton(
                 onClick = {
                     Log.d("VideoPlayer", "Minimize button clicked")
-                    // Collapse to mini player
+                    // Collapse to mini player and navigate back
                     val position = exoPlayer.currentPosition
                     MiniPlayerState.show(video, position)
+                    MiniPlayerState.collapse()
+                    n.goBack()
                     Log.d("VideoPlayer", "Collapsed to mini player")
                 },
                 modifier = Modifier

@@ -41,6 +41,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -72,7 +73,7 @@ import com.futo.platformplayer.compose.settings.SettingsScreen
 import com.futo.platformplayer.compose.settings.SettingsSection
 import com.futo.platformplayer.compose.plugins.PluginBrowserScene
 import com.futo.platformplayer.compose.player.VideoPlayerScene
-import com.futo.platformplayer.compose.player.MiniPlayerBar
+import com.futo.platformplayer.compose.player.MiniPlayerOverlay
 import com.futo.platformplayer.compose.player.MiniPlayerState
 import com.futo.platformplayer.fragment.mainactivity.main.*
 import com.futo.platformplayer.fragment.settings.getItemsForCategory
@@ -188,13 +189,6 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
                     )
                 }
                 
-                // Mini Player Bar (shown when video is minimized)
-                if (MiniPlayerState.isMiniPlayerActive && MiniPlayerState.currentVideo != null) {
-                    MiniPlayerBar(
-                        video = MiniPlayerState.currentVideo!!,
-                        onExpand = { MiniPlayerState.hide() }
-                    )
-                }
             }
         }
     } else {
@@ -216,18 +210,29 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
                 )
             }
             
-            // Mini Player Bar (shown when video is minimized)
-            if (MiniPlayerState.isMiniPlayerActive && MiniPlayerState.currentVideo != null) {
-                MiniPlayerBar(
-                    video = MiniPlayerState.currentVideo!!,
-                    onExpand = { MiniPlayerState.hide() }
-                )
-            }
-            
             GrayjayBottomNavBar(
                 items = grayjayNavItems,
                 topLevelRoute = navigationState.topLevelRoute.value,
                 onNavItemClick = { navigator.navigateToTab(it) }
+            )
+        }
+    }
+    
+    // Floating mini player overlay (shown when video is collapsed)
+    if (MiniPlayerState.isMiniPlayerActive && !MiniPlayerState.isExpanded && MiniPlayerState.currentVideo != null) {
+        val video = MiniPlayerState.currentVideo!!
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            MiniPlayerOverlay(
+                video = video,
+                onExpand = { MiniPlayerState.expand() },
+                onClose = { MiniPlayerState.hide() },
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX = MiniPlayerState.positionX
+                        translationY = MiniPlayerState.positionY
+                    }
             )
         }
     }
