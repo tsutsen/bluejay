@@ -12,10 +12,7 @@
 
 package com.futo.platformplayer.compose.player
 
-import android.app.PictureInPictureParams
-import android.content.pm.ActivityInfo
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -82,6 +79,7 @@ import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSou
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
+import com.futo.platformplayer.compose.player.MiniPlayerState
 import com.futo.platformplayer.helpers.VideoHelper
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlRangeSource
 import com.futo.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlRangeSource
@@ -95,8 +93,8 @@ import kotlinx.coroutines.withContext
  * Features:
  *   - Full video player with title, channel info, and tab bar
  *   - Collapse button top-left inside player
- *   - Swipe down to enter PiP mode (Picture-in-Picture)
- *   - Big video hides when in PiP mode
+ *   - Swipe down to collapse to mini player bar at bottom
+ *   - Big video hides when mini player is active
  *   - Uses modern ExoPlayer with media3-ui-compose
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -286,7 +284,7 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                 }
             }
             
-            // Only show big video player if mini player is not active
+                    // Only show big video player if mini player is not active
             if (!MiniPlayerState.isMiniPlayerActive) {
                 Column(
                     modifier = Modifier
@@ -344,18 +342,11 @@ private fun FullVideoPlayerView(
                     onVerticalDrag = { _, dragAmount ->
                         swipeTriggered += dragAmount
                         if (swipeTriggered > 200) {
-                            // Enter PiP mode
+                            // Collapse to mini player
                             val position = exoPlayer.currentPosition
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                val params = PictureInPictureParams.Builder()
-                                    .setAspectRatio(android.util.Rational(16, 9))
-                                    .build()
-                                (context as? android.app.Activity)?.setPictureInPictureParams(params)
-                            }
-                            (context as? android.app.Activity)?.enterPictureInPictureMode()
                             MiniPlayerState.show(video, position)
                             exoPlayer.pause()
-                            Log.d("VideoPlayer", "Entered PiP mode")
+                            Log.d("VideoPlayer", "Collapsed to mini player via swipe")
                             swipeTriggered = 0f
                         }
                     },
@@ -386,18 +377,11 @@ private fun FullVideoPlayerView(
             IconButton(
                 onClick = {
                     Log.d("VideoPlayer", "Minimize button clicked")
-                    // Enter PiP mode
+                    // Collapse to mini player
                     val position = exoPlayer.currentPosition
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val params = PictureInPictureParams.Builder()
-                            .setAspectRatio(android.util.Rational(16, 9))
-                            .build()
-                        (context as? android.app.Activity)?.setPictureInPictureParams(params)
-                    }
-                    (context as? android.app.Activity)?.enterPictureInPictureMode()
                     MiniPlayerState.show(video, position)
                     exoPlayer.pause()
-                    Log.d("VideoPlayer", "Entered PiP mode")
+                    Log.d("VideoPlayer", "Collapsed to mini player")
                 },
                 modifier = Modifier
                     .background(
