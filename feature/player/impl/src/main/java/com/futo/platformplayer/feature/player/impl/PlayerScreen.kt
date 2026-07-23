@@ -164,13 +164,13 @@ fun PlayerScreen(
                 AnimatedVisibility(
                     visible = showVolumeIndicator,
                     enter = fadeIn(),
-                    exit = fadeOut()
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.CenterStart)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .width(120.dp)
-                            .align(Alignment.CenterStart)
                     ) {
                         VolumeIndicator(
                             volume = volumeValue,
@@ -183,13 +183,13 @@ fun PlayerScreen(
                 AnimatedVisibility(
                     visible = showBrightnessIndicator,
                     enter = fadeIn(),
-                    exit = fadeOut()
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.CenterEnd)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .width(120.dp)
-                            .align(Alignment.CenterEnd)
                     ) {
                         BrightnessIndicator(
                             brightness = brightnessValue,
