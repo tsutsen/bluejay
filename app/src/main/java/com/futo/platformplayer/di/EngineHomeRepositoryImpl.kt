@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -129,11 +130,15 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
                 val thumbnailUrl = extractThumbnailUrl(content)
                 when (content.contentType) {
                     ContentType.MEDIA, ContentType.NESTED_VIDEO -> {
+                        val video = content as? IPlatformVideo
                         VideoCard(
                             id = content.id.toString(),
                             title = content.name,
                             thumbnailUrl = thumbnailUrl,
                             author = content.author.name,
+                            durationMs = (video?.duration ?: 0) * 1000,
+                            viewCount = video?.viewCount,
+                            publishedAt = video?.playbackDate?.toInstant()?.toEpochMilli(),
                             url = content.url
                         )
                     }
@@ -159,6 +164,7 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
                             title = content.name,
                             thumbnailUrl = thumbnailUrl,
                             author = content.author.name,
+                            publishedAt = content.datetime?.toInstant()?.toEpochMilli(),
                             url = content.url
                         )
                     }
