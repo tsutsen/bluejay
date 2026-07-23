@@ -1,7 +1,11 @@
 package com.futo.platformplayer.di
 
+import com.futo.platformplayer.api.media.models.Thumbnails
 import com.futo.platformplayer.api.media.models.contents.ContentType
 import com.futo.platformplayer.api.media.models.contents.IPlatformContent
+import com.futo.platformplayer.api.media.models.locked.IPlatformLockedContent
+import com.futo.platformplayer.api.media.models.nested.IPlatformNestedContent
+import com.futo.platformplayer.api.media.models.video.IPlatformVideo
 import com.futo.platformplayer.api.media.structures.IPager
 import com.futo.platformplayer.core.data.repository.HomeRepository
 import com.futo.platformplayer.core.model.Card
@@ -110,15 +114,25 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
         // TODO: Implement
     }
 
+    private fun extractThumbnailUrl(content: IPlatformContent): String? {
+        return when (content) {
+            is IPlatformVideo -> content.thumbnails.getHQThumbnail() ?: content.thumbnails.getLQThumbnail()
+            is IPlatformLockedContent -> content.contentThumbnails.getHQThumbnail() ?: content.contentThumbnails.getLQThumbnail()
+            is IPlatformNestedContent -> content.contentThumbnails.getHQThumbnail() ?: content.contentThumbnails.getLQThumbnail()
+            else -> null
+        }
+    }
+
     private fun convertToCards(items: List<IPlatformContent>): List<Card> {
         return items.mapNotNull { content ->
             try {
+                val thumbnailUrl = extractThumbnailUrl(content)
                 when (content.contentType) {
                     ContentType.MEDIA, ContentType.NESTED_VIDEO -> {
                         VideoCard(
                             id = content.id.toString(),
                             title = content.name,
-                            thumbnailUrl = null, // TODO: Extract thumbnail URL
+                            thumbnailUrl = thumbnailUrl,
                             author = content.author.name,
                             url = content.url
                         )
@@ -127,7 +141,7 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
                         PlaylistCard(
                             id = content.id.toString(),
                             title = content.name,
-                            thumbnailUrl = null,
+                            thumbnailUrl = thumbnailUrl,
                             url = content.url
                         )
                     }
@@ -135,7 +149,7 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
                         ChannelCard(
                             id = content.id.toString(),
                             title = content.name,
-                            thumbnailUrl = null,
+                            thumbnailUrl = thumbnailUrl,
                             url = content.url
                         )
                     }
@@ -143,7 +157,7 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
                         PostCard(
                             id = content.id.toString(),
                             title = content.name,
-                            thumbnailUrl = null,
+                            thumbnailUrl = thumbnailUrl,
                             author = content.author.name,
                             url = content.url
                         )

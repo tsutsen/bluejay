@@ -67,7 +67,7 @@ data class PlaylistImportItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
+fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
     val coroutineScope = rememberCoroutineScope()
     val enabledClientIds = remember { mutableStateOf(setOf<String>()) }
     val installedPlugins = remember { mutableStateOf<List<SourcePluginConfig>>(emptyList()) }
@@ -133,7 +133,14 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Browse Plugins") }
+                title = { Text("Browse Plugins") },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                }
             )
         }
     ) { paddingValues ->

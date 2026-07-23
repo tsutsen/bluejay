@@ -16,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.futo.platformplayer.core.datastore.model.*
+import com.futo.platformplayer.core.navigation.NavDestination
+import com.futo.platformplayer.core.navigation.Navigator
 
 /**
  * Settings hub — top-level navigation for hierarchical settings.
@@ -24,7 +26,8 @@ import com.futo.platformplayer.core.datastore.model.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    navigator: Navigator? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedCategory by remember { mutableStateOf<String?>(null) }
@@ -47,22 +50,29 @@ fun SettingsScreen(
         }
         is SettingsUiState.Loaded -> {
             if (selectedCategory != null) {
-                CategoryScreen(
-                    category = selectedCategory!!,
-                    appearance = state.appearance,
-                    playback = state.playback,
-                    language = state.language,
-                    enableNotifications = state.enableNotifications,
-                    enableBackgroundPlayback = state.enableBackgroundPlayback,
-                    enablePictureInPicture = state.enablePictureInPicture,
-                    confirmExit = state.confirmExit,
-                    enableDeveloperOptions = state.enableDeveloperOptions,
-                    onAppearanceChanged = { viewModel.updateAppearance(it) },
-                    onPlaybackChanged = { viewModel.updatePlayback(it) },
-                    onGeneralChanged = { key, value -> viewModel.updateGeneral(key, value) },
-                    onResetToDefaults = { viewModel.resetToDefaults() },
-                    onBack = { selectedCategory = null }
-                )
+                if (selectedCategory == "plugin_browser") {
+                    if (navigator != null) {
+                        navigator.navigateToPluginBrowser()
+                    }
+                    selectedCategory = null
+                } else {
+                    CategoryScreen(
+                        category = selectedCategory!!,
+                        appearance = state.appearance,
+                        playback = state.playback,
+                        language = state.language,
+                        enableNotifications = state.enableNotifications,
+                        enableBackgroundPlayback = state.enableBackgroundPlayback,
+                        enablePictureInPicture = state.enablePictureInPicture,
+                        confirmExit = state.confirmExit,
+                        enableDeveloperOptions = state.enableDeveloperOptions,
+                        onAppearanceChanged = { viewModel.updateAppearance(it) },
+                        onPlaybackChanged = { viewModel.updatePlayback(it) },
+                        onGeneralChanged = { key, value -> viewModel.updateGeneral(key, value) },
+                        onResetToDefaults = { viewModel.resetToDefaults() },
+                        onBack = { selectedCategory = null }
+                    )
+                }
             } else {
                 SettingsHubContent(
                     onCategorySelected = { selectedCategory = it }
@@ -185,7 +195,7 @@ private val hubCategories = listOf(
     HubCategory("privacy", Icons.Default.Lock, "Privacy & Data", "Privacy, data management, backup & restore"),
     HubCategory("sync", Icons.Default.Sync, "Sync & Identity", "Synchronization, Polycentric"),
     HubCategory("general", Icons.Default.Settings, "General", "Language, tabs, link handling, FAQ"),
-    HubCategory("plugins", Icons.Default.Extension, "Plugins", "Plugin management, cookies, updates"),
+    HubCategory("plugin_browser", Icons.Default.Extension, "Plugin Browser", "Browse and manage all plugins"),
     HubCategory("about", Icons.Default.Info, "About", "Version, license, payment")
 )
 
@@ -209,7 +219,7 @@ private fun categoryTitle(category: String): String = when (category) {
     "privacy" -> "Privacy & Data"
     "sync" -> "Sync & Identity"
     "general" -> "General"
-    "plugins" -> "Plugins"
+    "plugin_browser" -> "Plugin Browser"
     "about" -> "About"
     else -> category
 }
@@ -256,12 +266,6 @@ private fun categoryItems(category: String): List<CategoryItem> = when (category
         CategoryItem(ItemType.SWITCH, Icons.Default.Warning, "Confirm Exit", "Off", false),
         CategoryItem(ItemType.SWITCH, Icons.Default.Code, "Developer Options", "Off", false),
         CategoryItem(ItemType.BUTTON, Icons.Default.Refresh, "Reset to Defaults", "")
-    )
-    "plugins" -> listOf(
-        CategoryItem(ItemType.SWITCH, Icons.Default.Update, "Check Disabled Plugins for Updates", "Check for updates on disabled plugins", false),
-        CategoryItem(ItemType.SWITCH, Icons.Default.Delete, "Clear Cookies After Login", "Clear cookies after login", false),
-        CategoryItem(ItemType.SWITCH, Icons.Default.Logout, "Clear Cookies on Logout", "Clear cookies when logging out", true),
-        CategoryItem(ItemType.BUTTON, Icons.Default.Delete, "Clear All Cookies", "Clear all in-app browser cookies")
     )
     "about" -> listOf(
         CategoryItem(ItemType.TEXT, Icons.Default.Info, "Version", "3.0.0-alpha"),
