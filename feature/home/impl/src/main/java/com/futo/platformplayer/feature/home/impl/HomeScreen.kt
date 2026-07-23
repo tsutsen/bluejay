@@ -37,16 +37,6 @@ fun HomeScreen(
     val isWide = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
             adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
-    // Auto-load next page when scrolling near the end
-    LaunchedEffect(uiState) {
-        if (uiState is HomeUiState.Loaded) {
-            val loaded = uiState as HomeUiState.Loaded
-            if (loaded.isLoading && loaded.hasMorePages) {
-                // Triggered by repository - no extra action needed
-            }
-        }
-    }
-
     when (val state = uiState) {
         is HomeUiState.Initial -> {
             VideoCardSkeleton(count = 6)
@@ -58,7 +48,7 @@ fun HomeScreen(
             if (state.items.isEmpty() && !state.isLoading && state.error == null) {
                 EmptyState(
                     message = "No content yet",
-                    actionLabel = "Pull to refresh",
+                    actionLabel = "Tap to refresh",
                     onAction = { viewModel.refresh() }
                 )
             } else if (state.error != null) {

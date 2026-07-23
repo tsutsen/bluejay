@@ -14,6 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.futo.platformplayer.core.designsystem.layout.AppLayout
 import com.futo.platformplayer.core.designsystem.layout.AppNavigationChrome
 import com.futo.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
@@ -23,6 +24,7 @@ import com.futo.platformplayer.core.navigation.NavDestination
 import com.futo.platformplayer.core.navigation.Navigator
 import com.futo.platformplayer.feature.dualscreen.CompanionWindowManager
 import com.futo.platformplayer.feature.dualscreen.ScreenCoordinator
+import com.futo.platformplayer.states.StateApp
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -48,6 +50,11 @@ class MainActivity : ComponentActivity(), IWithResultLauncher {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize StateApp and FragmentedStorage before setting content
+        StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")
+        StateApp.instance.mainAppStarting(this)
+        
         enableEdgeToEdge()
 
         setContent {

@@ -41,7 +41,9 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
         try {
             val pager = StatePlatform.instance.getHomeRefresh(CoroutineScope(Dispatchers.IO))
             _lastPager = pager
+            Logger.i("EngineHomeRepository", "Got pager with ${pager.getResults().size} results, hasMore=${pager.hasMorePages()}")
             val items = convertToCards(pager.getResults())
+            Logger.i("EngineHomeRepository", "Converted to ${items.size} cards")
             _feed.update {
                 it.copy(
                     isLoading = false,
