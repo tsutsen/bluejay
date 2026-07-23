@@ -292,11 +292,13 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         .padding(paddingValues)
                 ) {
                     // Full video player with collapse button (top-left) and swipe-down
-                    FullVideoPlayerView(
-                        exoPlayer = exoPlayer,
-                        video = video,
-                        navigator = n
-                    )
+                    // When mini player is active, hide the video player but keep screen content visible
+                    if (!MiniPlayerState.isMiniPlayerActive) {
+                        FullVideoPlayerView(
+                            exoPlayer = exoPlayer,
+                            video = video
+                        )
+                    }
 
                     // Title
                     Text(
@@ -329,9 +331,10 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 @Composable
 private fun FullVideoPlayerView(
     exoPlayer: ExoPlayer,
-    video: IPlatformVideoDetails,
-    navigator: GrayjayNavigator
+    video: IPlatformVideoDetails
 ) {
+    // When mini player is active, this composable returns nothing
+    if (MiniPlayerState.isMiniPlayerActive) return
     var swipeTriggered by remember { mutableFloatStateOf(0f) }
     val context = LocalContext.current
     
@@ -347,8 +350,6 @@ private fun FullVideoPlayerView(
                             // Collapse to mini player
                             val position = exoPlayer.currentPosition
                             MiniPlayerState.show(video, position)
-                            // Navigate back to previous screen so feed is visible
-                            navigator.goBack()
                             Log.d("VideoPlayer", "Collapsed to mini player via swipe")
                             swipeTriggered = 0f
                         }
@@ -383,8 +384,6 @@ private fun FullVideoPlayerView(
                     // Collapse to mini player
                     val position = exoPlayer.currentPosition
                     MiniPlayerState.show(video, position)
-                    // Navigate back to previous screen so feed is visible
-                    navigator.goBack()
                     Log.d("VideoPlayer", "Collapsed to mini player")
                 },
                 modifier = Modifier
