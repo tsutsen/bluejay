@@ -349,6 +349,8 @@ private fun FullVideoPlayerView(
                             val position = exoPlayer.currentPosition
                             MiniPlayerState.show(video, position)
                             MiniPlayerState.collapse()
+                            // Release the full video player
+                            exoPlayer.release()
                             n.goBack()
                             Log.d("VideoPlayer", "Collapsed to mini player via swipe")
                             swipeTriggered = 0f
@@ -385,6 +387,8 @@ private fun FullVideoPlayerView(
                     val position = exoPlayer.currentPosition
                     MiniPlayerState.show(video, position)
                     MiniPlayerState.collapse()
+                    // Release the full video player
+                    exoPlayer.release()
                     n.goBack()
                     Log.d("VideoPlayer", "Collapsed to mini player")
                 },

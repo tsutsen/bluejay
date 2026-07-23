@@ -11,7 +11,8 @@ package com.futo.platformplayer.compose.player
 import android.net.Uri
 import android.view.ViewGroup
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -38,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -128,11 +131,36 @@ fun MiniPlayerOverlay(
     
     Box(
         modifier = modifier
-            .offset { IntOffset(0, 0) } // Position is managed by parent
             .size(width = 280.dp, height = 160.dp)
             .shadow(8.dp, shape = RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp))
-            .clickable { onExpand() }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { /* Start dragging */ },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        // Update position in MiniPlayerState
+                        MiniPlayerState.positionX += dragAmount.x
+                        MiniPlayerState.positionY += dragAmount.y
+                    },
+                    onDragEnd = {
+                        // Save position
+                        MiniPlayerState.savePosition()
+                    },
+                    onDragCancel = {
+                        // Save position on cancel too
+                        MiniPlayerState.savePosition()
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        // Expand player when tapped
+                        onExpand()
+                    }
+                )
+            }
     ) {
         // Video preview
         Box(modifier = Modifier.fillMaxSize()) {
@@ -145,7 +173,6 @@ fun MiniPlayerOverlay(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
-                        // Buffering shown by default
                     }
                 },
                 modifier = Modifier.fillMaxSize()

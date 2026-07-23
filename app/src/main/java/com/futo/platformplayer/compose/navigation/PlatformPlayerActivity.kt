@@ -226,7 +226,11 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
         ) {
             MiniPlayerOverlay(
                 video = video,
-                onExpand = { MiniPlayerState.expand() },
+                onExpand = {
+                    // Navigate back to video player scene
+                    MiniPlayerState.expand()
+                    navigator.navigateToVideo(video.url)
+                },
                 onClose = { MiniPlayerState.hide() },
                 modifier = Modifier
                     .graphicsLayer {
