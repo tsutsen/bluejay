@@ -1,6 +1,7 @@
 package com.futo.platformplayer.feature.player.impl
 
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -106,13 +107,15 @@ fun PlayerScreen(
                 // ExoPlayer view
                 AndroidView(
                     factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            this.player = player
-                            useController = false
-                            layoutParams = ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
+                        FrameLayout(ctx).apply {
+                            addView(PlayerView(ctx).apply {
+                                this.player = player
+                                useController = false
+                                layoutParams = FrameLayout.LayoutParams(
+                                    FrameLayout.LayoutParams.MATCH_PARENT,
+                                    FrameLayout.LayoutParams.MATCH_PARENT
+                                )
+                            })
                         }
                     },
                     modifier = Modifier.fillMaxSize()
