@@ -291,62 +291,56 @@ private fun TopOverlay(
     onWatchLater: () -> Unit,
     onOptions: () -> Unit
 ) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
             .padding(16.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            IconButton(onClick = onMinimize) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Minimize",
-                    tint = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onReplayToggle) {
-                Icon(
-                    imageVector = Icons.Default.Replay,
-                    contentDescription = "Replay",
-                    tint = Color.White
-                )
-            }
-            IconButton(onClick = onWatchLater) {
-                Icon(
-                    imageVector = Icons.Default.Schedule,
-                    contentDescription = "Watch Later",
-                    tint = Color.White
-                )
-            }
-            IconButton(onClick = onOptions) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Options",
-                    tint = Color.White
-                )
-            }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = channelName,
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = title,
-            color = Color.White,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = channelName,
-            color = Color.White.copy(alpha = 0.8f),
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        IconButton(onClick = onMinimize) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Minimize",
+                tint = Color.White
+            )
+        }
+        IconButton(onClick = onReplayToggle) {
+            Icon(
+                imageVector = Icons.Default.Replay,
+                contentDescription = "Replay",
+                tint = Color.White
+            )
+        }
+        IconButton(onClick = onWatchLater) {
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = "Watch Later",
+                tint = Color.White
+            )
+        }
+        IconButton(onClick = onOptions) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Options",
+                tint = Color.White
+            )
+        }
     }
 }
 
