@@ -199,6 +199,7 @@ dependencies {
     implementation 'androidx.media3:media3-exoplayer-rtsp:1.9.0'
     implementation 'androidx.media3:media3-exoplayer-smoothstreaming:1.9.0'
     implementation 'androidx.media3:media3-transformer:1.9.0'
+    implementation 'androidx.media3:media3-datasource:1.9.0'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.9.6'
     implementation 'androidx.navigation:navigation-ui-ktx:2.9.6'
     implementation 'androidx.media:media:1.7.1'

@@ -8,6 +8,7 @@
  *   - Swipe down to enter PiP mode (Picture-in-Picture)
  *   - Big video hides when in PiP mode
  *   - Merges video and audio sources like FutoVideoPlayer does
+ *   - Uses global ExoPlayer that persists across navigation
  */
 
 package com.futo.platformplayer.compose.player
@@ -31,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -52,50 +54,43 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
-import androidx.media3.datasource.DefaultHttpDataSource
-import coil.compose.AsyncImage
-import com.futo.platformplayer.api.media.models.ratings.RatingLikeDislikes
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioUrlSource
+import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
 import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
-import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlRangeSource
+import com.futo.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlRangeSource
 import com.futo.platformplayer.compose.navigation.GrayjayNavigator
 import com.futo.platformplayer.compose.navigation.VideoDetail
-import com.futo.platformplayer.compose.player.MiniPlayerState
 import com.futo.platformplayer.helpers.VideoHelper
-import com.futo.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlRangeSource
-import com.futo.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlRangeSource
 import com.futo.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
  * Video player scene with collapsible mini player.
- * 
- * Features:
- *   - Full video player with title, channel info, and tab bar
- *   - Collapse button top-left inside player
- *   - Swipe down to collapse to mini player bar at bottom
- *   - Big video hides when mini player is active
- *   - Uses modern ExoPlayer with media3-ui-compose
+ * Uses global ExoPlayer that persists across navigation.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,9 +149,19 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
         } else if (videoDetails != null) {
             val video = videoDetails!!
             
-            // Create modern ExoPlayer instance
+            // Use global ExoPlayer if available, otherwise create new one
             val exoPlayer = remember(video.url) {
-                ExoPlayer.Builder(context).build()
+                if (VideoPlayerGlobalState.exoPlayer != null && VideoPlayerGlobalState.currentVideo?.url == video.url) {
+                    // Reuse existing player
+                    Log.d("VideoPlayer", "Reusing existing ExoPlayer")
+                    VideoPlayerGlobalState.exoPlayer!!
+                } else {
+                    // Create new player
+                    Log.d("VideoPlayer", "Creating new ExoPlayer")
+                    val newPlayer = ExoPlayer.Builder(context).build()
+                    VideoPlayerGlobalState.setVideo(video, newPlayer)
+                    newPlayer
+                }
             }
             
             // Load video with FutoVideoPlayer's approach: merge video and audio
@@ -188,6 +193,8 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                     
                     // Step 3: Create MediaSources for video and audio separately
                     val (videoMediaSource, audioMediaSource) = withContext(Dispatchers.IO) {
+                        val dataSourceFactory = DefaultDataSource.Factory(context, DefaultHttpDataSource.Factory())
+                        
                         val videoMs = when (videoSource) {
                             is JSVideoUrlRangeSource -> {
                                 // Use FutoVideoPlayer's itag-to-DASH conversion
@@ -196,42 +203,41 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                             }
                             is IDashManifestSource -> {
                                 Log.d("VideoPlayer", "Using DASH manifest")
-                                DashMediaSource.Factory(
-                                    DefaultHttpDataSource.Factory()
-                                ).createMediaSource(MediaItem.fromUri(Uri.parse((videoSource as? IVideoUrlSource)?.getVideoUrl() ?: videoSource.url)))
+                                DashMediaSource.Factory(dataSourceFactory).createMediaSource(
+                                    MediaItem.fromUri(Uri.parse(videoSource.url))
+                                )
                             }
                             is IVideoUrlSource -> {
-                                Log.d("VideoPlayer", "Creating progressive video source")
-                                ProgressiveMediaSource.Factory(
-                                    DefaultHttpDataSource.Factory()
-                                ).createMediaSource(MediaItem.fromUri(Uri.parse(videoSource.getVideoUrl())))
+                                Log.d("VideoPlayer", "Using progressive video")
+                                ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(
+                                    MediaItem.fromUri(Uri.parse(videoSource.getVideoUrl()))
+                                )
                             }
                             is IHLSManifestSource -> {
-                                Log.d("VideoPlayer", "Creating HLS video source")
-                                HlsMediaSource.Factory(
-                                    DefaultHttpDataSource.Factory()
-                                ).createMediaSource(MediaItem.fromUri(Uri.parse(videoSource.url)))
+                                Log.d("VideoPlayer", "Using HLS manifest")
+                                HlsMediaSource.Factory(dataSourceFactory).createMediaSource(
+                                    MediaItem.fromUri(Uri.parse(videoSource.url))
+                                )
                             }
                             else -> null
                         }
                         
                         val audioMs = when (audioSource) {
                             is JSAudioUrlRangeSource -> {
-                                // Use FutoVideoPlayer's itag-to-DASH conversion
                                 Log.d("VideoPlayer", "Converting itag audio to DASH")
                                 VideoHelper.convertItagSourceToChunkedDashSource(audioSource)
                             }
                             is IAudioUrlSource -> {
-                                Log.d("VideoPlayer", "Creating progressive audio source")
-                                ProgressiveMediaSource.Factory(
-                                    DefaultHttpDataSource.Factory()
-                                ).createMediaSource(MediaItem.fromUri(Uri.parse(audioSource.getAudioUrl())))
+                                Log.d("VideoPlayer", "Using progressive audio")
+                                ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(
+                                    MediaItem.fromUri(Uri.parse(audioSource.getAudioUrl()))
+                                )
                             }
                             is IHLSManifestSource -> {
-                                Log.d("VideoPlayer", "Creating HLS audio source")
-                                HlsMediaSource.Factory(
-                                    DefaultHttpDataSource.Factory()
-                                ).createMediaSource(MediaItem.fromUri(Uri.parse(audioSource.url)))
+                                Log.d("VideoPlayer", "Using HLS audio")
+                                HlsMediaSource.Factory(dataSourceFactory).createMediaSource(
+                                    MediaItem.fromUri(Uri.parse(audioSource.url))
+                                )
                             }
                             else -> null
                         }
@@ -258,33 +264,25 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         if (mergedMediaSource != null) {
                             exoPlayer.setMediaSource(mergedMediaSource)
                             exoPlayer.prepare()
-                            
-                            d.position?.let { position ->
-                                exoPlayer.seekTo(position)
-                            }
-                            
                             exoPlayer.playWhenReady = true
-                        } else {
-                            errorMessage = "No playable video source found"
-                            Log.e("VideoPlayer", "No playable video source found")
+                            Log.d("VideoPlayer", "Video prepared and playing")
                         }
                     }
                 } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        errorMessage = "Failed to load video: ${e.message}"
-                        Log.e("VideoPlayer", "Failed to load video", e)
-                    }
+                    Log.e("VideoPlayer", "Error loading video", e)
                 }
             }
             
             // Cleanup player when leaving
             DisposableEffect(Unit) {
                 onDispose {
-                    exoPlayer.release()
+                    // Don't release the player here - it's managed globally
+                    // Just pause playback when leaving the scene
+                    exoPlayer?.pause()
                 }
             }
             
-                    // Always show the content, but hide video player when mini player is active
+            // Always show the content, but hide video player when mini player is active
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -333,7 +331,7 @@ private fun FullVideoPlayerView(
     video: IPlatformVideoDetails,
     n: GrayjayNavigator
 ) {
-    var swipeTriggered by remember { mutableFloatStateOf(0f) }
+    var swipeTriggered by remember { mutableStateOf(0f) }
     val context = LocalContext.current
     
     Box(
@@ -349,8 +347,7 @@ private fun FullVideoPlayerView(
                             val position = exoPlayer.currentPosition
                             MiniPlayerState.show(video, position)
                             MiniPlayerState.collapse()
-                            // Release the full video player
-                            exoPlayer.release()
+                            VideoPlayerGlobalState.collapse()
                             n.goBack()
                             Log.d("VideoPlayer", "Collapsed to mini player via swipe")
                             swipeTriggered = 0f
@@ -387,8 +384,7 @@ private fun FullVideoPlayerView(
                     val position = exoPlayer.currentPosition
                     MiniPlayerState.show(video, position)
                     MiniPlayerState.collapse()
-                    // Release the full video player
-                    exoPlayer.release()
+                    VideoPlayerGlobalState.collapse()
                     n.goBack()
                     Log.d("VideoPlayer", "Collapsed to mini player")
                 },
@@ -408,9 +404,8 @@ private fun FullVideoPlayerView(
     }
 }
 
-/**
- * Channel row: avatar + name + subs | view count | like count | more button
- */
+// ==================== Video Player Components ====================
+
 @Composable
 private fun ChannelRow(video: IPlatformVideoDetails) {
     Row(
@@ -420,72 +415,49 @@ private fun ChannelRow(video: IPlatformVideoDetails) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Channel avatar
-        AsyncImage(
-            model = video.author.thumbnail,
-            contentDescription = null,
-            modifier = Modifier.size(36.dp),
-            contentScale = ContentScale.Crop
-        )
-
-        // Channel name + subs
-        Column(
+        Box(
             modifier = Modifier
-                .weight(1f)
-                .padding(start = 10.dp)
-        ) {
+                .size(40.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(50))
+        )
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        // Channel info
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = video.author.name,
+                text = video.author?.name ?: "Unknown Channel",
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (video.author.subscribers != null && video.author.subscribers!! > 0) {
-                Text(
-                    text = formatNumber(video.author.subscribers!!) + " subscribers",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // View count
-        if (video.viewCount > 0) {
             Text(
-                text = formatNumber(video.viewCount) + " views",
+                text = if (video.viewCount != null) "${video.viewCount} views" else "",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Like count
-        val likes = (video.rating as? RatingLikeDislikes)?.likes ?: 0L
-        if (likes > 0) {
-            Text(
-                text = formatNumber(likes),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        
+        // Like button
+        IconButton(onClick = { /* TODO: Like */ }) {
+            Icon(
+                imageVector = Icons.Default.ThumbUp,
+                contentDescription = "Like",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
+        
         // More button
-        IconButton(onClick = { /* TODO: show more options */ }) {
+        IconButton(onClick = { /* TODO: More options */ }) {
             Icon(
                 imageVector = Icons.Default.MoreVert,
-                contentDescription = "More"
+                contentDescription = "More",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
-/**
- * Tab bar: platform comments | poly comments | recommended videos
- */
 @Composable
 private fun VideoPlayerTabs(
     videoUrl: String,
@@ -493,75 +465,35 @@ private fun VideoPlayerTabs(
     onTabSelected: (Int) -> Unit
 ) {
     val tabs = listOf("Comments", "Poly Comments", "Recommended")
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        TabRow(
-            selectedTabIndex = selectedTabIndex,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            indicator = { tabPositions ->
-                TabRowDefaults.Indicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+    
+    TabRow(
+        selectedTabIndex = selectedTabIndex,
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        indicator = { tabPositions ->
+            if (selectedTabIndex < tabPositions.size) {
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier
+                        .tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                    height = 2.dp,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { onTabSelected(index) },
-                    text = {
-                        Text(
-                            text = title,
-                            maxLines = 1,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                )
-            }
         }
-
-        // Tab content
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            when (selectedTabIndex) {
-                0 -> {
+    ) {
+        tabs.forEachIndexed { index, title ->
+            Tab(
+                selected = selectedTabIndex == index,
+                onClick = { onTabSelected(index) },
+                text = {
                     Text(
-                        text = "Platform comments will appear here",
+                        text = title,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        maxLines = 1
                     )
                 }
-                1 -> {
-                    Text(
-                        text = "Polycentric comments will appear here",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                2 -> {
-                    Text(
-                        text = "Recommended videos will appear here",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            )
         }
-    }
-}
-
-/**
- * Format number with K/M/B suffix
- */
-private fun formatNumber(number: Long): String {
-    return when {
-        number >= 1_000_000_000 -> String.format("%.1fB", number / 1_000_000_000.0)
-        number >= 1_000_000 -> String.format("%.1fM", number / 1_000_000.0)
-        number >= 1_000 -> String.format("%.1fK", number / 1_000.0)
-        else -> number.toString()
     }
 }

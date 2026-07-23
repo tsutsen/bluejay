@@ -4,11 +4,11 @@
  * A floating, draggable mini player that overlays any screen.
  * When collapsed, the video shrinks to a small floating box that the user
  * can drag anywhere on screen. Position persists across app sessions.
+ * Uses the global ExoPlayer instance from VideoPlayerGlobalState.
  */
 
 package com.futo.platformplayer.compose.player
 
-import android.net.Uri
 import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -48,22 +48,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.futo.platformplayer.api.media.models.streams.sources.IDashManifestSource
-import com.futo.platformplayer.api.media.models.streams.sources.IHLSManifestSource
-import com.futo.platformplayer.api.media.models.streams.sources.IVideoUrlSource
 import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
-import com.futo.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlRangeSource
-import com.futo.platformplayer.helpers.VideoHelper
-import com.futo.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
  * Floating mini player overlay.
- * Renders a small video preview with pause/play controls that can be dragged anywhere on screen.
+ * Renders the global ExoPlayer in a small PlayerView that can be dragged anywhere on screen.
  */
 @Composable
 fun MiniPlayerOverlay(
@@ -73,60 +65,18 @@ fun MiniPlayerOverlay(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val player = remember { ExoPlayer.Builder(context).build() }
-    var isPlaying by remember { mutableStateOf(true) }
     
-    // Load video URL in background
-    LaunchedEffect(video.url) {
-        withContext(Dispatchers.IO) {
-            try {
-                // Resolve video details
-                val resolvedVideo = StatePlatform.instance.getContentDetails(video.url).await()
-                if (resolvedVideo is IPlatformVideoDetails) {
-                    // Get video source
-                    val videoSource = VideoHelper.selectBestVideoSource(
-                        resolvedVideo.video,
-                        -1,
-                        arrayOf("mp4", "webm", "mkv")
-                    )
-                    
-                    if (videoSource != null) {
-                        // Extract URL from source
-                        val url = when (videoSource) {
-                            is JSVideoUrlRangeSource -> {
-                                (videoSource as? IVideoUrlSource)?.getVideoUrl() 
-                                    ?: ""
-                            }
-                            is IDashManifestSource -> {
-                                videoSource.url
-                            }
-                            is IHLSManifestSource -> {
-                                videoSource.url
-                            }
-                            is IVideoUrlSource -> {
-                                videoSource.getVideoUrl()
-                            }
-                            else -> ""
-                        }
-                        
-                        if (url.isNotEmpty()) {
-                            player.setMediaItem(MediaItem.fromUri(Uri.parse(url)))
-                            player.prepare()
-                            player.play()
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                // Silently fail - mini player will show placeholder
+    // Get the global ExoPlayer
+    val exoPlayer = remember { VideoPlayerGlobalState.exoPlayer }
+    var isPlaying by remember { mutableStateOf(exoPlayer?.isPlaying == true) }
+    
+    // Update playing state when player changes
+    LaunchedEffect(exoPlayer) {
+        exoPlayer?.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                isPlaying = exoPlayer?.isPlaying == true
             }
-        }
-    }
-    
-    // Save position when dragging ends
-    DisposableEffect(Unit) {
-        onDispose {
-            player.release()
-        }
+        })
     }
     
     Box(
@@ -162,12 +112,12 @@ fun MiniPlayerOverlay(
                 )
             }
     ) {
-        // Video preview
+        // Video preview using global ExoPlayer
         Box(modifier = Modifier.fillMaxSize()) {
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
-                        this.player = player
+                        this.player = exoPlayer
                         this.useController = false
                         layoutParams = ViewGroup.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -227,10 +177,10 @@ fun MiniPlayerOverlay(
             IconButton(
                 onClick = {
                     if (isPlaying) {
-                        player.pause()
+                        exoPlayer?.pause()
                         isPlaying = false
                     } else {
-                        player.play()
+                        exoPlayer?.play()
                         isPlaying = true
                     }
                 },
