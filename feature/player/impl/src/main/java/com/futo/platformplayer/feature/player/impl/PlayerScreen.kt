@@ -693,101 +693,165 @@ fun PlayerScreen(
                     }
                 } else {
                     // ==================== DEFAULT / FULLSCREEN state ====================
-                    Box(
-                        modifier = Modifier
+                    // In fullscreen the player (and every control drawn over it) fills the
+                    // entire screen. In normal/detail mode the player only occupies the top
+                    // 60% of the screen. EVERYTHING below - the gesture box, brightness/volume
+                    // indicators, and the top/bottom control bars - must be confined to that
+                    // same region as one unit. Previously the top/bottom overlays were aligned
+                    // to the outer full-screen Box directly, so in normal mode the bottom bar
+                    // ended up pinned to the literal bottom of the screen (on top of the
+                    // scrollable comments/description/recommended list) instead of the bottom
+                    // edge of the video, and it - along with the gesture box - swallowed taps
+                    // and scrolls meant for the list beneath it.
+                    val playerAreaModifier = if (isFullscreenAnim.value) {
+                        Modifier
+                            .align(Alignment.TopStart)
                             .fillMaxSize()
-                            .pointerInput(Unit) {
-                                detectVerticalDragGestures(
-                                    onVerticalDrag = { _, dragAmount ->
-                                        val delta = -dragAmount / 500f
-                                        if (touchX < size.width / 2) {
-                                            brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
-                                            viewModel.setBrightness(brightnessValue)
-                                            showBrightnessIndicator = true
-                                            coroutineScope.launch {
-                                                delay(1500)
-                                                showBrightnessIndicator = false
-                                            }
-                                        } else {
-                                            volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
-                                            viewModel.setVolume(volumeValue)
-                                            showVolumeIndicator = true
-                                            coroutineScope.launch {
-                                                delay(1500)
-                                                showVolumeIndicator = false
-                                            }
-                                        }
-                                    },
-                                    onDragStart = { touchX = it.x }
-                                )
-                            }
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onTap = {
-                                        controlsVisible = true
-                                        hideControlsJob?.cancel()
-                                        showTopOverlay = !showTopOverlay
-                                        showBottomOverlay = !showBottomOverlay
-                                    },
-                                    onDoubleTap = {
-                                        if (isFullscreen) {
-                                            Log.d(TAG, "Double-tap: exit fullscreen")
-                                            viewModel.exitFullscreen()
-                                        } else {
-                                            Log.d(TAG, "Double-tap: enter fullscreen")
-                                            viewModel.toggleFullscreen()
-                                        }
-                                    },
-                                    onLongPress = { /* TODO: PiP */ }
-                                )
-                            }
-                    )
+                    } else {
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .fillMaxWidth()
+                            .height(with(LocalDensity.current) { (containerSize.height * 0.6f).toDp() })
+                    }
 
-                    // ==================== Brightness Indicator ====================
-                    AnimatedVisibility(
-                        visible = showBrightnessIndicator,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                        modifier = Modifier.align(Alignment.CenterStart)
-                    ) {
+                    Box(modifier = playerAreaModifier.clipToBounds()) {
+                        // ==================== Gesture layer (brightness/volume swipe, tap-to-toggle) ====================
                         Box(
                             modifier = Modifier
-                                .fillMaxHeight()
-                                .width(120.dp)
+                                .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures(
+                                        onVerticalDrag = { _, dragAmount ->
+                                            val delta = -dragAmount / 500f
+                                            if (touchX < size.width / 2) {
+                                                brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
+                                                viewModel.setBrightness(brightnessValue)
+                                                showBrightnessIndicator = true
+                                                coroutineScope.launch {
+                                                    delay(1500)
+                                                    showBrightnessIndicator = false
+                                                }
+                                            } else {
+                                                volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
+                                                viewModel.setVolume(volumeValue)
+                                                showVolumeIndicator = true
+                                                coroutineScope.launch {
+                                                    delay(1500)
+                                                    showVolumeIndicator = false
+                                                }
+                                            }
+                                        },
+                                        onDragStart = { touchX = it.x }
+                                    )
+                                }
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            controlsVisible = true
+                                            hideControlsJob?.cancel()
+                                            showTopOverlay = !showTopOverlay
+                                            showBottomOverlay = !showBottomOverlay
+                                        },
+                                        onDoubleTap = {
+                                            if (isFullscreen) {
+                                                Log.d(TAG, "Double-tap: exit fullscreen")
+                                                viewModel.exitFullscreen()
+                                            } else {
+                                                Log.d(TAG, "Double-tap: enter fullscreen")
+                                                viewModel.toggleFullscreen()
+                                            }
+                                        },
+                                        onLongPress = { /* TODO: PiP */ }
+                                    )
+                                }
+                        )
+
+                        // ==================== Brightness Indicator ====================
+                        AnimatedVisibility(
+                            visible = showBrightnessIndicator,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.align(Alignment.CenterStart)
                         ) {
-                            BrightnessIndicator(
-                                brightness = brightnessValue,
-                                modifier = Modifier.align(Alignment.Center)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(120.dp)
+                            ) {
+                                BrightnessIndicator(
+                                    brightness = brightnessValue,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        }
+
+                        // ==================== Volume Indicator ====================
+                        AnimatedVisibility(
+                            visible = showVolumeIndicator,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(120.dp)
+                            ) {
+                                VolumeIndicator(
+                                    volume = volumeValue,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        }
+
+                        // ==================== Double-tap seek indicators ====================
+                        SeekIndicators(
+                            showSeekBack = false,
+                            showSeekForward = false
+                        )
+
+                        // ==================== Top Overlay ====================
+                        AnimatedVisibility(
+                            visible = showTopOverlay,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+                            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
+                        ) {
+                            TopOverlay(
+                                title = state.currentVideo?.title ?: "Unknown",
+                                channelName = state.currentVideo?.author?.name ?: "Unknown",
+                                onMinimize = {
+                                    Log.d(TAG, "Minimize button clicked")
+                                    viewModel.minimize()
+                                },
+                                onReplayToggle = { /* TODO */ },
+                                onWatchLater = { /* TODO */ },
+                                onOptions = { showOptionsModal = true }
+                            )
+                        }
+
+                        // ==================== Bottom Overlay ====================
+                        AnimatedVisibility(
+                            visible = showBottomOverlay,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                            exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        ) {
+                            BottomOverlay(
+                                currentPositionMs = state.currentPositionMs,
+                                durationMs = state.durationMs,
+                                isPlaying = state.isPlaying,
+                                onPlayPause = {
+                                    if (state.isPlaying) viewModel.pause() else viewModel.resume()
+                                },
+                                onPrevious = { viewModel.skipPrevious() },
+                                onNext = { viewModel.skipNext() },
+                                onChapters = { showChapters = !showChapters },
+                                onFullscreen = { viewModel.toggleFullscreen() }
                             )
                         }
                     }
 
-                    // ==================== Volume Indicator ====================
-                    AnimatedVisibility(
-                        visible = showVolumeIndicator,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(120.dp)
-                        ) {
-                            VolumeIndicator(
-                                volume = volumeValue,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                        }
-                    }
-
-                    // ==================== Double-tap seek indicators ====================
-                    SeekIndicators(
-                        showSeekBack = false,
-                        showSeekForward = false
-                    )
-
-                    // ==================== Options Modal ====================
+                    // ==================== Options Modal (full-screen dialog) ====================
                     if (showOptionsModal) {
                         OptionsModal(
                             playbackSpeed = selectedSpeed,
@@ -804,7 +868,7 @@ fun PlayerScreen(
                         )
                     }
 
-                    // ==================== Chapters Panel ====================
+                    // ==================== Chapters Panel (full-screen dialog) ====================
                     if (showChapters) {
                         ChaptersPanel(
                             chapters = emptyList(),
@@ -816,46 +880,6 @@ fun PlayerScreen(
                             onDismiss = { showChapters = false }
                         )
                     }
-                }
-
-                // ==================== Top Overlay (always composed, animates visibility) ====================
-                AnimatedVisibility(
-                    visible = showTopOverlay && !isMinimizedAnim.value,
-                    enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-                    exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
-                ) {
-                    TopOverlay(
-                        title = state.currentVideo?.title ?: "Unknown",
-                        channelName = state.currentVideo?.author?.name ?: "Unknown",
-                        onMinimize = {
-                            Log.d(TAG, "Minimize button clicked")
-                            viewModel.minimize()
-                        },
-                        onReplayToggle = { /* TODO */ },
-                        onWatchLater = { /* TODO */ },
-                        onOptions = { showOptionsModal = true }
-                    )
-                }
-
-                // ==================== Bottom Overlay (always composed, animates visibility) ====================
-                AnimatedVisibility(
-                    visible = showBottomOverlay && !isMinimizedAnim.value,
-                    enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                ) {
-                    BottomOverlay(
-                        currentPositionMs = state.currentPositionMs,
-                        durationMs = state.durationMs,
-                        isPlaying = state.isPlaying,
-                        onPlayPause = {
-                            if (state.isPlaying) viewModel.pause() else viewModel.resume()
-                        },
-                        onPrevious = { viewModel.skipPrevious() },
-                        onNext = { viewModel.skipNext() },
-                        onChapters = { showChapters = !showChapters },
-                        onFullscreen = { viewModel.toggleFullscreen() }
-                    )
                 }
             }
         }
