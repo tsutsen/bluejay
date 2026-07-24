@@ -184,9 +184,8 @@ fun PlayerScreen(
                 }
             }
 
-            // Calculate mini-player size
-            val screenWidth = configuration.screenWidthDp.dp
-            val miniWidth = (screenWidth * miniPlayerScale).coerceAtMost(400.dp)
+            // Calculate mini-player size - smaller, 16:9 aspect ratio
+            val miniWidth = 280.dp
             val miniHeight = miniWidth * 9f / 16f
 
             val isMinimized = state.isMinimized
