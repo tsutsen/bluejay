@@ -99,11 +99,6 @@ fun PlayerScreen(
     // ==================== Animation State (persists outside when block) ====================
     val isMinimizedAnim = remember { mutableStateOf(false) }
     val isFullscreenAnim = remember { mutableStateOf(false) }
-    val fullscreenTransitionProgress = animateFloatAsState(
-        targetValue = if (isFullscreenAnim.value) 1f else 0f,
-        animationSpec = transitionSpringSpec,
-        label = "fullscreenTransitionProgress"
-    )
 
     var containerSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
 
@@ -211,12 +206,7 @@ fun PlayerScreen(
                 label = "translationY"
             )
 
-            // Fullscreen transition animation
-            val fullscreenScale by animateFloatAsState(
-                targetValue = if (isFullscreenAnim.value) 1.0f else if (isMinimizedAnim.value) miniScaleTarget else 1.0f,
-                animationSpec = transitionSpringSpec,
-                label = "fullscreenScale"
-            )
+            // Fullscreen transition: animate corner radius and shadow only
             val fullscreenCornerRadius by animateDpAsState(
                 targetValue = if (isFullscreenAnim.value) 0.dp else if (isMinimizedAnim.value) 12.dp else 0.dp,
                 animationSpec = transitionDpSpec,
@@ -343,11 +333,10 @@ fun PlayerScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-    val transition = fullscreenTransitionProgress.value
-    this.scaleX = fullscreenScale
-    this.scaleY = fullscreenScale
-    this.translationX = translationX * (1f - transition)
-    this.translationY = translationY * (1f - transition)
+    this.scaleX = if (isFullscreenAnim.value) 1f else scale
+    this.scaleY = if (isFullscreenAnim.value) 1f else scale
+    this.translationX = if (isFullscreenAnim.value) 0f else translationX
+    this.translationY = if (isFullscreenAnim.value) 0f else translationY
     this.shape = RoundedCornerShape(fullscreenCornerRadius.coerceAtLeast(0.dp))
     this.clip = true
     this.shadowElevation = fullscreenShadowElevation.toPx()
