@@ -181,150 +181,150 @@ fun PlayerScreen(
                                     contentScale = ContentScale.Crop
                                 )
                             }
+                        }
+                    }
 
-                            // Mini-player controls overlay
-                            Box(
+                    // Mini-player controls overlay (sibling, not nested inside scaled Box)
+                    Box(
+                        modifier = Modifier
+                            .size(miniWidth, miniHeight)
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp)
+                            .graphicsLayer {
+                                shape = RoundedCornerShape(12.dp)
+                                clip = true
+                            }
+                    ) {
+                        // Dark overlay for better control visibility
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.6f))
+                        )
+
+                        // Controls
+                        Column(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            // Top row: Play/Pause (left) and Close (right)
+                            Row(
                                 modifier = Modifier
-                                    .size(miniWidth, miniHeight)
-                                    .align(Alignment.BottomEnd)
-                                    .padding(16.dp)
-                                    .graphicsLayer {
-                                        shape = RoundedCornerShape(12.dp)
-                                        clip = true
-                                    }
+                                    .fillMaxWidth()
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Dark overlay for better control visibility
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.6f))
-                                )
-
-                                // Controls
-                                Column(
-                                    modifier = Modifier.fillMaxSize()
+                                IconButton(
+                                    onClick = {
+                                        if (state.isPlaying) viewModel.pause() else viewModel.resume()
+                                    },
+                                    modifier = Modifier.size(36.dp)
                                 ) {
-                                    // Top row: Play/Pause (left) and Close (right)
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(
-                                            onClick = {
-                                                if (state.isPlaying) viewModel.pause() else viewModel.resume()
-                                            },
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                                contentDescription = if (state.isPlaying) "Pause" else "Play",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
+                                    Icon(
+                                        imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
 
-                                        IconButton(
-                                            onClick = { viewModel.exitFullscreen() },
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Close,
-                                                contentDescription = "Close",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.weight(1f))
-
-                                    // Bottom row: Title and actions
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = state.currentVideo?.title ?: "Unknown",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = Color.White,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            if (state.currentVideo?.author?.name?.isNotEmpty() == true) {
-                                                Text(
-                                                    text = state.currentVideo!!.author!!.name,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = Color.White.copy(alpha = 0.7f),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                        }
-
-                                        // More options
-                                        IconButton(
-                                            onClick = { showMiniPlayerOptions = true },
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.MoreVert,
-                                                contentDescription = "More options",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-
-                                        // Fullscreen
-                                        IconButton(
-                                            onClick = { viewModel.toggleFullscreen() },
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Fullscreen,
-                                                contentDescription = "Fullscreen",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
-
-                                    // Progress bar
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentAlignment = Alignment.BottomCenter
-                                    ) {
-                                        LinearProgressIndicator(
-                                            progress = if (state.durationMs > 0) state.currentPositionMs.toFloat() / state.durationMs else 0f,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(3.dp),
-                                            color = MaterialTheme.colorScheme.primary,
-                                            trackColor = Color.Transparent
-                                        )
-                                    }
+                                IconButton(
+                                    onClick = { viewModel.exitFullscreen() },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
 
-                            // Tap to expand
-                            Box(
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            // Bottom row: Title and actions
+                            Row(
                                 modifier = Modifier
-                                    .size(miniWidth, miniHeight)
-                                    .align(Alignment.BottomEnd)
-                                    .padding(16.dp)
-                                    .pointerInput(Unit) {
-                                        detectTapGestures(
-                                            onTap = { viewModel.exitFullscreen() }
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = state.currentVideo?.title ?: "Unknown",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (state.currentVideo?.author?.name?.isNotEmpty() == true) {
+                                        Text(
+                                            text = state.currentVideo!!.author!!.name,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.7f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
-                            )
+                                }
+
+                                // More options
+                                IconButton(
+                                    onClick = { showMiniPlayerOptions = true },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More options",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                // Fullscreen
+                                IconButton(
+                                    onClick = { viewModel.toggleFullscreen() },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Fullscreen,
+                                        contentDescription = "Fullscreen",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            // Progress bar
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                LinearProgressIndicator(
+                                    progress = if (state.durationMs > 0) state.currentPositionMs.toFloat() / state.durationMs else 0f,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(3.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = Color.Transparent
+                                )
+                            }
                         }
                     }
+
+                    // Tap to expand
+                    Box(
+                        modifier = Modifier
+                            .size(miniWidth, miniHeight)
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onTap = { viewModel.exitFullscreen() }
+                                )
+                            }
+                    )
                 } else {
                     // Fullscreen mode - show overlays and handle gestures
                     Box(
