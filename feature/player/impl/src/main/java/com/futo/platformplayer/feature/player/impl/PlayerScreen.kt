@@ -288,51 +288,35 @@ fun PlayerScreen(
                     )
                 }
 
-                // ==================== Video Player ====================
-                if (isMinimizedAnim.value) {
-                    // MINI state: scaled and positioned video
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                this.scaleX = scale
-                                this.scaleY = scale
-                                this.translationX = translationX
-                                this.translationY = translationY
-                                shape = RoundedCornerShape(cornerRadius)
-                                clip = true
-                                shadowElevation = shadowElevationDp.toPx()
-                            }
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            AndroidView(
-                                factory = { ctx ->
-                                    PlayerView(ctx).apply {
-                                        this.player = player
-                                        useController = false
-                                        layoutParams = ViewGroup.LayoutParams(
-                                            ViewGroup.LayoutParams.MATCH_PARENT,
-                                            ViewGroup.LayoutParams.MATCH_PARENT
-                                        )
-                                        // Ensure controller is never shown
-                                        setControllerAutoShow(false)
-                                        hideController()
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize()
+                // ==================== Video Player (single instance, always present) ====================
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            // Disable controller BEFORE attaching player to avoid flash
+                            useController = false
+                            setControllerAutoShow(false)
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
                             )
-                            if (!state.isPlaying) {
-                                AsyncImage(
-                                    model = state.currentVideo?.thumbnailUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
+                            this.player = player
                         }
-                    }
+                    },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+    this.scaleX = scale
+    this.scaleY = scale
+    this.translationX = translationX
+    this.translationY = translationY
+    this.shape = RoundedCornerShape(cornerRadius)
+    this.clip = true
+    this.shadowElevation = shadowElevationDp.toPx()
+}
+                )
 
-                    // Mini-player controls overlay
+                // ==================== Mini-player controls overlay ====================
+                if (isMinimizedAnim.value) {
                     Box(
                         modifier = Modifier
                             .size(miniWidth, miniHeight)
@@ -462,8 +446,6 @@ fun PlayerScreen(
                             }
                         }
                     }
-
-                    // Tap to expand mini player — added to the controls box via pointerInput
                 } else {
                     // ==================== DEFAULT / FULLSCREEN state ====================
                     Box(
@@ -514,24 +496,7 @@ fun PlayerScreen(
                                     onLongPress = { /* TODO: PiP */ }
                                 )
                             }
-                    ) {
-                        AndroidView(
-                            factory = { ctx ->
-                                PlayerView(ctx).apply {
-                                    this.player = player
-                                    useController = false
-                                    layoutParams = ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                    // Ensure controller is never shown
-                                    setControllerAutoShow(false)
-                                    hideController()
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                    )
 
                     // ==================== Top Overlay ====================
                     AnimatedVisibility(
