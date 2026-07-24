@@ -369,40 +369,56 @@ fun PlayerScreen(
                                 clip = true
                             }
                             .pointerInput(isDraggingMiniPlayer) {
-                                if (!isDraggingMiniPlayer) {
-                                    detectDragGestures(
-                                        onDragStart = { _: Offset ->
-                                            isDraggingMiniPlayer = true
-                                        },
-                                        onDrag = { change, dragAmount: Offset ->
-                                            change.consume()
-                                            miniPlayerOffsetX += dragAmount.x
-                                            miniPlayerOffsetY += dragAmount.y
-                                        },
-                                        onDragEnd = {
-                                            isDraggingMiniPlayer = false
-                                            // Snap to nearest edge or keep position
-                                            val screenWidth = containerSize.width
-                                            val screenHeight = containerSize.height
-                                            val miniWidthPx = miniWidth.toPx()
-                                            val miniHeightPx = miniHeight.toPx()
-                                            
-                                            // Snap to edges if within threshold
-                                            val edgeThreshold = 100f
-                                            if (miniPlayerOffsetX < edgeThreshold) {
-                                                miniPlayerOffsetX = 0f
-                                            } else if (miniPlayerOffsetX > screenWidth - miniWidthPx - edgeThreshold) {
-                                                miniPlayerOffsetX = screenWidth - miniWidthPx
-                                            }
-                                            
-                                            if (miniPlayerOffsetY < edgeThreshold) {
-                                                miniPlayerOffsetY = 0f
-                                            } else if (miniPlayerOffsetY > screenHeight - miniHeightPx - edgeThreshold) {
-                                                miniPlayerOffsetY = screenHeight - miniHeightPx
-                                            }
-                                        },
-                                        onDragCancel = {
-                                            isDraggingMiniPlayer = false
+                                var isDragging = false
+                                var dragStartX = 0f
+                                var dragStartY = 0f
+                                
+                                detectDragGestures(
+                                    onDragStart = { offset ->
+                                        isDragging = true
+                                        dragStartX = offset.x
+                                        dragStartY = offset.y
+                                    },
+                                    onDrag = { change, dragAmount: Offset ->
+                                        change.consume()
+                                        miniPlayerOffsetX += dragAmount.x
+                                        miniPlayerOffsetY += dragAmount.y
+                                    },
+                                    onDragEnd = {
+                                        isDraggingMiniPlayer = false
+                                        isDragging = false
+                                        // Snap to nearest edge or keep position
+                                        val screenWidth = containerSize.width
+                                        val screenHeight = containerSize.height
+                                        val miniWidthPx = miniWidth.toPx()
+                                        val miniHeightPx = miniHeight.toPx()
+                                        
+                                        // Snap to edges if within threshold
+                                        val edgeThreshold = 100f
+                                        if (miniPlayerOffsetX < edgeThreshold) {
+                                            miniPlayerOffsetX = 0f
+                                        } else if (miniPlayerOffsetX > screenWidth - miniWidthPx - edgeThreshold) {
+                                            miniPlayerOffsetX = screenWidth - miniWidthPx
+                                        }
+                                        
+                                        if (miniPlayerOffsetY < edgeThreshold) {
+                                            miniPlayerOffsetY = 0f
+                                        } else if (miniPlayerOffsetY > screenHeight - miniHeightPx - edgeThreshold) {
+                                            miniPlayerOffsetY = screenHeight - miniHeightPx
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        isDraggingMiniPlayer = false
+                                        isDragging = false
+                                    }
+                                )
+                                
+                                // Only trigger tap if no drag occurred
+                                if (!isDragging) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            Log.d(TAG, "Tap background: expand mini player")
+                                            viewModel.exitMiniPlayer()
                                         }
                                     )
                                 }
@@ -412,14 +428,6 @@ fun PlayerScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.6f))
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            Log.d(TAG, "Tap background: expand mini player")
-                                            viewModel.exitMiniPlayer()
-                                        }
-                                    )
-                                }
                         )
                         Column(modifier = Modifier.fillMaxSize()) {
                             // Top row: Play/Pause (left) and Close (right)
