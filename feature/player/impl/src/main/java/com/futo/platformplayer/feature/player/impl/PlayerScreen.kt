@@ -428,7 +428,11 @@ fun PlayerScreen(
                                     )
                                 }
                                 IconButton(
-                                    onClick = { viewModel.toggleFullscreen() },
+                                    onClick = {
+                                        Log.d(TAG, "Fullscreen from mini player: exit mini then enter fullscreen")
+                                        viewModel.exitMiniPlayer()
+                                        viewModel.toggleFullscreen()
+                                    },
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
