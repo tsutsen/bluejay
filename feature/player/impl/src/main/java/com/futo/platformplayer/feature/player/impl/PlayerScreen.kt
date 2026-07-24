@@ -435,23 +435,25 @@ fun PlayerScreen(
                                         isDragging = false
                                     }
                                 )
-                                
-                                // Only trigger tap if no drag occurred
-                                if (!isDragging) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            Log.d(TAG, "Tap background: expand mini player")
-                                            viewModel.exitMiniPlayer()
-                                        }
-                                    )
-                                }
                             }
                     ) {
+                        // Background Box with tap gesture to expand mini player
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.6f))
+                                .pointerInput(isDraggingMiniPlayer) {
+                                    if (!isDraggingMiniPlayer) {
+                                        detectTapGestures(
+                                            onTap = {
+                                                Log.d(TAG, "Tap background: expand mini player")
+                                                viewModel.exitMiniPlayer()
+                                            }
+                                        )
+                                    }
+                                }
                         )
+                        // Column with buttons (buttons are not affected by background tap)
                         Column(modifier = Modifier.fillMaxSize()) {
                             // Top row: Play/Pause (left) and Close (right)
                             Row(
