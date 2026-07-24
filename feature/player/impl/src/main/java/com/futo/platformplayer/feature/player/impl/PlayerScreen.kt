@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -31,11 +32,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +88,11 @@ fun PlayerScreen(
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
     var touchX by remember { mutableStateOf(0f) }
+    
+    // Mini player drag state
+    var miniPlayerOffsetX by remember { mutableStateOf(0f) }
+    var miniPlayerOffsetY by remember { mutableStateOf(0f) }
+    var isDraggingMiniPlayer by remember { mutableStateOf(false) }
 
     // Smoother spring animations - more damping for less bounce, lower stiffness for smoother feel
     val transitionSpringSpec = spring<Float>(
@@ -350,9 +358,54 @@ fun PlayerScreen(
                             .size(miniWidth, miniHeight)
                             .align(Alignment.BottomEnd)
                             .padding(16.dp)
+                            .offset {
+                                IntOffset(
+                                    x = miniPlayerOffsetX.toInt(),
+                                    y = miniPlayerOffsetY.toInt()
+                                )
+                            }
                             .graphicsLayer {
                                 shape = RoundedCornerShape(cornerRadius)
                                 clip = true
+                            }
+                            .pointerInput(isDraggingMiniPlayer) {
+                                if (!isDraggingMiniPlayer) {
+                                    detectDragGestures(
+                                        onDragStart = { _: Offset ->
+                                            isDraggingMiniPlayer = true
+                                        },
+                                        onDrag = { change, dragAmount: Offset ->
+                                            change.consume()
+                                            miniPlayerOffsetX += dragAmount.x
+                                            miniPlayerOffsetY += dragAmount.y
+                                        },
+                                        onDragEnd = {
+                                            isDraggingMiniPlayer = false
+                                            // Snap to nearest edge or keep position
+                                            val screenWidth = containerSize.width
+                                            val screenHeight = containerSize.height
+                                            val miniWidthPx = miniWidth.toPx()
+                                            val miniHeightPx = miniHeight.toPx()
+                                            
+                                            // Snap to edges if within threshold
+                                            val edgeThreshold = 100f
+                                            if (miniPlayerOffsetX < edgeThreshold) {
+                                                miniPlayerOffsetX = 0f
+                                            } else if (miniPlayerOffsetX > screenWidth - miniWidthPx - edgeThreshold) {
+                                                miniPlayerOffsetX = screenWidth - miniWidthPx
+                                            }
+                                            
+                                            if (miniPlayerOffsetY < edgeThreshold) {
+                                                miniPlayerOffsetY = 0f
+                                            } else if (miniPlayerOffsetY > screenHeight - miniHeightPx - edgeThreshold) {
+                                                miniPlayerOffsetY = screenHeight - miniHeightPx
+                                            }
+                                        },
+                                        onDragCancel = {
+                                            isDraggingMiniPlayer = false
+                                        }
+                                    )
+                                }
                             }
                     ) {
                         Box(
