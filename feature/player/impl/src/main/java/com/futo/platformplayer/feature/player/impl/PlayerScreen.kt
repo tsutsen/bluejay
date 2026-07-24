@@ -315,6 +315,7 @@ fun PlayerScreen(
                                             ViewGroup.LayoutParams.MATCH_PARENT
                                         )
                                         // Ensure controller is never shown
+                                        setControllerAutoShow(false)
                                         hideController()
                                     }
                                 },
@@ -524,6 +525,7 @@ fun PlayerScreen(
                                         ViewGroup.LayoutParams.MATCH_PARENT
                                     )
                                     // Ensure controller is never shown
+                                    setControllerAutoShow(false)
                                     hideController()
                                 }
                             },
