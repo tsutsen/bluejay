@@ -395,21 +395,27 @@ fun PlayerScreen(
                                         val paddingPx = 16.dp.toPx()
                                         val edgeThreshold = 100f
                                         
-                                        // Snap X to left or right edge
-                                        if (miniPlayerOffsetX < edgeThreshold) {
-                                            // Near left edge: snap to left
-                                            miniPlayerOffsetX = -(screenWidth - miniWidthPx - paddingPx) // Snap to left
-                                        } else if (miniPlayerOffsetX > screenWidth - miniWidthPx - edgeThreshold) {
-                                            // Near right edge: snap to right (default)
+                                        // Calculate actual position (initial position + offset)
+                                        val initialX = screenWidth - miniWidthPx - paddingPx
+                                        val initialY = screenHeight - miniHeightPx - paddingPx
+                                        val actualX = initialX + miniPlayerOffsetX
+                                        val actualY = initialY + miniPlayerOffsetY
+                                        
+                                        // Snap X to left or right edge based on actual position
+                                        if (actualX < edgeThreshold) {
+                                            // Near left edge: snap to left (offset = -initialX)
+                                            miniPlayerOffsetX = -initialX
+                                        } else if (actualX > screenWidth - miniWidthPx - edgeThreshold) {
+                                            // Near right edge: snap to right (offset = 0)
                                             miniPlayerOffsetX = 0f
                                         }
                                         
-                                        // Snap Y to top or bottom edge
-                                        if (miniPlayerOffsetY < edgeThreshold) {
-                                            // Near top edge: snap to top
-                                            miniPlayerOffsetY = -(screenHeight - miniHeightPx - paddingPx) // Snap to top
-                                        } else if (miniPlayerOffsetY > screenHeight - miniHeightPx - edgeThreshold) {
-                                            // Near bottom edge: snap to bottom (default)
+                                        // Snap Y to top or bottom edge based on actual position
+                                        if (actualY < edgeThreshold) {
+                                            // Near top edge: snap to top (offset = -initialY)
+                                            miniPlayerOffsetY = -initialY
+                                        } else if (actualY > screenHeight - miniHeightPx - edgeThreshold) {
+                                            // Near bottom edge: snap to bottom (offset = 0)
                                             miniPlayerOffsetY = 0f
                                         }
                                     },
