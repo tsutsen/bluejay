@@ -314,6 +314,8 @@ fun PlayerScreen(
                                             ViewGroup.LayoutParams.MATCH_PARENT,
                                             ViewGroup.LayoutParams.MATCH_PARENT
                                         )
+                                        // Ensure controller is never shown
+                                        hideController()
                                     }
                                 },
                                 modifier = Modifier.fillMaxSize()
@@ -521,6 +523,8 @@ fun PlayerScreen(
                                         ViewGroup.LayoutParams.MATCH_PARENT,
                                         ViewGroup.LayoutParams.MATCH_PARENT
                                     )
+                                    // Ensure controller is never shown
+                                    hideController()
                                 }
                             },
                             modifier = Modifier.fillMaxSize()
