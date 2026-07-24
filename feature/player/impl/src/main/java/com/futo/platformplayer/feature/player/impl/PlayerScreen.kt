@@ -32,6 +32,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -361,13 +362,14 @@ fun PlayerScreen(
                 } else if (!isMinimizedAnim.value) {
                     // Detail page: player at 60% height, details scrollable below
                     val playerHeight = containerSize.height * 0.6f
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
                         // Player takes 60% of screen height
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(with(LocalDensity.current) { playerHeight.toDp() })
                                 .background(Color.Black)
+                                .clipToBounds()
                         ) {
                             AndroidView(
                                 factory = { ctx ->
@@ -381,7 +383,7 @@ fun PlayerScreen(
                                         this.player = player
                                     }
                                 },
-                                modifier = Modifier.matchParentSize()
+                                modifier = Modifier.fillMaxSize()
                             )
                             // Minimize button overlay
                             Box(
@@ -409,7 +411,6 @@ fun PlayerScreen(
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .offset(y = with(LocalDensity.current) { playerHeight.toDp() })
                                 .background(MaterialTheme.colorScheme.surface)
                         ) {
                             // Title and Meta
