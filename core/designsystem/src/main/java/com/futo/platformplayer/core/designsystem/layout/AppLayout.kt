@@ -25,7 +25,8 @@ import androidx.window.core.layout.WindowWidthSizeClass
  * Configuration for the app layout.
  */
 data class AppLayoutConfig(
-    val isWide: Boolean = false
+    val isWide: Boolean = false,
+    val showNavigation: Boolean = true
 )
 
 /**
@@ -156,7 +157,9 @@ fun AppLayout(
     if (config.isWide) {
         // Landscape: NavigationRail on left + content
         Row(modifier = modifier.fillMaxSize()) {
-            navigationContent()
+            if (config.showNavigation) {
+                navigationContent()
+            }
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                 content()
             }
@@ -167,7 +170,9 @@ fun AppLayout(
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                 content()
             }
-            navigationContent()
+            if (config.showNavigation) {
+                navigationContent()
+            }
         }
     }
 }

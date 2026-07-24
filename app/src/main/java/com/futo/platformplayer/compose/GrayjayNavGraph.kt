@@ -9,7 +9,6 @@ import com.futo.platformplayer.core.navigation.NavDestination
 import com.futo.platformplayer.core.navigation.Navigator
 import com.futo.platformplayer.feature.home.impl.HomeScreen
 import com.futo.platformplayer.compose.plugins.PluginBrowserScene
-import com.futo.platformplayer.feature.player.impl.PlayerScreen
 import com.futo.platformplayer.feature.settings.impl.SettingsScreen
 
 /**
@@ -44,14 +43,6 @@ fun GrayjayNavGraph(
         is NavDestination.Library -> PlaceholderScreen("Library", "Coming soon")
         is NavDestination.Notifications -> PlaceholderScreen("Notifications", "Coming soon")
         is NavDestination.Settings -> SettingsScreen(navigator = navigator)
-        is NavDestination.VideoDetail -> PlayerScreen(
-            videoId = (destination as NavDestination.VideoDetail).url,
-            navigator = navigator
-        )
-        is NavDestination.Player -> PlayerScreen(
-            videoId = (destination as NavDestination.Player).videoId,
-            navigator = navigator
-        )
         is NavDestination.ChannelDetail -> PlaceholderScreen("Channel Detail", "Coming soon")
         is NavDestination.PlaylistDetail -> PlaceholderScreen("Playlist Detail", "Coming soon")
         is NavDestination.SourceDetail -> PlaceholderScreen("Source Detail", "Coming soon")

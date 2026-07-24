@@ -119,4 +119,8 @@ class PlayerRepositoryImpl @Inject constructor(
     override suspend fun exitFullscreen() {
         _playerState.update { it.copy(isFullscreen = false) }
     }
+
+    override suspend fun exitMiniPlayer() {
+        _playerState.update { it.copy(isMinimized = false, isFullscreen = false) }
+    }
 }

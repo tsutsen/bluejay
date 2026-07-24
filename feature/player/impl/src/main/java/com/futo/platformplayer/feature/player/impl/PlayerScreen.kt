@@ -1,9 +1,20 @@
 package com.futo.platformplayer.feature.player.impl
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.util.Log
+import android.view.View
 import android.view.ViewGroup
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -11,28 +22,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
@@ -41,24 +48,29 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.futo.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.futo.platformplayer.core.model.ContentItem
-import com.futo.platformplayer.core.navigation.Navigator
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+private const val TAG = "PlayerScreen"
+
 /**
- * Full-screen video player with gesture controls and overlays.
+ * Video player overlay composable.
+ * Rendered at the activity level on top of whatever screen is behind it.
+ * No navigation needed — player just appears/disappears based on PlayerState.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(
-    videoId: String,
-    navigator: Navigator,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
+    Log.d(TAG, "PlayerScreen COMPOSE created (overlay mode)")
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+
     var showTopOverlay by remember { mutableStateOf(true) }
     var showBottomOverlay by remember { mutableStateOf(true) }
     var showOptionsModal by remember { mutableStateOf(false) }
@@ -67,24 +79,35 @@ fun PlayerScreen(
     var showVolumeIndicator by remember { mutableStateOf(false) }
     var brightnessValue by remember { mutableStateOf(1.0f) }
     var volumeValue by remember { mutableStateOf(1.0f) }
-    var replayEnabled by remember { mutableStateOf(false) }
     var selectedSpeed by remember { mutableStateOf(1.0f) }
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
     var touchX by remember { mutableStateOf(0f) }
 
-    // Auto-hide overlay
-    LaunchedEffect(showTopOverlay, showBottomOverlay) {
-        if (showTopOverlay && showBottomOverlay) {
-            delay(3000)
-            if (uiState is PlayerUiState.Loaded && (uiState as PlayerUiState.Loaded).isPlaying) {
-                showTopOverlay = false
-                showBottomOverlay = false
-            }
+    // ==================== Animation State (persists outside when block) ====================
+    val isMinimizedAnim = remember { mutableStateOf(false) }
+    val isFullscreenAnim = remember { mutableStateOf(false) }
+
+    // Smoother spring animations - more damping for less bounce, lower stiffness for smoother feel
+    val transitionSpringSpec = spring<Float>(
+        stiffness = Spring.StiffnessLow,
+        dampingRatio = Spring.DampingRatioMediumBouncy
+    )
+    val transitionDpSpec = spring<Dp>(
+        stiffness = Spring.StiffnessLow,
+        dampingRatio = Spring.DampingRatioMediumBouncy
+    )
+
+    var containerSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
+
+    // ==================== ExoPlayer (managed lifecycle) ====================
+    val player = remember { ExoPlayer.Builder(context).build() }
+    DisposableEffect(Unit) {
+        onDispose {
+            player.release()
         }
     }
 
-    // Update brightness/volume indicators
     LaunchedEffect(uiState) {
         if (uiState is PlayerUiState.Loaded) {
             val state = uiState as PlayerUiState.Loaded
@@ -93,25 +116,44 @@ fun PlayerScreen(
         }
     }
 
+    // Auto-hide overlays when playing
+    LaunchedEffect(showTopOverlay, showBottomOverlay, uiState) {
+        if (showTopOverlay && showBottomOverlay) {
+            if (uiState is PlayerUiState.Loaded && (uiState as PlayerUiState.Loaded).isPlaying) {
+                delay(3000)
+                if (uiState is PlayerUiState.Loaded && (uiState as PlayerUiState.Loaded).isPlaying) {
+                    showTopOverlay = false
+                    showBottomOverlay = false
+                }
+            }
+        }
+    }
+
+    // Sync animation state with actual state
+    LaunchedEffect(uiState) {
+        if (uiState is PlayerUiState.Loaded) {
+            val state = uiState as PlayerUiState.Loaded
+            isMinimizedAnim.value = state.isMinimized
+            isFullscreenAnim.value = state.isFullscreen
+            Log.d(TAG, "Animation state synced: isMinimized=${state.isMinimized}, isFullscreen=${state.isFullscreen}")
+        }
+    }
+
     when (val state = uiState) {
         is PlayerUiState.Initial -> {
-            VideoCardSkeleton(count = 1)
+            // No player active — don't show anything
         }
         is PlayerUiState.Loaded -> {
-            val context = LocalContext.current
-            val configuration = LocalConfiguration.current
             val isTablet = configuration.smallestScreenWidthDp >= 600
             val miniPlayerScale = if (isTablet) 0.35f else 0.45f
 
-            // Keep player reference across minimized/expanded states
-            val player = remember { ExoPlayer.Builder(context).build() }
-            LaunchedEffect(state.currentVideo) {
-                if (state.currentVideo != null) {
-                    player.setMediaItem(
-                        MediaItem.fromUri(state.currentVideo!!.url)
-                    )
+            // Load video into ExoPlayer
+            LaunchedEffect(state.currentVideo?.url) {
+                if (state.currentVideo?.url != null) {
+                    player.setMediaItem(MediaItem.fromUri(state.currentVideo!!.url))
                     player.prepare()
                     player.playWhenReady = true
+                    Log.d(TAG, "MediaItem loaded: ${state.currentVideo!!.url}")
                 }
             }
 
@@ -120,44 +162,149 @@ fun PlayerScreen(
             val miniWidth = (screenWidth * miniPlayerScale).coerceAtMost(400.dp)
             val miniHeight = miniWidth * 9f / 16f
 
-            // Determine if player is minimized (floating)
             val isMinimized = state.isMinimized
+            val isFullscreen = state.isFullscreen
 
+            // ==================== Animated Values ====================
+            val miniScaleTarget = if (isTablet) 0.35f else 0.45f
+            val scale by animateFloatAsState(
+                targetValue = if (isMinimizedAnim.value) miniScaleTarget else 1.0f,
+                animationSpec = transitionSpringSpec,
+                label = "miniScale"
+            )
+            val cornerRadius by animateDpAsState(
+                targetValue = if (isMinimizedAnim.value) 12.dp else 0.dp,
+                animationSpec = transitionDpSpec,
+                label = "cornerRadius"
+            )
+            val shadowElevationDp by animateDpAsState(
+                targetValue = if (isMinimizedAnim.value) 8.dp else 0.dp,
+                animationSpec = transitionDpSpec,
+                label = "shadowElevation"
+            )
+            // No scrim when minimized - let user see content behind
+            val scrimAlpha by animateFloatAsState(
+                targetValue = 0f,
+                animationSpec = transitionSpringSpec,
+                label = "scrimAlpha"
+            )
+            val translationX by animateFloatAsState(
+                targetValue = if (isMinimizedAnim.value) containerSize.width * 0.85f else 0f,
+                animationSpec = transitionSpringSpec,
+                label = "translationX"
+            )
+            val translationY by animateFloatAsState(
+                targetValue = if (isMinimizedAnim.value) containerSize.height * 0.8f else 0f,
+                animationSpec = transitionSpringSpec,
+                label = "translationY"
+            )
+
+            // Fullscreen scrim alpha - subtle for better visibility
+            val fullscreenScrimAlpha by animateFloatAsState(
+                targetValue = if (isFullscreenAnim.value) 0.3f else 0f,
+                animationSpec = transitionSpringSpec,
+                label = "fullscreenScrimAlpha"
+            )
+
+            // ==================== Orientation & System UI ====================
+            val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            val isSmallWindow = with(context.resources.displayMetrics) {
+                kotlin.math.min(widthPixels, heightPixels) < 600
+            }
+
+            // Auto-fullscreen on landscape for phones
+            LaunchedEffect(isLandscape, isSmallWindow, isFullscreen) {
+                if (isLandscape && isSmallWindow && !isFullscreen && !isMinimized) {
+                    Log.d(TAG, "Auto-entering fullscreen: landscape + phone")
+                    viewModel.toggleFullscreen()
+                } else if (!isLandscape && isFullscreen) {
+                    Log.d(TAG, "Exiting fullscreen: portrait")
+                    viewModel.exitFullscreen()
+                }
+            }
+
+            // System UI handling in fullscreen
+            LaunchedEffect(isFullscreen, isSmallWindow) {
+                if (isFullscreen) {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        activity.window.decorView.systemUiVisibility = (
+                            View.SYSTEM_UI_FLAG_FULLSCREEN or
+                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        )
+                        if (isSmallWindow) {
+                            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        }
+                        Log.d(TAG, "System UI hidden for fullscreen")
+                    }
+                } else {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        activity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                        if (isSmallWindow) {
+                            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        }
+                        Log.d(TAG, "System UI restored")
+                    }
+                }
+            }
+
+            // ==================== Auto-hide controls in fullscreen ====================
+            var controlsVisible by remember { mutableStateOf(true) }
+            var hideControlsJob by remember { mutableStateOf<Job?>(null) }
+
+            LaunchedEffect(isFullscreen, controlsVisible) {
+                if (isFullscreen && controlsVisible) {
+                    hideControlsJob = launch {
+                        delay(3000)
+                        controlsVisible = false
+                    }
+                } else {
+                    hideControlsJob?.cancel()
+                    if (!isFullscreen) controlsVisible = true
+                }
+            }
+
+            // ==================== Main Layout ====================
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { coordinates ->
+                        containerSize = androidx.compose.ui.geometry.Size(
+                            coordinates.size.width.toFloat(),
+                            coordinates.size.height.toFloat()
+                        )
+                    }
             ) {
-                // Scrim/background when minimized (matches Flow app pattern)
-                if (isMinimized) {
+                // Scrim background when fullscreen (subtle)
+                if (isFullscreenAnim.value) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.6f))
+                            .background(Color.Black.copy(alpha = fullscreenScrimAlpha))
                     )
                 }
 
-                // Video player - scaled and positioned when minimized
-                if (isMinimized) {
+                // ==================== Video Player ====================
+                if (isMinimizedAnim.value) {
+                    // MINI state: scaled and positioned video
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                // Scale down to mini-player size
-                                val scale = miniWidth.value / 1080f // Assume 1080p reference
                                 this.scaleX = scale
                                 this.scaleY = scale
-                                // Position at bottom-right
-                                this.translationX = size.width * 0.85f
-                                this.translationY = size.height * 0.8f
-                                // Add rounded corners and shadow
-                                shape = RoundedCornerShape(12.dp)
+                                this.translationX = translationX
+                                this.translationY = translationY
+                                shape = RoundedCornerShape(cornerRadius)
                                 clip = true
-                                shadowElevation = 8.dp.toPx()
+                                shadowElevation = shadowElevationDp.toPx()
                             }
                     ) {
-                        // ExoPlayer view
-                        Box(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
                             AndroidView(
                                 factory = { ctx ->
                                     PlayerView(ctx).apply {
@@ -171,8 +318,6 @@ fun PlayerScreen(
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
-
-                            // Show thumbnail when minimized and loading
                             if (!state.isPlaying) {
                                 AsyncImage(
                                     model = state.currentVideo?.thumbnailUrl,
@@ -184,28 +329,23 @@ fun PlayerScreen(
                         }
                     }
 
-                    // Mini-player controls overlay (sibling, not nested inside scaled Box)
+                    // Mini-player controls overlay
                     Box(
                         modifier = Modifier
                             .size(miniWidth, miniHeight)
                             .align(Alignment.BottomEnd)
                             .padding(16.dp)
                             .graphicsLayer {
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(cornerRadius)
                                 clip = true
                             }
                     ) {
-                        // Dark overlay for better control visibility
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.6f))
                         )
-
-                        // Controls
-                        Column(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
+                        Column(modifier = Modifier.fillMaxSize()) {
                             // Top row: Play/Pause (left) and Close (right)
                             Row(
                                 modifier = Modifier
@@ -227,9 +367,11 @@ fun PlayerScreen(
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }
-
                                 IconButton(
-                                    onClick = { viewModel.exitFullscreen() },
+                                    onClick = {
+                                        Log.d(TAG, "Close mini player: exitMiniPlayer")
+                                        viewModel.exitMiniPlayer()
+                                    },
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
@@ -240,9 +382,7 @@ fun PlayerScreen(
                                     )
                                 }
                             }
-
                             Spacer(modifier = Modifier.weight(1f))
-
                             // Bottom row: Title and actions
                             Row(
                                 modifier = Modifier
@@ -268,8 +408,6 @@ fun PlayerScreen(
                                         )
                                     }
                                 }
-
-                                // More options
                                 IconButton(
                                     onClick = { showMiniPlayerOptions = true },
                                     modifier = Modifier.size(36.dp)
@@ -281,8 +419,6 @@ fun PlayerScreen(
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
-
-                                // Fullscreen
                                 IconButton(
                                     onClick = { viewModel.toggleFullscreen() },
                                     modifier = Modifier.size(36.dp)
@@ -295,7 +431,6 @@ fun PlayerScreen(
                                     )
                                 }
                             }
-
                             // Progress bar
                             Box(
                                 modifier = Modifier.fillMaxWidth(),
@@ -313,20 +448,27 @@ fun PlayerScreen(
                         }
                     }
 
-                    // Tap to expand
+                    // Tap to expand mini player
                     Box(
                         modifier = Modifier
                             .size(miniWidth, miniHeight)
                             .align(Alignment.BottomEnd)
                             .padding(16.dp)
+                            .graphicsLayer {
+                                shape = RoundedCornerShape(cornerRadius)
+                                clip = true
+                            }
                             .pointerInput(Unit) {
                                 detectTapGestures(
-                                    onTap = { viewModel.exitFullscreen() }
+                                    onTap = {
+                                        Log.d(TAG, "Tap to expand mini player")
+                                        viewModel.exitMiniPlayer()
+                                    }
                                 )
                             }
                     )
                 } else {
-                    // Fullscreen mode - show overlays and handle gestures
+                    // ==================== DEFAULT / FULLSCREEN state ====================
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -358,14 +500,18 @@ fun PlayerScreen(
                             .pointerInput(Unit) {
                                 detectTapGestures(
                                     onTap = {
+                                        controlsVisible = true
+                                        hideControlsJob?.cancel()
                                         showTopOverlay = !showTopOverlay
                                         showBottomOverlay = !showBottomOverlay
                                     },
                                     onDoubleTap = {
-                                        if (it.x < size.width / 2) {
-                                            viewModel.seekTo(state.currentPositionMs - 10000)
+                                        if (isFullscreen) {
+                                            Log.d(TAG, "Double-tap: exit fullscreen")
+                                            viewModel.exitFullscreen()
                                         } else {
-                                            viewModel.seekTo(state.currentPositionMs + 10000)
+                                            Log.d(TAG, "Double-tap: enter fullscreen")
+                                            viewModel.toggleFullscreen()
                                         }
                                     },
                                     onLongPress = { /* TODO: PiP */ }
@@ -387,7 +533,7 @@ fun PlayerScreen(
                         )
                     }
 
-                    // Top Overlay
+                    // ==================== Top Overlay ====================
                     AnimatedVisibility(
                         visible = showTopOverlay,
                         enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
@@ -396,14 +542,17 @@ fun PlayerScreen(
                         TopOverlay(
                             title = state.currentVideo?.title ?: "Unknown",
                             channelName = state.currentVideo?.author?.name ?: "Unknown",
-                            onMinimize = { viewModel.minimize() },
-                            onReplayToggle = { replayEnabled = !replayEnabled },
+                            onMinimize = {
+                                Log.d(TAG, "Minimize button clicked")
+                                viewModel.minimize()
+                            },
+                            onReplayToggle = { /* TODO */ },
                             onWatchLater = { /* TODO */ },
                             onOptions = { showOptionsModal = true }
                         )
                     }
 
-                    // Bottom Overlay
+                    // ==================== Bottom Overlay ====================
                     AnimatedVisibility(
                         visible = showBottomOverlay,
                         enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
@@ -424,7 +573,7 @@ fun PlayerScreen(
                         )
                     }
 
-                    // Brightness Indicator (left side)
+                    // ==================== Brightness Indicator ====================
                     AnimatedVisibility(
                         visible = showBrightnessIndicator,
                         enter = fadeIn(),
@@ -443,7 +592,7 @@ fun PlayerScreen(
                         }
                     }
 
-                    // Volume Indicator (right side)
+                    // ==================== Volume Indicator ====================
                     AnimatedVisibility(
                         visible = showVolumeIndicator,
                         enter = fadeIn(),
@@ -462,13 +611,13 @@ fun PlayerScreen(
                         }
                     }
 
-                    // Double-tap seek indicators
+                    // ==================== Double-tap seek indicators ====================
                     SeekIndicators(
                         showSeekBack = false,
                         showSeekForward = false
                     )
 
-                    // Options Modal
+                    // ==================== Options Modal ====================
                     if (showOptionsModal) {
                         OptionsModal(
                             playbackSpeed = selectedSpeed,
@@ -485,7 +634,7 @@ fun PlayerScreen(
                         )
                     }
 
-                    // Chapters Panel
+                    // ==================== Chapters Panel ====================
                     if (showChapters) {
                         ChaptersPanel(
                             chapters = emptyList(),
@@ -516,6 +665,8 @@ fun PlayerScreen(
         }
     }
 }
+
+// ==================== Overlay Composables ====================
 
 @Composable
 private fun TopOverlay(
@@ -755,8 +906,7 @@ private fun SeekIndicators(
     showSeekForward: Boolean
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
         if (showSeekBack) {
             Box(
@@ -803,89 +953,6 @@ private fun SeekIndicators(
     }
 }
 
-@Composable
-private fun MiniPlayerOptionsModal(
-    onDismiss: () -> Unit,
-    onFavourite: () -> Unit,
-    onAddToPlaylist: () -> Unit,
-    onWatchLater: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        text = {
-            Column {
-                // Favourite option
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onFavourite)
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = "Favourite",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Add to Favourites",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-
-                // Add to playlist option
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onAddToPlaylist)
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlaylistAdd,
-                        contentDescription = "Add to playlist",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Add to Playlist",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-
-                // Watch later option
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onWatchLater)
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = "Watch later",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Add to Watch Later",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OptionsModal(
@@ -903,9 +970,7 @@ private fun OptionsModal(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(16.dp)
         )
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
+        Row(modifier = Modifier.padding(horizontal = 16.dp)) {
             listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
                 FilterChip(
                     selected = playbackSpeed == speed,
@@ -921,9 +986,7 @@ private fun OptionsModal(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(16.dp)
         )
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
+        Row(modifier = Modifier.padding(horizontal = 16.dp)) {
             listOf("Auto", "1080p", "720p", "480p", "360p").forEach { q ->
                 FilterChip(
                     selected = quality == q,
@@ -1005,5 +1068,3 @@ private fun formatTime(ms: Long): String {
         String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
     }
 }
-
-

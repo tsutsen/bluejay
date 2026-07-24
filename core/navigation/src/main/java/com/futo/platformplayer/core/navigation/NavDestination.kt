@@ -15,14 +15,12 @@ sealed class NavDestination {
     data object Settings : NavDestination()
 
     // Detail screens
-    data class VideoDetail(val url: String) : NavDestination()
     data class ChannelDetail(val url: String) : NavDestination()
     data class PlaylistDetail(val url: String) : NavDestination()
     data class SourceDetail(val url: String) : NavDestination()
     data class PostDetail(val url: String) : NavDestination()
     data class ArticleDetail(val url: String) : NavDestination()
     data class WebDetail(val url: String) : NavDestination()
-    data class Player(val videoId: String) : NavDestination()
 
     // Search results
     data class ContentSearchResults(val query: String) : NavDestination()

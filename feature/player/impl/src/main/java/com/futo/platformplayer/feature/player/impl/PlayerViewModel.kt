@@ -134,6 +134,12 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun exitMiniPlayer() {
+        viewModelScope.launch {
+            playerRepository.exitMiniPlayer()
+        }
+    }
+
     fun skipNext() {
         viewModelScope.launch {
             // TODO: Implement queue navigation

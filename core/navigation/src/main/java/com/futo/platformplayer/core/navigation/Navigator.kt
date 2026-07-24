@@ -53,7 +53,6 @@ class Navigator @Inject constructor() {
     fun navigateSettings() = navigate(NavDestination.Settings)
 
     // Detail navigation
-    fun navigateToVideo(url: String) = navigate(NavDestination.VideoDetail(url))
     fun navigateToChannel(url: String) = navigate(NavDestination.ChannelDetail(url))
     fun navigateToPlaylist(url: String) = navigate(NavDestination.PlaylistDetail(url))
     fun navigateToSource(url: String) = navigate(NavDestination.SourceDetail(url))

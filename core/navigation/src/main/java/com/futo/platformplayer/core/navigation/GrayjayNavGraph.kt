@@ -38,7 +38,6 @@ fun GrayjayNavGraph(
         is NavDestination.Library -> PlaceholderScreen("Library", "Coming soon")
         is NavDestination.Notifications -> PlaceholderScreen("Notifications", "Coming soon")
         is NavDestination.Settings -> PlaceholderScreen("Settings", "Coming soon")
-        is NavDestination.VideoDetail -> PlaceholderScreen("Video Detail", "Coming soon")
         is NavDestination.ChannelDetail -> PlaceholderScreen("Channel Detail", "Coming soon")
         is NavDestination.PlaylistDetail -> PlaceholderScreen("Playlist Detail", "Coming soon")
         is NavDestination.SourceDetail -> PlaceholderScreen("Source Detail", "Coming soon")
@@ -71,7 +70,6 @@ fun GrayjayNavGraph(
         is NavDestination.SettingsFragment -> PlaceholderScreen("Settings", "Coming soon")
         is NavDestination.PluginBrowser -> PlaceholderScreen("Plugin Browser", "Coming soon")
         is NavDestination.TestCompose -> PlaceholderScreen("Test Compose", "Coming soon")
-        is NavDestination.Player -> PlaceholderScreen("Player", "Coming soon")
         else -> PlaceholderScreen("Unknown", "Coming soon")
     }
 }

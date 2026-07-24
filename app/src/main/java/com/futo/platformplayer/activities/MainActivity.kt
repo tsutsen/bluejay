@@ -21,8 +21,10 @@ import com.futo.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
 import com.futo.platformplayer.core.designsystem.theme.GrayjayTheme
 import com.futo.platformplayer.compose.GrayjayNavGraph
 import com.futo.platformplayer.core.navigation.NavDestination
+import com.futo.platformplayer.core.data.repository.PlayerRepository
 import com.futo.platformplayer.core.navigation.Navigator
 import com.futo.platformplayer.feature.dualscreen.CompanionWindowManager
+import com.futo.platformplayer.feature.player.impl.PlayerScreen
 import com.futo.platformplayer.feature.dualscreen.ScreenCoordinator
 import com.futo.platformplayer.states.StateApp
 import dagger.hilt.android.AndroidEntryPoint
@@ -48,6 +50,9 @@ class MainActivity : ComponentActivity(), IWithResultLauncher {
     @Inject
     lateinit var navigator: Navigator
 
+    @Inject
+    lateinit var playerRepository: PlayerRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -59,7 +64,7 @@ class MainActivity : ComponentActivity(), IWithResultLauncher {
 
         setContent {
             GrayjayTheme {
-                GrayjayMainActivity(this, screenCoordinator, companionWindowManager, navigator)
+                GrayjayMainActivity(this, screenCoordinator, companionWindowManager, navigator, playerRepository)
             }
         }
     }
@@ -227,10 +232,12 @@ private fun GrayjayMainActivity(
     activity: MainActivity,
     screenCoordinator: ScreenCoordinator,
     companionWindowManager: CompanionWindowManager,
-    navigator: Navigator
+    navigator: Navigator,
+    playerRepository: PlayerRepository
 ) {
     val companionVisible by screenCoordinator.companionVisible.collectAsState()
     val config = rememberAppLayoutConfig()
+    val playerState by playerRepository.playerState.collectAsState()
 
     // Launch companion window when secondary display becomes available
     LaunchedEffect(companionVisible) {
@@ -240,48 +247,55 @@ private fun GrayjayMainActivity(
         }
     }
 
+    val showNavChrome = !playerState.isFullscreen
+
     AppLayout(
-        config = config,
+        config = config.copy(showNavigation = showNavChrome),
         navigationContent = {
-            AppNavigationChrome(
-                currentDestination = navigator.currentRoute.collectAsState().value?.let { dest ->
-                    when (dest) {
-                        is NavDestination.Home -> "home"
-                        is NavDestination.Search -> "search"
-                        is NavDestination.Subscriptions -> "subscriptions"
-                        is NavDestination.Library -> "library"
-                        is NavDestination.Notifications -> "notifications"
-                        is NavDestination.Settings -> "settings"
-                        is NavDestination.VideoDetail -> "video:${dest.url}"
-                        is NavDestination.ChannelDetail -> "channel:${dest.url}"
-                        is NavDestination.PlaylistDetail -> "playlist:${dest.url}"
-                        is NavDestination.SourceDetail -> "source:${dest.url}"
-                        is NavDestination.PostDetail -> "post:${dest.url}"
-                        is NavDestination.ArticleDetail -> "article:${dest.url}"
-                        is NavDestination.WebDetail -> "web:${dest.url}"
-                        is NavDestination.ContentSearchResults -> "search:${dest.query}"
-                        else -> null
-                    }
-                },
-                onTabSelected = { tabId ->
-                    when (tabId) {
-                        "home" -> navigator.navigateHome()
-                        "search" -> navigator.navigateSearch()
-                        "subscriptions" -> navigator.navigateSubscriptions()
-                        "library" -> navigator.navigateLibrary()
-                        "notifications" -> navigator.navigateNotifications()
-                        "settings" -> navigator.navigateSettings()
-                        "plugins" -> navigator.navigateToPluginBrowser()
-                    }
-                },
-                isWide = config.isWide
-            )
+            if (showNavChrome) {
+                AppNavigationChrome(
+                    currentDestination = navigator.currentRoute.collectAsState().value?.let { dest ->
+                        when (dest) {
+                            is NavDestination.Home -> "home"
+                            is NavDestination.Search -> "search"
+                            is NavDestination.Subscriptions -> "subscriptions"
+                            is NavDestination.Library -> "library"
+                            is NavDestination.Notifications -> "notifications"
+                            is NavDestination.Settings -> "settings"
+                            is NavDestination.ChannelDetail -> "channel:${dest.url}"
+                            is NavDestination.PlaylistDetail -> "playlist:${dest.url}"
+                            is NavDestination.SourceDetail -> "source:${dest.url}"
+                            is NavDestination.PostDetail -> "post:${dest.url}"
+                            is NavDestination.ArticleDetail -> "article:${dest.url}"
+                            is NavDestination.WebDetail -> "web:${dest.url}"
+                            is NavDestination.ContentSearchResults -> "search:${dest.query}"
+                            else -> null
+                        }
+                    },
+                    onTabSelected = { tabId ->
+                        when (tabId) {
+                            "home" -> navigator.navigateHome()
+                            "search" -> navigator.navigateSearch()
+                            "subscriptions" -> navigator.navigateSubscriptions()
+                            "library" -> navigator.navigateLibrary()
+                            "notifications" -> navigator.navigateNotifications()
+                            "settings" -> navigator.navigateSettings()
+                            "plugins" -> navigator.navigateToPluginBrowser()
+                        }
+                    },
+                    isWide = config.isWide
+                )
+            }
         },
         content = {
             GrayjayNavGraph(
                 navigator = navigator,
                 startDestination = NavDestination.Home
             )
+            // Player overlay — only rendered when there's a video to play
+            if (playerState.currentVideo != null) {
+                PlayerScreen()
+            }
         }
     )
 }

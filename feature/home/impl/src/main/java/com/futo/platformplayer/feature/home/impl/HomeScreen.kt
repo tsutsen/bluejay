@@ -26,6 +26,7 @@ import com.futo.platformplayer.core.designsystem.component.VideoContainer
 import com.futo.platformplayer.core.model.Card
 import com.futo.platformplayer.core.model.VideoCard
 import com.futo.platformplayer.core.navigation.Navigator
+import com.futo.platformplayer.feature.player.impl.PlayerViewModel
 
 /**
  * Home feed screen.
@@ -35,7 +36,8 @@ import com.futo.platformplayer.core.navigation.Navigator
 @Composable
 fun HomeScreen(
     navigator: Navigator,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    playerViewModel: PlayerViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -68,7 +70,7 @@ fun HomeScreen(
                     hasMorePages = state.hasMorePages,
                     isWide = isWide,
                     onCardClick = { card ->
-                        if (card is VideoCard) navigator.navigateToVideo(card.url)
+                        if (card is VideoCard) playerViewModel.play(card.url)
                     },
                     onLoadMore = { viewModel.loadNextPage() },
                     onRefresh = { viewModel.refresh() }
