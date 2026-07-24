@@ -381,7 +381,7 @@ fun PlayerScreen(
                                         this.player = player
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth().fillMaxHeight()
+                                modifier = Modifier.matchParentSize()
                             )
                             // Minimize button overlay
                             Box(
