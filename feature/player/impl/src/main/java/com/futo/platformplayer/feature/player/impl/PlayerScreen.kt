@@ -59,6 +59,7 @@ fun PlayerScreen(
     var replayEnabled by remember { mutableStateOf(false) }
     var selectedSpeed by remember { mutableStateOf(1.0f) }
     var selectedQuality by remember { mutableStateOf("Auto") }
+    var touchX by remember { mutableStateOf(0f) }
 
     // Auto-hide overlay
     LaunchedEffect(showTopOverlay, showBottomOverlay) {
@@ -116,31 +117,51 @@ fun PlayerScreen(
                         .fillMaxSize()
                         .background(Color.Black)
                 ) {
-                    // Gesture handling (background layer - only handles drags for brightness/volume)
-                    GestureHandler(
-                        onBrightnessChange = { delta ->
-                            brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
-                            viewModel.setBrightness(brightnessValue)
-                            showBrightnessIndicator = true
-                            coroutineScope.launch {
-                                delay(1500)
-                                showBrightnessIndicator = false
-                            }
-                        },
-                        onVolumeChange = { delta ->
-                            volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
-                            viewModel.setVolume(volumeValue)
-                            showVolumeIndicator = true
-                            coroutineScope.launch {
-                                delay(1500)
-                                showVolumeIndicator = false
-                            }
-                        }
-                    )
-
-                    // ExoPlayer view
+                    // ExoPlayer view with gesture handling
                     Box(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectVerticalDragGestures(
+                                    onVerticalDrag = { _, dragAmount ->
+                                        val delta = -dragAmount / 500f
+                                        if (touchX < size.width / 2) {
+                                            brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
+                                            viewModel.setBrightness(brightnessValue)
+                                            showBrightnessIndicator = true
+                                            coroutineScope.launch {
+                                                delay(1500)
+                                                showBrightnessIndicator = false
+                                            }
+                                        } else {
+                                            volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
+                                            viewModel.setVolume(volumeValue)
+                                            showVolumeIndicator = true
+                                            coroutineScope.launch {
+                                                delay(1500)
+                                                showVolumeIndicator = false
+                                            }
+                                        }
+                                    },
+                                    onDragStart = { touchX = it.x }
+                                )
+                            }
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onTap = {
+                                        showTopOverlay = !showTopOverlay
+                                        showBottomOverlay = !showBottomOverlay
+                                    },
+                                    onDoubleTap = {
+                                        if (it.x < size.width / 2) {
+                                            viewModel.seekTo(state.currentPositionMs - 10000)
+                                        } else {
+                                            viewModel.seekTo(state.currentPositionMs + 10000)
+                                        }
+                                    },
+                                    onLongPress = { /* TODO: PiP */ }
+                                )
+                            }
                     ) {
                         AndroidView(
                             factory = { ctx ->
@@ -571,31 +592,6 @@ private fun SeekIndicators(
             }
         }
     }
-}
-
-@Composable
-private fun GestureHandler(
-    onBrightnessChange: (Float) -> Unit,
-    onVolumeChange: (Float) -> Unit
-) {
-    var isLeftSide by remember { mutableStateOf(false) }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onVerticalDrag = { _, dragAmount ->
-                        val delta = -dragAmount / 500f
-                        if (isLeftSide) {
-                            onBrightnessChange(delta)
-                        } else {
-                            onVolumeChange(delta)
-                        }
-                    },
-                    onDragStart = { isLeftSide = it.x < size.width / 2 }
-                )
-            }
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
