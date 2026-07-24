@@ -1,5 +1,12 @@
 package com.futo.platformplayer.core.designsystem.layout
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +23,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -157,7 +165,17 @@ fun AppLayout(
     if (config.isWide) {
         // Landscape: NavigationRail on left + content
         Row(modifier = modifier.fillMaxSize()) {
-            if (config.showNavigation) {
+            AnimatedVisibility(
+                visible = config.showNavigation,
+                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                    initialOffsetY = { -it },
+                    animationSpec = tween(300)
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
+                    targetOffsetY = { -it },
+                    animationSpec = tween(300)
+                )
+            ) {
                 navigationContent()
             }
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
@@ -170,7 +188,17 @@ fun AppLayout(
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                 content()
             }
-            if (config.showNavigation) {
+            AnimatedVisibility(
+                visible = config.showNavigation,
+                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(300)
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(300)
+                )
+            ) {
                 navigationContent()
             }
         }

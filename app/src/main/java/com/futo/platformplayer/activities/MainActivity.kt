@@ -252,40 +252,38 @@ private fun GrayjayMainActivity(
     AppLayout(
         config = config.copy(showNavigation = showNavChrome),
         navigationContent = {
-            if (showNavChrome) {
-                AppNavigationChrome(
-                    currentDestination = navigator.currentRoute.collectAsState().value?.let { dest ->
-                        when (dest) {
-                            is NavDestination.Home -> "home"
-                            is NavDestination.Search -> "search"
-                            is NavDestination.Subscriptions -> "subscriptions"
-                            is NavDestination.Library -> "library"
-                            is NavDestination.Notifications -> "notifications"
-                            is NavDestination.Settings -> "settings"
-                            is NavDestination.ChannelDetail -> "channel:${dest.url}"
-                            is NavDestination.PlaylistDetail -> "playlist:${dest.url}"
-                            is NavDestination.SourceDetail -> "source:${dest.url}"
-                            is NavDestination.PostDetail -> "post:${dest.url}"
-                            is NavDestination.ArticleDetail -> "article:${dest.url}"
-                            is NavDestination.WebDetail -> "web:${dest.url}"
-                            is NavDestination.ContentSearchResults -> "search:${dest.query}"
-                            else -> null
-                        }
-                    },
-                    onTabSelected = { tabId ->
-                        when (tabId) {
-                            "home" -> navigator.navigateHome()
-                            "search" -> navigator.navigateSearch()
-                            "subscriptions" -> navigator.navigateSubscriptions()
-                            "library" -> navigator.navigateLibrary()
-                            "notifications" -> navigator.navigateNotifications()
-                            "settings" -> navigator.navigateSettings()
-                            "plugins" -> navigator.navigateToPluginBrowser()
-                        }
-                    },
-                    isWide = config.isWide
-                )
-            }
+            AppNavigationChrome(
+                currentDestination = navigator.currentRoute.collectAsState().value?.let { dest ->
+                    when (dest) {
+                        is NavDestination.Home -> "home"
+                        is NavDestination.Search -> "search"
+                        is NavDestination.Subscriptions -> "subscriptions"
+                        is NavDestination.Library -> "library"
+                        is NavDestination.Notifications -> "notifications"
+                        is NavDestination.Settings -> "settings"
+                        is NavDestination.ChannelDetail -> "channel:${dest.url}"
+                        is NavDestination.PlaylistDetail -> "playlist:${dest.url}"
+                        is NavDestination.SourceDetail -> "source:${dest.url}"
+                        is NavDestination.PostDetail -> "post:${dest.url}"
+                        is NavDestination.ArticleDetail -> "article:${dest.url}"
+                        is NavDestination.WebDetail -> "web:${dest.url}"
+                        is NavDestination.ContentSearchResults -> "search:${dest.query}"
+                        else -> null
+                    }
+                },
+                onTabSelected = { tabId ->
+                    when (tabId) {
+                        "home" -> navigator.navigateHome()
+                        "search" -> navigator.navigateSearch()
+                        "subscriptions" -> navigator.navigateSubscriptions()
+                        "library" -> navigator.navigateLibrary()
+                        "notifications" -> navigator.navigateNotifications()
+                        "settings" -> navigator.navigateSettings()
+                        "plugins" -> navigator.navigateToPluginBrowser()
+                    }
+                },
+                isWide = config.isWide
+            )
         },
         content = {
             GrayjayNavGraph(
