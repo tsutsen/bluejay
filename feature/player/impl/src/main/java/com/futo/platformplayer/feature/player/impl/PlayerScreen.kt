@@ -383,6 +383,7 @@ fun PlayerScreen(
                                         change.consume()
                                         miniPlayerOffsetX += dragAmount.x
                                         miniPlayerOffsetY += dragAmount.y
+                                        Log.d(TAG, "Drag: offsetX=$miniPlayerOffsetX, offsetY=$miniPlayerOffsetY")
                                     },
                                     onDragEnd = {
                                         isDraggingMiniPlayer = false
@@ -392,19 +393,31 @@ fun PlayerScreen(
                                         val screenHeight = containerSize.height
                                         val miniWidthPx = miniWidth.toPx()
                                         val miniHeightPx = miniHeight.toPx()
+                                        val paddingPx = 16.dp.toPx()
+                                        
+                                        // Calculate actual position (initial + offset)
+                                        val actualX = (screenWidth - miniWidthPx - paddingPx) + miniPlayerOffsetX
+                                        val actualY = (screenHeight - miniHeightPx - paddingPx) + miniPlayerOffsetY
                                         
                                         // Snap to edges if within threshold
                                         val edgeThreshold = 100f
-                                        if (miniPlayerOffsetX < edgeThreshold) {
+                                        
+                                        // Snap X to left or right edge
+                                        if (actualX < edgeThreshold) {
+                                            // Near left edge: snap to left with padding
+                                            miniPlayerOffsetX = paddingPx - (screenWidth - miniWidthPx - paddingPx)
+                                        } else if (actualX > screenWidth - miniWidthPx - edgeThreshold) {
+                                            // Near right edge: snap to right (default position)
                                             miniPlayerOffsetX = 0f
-                                        } else if (miniPlayerOffsetX > screenWidth - miniWidthPx - edgeThreshold) {
-                                            miniPlayerOffsetX = screenWidth - miniWidthPx
                                         }
                                         
-                                        if (miniPlayerOffsetY < edgeThreshold) {
+                                        // Snap Y to top or bottom edge
+                                        if (actualY < edgeThreshold) {
+                                            // Near top edge: snap to top
+                                            miniPlayerOffsetY = -(screenHeight - miniHeightPx - paddingPx)
+                                        } else if (actualY > screenHeight - miniHeightPx - edgeThreshold) {
+                                            // Near bottom edge: snap to bottom (default position)
                                             miniPlayerOffsetY = 0f
-                                        } else if (miniPlayerOffsetY > screenHeight - miniHeightPx - edgeThreshold) {
-                                            miniPlayerOffsetY = screenHeight - miniHeightPx
                                         }
                                     },
                                     onDragCancel = {
