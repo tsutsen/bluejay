@@ -503,46 +503,6 @@ fun PlayerScreen(
                             }
                     )
 
-                    // ==================== Top Overlay ====================
-                    AnimatedVisibility(
-                        visible = showTopOverlay,
-                        enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-                        exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
-                    ) {
-                        TopOverlay(
-                            title = state.currentVideo?.title ?: "Unknown",
-                            channelName = state.currentVideo?.author?.name ?: "Unknown",
-                            onMinimize = {
-                                Log.d(TAG, "Minimize button clicked")
-                                viewModel.minimize()
-                            },
-                            onReplayToggle = { /* TODO */ },
-                            onWatchLater = { /* TODO */ },
-                            onOptions = { showOptionsModal = true }
-                        )
-                    }
-
-                    // ==================== Bottom Overlay ====================
-                    AnimatedVisibility(
-                        visible = showBottomOverlay,
-                        enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                        exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                    ) {
-                        BottomOverlay(
-                            currentPositionMs = state.currentPositionMs,
-                            durationMs = state.durationMs,
-                            isPlaying = state.isPlaying,
-                            onPlayPause = {
-                                if (state.isPlaying) viewModel.pause() else viewModel.resume()
-                            },
-                            onPrevious = { viewModel.skipPrevious() },
-                            onNext = { viewModel.skipNext() },
-                            onChapters = { showChapters = !showChapters },
-                            onFullscreen = { viewModel.toggleFullscreen() }
-                        )
-                    }
-
                     // ==================== Brightness Indicator ====================
                     AnimatedVisibility(
                         visible = showBrightnessIndicator,
@@ -616,6 +576,46 @@ fun PlayerScreen(
                             onDismiss = { showChapters = false }
                         )
                     }
+                }
+
+                // ==================== Top Overlay (always composed, animates visibility) ====================
+                AnimatedVisibility(
+                    visible = showTopOverlay && !isMinimizedAnim.value,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
+                ) {
+                    TopOverlay(
+                        title = state.currentVideo?.title ?: "Unknown",
+                        channelName = state.currentVideo?.author?.name ?: "Unknown",
+                        onMinimize = {
+                            Log.d(TAG, "Minimize button clicked")
+                            viewModel.minimize()
+                        },
+                        onReplayToggle = { /* TODO */ },
+                        onWatchLater = { /* TODO */ },
+                        onOptions = { showOptionsModal = true }
+                    )
+                }
+
+                // ==================== Bottom Overlay (always composed, animates visibility) ====================
+                AnimatedVisibility(
+                    visible = showBottomOverlay && !isMinimizedAnim.value,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    BottomOverlay(
+                        currentPositionMs = state.currentPositionMs,
+                        durationMs = state.durationMs,
+                        isPlaying = state.isPlaying,
+                        onPlayPause = {
+                            if (state.isPlaying) viewModel.pause() else viewModel.resume()
+                        },
+                        onPrevious = { viewModel.skipPrevious() },
+                        onNext = { viewModel.skipNext() },
+                        onChapters = { showChapters = !showChapters },
+                        onFullscreen = { viewModel.toggleFullscreen() }
+                    )
                 }
             }
         }
