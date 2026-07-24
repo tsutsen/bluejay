@@ -18,7 +18,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -122,27 +124,21 @@ fun PlayerScreen(
             val isMinimized = state.isMinimized
 
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(if (isMinimized) Color.Black else Color.Transparent)
             ) {
-                // Video player - scaled and positioned when minimized
+                // Video player - hidden when minimized (controls overlay shows instead)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer {
-                            if (isMinimized) {
-                                // Scale down to mini-player size
-                                val scale = miniWidth.value / 1080f // Assume 1080p reference
-                                this.scaleX = scale
-                                this.scaleY = scale
-                                // Position at bottom-right
-                                this.translationX = size.width * 0.85f
-                                this.translationY = size.height * 0.8f
-                                // Add rounded corners and shadow
-                                shape = RoundedCornerShape(12.dp)
-                                clip = true
-                                shadowElevation = 8.dp.toPx()
-                            }
-                        }
+                        .then(
+                            if (isMinimized) Modifier
+                                .size(1.dp)
+                                .offset(x = (-1000).dp, y = (-1000).dp)
+                                .alpha(0f)
+                            else Modifier
+                        )
                 ) {
                     // ExoPlayer view
                     Box(
