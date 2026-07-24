@@ -14,9 +14,9 @@
 | **0** | Foundation & Infrastructure | 3–4 weeks | ✅ Complete |
 | **0.5** | State Machine & Cross-Activity State | 1 week | ✅ Complete |
 | **1** | App Chrome (Layout + MainActivity) | 1–2 weeks | ✅ Complete |
-| **2** | Settings + Appearance | 1 week | ⬜ Next |
+| **2** | Settings + Appearance | 1 week | ✅ Complete |
 | **3** | Home Feed | 2 weeks | ✅ Complete |
-| **4** | Video Player | 2–3 weeks | ⬜ |
+| **4** | Video Player | 2–3 weeks | 🟡 In Progress |
 | **5** | Library, Subscriptions, Search | 3–4 weeks | ⬜ |
 | **6** | Detail Screens + Deep Links | 2–3 weeks | ⬜ |
 | **7** | Companion Content + Gamepad | 2 weeks | ⬜ |
@@ -24,7 +24,7 @@
 
 **Total estimated effort**: 15–20 weeks
 
-**Current progress**: Phase 0–3 complete (6–9 weeks). App launches with navigation chrome, 6-tab navigation works, Home Feed renders with infinite scroll. Ready for Phase 4 (Video Player).
+**Current progress**: Phase 0–3 complete, Phase 4 in progress (9–12 weeks). App launches with navigation chrome, 6-tab navigation works, Home Feed renders with infinite scroll, Settings with hierarchical categories, Video Player with mini-player and animated transitions.
 
 ---
 
@@ -220,25 +220,36 @@
 
 ## Phase 4 — Video Player
 
-**Goal**: Full-screen video player with gesture controls, plus inline player in detail screen.
+**Goal**: Full-screen video player with gesture controls, mini-player (floating), and transitions between states.
 
-| Task | Description | Files |
-|------|-------------|-------|
-| Create `PlayerViewModel` | Application-scoped, `StateFlow<PlaybackState>` | `feature/player/impl/PlayerViewModel.kt` |
-| Create `PlayerScreen` | Full-screen player with overlays (§10 in DESIGN.md) | `feature/player/impl/PlayerScreen.kt` |
-| Implement top overlay | Minimize, title, channel, options | `feature/player/impl/PlayerScreen.kt` |
-| Implement bottom overlay | Timeline, prev/play/next, chapters, fullscreen | `feature/player/impl/PlayerScreen.kt` |
-| Implement options modal | Speed, quality, audio track selection | `feature/player/impl/PlayerScreen.kt` |
-| Implement chapters panel | Chapter list with seek-to | `feature/player/impl/PlayerScreen.kt` |
-| Implement brightness slider | Left-side vertical slider with sun icon | `feature/player/impl/PlayerScreen.kt` |
-| Implement volume slider | Right-side vertical slider with speaker icon | `feature/player/impl/PlayerScreen.kt` |
-| Implement edge-swipe gestures | Minimize (top), exit fullscreen (bottom) | `feature/player/impl/PlayerScreen.kt` |
-| Implement double-tap seek | ±10s on left/right halves | `feature/player/impl/PlayerScreen.kt` |
-| Implement auto-hide | Overlay fades after 3s inactivity | `feature/player/impl/PlayerScreen.kt` |
-| Create inline player variant | Reduced-chrome player for Video Detail screen | `feature/player/impl/InlinePlayer.kt` |
-| Wire `PlayerRepository.player` | Expose ExoPlayer for companion window | `core/data/repository/impl/PlayerRepositoryImpl.kt` |
+| Task | Description | Files | Status |
+|------|-------------|-------|--------|
+| Create `PlayerViewModel` | Application-scoped, `StateFlow<PlaybackState>` | `feature/player/impl/PlayerViewModel.kt` | ✅ |
+| Create `PlayerScreen` | Full-screen player with overlays (§10 in DESIGN.md) | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Implement top overlay | Minimize, title, channel, options | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Implement bottom overlay | Timeline, chapters button | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Implement options modal | Speed, quality selection | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Implement brightness slider | Left-side vertical slider with sun icon | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Implement volume slider | Right-side vertical slider with speaker icon | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Implement mini-player | Floating player with controls overlay | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Implement player→miniplayer transition | Animated graphicsLayer transitions | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Support all transitions | mini↔full, normal↔full | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Implement auto-hide | Overlay fades after 3s inactivity | `feature/player/impl/PlayerScreen.kt` | ✅ |
+| Wire `PlayerRepository.player` | Expose ExoPlayer for companion window | `core/data/repository/impl/PlayerRepositoryImpl.kt` | ✅ |
+| Create inline player variant | Reduced-chrome player for Video Detail screen | `feature/player/impl/InlinePlayer.kt` | ⬜ |
+| Implement double-tap seek | ±10s on left/right halves (placeholder) | `feature/player/impl/PlayerScreen.kt` | ⬜ |
+| Implement chapters panel | Chapter list with seek-to | `feature/player/impl/PlayerScreen.kt` | ⬜ |
+| Implement edge-swipe gestures | Minimize (top), exit fullscreen (bottom) | `feature/player/impl/PlayerScreen.kt` | ⬜ |
 
-**Acceptance**: Full-screen player works with all gestures. Inline player embeds in detail screen. Companion window can control playback.
+**Acceptance**: Full-screen player works with all gestures. Mini-player floats with smooth transitions. All three states (mini, normal, fullscreen) work with animated transitions between them.
+
+**Implementation Notes**:
+- Based on Flow app's `DraggablePlayerLayout` pattern using `graphicsLayer` for smooth transitions
+- `expandFraction` (0f=fullscreen, 1f=mini-player) animates between states
+- Scale, translation, shadow, and rounded corners animate based on fraction
+- Scrim fades based on transition state
+- Mini-player controls overlay with play/pause, close, fullscreen buttons
+- Tap-to-expand gesture on mini-player
 
 ---
 
