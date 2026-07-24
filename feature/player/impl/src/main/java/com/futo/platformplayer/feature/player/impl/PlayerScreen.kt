@@ -94,15 +94,15 @@ fun PlayerScreen(
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
     var isDraggingMiniPlayer by remember { mutableStateOf(false) }
     
-    // Animated offset for snap animation
+    // Animated offset for snap animation - faster, snappier
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+        animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
         label = "animatedMiniOffsetX"
     )
     val animatedMiniOffsetY by animateFloatAsState(
         targetValue = miniPlayerOffsetY,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+        animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
         label = "animatedMiniOffsetY"
     )
 
