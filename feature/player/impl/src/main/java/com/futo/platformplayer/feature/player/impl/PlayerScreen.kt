@@ -8,12 +8,10 @@ import android.view.ViewGroup
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -222,8 +220,8 @@ fun PlayerScreen(
 
             // Fullscreen scrim alpha - subtle for better visibility
             val fullscreenScrimAlpha by animateFloatAsState(
-                targetValue = if (isFullscreenAnim.value) 0.4f else 0f,
-                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                targetValue = if (isFullscreenAnim.value) 0.3f else 0f,
+                animationSpec = transitionSpringSpec,
                 label = "fullscreenScrimAlpha"
             )
 
@@ -310,11 +308,7 @@ fun PlayerScreen(
                     }
             ) {
                 // Scrim background when fullscreen (subtle)
-                AnimatedVisibility(
-                    visible = isFullscreenAnim.value,
-                    enter = fadeIn(animationSpec = tween(300)),
-                    exit = fadeOut(animationSpec = tween(300))
-                ) {
+                if (isFullscreenAnim.value) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
