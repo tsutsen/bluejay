@@ -5,6 +5,8 @@ import android.content.pm.ActivityInfo
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -247,6 +249,15 @@ fun PlayerScreen(
                 } else if (!isLandscape && isFullscreen) {
                     Log.d(TAG, "Exiting fullscreen: portrait")
                     viewModel.exitFullscreen()
+                }
+            }
+
+            // Enable edge-to-edge so window size never changes when bars hide/show
+            LaunchedEffect(Unit) {
+                val activity = context as? Activity
+                if (activity != null) {
+                    WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+                    Log.d(TAG, "Edge-to-edge enabled for PlayerScreen")
                 }
             }
 
