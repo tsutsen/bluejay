@@ -183,27 +183,23 @@ fun AppLayout(
             }
         }
     } else {
-        // Portrait: Full-screen Box with content and overlay navigation
-        Box(modifier = modifier.fillMaxSize()) {
-            content()
-            // Navigation bar positioned at bottom, overlaying content
-            Box(
-                modifier = Modifier
-                    .align(androidx.compose.ui.Alignment.BottomCenter)
+        // Portrait: Content + NavigationBar at bottom
+        Column(modifier = modifier.fillMaxSize()) {
+            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                content()
+            }
+            AnimatedVisibility(
+                visible = config.showNavigation,
+                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(300)
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(300)
+                )
             ) {
-                AnimatedVisibility(
-                    visible = config.showNavigation,
-                    enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
-                        initialOffsetY = { it },
-                        animationSpec = tween(300)
-                    ),
-                    exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
-                        targetOffsetY = { it },
-                        animationSpec = tween(300)
-                    )
-                ) {
-                    navigationContent()
-                }
+                navigationContent()
             }
         }
     }
