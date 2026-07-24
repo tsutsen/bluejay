@@ -122,9 +122,7 @@ fun PlayerScreen(
             val isMinimized = state.isMinimized
 
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
+                modifier = Modifier.fillMaxSize()
             ) {
                 // Video player - scaled and positioned when minimized
                 Box(
@@ -176,7 +174,7 @@ fun PlayerScreen(
                     }
                 }
 
-                // Mini-player controls overlay (only when minimized)
+                // Mini-player controls overlay (only when minimized) - separate Box at screen level
                 if (isMinimized) {
                     Box(
                         modifier = Modifier
