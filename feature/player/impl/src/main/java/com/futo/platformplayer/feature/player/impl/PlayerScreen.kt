@@ -3,12 +3,16 @@ package com.futo.platformplayer.feature.player.impl
 import android.view.ViewGroup
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -59,6 +63,7 @@ fun PlayerScreen(
     var replayEnabled by remember { mutableStateOf(false) }
     var selectedSpeed by remember { mutableStateOf(1.0f) }
     var selectedQuality by remember { mutableStateOf("Auto") }
+    var showMiniPlayerOptions by remember { mutableStateOf(false) }
     var touchX by remember { mutableStateOf(0f) }
 
     // Auto-hide overlay
@@ -97,8 +102,21 @@ fun PlayerScreen(
                     onExpand = { viewModel.exitFullscreen() },
                     onPlayPause = {
                         if (state.isPlaying) viewModel.pause() else viewModel.resume()
-                    }
+                    },
+                    onClose = { viewModel.exitFullscreen() },
+                    onFullscreen = { viewModel.toggleFullscreen() },
+                    onOptions = { showMiniPlayerOptions = true }
                 )
+
+                // MiniPlayer Options Modal
+                if (showMiniPlayerOptions) {
+                    MiniPlayerOptionsModal(
+                        onDismiss = { showMiniPlayerOptions = false },
+                        onFavourite = { /* TODO: toggle favourite */ },
+                        onAddToPlaylist = { /* TODO: show playlist picker */ },
+                        onWatchLater = { /* TODO: add to watch later */ }
+                    )
+                }
             } else {
                 val context = LocalContext.current
                 val player = remember { ExoPlayer.Builder(context).build() }
@@ -594,6 +612,89 @@ private fun SeekIndicators(
     }
 }
 
+@Composable
+private fun MiniPlayerOptionsModal(
+    onDismiss: () -> Unit,
+    onFavourite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onWatchLater: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        text = {
+            Column {
+                // Favourite option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onFavourite)
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "Favourite",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Add to Favourites",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
+                // Add to playlist option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onAddToPlaylist)
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlaylistAdd,
+                        contentDescription = "Add to playlist",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Add to Playlist",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
+                // Watch later option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onWatchLater)
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = "Watch later",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Add to Watch Later",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OptionsModal(
@@ -722,73 +823,131 @@ private fun MiniPlayer(
     currentPositionMs: Long,
     durationMs: Long,
     onExpand: () -> Unit,
-    onPlayPause: () -> Unit
+    onPlayPause: () -> Unit,
+    onClose: () -> Unit,
+    onFullscreen: () -> Unit,
+    onOptions: () -> Unit
 ) {
-    Box(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp)
-            .background(Color.Black)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        onExpand()
-                    }
+            .height(200.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Thumbnail (left side)
+            Box(
+                modifier = Modifier
+                    .width(160.dp)
+                    .fillMaxHeight()
+                    .background(Color.DarkGray)
+            ) {
+                // Progress bar at bottom
+                LinearProgressIndicator(
+                    progress = if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(4.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.White.copy(alpha = 0.3f)
                 )
             }
-    ) {
-        // Video thumbnail placeholder
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.DarkGray)
-        ) {
-            // Progress bar at bottom
-            LinearProgressIndicator(
-                progress = if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f,
+
+            // Content (right side)
+            Column(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(4.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.White.copy(alpha = 0.3f)
-            )
-        }
-
-        // Content overlay
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = channelName,
-                color = Color.White.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Play/Pause button
-            IconButton(
-                onClick = onPlayPause,
-                modifier = Modifier.size(48.dp)
+                    .weight(1f)
+                    .padding(12.dp)
             ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
+                // Title
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+
+                // Channel name
+                if (channelName.isNotEmpty()) {
+                    Text(
+                        text = channelName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Action buttons row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Play/Pause button
+                    IconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    // More options button
+                    IconButton(
+                        onClick = onOptions,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More options",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Fullscreen button
+                    IconButton(
+                        onClick = onFullscreen,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Fullscreen,
+                            contentDescription = "Fullscreen",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Close button
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
         }
     }
