@@ -93,6 +93,18 @@ fun PlayerScreen(
     var miniPlayerOffsetX by remember { mutableStateOf(0f) }
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
     var isDraggingMiniPlayer by remember { mutableStateOf(false) }
+    
+    // Animated offset for snap animation
+    val animatedMiniOffsetX by animateFloatAsState(
+        targetValue = miniPlayerOffsetX,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+        label = "animatedMiniOffsetX"
+    )
+    val animatedMiniOffsetY by animateFloatAsState(
+        targetValue = miniPlayerOffsetY,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+        label = "animatedMiniOffsetY"
+    )
 
     // Smoother spring animations - more damping for less bounce, lower stiffness for smoother feel
     val transitionSpringSpec = spring<Float>(
@@ -360,8 +372,8 @@ fun PlayerScreen(
                             .padding(16.dp)
                             .offset {
                                 IntOffset(
-                                    x = miniPlayerOffsetX.toInt(),
-                                    y = miniPlayerOffsetY.toInt()
+                                    x = animatedMiniOffsetX.toInt(),
+                                    y = animatedMiniOffsetY.toInt()
                                 )
                             }
                             .graphicsLayer {
