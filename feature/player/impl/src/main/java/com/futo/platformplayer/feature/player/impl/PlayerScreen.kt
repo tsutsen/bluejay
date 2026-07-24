@@ -116,6 +116,28 @@ fun PlayerScreen(
                         .fillMaxSize()
                         .background(Color.Black)
                 ) {
+                    // Gesture handling (background layer - only handles drags for brightness/volume)
+                    GestureHandler(
+                        onBrightnessChange = { delta ->
+                            brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
+                            viewModel.setBrightness(brightnessValue)
+                            showBrightnessIndicator = true
+                            coroutineScope.launch {
+                                delay(1500)
+                                showBrightnessIndicator = false
+                            }
+                        },
+                        onVolumeChange = { delta ->
+                            volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
+                            viewModel.setVolume(volumeValue)
+                            showVolumeIndicator = true
+                            coroutineScope.launch {
+                                delay(1500)
+                                showVolumeIndicator = false
+                            }
+                        }
+                    )
+
                     // ExoPlayer view
                     Box(
                         modifier = Modifier.fillMaxSize()
@@ -214,36 +236,6 @@ fun PlayerScreen(
                     SeekIndicators(
                         showSeekBack = false,
                         showSeekForward = false
-                    )
-
-                    // Gesture handling
-                    GestureHandler(
-                        onToggleOverlay = {
-                            showTopOverlay = !showTopOverlay
-                            showBottomOverlay = !showBottomOverlay
-                        },
-                        onBrightnessChange = { delta ->
-                            brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
-                            viewModel.setBrightness(brightnessValue)
-                            showBrightnessIndicator = true
-                            coroutineScope.launch {
-                                delay(1500)
-                                showBrightnessIndicator = false
-                            }
-                        },
-                        onVolumeChange = { delta ->
-                            volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
-                            viewModel.setVolume(volumeValue)
-                            showVolumeIndicator = true
-                            coroutineScope.launch {
-                                delay(1500)
-                                showVolumeIndicator = false
-                            }
-                        },
-                        onMinimize = { viewModel.minimize() },
-                        onExitFullscreen = { viewModel.exitFullscreen() },
-                        onDoubleTapLeft = { /* TODO: seek back 10s */ },
-                        onDoubleTapRight = { /* TODO: seek forward 10s */ }
                     )
 
                     // Options Modal
@@ -583,13 +575,8 @@ private fun SeekIndicators(
 
 @Composable
 private fun GestureHandler(
-    onToggleOverlay: () -> Unit,
     onBrightnessChange: (Float) -> Unit,
-    onVolumeChange: (Float) -> Unit,
-    onMinimize: () -> Unit,
-    onExitFullscreen: () -> Unit,
-    onDoubleTapLeft: () -> Unit,
-    onDoubleTapRight: () -> Unit
+    onVolumeChange: (Float) -> Unit
 ) {
     var isLeftSide by remember { mutableStateOf(false) }
     Box(
@@ -606,21 +593,6 @@ private fun GestureHandler(
                         }
                     },
                     onDragStart = { isLeftSide = it.x < size.width / 2 }
-                )
-            }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        onToggleOverlay()
-                    },
-                    onDoubleTap = {
-                        if (it.x < size.width / 2) {
-                            onDoubleTapLeft()
-                        } else {
-                            onDoubleTapRight()
-                        }
-                    },
-                    onLongPress = { /* TODO: PiP */ }
                 )
             }
     )
