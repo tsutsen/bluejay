@@ -41,6 +41,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -52,6 +53,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.futo.platformplayer.core.designsystem.component.VideoCardSkeleton
+import com.futo.platformplayer.core.model.Author
 import com.futo.platformplayer.core.model.ContentItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -88,6 +90,10 @@ fun PlayerScreen(
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
     var touchX by remember { mutableStateOf(0f) }
+    
+    // Detail page state
+    var expandedDescription by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Comments, 1 = Recommended
     
     // Mini player drag state
     var miniPlayerOffsetX by remember { mutableStateOf(0f) }
@@ -335,32 +341,155 @@ fun PlayerScreen(
                     )
                 }
 
-                // ==================== Video Player (single instance, always present) ====================
-                AndroidView(
-                    factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            // Disable controller BEFORE attaching player to avoid flash
-                            useController = false
-                            setControllerAutoShow(false)
-                            layoutParams = ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
+                // ==================== Video Player ====================
+                if (isFullscreenAnim.value) {
+                    // Fullscreen: player takes entire screen
+                    AndroidView(
+                        factory = { ctx ->
+                            PlayerView(ctx).apply {
+                                useController = false
+                                setControllerAutoShow(false)
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                this.player = player
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (!isMinimizedAnim.value) {
+                    // Detail page: player at 60% height, details scrollable below
+                    val playerHeight = containerSize.height * 0.6f
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Player takes 60% of screen height
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(with(LocalDensity.current) { playerHeight.toDp() })
+                                .background(Color.Black)
+                        ) {
+                            AndroidView(
+                                factory = { ctx ->
+                                    PlayerView(ctx).apply {
+                                        useController = false
+                                        setControllerAutoShow(false)
+                                        layoutParams = ViewGroup.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                        )
+                                        this.player = player
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
                             )
-                            this.player = player
+                            // Minimize button overlay
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(16.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { viewModel.minimize() },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Minimize",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-    this.scaleX = if (isFullscreenAnim.value) 1f else scale
-    this.scaleY = if (isFullscreenAnim.value) 1f else scale
-    this.translationX = if (isFullscreenAnim.value) 0f else translationX
-    this.translationY = if (isFullscreenAnim.value) 0f else translationY
-    this.shape = RoundedCornerShape(fullscreenCornerRadius.coerceAtLeast(0.dp))
-    this.clip = true
-    this.shadowElevation = fullscreenShadowElevation.toPx()
-}
-                )
+
+                        // Scrollable details below player
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .offset(y = with(LocalDensity.current) { playerHeight.toDp() })
+                        ) {
+                            // Title and Meta
+                            item {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = state.currentVideo?.title ?: "Unknown",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = formatViewCount(state.currentVideo?.viewCount ?: 0),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = "•",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = formatRelativeTime(state.currentVideo?.publishedAt),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Channel Row
+                            item {
+                                ChannelRow(
+                                    author = state.currentVideo?.author,
+                                    onSubscribe = { /* TODO */ },
+                                    onWatchLater = { /* TODO */ },
+                                    onShare = { /* TODO */ },
+                                    onMore = { /* TODO */ }
+                                )
+                            }
+
+                            // Description
+                            item {
+                                DescriptionSection(
+                                    description = state.currentVideo?.description ?: "",
+                                    isExpanded = expandedDescription,
+                                    onToggle = { expandedDescription = !expandedDescription }
+                                )
+                            }
+
+                            // Tabs
+                            item {
+                                TabsSection(
+                                    selectedTab = selectedTab,
+                                    onTabSelected = { selectedTab = it }
+                                )
+                            }
+
+                            // Tab Content
+                            when (selectedTab) {
+                                0 -> {
+                                    item {
+                                        CommentsSection()
+                                    }
+                                }
+                                1 -> {
+                                    item {
+                                        RecommendedSection()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Mini player is handled separately
+                }
 
                 // ==================== Mini-player controls overlay ====================
                 if (isMinimizedAnim.value) {
@@ -1145,5 +1274,398 @@ private fun formatTime(ms: Long): String {
         String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
     } else {
         String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
+    }
+}
+
+private fun formatViewCount(viewCount: Long): String {
+    return when {
+        viewCount >= 1_000_000 -> "${String.format(Locale.getDefault(), "%.1f", viewCount / 1_000_000.0)}M"
+        viewCount >= 1_000 -> "${String.format(Locale.getDefault(), "%.1f", viewCount / 1_000.0)}K"
+        else -> viewCount.toString()
+    }
+}
+
+private fun formatRelativeTime(publishedAt: Long?): String {
+    if (publishedAt == null) return ""
+    val now = System.currentTimeMillis()
+    val diffMs = now - publishedAt
+    val diffSeconds = diffMs / 1000
+    val diffMinutes = diffSeconds / 60
+    val diffHours = diffMinutes / 60
+    val diffDays = diffHours / 24
+    val diffWeeks = diffDays / 7
+    val diffMonths = diffDays / 30
+    val diffYears = diffDays / 365
+
+    return when {
+        diffYears > 0L -> "$diffYears${if (diffYears == 1L) " year" else " years"} ago"
+        diffMonths > 0L -> "$diffMonths${if (diffMonths == 1L) " month" else " months"} ago"
+        diffWeeks > 0L -> "$diffWeeks${if (diffWeeks == 1L) " week" else " weeks"} ago"
+        diffDays > 0L -> "$diffDays${if (diffDays == 1L) " day" else " days"} ago"
+        diffHours > 0L -> "$diffHours${if (diffHours == 1L) " hour" else " hours"} ago"
+        diffMinutes > 0L -> "$diffMinutes${if (diffMinutes == 1L) " minute" else " minutes"} ago"
+        else -> "Just now"
+    }
+}
+
+@Composable
+private fun ChannelRow(
+    author: Author?,
+    onSubscribe: () -> Unit,
+    onWatchLater: () -> Unit,
+    onShare: () -> Unit,
+    onMore: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar
+        if (author?.thumbnailUrl != null) {
+            AsyncImage(
+                model = author.thumbnailUrl,
+                contentDescription = author.name,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = (author?.name?.firstOrNull()?.toString() ?: "?").uppercase(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Channel Info
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = author?.name ?: "Unknown Channel",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "125K subscribers",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Subscribe Button
+        Button(
+            onClick = onSubscribe,
+            modifier = Modifier.height(36.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp)
+        ) {
+            Text(
+                text = "Subscribe",
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+    }
+
+    // Action buttons
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Like/Dislike
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.ThumbUp,
+                contentDescription = "Like",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "1.2K",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Dislike
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.ThumbDown,
+                contentDescription = "Dislike",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "45",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Watch Later
+        IconButton(onClick = onWatchLater) {
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = "Watch Later",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Share
+        IconButton(onClick = onShare) {
+            Icon(
+                imageVector = Icons.Default.Share,
+                contentDescription = "Share",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // More
+        IconButton(onClick = onMore) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "More options",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun DescriptionSection(
+    description: String,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        if (description.isNotEmpty()) {
+            Text(
+                text = if (isExpanded) description else description.take(200) + if (description.length > 200) "..." else "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            TextButton(onClick = onToggle) {
+                Text(
+                    text = if (isExpanded) "Show less" else "Show more",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TabsSection(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        TabItem(
+            text = "Comments",
+            isSelected = selectedTab == 0,
+            onClick = { onTabSelected(0) }
+        )
+        TabItem(
+            text = "Recommended",
+            isSelected = selectedTab == 1,
+            onClick = { onTabSelected(1) }
+        )
+    }
+}
+
+@Composable
+private fun TabItem(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    TextButton(onClick = onClick) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            color = if (isSelected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
+    }
+}
+
+@Composable
+private fun CommentsSection() {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+            text = "Comments",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        // Placeholder comment
+        CommentCard(
+            username = "User123",
+            timeAgo = "2 hours ago",
+            text = "This is a great video! Thanks for sharing.",
+            likeCount = 42
+        )
+    }
+}
+
+@Composable
+private fun RecommendedSection() {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+            text = "Recommended",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        // Placeholder recommended videos
+        for (i in 1..5) {
+            RecommendedVideoCard(
+                title = "Recommended Video $i",
+                channelName = "Channel $i",
+                viewCount = "${100 * i}K views",
+                timeAgo = "$i days ago"
+            )
+        }
+    }
+}
+
+@Composable
+private fun CommentCard(
+    username: String,
+    timeAgo: String,
+    text: String,
+    likeCount: Int
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = username.first().toString().uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = username,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = timeAgo,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.ThumbUp,
+                contentDescription = "Like",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = likeCount.toString(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            TextButton(onClick = { /* TODO: Reply */ }) {
+                Text("Reply", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun RecommendedVideoCard(
+    title: String,
+    channelName: String,
+    viewCount: String,
+    timeAgo: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(160.dp, 90.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Thumbnail",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = channelName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "$viewCount • $timeAgo",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
