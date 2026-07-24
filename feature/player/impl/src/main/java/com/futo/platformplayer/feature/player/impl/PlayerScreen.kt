@@ -90,12 +90,12 @@ fun PlayerScreen(
 
     // Smoother spring animations - more damping for less bounce, lower stiffness for smoother feel
     val transitionSpringSpec = spring<Float>(
-        stiffness = Spring.StiffnessLow,
-        dampingRatio = Spring.DampingRatioMediumBouncy
+        stiffness = Spring.StiffnessMediumLow,
+        dampingRatio = Spring.DampingRatioNoBouncy
     )
     val transitionDpSpec = spring<Dp>(
-        stiffness = Spring.StiffnessLow,
-        dampingRatio = Spring.DampingRatioMediumBouncy
+        stiffness = Spring.StiffnessMediumLow,
+        dampingRatio = Spring.DampingRatioNoBouncy
     )
 
     var containerSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
