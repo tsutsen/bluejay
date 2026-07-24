@@ -357,6 +357,7 @@ fun PlayerScreen(
                         modifier = Modifier
                             .size(miniWidth, miniHeight)
                             .align(Alignment.BottomEnd)
+                            .padding(16.dp)
                             .offset {
                                 IntOffset(
                                     x = miniPlayerOffsetX.toInt(),
