@@ -403,8 +403,8 @@ fun PlayerScreen(
                                         
                                         // Snap X to left or right edge based on actual position
                                         if (actualX < edgeThreshold) {
-                                            // Near left edge: snap to left (Box extends 16dp off-screen, content flush with edge)
-                                            miniPlayerOffsetX = -16.dp.toPx()
+                                            // Near left edge: snap to left (Box at x=0, content at x=padding due to padding modifier)
+                                            miniPlayerOffsetX = -initialX
                                         } else if (actualX > screenWidth - miniWidthPx - edgeThreshold) {
                                             // Near right edge: snap to right (offset = 0)
                                             miniPlayerOffsetX = 0f
@@ -412,8 +412,8 @@ fun PlayerScreen(
                                         
                                         // Snap Y to top or bottom edge based on actual position
                                         if (actualY < edgeThreshold) {
-                                            // Near top edge: snap to top (Box extends 16dp off-screen, content flush with edge)
-                                            miniPlayerOffsetY = -16.dp.toPx()
+                                            // Near top edge: snap to top (Box at y=0, content at y=padding due to padding modifier)
+                                            miniPlayerOffsetY = -initialY
                                         } else if (actualY > screenHeight - miniHeightPx - edgeThreshold) {
                                             // Near bottom edge: snap to bottom (offset = 0)
                                             miniPlayerOffsetY = 0f
