@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -413,40 +414,20 @@ fun PlayerScreen(
                                 .fillMaxSize()
                                 .background(MaterialTheme.colorScheme.surface)
                         ) {
-                            // Title and Meta
+                            // Row 1: Title
                             item {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text(
-                                        text = state.currentVideo?.title ?: "Unknown",
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                            text = formatViewCount(state.currentVideo?.viewCount ?: 0),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = "•",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = formatRelativeTime(state.currentVideo?.publishedAt),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = state.currentVideo?.title ?: "Unknown",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                )
                             }
 
-                            // Channel Row
+                            // Row 2: Channel info + subscribe (left) / watch later, share, more (right)
                             item {
                                 ChannelRow(
                                     author = state.currentVideo?.author,
@@ -457,7 +438,15 @@ fun PlayerScreen(
                                 )
                             }
 
-                            // Description
+                            // Row 3: Likes/dislikes, views, date posted
+                            item {
+                                VideoStatsRow(
+                                    viewCount = state.currentVideo?.viewCount ?: 0,
+                                    publishedAt = state.currentVideo?.publishedAt
+                                )
+                            }
+
+                            // Row 4: Description (collapsed to 3 lines, expands on tap)
                             item {
                                 DescriptionSection(
                                     description = state.currentVideo?.description ?: "",
@@ -1377,12 +1366,14 @@ private fun ChannelRow(
         Spacer(modifier = Modifier.width(12.dp))
 
         // Channel Info
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(
                 text = author?.name ?: "Unknown Channel",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "125K subscribers",
@@ -1390,6 +1381,8 @@ private fun ChannelRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        Spacer(modifier = Modifier.width(12.dp))
 
         // Subscribe Button
         Button(
@@ -1400,46 +1393,6 @@ private fun ChannelRow(
             Text(
                 text = "Subscribe",
                 style = MaterialTheme.typography.labelMedium
-            )
-        }
-    }
-
-    // Action buttons
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Like/Dislike
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.ThumbUp,
-                contentDescription = "Like",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "1.2K",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // Dislike
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.ThumbDown,
-                contentDescription = "Dislike",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "45",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -1475,25 +1428,108 @@ private fun ChannelRow(
 }
 
 @Composable
+private fun VideoStatsRow(
+    viewCount: Long,
+    publishedAt: Long?
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Like
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.ThumbUp,
+                contentDescription = "Like",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "1.2K",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Dislike
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.ThumbDown,
+                contentDescription = "Dislike",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "45",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Text(
+            text = "•",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = formatViewCount(viewCount),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = "•",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = formatRelativeTime(publishedAt),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun DescriptionSection(
     description: String,
     isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
         if (description.isNotEmpty()) {
             Text(
-                text = if (isExpanded) description else description.take(200) + if (description.length > 200) "..." else "",
+                text = description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = if (isExpanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(4.dp))
-            TextButton(onClick = onToggle) {
-                Text(
-                    text = if (isExpanded) "Show less" else "Show more",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+            Text(
+                text = if (isExpanded) "Show less" else "Show more",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold
+            )
+        } else {
+            Text(
+                text = "No description available",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -1542,12 +1578,6 @@ private fun TabItem(
 @Composable
 private fun CommentsSection() {
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = "Comments",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(16.dp))
         // Placeholder comment
         CommentCard(
             username = "User123",
