@@ -309,7 +309,7 @@ fun PlayerScreen(
     this.scaleY = scale
     this.translationX = translationX
     this.translationY = translationY
-    this.shape = RoundedCornerShape(cornerRadius)
+    this.shape = RoundedCornerShape(cornerRadius.coerceAtLeast(0.dp))
     this.clip = true
     this.shadowElevation = shadowElevationDp.toPx()
 }
