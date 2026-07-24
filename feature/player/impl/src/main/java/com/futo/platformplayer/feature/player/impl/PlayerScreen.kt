@@ -392,19 +392,25 @@ fun PlayerScreen(
                                         val screenHeight = containerSize.height
                                         val miniWidthPx = miniWidth.toPx()
                                         val miniHeightPx = miniHeight.toPx()
-                                        
-                                        // Snap to edges if within threshold
+                                        val paddingPx = 16.dp.toPx()
                                         val edgeThreshold = 100f
+                                        
+                                        // Snap X to left or right edge
                                         if (miniPlayerOffsetX < edgeThreshold) {
-                                            miniPlayerOffsetX = 0f
+                                            // Near left edge: snap to left
+                                            miniPlayerOffsetX = -(screenWidth - miniWidthPx - paddingPx) // Snap to left
                                         } else if (miniPlayerOffsetX > screenWidth - miniWidthPx - edgeThreshold) {
-                                            miniPlayerOffsetX = screenWidth - miniWidthPx
+                                            // Near right edge: snap to right (default)
+                                            miniPlayerOffsetX = 0f
                                         }
                                         
+                                        // Snap Y to top or bottom edge
                                         if (miniPlayerOffsetY < edgeThreshold) {
-                                            miniPlayerOffsetY = 0f
+                                            // Near top edge: snap to top
+                                            miniPlayerOffsetY = -(screenHeight - miniHeightPx - paddingPx) // Snap to top
                                         } else if (miniPlayerOffsetY > screenHeight - miniHeightPx - edgeThreshold) {
-                                            miniPlayerOffsetY = screenHeight - miniHeightPx
+                                            // Near bottom edge: snap to bottom (default)
+                                            miniPlayerOffsetY = 0f
                                         }
                                     },
                                     onDragCancel = {
