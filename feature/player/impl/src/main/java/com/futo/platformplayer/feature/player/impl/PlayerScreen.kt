@@ -1,7 +1,6 @@
 package com.futo.platformplayer.feature.player.impl
 
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -19,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,181 +85,196 @@ fun PlayerScreen(
             VideoCardSkeleton(count = 1)
         }
         is PlayerUiState.Loaded -> {
-            val context = LocalContext.current
-            val player = remember { ExoPlayer.Builder(context).build() }
-            LaunchedEffect(state.currentVideo) {
-                if (state.currentVideo != null) {
-                    player.setMediaItem(
-                        MediaItem.fromUri(state.currentVideo!!.url)
-                    )
-                    player.prepare()
-                    player.playWhenReady = true
+            // Check if player is minimized
+            if (state.isMinimized) {
+                MiniPlayer(
+                    title = state.currentVideo?.title ?: "Unknown",
+                    channelName = state.currentVideo?.author?.name ?: "Unknown",
+                    isPlaying = state.isPlaying,
+                    currentPositionMs = state.currentPositionMs,
+                    durationMs = state.durationMs,
+                    onExpand = { viewModel.exitFullscreen() },
+                    onPlayPause = {
+                        if (state.isPlaying) viewModel.pause() else viewModel.resume()
+                    }
+                )
+            } else {
+                val context = LocalContext.current
+                val player = remember { ExoPlayer.Builder(context).build() }
+                LaunchedEffect(state.currentVideo) {
+                    if (state.currentVideo != null) {
+                        player.setMediaItem(
+                            MediaItem.fromUri(state.currentVideo!!.url)
+                        )
+                        player.prepare()
+                        player.playWhenReady = true
+                    }
                 }
-            }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-            ) {
-                // ExoPlayer view - use a regular Box to ensure proper sizing
                 Box(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
                 ) {
-                    AndroidView(
-                        factory = { ctx ->
-                            PlayerView(ctx).apply {
-                                this.player = player
-                                useController = false
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
+                    // ExoPlayer view
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        AndroidView(
+                            factory = { ctx ->
+                                PlayerView(ctx).apply {
+                                    this.player = player
+                                    useController = false
+                                    layoutParams = ViewGroup.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    // Top Overlay
+                    AnimatedVisibility(
+                        visible = showTopOverlay,
+                        enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+                        exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
+                    ) {
+                        TopOverlay(
+                            title = state.currentVideo?.title ?: "Unknown",
+                            channelName = state.currentVideo?.author?.name ?: "Unknown",
+                            onMinimize = { viewModel.minimize() },
+                            onReplayToggle = { replayEnabled = !replayEnabled },
+                            onWatchLater = { /* TODO */ },
+                            onOptions = { showOptionsModal = true }
+                        )
+                    }
+
+                    // Bottom Overlay
+                    AnimatedVisibility(
+                        visible = showBottomOverlay,
+                        enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                        exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    ) {
+                        BottomOverlay(
+                            currentPositionMs = state.currentPositionMs,
+                            durationMs = state.durationMs,
+                            isPlaying = state.isPlaying,
+                            onPlayPause = {
+                                if (state.isPlaying) viewModel.pause() else viewModel.resume()
+                            },
+                            onPrevious = { viewModel.skipPrevious() },
+                            onNext = { viewModel.skipNext() },
+                            onChapters = { showChapters = !showChapters },
+                            onFullscreen = { viewModel.toggleFullscreen() }
+                        )
+                    }
+
+                    // Brightness Indicator (left side)
+                    AnimatedVisibility(
+                        visible = showBrightnessIndicator,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(120.dp)
+                        ) {
+                            BrightnessIndicator(
+                                brightness = brightnessValue,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+
+                    // Volume Indicator (right side)
+                    AnimatedVisibility(
+                        visible = showVolumeIndicator,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(120.dp)
+                        ) {
+                            VolumeIndicator(
+                                volume = volumeValue,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+
+                    // Double-tap seek indicators
+                    SeekIndicators(
+                        showSeekBack = false,
+                        showSeekForward = false
+                    )
+
+                    // Gesture handling
+                    GestureHandler(
+                        onToggleOverlay = {
+                            showTopOverlay = !showTopOverlay
+                            showBottomOverlay = !showBottomOverlay
+                        },
+                        onBrightnessChange = { delta ->
+                            brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
+                            viewModel.setBrightness(brightnessValue)
+                            showBrightnessIndicator = true
+                            coroutineScope.launch {
+                                delay(1500)
+                                showBrightnessIndicator = false
                             }
                         },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                // Top Overlay
-                AnimatedVisibility(
-                    visible = showTopOverlay,
-                    enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-                    exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
-                ) {
-                    TopOverlay(
-                        title = state.currentVideo?.title ?: "Unknown",
-                        channelName = state.currentVideo?.author?.name ?: "Unknown",
+                        onVolumeChange = { delta ->
+                            volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
+                            viewModel.setVolume(volumeValue)
+                            showVolumeIndicator = true
+                            coroutineScope.launch {
+                                delay(1500)
+                                showVolumeIndicator = false
+                            }
+                        },
                         onMinimize = { viewModel.minimize() },
-                        onReplayToggle = { replayEnabled = !replayEnabled },
-                        onWatchLater = { /* TODO */ },
-                        onOptions = { showOptionsModal = true }
+                        onExitFullscreen = { viewModel.exitFullscreen() },
+                        onDoubleTapLeft = { /* TODO: seek back 10s */ },
+                        onDoubleTapRight = { /* TODO: seek forward 10s */ }
                     )
-                }
 
-                // Bottom Overlay
-                AnimatedVisibility(
-                    visible = showBottomOverlay,
-                    enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                ) {
-                    BottomOverlay(
-                        currentPositionMs = state.currentPositionMs,
-                        durationMs = state.durationMs,
-                        isPlaying = state.isPlaying,
-                        onPlayPause = {
-                            if (state.isPlaying) viewModel.pause() else viewModel.resume()
-                        },
-                        onPrevious = { viewModel.skipPrevious() },
-                        onNext = { viewModel.skipNext() },
-                        onChapters = { showChapters = !showChapters },
-                        onFullscreen = { viewModel.toggleFullscreen() }
-                    )
-                }
-
-                // Brightness Indicator (left side)
-                AnimatedVisibility(
-                    visible = showBrightnessIndicator,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(120.dp)
-                    ) {
-                        BrightnessIndicator(
-                            brightness = brightnessValue,
-                            modifier = Modifier.align(Alignment.Center)
+                    // Options Modal
+                    if (showOptionsModal) {
+                        OptionsModal(
+                            playbackSpeed = selectedSpeed,
+                            quality = selectedQuality,
+                            onSpeedChange = { speed ->
+                                selectedSpeed = speed
+                                viewModel.setPlaybackSpeed(speed)
+                            },
+                            onQualityChange = { quality ->
+                                selectedQuality = quality
+                                viewModel.setVideoQuality(quality)
+                            },
+                            onDismiss = { showOptionsModal = false }
                         )
                     }
-                }
 
-                // Volume Indicator (right side)
-                AnimatedVisibility(
-                    visible = showVolumeIndicator,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(120.dp)
-                    ) {
-                        VolumeIndicator(
-                            volume = volumeValue,
-                            modifier = Modifier.align(Alignment.Center)
+                    // Chapters Panel
+                    if (showChapters) {
+                        ChaptersPanel(
+                            chapters = emptyList(),
+                            currentPositionMs = state.currentPositionMs,
+                            onChapterClick = { positionMs ->
+                                viewModel.seekTo(positionMs)
+                                showChapters = false
+                            },
+                            onDismiss = { showChapters = false }
                         )
                     }
-                }
-
-                // Double-tap seek indicators
-                SeekIndicators(
-                    showSeekBack = false, // TODO: Track double-tap state
-                    showSeekForward = false
-                )
-
-                // Gesture handling
-                GestureHandler(
-                    onToggleOverlay = {
-                        showTopOverlay = !showTopOverlay
-                        showBottomOverlay = !showBottomOverlay
-                    },
-                    onBrightnessChange = { delta ->
-                        brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
-                        viewModel.setBrightness(brightnessValue)
-                        showBrightnessIndicator = true
-                        coroutineScope.launch {
-                            delay(1500)
-                            showBrightnessIndicator = false
-                        }
-                    },
-                    onVolumeChange = { delta ->
-                        volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
-                        viewModel.setVolume(volumeValue)
-                        showVolumeIndicator = true
-                        coroutineScope.launch {
-                            delay(1500)
-                            showVolumeIndicator = false
-                        }
-                    },
-                    onMinimize = { viewModel.minimize() },
-                    onExitFullscreen = { viewModel.exitFullscreen() },
-                    onDoubleTapLeft = { /* TODO: seek back 10s */ },
-                    onDoubleTapRight = { /* TODO: seek forward 10s */ }
-                )
-
-                // Options Modal
-                if (showOptionsModal) {
-                    OptionsModal(
-                        playbackSpeed = selectedSpeed,
-                        quality = selectedQuality,
-                        onSpeedChange = { speed ->
-                            selectedSpeed = speed
-                            viewModel.setPlaybackSpeed(speed)
-                        },
-                        onQualityChange = { quality ->
-                            selectedQuality = quality
-                            viewModel.setVideoQuality(quality)
-                        },
-                        onDismiss = { showOptionsModal = false }
-                    )
-                }
-
-                // Chapters Panel
-                if (showChapters) {
-                    ChaptersPanel(
-                        chapters = emptyList(), // TODO: Load chapters from video
-                        currentPositionMs = state.currentPositionMs,
-                        onChapterClick = { positionMs ->
-                            viewModel.seekTo(positionMs)
-                            showChapters = false
-                        },
-                        onDismiss = { showChapters = false }
-                    )
                 }
             }
         }
@@ -586,12 +599,9 @@ private fun GestureHandler(
                 detectVerticalDragGestures(
                     onVerticalDrag = { _, dragAmount ->
                         val delta = -dragAmount / 500f
-                        // Left half: brightness
                         if (isLeftSide) {
                             onBrightnessChange(delta)
-                        }
-                        // Right half: volume
-                        else {
+                        } else {
                             onVolumeChange(delta)
                         }
                     },
@@ -684,7 +694,7 @@ private fun ChaptersPanel(
             modifier = Modifier.padding(16.dp)
         )
         LazyColumn {
-            itemsIndexed(chapters) { index, chapter ->
+            itemsIndexed(chapters) { _, chapter ->
                 val isSelected = currentPositionMs in chapter.startTimeMs..chapter.endTimeMs
                 Row(
                     modifier = Modifier
@@ -733,5 +743,85 @@ private fun formatTime(ms: Long): String {
         String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
     } else {
         String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
+    }
+}
+
+@Composable
+private fun MiniPlayer(
+    title: String,
+    channelName: String,
+    isPlaying: Boolean,
+    currentPositionMs: Long,
+    durationMs: Long,
+    onExpand: () -> Unit,
+    onPlayPause: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        onExpand()
+                    }
+                )
+            }
+    ) {
+        // Video thumbnail placeholder
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.DarkGray)
+        ) {
+            // Progress bar at bottom
+            LinearProgressIndicator(
+                progress = if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(4.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = Color.White.copy(alpha = 0.3f)
+            )
+        }
+
+        // Content overlay
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = channelName,
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Play/Pause button
+            IconButton(
+                onClick = onPlayPause,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
     }
 }

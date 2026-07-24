@@ -15,7 +15,7 @@ import javax.inject.Singleton
 @Stable
 class Navigator @Inject constructor() {
 
-    private val _currentRoute = MutableStateFlow<NavDestination?>(null)
+    private val _currentRoute = MutableStateFlow<NavDestination?>(NavDestination.Home)
     val currentRoute: StateFlow<NavDestination?> = _currentRoute.asStateFlow()
 
     private var onNavigate: ((NavDestination) -> Unit)? = null

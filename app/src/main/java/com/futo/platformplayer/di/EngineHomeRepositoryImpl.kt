@@ -52,6 +52,15 @@ class EngineHomeRepositoryImpl @Inject constructor() : HomeRepository {
                 StatePlugins.instance.updateEmbeddedPlugins(context)
                 StatePlugins.instance.installMissingEmbeddedPlugins(context)
                 StatePlatform.instance.updateAvailableClients(context)
+                
+                // Ensure YouTube is enabled by default
+                val youtubeClient = StatePlatform.instance.getAvailableClients().find { 
+                    it.name.contains("Youtube", ignoreCase = true)
+                }
+                if (youtubeClient != null && !StatePlatform.instance.isClientEnabled(youtubeClient)) {
+                    Logger.i("EngineHomeRepository", "Enabling YouTube by default")
+                    StatePlatform.instance.enableClient(listOf(youtubeClient.id))
+                }
             }
         } catch (e: Exception) {
             Logger.w("EngineHomeRepository", "Plugin initialization failed", e)
