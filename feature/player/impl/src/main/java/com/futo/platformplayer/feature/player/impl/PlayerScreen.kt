@@ -344,6 +344,14 @@ fun PlayerScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = 0.6f))
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            Log.d(TAG, "Tap background: expand mini player")
+                                            viewModel.exitMiniPlayer()
+                                        }
+                                    )
+                                }
                         )
                         Column(modifier = Modifier.fillMaxSize()) {
                             // Top row: Play/Pause (left) and Close (right)
@@ -448,25 +456,7 @@ fun PlayerScreen(
                         }
                     }
 
-                    // Tap to expand mini player
-                    Box(
-                        modifier = Modifier
-                            .size(miniWidth, miniHeight)
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp)
-                            .graphicsLayer {
-                                shape = RoundedCornerShape(cornerRadius)
-                                clip = true
-                            }
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onTap = {
-                                        Log.d(TAG, "Tap to expand mini player")
-                                        viewModel.exitMiniPlayer()
-                                    }
-                                )
-                            }
-                    )
+                    // Tap to expand mini player — added to the controls box via pointerInput
                 } else {
                     // ==================== DEFAULT / FULLSCREEN state ====================
                     Box(
