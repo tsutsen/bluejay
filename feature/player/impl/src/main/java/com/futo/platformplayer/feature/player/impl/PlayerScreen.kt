@@ -94,17 +94,14 @@ fun PlayerScreen(
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
     var isDraggingMiniPlayer by remember { mutableStateOf(false) }
     
-    // Display offset - only changes after drag ends (for snap animation)
-    var displayMiniOffsetX by remember { mutableStateOf(0f) }
-    var displayMiniOffsetY by remember { mutableStateOf(0f) }
-    
+    // Animated offset for snap animation
     val animatedMiniOffsetX by animateFloatAsState(
-        targetValue = displayMiniOffsetX,
+        targetValue = miniPlayerOffsetX,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
         label = "animatedMiniOffsetX"
     )
     val animatedMiniOffsetY by animateFloatAsState(
-        targetValue = displayMiniOffsetY,
+        targetValue = miniPlayerOffsetY,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
         label = "animatedMiniOffsetY"
     )
@@ -393,17 +390,11 @@ fun PlayerScreen(
                                         isDragging = true
                                         dragStartX = offset.x
                                         dragStartY = offset.y
-                                        // Sync display offset to current position (no animation)
-                                        displayMiniOffsetX = miniPlayerOffsetX
-                                        displayMiniOffsetY = miniPlayerOffsetY
                                     },
                                     onDrag = { change, dragAmount: Offset ->
                                         change.consume()
                                         miniPlayerOffsetX += dragAmount.x
                                         miniPlayerOffsetY += dragAmount.y
-                                        // Update display offset directly during drag (no animation)
-                                        displayMiniOffsetX = miniPlayerOffsetX
-                                        displayMiniOffsetY = miniPlayerOffsetY
                                     },
                                     onDragEnd = {
                                         isDraggingMiniPlayer = false
@@ -425,25 +416,19 @@ fun PlayerScreen(
                                         // Snap X to left or right edge based on actual position
                                         if (actualX < edgeThreshold) {
                                             // Near left edge: snap to left (Box at x=0, content at x=padding due to padding modifier)
-                                            displayMiniOffsetX = -initialX
+                                            miniPlayerOffsetX = -initialX
                                         } else if (actualX > screenWidth - miniWidthPx - edgeThreshold) {
                                             // Near right edge: snap to right (offset = 0)
-                                            displayMiniOffsetX = 0f
-                                        } else {
-                                            // Keep current position
-                                            displayMiniOffsetX = miniPlayerOffsetX
+                                            miniPlayerOffsetX = 0f
                                         }
                                         
                                         // Snap Y to top or bottom edge based on actual position
                                         if (actualY < edgeThreshold) {
                                             // Near top edge: snap to top (Box at y=0, content at y=padding due to padding modifier)
-                                            displayMiniOffsetY = -initialY
+                                            miniPlayerOffsetY = -initialY
                                         } else if (actualY > screenHeight - miniHeightPx - edgeThreshold) {
                                             // Near bottom edge: snap to bottom (offset = 0)
-                                            displayMiniOffsetY = 0f
-                                        } else {
-                                            // Keep current position
-                                            displayMiniOffsetY = miniPlayerOffsetY
+                                            miniPlayerOffsetY = 0f
                                         }
                                     },
                                     onDragCancel = {
