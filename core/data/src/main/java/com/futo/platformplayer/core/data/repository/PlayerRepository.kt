@@ -19,6 +19,7 @@ interface PlayerRepository {
     suspend fun minimize()
     suspend fun exitFullscreen()
     suspend fun exitMiniPlayer()
+    suspend fun close()
 
     val mediaSessionToken: android.media.session.MediaSession.Token?
         get() = null

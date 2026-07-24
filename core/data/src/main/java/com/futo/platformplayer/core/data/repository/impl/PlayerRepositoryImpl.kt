@@ -123,4 +123,22 @@ class PlayerRepositoryImpl @Inject constructor(
     override suspend fun exitMiniPlayer() {
         _playerState.update { it.copy(isMinimized = false, isFullscreen = false) }
     }
+
+    override suspend fun close() {
+        exoPlayer?.release()
+        exoPlayer = null
+        _playerState.update {
+            PlayerState(
+                isPlaying = false,
+                isMinimized = false,
+                isFullscreen = false,
+                currentVideo = null,
+                currentPositionMs = 0L,
+                durationMs = 0L,
+                volume = 1f,
+                brightness = 1f,
+                playbackSpeed = 1f
+            )
+        }
+    }
 }

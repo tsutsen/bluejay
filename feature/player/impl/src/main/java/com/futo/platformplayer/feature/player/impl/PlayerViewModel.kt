@@ -140,6 +140,12 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun close() {
+        viewModelScope.launch {
+            playerRepository.close()
+        }
+    }
+
     fun skipNext() {
         viewModelScope.launch {
             // TODO: Implement queue navigation

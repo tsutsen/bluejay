@@ -478,8 +478,8 @@ fun PlayerScreen(
                                 }
                                 IconButton(
                                     onClick = {
-                                        Log.d(TAG, "Close mini player: exitMiniPlayer")
-                                        viewModel.exitMiniPlayer()
+                                        Log.d(TAG, "Close mini player: close")
+                                        viewModel.close()
                                     },
                                     modifier = Modifier.size(36.dp)
                                 ) {
