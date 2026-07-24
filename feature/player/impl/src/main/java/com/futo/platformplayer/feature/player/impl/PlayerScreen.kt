@@ -135,6 +135,11 @@ fun PlayerScreen(
             val state = uiState as PlayerUiState.Loaded
             isMinimizedAnim.value = state.isMinimized
             isFullscreenAnim.value = state.isFullscreen
+            // Show overlays when exiting mini player
+            if (!state.isMinimized) {
+                showTopOverlay = true
+                showBottomOverlay = true
+            }
             Log.d(TAG, "Animation state synced: isMinimized=${state.isMinimized}, isFullscreen=${state.isFullscreen}")
         }
     }
