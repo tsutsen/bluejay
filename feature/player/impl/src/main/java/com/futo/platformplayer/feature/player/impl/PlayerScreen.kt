@@ -381,7 +381,7 @@ fun PlayerScreen(
                                         this.player = player
                                     }
                                 },
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxWidth().fillMaxHeight()
                             )
                             // Minimize button overlay
                             Box(
@@ -410,6 +410,7 @@ fun PlayerScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .offset(y = with(LocalDensity.current) { playerHeight.toDp() })
+                                .background(MaterialTheme.colorScheme.surface)
                         ) {
                             // Title and Meta
                             item {
