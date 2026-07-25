@@ -69,7 +69,6 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
 
     init {
         loadCreators()
-        loadFeed()
     }
 
     // ==================== Loading ====================
@@ -94,20 +93,18 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                     )
                 }
                 
-                val currentState = _uiState.value
-                val newState = when (currentState) {
-                    is SubscriptionsUiState.Loading -> currentState
-                    is SubscriptionsUiState.Success -> currentState.copy(
-                        creators = creators,
-                        isLoading = false
-                    )
-                    is SubscriptionsUiState.Error -> SubscriptionsUiState.Success(
-                        creators = creators
-                    )
-                }
+                // Transition to Success state with creators loaded
+                val newState = SubscriptionsUiState.Success(
+                    creators = creators,
+                    isLoading = false
+                )
                 _uiState.value = newState
+                
+                // Now load the feed
+                loadFeed()
             } catch (e: Exception) {
                 Logger.e(TAG, "Error loading creators", e)
+                _uiState.value = SubscriptionsUiState.Error(e.message ?: "Failed to load creators")
             }
         }
     }
@@ -117,10 +114,6 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
      */
     fun loadFeed() {
         viewModelScope.launch {
-            val currentState = _uiState.value
-            if (currentState is SubscriptionsUiState.Success) {
-                _uiState.value = currentState.copy(isLoading = true)
-            }
             try {
                 Logger.i(TAG, "Loading subscription feed...")
                 val pager = StateSubscriptions.instance.getGlobalSubscriptionFeed(
