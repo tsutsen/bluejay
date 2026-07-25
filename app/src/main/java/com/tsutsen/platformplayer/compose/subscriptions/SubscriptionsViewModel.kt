@@ -133,18 +133,41 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
     }
 
     /**
-     * Refresh the feed by re-fetching from all subscribed channels.
+     * Refresh the feed by loading the next page.
      */
     fun refresh() {
         viewModelScope.launch {
             try {
                 Logger.i(TAG, "Refreshing subscription feed...")
-                feedPager?.nextPage()
-                val loaded = feedPager?.getResults() ?: emptyList()
-                allContent = loaded
-                applyFilters()
+                val currentPager = feedPager
+                if (currentPager != null) {
+                    currentPager.nextPage()
+                    val loaded = currentPager.getResults()
+                    allContent = loaded
+                    applyFilters()
+                }
             } catch (e: Exception) {
                 Logger.e(TAG, "Error refreshing feed", e)
+            }
+        }
+    }
+
+    /**
+     * Load more items (pagination).
+     */
+    fun loadMore() {
+        viewModelScope.launch {
+            try {
+                val currentPager = feedPager
+                if (currentPager != null && currentPager.hasMorePages()) {
+                    Logger.i(TAG, "Loading more subscription items...")
+                    currentPager.nextPage()
+                    val loaded = currentPager.getResults()
+                    allContent = loaded
+                    applyFilters()
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "Error loading more", e)
             }
         }
     }

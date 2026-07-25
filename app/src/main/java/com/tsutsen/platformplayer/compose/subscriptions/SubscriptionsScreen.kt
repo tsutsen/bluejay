@@ -111,6 +111,7 @@ fun SubscriptionsScreen(
                         onStreamsToggle = viewModel::toggleStreams,
                         onSourceToggle = viewModel::toggleSourceFilter,
                         onRefresh = viewModel::refresh,
+                        onLoadMore = viewModel::loadMore,
                         onItemClicked = { content ->
                             when (content) {
                                 is IPlatformVideo -> navigator.navigateToVideo(content.url)
@@ -162,6 +163,7 @@ private fun SubscriptionsContent(
     onStreamsToggle: () -> Unit,
     onSourceToggle: (String) -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onItemClicked: (com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -190,6 +192,7 @@ private fun SubscriptionsContent(
                     contentList = state.contentList,
                     onItemClicked = onItemClicked,
                     onRefresh = onRefresh,
+                    onLoadMore = onLoadMore,
                     layoutMode = LayoutMode.Grid,
                     columns = 3,
                     modifier = Modifier.fillMaxWidth()
@@ -236,6 +239,7 @@ private fun SubscriptionsContent(
                 contentList = state.contentList,
                 onItemClicked = onItemClicked,
                 onRefresh = onRefresh,
+                onLoadMore = onLoadMore,
                 layoutMode = LayoutMode.List,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -526,6 +530,7 @@ private fun SubscriptionsVideoContainer(
     contentList: List<com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent>,
     onItemClicked: (com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent) -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     layoutMode: LayoutMode,
     columns: Int = 3,
     modifier: Modifier = Modifier
@@ -546,7 +551,7 @@ private fun SubscriptionsVideoContainer(
                 val content = contentList.find { it.id?.value == card.id }
                 if (content != null) onItemClicked(content)
             },
-            onEndReached = onRefresh,
+            onEndReached = onLoadMore,
             modifier = modifier,
             contentPadding = PaddingValues(8.dp)
         ) { card ->
