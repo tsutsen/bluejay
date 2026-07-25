@@ -85,7 +85,7 @@ Grayjay is migrating from XML Views to Jetpack Compose through three architectur
 | **Screen Controller** | Fragment | Composable function |
 | **Navigation** | FragmentManager | Compose NavHost |
 | **State** | `State*` singletons | `ViewModel` + `StateFlow` |
-| **Bottom Nav** | `BottomBarFragment` | `GrayjayBottomNavBar` |
+| **Bottom Nav** | `MenuBottomBarFragment` (XML) | **Not yet migrated** |
 | **Maintenance** | Read-only reference | **Develop here** |
 
 ### Shared Components (Unchanged)
@@ -117,24 +117,23 @@ app/src/main/java/com/futo/platformplayer/compose/
 │   ├── VideoPlayerState.kt        # Player state
 │   └── MiniPlayerState.kt         # Mini player state
 ├── feed/                          # Feed components
-│   ├── FeedScreen.kt              # Feed UI
-│   ├── FeedItemCard.kt            # Feed item component
-│   └── FeedItem.kt                # Feed item model
+│   ├── FeedScreen.kt              # Feed UI (+ FeedItem model)
+│   └── FeedItemCard.kt            # Feed item component
 ├── settings/                      # Settings screens
 │   └── SettingsComponents.kt      # Settings UI components
 ├── plugins/                       # Plugin management
 │   └── PluginBrowserScene.kt      # Plugin browser
-├── bottombar/                     # Bottom navigation
-│   └── BottomBar.kt               # Bottom bar composable
 ├── theme/                         # Theming
 │   └── ThemeStateHolder.kt        # Theme state
-├── topbar/                        # Top app bars
-│   ├── SearchFabFragment.kt       # Search FAB
-│   └── ThemeModeHolder.kt         # Theme mode holder
 ├── util/                          # Utilities
 │   └── LoadingContent.kt          # Loading/empty states
-└── view/                          # Reusable views
-    └── TagBadge.kt                # Tag badge component
+├── view/                          # Reusable views
+│   └── TagBadge.kt                # Tag badge component
+├── widget/                        # Reusable widgets
+│   ├── VideoList.kt               # Configurable video list/grid
+│   ├── VideoCardItem.kt           # Video card variants
+│   └── VideoListSource.kt         # Data source abstraction
+
 ```
 
 ---
