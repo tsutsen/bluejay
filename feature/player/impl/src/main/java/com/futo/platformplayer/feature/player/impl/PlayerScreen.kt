@@ -446,26 +446,6 @@ fun PlayerScreen(
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
-                            // Minimize button overlay
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(16.dp)
-                            ) {
-                                IconButton(
-                                    onClick = { viewModel.minimize() },
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "Minimize",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
                         }
 
                         // Scrollable details below player
