@@ -30,18 +30,24 @@ fun GrayjayNavGraph(
     navigator: Navigator,
     startDestination: NavDestination = NavDestination.Home
 ) {
+    // Collect current route from navigator state
+    val currentRoute by navigator.currentRoute.collectAsState(initial = startDestination)
+
     // Set up navigator callbacks
     LaunchedEffect(Unit) {
         navigator.setOnNavigate { destination ->
             // Navigation handled by collecting StateFlow below
         }
         navigator.setOnBack {
-            false
+            // Navigate back to PluginBrowser if we're on Login
+            if (currentRoute is NavDestination.Login) {
+                navigator.navigateToPluginBrowser()
+                true
+            } else {
+                false
+            }
         }
     }
-
-    // Collect current route from navigator state
-    val currentRoute by navigator.currentRoute.collectAsState(initial = startDestination)
 
     // Render the current destination
     when (val destination = currentRoute) {
@@ -78,14 +84,25 @@ fun GrayjayNavGraph(
                 config = config,
                 onLogin = { auth ->
                     if (auth != null) {
-                        // Save auth to plugin
-                        com.tsutsen.platformplayer.states.StatePlugins.instance.setPluginAuth(config.id, auth)
-                        // Reload the client to apply auth
-                        com.tsutsen.platformplayer.states.StateApp.instance.scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                            val context = com.tsutsen.platformplayer.states.StateApp.instance.context
-                            com.tsutsen.platformplayer.states.StatePlatform.instance.reloadClient(context, config.id) {
-                                Logger.i("BluejayNavGraph", "Client reloaded after login")
+                        try {
+                            // Save auth to plugin
+                            com.tsutsen.platformplayer.states.StatePlugins.instance.setPluginAuth(config.id, auth)
+                            Logger.i("BluejayNavGraph", "Auth saved for ${config.name}")
+                            // Reload the client to apply auth
+                            val scope = com.tsutsen.platformplayer.states.StateApp.instance.scope
+                            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                try {
+                                    val context = com.tsutsen.platformplayer.states.StateApp.instance.context
+                                    val client = com.tsutsen.platformplayer.states.StatePlatform.instance.reloadClient(context, config.id) {
+                                        Logger.i("BluejayNavGraph", "Client reloaded after login")
+                                    }
+                                    Logger.i("BluejayNavGraph", "Client reloaded: ${client != null}")
+                                } catch (e: Exception) {
+                                    Logger.e("BluejayNavGraph", "Failed to reload client", e)
+                                }
                             }
+                        } catch (e: Exception) {
+                            Logger.e("BluejayNavGraph", "Failed to save auth", e)
                         }
                     }
                 },
