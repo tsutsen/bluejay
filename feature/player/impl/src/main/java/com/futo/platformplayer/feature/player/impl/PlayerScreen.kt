@@ -23,7 +23,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,6 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -51,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
@@ -59,7 +65,9 @@ import com.futo.platformplayer.core.model.Author
 import com.futo.platformplayer.core.model.ContentItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.snapshotFlow
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -96,6 +104,7 @@ fun PlayerScreen(
     // Detail page state
     var expandedDescription by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) } // 0 = Comments, 1 = Recommended
+    var isLooping by remember { mutableStateOf(false) }
     
     // Mini player drag state
     var miniPlayerOffsetX by remember { mutableStateOf(0f) }
@@ -323,6 +332,56 @@ fun PlayerScreen(
                 }
             }
 
+            // ==================== Collapsing player height (shared by video content AND controls overlay) ====================
+            val scrollState = rememberLazyListState()
+            val maxPlayerHeightPx = containerSize.height * 0.6f
+            val minPlayerHeightPx = containerSize.height * 0.2f
+
+            // Height is driven directly by raw scroll deltas via NestedScrollConnection rather
+            // than derived from scrollState.firstVisibleItemScrollOffset - that value resets to 0
+            // every time the list crosses an item boundary, which caused the player to snap back
+            // to full height and then shrink again on every boundary crossing. This single height
+            // value is shared by the video Box below AND the controls overlay container further
+            // down (top/bottom bars, gesture layer) so they always stay in sync with each other.
+            var playerHeightPx by remember { mutableStateOf(maxPlayerHeightPx) }
+
+            // Keep the current height valid if container size changes (e.g. rotation)
+            LaunchedEffect(maxPlayerHeightPx, minPlayerHeightPx) {
+                playerHeightPx = playerHeightPx.coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+            }
+
+            val nestedScrollConnection = remember(minPlayerHeightPx, maxPlayerHeightPx) {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        val delta = available.y
+                        val previousHeight = playerHeightPx
+                        val consumed = when {
+                            // Scrolling content up (finger moving up) - shrink the player first,
+                            // let any leftover delta fall through to the list.
+                            delta < 0f -> {
+                                val newHeight = (previousHeight + delta)
+                                    .coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+                                newHeight - previousHeight
+                            }
+                            // Pulling down while already at the very top of the list - expand
+                            // the player instead of doing nothing.
+                            delta > 0f &&
+                                scrollState.firstVisibleItemIndex == 0 &&
+                                scrollState.firstVisibleItemScrollOffset == 0 -> {
+                                val newHeight = (previousHeight + delta)
+                                    .coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+                                newHeight - previousHeight
+                            }
+                            else -> 0f
+                        }
+                        if (consumed != 0f) {
+                            playerHeightPx += consumed
+                        }
+                        return Offset(0f, consumed)
+                    }
+                }
+            }
+
             // ==================== Main Layout ====================
             Box(
                 modifier = Modifier
@@ -361,10 +420,11 @@ fun PlayerScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else if (!isMinimizedAnim.value) {
-                    // Detail page: player at 60% height, details scrollable below
-                    val playerHeight = containerSize.height * 0.6f
+                    // Detail page: player height shrinks as user scrolls, expands when scrolling to top
+                    val playerHeight = playerHeightPx
+
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Player takes 60% of screen height
+                        // Player takes dynamic height based on scroll
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -410,8 +470,11 @@ fun PlayerScreen(
 
                         // Scrollable details below player
                         LazyColumn(
+                            state = scrollState,
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxWidth()
+                                .fillMaxHeight()
+                                .nestedScroll(nestedScrollConnection)
                                 .background(MaterialTheme.colorScheme.surface)
                         ) {
                             // Row 1: Title
@@ -461,6 +524,20 @@ fun PlayerScreen(
                                     selectedTab = selectedTab,
                                     onTabSelected = { selectedTab = it }
                                 )
+                            }
+
+                            // Tab Content
+                            when (selectedTab) {
+                                0 -> {
+                                    item {
+                                        CommentsSection()
+                                    }
+                                }
+                                1 -> {
+                                    item {
+                                        RecommendedSection()
+                                    }
+                                }
                             }
 
                             // Tab Content
@@ -686,12 +763,10 @@ fun PlayerScreen(
                     // entire screen. In normal/detail mode the player only occupies the top
                     // 60% of the screen. EVERYTHING below - the gesture box, brightness/volume
                     // indicators, and the top/bottom control bars - must be confined to that
-                    // same region as one unit. Previously the top/bottom overlays were aligned
-                    // to the outer full-screen Box directly, so in normal mode the bottom bar
-                    // ended up pinned to the literal bottom of the screen (on top of the
-                    // scrollable comments/description/recommended list) instead of the bottom
-                    // edge of the video, and it - along with the gesture box - swallowed taps
-                    // and scrolls meant for the list beneath it.
+                    // same region as one unit. It now tracks the exact same playerHeightPx used
+                    // by the video content above, so it shrinks/expands in lockstep with the
+                    // player as the user scrolls the details list - previously this used a fixed
+                    // 60% independent of the collapsing player, so the bottom bar never moved.
                     val playerAreaModifier = if (isFullscreenAnim.value) {
                         Modifier
                             .align(Alignment.TopStart)
@@ -700,8 +775,15 @@ fun PlayerScreen(
                         Modifier
                             .align(Alignment.TopStart)
                             .fillMaxWidth()
-                            .height(with(LocalDensity.current) { (containerSize.height * 0.6f).toDp() })
+                            .height(with(LocalDensity.current) { playerHeightPx.toDp() })
                     }
+
+                    // Below 30% of screen height (only reachable in normal, non-fullscreen mode),
+                    // there isn't room for the full title/timeline controls - switch to a single
+                    // compact row instead.
+                    val isCollapsedControls = !isFullscreenAnim.value &&
+                        containerSize.height > 0f &&
+                        (playerHeightPx / containerSize.height) <= 0.3f
 
                     Box(modifier = playerAreaModifier.clipToBounds()) {
                         // ==================== Gesture layer (brightness/volume swipe, tap-to-toggle) ====================
@@ -801,7 +883,7 @@ fun PlayerScreen(
 
                         // ==================== Top Overlay ====================
                         AnimatedVisibility(
-                            visible = showTopOverlay,
+                            visible = showTopOverlay && !isCollapsedControls,
                             enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
                             exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
                         ) {
@@ -820,7 +902,7 @@ fun PlayerScreen(
 
                         // ==================== Bottom Overlay ====================
                         AnimatedVisibility(
-                            visible = showBottomOverlay,
+                            visible = showBottomOverlay && !isCollapsedControls,
                             enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                             exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
                             modifier = Modifier.align(Alignment.BottomCenter)
@@ -835,6 +917,34 @@ fun PlayerScreen(
                                 onPrevious = { viewModel.skipPrevious() },
                                 onNext = { viewModel.skipNext() },
                                 onChapters = { showChapters = !showChapters },
+                                onFullscreen = { viewModel.toggleFullscreen() }
+                            )
+                        }
+
+                        // ==================== Compact Controls Row (collapsed player state) ====================
+                        AnimatedVisibility(
+                            visible = isCollapsedControls,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        ) {
+                            CompactControlsRow(
+                                isPlaying = state.isPlaying,
+                                isLooping = isLooping,
+                                onMinimize = {
+                                    Log.d(TAG, "Minimize button clicked")
+                                    viewModel.minimize()
+                                },
+                                onPlayPause = {
+                                    if (state.isPlaying) viewModel.pause() else viewModel.resume()
+                                },
+                                onChapters = { showChapters = !showChapters },
+                                onLoopToggle = {
+                                    isLooping = !isLooping
+                                    player.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                                },
+                                onWatchLater = { /* TODO */ },
+                                onOptions = { showOptionsModal = true },
                                 onFullscreen = { viewModel.toggleFullscreen() }
                             )
                         }
@@ -885,843 +995,6 @@ fun PlayerScreen(
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
-        }
-    }
-}
-
-// ==================== Overlay Composables ====================
-
-@Composable
-private fun TopOverlay(
-    title: String,
-    channelName: String,
-    onMinimize: () -> Unit,
-    onReplayToggle: () -> Unit,
-    onWatchLater: () -> Unit,
-    onOptions: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onMinimize) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = "Minimize",
-                tint = Color.White
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = channelName,
-                color = Color.White.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = onReplayToggle) {
-            Icon(
-                imageVector = Icons.Default.Replay,
-                contentDescription = "Replay",
-                tint = Color.White
-            )
-        }
-        IconButton(onClick = onWatchLater) {
-            Icon(
-                imageVector = Icons.Default.Schedule,
-                contentDescription = "Watch Later",
-                tint = Color.White
-            )
-        }
-        IconButton(onClick = onOptions) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Options",
-                tint = Color.White
-            )
-        }
-    }
-}
-
-@Composable
-private fun BottomOverlay(
-    currentPositionMs: Long,
-    durationMs: Long,
-    isPlaying: Boolean,
-    onPlayPause: () -> Unit,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onChapters: () -> Unit,
-    onFullscreen: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        // Timeline
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = formatTime(currentPositionMs),
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = formatTime(durationMs),
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        LinearProgressIndicator(
-            progress = if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f,
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = Color.White.copy(alpha = 0.3f)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            IconButton(onClick = onPrevious) {
-                Icon(
-                    imageVector = Icons.Default.SkipPrevious,
-                    contentDescription = "Previous",
-                    tint = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(
-                onClick = onPlayPause,
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
-            IconButton(onClick = onNext) {
-                Icon(
-                    imageVector = Icons.Default.SkipNext,
-                    contentDescription = "Next",
-                    tint = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onChapters) {
-                Icon(
-                    imageVector = Icons.Default.MenuBook,
-                    contentDescription = "Chapters",
-                    tint = Color.White
-                )
-            }
-            IconButton(onClick = onFullscreen) {
-                Icon(
-                    imageVector = Icons.Default.Fullscreen,
-                    contentDescription = "Fullscreen",
-                    tint = Color.White
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BrightnessIndicator(
-    brightness: Float,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.BrightnessHigh,
-            contentDescription = "Brightness",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(100.dp)
-                .background(Color.White.copy(alpha = 0.3f))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(brightness)
-                    .align(Alignment.BottomCenter)
-                    .background(Color.White)
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "${(brightness * 100).toInt()}%",
-            color = Color.White,
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
-
-@Composable
-private fun VolumeIndicator(
-    volume: Float,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.VolumeUp,
-            contentDescription = "Volume",
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(100.dp)
-                .background(Color.White.copy(alpha = 0.3f))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(volume)
-                    .align(Alignment.BottomCenter)
-                    .background(Color.White)
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "${(volume * 100).toInt()}%",
-            color = Color.White,
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
-
-@Composable
-private fun SeekIndicators(
-    showSeekBack: Boolean,
-    showSeekForward: Boolean
-) {
-    Row(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        if (showSeekBack) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    color = Color.Black.copy(alpha = 0.7f),
-                    shape = CircleShape,
-                    modifier = Modifier.size(64.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Replay10,
-                        contentDescription = "Seek back 10s",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-        }
-        if (showSeekForward) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    color = Color.Black.copy(alpha = 0.7f),
-                    shape = CircleShape,
-                    modifier = Modifier.size(64.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Forward10,
-                        contentDescription = "Seek forward 10s",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun OptionsModal(
-    playbackSpeed: Float,
-    quality: String,
-    onSpeedChange: (Float) -> Unit,
-    onQualityChange: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss
-    ) {
-        Text(
-            text = "Speed",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
-        )
-        Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-            listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
-                FilterChip(
-                    selected = playbackSpeed == speed,
-                    onClick = { onSpeedChange(speed) },
-                    label = { Text("${speed}x") }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Quality",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
-        )
-        Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-            listOf("Auto", "1080p", "720p", "480p", "360p").forEach { q ->
-                FilterChip(
-                    selected = quality == q,
-                    onClick = { onQualityChange(q) },
-                    label = { Text(q) }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-        }
-        Spacer(modifier = Modifier.height(32.dp))
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ChaptersPanel(
-    chapters: List<Chapter>,
-    currentPositionMs: Long,
-    onChapterClick: (Long) -> Unit,
-    onDismiss: () -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss
-    ) {
-        Text(
-            text = "Chapters",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
-        )
-        LazyColumn {
-            itemsIndexed(chapters) { _, chapter ->
-                val isSelected = currentPositionMs in chapter.startTimeMs..chapter.endTimeMs
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .background(
-                            if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                            else Color.Transparent,
-                            MaterialTheme.shapes.medium
-                        )
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = formatTime(chapter.startTimeMs),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = chapter.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurface,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            }
-        }
-    }
-}
-
-data class Chapter(
-    val title: String,
-    val startTimeMs: Long,
-    val endTimeMs: Long
-)
-
-private fun formatTime(ms: Long): String {
-    val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(ms)
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
-    }
-}
-
-private fun formatViewCount(viewCount: Long): String {
-    return when {
-        viewCount >= 1_000_000 -> "${String.format(Locale.getDefault(), "%.1f", viewCount / 1_000_000.0)}M"
-        viewCount >= 1_000 -> "${String.format(Locale.getDefault(), "%.1f", viewCount / 1_000.0)}K"
-        else -> viewCount.toString()
-    }
-}
-
-private fun formatRelativeTime(publishedAt: Long?): String {
-    if (publishedAt == null) return ""
-    val now = System.currentTimeMillis()
-    val diffMs = now - publishedAt
-    val diffSeconds = diffMs / 1000
-    val diffMinutes = diffSeconds / 60
-    val diffHours = diffMinutes / 60
-    val diffDays = diffHours / 24
-    val diffWeeks = diffDays / 7
-    val diffMonths = diffDays / 30
-    val diffYears = diffDays / 365
-
-    return when {
-        diffYears > 0L -> "$diffYears${if (diffYears == 1L) " year" else " years"} ago"
-        diffMonths > 0L -> "$diffMonths${if (diffMonths == 1L) " month" else " months"} ago"
-        diffWeeks > 0L -> "$diffWeeks${if (diffWeeks == 1L) " week" else " weeks"} ago"
-        diffDays > 0L -> "$diffDays${if (diffDays == 1L) " day" else " days"} ago"
-        diffHours > 0L -> "$diffHours${if (diffHours == 1L) " hour" else " hours"} ago"
-        diffMinutes > 0L -> "$diffMinutes${if (diffMinutes == 1L) " minute" else " minutes"} ago"
-        else -> "Just now"
-    }
-}
-
-@Composable
-private fun ChannelRow(
-    author: Author?,
-    onSubscribe: () -> Unit,
-    onWatchLater: () -> Unit,
-    onShare: () -> Unit,
-    onMore: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Avatar
-        if (author?.thumbnailUrl != null) {
-            AsyncImage(
-                model = author.thumbnailUrl,
-                contentDescription = author.name,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = (author?.name?.firstOrNull()?.toString() ?: "?").uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Channel Info
-        Column(modifier = Modifier.weight(1f, fill = false)) {
-            Text(
-                text = author?.name ?: "Unknown Channel",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = "125K subscribers",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Subscribe Button
-        Button(
-            onClick = onSubscribe,
-            modifier = Modifier.height(36.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
-        ) {
-            Text(
-                text = "Subscribe",
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Watch Later
-        IconButton(onClick = onWatchLater) {
-            Icon(
-                imageVector = Icons.Default.Schedule,
-                contentDescription = "Watch Later",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // Share
-        IconButton(onClick = onShare) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = "Share",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // More
-        IconButton(onClick = onMore) {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = "More options",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun VideoStatsRow(
-    viewCount: Long,
-    publishedAt: Long?
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Like
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.ThumbUp,
-                contentDescription = "Like",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "1.2K",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // Dislike
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.ThumbDown,
-                contentDescription = "Dislike",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = "45",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Text(
-            text = "•",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Text(
-            text = formatViewCount(viewCount),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Text(
-            text = "•",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Text(
-            text = formatRelativeTime(publishedAt),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun DescriptionSection(
-    description: String,
-    isExpanded: Boolean,
-    onToggle: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onToggle)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        if (description.isNotEmpty()) {
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = if (isExpanded) Int.MAX_VALUE else 3,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = if (isExpanded) "Show less" else "Show more",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold
-            )
-        } else {
-            Text(
-                text = "No description available",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun TabsSection(
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        TabItem(
-            text = "Comments",
-            isSelected = selectedTab == 0,
-            onClick = { onTabSelected(0) }
-        )
-        TabItem(
-            text = "Recommended",
-            isSelected = selectedTab == 1,
-            onClick = { onTabSelected(1) }
-        )
-    }
-}
-
-@Composable
-private fun TabItem(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    TextButton(onClick = onClick) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (isSelected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-        )
-    }
-}
-
-@Composable
-private fun CommentsSection() {
-    Column(modifier = Modifier.padding(16.dp)) {
-        // Placeholder comment
-        CommentCard(
-            username = "User123",
-            timeAgo = "2 hours ago",
-            text = "This is a great video! Thanks for sharing.",
-            likeCount = 42
-        )
-    }
-}
-
-@Composable
-private fun RecommendedSection() {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = "Recommended",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        // Placeholder recommended videos
-        for (i in 1..5) {
-            RecommendedVideoCard(
-                title = "Recommended Video $i",
-                channelName = "Channel $i",
-                viewCount = "${100 * i}K views",
-                timeAgo = "$i days ago"
-            )
-        }
-    }
-}
-
-@Composable
-private fun CommentCard(
-    username: String,
-    timeAgo: String,
-    text: String,
-    likeCount: Int
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = username.first().toString().uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = username,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = timeAgo,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.ThumbUp,
-                contentDescription = "Like",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = likeCount.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            TextButton(onClick = { /* TODO: Reply */ }) {
-                Text("Reply", style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun RecommendedVideoCard(
-    title: String,
-    channelName: String,
-    viewCount: String,
-    timeAgo: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Box(
-            modifier = Modifier
-                .size(160.dp, 90.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Thumbnail",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = channelName,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "$viewCount • $timeAgo",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
