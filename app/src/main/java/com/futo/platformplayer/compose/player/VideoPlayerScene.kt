@@ -12,7 +12,7 @@
 package com.futo.platformplayer.compose.player
 
 import android.net.Uri
-import android.util.Log
+import com.futo.platformplayer.logging.Logger
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -197,23 +197,23 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         val videoMs = when (videoSource) {
                             is JSVideoUrlRangeSource -> {
                                 // Use FutoVideoPlayer's itag-to-DASH conversion
-                                Log.d("VideoPlayer", "Converting itag video to DASH")
+                                Logger.i("VideoPlayer", "Converting itag video to DASH")
                                 VideoHelper.convertItagSourceToChunkedDashSource(videoSource).first
                             }
                             is IDashManifestSource -> {
-                                Log.d("VideoPlayer", "Using DASH manifest")
+                                Logger.i("VideoPlayer", "Using DASH manifest")
                                 DashMediaSource.Factory(dataSourceFactory).createMediaSource(
                                     MediaItem.fromUri(Uri.parse(videoSource.url))
                                 )
                             }
                             is IVideoUrlSource -> {
-                                Log.d("VideoPlayer", "Using progressive video")
+                                Logger.i("VideoPlayer", "Using progressive video")
                                 ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(
                                     MediaItem.fromUri(Uri.parse(videoSource.getVideoUrl()))
                                 )
                             }
                             is IHLSManifestSource -> {
-                                Log.d("VideoPlayer", "Using HLS manifest")
+                                Logger.i("VideoPlayer", "Using HLS manifest")
                                 HlsMediaSource.Factory(dataSourceFactory).createMediaSource(
                                     MediaItem.fromUri(Uri.parse(videoSource.url))
                                 )
@@ -223,17 +223,17 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                         
                         val audioMs = when (audioSource) {
                             is JSAudioUrlRangeSource -> {
-                                Log.d("VideoPlayer", "Converting itag audio to DASH")
+                                Logger.i("VideoPlayer", "Converting itag audio to DASH")
                                 VideoHelper.convertItagSourceToChunkedDashSource(audioSource)
                             }
                             is IAudioUrlSource -> {
-                                Log.d("VideoPlayer", "Using progressive audio")
+                                Logger.i("VideoPlayer", "Using progressive audio")
                                 ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(
                                     MediaItem.fromUri(Uri.parse(audioSource.getAudioUrl()))
                                 )
                             }
                             is IHLSManifestSource -> {
-                                Log.d("VideoPlayer", "Using HLS audio")
+                                Logger.i("VideoPlayer", "Using HLS audio")
                                 HlsMediaSource.Factory(dataSourceFactory).createMediaSource(
                                     MediaItem.fromUri(Uri.parse(audioSource.url))
                                 )
@@ -248,10 +248,10 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                     val mergedMediaSource = withContext(Dispatchers.Main) {
                         if (videoMediaSource != null) {
                             if (audioMediaSource != null) {
-                                Log.d("VideoPlayer", "Merging video and audio sources")
+                                Logger.i("VideoPlayer", "Merging video and audio sources")
                                 MergingMediaSource(videoMediaSource, audioMediaSource)
                             } else {
-                                Log.d("VideoPlayer", "Using video-only source")
+                                Logger.i("VideoPlayer", "Using video-only source")
                                 videoMediaSource
                             }
                         } else {
@@ -264,11 +264,11 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
                             exoPlayer.setMediaSource(mergedMediaSource)
                             exoPlayer.prepare()
                             exoPlayer.playWhenReady = true
-                            Log.d("VideoPlayer", "Video prepared and playing")
+                            Logger.i("VideoPlayer", "Video prepared and playing")
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e("VideoPlayer", "Error loading video", e)
+                    Logger.e("VideoPlayer", "Error loading video", e)
                 }
             }
             
@@ -347,7 +347,7 @@ private fun VideoPlayerView(
                                     VideoPlayerState.minimize()
                                     MiniPlayerState.show()
                                     n.goBack()
-                                    Log.d("VideoPlayer", "Minimized to mini player via swipe")
+                                    Logger.i("VideoPlayer", "Minimized to mini player via swipe")
                                     swipeTriggered = 0f
                                 }
                             }
@@ -397,7 +397,7 @@ private fun VideoPlayerView(
                                 VideoPlayerState.minimize()
                                 MiniPlayerState.show()
                                 n.goBack()
-                                Log.d("VideoPlayer", "Minimized to mini player")
+                                Logger.i("VideoPlayer", "Minimized to mini player")
                             }
                             VideoPlayerState.PlayerState.FULL -> {
                                 // Exit fullscreen

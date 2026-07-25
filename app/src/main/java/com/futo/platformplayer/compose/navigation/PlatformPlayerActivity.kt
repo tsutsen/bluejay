@@ -20,7 +20,6 @@ package com.futo.platformplayer.compose.navigation
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
@@ -111,7 +110,7 @@ class PlatformPlayerActivity : ComponentActivity() {
         // Handle intent to navigate to specific tab
         val tab = intent.getStringExtra("TAB")
         if (tab != null) {
-            Log.d("PlatformPlayer", "Received TAB intent: $tab")
+            Logger.i("PlatformPlayer", "Received TAB intent: $tab")
             pendingTab = tab
         }
 
@@ -150,14 +149,14 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
     // Handle pending tab navigation
     LaunchedEffect(pendingTab) {
         pendingTab?.let { tab ->
-            Log.d("PlatformPlayer", "LaunchedEffect: navigating to tab: $tab")
+            Logger.i("PlatformPlayer", "LaunchedEffect: navigating to tab: $tab")
             when (tab) {
                 "BROWSE_PLUGINS" -> {
-                    Log.d("PlatformPlayer", "Navigating to Settings tab (Sources removed)")
+                    Logger.i("PlatformPlayer", "Navigating to Settings tab (Sources removed)")
                     navigator.navigateToTab(Settings)
                 }
                 else -> {
-                    Log.w("PlatformPlayer", "Unknown tab: $tab")
+                    Logger.w("PlatformPlayer", "Unknown tab: $tab")
                 }
             }
         }
@@ -396,7 +395,7 @@ private fun SettingsScene(n: GrayjayNavigator) {
 private fun SettingsSubScene(category: String, n: GrayjayNavigator) {
     // Special case for Plugins
     if (category == "plugins") {
-        Log.d(TAG, "Rendering PluginBrowserScene")
+        Logger.i(TAG, "Rendering PluginBrowserScene")
         PluginBrowserScene()
         return
     }

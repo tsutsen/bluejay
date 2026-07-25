@@ -7,7 +7,7 @@
 
 package com.futo.platformplayer.compose.plugins
 
-import android.util.Log
+import com.futo.platformplayer.logging.Logger
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -94,7 +94,7 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
 
     // Load installed plugins on first composition
     LaunchedEffect(Unit) {
-        Log.d(TAG, "Loading plugins (first time)...")
+        Logger.i(TAG, "Loading plugins (first time)...")
         // Ensure embedded plugins are installed before loading
         StatePlugins.instance.updateEmbeddedPlugins(context)
         StatePlugins.instance.installMissingEmbeddedPlugins(context)
@@ -105,7 +105,7 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
 
     // Refresh when tab becomes visible (when refreshKey changes)
     LaunchedEffect(refreshKey) {
-        Log.d(TAG, "Refreshing plugins (key: $refreshKey)...")
+        Logger.i(TAG, "Refreshing plugins (key: $refreshKey)...")
         loadPluginsAndEnabledState()
     }
 
@@ -114,7 +114,7 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
             // Check if plugin has auth configured
             val descriptor = StatePlugins.instance.getPlugin(config.id)
             val isAuthenticated = descriptor?.getAuth() != null
-            Log.d(TAG, "Plugin ${config.name} (${config.id}): descriptor=${descriptor != null}, auth=${descriptor?.getAuth() != null}")
+            Logger.i(TAG, "Plugin ${config.name} (${config.id}): descriptor=${descriptor != null}, auth=${descriptor?.getAuth() != null}")
             
             PluginInfo(
                 id = config.id,
@@ -126,7 +126,7 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
                 isAuthenticated = isAuthenticated
             )
         }
-        Log.d(TAG, "Plugins list created with ${result.size} items")
+        Logger.i(TAG, "Plugins list created with ${result.size} items")
         result
     }
 
@@ -158,29 +158,29 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
                     PluginCard(
                         plugin = plugin,
                         onToggle = { isEnabled ->
-                            Log.d(TAG, "Toggle ${plugin.name}: $isEnabled")
+                            Logger.i(TAG, "Toggle ${plugin.name}: $isEnabled")
                             coroutineScope.launch {
                                 try {
                                     if (isEnabled) {
-                                        Log.d(TAG, "Enabling ${plugin.name}")
+                                        Logger.i(TAG, "Enabling ${plugin.name}")
                                         StatePlatform.instance.enableClient(listOf(plugin.id))
                                     } else {
-                                        Log.d(TAG, "Disabling ${plugin.name}")
+                                        Logger.i(TAG, "Disabling ${plugin.name}")
                                         val currentEnabled = StatePlatform.instance.getEnabledClients()
                                         val newEnabled = currentEnabled.map { it.id }.filter { it != plugin.id }
                                         StatePlatform.instance.selectClients(*newEnabled.toTypedArray())
                                     }
                                     val updatedEnabled = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
-                                    Log.d(TAG, "Updated enabled: $updatedEnabled")
+                                    Logger.i(TAG, "Updated enabled: $updatedEnabled")
                                     enabledClientIds.value = updatedEnabled
                                     refreshKey++
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "Error toggling plugin", e)
+                                    Logger.e(TAG, "Error toggling plugin", e)
                                 }
                             }
                         },
                         onClick = {
-                            Log.d(TAG, "Clicked plugin: ${plugin.name}, URL: ${plugin.configUrl}")
+                            Logger.i(TAG, "Clicked plugin: ${plugin.name}, URL: ${plugin.configUrl}")
                             selectedPluginUrl = plugin.configUrl
                         }
                     )
@@ -201,7 +201,7 @@ fun PluginCard(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable {
-                Log.d(TAG, "PluginCard clickable triggered: ${plugin.name}")
+                Logger.i(TAG, "PluginCard clickable triggered: ${plugin.name}")
                 onClick()
             },
         verticalAlignment = Alignment.CenterVertically
@@ -253,7 +253,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
 
     LaunchedEffect(configUrl) {
         try {
-            Log.d(TAG, "Fetching plugin config from: $configUrl")
+            Logger.i(TAG, "Fetching plugin config from: $configUrl")
             val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 ManagedHttpClient().get(configUrl)
             }
@@ -261,7 +261,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                 val configJson = response.body.string()
                 val loadedConfig = SourcePluginConfig.fromJson(configJson)
                 config = loadedConfig
-                Log.d(TAG, "Loaded config: ${loadedConfig.name}")
+                Logger.i(TAG, "Loaded config: ${loadedConfig.name}")
                 
                 // Check if this plugin is enabled
                 val enabledClients = StatePlatform.instance.getEnabledClients()
@@ -270,15 +270,15 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                 // Check if plugin has auth
                 val descriptor = StatePlugins.instance.getPlugin(loadedConfig.id)
                 val hasAuth = descriptor?.getAuth() != null
-                Log.d(TAG, "Plugin ${loadedConfig.name} auth status: $hasAuth")
+                Logger.i(TAG, "Plugin ${loadedConfig.name} auth status: $hasAuth")
             } else {
                 error = "Failed to load config"
-                Log.e(TAG, "Failed to load config: ${response.isOk}, ${response.body}")
+                Logger.e(TAG, "Failed to load config: ${response.isOk}, ${response.body}")
             }
             isLoading = false
         } catch (e: Exception) {
             error = e.message
-            Log.e(TAG, "Error loading config", e)
+            Logger.e(TAG, "Error loading config", e)
             isLoading = false
         }
     }
@@ -344,7 +344,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                         // Update button
                         Button(
                             onClick = {
-                                Log.d(TAG, "Update button clicked")
+                                Logger.i(TAG, "Update button clicked")
                                 // TODO: Implement update functionality
                             },
                             modifier = Modifier
@@ -360,19 +360,19 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                             
                             Button(
                                 onClick = {
-                                    Log.d(TAG, "Opening login activity for: ${config!!.name} (id: ${config!!.id})")
+                                    Logger.i(TAG, "Opening login activity for: ${config!!.name} (id: ${config!!.id})")
                                     try {
                                         LoginActivity.showLogin(context, config!!) { auth ->
                                             if (auth != null) {
-                                                Log.d(TAG, "Login successful, saving auth for ${config!!.name}")
-                                                Log.d(TAG, "Auth cookieMap size: ${auth.cookieMap?.size}, headers size: ${auth.headers?.size}")
+                                                Logger.i(TAG, "Login successful, saving auth for ${config!!.name}")
+                                                Logger.i(TAG, "Auth cookieMap size: ${auth.cookieMap?.size}, headers size: ${auth.headers?.size}")
                                                 try {
                                                     StatePlugins.instance.setPluginAuth(config!!.id, auth)
-                                                    Log.d(TAG, "Auth saved successfully")
+                                                    Logger.i(TAG, "Auth saved successfully")
                                                     // Enable the plugin if not already enabled
                                                     val currentEnabled = StatePlatform.instance.getEnabledClients()
                                                     if (!currentEnabled.any { it.id == config!!.id }) {
-                                                        Log.d(TAG, "Enabling plugin ${config!!.name} after login")
+                                                        Logger.i(TAG, "Enabling plugin ${config!!.name} after login")
                                                         StateApp.instance.scope.launch(Dispatchers.IO) {
                                                             StatePlatform.instance.enableClient(listOf(config!!.id))
                                                         }
@@ -380,18 +380,18 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                                     // Reload the client to apply the new auth
                                                     StateApp.instance.scope.launch(Dispatchers.IO) {
                                                         StatePlatform.instance.reloadClient(context, config!!.id) {
-                                                            Log.d(TAG, "Client reloaded after login")
+                                                            Logger.i(TAG, "Client reloaded after login")
                                                         }
                                                     }
                                                 } catch (e: Exception) {
-                                                    Log.e(TAG, "Failed to set plugin auth", e)
+                                                    Logger.e(TAG, "Failed to set plugin auth", e)
                                                 }
                                             } else {
-                                                Log.d(TAG, "Login cancelled")
+                                                Logger.i(TAG, "Login cancelled")
                                             }
                                         }
                                     } catch (e: Exception) {
-                                        Log.e(TAG, "Failed to open login activity", e)
+                                        Logger.e(TAG, "Failed to open login activity", e)
                                     }
                                 },
                                 modifier = Modifier
@@ -441,13 +441,13 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                     selectedItems = emptySet()
                                     coroutineScope.launch {
                                         try {
-                                            Log.d(TAG, "Getting subscriptions for plugin: ${config!!.name}")
+                                            Logger.i(TAG, "Getting subscriptions for plugin: ${config!!.name}")
                                             val client = StatePlatform.instance.getClient(config!!.id)
-                                            Log.d(TAG, "Client type: ${client::class.simpleName}")
+                                            Logger.i(TAG, "Client type: ${client::class.simpleName}")
                                             val subs = withContext(Dispatchers.IO) {
                                                 client.getUserSubscriptions()
                                             }
-                                            Log.d(TAG, "Got ${subs?.size ?: 0} subscriptions")
+                                            Logger.i(TAG, "Got ${subs?.size ?: 0} subscriptions")
                                             if (subs != null) {
                                                 // Store URLs directly, resolve channels on demand
                                                 items = subs.map { url ->
@@ -458,7 +458,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                             }
                                             isLoading = false
                                         } catch (e: Exception) {
-                                            Log.e(TAG, "Failed to get subscriptions", e)
+                                            Logger.e(TAG, "Failed to get subscriptions", e)
                                             isLoading = false
                                         }
                                     }
@@ -488,7 +488,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                             items = playlists?.map { PlaylistImportItem(url = it, name = it) } ?: emptyList()
                                             isLoading = false
                                         } catch (e: Exception) {
-                                            Log.e(TAG, "Failed to get playlists", e)
+                                            Logger.e(TAG, "Failed to get playlists", e)
                                             isLoading = false
                                         }
                                     }
@@ -586,7 +586,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                             onClick = {
                                                 coroutineScope.launch {
                                                     try {
-                                                        Log.d(TAG, "Starting import of ${selectedItems.size} items")
+                                                        Logger.i(TAG, "Starting import of ${selectedItems.size} items")
                                                         when (importType) {
                                                             "subscriptions" -> {
                                                                 var successCount = 0
@@ -598,37 +598,37 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                                                             }
                                                                             StateSubscriptions.instance.addSubscription(channel)
                                                                             successCount++
-                                                                            Log.d(TAG, "Added subscription: ${channel.name}")
+                                                                            Logger.i(TAG, "Added subscription: ${channel.name}")
                                                                         } catch (e: Exception) {
-                                                                            Log.e(TAG, "Failed to add subscription: ${item.url}", e)
+                                                                            Logger.e(TAG, "Failed to add subscription: ${item.url}", e)
                                                                         }
                                                                     }
                                                                 }
-                                                                Log.d(TAG, "Import completed: $successCount/${selectedItems.size} items")
+                                                                Logger.i(TAG, "Import completed: $successCount/${selectedItems.size} items")
                                                             }
                                                             "playlists" -> {
                                                                 var successCount = 0
                                                                 for (item in selectedItems) {
                                                                     if (item is PlaylistImportItem) {
                                                                         try {
-                                                                            Log.d(TAG, "Adding playlist: ${item.name}")
+                                                                            Logger.i(TAG, "Adding playlist: ${item.name}")
                                                                             // Create a simple playlist with just the URL
                                                                             // Videos will be loaded later when user opens the playlist
                                                                             val playlist = Playlist(item.name, emptyList())
                                                                             StatePlaylists.instance.createOrUpdatePlaylist(playlist, true)
                                                                             successCount++
-                                                                            Log.d(TAG, "Added playlist: ${item.name}")
+                                                                            Logger.i(TAG, "Added playlist: ${item.name}")
                                                                         } catch (e: Exception) {
-                                                                            Log.e(TAG, "Failed to add playlist: ${item.url}", e)
+                                                                            Logger.e(TAG, "Failed to add playlist: ${item.url}", e)
                                                                         }
                                                                     }
                                                                 }
-                                                                Log.d(TAG, "Playlist import completed: $successCount/${selectedItems.size} items")
+                                                                Logger.i(TAG, "Playlist import completed: $successCount/${selectedItems.size} items")
                                                             }
                                                         }
                                                         showImportDialog = false
                                                     } catch (e: Exception) {
-                                                        Log.e(TAG, "Failed to import", e)
+                                                        Logger.e(TAG, "Failed to import", e)
                                                     }
                                                 }
                                             },
@@ -649,7 +649,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                         // Uninstall button
                         OutlinedButton(
                             onClick = {
-                                Log.d(TAG, "Uninstall button clicked")
+                                Logger.i(TAG, "Uninstall button clicked")
                                 // TODO: Implement uninstall functionality
                             },
                             modifier = Modifier
