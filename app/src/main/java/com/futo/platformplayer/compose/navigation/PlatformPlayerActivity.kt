@@ -21,8 +21,15 @@ package com.futo.platformplayer.compose.navigation
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.fragment.app.FragmentActivity
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import com.futo.platformplayer.R
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -81,7 +88,8 @@ import com.futo.platformplayer.states.StatePlatform
 
 private const val TAG = "PlatformPlayer"
 
-class PlatformPlayerActivity : FragmentActivity() {
+@AndroidEntryPoint
+class PlatformPlayerActivity : ComponentActivity() {
 
     private var pendingTab: String? = null
 
@@ -92,7 +100,7 @@ class PlatformPlayerActivity : FragmentActivity() {
         StateApp.instance.mainAppStarting(this)
 
         // Load plugins
-        runBlocking {
+        lifecycleScope.launch {
             try {
                 StatePlatform.instance.updateAvailableClients(this@PlatformPlayerActivity)
             } catch (e: Throwable) {
