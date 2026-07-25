@@ -6,16 +6,18 @@ This guide documents the Compose-based architecture for Grayjay, including how t
 
 ## Table of Contents
 1. [Architecture Overview](#architecture-overview)
-2. [Project Structure](#project-structure)
-3. [Creating a New Screen](#creating-a-new-screen)
-4. [Creating a ViewModel](#creating-a-viewmodel)
-5. [Navigation](#navigation)
-6. [State Management](#state-management)
-7. [Loading & Empty States](#loading--empty-states)
-8. [Repository Pattern](#repository-pattern)
-9. [Theming](#theming)
-10. [Best Practices](#best-practices)
-11. [Common Patterns](#common-patterns)
+2. [Migration History](#migration-history)
+3. [Project Structure](#project-structure)
+4. [Creating a New Screen](#creating-a-new-screen)
+5. [Creating a ViewModel](#creating-a-viewmodel)
+6. [Navigation](#navigation)
+7. [State Management](#state-management)
+8. [Loading & Empty States](#loading--empty-states)
+9. [Repository Pattern](#repository-pattern)
+10. [Theming](#theming)
+11. [Best Practices](#best-practices)
+12. [Common Patterns](#common-patterns)
+13. [Migration Checklist](#migration-checklist)
 
 ---
 
@@ -51,6 +53,49 @@ Grayjay uses a **Compose-first architecture** with the following layers:
 - **Repository pattern**: Clean data abstraction
 - **navigation3**: Type-safe navigation with per-tab back stacks
 - **Hilt DI**: Dependency injection throughout
+
+---
+
+## Migration History
+
+Grayjay is migrating from XML Views to Jetpack Compose through three architectural layers:
+
+### Layer 1: ORIGINAL (XML) — Legacy Reference Only
+- **UI**: XML layouts + Fragment controllers
+- **State**: Singleton `State*` objects (`StateLibrary`, `StatePlayer`, etc.)
+- **Navigation**: FragmentManager-based via `NavDestination`
+- **Status**: Read-only reference. Do not maintain or extend.
+
+### Layer 2: HYBRID (Transitional) — Removed
+- **UI**: Compose composables hosted inside XML Fragments
+- **Navigation**: Compose NavHost with XML fallback
+- **Status**: Deleted. No longer exists in the codebase.
+
+### Layer 3: NEW (Full Compose) — Current Target
+- **UI**: Pure Compose composables
+- **Navigation**: Compose Navigation (`NavHost` + `NavKey` sealed class)
+- **State**: `ViewModel` + `StateFlow`/`SharedFlow`
+- **Status**: Actively developed. All new screens should use this pattern.
+
+### Architecture Comparison
+
+| Aspect | ORIGINAL (XML) | NEW (Compose) |
+|--------|----------------|---------------|
+| **UI Definition** | XML layouts | Pure Compose |
+| **Screen Controller** | Fragment | Composable function |
+| **Navigation** | FragmentManager | Compose NavHost |
+| **State** | `State*` singletons | `ViewModel` + `StateFlow` |
+| **Bottom Nav** | `BottomBarFragment` | `GrayjayBottomNavBar` |
+| **Maintenance** | Read-only reference | **Develop here** |
+
+### Shared Components (Unchanged)
+These components are shared across all architectures and remain unchanged:
+- `core/data/repository/` — Repository pattern
+- `api/media/` — Plugin API interfaces
+- `states/` — State singletons (being migrated to ViewModel)
+- `downloads/` — Download management
+- `encryption/` — Encryption utilities
+- `subscription/` — Subscription algorithms
 
 ---
 
@@ -885,9 +930,50 @@ fun VideoDetailScreen(videoUrl: String, onBack: () -> Unit) { ... }
 
 ---
 
+## Guidelines
+
+These are the **hard rules** for the Grayjay architecture:
+
+1. **Never add new XML UI** — XML is a reference/specification only
+2. **Never create new Fragment-based screens** — Use Compose composables
+3. **Never add fallback logic** — All navigation should use Compose scenes directly
+4. **Always use ViewModel + StateFlow** — Replace `State*` singletons
+5. **Always use Compose Navigation** — No FragmentManager-based navigation
+6. **Share data layer** — Repository pattern, Room DAOs, and Plugin API remain unchanged
+
+---
+
+## Migration Checklist
+
+Use this checklist to track migration progress for each screen:
+
+### Screen Migration Checklist
+
+- [ ] Identify XML screen (e.g., `MyFragment.kt`)
+- [ ] Create ViewModel (`MyViewModel.kt`)
+- [ ] Create Compose screen (`MyScreen.kt`)
+- [ ] Add NavKey (`GrayjayNavKey.kt`)
+- [ ] Register in navigation (`PlatformPlayerActivity.kt`)
+- [ ] Test screen functionality
+- [ ] Remove XML fragment (if no longer needed)
+- [ ] Update tests
+
+### State* Singleton Migration Checklist
+
+- [ ] Identify State* singleton (e.g., `StateLibrary`)
+- [ ] Create Repository (`MyRepository.kt`)
+- [ ] Create ViewModel (`MyViewModel.kt`)
+- [ ] Migrate screen to ViewModel
+- [ ] Remove singleton access
+- [ ] Test data flow
+- [ ] Remove State* singleton (if no longer needed)
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
-|---------|------|---------|
+|---------|------|---------|  
 | 1.0 | 2024-07-25 | Initial architecture documentation |
 | 1.1 | 2024-07-25 | Added migration guide and troubleshooting |
+| 1.2 | 2024-07-25 | Added migration history, guidelines, and checklist |
