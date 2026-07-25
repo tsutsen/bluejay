@@ -1,1 +1,0 @@
--keep,allowobfuscation,allowshrinking class com.tsutsen.platformplayer.feature.home.impl.HomeViewModel
