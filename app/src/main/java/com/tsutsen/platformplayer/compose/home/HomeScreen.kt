@@ -42,8 +42,8 @@ import com.tsutsen.platformplayer.api.media.models.playlists.IPlatformPlaylist
 import com.tsutsen.platformplayer.api.media.models.post.IPlatformPost
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.platforms.js.models.JSWeb
-import com.tsutsen.platformplayer.compose.navigation.GrayjayNavigator
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
+import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.compose.util.LoadingContent
 import com.tsutsen.platformplayer.compose.util.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
@@ -57,8 +57,8 @@ import com.tsutsen.platformplayer.core.model.VideoCard
  */
 @Composable
 fun HomeScreen(
-    navigator: GrayjayNavigator,
-    playerRepository: PlayerRepository = hiltViewModel(),
+    navigator: Navigator,
+    playerRepository: PlayerRepository,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {

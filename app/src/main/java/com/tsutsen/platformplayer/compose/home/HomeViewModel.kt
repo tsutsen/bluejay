@@ -24,7 +24,9 @@ import com.tsutsen.platformplayer.api.media.structures.IPager
 import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
 import com.tsutsen.platformplayer.api.media.structures.ReusableRefreshPager
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.core.model.VideoCard
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +75,19 @@ class HomeViewModel @Inject constructor() : ViewModel() {
             _uiState.value = HomeUiState.Loading
             try {
                 Logger.i(TAG, "Loading feed...")
+                
+                // Initialize plugins before loading feed
+                try {
+                    val context = StateApp.instance.contextOrNull
+                    if (context != null) {
+                        StatePlugins.instance.updateEmbeddedPlugins(context)
+                        StatePlugins.instance.installMissingEmbeddedPlugins(context)
+                        StatePlatform.instance.updateAvailableClients(context)
+                    }
+                } catch (e: Exception) {
+                    Logger.w(TAG, "Plugin initialization failed", e)
+                }
+                
                 val p = StatePlatform.instance.getHomeRefresh(viewModelScope)
                 Logger.i(TAG, "Got pager: $p")
                 

@@ -68,8 +68,8 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
-import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.compose.util.LoadingContent
+import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import com.tsutsen.platformplayer.compose.util.EmptyState
 import com.tsutsen.platformplayer.core.ui.RelativeTime
 
@@ -80,9 +80,9 @@ import com.tsutsen.platformplayer.core.ui.RelativeTime
 @Composable
 fun SubscriptionsScreen(
     navigator: Navigator,
-    playerRepository: PlayerRepository = hiltViewModel(),
     modifier: Modifier = Modifier,
-    viewModel: SubscriptionsViewModel = hiltViewModel()
+    viewModel: SubscriptionsViewModel = hiltViewModel(),
+    playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val configuration = LocalConfiguration.current
@@ -122,7 +122,7 @@ fun SubscriptionsScreen(
                         onItemClicked = { content ->
                             when (content) {
                                 is IPlatformVideo -> {
-                                    coroutineScope.launch { playerRepository.play(content.url) }
+                                    playerViewModel.play(content.url)
                                 }
                                 else -> {}
                             }
