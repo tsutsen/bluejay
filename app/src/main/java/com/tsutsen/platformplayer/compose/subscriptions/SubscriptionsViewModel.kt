@@ -66,6 +66,7 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
 
     private var feedPager: IPager<IPlatformContent>? = null
     private var allContent: List<IPlatformContent> = emptyList()
+    private var isLoadingMore = false
 
     init {
         loadCreators()
@@ -323,6 +324,28 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                     else -> null
                 }
                 channelUrl == activeCreatorId
+            }
+            
+            // If we have fewer than 20 items from this creator, load more
+            if (filtered.size < 20 && feedPager?.hasMorePages() == true && !isLoadingMore) {
+                viewModelScope.launch {
+                    try {
+                        isLoadingMore = true
+                        Logger.i(TAG, "Filtering by creator, loading more items...")
+                        val previousSize = allContent.size
+                        feedPager?.nextPage()
+                        val loaded = feedPager?.getResults() ?: emptyList()
+                        val newItems = loaded.drop(previousSize)
+                        allContent = allContent + newItems
+                        
+                        // Re-apply filters
+                        applyFilters()
+                    } catch (e: Exception) {
+                        Logger.e(TAG, "Error loading more items for filter", e)
+                    } finally {
+                        isLoadingMore = false
+                    }
+                }
             }
         }
 
