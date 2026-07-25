@@ -70,85 +70,82 @@ sealed interface HomeUiState {
 
 ---
 
-## 2. Navigation: Custom NavKey → Standard Compose Navigation
+## 2. Navigation: Keep navigation3, Enhance NavigationActions
 
-### Current (Problematic)
+**IMPORTANT: Do NOT migrate to standard Compose Navigation.**
+
+navigation3 is the RIGHT choice for Grayjay because:
+- **Per-tab back stacks** - natively supported via `NavigationState` with per-tab `backStacks`
+- **Adaptive layouts** - built-in support for portrait/landscape with `currentWindowAdaptiveInfo`
+- **Type-safe navigation** - `NavKey` sealed class with `@Serializable` annotations
+- **Complex navigation scenarios** - 40+ routes with parameters, deep linking, back stack management
+
+Standard Compose Navigation would be WORSE for this use case because:
+- No built-in per-tab back stack support
+- Would need custom workarounds for adaptive layouts
+- Less type-safe (route strings vs sealed classes)
+
+### Current (Good)
 ```kotlin
-// Custom navigation system with NavKey sealed class
+// NavKey sealed class - type-safe, serializable
 sealed class NavKey {
-    data class Home(val param: Int = 0) : NavKey()
-    data class VideoDetail(val url: String, val param: Int = 0) : NavKey()
+    @Serializable data object Home : NavKey()
+    @Serializable data class VideoDetail(val url: String) : NavKey()
     // ... 40+ types
 }
 
-// PlatformPlayerActivity.kt - Manual NavEntry creation
-private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): NavEntry<NavKey> {
-    return when (key) {
-        is Home -> NavEntry(key) { HomeScene(navigator) }
-        is VideoDetail -> NavEntry(key) { VideoDetailScene(key, navigator) }
-        // ... 40+ when branches
-    }
+// NavigationState - per-tab back stacks
+class GrayjayNavigationState {
+    val topLevelRoute = MutableStateFlow<NavKey>(Home)
+    val backStacks = mutableMapOf<NavKey, MutableList<NavKey>>()
+}
+
+// Navigation actions for specific routes
+class GrayjayNavigator(val state: GrayjayNavigationState) {
+    fun navigateToVideo(url: String) { ... }
+    fun navigateToPlaylist(url: String) { ... }
+    // ... 40+ convenience methods
 }
 ```
 
-### Target (Best Practice)
+### Enhancement (Better Structure)
 ```kotlin
-// TodoNavigation.kt pattern - Navigation actions class
-class GrayjayNavigationActions(private val navController: NavHostController) {
-    
-    fun navigateToHome(userMessage: Int = 0) {
-        navController.navigate(HomeScreen) {
-            popUpTo(navController.graph.findStartDestination().id) {
-                inclusive = userMessage == 0
-                saveState = userMessage != 0
-            }
-            launchSingleTop = true
-            restoreState = userMessage != 0
-        }
+// Extract navigation actions into separate class (like architecture-samples)
+class GrayjayNavigationActions(
+    private val navController: NavHostController,
+    private val navigationState: GrayjayNavigationState
+) {
+    fun navigateToHome() {
+        navigationState.topLevelRoute.value = Home
     }
     
-    fun navigateToVideoDetail(videoId: String) {
-        navController.navigate(VideoDetailScreen(videoId))
+    fun navigateToVideoDetail(videoUrl: String) {
+        val stack = navigationState.backStacks[navigationState.topLevelRoute.value]
+        stack?.removeIf { it is VideoDetail }
+        stack?.add(VideoDetail(videoUrl))
     }
     
-    fun navigateToPlaylistDetail(playlistId: String) {
-        navController.navigate(PlaylistDetailScreen(playlistId))
+    fun navigateUp() {
+        // Handle back navigation
     }
 }
 
-// TodoNavGraph.kt pattern - NavHost with composable routes
+// Use in composables
 @Composable
-fun GrayjayNavGraph(
-    navController: NavHostController = rememberNavController(),
-    navigationActions: GrayjayNavigationActions = remember(navController) {
-        GrayjayNavigationActions(navController)
-    }
+fun HomeScreen(
+    navigationActions: GrayjayNavigationActions = rememberGrayjayNavigationActions()
 ) {
-    NavHost(
-        navController = navController,
-        startDestination = HomeScreen
-    ) {
-        composable(HomeScreen) {
-            HomeScreen(
-                onVideoClicked = { videoId -> navigationActions.navigateToVideoDetail(videoId) },
-                onPlaylistClicked = { playlistId -> navigationActions.navigateToPlaylistDetail(playlistId) }
-            )
-        }
-        composable(VideoDetailScreen) { entry ->
-            val videoId = entry.arguments?.getString("videoId") ?: return@composable
-            VideoDetailScreen(videoId = videoId, onBack = { navController.popBackStack() })
-        }
-    }
+    // Use navigationActions instead of GrayjayNavigator
 }
 ```
 
 ### Benefits
-- **Type-safe**: Compile-time navigation validation
-- **State management**: Built-in back stack, save/restore
-- **Deep linking**: Standard Android deep linking support
-- **Testing**: `NavTestRule` for navigation testing
+- **Keep navigation3 benefits** - per-tab back stacks, adaptive layouts, type-safety
+- **Better testability** - NavigationActions class is easier to mock
+- **Cleaner separation** - Navigation logic separated from state management
+- **Future-proof** - Can migrate to standard NavHost later if needed
 
-### Priority: **MEDIUM** (Larger refactor, but cleaner long-term)
+### Priority: **LOW** (Already well-structured, minor refactoring)
 
 ---
 
@@ -457,7 +454,7 @@ Logger.d(
 | **State Management** (Singleton → ViewModel) | High | High | **HIGH** |
 | **UI State** (Multiple variables → Single UiState) | Medium | High | **HIGH** |
 | **Loading/Empty States** (Reusable LoadingContent) | Low | High | **HIGH** |
-| **Navigation** (Custom NavKey → Standard) | High | Medium | **MEDIUM** |
+| **Navigation** (Keep navigation3, enhance structure) | Low | Low | **LOW** |
 | **Activity** (FragmentActivity → ComponentActivity) | Low | Medium | **MEDIUM** |
 | **Repository Pattern** (Leverage more) | Low | Low | **LOW** |
 | **Logging** (Log.d → Logger) | Low | Low | **LOW** |
@@ -478,10 +475,10 @@ Logger.d(
 3. **Apply LoadingContent** to all screens
 4. **Remove DisposableEffect** patterns in favor of ViewModel lifecycle
 
-### Phase 3: Navigation (Week 5-6)
-1. **Create GrayjayNavigationActions** class
-2. **Migrate NavHost to standard Compose Navigation**
-3. **Update all navigation calls** to use navigation actions
+### Phase 3: Polish (Week 5-6)
+1. **Extract GrayjayNavigationActions** class from GrayjayNavigator
+2. **Update composables** to use NavigationActions
+3. **Add unit tests** for navigation logic
 4. **Test deep linking** and back stack behavior
 
 ### Phase 4: Polish (Week 7-8)
