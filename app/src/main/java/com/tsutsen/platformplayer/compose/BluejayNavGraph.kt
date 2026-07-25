@@ -9,6 +9,7 @@ import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.home.impl.HomeScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
+import com.tsutsen.platformplayer.compose.subscriptions.SubscriptionsScreen
 import com.tsutsen.platformplayer.feature.settings.impl.SettingsScreen
 
 /**
@@ -39,7 +40,7 @@ fun GrayjayNavGraph(
         null -> PlaceholderScreen("Bluejay", "Welcome")
         is NavDestination.Home -> HomeScreen(navigator = navigator)
         is NavDestination.Search -> PlaceholderScreen("Search", "Coming soon")
-        is NavDestination.Subscriptions -> PlaceholderScreen("Subscriptions", "Coming soon")
+        is NavDestination.Subscriptions -> SubscriptionsScreen(navigator = navigator)
         is NavDestination.Library -> PlaceholderScreen("Library", "Coming soon")
         is NavDestination.Notifications -> PlaceholderScreen("Notifications", "Coming soon")
         is NavDestination.Settings -> SettingsScreen(navigator = navigator)

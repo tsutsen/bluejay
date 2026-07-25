@@ -22,3 +22,11 @@ app/com.futo.platformplayer.stores.SubscriptionStorage.json
 graphify-out/
 app/graphify-out/
 .kotlin/
+
+# Pi agent
+.pi/
+.pi-subagents/
+
+# Build outputs (all modules)
+**/build/
+**/tmp/

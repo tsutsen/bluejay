@@ -59,6 +59,11 @@ class Navigator @Inject constructor() {
     fun navigateToPost(url: String) = navigate(NavDestination.PostDetail(url))
     fun navigateToArticle(url: String) = navigate(NavDestination.ArticleDetail(url))
     fun navigateToWeb(url: String) = navigate(NavDestination.WebDetail(url))
+    fun navigateToVideo(url: String, position: Long? = null, startMinimized: Boolean = false) {
+        // TODO: Implement video detail navigation when VideoDetail destination is added
+        // For now, log the navigation request
+        android.util.Log.d("Navigator", "navigateToVideo: $url (position=$position, startMinimized=$startMinimized)")
+    }
 
     // Search results
     fun navigateToContentSearch(query: String) = navigate(NavDestination.ContentSearchResults(query))

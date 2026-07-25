@@ -76,6 +76,7 @@ import com.tsutsen.platformplayer.compose.settings.SettingsScreen
 import com.tsutsen.platformplayer.compose.settings.SettingsSection
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
 import com.tsutsen.platformplayer.compose.player.VideoPlayerScene
+import com.tsutsen.platformplayer.compose.subscriptions.SubscriptionsScreen
 import com.tsutsen.platformplayer.compose.player.MiniPlayerOverlay
 import com.tsutsen.platformplayer.compose.player.MiniPlayerState
 import com.tsutsen.platformplayer.compose.player.VideoPlayerState
@@ -302,7 +303,7 @@ private fun GrayjayNavRail(
 private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): NavEntry<NavKey> {
     return when (key) {
         is Home -> NavEntry(key) { HomeScene(navigator) }
-        is Subscriptions -> NavEntry(key) { SubscriptionsScene(navigator) }
+        is Subscriptions -> NavEntry(key) { placeholder(navigator, "Subscriptions") }
         is Playlists -> NavEntry(key) { PlaylistsScene(navigator) }
         is Notifications -> NavEntry(key) { NotificationsScene(navigator) }
         is Library -> NavEntry(key) { LibraryScene(navigator) }
@@ -352,7 +353,7 @@ private fun HomeScene(navigator: GrayjayNavigator) {
     HomeScreen(navigator = navigator)
 }
 
-@Composable private fun SubscriptionsScene(n: GrayjayNavigator) = placeholder(n, "Subscriptions")
+// SubscriptionsScene removed - now handled by BluejayNavGraph in MainActivity
 @Composable private fun SourcesScene(n: GrayjayNavigator) = placeholder(n, "Sources (removed)")
 @Composable private fun PlaylistsScene(n: GrayjayNavigator) = placeholder(n, "Playlists")
 @Composable
