@@ -1,47 +1,57 @@
 package com.tsutsen.platformplayer.core.data.repository.impl
 
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
-import com.tsutsen.platformplayer.core.model.Creator
 import com.tsutsen.platformplayer.core.model.SubscriptionFeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
- * SubscriptionRepository implementation.
- * Bridges to StateSubscriptions and engine subscription feeds.
+ * Stub implementation of SubscriptionRepository.
+ * The actual implementation is EngineSubscriptionsRepositoryImpl in the app module.
  */
-@Singleton
-class SubscriptionRepositoryImpl @Inject constructor() : SubscriptionRepository {
+class SubscriptionRepositoryImpl : SubscriptionRepository {
 
     private val _feed = MutableStateFlow(SubscriptionFeed())
     override val feed: StateFlow<SubscriptionFeed> = _feed.asStateFlow()
 
-    private val _creators = MutableStateFlow<List<Creator>>(emptyList())
-    override val creators: StateFlow<List<Creator>> = _creators.asStateFlow()
+    override suspend fun loadCreators() {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
+    }
 
     override suspend fun loadFeed() {
-        _feed.update { it.copy(isLoading = true) }
-        // Bridge to StateSubscriptions
-        _feed.update { it.copy(isLoading = false) }
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
     }
 
-    override suspend fun loadCreators() {
-        // Bridge to StateSubscriptions.getSubscriptions()
+    override suspend fun refresh() {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
     }
 
-    override suspend fun filterByCreator(creatorId: String) {
-        _feed.update { it.copy(activeCreatorFilter = creatorId) }
+    override suspend fun loadMore() {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
     }
 
-    override suspend fun filterByType(type: String) {
-        _feed.update { it.copy(activeTypeFilter = type) }
+    override suspend fun selectCreator(creatorId: String?) {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
     }
 
-    override suspend fun markAsWatched(videoId: String) {
-        // Bridge to StatePlayer history
+    override suspend fun toggleWatched() {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
+    }
+
+    override suspend fun toggleContinue() {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
+    }
+
+    override suspend fun toggleVideo() {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
+    }
+
+    override suspend fun toggleStreams() {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
+    }
+
+    override suspend fun toggleSourceFilter(sourceId: String) {
+        // Stub - implementation in EngineSubscriptionsRepositoryImpl
     }
 }

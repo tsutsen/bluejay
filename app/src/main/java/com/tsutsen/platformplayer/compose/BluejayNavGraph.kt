@@ -13,7 +13,7 @@ import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.home.impl.HomeScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
-import com.tsutsen.platformplayer.compose.subscriptions.SubscriptionsScreen
+import com.tsutsen.platformplayer.feature.subscriptions.impl.SubscriptionsScreen
 import com.tsutsen.platformplayer.feature.settings.impl.SettingsScreen
 import com.tsutsen.platformplayer.logging.Logger
 import kotlinx.coroutines.Dispatchers
