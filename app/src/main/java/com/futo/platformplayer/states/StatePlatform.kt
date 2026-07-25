@@ -49,7 +49,6 @@ import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.ImageVariable
 import com.futo.platformplayer.stores.FragmentedStorage
 import com.futo.platformplayer.stores.StringArrayStorage
-import com.futo.platformplayer.views.ToastView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -200,7 +199,7 @@ class StatePlatform {
 
                 _icons.clear();
                 _iconsByName.clear()
-                _icons[StateDeveloper.DEV_ID] = ImageVariable(null, R.drawable.ic_security_red);
+                _icons[StateDeveloper.DEV_ID] = ImageVariable(null, android.R.drawable.ic_dialog_alert);
 
                 StatePlugins.instance.updateEmbeddedPlugins(context);
                 StatePlugins.instance.installMissingEmbeddedPlugins(context);
@@ -245,7 +244,7 @@ class StatePlatform {
                     _availableClients.addAll(overrideClients);
 
                     StateApp.instance.scopeOrNull?.launch(Dispatchers.Main) {
-                        UIDialogs.showDialog(context, R.drawable.ic_error_pred, "Duplicate plugin ids detected", "This can cause unexpected behavior, ideally uninstall duplicate plugins (ids)",
+                        UIDialogs.showDialog(context, android.R.drawable.ic_dialog_alert, "Duplicate plugin ids detected", "This can cause unexpected behavior, ideally uninstall duplicate plugins (ids)",
                             dups.map { it.name }.joinToString("\n"), 0, UIDialogs.Action("Ok", { }));
                     }
 
@@ -488,7 +487,7 @@ class StatePlatform {
                         return@synchronized clients.filter { clientIdsOngoing.contains(it.id) };
                     };
                     for(client in slowClients)
-                        UIDialogs.toast("${client.name} is still loading..\nConsider disabling it for Home", false);
+                        UIDialogs.toast("${client.name} is still loading..\nConsider disabling it for Home", android.widget.Toast.LENGTH_LONG);
                 } catch (e: Throwable) {
                     Logger.e(TAG, "Failed to show toast for slow source.", e)
                 }
@@ -529,7 +528,7 @@ class StatePlatform {
                         return@synchronized clients.filter { clientIdsOngoing.contains(it.id) };
                     };
                     for(client in slowClients)
-                        UIDialogs.toast("${client.name} is still loading..\nConsider disabling it for Home", false);
+                        UIDialogs.toast("${client.name} is still loading..\nConsider disabling it for Home", android.widget.Toast.LENGTH_LONG);
                 } catch (e: Throwable) {
                     Logger.e(TAG, "Failed to show toast for slow source.", e)
                 }

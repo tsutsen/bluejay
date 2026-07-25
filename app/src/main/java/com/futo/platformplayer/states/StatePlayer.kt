@@ -364,12 +364,12 @@ class StatePlayer {
             onQueueChanged.emit(true);
             StateApp.instance.contextOrNull?.let { context ->
                 val name = if (video.name.length > 20) (video.name.subSequence(0, 20).toString() + "...") else video.name;
-                UIDialogs.toast(context, context.getString(R.string.queued) + " [$name]", false);
+                UIDialogs.toast(context, context.getString(R.string.queued) + " [$name]", android.widget.Toast.LENGTH_SHORT);
             }
         }
         else
             StateApp.instance.contextOrNull?.let { context ->
-                UIDialogs.toast(context, context.getString(R.string.already_queued), false);
+                UIDialogs.toast(context, context.getString(R.string.already_queued), android.widget.Toast.LENGTH_LONG);
             }
     }
     fun insertToQueue(video: IPlatformVideo, playNow: Boolean = false) {

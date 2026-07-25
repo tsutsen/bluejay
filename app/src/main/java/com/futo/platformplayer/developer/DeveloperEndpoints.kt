@@ -1,8 +1,7 @@
 package com.futo.platformplayer.developer
 
 import android.content.Context
-import com.futo.platformplayer.activities.CaptchaActivity
-import com.futo.platformplayer.activities.LoginActivity
+import com.futo.platformplayer.auth.LoginDialog
 import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.http.server.HttpContext
 import com.futo.platformplayer.api.http.server.HttpGET
@@ -18,7 +17,6 @@ import com.futo.platformplayer.engine.dev.V8RemoteObject
 import com.futo.platformplayer.engine.dev.V8RemoteObject.Companion.gsonStandard
 import com.futo.platformplayer.engine.dev.V8RemoteObject.Companion.serialize
 import com.futo.platformplayer.engine.packages.PackageHttp
-import com.futo.platformplayer.fragment.mainactivity.main.LoginFragment
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StateAssets
@@ -251,7 +249,7 @@ class DeveloperEndpoints(private val context: Context) {
                 context.respondCode(403, "This plugin doesn't support captcha");
                 return;
             }
-            CaptchaActivity.showCaptcha(StateApp.instance.context, config, url, html) {
+            LoginDialog.showCaptcha(StateApp.instance.context, config, url, html) {
                 _testPluginVariables.clear();
                 _testPlugin = V8Plugin(StateApp.instance.context, config, null, JSHttpClient(null, null, it), JSHttpClient(null, null, it));
 
@@ -272,13 +270,13 @@ class DeveloperEndpoints(private val context: Context) {
                 return;
             }
             StateApp.instance.scopeOrNull?.launch(Dispatchers.Main) {
-                LoginFragment.showLogin(config){
+                LoginDialog.showLogin(config){
                     _testPluginVariables.clear();
                     _testPlugin = V8Plugin(StateApp.instance.context, config, null, JSHttpClient(null, null, null, config), JSHttpClient(null, it, null, config));
                 };
             }
             /*
-            LoginActivity.showLogin(StateApp.instance.context, config) {
+            LoginDialog.showLogin(config) {
                 _testPluginVariables.clear();
                 _testPlugin = V8Plugin(StateApp.instance.context, config, null, JSHttpClient(null, null, null, config), JSHttpClient(null, it, null, config));
             }; */

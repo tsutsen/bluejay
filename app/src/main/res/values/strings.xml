@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Grayjay</string>
+    <string name="queued">Queued</string>
+    <string name="already_queued">Already in queue</string>
+
+    <!-- Stub arrays for Settings.kt annotations -->
+    <string-array name="app_languages"><item>en</item></string-array>
+    <string-array name="feed_style"><item>default</item></string-array>
+    <string-array name="color_scheme_modes"><item>dark</item></string-array>
+    <string-array name="seed_colors"><item>default</item></string-array>
+    <string-array name="font_choices"><item>default</item></string-array>
+    <string-array name="icon_styles"><item>default</item></string-array>
+    <string-array name="contrast_levels"><item>default</item></string-array>
+    <string-array name="theme_modes"><item>default</item></string-array>
+    <string-array name="background_interval"><item>default</item></string-array>
+    <string-array name="thread_count"><item>default</item></string-array>
+    <string-array name="audio_languages"><item>default</item></string-array>
+    <string-array name="playback_speeds"><item>default</item></string-array>
+    <string-array name="preferred_quality_array"><item>default</item></string-array>
+    <string-array name="player_background_behavior"><item>default</item></string-array>
+    <string-array name="resume_after_preview"><item>default</item></string-array>
+    <string-array name="chapter_fps"><item>default</item></string-array>
+    <string-array name="restart_playback_after_loss"><item>default</item></string-array>
+    <string-array name="seek_offset_duration"><item>default</item></string-array>
+    <string-array name="min_playback_speed"><item>default</item></string-array>
+    <string-array name="max_playback_speed"><item>default</item></string-array>
+    <string-array name="step_playback_speed"><item>default</item></string-array>
+    <string-array name="hold_playback_speeds"><item>default</item></string-array>
+    <string-array name="comment_sections"><item>default</item></string-array>
+    <string-array name="when_download"><item>default</item></string-array>
+    <string-array name="preferred_video_download"><item>default</item></string-array>
+    <string-array name="preferred_audio_download"><item>default</item></string-array>
+    <string-array name="auto_update_when_array"><item>default</item></string-array>
+    <string-array name="background_download"><item>default</item></string-array>
+    <!-- Install error strings -->
+    <string name="install_failed_device_installer_broken">Install failed: device installer broken</string>
+    <string name="general_failure">General failure</string>
+    <string name="aborted">Aborted</string>
+    <string name="blocked">Blocked</string>
+    <string name="conflict">Conflict</string>
+    <string name="incompatible">Incompatible</string>
+    <string name="invalid">Invalid</string>
+    <string name="not_enough_storage">Not enough storage</string>
+</resources>

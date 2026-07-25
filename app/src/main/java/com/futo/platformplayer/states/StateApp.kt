@@ -29,20 +29,17 @@ import com.futo.platformplayer.R
 import com.futo.platformplayer.UIDialogs.Action
 import com.futo.platformplayer.UIDialogs.ActionStyle
 import com.futo.platformplayer.UIDialogs.Companion.showDialog
-import com.futo.platformplayer.activities.CaptchaActivity
+import com.futo.platformplayer.auth.LoginDialog
 import com.futo.platformplayer.activities.IWithResultLauncher
 import com.futo.platformplayer.activities.MainActivity
 import com.futo.platformplayer.api.media.platforms.js.DevJSClient
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.futo.platformplayer.background.BackgroundWorker
-import com.futo.platformplayer.casting.StateCasting
+
 import com.futo.platformplayer.constructs.Event0
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.engine.exceptions.ScriptCaptchaRequiredException
-import com.futo.platformplayer.fragment.mainactivity.main.HomeFragment
-import com.futo.platformplayer.fragment.mainactivity.main.SettingsFragment
-import com.futo.platformplayer.fragment.mainactivity.main.SourceDetailFragment
 import com.futo.platformplayer.logging.AndroidLogConsumer
 import com.futo.platformplayer.logging.FileLogConsumer
 import com.futo.platformplayer.logging.LogLevel
@@ -52,7 +49,6 @@ import com.futo.platformplayer.receivers.AudioNoisyReceiver
 import com.futo.platformplayer.services.DownloadService
 import com.futo.platformplayer.stores.FragmentedStorage
 import com.futo.platformplayer.stores.v2.ManagedStore
-import com.futo.platformplayer.views.ToastView
 import com.futo.polycentric.core.ApiMethods
 import com.futo.polycentric.core.toBase64Url
 import com.futo.platformplayer.polycentric.ModerationsManager
@@ -536,7 +532,7 @@ class StateApp {
                     CookieManager.getInstance();
                 cookieManager.removeAllCookies(null);
             } catch (ex: Throwable) {
-                Logger.e(SourceDetailFragment.Companion.TAG, "Failed to clear cookies", ex);
+                Logger.e("StateApp", "Failed to clear cookies", ex);
             }
         }
 
@@ -602,13 +598,8 @@ class StateApp {
             StateSync.instance.start(context)
         }
 
-        SettingsFragment.onClosed.subscribe {
-            if (Settings.instance.synchronization.enabled) {
-                StateSync.instance.start(context)
-            } else {
-                StateSync.instance.stop()
-            }
-        }
+        // SettingsFragment removed - Compose SettingsScreen doesn't have onClosed event.
+        // Sync start/stop is now handled by SettingsScreen's own state management.
 
         Logger.onLogSubmitted.subscribe {
             scopeOrNull?.launch(Dispatchers.Main) {
@@ -824,14 +815,8 @@ class StateApp {
                 }
 
                 if(toNotify.isNotEmpty()) {
-                    UIDialogs.appToast(
-                        ToastView.Toast(toNotify
-                            .map { " - " + it.first.name }
-                            .joinToString("\n"),
-                            true,
-                            null,
-                            "Plugin updates available"
-                        ));
+                    UIDialogs.toast(StateApp.instance.context, "Plugin updates available: " +
+                        toNotify.map { " - " + it.first.name }.joinToString("\n"));
 
                     for(update in toNotify)
                         StateAnnouncement.instance.registerPluginUpdate(update.first, update.second);
@@ -1049,7 +1034,7 @@ class StateApp {
 
     private var hasCaptchaDialog = false;
     fun handleCaptchaException(client: JSClient, exception: ScriptCaptchaRequiredException) {
-        Logger.w(HomeFragment.TAG, "[${client.name}] Plugin captcha required.", exception);
+        Logger.w("StateApp", "[${client.name}] Plugin captcha required.", exception);
 
         scopeOrNull?.launch(Dispatchers.Main) {
             if(hasCaptchaDialog)
@@ -1069,7 +1054,7 @@ class StateApp {
                             try {
                                 StatePlatform.instance.reloadClient(context, client.config.id);
                             } catch (e: Throwable) {
-                                Logger.e(SourceDetailFragment.TAG, "Failed to reload client.", e)
+                                Logger.e("StatePlugins", "Failed to reload client.", e)
                             }
                         }
                     }

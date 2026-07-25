@@ -10,7 +10,6 @@ import com.futo.platformplayer.api.media.structures.IPager
 import com.futo.platformplayer.api.media.structures.PlatformContentPager
 import com.futo.platformplayer.developer.DeveloperEndpoints
 import com.futo.platformplayer.engine.exceptions.ScriptExecutionException
-import com.futo.platformplayer.fragment.mainactivity.main.VideoDetailView
 import com.futo.platformplayer.logging.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -182,7 +181,11 @@ class StateDeveloper {
                 pager.getResults()[pagerIndex];
 
             StateApp.instance.scope.launch(Dispatchers.Main) {
-                mainActivity._fragVideoDetail?.let { mainActivity.navigate(it, video) };
+                // VideoDetailView removed - navigate via Compose navigator
+                val videoUrl = video?.url
+                if (videoUrl != null) {
+                    mainActivity.navigator.navigate(com.futo.platformplayer.core.navigation.NavDestination.ChannelDetail(videoUrl))
+                }
             }
         }
     }

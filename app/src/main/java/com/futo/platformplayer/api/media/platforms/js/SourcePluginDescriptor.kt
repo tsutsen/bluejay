@@ -8,11 +8,6 @@ import com.futo.platformplayer.states.StateAnnouncement
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StateHistory
 import com.futo.platformplayer.states.StatePlatform
-import com.futo.platformplayer.views.fields.DropdownFieldOptions
-import com.futo.platformplayer.views.fields.FieldForm
-import com.futo.platformplayer.views.fields.FormField
-import com.futo.platformplayer.views.fields.FormFieldButton
-import com.futo.platformplayer.views.fields.FormFieldWarning
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -97,39 +92,28 @@ class SourcePluginDescriptor {
     @Serializable
     class AppPluginSettings {
 
-        @FormField(R.string.check_for_updates_setting, FieldForm.TOGGLE, R.string.check_for_updates_setting_description, -1)
         var checkForUpdates: Boolean = true;
-        @FormField(R.string.automatic_update_setting, FieldForm.TOGGLE, R.string.automatic_update_setting_description, 0)
         var automaticUpdate: Boolean = true;
 
-        @FormField(R.string.visibility, "group", R.string.enable_where_this_plugins_content_are_visible, 2)
         var tabEnabled = TabEnabled();
         @Serializable
         class TabEnabled {
-            @FormField(R.string.home, FieldForm.TOGGLE, R.string.show_content_in_home_tab, 1)
             var enableHome: Boolean? = null;
 
-            @FormField(R.string.search, FieldForm.TOGGLE, R.string.show_content_in_search_results, 2)
             var enableSearch: Boolean? = null;
 
-            @FormField(R.string.shorts, FieldForm.TOGGLE, R.string.show_content_in_shorts_tab, 3)
             var enableShorts: Boolean? = null;
         }
 
-        @FormField(R.string.sync, "group", R.string.sync_desc, 3,"sync")
         var sync = Sync();
         @Serializable
         class Sync {
-            @FormField(R.string.sync_history, FieldForm.TOGGLE, R.string.sync_history_desc, 1,"syncHistory")
             var enableHistorySync: Boolean? = null;
         }
 
-        @FormField(R.string.ratelimit, "group", R.string.ratelimit_description, 4)
         var rateLimit = RateLimit();
         @Serializable
         class RateLimit {
-            @FormField(R.string.subscriptions, FieldForm.DROPDOWN, R.string.ratelimit_sub_setting_description, 1)
-            @DropdownFieldOptions("Plugin defined", "25", "50", "75", "100", "125", "150", "200")
             var rateLimitSubs: Int = 0;
 
             fun getSubRateLimit(): Int {
@@ -150,7 +134,6 @@ class SourcePluginDescriptor {
 
 
 
-        @FormField(R.string.allow_developer_submit, FieldForm.TOGGLE, R.string.allow_developer_submit_description, 1, "devSubmit")
         var allowDeveloperSubmit: Boolean = false;
 
 

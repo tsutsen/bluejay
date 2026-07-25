@@ -21,7 +21,6 @@ import com.futo.platformplayer.engine.exceptions.ScriptCaptchaRequiredException
 import com.futo.platformplayer.engine.exceptions.ScriptCriticalException
 import com.futo.platformplayer.exceptions.ChannelException
 import com.futo.platformplayer.findNonRuntimeException
-import com.futo.platformplayer.fragment.mainactivity.main.SubscriptionsFeedFragment
 import com.futo.platformplayer.getNowDiffMiliseconds
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.Subscription
@@ -72,7 +71,11 @@ abstract class SubscriptionsTaskFetchAlgorithm(
                 val clientCacheCount = clientTasks.value.count { it.fromCache && !it.fromPeek };
                 val clientPeekCount = clientTasks.value.count { it.fromPeek };
                 val limit = clientTasks.key.getSubscriptionRateLimit();
-                if(clientCacheCount > 0 && clientTaskCount > 0 && limit != null && clientTaskCount >= limit && StateApp.instance.contextOrNull?.let { it is MainActivity && it.isFragmentActive<SubscriptionsFeedFragment>() } == true) {
+                // SubscriptionsFeedFragment removed - check Compose navigator route instead
+                val isSubscriptionsActive = StateApp.instance.contextOrNull?.let { ctx ->
+                    (ctx as? MainActivity)?.navigator?.currentRoute?.value is com.futo.platformplayer.core.navigation.NavDestination.Subscriptions
+                } == true
+                if(clientCacheCount > 0 && clientTaskCount > 0 && limit != null && clientTaskCount >= limit && isSubscriptionsActive) {
                     UIDialogs.appToast("[${clientTasks.key.name}] only updating ${clientTaskCount} most urgent channels (rqs). " +
                             "(${if(clientPeekCount > 0) "${clientPeekCount} peek, " else ""}${clientCacheCount} cached)");
                 }

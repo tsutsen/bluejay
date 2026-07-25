@@ -79,9 +79,8 @@ import com.futo.platformplayer.compose.player.VideoPlayerScene
 import com.futo.platformplayer.compose.player.MiniPlayerOverlay
 import com.futo.platformplayer.compose.player.MiniPlayerState
 import com.futo.platformplayer.compose.player.VideoPlayerState
-import com.futo.platformplayer.fragment.mainactivity.main.*
-import com.futo.platformplayer.fragment.settings.getItemsForCategory
-import com.futo.platformplayer.fragment.settings.SettingsItem
+import com.futo.platformplayer.compose.settings.getItemsForCategory
+import com.futo.platformplayer.compose.settings.SettingsItem
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StatePlatform
 

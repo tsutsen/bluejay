@@ -4,17 +4,14 @@ import android.content.Context
 import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
-import com.futo.platformplayer.activities.LoginActivity
 import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.SourceAuth
 import com.futo.platformplayer.api.media.platforms.js.SourceCaptchaData
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginDescriptor
-import com.futo.platformplayer.fragment.mainactivity.main.LoginFragment
-import com.futo.platformplayer.fragment.mainactivity.main.SourceDetailFragment
-import com.futo.platformplayer.fragment.mainactivity.main.SourceDetailFragment.Companion
 import com.futo.platformplayer.logging.Logger
+import com.futo.platformplayer.auth.LoginDialog
 import com.futo.platformplayer.models.ImageVariable
 import com.futo.platformplayer.stores.FragmentedStorage
 import com.futo.platformplayer.stores.PluginIconStorage
@@ -169,17 +166,17 @@ class StatePlugins {
         if(config.authentication == null)
             return false;
 
-        LoginFragment.showLogin(config) {//LoginActivity.showLogin(context, config) {
+        LoginDialog.showLogin(config) { result ->
 
-            if(it == null)
+            if(result == null)
                 return@showLogin;
             try {
-                StatePlugins.instance.setPluginAuth(config.id, it);
+                StatePlugins.instance.setPluginAuth(config.id, result as? com.futo.platformplayer.api.media.platforms.js.SourceAuth);
             } catch (e: Throwable) {
                 StateApp.instance.scopeOrNull?.launch(Dispatchers.Main) {
                     UIDialogs.showGeneralErrorDialog(context, "Failed to set plugin authentication (loginPlugin)", e)
                 }
-                Logger.e(SourceDetailFragment.TAG, "Failed to set plugin authentication (loginPlugin)", e)
+                Logger.e("StatePlugins", "Failed to set plugin authentication (loginPlugin)", e)
                 return@showLogin
             }
 
@@ -351,7 +348,7 @@ class StatePlugins {
             catch(ex: SerializationException) {
                 Logger.e(TAG, "Failed decode config", ex);
                 withContext(Dispatchers.Main) {
-                    UIDialogs.showDialog(context, R.drawable.ic_error,
+                    UIDialogs.showDialog(context, android.R.drawable.ic_dialog_alert,
                         "Invalid Config Format", null, null,
                         0, UIDialogs.Action("Ok", {
                             finish();
@@ -363,9 +360,8 @@ class StatePlugins {
             catch(ex: Exception) {
                 Logger.e(TAG, "Failed fetch config", ex);
                 withContext(Dispatchers.Main) {
-                    UIDialogs.showGeneralErrorDialog(context, "Failed to install plugin\n(${sourceUrl})", ex, "Ok") {
-                        handler?.invoke(false);
-                    };
+                    UIDialogs.showGeneralErrorDialog(context, "Failed to install plugin\n(${sourceUrl})", ex);
+                    handler?.invoke(false);
                 };
                 return@launch;
             }
@@ -401,96 +397,82 @@ class StatePlugins {
             throw IllegalStateException("script empty");
 
         fun doInstall(reinstall: Boolean) {
-            UIDialogs.showDialogProgress(context) {
-                it.setText("Downloading script...");
-                it.setProgress(0f);
+            scope.launch(Dispatchers.IO) {
+                try {
+                    withContext(Dispatchers.Main) {
+                        UIDialogs.toast(context, "Validating script...");
+                    }
 
-                scope.launch(Dispatchers.IO) {
-                    try {
-                        withContext(Dispatchers.Main) {
-                            it.setText("Validating script...");
-                            it.setProgress(0.25);
-                        }
+                    val tempDescriptor = SourcePluginDescriptor(config);
+                    val plugin = JSClient(context, tempDescriptor, null, script);
+                    plugin.validate();
 
-                        val tempDescriptor = SourcePluginDescriptor(config);
-                        val plugin = JSClient(context, tempDescriptor, null, script);
-                        plugin.validate();
+                    withContext(Dispatchers.Main) {
+                        UIDialogs.toast(context, "Downloading Icon...");
+                    }
 
-                        withContext(Dispatchers.Main) {
-                            it.setText("Downloading Icon...");
-                            it.setProgress(0.5);
-                        }
+                    val icon = config.absoluteIconUrl?.let { absIconUrl ->
+                        val iconResp = client.get(absIconUrl);
+                        if(iconResp.isOk)
+                            return@let iconResp.body?.byteStream()?.use { it.readBytes() };
+                        iconResp.close();
+                        return@let null;
+                    }
 
-                        val icon = config.absoluteIconUrl?.let { absIconUrl ->
-                            val iconResp = client.get(absIconUrl);
-                            if(iconResp.isOk)
-                                return@let iconResp.body?.byteStream()?.use { it.readBytes() };
-                            iconResp.close();
-                            return@let null;
-                        }
+                    withContext(Dispatchers.Main) {
+                        UIDialogs.toast(context, "Saving plugin...");
+                    }
 
-                        withContext(Dispatchers.Main) {
-                            it.setText("Saving plugin...");
-                            it.setProgress(0.75);
-                        }
+                    val installEx = StatePlugins.instance.createPlugin(config, script, icon, reinstall);
+                    if(installEx != null)
+                        throw installEx;
 
-                        val installEx = StatePlugins.instance.createPlugin(config, script, icon, reinstall);
-                        if(installEx != null)
-                            throw installEx;
+                    withContext(Dispatchers.Main) {
+                        UIDialogs.toast(context, "Reloading available plugins...");
+                    }
+                    StatePlatform.instance.updateAvailableClients(context);
 
-                        withContext(Dispatchers.Main) {
-                            it.setText("Reloading available plugins...");
-                            it.setProgress(0.9);
-                        }
-                        StatePlatform.instance.updateAvailableClients(context);
-
-                        withContext(Dispatchers.Main) {
-                            it.setText("Plugin created!");
-                            it.setProgress(1.0);
-                            it.dismiss();
-
-                            UIDialogs.toast(context, "Plugin ${config.name} installed");
-                            handler?.invoke(true);
-                        }
-                    } catch (ex: Exception) {
-                        Logger.e(TAG, ex.message ?: "null", ex);
-                        withContext(Dispatchers.Main) {
-                            it.dismiss();
-                            UIDialogs.showDialogOk(
-                                context,
-                                R.drawable.ic_error,
-                                "Failed to install due to:\n${ex.message}"
-                            ) {
-                                handler?.invoke(false);
-                            }
+                    withContext(Dispatchers.Main) {
+                        UIDialogs.toast(context, "Plugin ${config.name} installed");
+                        handler?.invoke(true);
+                    }
+                } catch (ex: Exception) {
+                    Logger.e(TAG, ex.message ?: "null", ex);
+                    withContext(Dispatchers.Main) {
+                        UIDialogs.showDialogOk(
+                            context,
+                            android.R.drawable.ic_dialog_alert,
+                            "Failed to install due to:\n${ex.message}"
+                        ) {
+                            handler?.invoke(false);
                         }
                     }
-                };
+                }
             };
         }
         fun verifyCanInstall() {
             val installed = StatePlatform.instance.getClientOrNull(config.id);
             if(installed != null)
-                UIDialogs.showDialog(context, R.drawable.ic_security_pred,
+                UIDialogs.showDialog(context, android.R.drawable.ic_dialog_info,
                     "A plugin with this id already exists named:\n" +
                             "${installed.name}\n[${config.id}]\n\n" +
                             "Would you like to reinstall it?", null, null,
                     1,
-                    UIDialogs.Action("Reinstall", { doInstall(true) }, UIDialogs.ActionStyle.DANGEROUS_TEXT),
-                    UIDialogs.Action("Cancel", { handler?.invoke(false); }, UIDialogs.ActionStyle.DANGEROUS)
+                    UIDialogs.Action("Reinstall", { doInstall(true) }, UIDialogs.ActionStyle.PRIMARY),
+                    UIDialogs.Action("Cancel", { handler?.invoke(false); }, UIDialogs.ActionStyle.NEGATIVE)
                 );
             else
                 doInstall(false);
         }
 
         if(!warnings.isEmpty()) {
-            UIDialogs.showDialog(context, R.drawable.ic_security_pred,
+            UIDialogs.showDialog(context, android.R.drawable.ic_dialog_info,
                 "You are trying to install a plugin (${config.name}) with security vunerabilities.\n" +
                         "Are you sure you want to install it", null,
                     warnings.map { "${it.first}:\n${it.second}\n" }.joinToString("\n"),
                 1,
-                UIDialogs.Action("Install Anyway", { verifyCanInstall() }, UIDialogs.ActionStyle.DANGEROUS_TEXT),
-                UIDialogs.Action("Cancel", { }, UIDialogs.ActionStyle.DANGEROUS));
+                UIDialogs.Action("Install Anyway", { verifyCanInstall() }, UIDialogs.ActionStyle.PRIMARY),
+                UIDialogs.Action("Cancel", { }, UIDialogs.ActionStyle.NEGATIVE));
         }
         else verifyCanInstall();
     }

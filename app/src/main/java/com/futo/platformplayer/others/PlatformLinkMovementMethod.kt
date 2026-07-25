@@ -1,141 +1,24 @@
 package com.futo.platformplayer.others
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.text.Spannable
 import android.text.method.LinkMovementMethod
-import android.text.style.URLSpan
-import android.view.MotionEvent
+import android.view.View
 import android.widget.TextView
-import androidx.lifecycle.lifecycleScope
-import com.futo.platformplayer.activities.MainActivity
-import com.futo.platformplayer.logging.Logger
-import com.futo.platformplayer.receivers.MediaControlReceiver
-import com.futo.platformplayer.timestampRegex
-import com.futo.platformplayer.views.behavior.NonScrollingTextView
-import com.futo.platformplayer.views.behavior.NonScrollingTextView.Companion
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-class PlatformLinkMovementMethod(private val _context: Context) : LinkMovementMethod() {
-
-    private var pressedLinks: Array<URLSpan>? = null
-    private var linkPressed = false
-    private var downX = 0f
-    private var downY = 0f
-    private val touchSlop = 20
-
-    override fun onTouchEvent(widget: TextView, buffer: Spannable, event: MotionEvent): Boolean {
-        val action = event.actionMasked
-
-        when (action) {
-            MotionEvent.ACTION_DOWN -> {
-                val links = findLinksAtTouchPosition(widget, buffer, event)
-                if (links.isNotEmpty()) {
-                    pressedLinks = links
-                    linkPressed = true
-                    downX = event.x
-                    downY = event.y
-                    widget.parent?.requestDisallowInterceptTouchEvent(true)
-                    return true
-                } else {
-                    linkPressed = false
-                    pressedLinks = null
-                }
-            }
-
-            MotionEvent.ACTION_MOVE -> {
-                if (linkPressed) {
-                    val dx = event.x - downX
-                    val dy = event.y - downY
-                    if (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop) {
-                        linkPressed = false
-                        pressedLinks = null
-                        widget.parent?.requestDisallowInterceptTouchEvent(false)
-                        return false
-                    }
-                    return true
-                }
-            }
-
-            MotionEvent.ACTION_UP -> {
-                if (linkPressed && pressedLinks != null) {
-                    val dx = event.x - downX
-                    val dy = event.y - downY
-                    if (Math.abs(dx) <= touchSlop && Math.abs(dy) <= touchSlop && isTouchInside(widget, event)) {
-                    for (link in pressedLinks!!) {
-                        Logger.i(TAG) { "Link clicked '${link.url}'." }
-
-                        val c = _context
-                        if (c is MainActivity) {
-                            c.lifecycleScope.launch(Dispatchers.IO) {
-                                if (c.handleUrl(link.url)) {
-                                    return@launch
-                                }
-                                if (timestampRegex.matches(link.url)) {
-                                    val tokens = link.url.split(':')
-                                    var time_s = -1L
-                                    when (tokens.size) {
-                                        2 -> time_s = tokens[0].toLong() * 60 + tokens[1].toLong()
-                                        3 -> time_s = tokens[0].toLong() * 3600 +
-                                                tokens[1].toLong() * 60 +
-                                                tokens[2].toLong()
-                                    }
-
-                                    if (time_s != -1L) {
-                                        withContext(Dispatchers.Main) {
-                                            MediaControlReceiver.onSeekToReceived.emit(time_s * 1000)
-                                        }
-                                        return@launch
-                                    }
-                                }
-
-                                withContext(Dispatchers.Main) {
-                                    try {
-                                        c.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.url)))
-                                    } catch (e: Throwable) {
-                                        Logger.i(TAG, "Failed to start activity.", e)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                        pressedLinks = null
-                        linkPressed = false
-                        return true
-                    } else {
-                        pressedLinks = null
-                        linkPressed = false
-                    }
-                }
-            }
-
-            MotionEvent.ACTION_CANCEL -> {
-                linkPressed = false
-                pressedLinks = null
+/**
+ * Stub for PlatformLinkMovementMethod.
+ * The original PlatformLinkMovementMethod was a custom TextView movement method.
+ * It has been removed during the Compose migration.
+ */
+class PlatformLinkMovementMethod(context: Context) : LinkMovementMethod() {
+    companion object {
+        @Volatile
+        private var _instance: PlatformLinkMovementMethod? = null
+        
+        fun getInstance(context: Context): PlatformLinkMovementMethod {
+            return _instance ?: synchronized(this) {
+                _instance ?: PlatformLinkMovementMethod(context).also { _instance = it }
             }
         }
-
-        return false
-    }
-
-    private fun findLinksAtTouchPosition(widget: TextView, buffer: Spannable, event: MotionEvent): Array<URLSpan> {
-        val x = (event.x - widget.totalPaddingLeft + widget.scrollX).toInt()
-        val y = (event.y - widget.totalPaddingTop + widget.scrollY).toInt()
-
-        val layout = widget.layout ?: return emptyArray()
-        val line = layout.getLineForVertical(y)
-        val off = layout.getOffsetForHorizontal(line, x.toFloat())
-        return buffer.getSpans(off, off, URLSpan::class.java)
-    }
-
-    private fun isTouchInside(widget: TextView, event: MotionEvent): Boolean {
-        return event.x >= 0 && event.x <= widget.width && event.y >= 0 && event.y <= widget.height
-    }
-
-    companion object {
-        const val TAG = "PlatformLinkMovementMethod"
     }
 }

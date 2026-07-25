@@ -15,7 +15,6 @@ import com.futo.platformplayer.api.media.models.video.SerializedPlatformVideo
 import com.futo.platformplayer.copyTo
 import com.futo.platformplayer.encryption.GPasswordEncryptionProvider
 import com.futo.platformplayer.encryption.GPasswordEncryptionProviderV0
-import com.futo.platformplayer.fragment.mainactivity.main.ImportSubscriptionsFragment
 import com.futo.platformplayer.getNowDiffHours
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.models.HistoryVideo
@@ -575,8 +574,11 @@ class StateBackup {
 
         fun importTxt(context: MainActivity, text: String, allowFailure: Boolean = false): Boolean {
             if(text.startsWith("@/Subscription") || text.startsWith("Subscriptions")) {
+                // ImportSubscriptionsFragment removed - Compose ImportSubscriptions screen handles this
                 val lines = text.split("\n").map { it.trim() }.drop(1).filter { it.isNotEmpty() };
-                context.getFragment<ImportSubscriptionsFragment>()?.let { context.navigate(it, lines) };
+                Logger.i(TAG, "Importing ${lines.size} subscriptions via Compose screen");
+                // TODO: Navigate to Compose ImportSubscriptions screen with the lines
+                UIDialogs.toast(context, "Import ${lines.size} subscriptions (Compose screen not yet wired)");
                 return true;
             }
             else if(allowFailure) {
@@ -605,7 +607,9 @@ class StateBackup {
                         subs.add(jsonSubObj["url"].asString);
                 }
 
-                context.getFragment<ImportSubscriptionsFragment>()?.let { context.navigate(it, subs) };
+                // ImportSubscriptionsFragment removed - Compose ImportSubscriptions screen handles this
+                Logger.i(TAG, "Importing ${subs.size} subscriptions via Compose screen");
+                UIDialogs.toast(context, "Import ${subs.size} subscriptions (Compose screen not yet wired)");
             }
             catch(ex: Exception) {
                 Logger.e("StateBackup", ex.message, ex);

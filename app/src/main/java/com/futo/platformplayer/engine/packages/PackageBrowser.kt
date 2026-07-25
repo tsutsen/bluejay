@@ -23,7 +23,6 @@ import com.caoccao.javet.values.reference.V8ValueFunction
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.futo.platformplayer.engine.V8Plugin
-import com.futo.platformplayer.fragment.mainactivity.main.BrowserFragment
 import com.futo.platformplayer.logging.Logger
 import com.futo.platformplayer.states.StateApp
 import com.futo.platformplayer.states.StateDeveloper

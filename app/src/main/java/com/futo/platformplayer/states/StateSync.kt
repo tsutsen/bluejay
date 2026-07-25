@@ -5,7 +5,7 @@ import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.activities.MainActivity
-import com.futo.platformplayer.activities.SyncShowPairingCodeActivity
+
 import com.futo.platformplayer.api.media.Serializer
 import com.futo.platformplayer.constructs.Event1
 import com.futo.platformplayer.constructs.Event2
@@ -97,12 +97,12 @@ class StateSync {
                         UIDialogs.showConfirmationDialog(
                             context,
                             "Device Unauthorized: ${sess.displayName}",
-                            action = {
+                            onConfirm = {
                                 Logger.i(TAG, "${sess.remotePublicKey} unauthorized received")
                                 removeAuthorizedDevice(sess.remotePublicKey)
                                 deviceRemoved.emit(sess.remotePublicKey)
                             },
-                            cancelAction = {}
+                            onCancel = {}
                         )
                     } catch (e: Throwable) {
                         Logger.e(TAG, "Failed to show unauthorized dialog.", e)
@@ -127,14 +127,13 @@ class StateSync {
             }
             authorizePrompt = { remotePublicKey, callback ->
                 val scope = StateApp.instance.scopeOrNull
-                val activity = SyncShowPairingCodeActivity.activity
-
-                if (scope != null && activity != null) {
+                if (scope != null) {
                     scope.launch(Dispatchers.Main) {
                         try {
                             UIDialogs.showConfirmationDialog(
-                                activity, "Allow connection from $remotePublicKey?",
-                                action = {
+                                StateApp.instance.contextOrNull?.takeIf { it != null }?.let { it } ?: run { callback(false); return@launch },
+                                "Allow connection from $remotePublicKey?",
+                                onConfirm = {
                                     scope.launch(Dispatchers.IO) {
                                         try {
                                             callback(true)
@@ -142,14 +141,12 @@ class StateSync {
                                                 TAG,
                                                 "Connection authorized for $remotePublicKey by confirmation"
                                             )
-
-                                            activity.finish()
                                         } catch (e: Throwable) {
                                             Logger.e(TAG, "Failed to send authorize", e)
                                         }
                                     }
                                 },
-                                cancelAction = {
+                                onCancel = {
                                     scope.launch(Dispatchers.IO) {
                                         try {
                                             callback(false)
@@ -166,7 +163,7 @@ class StateSync {
                     }
                 } else {
                     callback(false)
-                    Logger.i(TAG, "Connection unauthorized for $remotePublicKey because not authorized and not on pairing activity to ask")
+                    Logger.i(TAG, "Connection unauthorized for $remotePublicKey because scope is null")
                 }
             }
         }
@@ -176,14 +173,16 @@ class StateSync {
 
     fun confirmStarted(context: Context, onStarted: () -> Unit, onNotStarted: () -> Unit) {
         if (syncService == null) {
-            UIDialogs.showConfirmationDialog(context, "Sync has not been enabled yet, would you like to enable sync?", {
-                Settings.instance.synchronization.enabled = true
-                start(context)
-                Settings.instance.save()
-                onStarted.invoke()
-            }, {
-                onNotStarted.invoke()
-            })
+            UIDialogs.showConfirmationDialog(context, "Sync has not been enabled yet, would you like to enable sync?",
+                onConfirm = {
+                    Settings.instance.synchronization.enabled = true
+                    start(context)
+                    Settings.instance.save()
+                    onStarted.invoke()
+                },
+                onCancel = {
+                    onNotStarted.invoke()
+                })
         } else {
             onStarted.invoke()
         }

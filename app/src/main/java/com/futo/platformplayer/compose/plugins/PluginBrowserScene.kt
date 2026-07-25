@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.futo.platformplayer.activities.LoginActivity
+import com.futo.platformplayer.auth.LoginDialog
 import com.futo.platformplayer.api.http.ManagedHttpClient
 import com.futo.platformplayer.api.media.IPlatformClient
 import com.futo.platformplayer.api.media.platforms.js.JSClient
@@ -362,7 +362,7 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
                                 onClick = {
                                     Logger.i(TAG, "Opening login activity for: ${config!!.name} (id: ${config!!.id})")
                                     try {
-                                        LoginActivity.showLogin(context, config!!) { auth ->
+                                        LoginDialog.showLogin(config!!) { auth ->
                                             if (auth != null) {
                                                 Logger.i(TAG, "Login successful, saving auth for ${config!!.name}")
                                                 Logger.i(TAG, "Auth cookieMap size: ${auth.cookieMap?.size}, headers size: ${auth.headers?.size}")

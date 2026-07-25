@@ -132,7 +132,7 @@ object UpdateInstaller {
             } else {
                 Logger.w(TAG, "Update install failed: $result")
                 UpdateNotificationManager.showInstallFailedNotification(context, version, apkFile, result)
-                UIDialogs.showGeneralErrorDialog(context, "Install failed due to:\n$result")
+                UIDialogs.showGeneralErrorDialog(context, "Install failed due to:\n$result", IllegalStateException("Install failed"))
                 StateUpdate.instance.setUiReady(version, apkFile)
             }
         } catch (e: Throwable) {

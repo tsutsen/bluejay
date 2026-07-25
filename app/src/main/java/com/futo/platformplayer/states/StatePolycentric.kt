@@ -6,7 +6,6 @@ import android.util.Log
 import com.futo.platformplayer.R
 import com.futo.platformplayer.Settings
 import com.futo.platformplayer.UIDialogs
-import com.futo.platformplayer.activities.PolycentricHomeActivity
 import com.futo.platformplayer.api.media.PlatformID
 import com.futo.platformplayer.api.media.models.PlatformAuthorLink
 import com.futo.platformplayer.api.media.models.comments.IPlatformComment
@@ -226,12 +225,12 @@ class StatePolycentric {
         if (p == null) {
             Logger.i(TAG, "requireLogin preventPictureInPicture.emit()");
             StateApp.instance.preventPictureInPicture.emit();
-            UIDialogs.showDialog(context, R.drawable.ic_login,
+            UIDialogs.showDialog(context, android.R.drawable.ic_dialog_info,
                 text, null, null,
                 1,
-                UIDialogs.Action("Cancel", { }, UIDialogs.ActionStyle.ACCENT),
+                UIDialogs.Action("Cancel", { }, UIDialogs.ActionStyle.NEGATIVE),
                 UIDialogs.Action("OK", {
-                    context.startActivity(Intent(context, PolycentricHomeActivity::class.java));
+                    UIDialogs.toast(context, "Polycentric home activity not yet migrated to Compose");
                 }, UIDialogs.ActionStyle.PRIMARY)
             );
         } else {
