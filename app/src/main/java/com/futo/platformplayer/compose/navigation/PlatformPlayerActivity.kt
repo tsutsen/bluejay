@@ -58,6 +58,7 @@ import com.futo.platformplayer.api.media.models.post.IPlatformPost
 import com.futo.platformplayer.api.media.models.video.IPlatformVideo
 import com.futo.platformplayer.api.media.platforms.js.models.JSWeb
 import com.futo.platformplayer.api.media.structures.IRefreshPager
+import com.futo.platformplayer.compose.home.HomeScreen
 import com.futo.platformplayer.api.media.structures.ReusableRefreshPager
 import com.futo.platformplayer.compose.feed.FeedItem
 import com.futo.platformplayer.compose.feed.FeedScreen
@@ -342,88 +343,7 @@ private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): Nav
 
 @Composable
 private fun HomeScene(navigator: GrayjayNavigator) {
-    var uiState by remember { mutableStateOf(FeedUiState(isLoading = true)) }
-    var pager by remember { mutableStateOf<com.futo.platformplayer.api.media.structures.ReusableRefreshPager<com.futo.platformplayer.api.media.models.contents.IPlatformContent>?>(null) }
-    var items by remember { mutableStateOf<List<com.futo.platformplayer.compose.feed.FeedItem>>(emptyList()) }
-    var contentList by remember { mutableStateOf<List<com.futo.platformplayer.api.media.models.contents.IPlatformContent>>(emptyList()) }
-
-    val scope = rememberCoroutineScope()
-    DisposableEffect(Unit) {
-        val job = scope.launch {
-            try {
-                Log.d("HomeScene", "Loading feed...")
-                val p = com.futo.platformplayer.states.StatePlatform.instance.getHomeRefresh(this)
-                Log.d("HomeScene", "Got pager: $p")
-                if (p is com.futo.platformplayer.api.media.structures.IRefreshPager) {
-                    val rp = com.futo.platformplayer.api.media.structures.ReusableRefreshPager(p)
-                    pager = rp
-                    rp.nextPage()
-                    val loaded = rp.getResults()
-                    Log.d("HomeScene", "Loaded ${loaded.size} items")
-                    val feedItems = loaded.map { toFeedItem(it) }
-                    contentList = loaded
-                    items = feedItems
-                    uiState = FeedUiState(isLoading = false, items = feedItems)
-                } else {
-                    Log.w("HomeScene", "No refreshable pager: ${p?.javaClass}")
-                    uiState = FeedUiState(isLoading = false, items = emptyList())
-                }
-            } catch (e: Exception) {
-                Log.e("HomeScene", "Error loading feed", e)
-                uiState = uiState.copy(isLoading = false, error = e.message)
-            }
-        }
-        onDispose { job.cancel() }
-    }
-
-    FeedScreen(
-        state = uiState,
-        onRefresh = {
-            pager?.let { p ->
-                p.nextPage()
-                val loaded = p.getResults()
-                val feedItems = loaded.map { toFeedItem(it) }
-                contentList = loaded
-                items = feedItems
-                uiState = uiState.copy(items = feedItems)
-            }
-        },
-        onLoadMore = {
-            pager?.let { p ->
-                if (p.hasMorePages()) {
-                    p.nextPage()
-                    val loaded = p.getResults()
-                    val feedItems = loaded.map { toFeedItem(it) }
-                    contentList = loaded
-                    items = feedItems
-                    uiState = uiState.copy(items = feedItems)
-                }
-            }
-        },
-        onItemClicked = { id ->
-            val content = contentList.find { it.id?.value == id }
-            when (content) {
-                is IPlatformVideo -> {
-                    navigator.navigateToVideo(content.url)
-                }
-                is IPlatformPlaylist -> {
-                    navigator.navigateToPlaylist(content.url)
-                }
-                is IPlatformPost -> {
-                    navigator.navigateToPost(content.url)
-                }
-                is IPlatformArticle -> {
-                    navigator.navigateToArticle(content.url)
-                }
-                is JSWeb -> {
-                    navigator.navigateToWeb(content.url)
-                }
-            }
-        },
-        onSortChanged = {},
-        onTagClicked = {},
-        modifier = Modifier.fillMaxSize()
-    )
+    HomeScreen(navigator = navigator)
 }
 
 @Composable private fun SubscriptionsScene(n: GrayjayNavigator) = placeholder(n, "Subscriptions")
@@ -557,22 +477,6 @@ private fun UnknownScene(key: NavKey) {
     placeholder(GrayjayNavigator(rememberGrayjayNavigationState()), "Unknown Route", key.toString())
 }
 
-
-// ==================== Helper Functions ====================
-
-private fun toFeedItem(content: com.futo.platformplayer.api.media.models.contents.IPlatformContent): com.futo.platformplayer.compose.feed.FeedItem {
-    val thumbnailUrl = when (content) {
-        is com.futo.platformplayer.api.media.models.video.IPlatformVideo -> content.thumbnails.getHQThumbnail()
-        else -> null
-    }
-    return com.futo.platformplayer.compose.feed.FeedItem(
-        id = content.id?.value ?: "",
-        title = content.name ?: "",
-        subtitle = content.author?.name,
-        thumbnailUrl = thumbnailUrl,
-        timestamp = null
-    )
-}
 
 // ==================== Reusable Placeholder ====================
 
