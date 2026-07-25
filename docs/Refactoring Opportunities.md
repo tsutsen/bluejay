@@ -449,41 +449,42 @@ Logger.d(
 
 ## Refactoring Priority Matrix
 
-| Refactor | Effort | Impact | Priority |
-|----------|--------|--------|----------|
-| **State Management** (Singleton → ViewModel) | High | High | **HIGH** |
-| **UI State** (Multiple variables → Single UiState) | Medium | High | **HIGH** |
-| **Loading/Empty States** (Reusable LoadingContent) | Low | High | **HIGH** |
-| **Navigation** (Keep navigation3, enhance structure) | Low | Low | **LOW** |
-| **Activity** (FragmentActivity → ComponentActivity) | Low | Medium | **MEDIUM** |
-| **Repository Pattern** (Leverage more) | Low | Low | **LOW** |
-| **Logging** (Log.d → Logger) | Low | Low | **LOW** |
+| Refactor | Effort | Impact | Priority | Status |
+|----------|--------|--------|----------|--------|  
+| **State Management** (Singleton → ViewModel) | High | High | **HIGH** | 🟡 Partial (Home done) |
+| **UI State** (Multiple variables → Single UiState) | Medium | High | **HIGH** | 🟡 Partial (Home done) |
+| **Loading/Empty States** (Reusable LoadingContent) | Low | High | **HIGH** | ✅ Done |
+| **Navigation** (Keep navigation3, enhance structure) | Low | Low | **LOW** | ✅ Done |
+| **Activity** (FragmentActivity → ComponentActivity) | Low | Medium | **MEDIUM** | ✅ Done |
+| **Repository Pattern** (Leverage more) | Low | Low | **LOW** | ✅ Done |
+| **Logging** (Log.d → Logger) | Low | Low | **LOW** | ✅ Done |
 
 ---
 
 ## Recommended Refactoring Order
 
-### Phase 1: Foundation (Week 1-2)
-1. **Create LoadingContent utility** (reuse from architecture-samples)
-2. **Refactor HomeScene** to use ViewModel + StateFlow + LoadingContent
-3. **Create HomeViewModel** with proper state management
-4. **Apply pattern to 2-3 more screens** (Settings, Search, Library)
+### ✅ Completed (Phase 1-2)
+1. **Create LoadingContent utility** ✅
+2. **Refactor HomeScene** to use ViewModel + StateFlow + LoadingContent ✅
+3. **Create HomeViewModel** with proper state management ✅
+4. **Migrate PlatformPlayerActivity** to ComponentActivity + @AndroidEntryPoint ✅
+5. **Replace Log.d/w/e with Logger** in compose modules ✅
+6. **Keep navigation3** (confirmed as optimal choice) ✅
 
-### Phase 2: State Management (Week 3-4)
-1. **Migrate remaining State* singletons** to ViewModels
+### 🟡 In Progress (Phase 3)
+1. **Apply HomeViewModel pattern** to remaining screens:
+   - SettingsScreen
+   - SearchScreen
+   - LibraryScreen
+   - SubscriptionsScreen
+
+### 📋 Pending (Phase 4)
+1. **Migrate remaining State* singletons** to ViewModels:
+   - StatePlayer → PlayerViewModel
+   - StateSubscriptions → SubscriptionsViewModel
+   - StateDownloads → DownloadsViewModel
+   - StatePlaylists → PlaylistsViewModel
 2. **Create UI state data classes** for all screens
-3. **Apply LoadingContent** to all screens
-4. **Remove DisposableEffect** patterns in favor of ViewModel lifecycle
-
-### Phase 3: Polish (Week 5-6)
-1. **Extract GrayjayNavigationActions** class from GrayjayNavigator
-2. **Update composables** to use NavigationActions
-3. **Add unit tests** for navigation logic
-4. **Test deep linking** and back stack behavior
-
-### Phase 4: Polish (Week 7-8)
-1. **Refactor PlatformPlayerActivity** to ComponentActivity
-2. **Add Hilt navigation** for ViewModel injection
 3. **Add unit tests** for ViewModels
 4. **Add navigation tests** using NavTestRule
 
@@ -657,17 +658,19 @@ class HomeScreenTest {
 
 ## Migration Checklist
 
-- [ ] Create `LoadingContent.kt` utility
-- [ ] Create `Async.kt` sealed class
-- [ ] Create `HomeViewModel` with StateFlow
-- [ ] Refactor `HomeScreen` to use ViewModel
+- [x] Create `LoadingContent.kt` utility
+- [x] Create `HomeViewModel` with StateFlow
+- [x] Refactor `HomeScreen` to use ViewModel
+- [x] Migrate `PlatformPlayerActivity` to ComponentActivity + @AndroidEntryPoint
+- [x] Replace Log.d/w/e with Logger in compose modules
+- [x] Keep navigation3 (confirmed as optimal choice)
 - [ ] Apply pattern to `SearchScreen`
 - [ ] Apply pattern to `LibraryScreen`
 - [ ] Apply pattern to `SettingsScreen`
-- [ ] Create `GrayjayNavigationActions` class
-- [ ] Migrate NavHost to standard Compose Navigation
-- [ ] Refactor `PlatformPlayerActivity` to ComponentActivity
-- [ ] Add Hilt navigation
+- [ ] Apply pattern to `SubscriptionsScreen`
+- [ ] Migrate StatePlayer → PlayerViewModel
+- [ ] Migrate StateSubscriptions → SubscriptionsViewModel
+- [ ] Migrate StateDownloads → DownloadsViewModel
+- [ ] Migrate StatePlaylists → PlaylistsViewModel
 - [ ] Add unit tests for ViewModels
 - [ ] Add navigation tests
-- [ ] Update documentation
