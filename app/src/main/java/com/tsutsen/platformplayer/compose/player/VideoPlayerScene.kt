@@ -82,8 +82,8 @@ import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoUrlSour
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlRangeSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlRangeSource
-import com.tsutsen.platformplayer.compose.navigation.GrayjayNavigator
-import com.tsutsen.platformplayer.compose.navigation.VideoDetail
+import com.tsutsen.platformplayer.core.navigation.NavDestination
+import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.helpers.VideoHelper
 import com.tsutsen.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
@@ -94,7 +94,7 @@ import kotlinx.coroutines.withContext
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
+fun VideoPlayerScene(d: NavDestination.VideoDetail, n: Navigator) {
     val context = LocalContext.current
     var videoDetails by remember { mutableStateOf<IPlatformVideoDetails?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -320,7 +320,7 @@ fun VideoPlayerScene(d: VideoDetail, n: GrayjayNavigator) {
 private fun VideoPlayerView(
     exoPlayer: ExoPlayer,
     video: IPlatformVideoDetails,
-    n: GrayjayNavigator
+    n: Navigator
 ) {
     val context = LocalContext.current
     var swipeTriggered by remember { mutableStateOf(0f) }
