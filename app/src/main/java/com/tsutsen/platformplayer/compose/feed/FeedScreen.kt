@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.model.VideoCard
 
 /**
  * Feed screen composable.
@@ -123,4 +124,17 @@ data class FeedItem(
     val subtitle: String? = null,
     val thumbnailUrl: String? = null,
     val timestamp: String? = null
-)
+) {
+    /**
+     * Convert FeedItem to VideoCard for use with VideoContainer.
+     */
+    fun toVideoCard(): VideoCard {
+        return VideoCard(
+            id = id,
+            title = title,
+            thumbnailUrl = thumbnailUrl,
+            author = subtitle,
+            url = ""
+        )
+    }
+}

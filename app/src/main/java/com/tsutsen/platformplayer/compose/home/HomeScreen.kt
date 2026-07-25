@@ -18,17 +18,16 @@ package com.tsutsen.platformplayer.compose.home
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,10 +40,13 @@ import com.tsutsen.platformplayer.api.media.models.playlists.IPlatformPlaylist
 import com.tsutsen.platformplayer.api.media.models.post.IPlatformPost
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.platforms.js.models.JSWeb
-import com.tsutsen.platformplayer.compose.feed.FeedItemCard
+import com.tsutsen.platformplayer.compose.feed.FeedItem
 import com.tsutsen.platformplayer.compose.navigation.GrayjayNavigator
 import com.tsutsen.platformplayer.compose.util.LoadingContent
 import com.tsutsen.platformplayer.compose.util.EmptyState
+import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
+import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
+import com.tsutsen.platformplayer.core.model.VideoCard
 
 /**
  * Home screen composable using ViewModel + StateFlow pattern.
@@ -138,39 +140,36 @@ private fun ErrorState(
 }
 
 /**
- * Feed content with load-more detection.
+ * Feed content using VideoContainer.
  */
 @Composable
 private fun FeedContent(
-    items: List<com.tsutsen.platformplayer.compose.feed.FeedItem>,
+    items: List<FeedItem>,
     contentList: List<IPlatformContent>,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onItemClicked: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
+    val cards: List<VideoCard> = items.map { it.toVideoCard() }
     
-    // Detect scroll to bottom for load-more
-    LaunchedEffect(listState.isScrollInProgress, listState.layoutInfo) {
-        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-        if (lastVisible?.index == listState.layoutInfo.totalItemsCount - 1 &&
-            listState.layoutInfo.totalItemsCount > 0
-        ) {
-            onLoadMore()
-        }
-    }
-    
-    LazyColumn(
-        state = listState,
-        modifier = modifier
-    ) {
-        items(items.size) { index ->
-            FeedItemCard(
-                item = items[index],
-                onClick = { onItemClicked(items[index].id) },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+    VideoContainer(
+        items = cards,
+        layoutMode = LayoutMode.List,
+        onCardClick = { card ->
+            val content = contentList.find { it.id?.value == card.id }
+            if (content != null) {
+                onItemClicked(card.id)
+            }
+        },
+        onEndReached = onLoadMore,
+        modifier = modifier,
+        contentPadding = PaddingValues(8.dp)
+    ) { card ->
+        com.tsutsen.platformplayer.compose.feed.FeedItemCard(
+            item = items.first { it.id == card.id },
+            onClick = { onItemClicked(card.id) },
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,11 +49,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalConfiguration
@@ -63,6 +59,10 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.compose.feed.FeedItemCard
+import com.tsutsen.platformplayer.compose.feed.FeedItem
+import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
+import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
+import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.compose.util.LoadingContent
 import com.tsutsen.platformplayer.compose.util.EmptyState
@@ -185,11 +185,13 @@ private fun SubscriptionsContent(
                 )
 
                 // Video grid
-                SubscriptionsVideoGrid(
+                SubscriptionsVideoContainer(
                     items = state.items,
                     contentList = state.contentList,
                     onItemClicked = onItemClicked,
                     onRefresh = onRefresh,
+                    layoutMode = LayoutMode.Grid,
+                    columns = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -229,11 +231,12 @@ private fun SubscriptionsContent(
             )
 
             // Video feed
-            SubscriptionsVideoFeed(
+            SubscriptionsVideoContainer(
                 items = state.items,
                 contentList = state.contentList,
                 onItemClicked = onItemClicked,
                 onRefresh = onRefresh,
+                layoutMode = LayoutMode.List,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -515,89 +518,47 @@ private fun SubscriptionFilterBadges(
 // ==================== Video Feed / Grid ====================
 
 /**
- * Video feed for portrait layout (single column LazyColumn).
+ * Unified video container for subscriptions using VideoContainer.
  */
 @Composable
-private fun SubscriptionsVideoFeed(
-    items: List<com.tsutsen.platformplayer.compose.feed.FeedItem>,
+private fun SubscriptionsVideoContainer(
+    items: List<FeedItem>,
     contentList: List<com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent>,
     onItemClicked: (com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent) -> Unit,
     onRefresh: () -> Unit,
+    layoutMode: LayoutMode,
+    columns: Int = 3,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
+    val cards: List<VideoCard> = items.map { it.toVideoCard() }
 
-    // Detect scroll to bottom for load-more
-    LaunchedEffect(listState.isScrollInProgress, listState.layoutInfo) {
-        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-        if (lastVisible?.index == listState.layoutInfo.totalItemsCount - 1 &&
-            listState.layoutInfo.totalItemsCount > 0
-        ) {
-            onRefresh()
-        }
-    }
-
-    if (items.isEmpty()) {
+    if (cards.isEmpty()) {
         EmptyState(
             message = "No videos from selected creator",
             modifier = modifier.fillMaxSize()
         )
     } else {
-        LazyColumn(
-            state = listState,
-            modifier = modifier.fillMaxWidth()
-        ) {
-            items(items.size) { index ->
-                FeedItemCard(
-                    item = items[index],
-                    onClick = {
-                        val content = contentList.find { it.id?.value == items[index].id }
-                        if (content != null) onItemClicked(content)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    }
-}
-
-/**
- * Video grid for landscape layout (3-column LazyVerticalGrid).
- */
-@Composable
-private fun SubscriptionsVideoGrid(
-    items: List<com.tsutsen.platformplayer.compose.feed.FeedItem>,
-    contentList: List<com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent>,
-    onItemClicked: (com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent) -> Unit,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val gridState = rememberLazyGridState()
-
-    if (items.isEmpty()) {
-        EmptyState(
-            message = "No videos from selected creator",
-            modifier = modifier.fillMaxSize()
-        )
-    } else {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            state = gridState,
-            modifier = modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)
-        ) {
-            items(items.size) { index ->
-                FeedItemCard(
-                    item = items[index],
-                    onClick = {
-                        val content = contentList.find { it.id?.value == items[index].id }
-                        if (content != null) onItemClicked(content)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+        VideoContainer(
+            items = cards,
+            layoutMode = layoutMode,
+            columns = columns,
+            onCardClick = { card ->
+                val content = contentList.find { it.id?.value == card.id }
+                if (content != null) onItemClicked(content)
+            },
+            onEndReached = onRefresh,
+            modifier = modifier,
+            contentPadding = PaddingValues(8.dp)
+        ) { card ->
+            val item = items.first { it.id == card.id }
+            FeedItemCard(
+                item = item,
+                onClick = {
+                    val content = contentList.find { it.id?.value == card.id }
+                    if (content != null) onItemClicked(content)
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
