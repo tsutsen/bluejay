@@ -187,16 +187,27 @@ private fun SubscriptionsContent(
                 )
 
                 // Video grid
-                SubscriptionsVideoContainer(
+                VideoContainer(
                     items = state.items,
-                    contentList = state.contentList,
-                    onItemClicked = onItemClicked,
-                    onRefresh = onRefresh,
-                    onLoadMore = onLoadMore,
                     layoutMode = LayoutMode.Grid,
                     columns = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    onCardClick = { card ->
+                        val content = state.contentList.find { it.id?.value == card.id }
+                        if (content != null) onItemClicked(content)
+                    },
+                    onEndReached = onLoadMore,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(8.dp)
+                ) { card ->
+                    VideoCard(
+                        card = card as VideoCard,
+                        onClick = {
+                            val content = state.contentList.find { it.id?.value == card.id }
+                            if (content != null) onItemClicked(content)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             // Creator avatar strip (vertical, right side)
@@ -234,15 +245,26 @@ private fun SubscriptionsContent(
             )
 
             // Video feed
-            SubscriptionsVideoContainer(
+            VideoContainer(
                 items = state.items,
-                contentList = state.contentList,
-                onItemClicked = onItemClicked,
-                onRefresh = onRefresh,
-                onLoadMore = onLoadMore,
                 layoutMode = LayoutMode.List,
-                modifier = Modifier.fillMaxWidth()
-            )
+                onCardClick = { card ->
+                    val content = state.contentList.find { it.id?.value == card.id }
+                    if (content != null) onItemClicked(content)
+                },
+                onEndReached = onLoadMore,
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(8.dp)
+            ) { card ->
+                VideoCard(
+                    card = card as VideoCard,
+                    onClick = {
+                        val content = state.contentList.find { it.id?.value == card.id }
+                        if (content != null) onItemClicked(content)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
@@ -519,50 +541,4 @@ private fun SubscriptionFilterBadges(
     }
 }
 
-// ==================== Video Feed / Grid ====================
 
-/**
- * Unified video container for subscriptions using VideoContainer.
- */
-@Composable
-private fun SubscriptionsVideoContainer(
-    items: List<VideoCard>,
-    contentList: List<com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent>,
-    onItemClicked: (com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent) -> Unit,
-    onRefresh: () -> Unit,
-    onLoadMore: () -> Unit,
-    layoutMode: LayoutMode,
-    columns: Int = 3,
-    modifier: Modifier = Modifier
-) {
-    val cards = items
-
-    if (cards.isEmpty()) {
-        EmptyState(
-            message = "No videos from selected creator",
-            modifier = modifier.fillMaxSize()
-        )
-    } else {
-        VideoContainer(
-            items = cards,
-            layoutMode = layoutMode,
-            columns = columns,
-            onCardClick = { card ->
-                val content = contentList.find { it.id?.value == card.id }
-                if (content != null) onItemClicked(content)
-            },
-            onEndReached = onLoadMore,
-            modifier = modifier,
-            contentPadding = PaddingValues(8.dp)
-        ) { card ->
-            VideoCard(
-                card = card as VideoCard,
-                onClick = {
-                    val content = contentList.find { it.id?.value == card.id }
-                    if (content != null) onItemClicked(content)
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
