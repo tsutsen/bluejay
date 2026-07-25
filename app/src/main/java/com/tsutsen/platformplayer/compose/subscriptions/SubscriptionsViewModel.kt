@@ -12,6 +12,8 @@ import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.structures.IPager
+import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
+import com.tsutsen.platformplayer.api.media.structures.ReusableRefreshPager
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import com.tsutsen.platformplayer.core.model.VideoCard
@@ -64,7 +66,7 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
     private val _uiState = MutableStateFlow<SubscriptionsUiState>(SubscriptionsUiState.Loading)
     val uiState: StateFlow<SubscriptionsUiState> = _uiState.asStateFlow()
 
-    private var feedPager: IPager<IPlatformContent>? = null
+    private var feedPager: ReusableRefreshPager<IPlatformContent>? = null
     private var allContent: List<IPlatformContent> = emptyList()
     private var isLoadingMore = false
 
@@ -121,11 +123,22 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                     viewModelScope,
                     updated = false
                 )
-                feedPager = pager
-                val loaded = pager.getResults()
-                allContent = loaded
-                Logger.i(TAG, "Loaded ${loaded.size} subscription items")
-                applyFilters()
+                
+                if (pager is IRefreshPager<*>) {
+                    val refreshPager = ReusableRefreshPager(pager as IRefreshPager<IPlatformContent>)
+                    feedPager = refreshPager
+                    refreshPager.nextPage()
+                    val loaded = refreshPager.getResults()
+                    allContent = loaded
+                    Logger.i(TAG, "Loaded ${loaded.size} subscription items")
+                    applyFilters()
+                } else {
+                    Logger.w(TAG, "No refreshable pager: ${pager?.javaClass}")
+                    _uiState.value = SubscriptionsUiState.Success(
+                        creators = (_uiState.value as? SubscriptionsUiState.Success)?.creators ?: emptyList(),
+                        isLoading = false
+                    )
+                }
             } catch (e: Exception) {
                 Logger.e(TAG, "Error loading subscription feed", e)
                 _uiState.value = SubscriptionsUiState.Error(e.message ?: "Failed to load subscriptions")
@@ -140,15 +153,16 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             try {
                 Logger.i(TAG, "Refreshing subscription feed...")
-                val currentPager = feedPager
-                if (currentPager != null) {
-                    // Reload by getting fresh pager
-                    val freshPager = StateSubscriptions.instance.getGlobalSubscriptionFeed(
-                        viewModelScope,
-                        updated = true
-                    )
-                    feedPager = freshPager
-                    val loaded = freshPager.getResults()
+                val pager = StateSubscriptions.instance.getGlobalSubscriptionFeed(
+                    viewModelScope,
+                    updated = true
+                )
+                
+                if (pager is IRefreshPager<*>) {
+                    val refreshPager = ReusableRefreshPager(pager as IRefreshPager<IPlatformContent>)
+                    feedPager = refreshPager
+                    refreshPager.nextPage()
+                    val loaded = refreshPager.getResults()
                     allContent = loaded
                     Logger.i(TAG, "Refreshed: ${loaded.size} items")
                     applyFilters()
