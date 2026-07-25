@@ -64,6 +64,9 @@ class MainActivity : ComponentActivity(), IWithResultLauncher {
         StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")
         StateApp.instance.mainAppStarting(this)
         
+        // Set navigator for non-Compose code access
+        StateApp.instance.navigator = navigator
+        
         enableEdgeToEdge()
 
         setContent {

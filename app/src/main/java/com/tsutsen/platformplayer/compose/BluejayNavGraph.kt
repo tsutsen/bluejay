@@ -4,6 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.navigation3.runtime.NavKey
+import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
+import com.tsutsen.platformplayer.auth.LoginScreen
+import com.tsutsen.platformplayer.compose.navigation.Login
 import com.tsutsen.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
@@ -11,6 +15,7 @@ import com.tsutsen.platformplayer.feature.home.impl.HomeScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
 import com.tsutsen.platformplayer.compose.subscriptions.SubscriptionsScreen
 import com.tsutsen.platformplayer.feature.settings.impl.SettingsScreen
+import kotlinx.serialization.json.Json
 
 /**
  * App-level NavHost configuration for Bluejay.
@@ -64,7 +69,16 @@ fun GrayjayNavGraph(
         is NavDestination.LibraryVideos -> PlaceholderScreen("Library Videos", "Coming soon")
         is NavDestination.LibraryFiles -> PlaceholderScreen("Library Files", "Coming soon")
         is NavDestination.LibrarySearch -> PlaceholderScreen("Library Search", "Coming soon")
-        is NavDestination.Login -> PlaceholderScreen("Login", "Coming soon")
+        is NavDestination.Login -> {
+            val config = Json.decodeFromString<SourcePluginConfig>(destination.configJson)
+            LoginScreen(
+                config = config,
+                onLogin = { auth ->
+                    // Auth handled by caller via callback
+                },
+                onBack = { navigator.goBack() }
+            )
+        }
         is NavDestination.Developer -> PlaceholderScreen("Developer", "Coming soon")
         is NavDestination.Tutorial -> PlaceholderScreen("Tutorial", "Coming soon")
         is NavDestination.Buy -> PlaceholderScreen("Buy License", "Coming soon")

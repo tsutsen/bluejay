@@ -84,7 +84,7 @@ class Navigator @Inject constructor() {
     fun navigateToLibrarySearch() = navigate(NavDestination.LibrarySearch)
 
     // Auth & other
-    fun navigateToLogin() = navigate(NavDestination.Login)
+    fun navigateToLogin(configJson: String) = navigate(NavDestination.Login(configJson))
     fun navigateToDeveloper() = navigate(NavDestination.Developer)
     fun navigateToTutorial() = navigate(NavDestination.Tutorial)
     fun navigateToBuy() = navigate(NavDestination.Buy)

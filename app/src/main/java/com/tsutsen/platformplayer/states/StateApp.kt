@@ -269,6 +269,9 @@ class StateApp {
         return null;
     }
 
+    //Navigator
+    var navigator: com.tsutsen.platformplayer.core.navigation.Navigator? = null
+
     private var _mainId: String? = null;
 
     //Files

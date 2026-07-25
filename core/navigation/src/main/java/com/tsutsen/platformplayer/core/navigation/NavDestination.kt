@@ -41,7 +41,7 @@ sealed class NavDestination {
     data object LibrarySearch : NavDestination()
 
     // Auth & other
-    data object Login : NavDestination()
+    data class Login(val configJson: String) : NavDestination()
     data object Developer : NavDestination()
     data object Tutorial : NavDestination()
     data object Buy : NavDestination()
