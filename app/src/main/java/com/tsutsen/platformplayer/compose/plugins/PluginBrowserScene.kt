@@ -79,6 +79,7 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
     if (selectedPluginUrl != null) {
         PluginDetailScene(
             configUrl = selectedPluginUrl!!,
+            installedPlugins = installedPlugins.value,
             onBack = { selectedPluginUrl = null }
         )
         return
@@ -244,7 +245,11 @@ fun PluginCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
+fun PluginDetailScene(
+    configUrl: String,
+    installedPlugins: List<SourcePluginConfig>,
+    onBack: () -> Unit
+) {
     val coroutineScope = rememberCoroutineScope()
     var config by remember { mutableStateOf<SourcePluginConfig?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -253,27 +258,46 @@ fun PluginDetailScene(configUrl: String, onBack: () -> Unit) {
 
     LaunchedEffect(configUrl) {
         try {
-            Logger.i(TAG, "Fetching plugin config from: $configUrl")
-            val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                ManagedHttpClient().get(configUrl)
-            }
-            if (response.isOk && response.body != null) {
-                val configJson = response.body.string()
-                val loadedConfig = SourcePluginConfig.fromJson(configJson)
-                config = loadedConfig
-                Logger.i(TAG, "Loaded config: ${loadedConfig.name}")
+            // Check if plugin is already installed locally
+            val installedConfig = installedPlugins.find { it.sourceUrl == configUrl }
+            
+            if (installedConfig != null) {
+                // Plugin is already installed - use local config directly
+                Logger.i(TAG, "Plugin ${installedConfig.name} is already installed, using local config")
+                config = installedConfig
                 
                 // Check if this plugin is enabled
                 val enabledClients = StatePlatform.instance.getEnabledClients()
-                isEnabled = enabledClients.any { it.id == loadedConfig.id }
+                isEnabled = enabledClients.any { it.id == installedConfig.id }
                 
                 // Check if plugin has auth
-                val descriptor = StatePlugins.instance.getPlugin(loadedConfig.id)
+                val descriptor = StatePlugins.instance.getPlugin(installedConfig.id)
                 val hasAuth = descriptor?.getAuth() != null
-                Logger.i(TAG, "Plugin ${loadedConfig.name} auth status: $hasAuth")
+                Logger.i(TAG, "Plugin ${installedConfig.name} auth status: $hasAuth")
             } else {
-                error = "Failed to load config"
-                Logger.e(TAG, "Failed to load config: ${response.isOk}, ${response.body}")
+                // Plugin not installed locally - fetch from network
+                Logger.i(TAG, "Fetching plugin config from: $configUrl")
+                val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    ManagedHttpClient().get(configUrl)
+                }
+                if (response.isOk && response.body != null) {
+                    val configJson = response.body.string()
+                    val loadedConfig = SourcePluginConfig.fromJson(configJson)
+                    config = loadedConfig
+                    Logger.i(TAG, "Loaded config: ${loadedConfig.name}")
+                    
+                    // Check if this plugin is enabled
+                    val enabledClients = StatePlatform.instance.getEnabledClients()
+                    isEnabled = enabledClients.any { it.id == loadedConfig.id }
+                    
+                    // Check if plugin has auth
+                    val descriptor = StatePlugins.instance.getPlugin(loadedConfig.id)
+                    val hasAuth = descriptor?.getAuth() != null
+                    Logger.i(TAG, "Plugin ${loadedConfig.name} auth status: $hasAuth")
+                } else {
+                    error = "Failed to load config"
+                    Logger.e(TAG, "Failed to load config: ${response.isOk}, ${response.body}")
+                }
             }
             isLoading = false
         } catch (e: Exception) {
