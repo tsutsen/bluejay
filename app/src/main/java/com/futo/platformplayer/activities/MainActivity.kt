@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -55,6 +56,9 @@ class MainActivity : ComponentActivity(), IWithResultLauncher {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Remove the top window title bar
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
         
         // Initialize StateApp and FragmentedStorage before setting content
         StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")

@@ -57,7 +57,7 @@ android {
             applicationId "com.futo.platformplayer.d"
             buildConfigField "boolean", "IS_UNSTABLE_BUILD", "true"
             buildConfigField "boolean", "IS_PLAYSTORE_BUILD", "false"
-            resValue "string", "app_name", "Grayjay Unstable"
+            resValue "string", "app_name", "Grayjay"
             resValue "string", "authority", "com.futo.platformplayer.d"
             getIsDefault().set(true)
         }

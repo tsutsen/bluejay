@@ -1,10 +1,14 @@
 package com.futo.platformplayer.core.designsystem.theme
 
 import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -37,6 +41,14 @@ fun GrayjayTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = typography,
-        content = content
+        content = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colorScheme.surface)
+            ) {
+                content()
+            }
+        }
     )
 }
