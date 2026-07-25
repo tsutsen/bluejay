@@ -133,7 +133,7 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
     }
 
     /**
-     * Refresh the feed by loading the next page.
+     * Refresh the feed by reloading from the beginning.
      */
     fun refresh() {
         viewModelScope.launch {
@@ -141,9 +141,15 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                 Logger.i(TAG, "Refreshing subscription feed...")
                 val currentPager = feedPager
                 if (currentPager != null) {
-                    currentPager.nextPage()
-                    val loaded = currentPager.getResults()
+                    // Reload by getting fresh pager
+                    val freshPager = StateSubscriptions.instance.getGlobalSubscriptionFeed(
+                        viewModelScope,
+                        updated = true
+                    )
+                    feedPager = freshPager
+                    val loaded = freshPager.getResults()
                     allContent = loaded
+                    Logger.i(TAG, "Refreshed: ${loaded.size} items")
                     applyFilters()
                 }
             } catch (e: Exception) {
@@ -161,9 +167,13 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                 val currentPager = feedPager
                 if (currentPager != null && currentPager.hasMorePages()) {
                     Logger.i(TAG, "Loading more subscription items...")
+                    val previousSize = allContent.size
                     currentPager.nextPage()
                     val loaded = currentPager.getResults()
-                    allContent = loaded
+                    // Append only new items
+                    val newItems = loaded.drop(previousSize)
+                    allContent = allContent + newItems
+                    Logger.i(TAG, "Loaded ${newItems.size} more items (total: ${allContent.size})")
                     applyFilters()
                 }
             } catch (e: Exception) {

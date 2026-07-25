@@ -104,15 +104,18 @@ class HomeViewModel @Inject constructor() : ViewModel() {
     }
     
     /**
-     * Refresh the feed by loading the next page.
+     * Refresh the feed by reloading from the beginning.
      */
     fun refresh() {
         viewModelScope.launch {
             try {
-                val currentPager = pager
-                if (currentPager != null) {
-                    currentPager.nextPage()
-                    val loaded = currentPager.getResults()
+                val scope = viewModelScope
+                val p = StatePlatform.instance.getHomeRefresh(scope)
+                if (p is IRefreshPager<*>) {
+                    val refreshPager = ReusableRefreshPager(p as IRefreshPager<IPlatformContent>)
+                    pager = refreshPager
+                    refreshPager.nextPage()
+                    val loaded = refreshPager.getResults()
                     contentList = loaded
                     val videoCards = loaded.map { toVideoCard(it) }
                     _uiState.value = HomeUiState.Success(
@@ -134,13 +137,16 @@ class HomeViewModel @Inject constructor() : ViewModel() {
             try {
                 val currentPager = pager
                 if (currentPager != null && currentPager.hasMorePages()) {
+                    val previousSize = contentList.size
                     currentPager.nextPage()
                     val loaded = currentPager.getResults()
-                    contentList = loaded
-                    val videoCards = loaded.map { toVideoCard(it) }
+                    // Append only new items
+                    val newItems = loaded.drop(previousSize)
+                    contentList = contentList + newItems
+                    val videoCards = contentList.map { toVideoCard(it) }
                     _uiState.value = HomeUiState.Success(
                         items = videoCards,
-                        contentList = loaded
+                        contentList = contentList
                     )
                 }
             } catch (e: Exception) {
