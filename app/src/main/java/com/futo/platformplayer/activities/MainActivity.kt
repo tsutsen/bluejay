@@ -9,15 +9,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResult
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.futo.platformplayer.core.designsystem.layout.AppLayout
-import com.futo.platformplayer.core.designsystem.layout.AppNavigationChrome
-import com.futo.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
+
 import com.futo.platformplayer.core.designsystem.theme.GrayjayTheme
 import com.futo.platformplayer.compose.GrayjayNavGraph
 import com.futo.platformplayer.core.navigation.NavDestination
@@ -236,7 +236,6 @@ private fun GrayjayMainActivity(
     playerRepository: PlayerRepository
 ) {
     val companionVisible by screenCoordinator.companionVisible.collectAsState()
-    val config = rememberAppLayoutConfig()
     val playerState by playerRepository.playerState.collectAsState()
 
     // Launch companion window when secondary display becomes available
@@ -247,53 +246,16 @@ private fun GrayjayMainActivity(
         }
     }
 
-    val showNavChrome = !playerState.isFullscreen
-
-    AppLayout(
-        config = config.copy(showNavigation = showNavChrome),
-        navigationContent = {
-            AppNavigationChrome(
-                currentDestination = navigator.currentRoute.collectAsState().value?.let { dest ->
-                    when (dest) {
-                        is NavDestination.Home -> "home"
-                        is NavDestination.Search -> "search"
-                        is NavDestination.Subscriptions -> "subscriptions"
-                        is NavDestination.Library -> "library"
-                        is NavDestination.Notifications -> "notifications"
-                        is NavDestination.Settings -> "settings"
-                        is NavDestination.ChannelDetail -> "channel:${dest.url}"
-                        is NavDestination.PlaylistDetail -> "playlist:${dest.url}"
-                        is NavDestination.SourceDetail -> "source:${dest.url}"
-                        is NavDestination.PostDetail -> "post:${dest.url}"
-                        is NavDestination.ArticleDetail -> "article:${dest.url}"
-                        is NavDestination.WebDetail -> "web:${dest.url}"
-                        is NavDestination.ContentSearchResults -> "search:${dest.query}"
-                        else -> null
-                    }
-                },
-                onTabSelected = { tabId ->
-                    when (tabId) {
-                        "home" -> navigator.navigateHome()
-                        "search" -> navigator.navigateSearch()
-                        "subscriptions" -> navigator.navigateSubscriptions()
-                        "library" -> navigator.navigateLibrary()
-                        "notifications" -> navigator.navigateNotifications()
-                        "settings" -> navigator.navigateSettings()
-                        "plugins" -> navigator.navigateToPluginBrowser()
-                    }
-                },
-                isWide = config.isWide
-            )
-        },
-        content = {
-            GrayjayNavGraph(
-                navigator = navigator,
-                startDestination = NavDestination.Home
-            )
-            // Player overlay — only rendered when there's a video to play
-            if (playerState.currentVideo != null) {
-                PlayerScreen()
-            }
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        GrayjayNavGraph(
+            navigator = navigator,
+            startDestination = NavDestination.Home
+        )
+        // Player overlay — only rendered when there's a video to play
+        if (playerState.currentVideo != null) {
+            PlayerScreen()
         }
-    )
+    }
 }
