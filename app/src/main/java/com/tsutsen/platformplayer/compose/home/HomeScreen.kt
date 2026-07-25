@@ -40,7 +40,6 @@ import com.tsutsen.platformplayer.api.media.models.playlists.IPlatformPlaylist
 import com.tsutsen.platformplayer.api.media.models.post.IPlatformPost
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.platforms.js.models.JSWeb
-import com.tsutsen.platformplayer.compose.feed.FeedItem
 import com.tsutsen.platformplayer.compose.navigation.GrayjayNavigator
 import com.tsutsen.platformplayer.compose.util.LoadingContent
 import com.tsutsen.platformplayer.compose.util.EmptyState
@@ -145,21 +144,14 @@ private fun ErrorState(
  */
 @Composable
 private fun FeedContent(
-    items: List<FeedItem>,
+    items: List<VideoCard>,
     contentList: List<IPlatformContent>,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onItemClicked: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val cards: List<VideoCard> = items.map { item ->
-        val content = contentList.find { it.id?.value == item.id }
-        if (content != null) {
-            item.toVideoCardWithMetadata(content)
-        } else {
-            item.toVideoCard()
-        }
-    }
+    val cards = items
     
     VideoContainer(
         items = cards,

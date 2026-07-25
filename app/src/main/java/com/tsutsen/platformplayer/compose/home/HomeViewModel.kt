@@ -19,12 +19,13 @@ package com.tsutsen.platformplayer.compose.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
+import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.structures.IPager
 import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
 import com.tsutsen.platformplayer.api.media.structures.ReusableRefreshPager
-import com.tsutsen.platformplayer.compose.feed.FeedItem
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.core.model.VideoCard
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,7 +41,7 @@ private const val TAG = "HomeViewModel"
 sealed interface HomeUiState {
     object Loading : HomeUiState
     data class Success(
-        val items: List<FeedItem> = emptyList(),
+        val items: List<VideoCard> = emptyList(),
         val contentList: List<IPlatformContent> = emptyList(),
         val error: String? = null
     ) : HomeUiState
@@ -83,9 +84,9 @@ class HomeViewModel @Inject constructor() : ViewModel() {
                     Logger.i(TAG, "Loaded ${loaded.size} items")
                     
                     contentList = loaded
-                    val feedItems = loaded.map { toFeedItem(it) }
+                    val videoCards = loaded.map { toVideoCard(it) }
                     _uiState.value = HomeUiState.Success(
-                        items = feedItems,
+                        items = videoCards,
                         contentList = loaded
                     )
                 } else {
@@ -113,9 +114,9 @@ class HomeViewModel @Inject constructor() : ViewModel() {
                     currentPager.nextPage()
                     val loaded = currentPager.getResults()
                     contentList = loaded
-                    val feedItems = loaded.map { toFeedItem(it) }
+                    val videoCards = loaded.map { toVideoCard(it) }
                     _uiState.value = HomeUiState.Success(
-                        items = feedItems,
+                        items = videoCards,
                         contentList = loaded
                     )
                 }
@@ -136,9 +137,9 @@ class HomeViewModel @Inject constructor() : ViewModel() {
                     currentPager.nextPage()
                     val loaded = currentPager.getResults()
                     contentList = loaded
-                    val feedItems = loaded.map { toFeedItem(it) }
+                    val videoCards = loaded.map { toVideoCard(it) }
                     _uiState.value = HomeUiState.Success(
-                        items = feedItems,
+                        items = videoCards,
                         contentList = loaded
                     )
                 }
@@ -149,21 +150,20 @@ class HomeViewModel @Inject constructor() : ViewModel() {
     }
     
     /**
-     * Convert IPlatformContent to FeedItem.
+     * Convert IPlatformContent to VideoCard.
      */
-    private fun toFeedItem(content: IPlatformContent): FeedItem {
-        val thumbnailUrl = when (content) {
-            is com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo -> {
-                content.thumbnails.getHQThumbnail()
-            }
-            else -> null
-        }
-        return FeedItem(
+    private fun toVideoCard(content: IPlatformContent): VideoCard {
+        val video = content as? IPlatformVideo
+        val thumbnailUrl = video?.thumbnails?.getHQThumbnail()
+        return VideoCard(
             id = content.id?.value ?: "",
             title = content.name ?: "",
-            subtitle = content.author?.name,
             thumbnailUrl = thumbnailUrl,
-            timestamp = null
+            author = video?.author?.name,
+            durationMs = video?.duration,
+            viewCount = video?.viewCount,
+            publishedAt = video?.playbackDate?.toEpochSecond(),
+            url = ""
         )
     }
 }

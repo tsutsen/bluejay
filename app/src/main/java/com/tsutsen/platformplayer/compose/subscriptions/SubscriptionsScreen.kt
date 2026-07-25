@@ -59,7 +59,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.compose.feed.FeedItemCard
-import com.tsutsen.platformplayer.compose.feed.FeedItem
 import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
@@ -523,7 +522,7 @@ private fun SubscriptionFilterBadges(
  */
 @Composable
 private fun SubscriptionsVideoContainer(
-    items: List<FeedItem>,
+    items: List<VideoCard>,
     contentList: List<com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent>,
     onItemClicked: (com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent) -> Unit,
     onRefresh: () -> Unit,
@@ -531,14 +530,7 @@ private fun SubscriptionsVideoContainer(
     columns: Int = 3,
     modifier: Modifier = Modifier
 ) {
-    val cards: List<VideoCard> = items.map { item ->
-        val content = contentList.find { it.id?.value == item.id }
-        if (content != null) {
-            item.toVideoCardWithMetadata(content)
-        } else {
-            item.toVideoCard()
-        }
-    }
+    val cards = items
 
     if (cards.isEmpty()) {
         EmptyState(

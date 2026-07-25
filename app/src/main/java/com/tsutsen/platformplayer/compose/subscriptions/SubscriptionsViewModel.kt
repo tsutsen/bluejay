@@ -12,9 +12,9 @@ import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.structures.IPager
-import com.tsutsen.platformplayer.compose.feed.FeedItem
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateSubscriptions
+import com.tsutsen.platformplayer.core.model.VideoCard
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +43,7 @@ data class SubscriptionCreator(
 sealed interface SubscriptionsUiState {
     object Loading : SubscriptionsUiState
     data class Success(
-        val items: List<FeedItem> = emptyList(),
+        val items: List<VideoCard> = emptyList(),
         val contentList: List<IPlatformContent> = emptyList(),
         val creators: List<SubscriptionCreator> = emptyList(),
         val activeCreatorId: String? = null,
@@ -303,11 +303,11 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
             }
         }
 
-        // Convert to FeedItems
-        val feedItems = filtered.map { toFeedItem(it) }
+        // Convert to VideoCards
+        val videoCards = filtered.map { toVideoCard(it) }
 
         _uiState.value = state.copy(
-            items = feedItems,
+            items = videoCards,
             contentList = filtered,
             isLoading = false,
             error = null
@@ -315,19 +315,20 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
     }
 
     /**
-     * Convert IPlatformContent to FeedItem for display.
+     * Convert IPlatformContent to VideoCard for display.
      */
-    private fun toFeedItem(content: IPlatformContent): FeedItem {
-        val thumbnailUrl = when (content) {
-            is IPlatformVideo -> content.thumbnails.getHQThumbnail()
-            else -> null
-        }
-        return FeedItem(
+    private fun toVideoCard(content: IPlatformContent): VideoCard {
+        val video = content as? IPlatformVideo
+        val thumbnailUrl = video?.thumbnails?.getHQThumbnail()
+        return VideoCard(
             id = content.id?.value ?: "",
             title = content.name ?: "",
-            subtitle = content.author?.name,
             thumbnailUrl = thumbnailUrl,
-            timestamp = null
+            author = video?.author?.name,
+            durationMs = video?.duration,
+            viewCount = video?.viewCount,
+            publishedAt = video?.playbackDate?.toEpochSecond(),
+            url = ""
         )
     }
 }
