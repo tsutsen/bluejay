@@ -26,6 +26,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -37,22 +40,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -167,6 +169,11 @@ private fun SubscriptionsContent(
     onItemClicked: (com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var isRefreshing = false
+    val pullToRefreshState = rememberPullToRefreshState()
+    
+    // No LaunchedEffect needed - we'll handle refresh state in onRefresh
+
     if (isLandscape) {
         // Landscape: Filters + videos in center, creators on right side
         Row(modifier = modifier.fillMaxSize()) {
@@ -186,26 +193,41 @@ private fun SubscriptionsContent(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Video grid
-                VideoContainer(
-                    items = state.items,
-                    layoutMode = LayoutMode.Grid,
-                    columns = 3,
-                    onCardClick = { card ->
-                        val content = state.contentList.find { it.id?.value == card.id }
-                        if (content != null) onItemClicked(content)
-                    },
-                    onEndReached = onLoadMore,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(8.dp)
-                ) { card ->
-                    VideoCard(
-                        card = card as VideoCard,
-                        onClick = {
-                            val content = state.contentList.find { it.id?.value == card.id }
-                            if (content != null) onItemClicked(content)
+                // Video grid with pull-to-refresh
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        state = pullToRefreshState,
+                        onRefresh = {
+                            isRefreshing = true
+                            onRefresh()
+                            isRefreshing = false
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        content = {
+                            VideoContainer(
+                                items = state.items,
+                                layoutMode = LayoutMode.Grid,
+                                columns = 3,
+                                onCardClick = { card ->
+                                    val content = state.contentList.find { it.id?.value == card.id }
+                                    if (content != null) onItemClicked(content)
+                                },
+                                onEndReached = onLoadMore,
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(8.dp)
+                            ) { card ->
+                                VideoCard(
+                                    card = card as VideoCard,
+                                    onClick = {
+                                        val content = state.contentList.find { it.id?.value == card.id }
+                                        if (content != null) onItemClicked(content)
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
                     )
                 }
             }
@@ -244,25 +266,40 @@ private fun SubscriptionsContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Video feed
-            VideoContainer(
-                items = state.items,
-                layoutMode = LayoutMode.List,
-                onCardClick = { card ->
-                    val content = state.contentList.find { it.id?.value == card.id }
-                    if (content != null) onItemClicked(content)
-                },
-                onEndReached = onLoadMore,
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(8.dp)
-            ) { card ->
-                VideoCard(
-                    card = card as VideoCard,
-                    onClick = {
-                        val content = state.contentList.find { it.id?.value == card.id }
-                        if (content != null) onItemClicked(content)
+            // Video feed with pull-to-refresh
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    state = pullToRefreshState,
+                    onRefresh = {
+                        isRefreshing = true
+                        onRefresh()
+                        isRefreshing = false
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    content = {
+                        VideoContainer(
+                            items = state.items,
+                            layoutMode = LayoutMode.List,
+                            onCardClick = { card ->
+                                val content = state.contentList.find { it.id?.value == card.id }
+                                if (content != null) onItemClicked(content)
+                            },
+                            onEndReached = onLoadMore,
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(8.dp)
+                        ) { card ->
+                            VideoCard(
+                                card = card as VideoCard,
+                                onClick = {
+                                    val content = state.contentList.find { it.id?.value == card.id }
+                                    if (content != null) onItemClicked(content)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 )
             }
         }

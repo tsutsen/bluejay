@@ -66,7 +66,7 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
     private val _uiState = MutableStateFlow<SubscriptionsUiState>(SubscriptionsUiState.Loading)
     val uiState: StateFlow<SubscriptionsUiState> = _uiState.asStateFlow()
 
-    private var feedPager: ReusableRefreshPager<IPlatformContent>? = null
+    private var feedPager: IPager<IPlatformContent>? = null
     private var allContent: List<IPlatformContent> = emptyList()
     private var isLoadingMore = false
 
@@ -123,22 +123,11 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                     viewModelScope,
                     updated = false
                 )
-                
-                if (pager is IRefreshPager<*>) {
-                    val refreshPager = ReusableRefreshPager(pager as IRefreshPager<IPlatformContent>)
-                    feedPager = refreshPager
-                    refreshPager.nextPage()
-                    val loaded = refreshPager.getResults()
-                    allContent = loaded
-                    Logger.i(TAG, "Loaded ${loaded.size} subscription items")
-                    applyFilters()
-                } else {
-                    Logger.w(TAG, "No refreshable pager: ${pager?.javaClass}")
-                    _uiState.value = SubscriptionsUiState.Success(
-                        creators = (_uiState.value as? SubscriptionsUiState.Success)?.creators ?: emptyList(),
-                        isLoading = false
-                    )
-                }
+                feedPager = pager
+                val loaded = pager.getResults()
+                allContent = loaded
+                Logger.i(TAG, "Loaded ${loaded.size} subscription items")
+                applyFilters()
             } catch (e: Exception) {
                 Logger.e(TAG, "Error loading subscription feed", e)
                 _uiState.value = SubscriptionsUiState.Error(e.message ?: "Failed to load subscriptions")
@@ -157,16 +146,11 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                     viewModelScope,
                     updated = true
                 )
-                
-                if (pager is IRefreshPager<*>) {
-                    val refreshPager = ReusableRefreshPager(pager as IRefreshPager<IPlatformContent>)
-                    feedPager = refreshPager
-                    refreshPager.nextPage()
-                    val loaded = refreshPager.getResults()
-                    allContent = loaded
-                    Logger.i(TAG, "Refreshed: ${loaded.size} items")
-                    applyFilters()
-                }
+                feedPager = pager
+                val loaded = pager.getResults()
+                allContent = loaded
+                Logger.i(TAG, "Refreshed: ${loaded.size} items")
+                applyFilters()
             } catch (e: Exception) {
                 Logger.e(TAG, "Error refreshing feed", e)
             }
@@ -385,7 +369,7 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
     }
 
     /**
-     * Convert IPlatformContent to VideoCard for display.
+     * Convert IPlatformContent to VideoCard.
      */
     private fun toVideoCard(content: IPlatformContent): VideoCard {
         val video = content as? IPlatformVideo
