@@ -1,6 +1,6 @@
-package com.futo.platformplayer.images;
+package com.tsutsen.platformplayer.images;
 
-import static com.futo.platformplayer.Extensions_PolycentricKt.getDataLinkFromUrl;
+import static com.tsutsen.platformplayer.Extensions_PolycentricKt.getDataLinkFromUrl;
 
 import android.util.Log;
 

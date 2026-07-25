@@ -20,11 +20,11 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.protocol;
+package com.tsutsen.platformplayer.noise.protocol;
 
 import java.util.Arrays;
 
-import com.futo.platformplayer.noise.crypto.Curve25519;
+import com.tsutsen.platformplayer.noise.crypto.Curve25519;
 
 /**
  * Implementation of the Curve25519 algorithm for the Noise protocol.

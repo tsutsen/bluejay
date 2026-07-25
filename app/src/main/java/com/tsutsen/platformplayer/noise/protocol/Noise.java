@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.protocol;
+package com.tsutsen.platformplayer.noise.protocol;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -29,10 +29,10 @@ import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 
-import com.futo.platformplayer.noise.crypto.Blake2bMessageDigest;
-import com.futo.platformplayer.noise.crypto.Blake2sMessageDigest;
-import com.futo.platformplayer.noise.crypto.SHA256MessageDigest;
-import com.futo.platformplayer.noise.crypto.SHA512MessageDigest;
+import com.tsutsen.platformplayer.noise.crypto.Blake2bMessageDigest;
+import com.tsutsen.platformplayer.noise.crypto.Blake2sMessageDigest;
+import com.tsutsen.platformplayer.noise.crypto.SHA256MessageDigest;
+import com.tsutsen.platformplayer.noise.crypto.SHA512MessageDigest;
 
 /**
  * Utility functions for the Noise protocol library.

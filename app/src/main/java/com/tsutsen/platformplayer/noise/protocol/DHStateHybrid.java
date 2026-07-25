@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.protocol;
+package com.tsutsen.platformplayer.noise.protocol;
 
 /**
  * Additional API for DH objects that need special handling for

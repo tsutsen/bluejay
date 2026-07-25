@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sabr;
 
-option java_package = "com.futo.platformplayer.sabr.proto";
+option java_package = "com.tsutsen.platformplayer.sabr.proto";
 option java_multiple_files = true;
 
 message FormatId {

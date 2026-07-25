@@ -1,4 +1,4 @@
-package com.futo.platformplayer.views.video.datasources;
+package com.tsutsen.platformplayer.views.video.datasources;
 
 import static androidx.media3.common.util.Assertions.checkNotNull;
 import static androidx.media3.common.util.Util.castNonNull;
@@ -11,11 +11,11 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
-import com.futo.platformplayer.api.media.models.modifier.IRequest;
-import com.futo.platformplayer.api.media.models.modifier.IRequestModifier;
-import com.futo.platformplayer.api.media.platforms.js.models.JSRequest;
-import com.futo.platformplayer.api.media.platforms.js.models.JSRequestExecutor;
-import com.futo.platformplayer.api.media.platforms.js.models.JSRequestModifier;
+import com.tsutsen.platformplayer.api.media.models.modifier.IRequest;
+import com.tsutsen.platformplayer.api.media.models.modifier.IRequestModifier;
+import com.tsutsen.platformplayer.api.media.platforms.js.models.JSRequest;
+import com.tsutsen.platformplayer.api.media.platforms.js.models.JSRequestExecutor;
+import com.tsutsen.platformplayer.api.media.platforms.js.models.JSRequestModifier;
 import androidx.media3.common.C;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.util.UnstableApi;
@@ -27,10 +27,10 @@ import androidx.media3.datasource.HttpDataSource;
 import androidx.media3.datasource.HttpUtil;
 import androidx.media3.datasource.TransferListener;
 
-import com.futo.platformplayer.engine.dev.V8RemoteObject;
-import com.futo.platformplayer.engine.exceptions.PluginException;
-import com.futo.platformplayer.engine.exceptions.ScriptException;
-import com.futo.platformplayer.logging.Logger;
+import com.tsutsen.platformplayer.engine.dev.V8RemoteObject;
+import com.tsutsen.platformplayer.engine.exceptions.PluginException;
+import com.tsutsen.platformplayer.engine.exceptions.ScriptException;
+import com.tsutsen.platformplayer.logging.Logger;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ForwardingMap;
 import com.google.common.collect.ImmutableMap;

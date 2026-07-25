@@ -20,13 +20,13 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.crypto;
+package com.tsutsen.platformplayer.noise.crypto;
 
 import java.security.DigestException;
 import java.security.MessageDigest;
 import java.util.Arrays;
 
-import com.futo.platformplayer.noise.protocol.Destroyable;
+import com.tsutsen.platformplayer.noise.protocol.Destroyable;
 
 /**
  * Fallback implementation of SHA512.

@@ -20,12 +20,12 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.protocol;
+package com.tsutsen.platformplayer.noise.protocol;
 
 import java.util.Arrays;
 
-import com.futo.platformplayer.noise.crypto.NewHope;
-import com.futo.platformplayer.noise.crypto.NewHopeTor;
+import com.tsutsen.platformplayer.noise.crypto.NewHope;
+import com.tsutsen.platformplayer.noise.crypto.NewHopeTor;
 
 /**
  * Implementation of the New Hope post-quantum algorithm for the Noise protocol.

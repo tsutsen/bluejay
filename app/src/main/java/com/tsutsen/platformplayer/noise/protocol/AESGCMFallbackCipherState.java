@@ -20,15 +20,15 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.protocol;
+package com.tsutsen.platformplayer.noise.protocol;
 
 import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.ShortBufferException;
 
-import com.futo.platformplayer.noise.crypto.GHASH;
-import com.futo.platformplayer.noise.crypto.RijndaelAES;
+import com.tsutsen.platformplayer.noise.crypto.GHASH;
+import com.tsutsen.platformplayer.noise.crypto.RijndaelAES;
 
 /**
  * Fallback implementation of "AESGCM" on platforms where

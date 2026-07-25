@@ -20,15 +20,15 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.protocol;
+package com.tsutsen.platformplayer.noise.protocol;
 
 import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.ShortBufferException;
 
-import com.futo.platformplayer.noise.crypto.ChaChaCore;
-import com.futo.platformplayer.noise.crypto.Poly1305;
+import com.tsutsen.platformplayer.noise.crypto.ChaChaCore;
+import com.tsutsen.platformplayer.noise.crypto.Poly1305;
 
 /**
  * Implements the ChaChaPoly cipher for Noise.

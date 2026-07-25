@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.crypto;
+package com.tsutsen.platformplayer.noise.crypto;
 
 /**
  * Implementation of the ChaCha20 core hash transformation.

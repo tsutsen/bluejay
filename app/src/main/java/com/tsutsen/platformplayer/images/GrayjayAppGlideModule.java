@@ -1,4 +1,4 @@
-package com.futo.platformplayer.images;
+package com.tsutsen.platformplayer.images;
 
 import android.content.Context;
 import android.os.Build;

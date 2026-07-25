@@ -20,11 +20,11 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-package com.futo.platformplayer.noise.crypto;
+package com.tsutsen.platformplayer.noise.crypto;
 
 import java.util.Arrays;
 
-import com.futo.platformplayer.noise.protocol.Destroyable;
+import com.tsutsen.platformplayer.noise.protocol.Destroyable;
 
 /**
  * Implementation of the GHASH primitive for GCM.
