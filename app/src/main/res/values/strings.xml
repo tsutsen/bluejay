@@ -42,4 +42,10 @@
     <string name="incompatible">Incompatible</string>
     <string name="invalid">Invalid</string>
     <string name="not_enough_storage">Not enough storage</string>
+    <string name="failed_to_parse_newpipe_subscriptions">Failed to parse NewPipe subscriptions</string>
+    <string name="ok">OK</string>
+    <string name="copy">Copy</string>
+    <string name="close">Close</string>
+    <string name="close_capitalized">Close</string>
+    <string name="please_enter_the_captcha_and_close_when_finished">Please solve the captcha and close when finished</string>
 </resources>

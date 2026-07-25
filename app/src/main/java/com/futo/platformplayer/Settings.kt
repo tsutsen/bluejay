@@ -9,7 +9,6 @@ import java.time.OffsetDateTime
  * components that have been deleted during the Compose migration.
  * This stub provides the minimal API needed for the app to compile.
  */
-@Serializable
 class Settings {
     var didFirstStart: Boolean = false
     
@@ -55,6 +54,9 @@ class Settings {
     // Polycentric settings (used by StateApp.kt)
     val polycentric = PolycentricSettings()
     
+    // Tabs settings
+    var advancedSettings: Boolean = false
+    
     @Serializable
     class AutoUpdateSettings {
         var shouldBackgroundDownload: Boolean = true
@@ -75,7 +77,8 @@ class Settings {
     @Serializable
     class PlaybackSettings {
         var preferOriginalAudio: Boolean = false
-        var restartPlaybackAfterLoss: Boolean = false
+        var restartPlaybackAfterLoss: Int = 0  // 0=off, 1=10s, 2=30s, 3=always
+        var autoplay: Boolean = true
     }
     
     @Serializable
@@ -95,26 +98,27 @@ class Settings {
         var storage_general: String? = null
         var storage_download: String? = null
         var isStorageMainValid: Boolean = true
-        fun getStorageGeneralUri(): String? = null
+        fun getStorageGeneralUri(): android.net.Uri? = null
         fun isStorageMainValid(context: android.content.Context): Boolean = isStorageMainValid
     }
     
     @Serializable
     class OtherSettings {
-        @kotlinx.serialization.Contextual var other: Any? = null
         var polycentricLocalCache: Boolean = false
         var shouldClearWebviewCookies: Boolean = false
+        var watchLaterAddStart: Boolean = false
+        var playlistAllowDups: Boolean = false
+        var polycentricEnabled: Boolean = false
     }
     
     @Serializable
     class PluginSettings {
-        @kotlinx.serialization.Contextual var plugins: Any? = null
         fun shouldClearWebviewCookies(): Boolean = false
+        var checkDisabledPluginsForUpdates: Boolean = true
     }
     
     @Serializable
     class LoggingSettings {
-        @kotlinx.serialization.Contextual var logging: Any? = null
         var logLevel: Int = 2  // INFO level
     }
     
@@ -125,21 +129,26 @@ class Settings {
         var connectLocalDirectThroughRelay: Boolean = false
         var connectDiscovered: Boolean = false
         var syncServer: String? = null
+        var broadcast: Boolean = false
+        var localConnections: Boolean = false
+        var connectLast: Boolean = false
+        var pairThroughRelay: Boolean = false
+        var discoverThroughRelay: Boolean = false
     }
     
     @Serializable
     class SubscriptionsSettings {
-        @kotlinx.serialization.Contextual var subscriptions: Any? = null
         var fetchOnAppBoot: Boolean = true
         var useSubscriptionExchange: Boolean = false
+        var peekChannelContents: Boolean = true
         fun getSubscriptionsBackgroundIntervalMinutes(): Int = 60
         fun getSubscriptionsConcurrency(): Int = 4
     }
     
     @Serializable
     class BackupSettings {
-        @kotlinx.serialization.Contextual var backup: Any? = null
         var didAskAutoBackup: Boolean = false
+        @kotlinx.serialization.Contextual
         var lastAutoBackupTime: OffsetDateTime = OffsetDateTime.now()
         fun shouldAutomaticBackup(): Boolean = false
     }
@@ -149,10 +158,18 @@ class Settings {
         var watchLaterAddStart: Boolean = false
         var polycentricEnabled: Boolean = true
         var pairThroughRelay: Boolean = false
+        var discoverThroughRelay: Boolean = false
     }
     
-    // Tabs settings
-    var advancedSettings: Boolean = false
+    // Member function save() - used by StateApp.kt
+    fun save() {
+        // No-op stub
+    }
+    
+    // encode() - used by StateBackup.kt to serialize settings to JSON string
+    fun encode(): String {
+        return "{}"
+    }
     
     companion object {
         @Volatile
@@ -162,11 +179,14 @@ class Settings {
             get() = _instance ?: synchronized(this) {
                 _instance ?: Settings().also { _instance = it }
             }
-    }
-    
-    // Member function save() - used by StateApp.kt
-    fun save() {
-        // No-op stub
+        
+        // replace() - used by StateBackup.kt to deserialize settings from JSON string
+        fun replace(jsonString: String) {
+            val newSettings = kotlinx.serialization.json.Json.Default.decodeFromString<Settings>(jsonString)
+            synchronized(this) {
+                _instance = newSettings
+            }
+        }
     }
     
     // Stub methods for deleted functionality
@@ -185,9 +205,4 @@ class Settings {
     fun ignoreBatteryOptimization() {
         UIDialogs.toast(null, "Battery optimization settings not yet migrated to Compose")
     }
-}
-
-// Extension function for OffsetDateTime to calculate hours difference
-fun OffsetDateTime.getNowDiffHours(): Long {
-    return java.time.Duration.between(this, OffsetDateTime.now()).toHours()
 }

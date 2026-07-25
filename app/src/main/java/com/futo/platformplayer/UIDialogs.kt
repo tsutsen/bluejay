@@ -2,13 +2,10 @@ package com.futo.platformplayer
 
 import android.app.AlertDialog
 import android.content.Context
-import android.graphics.Color
 import android.view.Gravity
-import android.view.LayoutInflater
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import com.futo.platformplayer.logging.Logger
 
 /**
@@ -36,7 +33,23 @@ object UIDialogs {
         val actionCount: Int,
         val actions: List<Action> = emptyList()
     ) {
+        // Legacy constructor accepting vararg Actions
+        constructor(
+            icon: Int, title: String, subtitle: String?, details: String?,
+            actionCount: Int, vararg actions: Action
+        ) : this(icon, title, subtitle, details, actionCount, actions.toList())
+
         fun withCondition(condition: Boolean): Descriptor? = if (condition) this else null
+        fun withCondition(condition: () -> Boolean): Descriptor? = if (condition()) this else null
+    }
+
+    /**
+     * Interface for progress dialog handlers.
+     */
+    interface ProgressHandler {
+        fun setText(text: String)
+        fun setProgress(progress: Float)
+        fun dismiss()
     }
 
     /**
@@ -56,14 +69,12 @@ object UIDialogs {
      */
     fun toast(message: String?, duration: Int = Toast.LENGTH_SHORT) {
         // Stub: requires context to be passed explicitly now
-        // Callers should use toast(context, message, duration) instead
     }
 
     /**
      * Show an app-level toast (stays visible longer).
      */
     fun appToast(toast: Any, isLong: Boolean = false) {
-        // Simplified: just show a regular toast with the message
         val message = when (toast) {
             is String -> toast
             else -> toast.toString()
@@ -87,6 +98,18 @@ object UIDialogs {
             android.R.drawable.ic_dialog_alert,
             title,
             error.message,
+            null, 0,
+            Action("Ok", {}, ActionStyle.PRIMARY))
+    }
+
+    /**
+     * Show a general error dialog (title only, no error object).
+     */
+    fun showGeneralErrorDialog(context: Context, title: String) {
+        showDialog(context,
+            android.R.drawable.ic_dialog_alert,
+            title,
+            null,
             null, 0,
             Action("Ok", {}, ActionStyle.PRIMARY))
     }
@@ -149,7 +172,32 @@ object UIDialogs {
     }
 
     /**
-     * Show multiple dialogs sequentially.
+     * Show multiple dialogs sequentially (vararg variant).
+     */
+    fun multiShowDialog(
+        context: Context,
+        finally: (() -> Unit)? = null,
+        vararg descriptors: Descriptor?
+    ) {
+        val list = descriptors.toList()
+        if (list.isEmpty()) {
+            finally?.invoke()
+            return
+        }
+
+        val next = list.filterNotNull().firstOrNull() ?: return
+        showDialog(context, next.icon, next.title, next.subtitle, next.details, next.actionCount,
+            *next.actions.toTypedArray())
+
+        if (list.size > 1) {
+            multiShowDialog(context, finally, *list.drop(1).toTypedArray())
+        } else {
+            finally?.invoke()
+        }
+    }
+
+    /**
+     * Show multiple dialogs sequentially (List variant).
      */
     fun multiShowDialog(
         context: Context,
@@ -165,11 +213,59 @@ object UIDialogs {
         showDialog(context, next.icon, next.title, next.subtitle, next.details, next.actionCount,
             *next.actions.toTypedArray())
 
-        // After showing, continue with remaining dialogs
         if (dialogDescriptor.size > 1) {
             multiShowDialog(context, dialogDescriptor.drop(1), finally)
         } else {
             finally?.invoke()
+        }
+    }
+
+    /**
+     * Show a progress dialog. Returns a handler for updating progress.
+     */
+    fun showDialogProgress(
+        context: Context,
+        handler: (ProgressHandler) -> Unit
+    ) {
+        try {
+            val builder = AlertDialog.Builder(context)
+            val progressBar = android.widget.ProgressBar(context).apply {
+                isIndeterminate = false
+                setPadding(32, 32, 32, 32)
+            }
+            val textView = TextView(context).apply {
+                setPadding(32, 16, 32, 32)
+                textSize = 14f
+            }
+            val layout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(progressBar)
+                addView(textView)
+            }
+            builder.setView(layout)
+            val dialog = builder.create()
+            dialog.show()
+
+            val progressHandler = object : ProgressHandler {
+                override fun setText(text: String) {
+                    textView.text = text
+                }
+                override fun setProgress(progress: Float) {
+                    progressBar.max = 10000
+                    progressBar.progress = (progress * 10000).toInt()
+                }
+                override fun dismiss() {
+                    dialog.dismiss()
+                }
+            }
+            handler(progressHandler)
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Failed to show progress dialog", e)
+            handler(object : ProgressHandler {
+                override fun setText(text: String) {}
+                override fun setProgress(progress: Float) {}
+                override fun dismiss() {}
+            })
         }
     }
 
@@ -186,8 +282,8 @@ object UIDialogs {
         toast(context, "Casting dialog not yet migrated to Compose")
     }
 
-    fun showChangelogDialog(context: Context) {
-        toast(context, "Changelog dialog not yet migrated to Compose")
+    fun showChangelogDialog(context: Context, version: Any, changelog: Map<Int, String>) {
+        toast(context, "Changelog for v${version} not yet migrated to Compose")
     }
 
     fun showImportDialog(context: Context, store: Any, key: String, values: List<String>, cache: Any?, callback: () -> Unit) {
@@ -198,7 +294,7 @@ object UIDialogs {
         toast(context, "Migration dialog not yet migrated to Compose")
     }
 
-    fun showPluginUpdateDialog(context: Context) {
+    fun showPluginUpdateDialog(context: Context, config: Any, update: Any) {
         toast(context, "Plugin update dialog not yet migrated to Compose")
     }
 
@@ -208,9 +304,5 @@ object UIDialogs {
 
     fun showUrlHandlingPrompt(context: Context, url: String = "", callback: (String) -> Unit = {}) {
         toast(context, "URL handling prompt not yet migrated to Compose")
-    }
-
-    fun showProgressDialog(context: Context, handler: (Any) -> Unit) {
-        toast(context, "Progress dialog not yet migrated to Compose")
     }
 }

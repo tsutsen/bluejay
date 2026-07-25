@@ -229,7 +229,7 @@ class PackageBridge : V8Package {
 
         val obj = DevSubmitData(pluginId, pluginVersion, callerMethod, session, label, data);
 
-        UIDialogs.toast("DevSubmit [${callerMethod}] (${_plugin.config.name})", false);
+        UIDialogs.toast(null, "DevSubmit [${callerMethod}] (${_plugin.config.name})", android.widget.Toast.LENGTH_LONG);
         StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
             try {
                 val json = _jsonSerializer.encodeToString(obj);

@@ -28,7 +28,8 @@ import com.futo.platformplayer.*
 import com.futo.platformplayer.R
 import com.futo.platformplayer.UIDialogs.Action
 import com.futo.platformplayer.UIDialogs.ActionStyle
-import com.futo.platformplayer.UIDialogs.Companion.showDialog
+import com.futo.platformplayer.UIDialogs.showDialog
+import com.futo.platformplayer.activities.CaptchaActivity
 import com.futo.platformplayer.auth.LoginDialog
 import com.futo.platformplayer.activities.IWithResultLauncher
 import com.futo.platformplayer.activities.MainActivity
@@ -1041,7 +1042,7 @@ class StateApp {
                 return@launch;
             hasCaptchaDialog = true;
             UIDialogs.showConfirmationDialog(context, "Captcha required\nPlugin [${client.config.name}]", {
-                CaptchaActivity.showCaptcha(context, client.config, exception.url, exception.body) {
+                CaptchaActivity.showCaptcha(context, client.config, exception.url ?: "", exception.body ?: "") {
                     hasCaptchaDialog = false;
 
                     if(client is DevJSClient) {

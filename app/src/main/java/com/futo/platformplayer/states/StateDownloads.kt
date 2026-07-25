@@ -510,7 +510,7 @@ class StateDownloads {
                                 val file = export.export(context, { progress ->
                                     val now = System.currentTimeMillis();
                                     if (lastNotifyTime == -1L || now - lastNotifyTime > 100) {
-                                        it.setProgress(progress);
+                                        it.setProgress(progress.toFloat());
                                         lastNotifyTime = now;
                                     }
                                 }, root);
@@ -545,7 +545,7 @@ class StateDownloads {
                         val now = System.currentTimeMillis();
                         if (lastNotifyTime == -1L || now - lastNotifyTime > 100) {
                             StateApp.instance.scopeOrNull?.launch(Dispatchers.Main) {
-                                it.setProgress(progress);
+                                it.setProgress(progress.toFloat());
                             }
                             lastNotifyTime = now;
                         }

@@ -71,9 +71,9 @@ class JSVideoDetails : JSVideo, IPlatformVideoDetails {
             val config = plugin.config;
             parsedDescription = _content.getOrThrow(config, "description", contextName);
             parsedVideo = JSVideoSourceDescriptor.fromV8(plugin, _content.getOrThrow(config, "video", contextName));
-            parsedDash = JSSource.fromV8DashNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "dash", contextName));
-            parsedHls = JSSource.fromV8HLSNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "hls", contextName));
-            parsedLive = JSSource.fromV8VideoNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "live", contextName));
+            parsedDash = JSSource.fromV8DashNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "dash", contextName), contextName);
+            parsedHls = JSSource.fromV8HLSNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "hls", contextName), contextName);
+            parsedLive = JSSource.fromV8VideoNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "live", contextName), contextName);
             parsedRating = IRating.fromV8OrDefault(config, _content.getOrDefault<V8ValueObject>(config, "rating", contextName, null), RatingLikes(0));
 
             if(!_content.has("subtitles"))

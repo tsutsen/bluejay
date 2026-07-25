@@ -241,8 +241,8 @@ class DeveloperEndpoints(private val context: Context) {
     @HttpPOST("/plugin/captchaTestPlugin")
     fun pluginCaptchaTestPlugin(context: HttpContext) {
         val config = _testPlugin?.config as SourcePluginConfig;
-        val url = context.query.get("url")
-        val html = context.readContentString();
+        val url = context.query.get("url") ?: ""
+        val html = context.readContentString() ?: "";
         try {
             val captchaConfig = config.captcha;
             if(captchaConfig == null) {

@@ -1,15 +1,14 @@
 package com.futo.platformplayer.downloads
 
-import com.futo.platformplayer.api.media.models.video.IPlatformVideo
-import com.futo.platformplayer.api.media.models.streams.sources.VideoUrlSource
+import com.futo.platformplayer.api.media.models.streams.IVideoSourceDescriptor
 import com.futo.platformplayer.api.media.models.streams.sources.AudioUrlSource
 import com.futo.platformplayer.api.media.models.streams.sources.IAudioSource
 import com.futo.platformplayer.api.media.models.streams.sources.IVideoSource
-import com.futo.platformplayer.api.media.models.modifier.IRequestModifier
+import com.futo.platformplayer.api.media.models.streams.sources.VideoUrlSource
+import com.futo.platformplayer.api.media.models.video.IPlatformVideo
+import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.futo.platformplayer.api.media.platforms.js.JSClient
 import com.futo.platformplayer.api.media.platforms.js.models.JSRequestExecutor
-import com.futo.platformplayer.api.media.models.video.IPlatformVideoDetails
-import com.futo.platformplayer.api.media.models.streams.IVideoSourceDescriptor
 
 /**
  * Stub extension functions for VideoDownload.
@@ -18,35 +17,18 @@ import com.futo.platformplayer.api.media.models.streams.IVideoSourceDescriptor
  */
 
 fun IPlatformVideo.hasAnySource(): Boolean = true
-
 fun IPlatformVideo.isDownloadable(): Boolean = true
-
 fun VideoUrlSource.isDownloadable(): Boolean = true
-
 fun AudioUrlSource.isDownloadable(): Boolean = true
-
-fun IVideoSource.getUnderlyingPlugin(): JSClient? = null
-
-fun IAudioSource.getUnderlyingPlugin(): JSClient? = null
-
-fun IVideoSource.getRequestModifier(): IRequestModifier? = null
-
-fun IAudioSource.getRequestModifier(): IRequestModifier? = null
-
-fun IVideoSource.getRequestExecutor(): JSRequestExecutor? = null
-
-fun IAudioSource.getRequestExecutor(): JSRequestExecutor? = null
-
-fun IPlatformVideoDetails.hasAnySource(): Boolean = true
-
-fun IPlatformVideoDetails.isDownloadable(): Boolean = true
-
-fun IVideoSourceDescriptor.hasAnySource(): Boolean = true
-
-fun IVideoSourceDescriptor.isDownloadable(): Boolean = true
-
-import com.futo.platformplayer.api.media.models.streams.sources.IVideoSource
-
-fun IVideoSource.isDownloadable(): Boolean = true
-
 fun IAudioSource.isDownloadable(): Boolean = true
+fun IVideoSource.isDownloadable(): Boolean = true
+fun IVideoSourceDescriptor.hasAnySource(): Boolean = true
+fun IVideoSourceDescriptor.isDownloadable(): Boolean = true
+fun IPlatformVideoDetails.hasAnySource(): Boolean = true
+fun IPlatformVideoDetails.isDownloadable(): Boolean = true
+fun IVideoSource.getUnderlyingPlugin(): JSClient? = null
+fun IAudioSource.getUnderlyingPlugin(): JSClient? = null
+fun IVideoSource.getRequestModifier(): com.futo.platformplayer.api.media.models.modifier.IRequestModifier? = null
+fun IAudioSource.getRequestModifier(): com.futo.platformplayer.api.media.models.modifier.IRequestModifier? = null
+fun IVideoSource.getRequestExecutor(): JSRequestExecutor? = null
+fun IAudioSource.getRequestExecutor(): JSRequestExecutor? = null
