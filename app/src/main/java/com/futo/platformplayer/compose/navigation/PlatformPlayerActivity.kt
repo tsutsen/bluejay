@@ -19,8 +19,6 @@
 package com.futo.platformplayer.compose.navigation
 
 import android.os.Bundle
-import android.util.Log
-import android.view.View
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +32,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
@@ -43,10 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.FragmentContainerView
-import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -175,8 +168,7 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
             )
             Column(modifier = Modifier.weight(1f).fillMaxSize()) {
                 if (currentBackStack != null) {
-                    val activity = LocalContext.current as FragmentActivity
-                    NavDisplay(
+                NavDisplay(
                         backStack = currentBackStack,
                         onBack = {
                             if (!navigator.goBack()) {
@@ -185,7 +177,7 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
                         },
                         modifier = Modifier.weight(1f),
                         entryProvider = { key ->
-                            createGrayjayNavEntry(key, navigator, activity)
+                            createGrayjayNavEntry(key, navigator)
                         }
                     )
                 }
@@ -196,7 +188,6 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
         // Portrait: Content + Mini Player (if active) + Bottom Navigation Bar
         Column(modifier = Modifier.fillMaxSize()) {
             if (currentBackStack != null) {
-                val activity = LocalContext.current as FragmentActivity
                 NavDisplay(
                     backStack = currentBackStack,
                     onBack = {
@@ -206,7 +197,7 @@ fun PlatformPlayerNavHost(pendingTab: String?) {
                     },
                     modifier = Modifier.weight(1f),
                     entryProvider = { key ->
-                        createGrayjayNavEntry(key, navigator, activity)
+                        createGrayjayNavEntry(key, navigator)
                     }
                 )
             }
@@ -298,338 +289,51 @@ private fun GrayjayNavRail(
 
 // ==================== Nav Entry Creation ====================
 
-private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator, activity: FragmentActivity): NavEntry<NavKey> {
+private fun createGrayjayNavEntry(key: NavKey, navigator: GrayjayNavigator): NavEntry<NavKey> {
     return when (key) {
         is Home -> NavEntry(key) { HomeScene(navigator) }
-        // Fall back to XML fragments for top-level tabs that don't have Compose implementations
-        is Subscriptions -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { SubscriptionsScene(navigator) }
-            }
-        }
-        is Playlists -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { PlaylistsScene(navigator) }
-            }
-        }
+        is Subscriptions -> NavEntry(key) { SubscriptionsScene(navigator) }
+        is Playlists -> NavEntry(key) { PlaylistsScene(navigator) }
         is Notifications -> NavEntry(key) { NotificationsScene(navigator) }
-        is Library -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LibraryScene(navigator) }
-            }
-        }
-        is Search -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { SearchScene(navigator) }
-            }
-        }
+        is Library -> NavEntry(key) { LibraryScene(navigator) }
+        is Search -> NavEntry(key) { SearchScene(navigator) }
         is Settings -> NavEntry(key) { SettingsScene(navigator) }
         is VideoDetail -> NavEntry(key) { VideoDetailScene(key, navigator) }
         is ChannelDetail -> NavEntry(key) { ChannelDetailScene(key, navigator) }
         is PlaylistDetail -> NavEntry(key) { PlaylistDetailScene(key, navigator) }
-        is SourceDetail -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { SourceDetailScene(key, navigator) }
-            }
-        }
-        is ContentSearchResults -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { ContentSearchScene(key, navigator) }
-            }
-        }
-        is CreatorSearchResults -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { CreatorSearchScene(key, navigator) }
-            }
-        }
-        is PlaylistSearchResults -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { PlaylistSearchScene(key, navigator) }
-            }
-        }
-        is PostDetail -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { PostDetailScene(key, navigator) }
-            }
-        }
-        is ArticleDetail -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { ArticleDetailScene(key, navigator) }
-            }
-        }
-        is WebDetail -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { WebDetailScene(key, navigator) }
-            }
-        }
-        is Tutorial -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { TutorialScene(navigator) }
-            }
-        }
-        is Buy -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { BuyScene(navigator) }
-            }
-        }
-        is ImportSubscriptions -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { ImportSubscriptionsScene(navigator) }
-            }
-        }
-        is ImportPlaylists -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { ImportPlaylistsScene(navigator) }
-            }
-        }
-        is WatchLater -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { WatchLaterScene(navigator) }
-            }
-        }
-        is Shorts -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { ShortsScene(navigator) }
-            }
-        }
-        is Notifications -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { NotificationsScene(navigator) }
-            }
-        }
-        is SubscriptionGroupDetail -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { SubscriptionGroupDetailScene(key, navigator) }
-            }
-        }
-        is SubscriptionGroupList -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { SubscriptionGroupListScene(navigator) }
-            }
-        }
-        is LibraryAlbums -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LibraryAlbumsScene(navigator) }
-            }
-        }
-        is LibraryAlbumDetail -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LibraryAlbumDetailScene(key, navigator) }
-            }
-        }
-        is LibraryArtists -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LibraryArtistsScene(navigator) }
-            }
-        }
-        is LibraryArtistDetail -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LibraryArtistDetailScene(key, navigator) }
-            }
-        }
-        is LibraryVideos -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LibraryVideosScene(navigator) }
-            }
-        }
-        is LibraryFiles -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LibraryFilesScene(navigator) }
-            }
-        }
-        is LibrarySearch -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LibrarySearchScene(navigator) }
-            }
-        }
-        is Login -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { LoginScene(navigator) }
-            }
-        }
-        is Developer -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { DeveloperScene(navigator) }
-            }
-        }
-        is Browser -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { BrowserScene(key, navigator) }
-            }
-        }
-        is Comments -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { CommentsScene(key, navigator) }
-            }
-        }
-        is Suggestions -> {
-            val fragment = getXmlFragmentForNavKey(key)
-            if (fragment != null) {
-                NavEntry(key) { FragmentFallback(fragment, activity) }
-            } else {
-                NavEntry(key) { SuggestionsScene(navigator) }
-            }
-        }
+        is SourceDetail -> NavEntry(key) { SourceDetailScene(key, navigator) }
+        is ContentSearchResults -> NavEntry(key) { ContentSearchScene(key, navigator) }
+        is CreatorSearchResults -> NavEntry(key) { CreatorSearchScene(key, navigator) }
+        is PlaylistSearchResults -> NavEntry(key) { PlaylistSearchScene(key, navigator) }
+        is PostDetail -> NavEntry(key) { PostDetailScene(key, navigator) }
+        is ArticleDetail -> NavEntry(key) { ArticleDetailScene(key, navigator) }
+        is WebDetail -> NavEntry(key) { WebDetailScene(key, navigator) }
+        is Tutorial -> NavEntry(key) { TutorialScene(navigator) }
+        is Buy -> NavEntry(key) { BuyScene(navigator) }
+        is ImportSubscriptions -> NavEntry(key) { ImportSubscriptionsScene(navigator) }
+        is ImportPlaylists -> NavEntry(key) { ImportPlaylistsScene(navigator) }
+        is WatchLater -> NavEntry(key) { WatchLaterScene(navigator) }
+        is Shorts -> NavEntry(key) { ShortsScene(navigator) }
+        is SubscriptionGroupDetail -> NavEntry(key) { SubscriptionGroupDetailScene(key, navigator) }
+        is SubscriptionGroupList -> NavEntry(key) { SubscriptionGroupListScene(navigator) }
+        is LibraryAlbums -> NavEntry(key) { LibraryAlbumsScene(navigator) }
+        is LibraryAlbumDetail -> NavEntry(key) { LibraryAlbumDetailScene(key, navigator) }
+        is LibraryArtists -> NavEntry(key) { LibraryArtistsScene(navigator) }
+        is LibraryArtistDetail -> NavEntry(key) { LibraryArtistDetailScene(key, navigator) }
+        is LibraryVideos -> NavEntry(key) { LibraryVideosScene(navigator) }
+        is LibraryFiles -> NavEntry(key) { LibraryFilesScene(navigator) }
+        is LibrarySearch -> NavEntry(key) { LibrarySearchScene(navigator) }
+        is Login -> NavEntry(key) { LoginScene(navigator) }
+        is Developer -> NavEntry(key) { DeveloperScene(navigator) }
+        is Browser -> NavEntry(key) { BrowserScene(key, navigator) }
+        is Comments -> NavEntry(key) { CommentsScene(key, navigator) }
+        is Suggestions -> NavEntry(key) { SuggestionsScene(navigator) }
         is TestCompose -> NavEntry(key) { TestComposeScene(navigator) }
         is SettingsFragment -> NavEntry(key) { SettingsFragmentScene(key, navigator) }
-        // Fallback to XML fragments for backwards compatibility
-        else -> {
-            val xmlFragment = getXmlFragmentForNavKey(key)
-            if (xmlFragment != null) {
-                NavEntry(key) { FragmentFallback(xmlFragment, activity) }
-            } else {
-                NavEntry(key) { UnknownScene(key) }
-            }
-        }
+        else -> NavEntry(key) { UnknownScene(key) }
     }
 }
 
-/**
- * Map a NavKey to its corresponding XML fragment for backwards compatibility.
- * Returns null if no XML fragment exists for this route.
- */
-private fun getXmlFragmentForNavKey(key: NavKey): Fragment? {
-    val fragment = when (key) {
-        is Home -> HomeFragment()
-        is Subscriptions -> SubscriptionsFeedFragment.newInstance()
-        is Playlists -> PlaylistsFragment.newInstance()
-        is Library -> LibraryFragment.newInstance()
-        is Search -> ContentSearchResultsFragment.newInstance()
-        is VideoDetail -> VideoDetailFragment.newInstance()
-        is ChannelDetail -> ChannelFragment.newInstance()
-        is PlaylistDetail -> PlaylistFragment.newInstance()
-        is SourceDetail -> SourceDetailFragment.newInstance()
-        is ContentSearchResults -> ContentSearchResultsFragment.newInstance()
-        is CreatorSearchResults -> CreatorSearchResultsFragment.newInstance()
-        is PlaylistSearchResults -> PlaylistSearchResultsFragment.newInstance()
-        is PostDetail -> PostDetailFragment.newInstance()
-        is ArticleDetail -> ArticleDetailFragment.newInstance()
-        is WebDetail -> WebDetailFragment.newInstance()
-        is Tutorial -> TutorialFragment.newInstance()
-        is Buy -> BuyFragment.newInstance()
-        is ImportSubscriptions -> ImportSubscriptionsFragment.newInstance()
-        is ImportPlaylists -> ImportPlaylistsFragment.newInstance()
-        is WatchLater -> WatchLaterFragment.newInstance()
-        is Shorts -> ShortsFragment.newInstance()
-        is Notifications -> SuggestionsFragment.newInstance() // Fallback to suggestions if no notifications fragment
-        is SubscriptionGroupDetail -> SubscriptionGroupFragment.newInstance()
-        is SubscriptionGroupList -> SubscriptionGroupListFragment.newInstance()
-        is LibraryAlbums -> LibraryAlbumsFragment.newInstance()
-        is LibraryAlbumDetail -> LibraryAlbumFragment.newInstance()
-        is LibraryArtists -> LibraryArtistsFragment.newInstance()
-        is LibraryArtistDetail -> LibraryArtistFragment.newInstance()
-        is LibraryVideos -> LibraryVideosFragment.newInstance()
-        is LibraryFiles -> LibraryFilesFragment.newInstance()
-        is LibrarySearch -> LibrarySearchFragment.newInstance()
-        is Login -> LoginFragment.newInstance()
-        is Developer -> DeveloperFragment.newInstance()
-        is Browser -> BrowserFragment.newInstance()
-        is Comments -> CommentsFragment.newInstance()
-        is Suggestions -> SuggestionsFragment.newInstance()
-        else -> null
-    }
-    
-    if (fragment != null) {
-        Log.d("PlatformPlayer", "getXmlFragmentForNavKey: ${key.javaClass.simpleName} -> ${fragment.javaClass.simpleName}")
-    } else {
-        Log.w("PlatformPlayer", "getXmlFragmentForNavKey: No fragment for ${key.javaClass.simpleName}")
-    }
-    
-    return fragment
-}
 
 // ==================== Scene Composables ====================
 
@@ -850,39 +554,6 @@ private fun UnknownScene(key: NavKey) {
     placeholder(GrayjayNavigator(rememberGrayjayNavigationState()), "Unknown Route", key.toString())
 }
 
-@Composable
-private fun FragmentFallback(fragment: Fragment, activity: FragmentActivity) {
-    Log.d("PlatformPlayer", "FragmentFallback: ${fragment.javaClass.simpleName}")
-    
-    // Host the XML fragment in a FragmentContainerView
-    AndroidView(
-        factory = { context ->
-            Log.d("PlatformPlayer", "Creating FragmentContainerView for ${fragment.javaClass.simpleName}")
-            // Use a unique ID for the container, not android.R.id.content
-            val containerView = androidx.fragment.app.FragmentContainerView(context).apply {
-                id = View.generateViewId()
-                layoutParams = android.view.ViewGroup.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                )
-            }
-            
-            // Perform fragment transaction on this container
-            val fragmentManager = activity.supportFragmentManager
-            if (fragmentManager != null) {
-                val transaction = fragmentManager.beginTransaction()
-                Log.d("PlatformPlayer", "Transaction created, replacing container ${containerView.id} with ${fragment.javaClass.simpleName}")
-                transaction.replace(containerView.id, fragment)
-                transaction.commit()
-                Log.d("PlatformPlayer", "Transaction committed")
-            } else {
-                Log.e("PlatformPlayer", "Failed to get FragmentManager from activity")
-            }
-            
-            containerView
-        }
-    )
-}
 
 // ==================== Helper Functions ====================
 
