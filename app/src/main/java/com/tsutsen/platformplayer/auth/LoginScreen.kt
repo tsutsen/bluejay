@@ -9,6 +9,8 @@ package com.tsutsen.platformplayer.auth
 
 import android.annotation.SuppressLint
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -47,8 +49,13 @@ fun LoginScreen(
     LaunchedEffect(webViewClient) {
         webViewClient.onLogin.subscribe { auth ->
             Logger.i(TAG, "Login successful for ${config.name}")
-            // Close the WebView when login is complete
-            webViewRef.value?.stopLoading()
+            // Close the WebView when login is complete (must be on main thread)
+            val webView = webViewRef.value
+            if (webView != null) {
+                Handler(Looper.getMainLooper()).post {
+                    webView.stopLoading()
+                }
+            }
             onLogin(auth)
             // Navigate back immediately
             onBack()
