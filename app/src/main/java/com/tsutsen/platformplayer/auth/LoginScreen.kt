@@ -47,7 +47,11 @@ fun LoginScreen(
     LaunchedEffect(webViewClient) {
         webViewClient.onLogin.subscribe { auth ->
             Logger.i(TAG, "Login successful for ${config.name}")
+            // Close the WebView when login is complete
+            webViewRef.value?.stopLoading()
             onLogin(auth)
+            // Navigate back immediately
+            onBack()
         }
     }
 

@@ -15,6 +15,9 @@ import com.tsutsen.platformplayer.feature.home.impl.HomeScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
 import com.tsutsen.platformplayer.compose.subscriptions.SubscriptionsScreen
 import com.tsutsen.platformplayer.feature.settings.impl.SettingsScreen
+import com.tsutsen.platformplayer.logging.Logger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 /**
@@ -74,7 +77,17 @@ fun GrayjayNavGraph(
             LoginScreen(
                 config = config,
                 onLogin = { auth ->
-                    // Auth handled by caller via callback
+                    if (auth != null) {
+                        // Save auth to plugin
+                        com.tsutsen.platformplayer.states.StatePlugins.instance.setPluginAuth(config.id, auth)
+                        // Reload the client to apply auth
+                        com.tsutsen.platformplayer.states.StateApp.instance.scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            val context = com.tsutsen.platformplayer.states.StateApp.instance.context
+                            com.tsutsen.platformplayer.states.StatePlatform.instance.reloadClient(context, config.id) {
+                                Logger.i("BluejayNavGraph", "Client reloaded after login")
+                            }
+                        }
+                    }
                 },
                 onBack = { navigator.goBack() }
             )
