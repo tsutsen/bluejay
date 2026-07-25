@@ -11,7 +11,7 @@ import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImp
 import com.tsutsen.platformplayer.core.data.repository.impl.PlayerRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.SearchRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.SettingsRepositoryImpl
-import com.tsutsen.platformplayer.core.data.repository.impl.SubscriptionRepositoryImpl
+import com.tsutsen.platformplayer.di.EngineSubscriptionsRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -38,7 +38,7 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindSubscriptionRepository(impl: SubscriptionRepositoryImpl): SubscriptionRepository
+    abstract fun bindSubscriptionRepository(impl: EngineSubscriptionsRepositoryImpl): SubscriptionRepository
 
     @Binds
     @Singleton

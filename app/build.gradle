@@ -175,6 +175,7 @@ dependencies {
     implementation project(':core:ui')
     implementation project(':feature:dualscreen')
     implementation project(':feature:home:impl')
+    implementation project(':feature:subscriptions:impl')
     implementation project(':feature:settings:impl')
     implementation project(':feature:player:impl')
 
