@@ -1,11 +1,18 @@
 package com.tsutsen.platformplayer.core.data.repository
 
+import androidx.media3.exoplayer.ExoPlayer
 import com.tsutsen.platformplayer.core.model.PlayerState
 import kotlinx.coroutines.flow.StateFlow
 
 interface PlayerRepository {
 
     val playerState: StateFlow<PlayerState>
+
+    /**
+     * Get the ExoPlayer instance managed by this repository.
+     * Used by PlayerScreen to bind a PlayerView to the player.
+     */
+    val exoPlayer: ExoPlayer?
 
     suspend fun play(videoId: String)
     suspend fun pause()

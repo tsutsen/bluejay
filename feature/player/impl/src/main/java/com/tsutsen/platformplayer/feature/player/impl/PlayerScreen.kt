@@ -139,11 +139,11 @@ fun PlayerScreen(
 
     var containerSize by remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
 
-    // ==================== ExoPlayer (managed lifecycle) ====================
-    val player = remember { ExoPlayer.Builder(context).build() }
-    DisposableEffect(Unit) {
-        onDispose {
-            player.release()
+    // ==================== ExoPlayer (from repository) ====================
+    // Get ExoPlayer from repository - PlayerRepository manages the player lifecycle
+    val player by remember {
+        derivedStateOf {
+            (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
         }
     }
 
@@ -191,15 +191,8 @@ fun PlayerScreen(
             val isTablet = configuration.smallestScreenWidthDp >= 600
             val miniPlayerScale = if (isTablet) 0.35f else 0.45f
 
-            // Load video into ExoPlayer
-            LaunchedEffect(state.currentVideo?.url) {
-                if (state.currentVideo?.url != null) {
-                    player.setMediaItem(MediaItem.fromUri(state.currentVideo!!.url))
-                    player.prepare()
-                    player.playWhenReady = true
-                    Log.d(TAG, "MediaItem loaded: ${state.currentVideo!!.url}")
-                }
-            }
+            // Note: Video loading is handled by PlayerRepositoryImpl
+            // PlayerScreen only displays the video using the ExoPlayer from the repository
 
             // Calculate mini-player size - smaller, 16:9 aspect ratio
             val miniWidth = 280.dp
@@ -921,7 +914,7 @@ fun PlayerScreen(
                                 onChapters = { showChapters = !showChapters },
                                 onLoopToggle = {
                                     isLooping = !isLooping
-                                    player.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                                    player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
                                 },
                                 onWatchLater = { /* TODO */ },
                                 onOptions = { showOptionsModal = true },

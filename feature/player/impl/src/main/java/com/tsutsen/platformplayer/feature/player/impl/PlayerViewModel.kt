@@ -74,6 +74,8 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun getPlayer() = playerRepository
+
     fun pause() {
         viewModelScope.launch {
             playerRepository.pause()
