@@ -58,15 +58,6 @@ class GrayjayNavigator(val state: GrayjayNavigationState) {
 
     // ==================== Convenience methods for specific navigation actions ====================
 
-    /** Navigate to the video player */
-    fun navigateToVideo(url: String, position: Long? = null, startMinimized: Boolean = false) {
-        val videoDetail = VideoDetail(url, position, startMinimized)
-        // Remove any existing video detail before adding new one
-        val stack = state.backStacks[state.topLevelRoute.value]
-        stack?.removeIf { it is VideoDetail }
-        stack?.add(videoDetail)
-    }
-
     /** Navigate to a channel detail */
     fun navigateToChannel(url: String) {
         val stack = state.backStacks[state.topLevelRoute.value]

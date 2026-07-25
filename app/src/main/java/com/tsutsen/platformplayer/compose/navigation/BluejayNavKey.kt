@@ -45,10 +45,6 @@ data object Library : NavKey
 
 // ==================== Sub-Routes (pushed onto tab back stacks) ====================
 
-/** Video player detail — can be maximized (fullscreen) or minimized (PiP-style) */
-@Serializable
-data class VideoDetail(val url: String, val position: Long? = null, val startMinimized: Boolean = false) : NavKey
-
 /** Channel / creator detail page */
 @Serializable
 data class ChannelDetail(val url: String) : NavKey
@@ -185,7 +181,7 @@ fun NavKey.isTopLevel(): Boolean = this in topLevelRoutes
 /**
  * Check if a route represents the video player.
  */
-fun NavKey.isVideoDetail(): Boolean = this is VideoDetail
+
 
 /**
  * Check if a route is search-related.

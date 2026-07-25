@@ -163,11 +163,6 @@
             android:exported="false"
             android:excludeFromRecents="true" />
         <activity
-            android:name=".compose.navigation.PlatformPlayerActivity"
-           
-            android:exported="false"
-            android:supportsPictureInPicture="true" />
-        <activity
             android:name=".activities.SettingsActivity"
             />
         <activity

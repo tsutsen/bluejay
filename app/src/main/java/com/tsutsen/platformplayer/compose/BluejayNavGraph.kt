@@ -8,7 +8,6 @@ import androidx.navigation3.runtime.NavKey
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.navigation.Login
-import com.tsutsen.platformplayer.compose.player.VideoPlayerScene
 import com.tsutsen.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
@@ -56,7 +55,6 @@ fun GrayjayNavGraph(
         is NavDestination.Home -> HomeScreen(navigator = navigator)
         is NavDestination.Search -> PlaceholderScreen("Search", "Coming soon")
         is NavDestination.Subscriptions -> SubscriptionsScreen(navigator = navigator)
-        is NavDestination.VideoDetail -> VideoPlayerScene(d = destination, n = navigator)
         is NavDestination.Library -> PlaceholderScreen("Library", "Coming soon")
         is NavDestination.Notifications -> PlaceholderScreen("Notifications", "Coming soon")
         is NavDestination.Settings -> SettingsScreen(navigator = navigator)

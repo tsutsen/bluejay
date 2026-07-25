@@ -59,9 +59,7 @@ class Navigator @Inject constructor() {
     fun navigateToPost(url: String) = navigate(NavDestination.PostDetail(url))
     fun navigateToArticle(url: String) = navigate(NavDestination.ArticleDetail(url))
     fun navigateToWeb(url: String) = navigate(NavDestination.WebDetail(url))
-    fun navigateToVideo(url: String, position: Long? = null, startMinimized: Boolean = false) {
-        navigate(NavDestination.VideoDetail(url, position, startMinimized))
-    }
+
 
     // Search results
     fun navigateToContentSearch(query: String) = navigate(NavDestination.ContentSearchResults(query))

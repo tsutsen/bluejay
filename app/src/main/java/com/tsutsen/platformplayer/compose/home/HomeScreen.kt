@@ -29,6 +29,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -41,6 +43,7 @@ import com.tsutsen.platformplayer.api.media.models.post.IPlatformPost
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.platforms.js.models.JSWeb
 import com.tsutsen.platformplayer.compose.navigation.GrayjayNavigator
+import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.compose.util.LoadingContent
 import com.tsutsen.platformplayer.compose.util.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
@@ -55,11 +58,13 @@ import com.tsutsen.platformplayer.core.model.VideoCard
 @Composable
 fun HomeScreen(
     navigator: GrayjayNavigator,
+    playerRepository: PlayerRepository = hiltViewModel(),
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
     
     Scaffold(
         modifier = modifier.fillMaxSize()
@@ -88,7 +93,9 @@ fun HomeScreen(
                         onItemClicked = { id ->
                             val content = state.contentList.find { it.id?.value == id }
                             when (content) {
-                                is IPlatformVideo -> navigator.navigateToVideo(content.url)
+                                is IPlatformVideo -> {
+                                    coroutineScope.launch { playerRepository.play(content.url) }
+                                }
                                 is IPlatformPlaylist -> navigator.navigateToPlaylist(content.url)
                                 is IPlatformPost -> navigator.navigateToPost(content.url)
                                 is IPlatformArticle -> navigator.navigateToArticle(content.url)
