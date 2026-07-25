@@ -17,7 +17,7 @@ import com.futo.platformplayer.Settings
 import com.futo.platformplayer.SettingsDev
 import com.futo.platformplayer.UIDialogs
 import com.futo.platformplayer.activities.MainActivity
-import com.futo.platformplayer.compose.test.TestComposeFragment
+
 import com.futo.platformplayer.fragment.settings.SettingsHubFragment
 import com.futo.platformplayer.assume
 import com.futo.platformplayer.constructs.Event0
@@ -130,10 +130,7 @@ class SettingsFragment : MainFragment() {
                 fragment.navigate<DeveloperFragment>(null, true);
             }
 
-            findViewById<MaterialButton>(R.id.button_test_compose)?.setOnClickListener {
-                Logger.i("SettingsFragment", "Navigate to TestComposeFragment (Phase 0)");
-                fragment.navigate<TestComposeFragment>(null, true);
-            }
+            // Test Compose button removed - migrated to PlatformPlayerActivity NavHost
 
             //_lastActivity = this;
 
