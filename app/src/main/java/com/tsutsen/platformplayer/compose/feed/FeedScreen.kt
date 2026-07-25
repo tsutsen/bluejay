@@ -137,4 +137,21 @@ data class FeedItem(
             url = ""
         )
     }
+
+    /**
+     * Convert FeedItem + IPlatformContent to VideoCard with full metadata.
+     */
+    fun toVideoCardWithMetadata(content: com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent): VideoCard {
+        val video = content as? com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
+        return VideoCard(
+            id = id,
+            title = title,
+            thumbnailUrl = thumbnailUrl,
+            author = subtitle,
+            durationMs = video?.duration,
+            viewCount = video?.viewCount,
+            publishedAt = video?.playbackDate?.toEpochSecond(),
+            url = ""
+        )
+    }
 }

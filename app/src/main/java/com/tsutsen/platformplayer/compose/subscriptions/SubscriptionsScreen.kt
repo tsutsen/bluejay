@@ -61,6 +61,7 @@ import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.compose.feed.FeedItemCard
 import com.tsutsen.platformplayer.compose.feed.FeedItem
 import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
+import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
@@ -530,7 +531,14 @@ private fun SubscriptionsVideoContainer(
     columns: Int = 3,
     modifier: Modifier = Modifier
 ) {
-    val cards: List<VideoCard> = items.map { it.toVideoCard() }
+    val cards: List<VideoCard> = items.map { item ->
+        val content = contentList.find { it.id?.value == item.id }
+        if (content != null) {
+            item.toVideoCardWithMetadata(content)
+        } else {
+            item.toVideoCard()
+        }
+    }
 
     if (cards.isEmpty()) {
         EmptyState(
@@ -550,9 +558,8 @@ private fun SubscriptionsVideoContainer(
             modifier = modifier,
             contentPadding = PaddingValues(8.dp)
         ) { card ->
-            val item = items.first { it.id == card.id }
-            FeedItemCard(
-                item = item,
+            VideoCard(
+                card = card as VideoCard,
                 onClick = {
                     val content = contentList.find { it.id?.value == card.id }
                     if (content != null) onItemClicked(content)

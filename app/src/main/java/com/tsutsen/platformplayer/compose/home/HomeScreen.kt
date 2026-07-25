@@ -45,6 +45,7 @@ import com.tsutsen.platformplayer.compose.navigation.GrayjayNavigator
 import com.tsutsen.platformplayer.compose.util.LoadingContent
 import com.tsutsen.platformplayer.compose.util.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
+import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.model.VideoCard
 
@@ -151,7 +152,14 @@ private fun FeedContent(
     onItemClicked: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val cards: List<VideoCard> = items.map { it.toVideoCard() }
+    val cards: List<VideoCard> = items.map { item ->
+        val content = contentList.find { it.id?.value == item.id }
+        if (content != null) {
+            item.toVideoCardWithMetadata(content)
+        } else {
+            item.toVideoCard()
+        }
+    }
     
     VideoContainer(
         items = cards,
@@ -166,8 +174,8 @@ private fun FeedContent(
         modifier = modifier,
         contentPadding = PaddingValues(8.dp)
     ) { card ->
-        com.tsutsen.platformplayer.compose.feed.FeedItemCard(
-            item = items.first { it.id == card.id },
+        VideoCard(
+            card = card as VideoCard,
             onClick = { onItemClicked(card.id) },
             modifier = Modifier.fillMaxWidth()
         )
