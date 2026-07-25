@@ -193,7 +193,7 @@
     <string name="under">تحت</string>
     <string name="construction">الإنشاء</string>
     <string name="disable">تعطيل</string>
-    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">لا يمكن فتح المحتوى التالي في Grayjay بسبب عدم وجود مكون إضافي</string>
+    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">لا يمكن فتح المحتوى التالي في Bluejay بسبب عدم وجود مكون إضافي</string>
     <string name="unknown">غير معروف</string>
     <string name="tap_to_open_in_browser">النقر للفتح في المتصفح</string>
     <string name="missing_plugin">مكون إضافي مفقود</string>
@@ -207,7 +207,7 @@
     <string name="payment_using">الدفع باستخدام</string>
     <string name="country">الدولة</string>
     <string name="postal_code">الرمز البريدي</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">ضريبة المبيعات (</string>
     <string name="total">المجموع</string>
     <string name="pay">دفع</string>
@@ -263,7 +263,7 @@
     <string name="configure_the_auto_updater">تكوين المحدث التلقائي</string>
     <string name="configure_when_updates_should_be_downloaded">تكوين متى يجب تنزيل التحديثات</string>
     <string name="configure_when_videos_should_be_downloaded">تكوين متى يجب تنزيل الفيديوهات</string>
-    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">ينشئ ملف زيب يحتوي على بياناتك والتي يمكن استيرادها عن طريق فتحها مع Grayjay</string>
+    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">ينشئ ملف زيب يحتوي على بياناتك والتي يمكن استيرادها عن طريق فتحها مع Bluejay</string>
     <string name="default_audio_quality">جودة الصوت الافتراضية</string>
     <string name="default_playback_speed">سرعة التشغيل الافتراضية</string>
     <string name="default_video_quality">جودة الفيديو الافتراضية</string>
@@ -455,7 +455,7 @@
     <string name="share_as_text">مشاركة كنص</string>
     <string name="share_as_a_list_of_video_urls">مشاركة كقائمة عناوين URL للفيديو</string>
     <string name="share_as_import">مشاركة كملف استيراد</string>
-    <string name="share_as_a_import_file_for_grayjay">مشاركة كملف استيراد لـ Grayjay</string>
+    <string name="share_as_a_import_file_for_grayjay">مشاركة كملف استيراد لـ Bluejay</string>
     <string name="failed_to_load_playlist">فشل في تحميل قائمة التشغيل</string>
     <string name="please_wait_for_playlist_to_finish_loading">يرجى الانتظار حتى تنتهي عملية تحميل قائمة التشغيل</string>
     <string name="playlist_copied_as_local_playlist">تم نسخ قائمة التشغيل كقائمة محلية</string>
@@ -606,7 +606,7 @@
     <string name="enable_in_home">تمكين في الصفحة الرئيسية</string>
     <string name="enable_in_search">تمكين في البحث</string>
     <string name="check">تحقق</string>
-    <string name="buy_text">Grayjay ليست تطبيقًا سهلًا أو رخيصًا للبناء والصيانة. لدينا مهندسون يعملون بدوام كامل على التطبيق والنظم المحيطة به. ومن غير المرجح أن يعيد جني أمواله في أي وقت قريب، إن كان ذلك سيحدث أصلاً.\n\nالمهمة التي تضعها FUTO هي لجعل البرمجيات مفتوحة المصدر وممارسات الأعمال البرمجية غير الضارة مصدرًا مستدامًا للدخل للمشاريع ومطوريها. لهذا السبب نحن نؤيد فعلياً أن يدفع المستخدمون مقابل البرمجيات.\n\nلهذا السبب تريد Grayjay أن تدفع مقابل البرمجيات.</string>
+    <string name="buy_text">Bluejay ليست تطبيقًا سهلًا أو رخيصًا للبناء والصيانة. لدينا مهندسون يعملون بدوام كامل على التطبيق والنظم المحيطة به. ومن غير المرجح أن يعيد جني أمواله في أي وقت قريب، إن كان ذلك سيحدث أصلاً.\n\nالمهمة التي تضعها TSUTSEN هي لجعل البرمجيات مفتوحة المصدر وممارسات الأعمال البرمجية غير الضارة مصدرًا مستدامًا للدخل للمشاريع ومطوريها. لهذا السبب نحن نؤيد فعلياً أن يدفع المستخدمون مقابل البرمجيات.\n\nلهذا السبب تريد Bluejay أن تدفع مقابل البرمجيات.</string>
     <string-array name="home_screen_array">
         <item>التوصيات</item>
         <item>الاشتراكات</item>

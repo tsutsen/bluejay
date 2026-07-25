@@ -4,7 +4,7 @@
     "type": "AAPT_FRIENDLY_MERGED_MANIFESTS",
     "kind": "Directory"
   },
-  "applicationId": "com.futo.platformplayer.feature.player.impl",
+  "applicationId": "com.tsutsen.platformplayer.feature.player.impl",
   "variantName": "debug",
   "elements": [
     {

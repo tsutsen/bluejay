@@ -1,6 +1,6 @@
 # Refactoring Opportunities
 
-This document identifies concrete refactoring opportunities for the Grayjay codebase, comparing the current implementation with best practices from Android's architecture-samples (Google's official Compose + ViewModel + Repository pattern reference app).
+This document identifies concrete refactoring opportunities for the Bluejay codebase, comparing the current implementation with best practices from Android's architecture-samples (Google's official Compose + ViewModel + Repository pattern reference app).
 
 ---
 
@@ -22,7 +22,7 @@ class StateLibrary {
 // HomeScene.kt - Direct access to singleton
 @Composable
 private fun HomeScene(navigator: GrayjayNavigator) {
-    val p = com.futo.platformplayer.states.StatePlatform.instance.getHomeRefresh(this)
+    val p = com.tsutsen.platformplayer.states.StatePlatform.instance.getHomeRefresh(this)
     // ...
 }
 ```
@@ -74,7 +74,7 @@ sealed interface HomeUiState {
 
 **IMPORTANT: Do NOT migrate to standard Compose Navigation.**
 
-navigation3 is the RIGHT choice for Grayjay because:
+navigation3 is the RIGHT choice for Bluejay because:
 - **Per-tab back stacks** - natively supported via `NavigationState` with per-tab `backStacks`
 - **Adaptive layouts** - built-in support for portrait/landscape with `currentWindowAdaptiveInfo`
 - **Type-safe navigation** - `NavKey` sealed class with `@Serializable` annotations
@@ -348,7 +348,7 @@ class PlatformPlayerActivity : ComponentActivity() {
 
 ### Current (Good)
 ```kotlin
-// core/data/src/main/java/com/futo/platformplayer/core/data/repository/SearchRepository.kt
+// core/data/src/main/java/com/tsutsen/platformplayer/core/data/repository/SearchRepository.kt
 interface SearchRepository {
     suspend fun search(query: String): List<SearchResult>
 }
@@ -550,7 +550,7 @@ class ScreenNavigationActions(private val navController: NavHostController) {
 
 ### New Files
 ```
-app/src/main/java/com/futo/platformplayer/compose/
+app/src/main/java/com/tsutsen/platformplayer/compose/
 ├── home/
 │   ├── HomeViewModel.kt              ← NEW
 │   ├── HomeScreen.kt                 ← REFACTOR from PlatformPlayerActivity.kt
@@ -571,12 +571,12 @@ app/src/main/java/com/futo/platformplayer/compose/
 
 ### Modified Files
 ```
-app/src/main/java/com/futo/platformplayer/compose/navigation/
+app/src/main/java/com/tsutsen/platformplayer/compose/navigation/
 ├── PlatformPlayerActivity.kt         ← Simplify, remove scenes
 ├── GrayjayNavigator.kt               ← Update for standard navigation
 └── NavKey.kt                         ← Keep for now, migrate later
 
-app/src/main/java/com/futo/platformplayer/states/
+app/src/main/java/com/tsutsen/platformplayer/states/
 ├── StateLibrary.kt                   ← Reduce responsibility
 ├── StatePlayer.kt                    ← Reduce responsibility
 ├── StateSubscriptions.kt             ← Reduce responsibility

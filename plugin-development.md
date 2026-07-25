@@ -1,4 +1,4 @@
-# Grayjay App Plugin Development Documentation
+# Bluejay App Plugin Development Documentation
 
 ## Table of Contents
 
@@ -17,13 +17,13 @@
 
 ## Introduction
 
-Welcome to the Grayjay App plugin development documentation. Plugins are additional components that you can create to extend the functionality of the Grayjay app, for example a YouTube or Odysee plugin. This guide will provide an overview of Grayjay's plugin system and guide you through the steps necessary to create, test, debug, and deploy plugins.
+Welcome to the Bluejay App plugin development documentation. Plugins are additional components that you can create to extend the functionality of the Bluejay app, for example a YouTube or Odysee plugin. This guide will provide an overview of Bluejay's plugin system and guide you through the steps necessary to create, test, debug, and deploy plugins.
 
 ## Quick Start
 
 ### Download GrayJay:
 
-- Download the GrayJay app for Android [here](https://grayjay.app/).
+- Download the GrayJay app for Android [here](https://bluejay.app/).
 
 ### Enable GrayJay Developer Mode:
 
@@ -33,36 +33,36 @@ Welcome to the Grayjay App plugin development documentation. Plugins are additio
 
 - At the bottom of the Settings page in the GrayJay app, Click the purple “Developer Settings” button. Then click the “Start Server” button to start the DevServer.
 
-  <img src="https://gitlab.futo.org/videostreaming/grayjay/uploads/07fc4919b0a8446c4cdf5335565c0611/image.png" width="200">
+  <img src="https://gitlab.tsutsen.org/videostreaming/bluejay/uploads/07fc4919b0a8446c4cdf5335565c0611/image.png" width="200">
 
 ### Open the GrayJay DevServer on your computer:
 
 - Open the Android settings app and search for “IP address”. The IP address should look like `192.168.X.X`.
 - Open `http://<phone-ip>:11337/dev` in your web browser.
     
-  <img src="https://gitlab.futo.org/videostreaming/grayjay/uploads/72885c3bc51b8efe9462ee68d47e3b51/image.png" width="600">
+  <img src="https://gitlab.tsutsen.org/videostreaming/bluejay/uploads/72885c3bc51b8efe9462ee68d47e3b51/image.png" width="600">
 
 ### Create and host your plugin:
 
-- Clone the [Odysee plugin](https://gitlab.futo.org/videostreaming/plugins/odysee) as an example
+- Clone the [Odysee plugin](https://gitlab.tsutsen.org/videostreaming/plugins/odysee) as an example
 - `cd` into the project folder and serve with `npx serve` (if you have [Node.js](https://nodejs.org/en/)) or any other HTTP Server you desire.
 - `npx serve` should give you a Network url (not the localhost one) that looks like `http://192.168.X.X:3000`. Your config file URL will be something like `http://192.168.X.X:3000/OdyseeConfig.json`.
     
-  <img src="https://gitlab.futo.org/videostreaming/grayjay/uploads/cc266da0a0b85c5770abca22c0b03b3b/image.png" width="600">
+  <img src="https://gitlab.tsutsen.org/videostreaming/bluejay/uploads/cc266da0a0b85c5770abca22c0b03b3b/image.png" width="600">
 
 ### Test your plugin:
 
 - When the DevServer is open in your browser, enter the config file URL and click “Load Plugin”. This will NOT inject the plugin into the app, for that you need to click "Inject Plugin" on the Integration tab.
     
-  <img src="https://gitlab.futo.org/videostreaming/grayjay/uploads/386a562f30a60cfcbb8a8a1345a788e5/image.png" width="600">
+  <img src="https://gitlab.tsutsen.org/videostreaming/bluejay/uploads/386a562f30a60cfcbb8a8a1345a788e5/image.png" width="600">
     
 - On the Testing tab, you can individually test the methods in your plugin. To reload once you make changes on the plugin, click the top-right refresh button. *Note: While testing, the custom domParser package is overwritten with the browser's implementation, so it may behave differently than once it is loaded into the app.*
     
-  <img src="https://gitlab.futo.org/videostreaming/grayjay/uploads/08830eb8cc56cc55ba445dd49db86235/image.png" width="600">
+  <img src="https://gitlab.tsutsen.org/videostreaming/bluejay/uploads/08830eb8cc56cc55ba445dd49db86235/image.png" width="600">
     
 - On the Integration tab you can test your plugin end-to-end in the GrayJay app and monitor device logs. You can click "Inject Plugin" in order to inject the plugin into the app. Your plugin should show up on the Sources tab in the GrayJay app. If you make changes and want to reload the plugin, click "Inject Plugin" again.
     
-  <img src="https://gitlab.futo.org/videostreaming/grayjay/uploads/74813fbf37dcfc63055595061e41c48b/image.png" width="600">
+  <img src="https://gitlab.tsutsen.org/videostreaming/bluejay/uploads/74813fbf37dcfc63055595061e41c48b/image.png" width="600">
 
 ## Configuration file
 
@@ -106,39 +106,39 @@ Create a configuration file for your plugin.
 ## Packages
 
 The `packages` field allows you to specify which packages you want to use, current available packages are:
-- `Http`: for performing HTTP requests (see [docs](https://gitlab.futo.org/videostreaming/grayjay/-/blob/master/docs/packages/packageHttp.md))
-- `DOMParser`: for parsing a DOM (no docs yet, see [source code](https://gitlab.futo.org/videostreaming/grayjay/-/blob/master/app/src/main/java/com/futo/platformplayer/engine/packages/PackageDOMParser.kt))
-- `Utilities`: for various utility functions like generating UUIDs or converting to Base64 (no docs yet, see [source code](https://gitlab.futo.org/videostreaming/grayjay/-/blob/master/app/src/main/java/com/futo/platformplayer/engine/packages/PackageUtilities.kt))
+- `Http`: for performing HTTP requests (see [docs](https://gitlab.tsutsen.org/videostreaming/bluejay/-/blob/master/docs/packages/packageHttp.md))
+- `DOMParser`: for parsing a DOM (no docs yet, see [source code](https://gitlab.tsutsen.org/videostreaming/bluejay/-/blob/master/app/src/main/java/com/tsutsen/platformplayer/engine/packages/PackageDOMParser.kt))
+- `Utilities`: for various utility functions like generating UUIDs or converting to Base64 (no docs yet, see [source code](https://gitlab.tsutsen.org/videostreaming/bluejay/-/blob/master/app/src/main/java/com/tsutsen/platformplayer/engine/packages/PackageUtilities.kt))
 
 ## Authentication
 
 Authentication is sometimes required by plugins to access user data and premium content, for example on YouTube or Patreon.
 
-See [Authentication.md](https://gitlab.futo.org/videostreaming/grayjay/-/blob/master/docs/Authentication.md)
+See [Authentication.md](https://gitlab.tsutsen.org/videostreaming/bluejay/-/blob/master/docs/Authentication.md)
 
 ## Content Types
 
 Docs for data structures like PlatformVideo your plugin uses to communicate with the GrayJay app.
 
-See [Content Types.md](https://gitlab.futo.org/videostreaming/grayjay/-/blob/master/docs/Content%20Types.md)
+See [Content Types.md](https://gitlab.tsutsen.org/videostreaming/bluejay/-/blob/master/docs/Content%20Types.md)
 
 ## Example plugin
 
 See the example plugin to better understand the plugin API e.g. `getHome` and `search`.
 
-See [Example Plugin.md](https://gitlab.futo.org/videostreaming/grayjay/-/blob/master/docs/Example%20Plugin.md)
+See [Example Plugin.md](https://gitlab.tsutsen.org/videostreaming/bluejay/-/blob/master/docs/Example%20Plugin.md)
 
 ## Pagination
 
 Plugins use "Pagers" to send paginated data to the GrayJay app.
 
-See [Pagers.md](https://gitlab.futo.org/videostreaming/grayjay/-/blob/master/docs/Pagers.md)
+See [Pagers.md](https://gitlab.tsutsen.org/videostreaming/bluejay/-/blob/master/docs/Pagers.md)
 
 ## Script signing
 
 When you deploy your plugin, you'll need to add code signing for security.
 
-See [Script Signing.md](https://gitlab.futo.org/videostreaming/grayjay/-/blob/master/docs/Script%20Signing.md)
+See [Script Signing.md](https://gitlab.tsutsen.org/videostreaming/bluejay/-/blob/master/docs/Script%20Signing.md)
 
 ## Plugin Deployment
 
@@ -147,7 +147,7 @@ Here's how to deploy your plugin and distribute it to end-users:
 1. Put the plugin config, script and icon on a publically accessible URL, this can be a self-hosted server or something like Github pages. The URL should match with the `sourceUrl` specified in the config.
 2. Make sure to sign the script as mentioned earlier.
 3. Make sure to increment the version.
-4. Make a QR code for this plugin and distribute it to whoever wants to install it. In the Grayjay app they are able to click add source, scan the QR code and use your plugin.
+4. Make a QR code for this plugin and distribute it to whoever wants to install it. In the Bluejay app they are able to click add source, scan the QR code and use your plugin.
 
 ## Common Issues and Troubleshooting
 
@@ -186,4 +186,4 @@ Make sure the signature is correctly generated and added. Also, ensure the versi
 
 If you have any issues or need further assistance, feel free to reach out to us at:
 
-https://chat.futo.org/login/
+https://chat.tsutsen.org/login/

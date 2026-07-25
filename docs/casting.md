@@ -1,8 +1,8 @@
-# Casting in Grayjay App
+# Casting in Bluejay App
 
 ## Introduction
 
-The Grayjay app supports multiple protocols to cast your favorite content onto a bigger screen. These protocols include FCast, Chromecast, and AirPlay. The list is prioritized in the order of preference for the following reasons:
+The Bluejay app supports multiple protocols to cast your favorite content onto a bigger screen. These protocols include FCast, Chromecast, and AirPlay. The list is prioritized in the order of preference for the following reasons:
 
 1. **FCast**: Open protocol, direct streaming support, no need for proxying through mobile devices. Click [here](https://fcast.org/) for more details and where to download.
 2. **Chromecast**: Requires proxying but supports DASH streaming.
@@ -10,11 +10,11 @@ The Grayjay app supports multiple protocols to cast your favorite content onto a
 
 The "FCast Receiver" app is available on Google Play store for both Android and Android TV.
 
-## How to Use Casting in Grayjay App
+## How to Use Casting in Bluejay App
 
 ### Finding the Casting Icon
 
-1. Open the Grayjay app on your mobile device.
+1. Open the Bluejay app on your mobile device.
 2. Click on the casting icon located in the top-right corner of the screen.
 
 ### Auto Discovery (mDNS)
@@ -27,7 +27,7 @@ The "FCast Receiver" app is available on Google Play store for both Android and 
 
 ### Playback Controls
 
-- Once connected, you can use the Grayjay app to control the playback, including pause, play, seek, and volume adjustments.
+- Once connected, you can use the Bluejay app to control the playback, including pause, play, seek, and volume adjustments.
 
 ## Why Choose FCast Over Others?
 
@@ -35,5 +35,5 @@ The "FCast Receiver" app is available on Google Play store for both Android and 
 2. **Direct Streaming**: Unlike Chromecast, which proxies media through the mobile device, FCast supports direct streaming to the receiver.
 3. **Multi-Platform**: The FCast Receiver app is available for both Android and Android TV.
 
-By utilizing the built-in casting options, you can enjoy a seamless and versatile streaming experience in Grayjay.
+By utilizing the built-in casting options, you can enjoy a seamless and versatile streaming experience in Bluejay.
 

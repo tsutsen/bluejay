@@ -3,20 +3,20 @@ description: Report an issue or suggest a change in the documentation.
 labels: ["Documentation"]
 title: "Documentation: "
 type: task
-projects: ["futo-org/19"]
+projects: ["tsutsen-org/19"]
 body:
   - type: markdown
     attributes:
       value: |
         # Thank you for opening a documentation change request.
 
-        The [grayjay-android](https://github.com/futo-org/grayjay-android) issue tracker is reserved for issues relating to the Grayjay android application. Use the `Documentation` issue type to report problems with the documentation in our code repositories, inside the application, or on [https://grayjay.app](https://grayjay.app)
-        Technical writers monitor this issue type, so report Grayjay bugs or feature requests with the `Bug report` or `Feature Request` issue types instead to get engineering attention.
+        The [bluejay-android](https://github.com/tsutsen-org/bluejay-android) issue tracker is reserved for issues relating to the Bluejay android application. Use the `Documentation` issue type to report problems with the documentation in our code repositories, inside the application, or on [https://bluejay.app](https://bluejay.app)
+        Technical writers monitor this issue type, so report Bluejay bugs or feature requests with the `Bug report` or `Feature Request` issue types instead to get engineering attention.
 
-        For general usage questions, please see: [The Official FUTO Grayjay Zulip Channel](https://chat.futo.org/#narrow/stream/46-Grayjay)
+        For general usage questions, please see: [The Official TSUTSEN Bluejay Zulip Channel](https://chat.tsutsen.org/#narrow/stream/46-Bluejay)
 
   - type: textarea
-    id: grayjay-affected-pages
+    id: bluejay-affected-pages
     attributes:
       label: Affected Pages
       description: |
@@ -27,7 +27,7 @@ body:
       required: false
 
   - type: textarea
-    id: grayjay-problem
+    id: bluejay-problem
     attributes:
       label: What is the docs issue?
       description: What problems or suggestions do you have about the documentation?
@@ -37,7 +37,7 @@ body:
       required: true
 
   - type: textarea
-    id: grayjay-proposal
+    id: bluejay-proposal
     attributes:
       label: Proposal
       description: What documentation changes would fix this issue and where would you expect to find them? Are one or more page headings unclear? Do one or more pages need additional context, examples, or warnings? Do we need a new page or section dedicated to a specific topic?  Your ideas help us understand what you and other users need from our documentation and how we can improve the content.
@@ -47,7 +47,7 @@ body:
       required: false
 
   - type: textarea
-    id: grayjay-references
+    id: bluejay-references
     attributes:
       label: References
       description: |

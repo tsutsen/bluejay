@@ -1,1 +1,1 @@
-com.futo.platformplayer.core.designsystem
+com.tsutsen.platformplayer.core.designsystem

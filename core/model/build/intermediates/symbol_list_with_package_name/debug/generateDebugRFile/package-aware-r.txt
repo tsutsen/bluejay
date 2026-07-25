@@ -1,1 +1,1 @@
-com.futo.platformplayer.core.model
+com.tsutsen.platformplayer.core.model

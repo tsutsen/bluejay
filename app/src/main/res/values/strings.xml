@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Grayjay</string>
+    <string name="app_name">Bluejay</string>
     <string name="queued">Queued</string>
     <string name="already_queued">Already in queue</string>
 

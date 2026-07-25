@@ -223,7 +223,7 @@
     <string name="payment_using">使用支付</string>
     <string name="country">国家</string>
     <string name="postal_code">邮政编码</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">销售税 (</string>
     <string name="total">总计</string>
     <string name="pay">支付</string>
@@ -478,7 +478,7 @@
     <string name="share_as_text">作为文本分享</string>
     <string name="share_as_a_list_of_video_urls">作为视频网址列表分享</string>
     <string name="share_as_import">作为导入文件分享</string>
-    <string name="share_as_a_import_file_for_grayjay">作为 Grayjay 的导入文件分享</string>
+    <string name="share_as_a_import_file_for_grayjay">作为 Bluejay 的导入文件分享</string>
     <string name="failed_to_load_playlist">加载播放列表失败</string>
     <string name="please_wait_for_playlist_to_finish_loading">请等待播放列表完成加载</string>
     <string name="playlist_copied_as_local_playlist">播放列表已复制为本地播放列表</string>

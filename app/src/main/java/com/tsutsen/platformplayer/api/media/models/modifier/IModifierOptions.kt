@@ -1,0 +1,7 @@
+package com.tsutsen.platformplayer.api.media.models.modifier
+
+interface IModifierOptions {
+    val applyAuthClient: String?;
+    val applyCookieClient: String?;
+    val applyOtherHeaders: Boolean;
+}

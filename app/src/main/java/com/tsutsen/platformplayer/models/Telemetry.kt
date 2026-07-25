@@ -1,0 +1,17 @@
+package com.tsutsen.platformplayer.models
+
+@kotlinx.serialization.Serializable
+data class Telemetry(
+    val id: String,
+    val applicationId: String,
+    val versionCode: String,
+    val versionName: String,
+    val buildType: String,
+    val debug: Boolean,
+    val isUnstableBuild: Boolean,
+    val brand: String,
+    val manufacturer: String,
+    val model: String,
+    val sdkVersion: Int,
+    val plugins: List<String>? = null
+) { }

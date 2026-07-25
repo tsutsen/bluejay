@@ -1,1 +1,0 @@
--keep,allowobfuscation,allowshrinking class com.futo.platformplayer.feature.home.impl.HomeViewModel

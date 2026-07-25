@@ -158,7 +158,7 @@
     <string name="enable_in_home">Attiva in home</string>
     <string name="enable_in_search">Attiva in ricerca</string>
     <string name="check">Verifica</string>
-    <string name="buy_text">Grayjay non è un\'app facile o economica da costruire e mantenere. Abbiamo ingegneri a tempo pieno che lavorano sull\'app e sui suoi sistemi correlati. E probabilmente ciò non aiuterà a rientrare nei costi di sviluppo in tempi brevi, se mai ciò dovesse accadere.\n\nLa missione di FUTO è che il software open-source e le pratiche commerciali software non dannose diventino una fonte di reddito sostenibile per i progetti e i loro sviluppatori. Per questo motivo il team GrayJay si prefissa come obiettivo quello di far pagare agli utenti finali il proprio software.</string>
+    <string name="buy_text">Bluejay non è un\'app facile o economica da costruire e mantenere. Abbiamo ingegneri a tempo pieno che lavorano sull\'app e sui suoi sistemi correlati. E probabilmente ciò non aiuterà a rientrare nei costi di sviluppo in tempi brevi, se mai ciò dovesse accadere.\n\nLa missione di TSUTSEN è che il software open-source e le pratiche commerciali software non dannose diventino una fonte di reddito sostenibile per i progetti e i loro sviluppatori. Per questo motivo il team GrayJay si prefissa come obiettivo quello di far pagare agli utenti finali il proprio software.</string>
     <string name="an_uncaught_exception_was_thrown_we_re_sorry_for_the_inconvenience">È stata lanciata un\'eccezione non gestita, siamo dispiaciuti per l\`inconveniente.</string>
     <string name="to_help_us_solve_this_please_share_the_below_crash_report_with_us_and_perhaps_adds_some_context_on_what_you_were_doing">Per aiutarci a risolverla, ti chiediamo di inviarci la seguente segnalazione crash, aggiungendo eventuali informazioni sul contesto nel quale si è verificata.</string>
     <string name="new_profile">Nuovo Profilo</string>
@@ -249,7 +249,7 @@
     <string name="under">IN</string>
     <string name="construction">COSTRUZIONE</string>
     <string name="disable">Disattiva</string>
-    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">Il seguente creatore non può essere visualizzato su Grayjay a causa del plugin mancante.</string>
+    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">Il seguente creatore non può essere visualizzato su Bluejay a causa del plugin mancante.</string>
     <string name="locked_content_description">Questo contenuto è bloccato</string>
     <string name="unknown">Sconosciuto</string>
     <string name="tap_to_open_in_browser">Tocca per aprire nel browser</string>
@@ -264,7 +264,7 @@
     <string name="payment_using">Pagamento utilizzato</string>
     <string name="country">Paese</string>
     <string name="postal_code">Codice di Avviamento Postale</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">Imposta sulle Vendite (</string>
     <string name="total">Totale</string>
     <string name="pay">Paga</string>
@@ -320,7 +320,7 @@
     <string name="change_external_general_directory">Modifica il percorso esterno generale</string>
     <string name="change_tabs_visible_on_the_home_screen">Modifica le schede visibili nella scheda home</string>
     <string name="link_handling">Gestione Link</string>
-    <string name="allow_grayjay_to_handle_links">Consenti a Grayjay di gestire i link</string>
+    <string name="allow_grayjay_to_handle_links">Consenti a Bluejay di gestire i link</string>
     <string name="change_the_external_directory_for_general_files">Modifica la directory esterna per i file generali</string>
     <string name="clear_the_external_storage_for_download_files">Cancella l\'archivio esterno per i file di download</string>
     <string name="change_the_external_storage_for_download_files">Modifica l\'archivio esterno per i file di download</string>
@@ -342,7 +342,7 @@
     <string name="configure_the_auto_updater">Configura l\'aggiornamento automatico</string>
     <string name="configure_when_updates_should_be_downloaded">Configura quando gli aggiornamenti devono essere scaricati</string>
     <string name="configure_when_videos_should_be_downloaded">Configura quando i video devono essere scaricati, se solo su reti non a consumo (Wi-Fi)</string>
-    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Crea un file zip con i tuoi dati che può essere importato su Grayjay</string>
+    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Crea un file zip con i tuoi dati che può essere importato su Bluejay</string>
     <string name="default_audio_quality">Qualità Audio Predefinita</string>
     <string name="default_playback_speed">Velocità di Riproduzione Predefinita</string>
     <string name="default_video_quality">Qualità Video Predefinita</string>
@@ -452,7 +452,7 @@
     <string name="logging">Logging</string>
     <string name="license_status">Stato Licenza</string>
     <string name="view_license_status">Visualizza stato licenza</string>
-    <string name="sync_grayjay">Sincronizza Grayjay</string>
+    <string name="sync_grayjay">Sincronizza Bluejay</string>
     <string name="sync_grayjay_description">Sincronizza i tuoi dati su più dispositivi</string>
     <string name="manage_polycentric_identity">Gestisci identità Polycentric</string>
     <string name="manage_your_polycentric_identity">Gestisci la tua identità Polycentric</string>
@@ -553,7 +553,7 @@
     <string name="deletes_all_unresolved_source_files">Elimina tutti i file sorgente irrisolti</string>
     <string name="developer_mode">Modalità Sviluppatore</string>
     <string name="allow_all_certificates">Consenti Tutti i Certificati</string>
-    <string name="allow_all_certificates_warning">Ciò rischia di esporre tutto il tuo traffico di rete Grayjay.</string>
+    <string name="allow_all_certificates_warning">Ciò rischia di esporre tutto il tuo traffico di rete Bluejay.</string>
     <string name="development_server">Server di Sviluppo</string>
     <string name="experimental">Sperimentale</string>
     <string name="cache">Memoria</string>
@@ -688,7 +688,7 @@
     <string name="share_as_text">Condividi come testo</string>
     <string name="share_as_a_list_of_video_urls">Condividi come lista di URL video</string>
     <string name="share_as_import">Condividi come importazione</string>
-    <string name="share_as_a_import_file_for_grayjay">Condividi come file di importazione per Grayjay</string>
+    <string name="share_as_a_import_file_for_grayjay">Condividi come file di importazione per Bluejay</string>
     <string name="failed_to_load_playlist">Caricamento playlist non riuscito</string>
     <string name="please_wait_for_playlist_to_finish_loading">Attendi il caricamento della playlist</string>
     <string name="playlist_copied_as_local_playlist">Playlist copiata come playlist locale</string>
@@ -831,11 +831,11 @@
     <string name="new_playlist">Nuova playlist</string>
     <string name="add_to_new_playlist">Aggiungi a nuova playlist</string>
     <string name="url_handling">Gestione URL</string>
-    <string name="allow_grayjay_to_handle_specific_urls">Consentire a Grayjay di gestire URL specifici?</string>
-    <string name="allow_grayjay_to_handle_specific_urls_please_set_it_as_default_in_the_app_settings">Quando fai clic su "Sì", si apriranno le impostazioni dell\'app Grayjay.\n\nDa lì, accedi a:\n1. Sezione \'Apri per impostazione predefinita\' o \'Imposta come predefinito\'.\nPotresti trovare questa opzione direttamente oppure nella categoria \'Impostazioni Avanzate\', a seconda del tuo dispositivo.\n\n2. Seleziona \'Apri link supportati\' per Grayjay.\n\n(alcuni dispositivi hanno questa opzione elencata nella finestra \'App predefinite\' delle impostazioni di sistema, seguita dalla possibilità di selezionare Grayjay per le categorie pertinenti)</string>
+    <string name="allow_grayjay_to_handle_specific_urls">Consentire a Bluejay di gestire URL specifici?</string>
+    <string name="allow_grayjay_to_handle_specific_urls_please_set_it_as_default_in_the_app_settings">Quando fai clic su "Sì", si apriranno le impostazioni dell\'app Bluejay.\n\nDa lì, accedi a:\n1. Sezione \'Apri per impostazione predefinita\' o \'Imposta come predefinito\'.\nPotresti trovare questa opzione direttamente oppure nella categoria \'Impostazioni Avanzate\', a seconda del tuo dispositivo.\n\n2. Seleziona \'Apri link supportati\' per Bluejay.\n\n(alcuni dispositivi hanno questa opzione elencata nella finestra \'App predefinite\' delle impostazioni di sistema, seguita dalla possibilità di selezionare Bluejay per le categorie pertinenti)</string>
     <string name="failed_to_show_settings">Apertura impostazioni non riuscita</string>
     <string name="play_store_version_does_not_support_default_url_handling">La versione del Play Store non supporta la gestione URL predefinita.</string>
-    <string name="these_are_all_commentcount_comments_you_have_made_in_grayjay">Questi sono tutti i {commentCount} commenti che hai postato con Grayjay.</string>
+    <string name="these_are_all_commentcount_comments_you_have_made_in_grayjay">Questi sono tutti i {commentCount} commenti che hai postato con Bluejay.</string>
     <string name="tutorial">Tutorial</string>
     <string name="go_back_to_casting_add_dialog">Torna alla finestra di dialogo per l\'aggiunta di una sessione di trasmissione</string>
     <string name="view_a_video_about_how_to_cast">Guarda un video su come trasmettere</string>
@@ -860,7 +860,7 @@
     <string name="disable_battery_optimization">Disattiva ottimizzazione batteria</string>
     <string name="click_to_go_to_battery_optimization_settings_disabling_battery_optimization_will_prevent_the_os_from_killing_media_sessions">Clicca per accedere alle impostazioni di ottimizzazione della batteria. Disattivare l\'ottimizzazione della batteria impedirà al sistema operativo di terminare le sessioni multimediali.</string>
     <string name="contribute_personal_subscriptions_list">Contribuisci con l\'elenco delle sottoscrizioni personali</string>
-    <string name="contribute_personal_subscriptions_list_description">\nTi piacerebbe contribuire a FUTO con la tua attuale lista di sottanother sanityoscrizioni ai creatori?\n\nI dati saranno gestiti in conformità con la politica sulla privacy di Grayjay. Ovvero, la lista sarà anonimizzata e archiviata senza alcun riferimento a chiunque appartenga l\'elenco dei creatori.\n\nL\'intenzione è che Grayjay e FUTO utilizzino questi dati per costruire un sistema di suggerimenti dei creatori multipiattaforma per rendere più facile trovarne di nuovi che potrebbero piacerti direttamente all\'interno di Grayjay.</string>
+    <string name="contribute_personal_subscriptions_list_description">\nTi piacerebbe contribuire a TSUTSEN con la tua attuale lista di sottanother sanityoscrizioni ai creatori?\n\nI dati saranno gestiti in conformità con la politica sulla privacy di Bluejay. Ovvero, la lista sarà anonimizzata e archiviata senza alcun riferimento a chiunque appartenga l\'elenco dei creatori.\n\nL\'intenzione è che Bluejay e TSUTSEN utilizzino questi dati per costruire un sistema di suggerimenti dei creatori multipiattaforma per rendere più facile trovarne di nuovi che potrebbero piacerti direttamente all\'interno di Bluejay.</string>
     <string name="cd_cast_button">Pulsante trasmetti</string>
     <string name="cd_incognito_button">Pulsante incognito</string>
     <string name="cd_creator_thumbnail">Miniatura creatore</string>

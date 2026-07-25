@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace 'com.futo.platformplayer.core.navigation'
+    namespace 'com.tsutsen.platformplayer.core.navigation'
     compileSdk 36
 
     defaultConfig {

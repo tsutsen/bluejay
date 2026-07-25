@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace 'com.futo.platformplayer.feature.player.impl'
+    namespace 'com.tsutsen.platformplayer.feature.player.impl'
     compileSdk 36
 
     defaultConfig {

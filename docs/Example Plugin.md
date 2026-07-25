@@ -1,6 +1,6 @@
 # Example plugin
 
-Note that this is just a starting point, plugins can also implement optional features such as login, importing playlists/subscriptions, etc. For full examples please see in-house developed plugins (click [here](https://gitlab.futo.org/videostreaming/plugins)).
+Note that this is just a starting point, plugins can also implement optional features such as login, importing playlists/subscriptions, etc. For full examples please see in-house developed plugins (click [here](https://gitlab.tsutsen.org/videostreaming/plugins)).
 
 ```js
 source.enable = function (conf) {

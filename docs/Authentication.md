@@ -1,5 +1,5 @@
 # Authentication
-Grayjay supports offering platform login for a plugin. This however comes with several security concerns that we attempt to alleviate partially.
+Bluejay supports offering platform login for a plugin. This however comes with several security concerns that we attempt to alleviate partially.
 
 The goal of the authentication system is to provide plugins the ability to make authenticated requests without directly exposing credentials and tokens to the plugin. This is done by keeping all this data on the app side, and never passing it to the plugin.
 

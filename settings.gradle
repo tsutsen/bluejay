@@ -22,7 +22,7 @@ includeBuild('dep/polycentricandroid') {
 
 includeBuild('dep/futopay/android') {
     dependencySubstitution {
-        substitute module('com.futo.futopay:app') using project(':app')
+        substitute module('com.tsutsen.futopay:app') using project(':app')
     }
 }
 

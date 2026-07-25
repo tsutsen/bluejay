@@ -3,7 +3,7 @@ Graph complete. Here's the summary:
 
 ---
 
-**Graph complete. Outputs in `/home/leon/Projects/grayjay/graphify-out/`:**
+**Graph complete. Outputs in `/home/leon/Projects/bluejay/graphify-out/`:**
 
 - `graph.html` - interactive graph (aggregated community view: 1,638 community nodes, 2,100 cross-community edges)
 - `GRAPH_REPORT.md` - audit report

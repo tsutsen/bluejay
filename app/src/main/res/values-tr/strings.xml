@@ -151,7 +151,7 @@
     <string name="enable_in_home">Ana sayfada etkinleştir</string>
     <string name="enable_in_search">Aramada etkinleştir</string>
     <string name="check">Kontrol et</string>
-    <string name="buy_text">Grayjay yapımı ve bakımı kolay ya da ucuz bir uygulama değildir. Uygulamada ve diğer sistemlerde tam zamanlı çalışan mühendislerimiz var. Ve parasını yakın zamanda -belki hiç- kazanamayacağız.\n\nFUTO\'nun misyonu, açık kaynaklı yazılım ve kötü amaçlı olmayan yazılım iş uygulamalarının projeler ve geliştiricileri için sürdürülebilir bir gelir kaynağı haline gelmesidir. Bu nedenle kullanıcıların yazılım için gerçekten ödeme yapmasından yanayız.\n\nBu yüzden Grayjay, yazılım için ödeme yapmanızı istiyor.</string>
+    <string name="buy_text">Bluejay yapımı ve bakımı kolay ya da ucuz bir uygulama değildir. Uygulamada ve diğer sistemlerde tam zamanlı çalışan mühendislerimiz var. Ve parasını yakın zamanda -belki hiç- kazanamayacağız.\n\nFUTO\'nun misyonu, açık kaynaklı yazılım ve kötü amaçlı olmayan yazılım iş uygulamalarının projeler ve geliştiricileri için sürdürülebilir bir gelir kaynağı haline gelmesidir. Bu nedenle kullanıcıların yazılım için gerçekten ödeme yapmasından yanayız.\n\nBu yüzden Bluejay, yazılım için ödeme yapmanızı istiyor.</string>
     <string name="an_uncaught_exception_was_thrown_we_re_sorry_for_the_inconvenience">Bir hata oluştu, rahatsızlıktan dolayı özür dileriz.</string>
     <string name="to_help_us_solve_this_please_share_the_below_crash_report_with_us_and_perhaps_adds_some_context_on_what_you_were_doing">Bunu çözmemize yardım etmek için, lütfen çökme raporunu aşağıda bizimle paylaşın, ve sorunu ne yaparken yaşadığınız hakkında bilgi verin.</string>
     <string name="new_profile">Yeni Profil</string>
@@ -239,7 +239,7 @@
     <string name="under">ALTINDA</string>
     <string name="construction">YAPIM</string>
     <string name="disable">Devre dışı bırak</string>
-    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">Eksik eklenti yüzünden bu içerik Grayjay\'de oynatılamaz.</string>
+    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">Eksik eklenti yüzünden bu içerik Bluejay\'de oynatılamaz.</string>
     <string name="locked_content_description">Bu içerik kilitli</string>
     <string name="unknown">Bilinmeyen</string>
     <string name="tap_to_open_in_browser">Tarayıcıda açmak için dokunun</string>
@@ -254,7 +254,7 @@
     <string name="payment_using">Şu şekilde ödeme</string>
     <string name="country">Ülke</string>
     <string name="postal_code">Posta Kodu</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">Satış Vergisi (</string>
     <string name="total">Toplam</string>
     <string name="pay">Ödeme</string>
@@ -311,7 +311,7 @@
     <string name="change_external_general_directory">Harici genel klasörünü değiştir</string>
     <string name="change_tabs_visible_on_the_home_screen">Ana sayfada görünen sekmeleri değiştir</string>
     <string name="link_handling">Link Kontrolü</string>
-    <string name="allow_grayjay_to_handle_links">Grayjay\'in linkleri yönetmesine izin ver</string>
+    <string name="allow_grayjay_to_handle_links">Bluejay\'in linkleri yönetmesine izin ver</string>
     <string name="change_the_external_directory_for_general_files">Genel dosyalar için harici klasörü değiştir</string>
     <string name="clear_the_external_storage_for_download_files">İndirilen dosyalar için harici depolama alanını temizle</string>
     <string name="change_the_external_storage_for_download_files">İndirilen dosyalar için harici depolama alanını değiştir</string>
@@ -334,7 +334,7 @@
     <string name="configure_the_auto_updater">Otomatik güncelleştiriciyi özelleştirin</string>
     <string name="configure_when_updates_should_be_downloaded">Güncellemelerin ne zaman indirileceğini özelleştirin</string>
     <string name="configure_when_videos_should_be_downloaded">Videoların ne zaman indirileceğini özelleştirin</string>
-    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Grayjay ile açarak içe aktarabileceğiniz verilerinizi içeren bir zip dosyası oluşturur</string>
+    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Bluejay ile açarak içe aktarabileceğiniz verilerinizi içeren bir zip dosyası oluşturur</string>
     <string name="default_audio_quality">Varsayılan Ses Kalitesi</string>
     <string name="default_playback_speed">Varsayılan Oynatma Hızı</string>
     <string name="default_video_quality">Varsayılan Video Kalitesi</string>
@@ -416,7 +416,7 @@
     <string name="preview_feed_items_description">Önizleme feed stili kullanıldığında, ögelerin üzerinden kaydırırken otomatik olarak önizlenir.</string>
     <string name="log_level">Log Seviyesi</string>
     <string name="logging">Loglama</string>
-    <string name="sync_grayjay">Grayjay\'i Senkronize Et</string>
+    <string name="sync_grayjay">Bluejay\'i Senkronize Et</string>
     <string name="sync_grayjay_description">Verilerinizi birden fazla cihaz arasında senkronize edin</string>
     <string name="manage_polycentric_identity">Polycentric kişiliği düzenle</string>
     <string name="manage_your_polycentric_identity">Polycentric kişiliğinizi düzenleyin</string>
@@ -517,7 +517,7 @@
     <string name="deletes_all_unresolved_source_files">Çözümlenmemiş kaynak dosyalarını siler</string>
     <string name="developer_mode">Geliştirici Modu</string>
     <string name="allow_all_certificates">Tüm Sertifikalara İzin Ver</string>
-    <string name="allow_all_certificates_warning">Bu, Grayjay ağ trafiğinizin tamamının açığa çıkma riski taşır.</string>
+    <string name="allow_all_certificates_warning">Bu, Bluejay ağ trafiğinizin tamamının açığa çıkma riski taşır.</string>
     <string name="development_server">Geliştirme Sunucusu</string>
     <string name="experimental">Deneysel</string>
     <string name="cache">Önbellek</string>
@@ -652,7 +652,7 @@
     <string name="share_as_text">Metin Olarak Paylaş</string>
     <string name="share_as_a_list_of_video_urls">Bir video URL listesi olarak paylaş</string>
     <string name="share_as_import">İçe Aktarma Olarak Paylaş</string>
-    <string name="share_as_a_import_file_for_grayjay">Grayjay\'e ait bir içe aktarma dosyası olarak paylaş</string>
+    <string name="share_as_a_import_file_for_grayjay">Bluejay\'e ait bir içe aktarma dosyası olarak paylaş</string>
     <string name="failed_to_load_playlist">Oynatma listesi yükleme başarısız oldu</string>
     <string name="please_wait_for_playlist_to_finish_loading">Lütfen oynatma listesinin yüklenmesi için bekleyin</string>
     <string name="playlist_copied_as_local_playlist">Oynatma listesi lokal olarak kopyalandı</string>
@@ -794,11 +794,11 @@
     <string name="new_playlist">Yeni oynatma listesi</string>
     <string name="add_to_new_playlist">Yeni oynatma listesine ekle</string>
     <string name="url_handling">URL yönetimi</string>
-    <string name="allow_grayjay_to_handle_specific_urls">Grayjay\'in URL\'leri yönetmesine izin ver?</string>
-    <string name="allow_grayjay_to_handle_specific_urls_please_set_it_as_default_in_the_app_settings">\'Evet\' e tıkladığınızda, Grayjay uygulama ayarları açılacak.\n\nOradan:\n1. "Varsayılan olarak aç" veya "Varsayılan olarak seç" bölümüne tıklayın.\n Bu seçeneği \'Gelişmiş\' bölümünün tam altında bulabilirsiniz, cihazınıza bağlı olarak.\n\n2. Grayjay için \'Desteklenen bağlantıları aç\' ı seçin.\n\n(bazı cihazlar bunu ana ayarlarda \'Varsayılan Uygulamalar\' ın altında listeledi, Grayjay için ilgili kategorileri seçin)</string>
+    <string name="allow_grayjay_to_handle_specific_urls">Bluejay\'in URL\'leri yönetmesine izin ver?</string>
+    <string name="allow_grayjay_to_handle_specific_urls_please_set_it_as_default_in_the_app_settings">\'Evet\' e tıkladığınızda, Bluejay uygulama ayarları açılacak.\n\nOradan:\n1. "Varsayılan olarak aç" veya "Varsayılan olarak seç" bölümüne tıklayın.\n Bu seçeneği \'Gelişmiş\' bölümünün tam altında bulabilirsiniz, cihazınıza bağlı olarak.\n\n2. Bluejay için \'Desteklenen bağlantıları aç\' ı seçin.\n\n(bazı cihazlar bunu ana ayarlarda \'Varsayılan Uygulamalar\' ın altında listeledi, Bluejay için ilgili kategorileri seçin)</string>
     <string name="failed_to_show_settings">Ayarları gösterme başarısız oldu</string>
     <string name="play_store_version_does_not_support_default_url_handling">Play store versiyonu varsayılan bağlantı yönetimine izin vermiyor.</string>
-    <string name="these_are_all_commentcount_comments_you_have_made_in_grayjay">Bu {commentCount} yorumun hepsi Grayjay\'de yaptığınız yorumların tamamı.</string>
+    <string name="these_are_all_commentcount_comments_you_have_made_in_grayjay">Bu {commentCount} yorumun hepsi Bluejay\'de yaptığınız yorumların tamamı.</string>
     <string name="tutorial">Öğretici</string>
     <string name="go_back_to_casting_add_dialog">Yayınlamaya dön diyalog ekle</string>
     <string name="view_a_video_about_how_to_cast">Nasıl yayınlama yapılacağına dair bir video izle</string>
@@ -823,7 +823,7 @@
     <string name="disable_battery_optimization">Pil Optimizasyonunu Devre Dışı Bırak</string>
     <string name="click_to_go_to_battery_optimization_settings_disabling_battery_optimization_will_prevent_the_os_from_killing_media_sessions">Pil optimizasyon ayarlarına gitmek için tıklayın. Pil optimizasyonunu devre dışı bırakmak işletim sisteminin medya otutumlarını durdurmasına engel olacaktır.</string>
     <string name="contribute_personal_subscriptions_list">Kişisel Abonelikler Listesine Katkıda Bulun</string>
-    <string name="contribute_personal_subscriptions_list_description">\nŞu anki abonelikler listenizle FUTO\'ya katkıda bulunmak ister misiniz?\n\nVeri, Grayjay gizlilik politikasına bağlı olarak yönetilecektir. Bu liste anonimize edilecek ve aboneliklerin kime ait olduğu ile ilgili bir referans bulundurmadan saklanacaktır.\n\nBunun amacı ise Grayjay ve FUTO\'nun bu verileri kullanarak platformlar arası bir öneri sistemi oluşturarak Grayjay\'de seveceğiniz yeni içerik üreticilerini bulmayı kolaylaştırmak istemesi.</string>
+    <string name="contribute_personal_subscriptions_list_description">\nŞu anki abonelikler listenizle TSUTSEN\'ya katkıda bulunmak ister misiniz?\n\nVeri, Bluejay gizlilik politikasına bağlı olarak yönetilecektir. Bu liste anonimize edilecek ve aboneliklerin kime ait olduğu ile ilgili bir referans bulundurmadan saklanacaktır.\n\nBunun amacı ise Bluejay ve TSUTSEN\'nun bu verileri kullanarak platformlar arası bir öneri sistemi oluşturarak Bluejay\'de seveceğiniz yeni içerik üreticilerini bulmayı kolaylaştırmak istemesi.</string>
     <string name="cd_cast_button">Yayın butonu</string>
     <string name="cd_incognito_button">Incognito butonu</string>
     <string name="cd_creator_thumbnail">Üretici thumbnail</string>

@@ -1,0 +1,77 @@
+package com.tsutsen.platformplayer.states
+
+import android.os.Build
+import com.tsutsen.platformplayer.BuildConfig
+import com.tsutsen.platformplayer.api.http.ManagedHttpClient
+import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.models.Telemetry
+import com.tsutsen.platformplayer.stores.FragmentedStorage
+import com.tsutsen.platformplayer.stores.StringStorage
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.util.UUID
+
+class StateTelemetry {
+    private val _id = FragmentedStorage.get<StringStorage>("id");
+
+    fun initialize() {
+        if (_id.value.isEmpty()) {
+            _id.setAndSave(UUID.randomUUID().toString());
+        }
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    fun upload() {
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val telemetry = Telemetry(
+                    _id.value,
+                    BuildConfig.APPLICATION_ID,
+                    BuildConfig.VERSION_CODE.toString(),
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.BUILD_TYPE,
+                    BuildConfig.DEBUG,
+                    BuildConfig.IS_UNSTABLE_BUILD,
+                    Build.BRAND,
+                    Build.MANUFACTURER,
+                    Build.MODEL,
+                    Build.VERSION.SDK_INT,
+                    StatePlatform.instance.getEnabledClients().map { it.id }.toList()
+                );
+
+                val headers = hashMapOf(
+                    "Content-Type" to "application/json"
+                );
+
+                val json = Json.encodeToString(telemetry);
+                val url = "https://logs.bluejay.app/telemetry";
+                val client = ManagedHttpClient();
+                client.post(url, json, headers).use { response ->
+                    if (response.isOk) {
+                        Logger.i(TAG, "Launch telemetry submitted.");
+                    } else {
+                        Logger.w(TAG, "Failed to submit launch telemetry (${response.code}): '${response.body?.string()}'.");
+                    }
+                }
+            } catch (e: Throwable) {
+                Logger.w(TAG, "Failed to submit launch telemetry.", e);
+            }
+        }
+    }
+
+    companion object {
+        private var _instance: StateTelemetry? = null;
+        val instance: StateTelemetry
+            get(){
+                if(_instance == null)
+                    _instance = StateTelemetry();
+                return _instance!!;
+            };
+
+        private const val TAG = "StateTelemetry";
+    }
+}

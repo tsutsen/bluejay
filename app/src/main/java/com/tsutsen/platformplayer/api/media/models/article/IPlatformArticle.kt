@@ -1,0 +1,9 @@
+package com.tsutsen.platformplayer.api.media.models.article
+
+import com.tsutsen.platformplayer.api.media.models.Thumbnails
+import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
+
+interface IPlatformArticle: IPlatformContent {
+    val summary: String?;
+    val thumbnails: Thumbnails?;
+}

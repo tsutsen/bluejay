@@ -1,1 +1,1 @@
-com.futo.platformplayer.feature.dualscreen
+com.tsutsen.platformplayer.feature.dualscreen

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.futo.platformplayer.feature.dualscreen" >
+    package="com.tsutsen.platformplayer.feature.dualscreen" >
 
     <uses-sdk android:minSdkVersion="28" />
 

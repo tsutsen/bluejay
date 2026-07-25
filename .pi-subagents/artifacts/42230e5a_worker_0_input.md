@@ -7,16 +7,16 @@ You are a graphify extraction subagent. Read the files listed and extract a know
 Output ONLY valid JSON matching the schema below - no explanation, no markdown fences, no preamble.
 
 Files (chunk 00 of 75):
-- /home/leon/Projects/grayjay/.gitlab-ci.yml
-- /home/leon/Projects/grayjay/COMPOSE_MIGRATION_BOTTOM_BAR_PLAN.md
-- /home/leon/Projects/grayjay/COMPOSE_MIGRATION_FEED_VIDEO_ISSUE.md
-- /home/leon/Projects/grayjay/COMPOSE_MIGRATION_PHASE0.md
-- /home/leon/Projects/grayjay/COMPOSE_MIGRATION_PHASE1.md
-- /home/leon/Projects/grayjay/CONTRIBUTION.md
-- /home/leon/Projects/grayjay/ICON_MIGRATION_STRATEGY.md
-- /home/leon/Projects/grayjay/LICENSE.md
-- /home/leon/Projects/grayjay/README.md
-- /home/leon/Projects/grayjay/plugin-development.md
+- /home/leon/Projects/bluejay/.gitlab-ci.yml
+- /home/leon/Projects/bluejay/COMPOSE_MIGRATION_BOTTOM_BAR_PLAN.md
+- /home/leon/Projects/bluejay/COMPOSE_MIGRATION_FEED_VIDEO_ISSUE.md
+- /home/leon/Projects/bluejay/COMPOSE_MIGRATION_PHASE0.md
+- /home/leon/Projects/bluejay/COMPOSE_MIGRATION_PHASE1.md
+- /home/leon/Projects/bluejay/CONTRIBUTION.md
+- /home/leon/Projects/bluejay/ICON_MIGRATION_STRATEGY.md
+- /home/leon/Projects/bluejay/LICENSE.md
+- /home/leon/Projects/bluejay/README.md
+- /home/leon/Projects/bluejay/plugin-development.md
 
 Rules:
 - EXTRACTED: relationship explicit in source (import, call, citation)
@@ -37,7 +37,7 @@ Output exactly this JSON (no other text):
 
 source_file RULE: set source_file to the file path for that file VERBATIM (absolute, no shortening to basename, no re-relativizing, no separator change).
 
-Write your result to: /home/leon/Projects/grayjay/graphify-out/.graphify_chunk_00.json
+Write your result to: /home/leon/Projects/bluejay/graphify-out/.graphify_chunk_00.json
 
 ## Acceptance Contract
 Acceptance level: checked

@@ -1845,11 +1845,11 @@ Nodes (32): ChannelException, Exception, String, CachedSubscriptionAlgorithm, In
 
 ### Community 135 - "Assets Plugin"
 Cohesion: 0.04
-Nodes (45): author, bugs, url, description, devDependencies, eslint, @eslint/js, @kaidelorenzo/grayjay-polyfill (+37 more)
+Nodes (45): author, bugs, url, description, devDependencies, eslint, @eslint/js, @kaidelorenzo/bluejay-polyfill (+37 more)
 
 ### Community 136 - "Assets Plugin"
 Cohesion: 0.04
-Nodes (45): author, bugs, url, description, devDependencies, eslint, @eslint/js, @kaidelorenzo/grayjay-polyfill (+37 more)
+Nodes (45): author, bugs, url, description, devDependencies, eslint, @eslint/js, @kaidelorenzo/bluejay-polyfill (+37 more)
 
 ### Community 137 - "App Src Main Java"
 Cohesion: 0.06
@@ -2197,7 +2197,7 @@ Nodes (21): adultFilter(), ArchiveOrgCollectionPager, ArchiveOrgHomePager, Archi
 
 ### Community 225 - "Assets Plugin"
 Cohesion: 0.06
-Nodes (30): author, bugs, url, description, devDependencies, @grayjay/plugin, http-server, npm-check-updates (+22 more)
+Nodes (30): author, bugs, url, description, devDependencies, @bluejay/plugin, http-server, npm-check-updates (+22 more)
 
 ### Community 226 - "Assets Plugin"
 Cohesion: 0.07
@@ -2213,7 +2213,7 @@ Nodes (21): adultFilter(), ArchiveOrgCollectionPager, ArchiveOrgHomePager, Archi
 
 ### Community 229 - "Assets Plugin"
 Cohesion: 0.06
-Nodes (30): author, bugs, url, description, devDependencies, @grayjay/plugin, http-server, npm-check-updates (+22 more)
+Nodes (30): author, bugs, url, description, devDependencies, @bluejay/plugin, http-server, npm-check-updates (+22 more)
 
 ### Community 230 - "Assets Plugin"
 Cohesion: 0.07

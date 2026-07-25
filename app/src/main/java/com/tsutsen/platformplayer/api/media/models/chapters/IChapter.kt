@@ -1,0 +1,32 @@
+package com.tsutsen.platformplayer.api.media.models.chapters
+
+import com.tsutsen.platformplayer.api.media.exceptions.UnknownPlatformException
+import com.tsutsen.platformplayer.api.media.models.contents.ContentType
+
+interface IChapter {
+    val name: String;
+    val type: ChapterType;
+    val timeStart: Double;
+    val timeEnd: Double;
+}
+
+enum class ChapterType(val value: Int) {
+    NORMAL(0),
+
+    SKIPPABLE(5),
+    SKIP(6),
+    SKIPONCE(7);
+
+
+
+
+    companion object {
+        fun fromInt(value: Int): ChapterType
+        {
+            val result = ChapterType.entries.firstOrNull { it.value == value };
+            if(result == null)
+                throw UnknownPlatformException(value.toString());
+            return result;
+        }
+    }
+}

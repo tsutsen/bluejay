@@ -222,7 +222,7 @@
     <string name="payment_using">결제 수단</string>
     <string name="country">국가</string>
     <string name="postal_code">우편번호</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">세금 (</string>
     <string name="total">합계</string>
     <string name="pay">결제</string>

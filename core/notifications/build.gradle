@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'com.futo.platformplayer.core.notifications'
+    namespace 'com.tsutsen.platformplayer.core.notifications'
     compileSdk 36
 
     defaultConfig {

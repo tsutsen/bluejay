@@ -1,1 +1,1 @@
-com.futo.platformplayer.feature.player.impl
+com.tsutsen.platformplayer.feature.player.impl

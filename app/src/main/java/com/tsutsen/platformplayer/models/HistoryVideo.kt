@@ -1,0 +1,67 @@
+package com.tsutsen.platformplayer.models
+
+import com.tsutsen.platformplayer.api.media.PlatformID
+import com.tsutsen.platformplayer.api.media.models.PlatformAuthorLink
+import com.tsutsen.platformplayer.api.media.models.Thumbnails
+import com.tsutsen.platformplayer.api.media.models.contents.ContentType
+import com.tsutsen.platformplayer.api.media.models.video.SerializedPlatformVideo
+import com.tsutsen.platformplayer.serializers.OffsetDateTimeSerializer
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+
+@kotlinx.serialization.Serializable
+class HistoryVideo {
+    var video: SerializedPlatformVideo;
+    var position: Long;
+    var playlistId: String? = null
+
+    @kotlinx.serialization.Serializable(with = OffsetDateTimeSerializer::class)
+    var date: OffsetDateTime;
+
+
+    constructor(video: SerializedPlatformVideo, position: Long, date: OffsetDateTime, playlistId: String?) {
+        this.video = video;
+        this.position = position;
+        this.date = date;
+        this.playlistId = playlistId
+    }
+
+
+    fun toReconString(): String {
+        return "${video.url}|||${date.toEpochSecond()}|||${position}|||${video.name}";
+    }
+
+    companion object {
+        fun fromReconString(str: String, resolve: ((url: String)->SerializedPlatformVideo?)? = null): HistoryVideo {
+            var index = str.indexOf("|||");
+            if(index < 0) throw IllegalArgumentException("Invalid history string: " + str);
+            val url = str.substring(0, index);
+
+            var indexNext = str.indexOf("|||", index + 3);
+            if(indexNext < 0) throw IllegalArgumentException("Invalid history string: " + str);
+            val dateSec = str.substring(index + 3, indexNext).toLong();
+
+            index = indexNext;
+            indexNext =  str.indexOf("|||", index + 3);
+            if(indexNext < 0) throw IllegalArgumentException("Invalid history string: " + str);
+            val position = str.substring(index + 3, indexNext).toLong();
+            val name = str.substring(indexNext + 3);
+
+            val video = resolve?.invoke(url) ?: SerializedPlatformVideo(
+                ContentType.MEDIA,
+                id = PlatformID.asUrlID(url),
+                name = name,
+                thumbnails = Thumbnails(),
+                author = PlatformAuthorLink(PlatformID.NONE, "Unknown", ""),
+                datetime = null,
+                url = url,
+                shareUrl = url,
+                duration = 0,
+                viewCount = -1
+            );
+
+            return HistoryVideo(video, position, OffsetDateTime.of(LocalDateTime.ofEpochSecond(dateSec, 0, ZoneOffset.UTC), ZoneOffset.UTC), null);
+        }
+    }
+}

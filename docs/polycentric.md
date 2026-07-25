@@ -16,7 +16,7 @@ Social media platforms often wield significant control over user data and conten
 
 ### Step 1: Create Your Self-Sovereign Identity
 
-1. Download the [Grayjay](https://grayjay.app) application.
+1. Download the [Bluejay](https://bluejay.app) application.
 2. Follow the wizard to create your identity secured by public-key cryptography by clicking the "Manage Polycentric Identity" button in the settings page.
 
 ### Step 2: Choose Your Server (still a work in progress)

@@ -1,5 +1,5 @@
 # Pagers
-Within Grayjay there are several situations where Pagers are used to communicate multiple pages of data back to the app. Some examples are home feed, channel contents, comments, live events, etc.
+Within Bluejay there are several situations where Pagers are used to communicate multiple pages of data back to the app. Some examples are home feed, channel contents, comments, live events, etc.
 
 All these pagers have exact same layout and usage, with only some very specific cases where additional functionality is exposed.
 

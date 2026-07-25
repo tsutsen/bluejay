@@ -1,4 +1,4 @@
-# Grayjay Fork — Architecture Plan
+# Bluejay Fork — Architecture Plan
 
 > **Status**: Draft — pending Phase 0 audit (see §17 Open Questions)  
 > **Last updated**: 2026-07-23  
@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-This document defines the target architecture for the Grayjay fork. It replaces the monolithic XML-based codebase with a modular, Compose-first architecture following Android's official guidance, adapted for:
+This document defines the target architecture for the Bluejay fork. It replaces the monolithic XML-based codebase with a modular, Compose-first architecture following Android's official guidance, adapted for:
 
 - **Dual-screen** (AYN Thor primary + secondary display)
 - **Responsive layouts** (NavigationRail on landscape, bottom bar on portrait)
@@ -56,14 +56,14 @@ ViewModel → Compose Screen
 
 The plugin engine is a black box. It takes a source URL, returns typed interfaces. Repositories normalize, persist, and expose data. The UI layer never touches the plugin engine directly.
 
-**Reference**: `IPlatformClient` interface at `app/src/main/java/com/futo/platformplayer/api/media/IPlatformClient.kt`
+**Reference**: `IPlatformClient` interface at `app/src/main/java/com/tsutsen/platformplayer/api/media/IPlatformClient.kt`
 
 ---
 
 ## 3. Module Structure
 
 ```
-app/src/main/java/com/futo/platformplayer/
+app/src/main/java/com/tsutsen/platformplayer/
 │
 │  ┌─── IMMUTABLE: Source Engine ──────────────────────────┐
 │  │  api/media/                    ← interfaces + models
@@ -850,7 +850,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "grayjay.db")
+        Room.databaseBuilder(context, AppDatabase::class.java, "bluejay.db")
             .fallbackToDestructiveMigration()
             .build()
 
@@ -964,7 +964,7 @@ fun CompactVideoCard(
 | **4** | Player | `PlayerViewModel` (Application-scoped), `PlayerScreen`, companion player controls | [Flow MusicViewModel](https://github.com/aedev/flow/blob/main/app/src/main/java/io/github/aedev/flow/ui/screens/music/MusicViewModel.kt) |
 | **5** | Library/Subscriptions/Search | Migrate remaining fragments → Compose screens | [Now in Android feature modules](https://github.com/nowinandroid/nowinandroid/tree/main/feature) |
 | **6** | Detail screens | Video/Artist/Channel detail, deep links, State B/C wiring | [Nav3 Recipes multi-stack](https://github.com/nav3-recipes/nav3-recipes/tree/main/app/src/main/java/com/example/nav3recipes/multiplestacks) |
-| **7** | Companion content | Recs/Comments/Polycentric tabs, gamepad key mapping, full state machine | [Handoff doc](/home/leon/Documents/grayjay-fork-handoff.md) |
+| **7** | Companion content | Recs/Comments/Polycentric tabs, gamepad key mapping, full state machine | [Handoff doc](/home/leon/Documents/bluejay-fork-handoff.md) |
 | **8** | Cleanup | Verify no `core:*` or `feature:*` module imports anything under `states/`/`ui/interop`/`ui/scene` (see §3 exception note), then delete `fragment/`, `views/`, `dialogs/`, `states/`, old `activities/` | — |
 
 ---
@@ -1058,8 +1058,8 @@ From the handoff document, these lessons apply to the new architecture:
 
 ```bash
 # Clone and init submodules
-git clone https://gitlab.futo.org/videostreaming/grayjay.git
-cd grayjay
+git clone https://gitlab.tsutsen.org/videostreaming/bluejay.git
+cd bluejay
 git lfs install
 git submodule update --init --recursive
 

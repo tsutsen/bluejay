@@ -1,4 +1,4 @@
-# Grayjay Fork — Design Specification
+# Bluejay Fork — Design Specification
 
 > **Status**: Draft  
 > **Last updated**: 2026-07-23  
@@ -998,7 +998,7 @@ All cards share the same outer box. Only the thumbnail aspect ratio and inner la
 #### Data classes
 
 > **Stability note**: `video`, `short`, and `playlist` below hold references to
-> engine types (`IPlatformVideo`, `Playlist`) from Grayjay-core. If those types
+> engine types (`IPlatformVideo`, `Playlist`) from Bluejay-core. If those types
 > aren't `@Immutable`/`@Stable` (or plain `data class`es with stable fields),
 > Compose can't skip recomposition for a card even when nothing displayed on it
 > changed — which undercuts the "uniform card dimensions, 3-col grid, infinite

@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace 'com.futo.platformplayer.feature.dualscreen'
+    namespace 'com.tsutsen.platformplayer.feature.dualscreen'
     compileSdk 36
 
     defaultConfig {

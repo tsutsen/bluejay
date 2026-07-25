@@ -4,7 +4,7 @@
 By using the software, you agree to all of the terms and conditions below.
 
 ## Copyright License
-FUTO Holdings, Inc. (the “Licensor”) grants you a non-exclusive, royalty-free, worldwide, non-sublicensable, non-transferable license to use, copy, distribute, make available, and prepare derivative works of the software, in each case subject to the limitations below.
+TSUTSEN Holdings, Inc. (the “Licensor”) grants you a non-exclusive, royalty-free, worldwide, non-sublicensable, non-transferable license to use, copy, distribute, make available, and prepare derivative works of the software, in each case subject to the limitations below.
 
 ## Limitations
 You may use or modify the software only for non-commercial purposes such as personal use for research, experiment, and testing for the benefit of public knowledge, personal study, private entertainment, hobby projects, amateur pursuits, or religious observance, all without any anticipated commercial application.
@@ -34,7 +34,7 @@ If you use the software in violation of these terms, such use is not licensed, a
 As far as the law allows, the software comes as is, without any warranty or condition, and the Licensor will not be liable to you for any damages arising out of these terms or the use or nature of the software, under any kind of legal claim.
 
 ## Definitions
-- The “Licensor” is the entity offering these terms, FUTO Holdings, Inc.
+- The “Licensor” is the entity offering these terms, TSUTSEN Holdings, Inc.
 - The “software” is the software the licensor makes available under these terms, including any portion of it.
 - “You” refers to the individual or entity agreeing to these terms.
 - “Your company” is any legal entity, sole proprietorship, or other kind of organization that you work for, plus all organizations that have control over, are under the control of, or are under common control with that organization. Control means ownership of substantially all the assets of an entity, or the power to direct its management and policies by vote, contract, or otherwise. Control can be direct or indirect.

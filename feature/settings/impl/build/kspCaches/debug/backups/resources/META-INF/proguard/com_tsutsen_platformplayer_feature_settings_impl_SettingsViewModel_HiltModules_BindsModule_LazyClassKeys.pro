@@ -1,0 +1,1 @@
+-keep,allowobfuscation,allowshrinking class com.tsutsen.platformplayer.feature.settings.impl.SettingsViewModel

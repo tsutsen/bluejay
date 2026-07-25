@@ -80,7 +80,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="grayjay" />
+                <data android:scheme="bluejay" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

@@ -1,0 +1,194 @@
+package com.tsutsen.platformplayer.api.media.platforms.js.models
+
+import com.caoccao.javet.values.V8Value
+import com.caoccao.javet.values.primitive.V8ValueNull
+import com.caoccao.javet.values.reference.V8ValueArray
+import com.caoccao.javet.values.reference.V8ValueObject
+import com.tsutsen.platformplayer.api.media.IPlatformClient
+import com.tsutsen.platformplayer.api.media.models.comments.IPlatformComment
+import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
+import com.tsutsen.platformplayer.api.media.models.live.IPlatformLiveEvent
+import com.tsutsen.platformplayer.api.media.models.playback.IPlaybackTracker
+import com.tsutsen.platformplayer.api.media.models.ratings.IRating
+import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikes
+import com.tsutsen.platformplayer.api.media.models.streams.IVideoSourceDescriptor
+import com.tsutsen.platformplayer.api.media.models.streams.sources.*
+import com.tsutsen.platformplayer.api.media.models.subtitles.ISubtitleSource
+import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideoDetails
+import com.tsutsen.platformplayer.api.media.platforms.js.DevJSClient
+import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
+import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
+import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSSource
+import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoSourceDescriptor
+import com.tsutsen.platformplayer.api.media.structures.IPager
+import com.tsutsen.platformplayer.engine.V8Plugin
+import com.tsutsen.platformplayer.getOrDefault
+import com.tsutsen.platformplayer.getOrThrow
+import com.tsutsen.platformplayer.getOrThrowNullable
+import com.tsutsen.platformplayer.invokeV8
+import com.tsutsen.platformplayer.requireSourcePlugin
+import com.tsutsen.platformplayer.states.StateDeveloper
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+class JSVideoDetails : JSVideo, IPlatformVideoDetails {
+    private val _plugin: JSClient;
+    private val _hasGetComments: Boolean;
+    private val _hasGetContentRecommendations: Boolean;
+    private val _hasGetPlaybackTracker: Boolean;
+    private val _hasGetVODEvents: Boolean;
+
+    //Details
+    override val description : String;
+    override val rating : IRating;
+
+    override val video: IVideoSourceDescriptor;
+    override val preview : IVideoSourceDescriptor? = null;
+
+    override val dash: IDashManifestSource?;
+    override val hls: IHLSManifestSource?;
+
+    override val live: IVideoSource?;
+
+    override val subtitles: List<ISubtitleSource>;
+
+    constructor(plugin: JSClient, obj: V8ValueObject) : super(plugin.config, obj) {
+        _plugin = plugin;
+        var parsedDescription: String? = null;
+        var parsedVideo: IVideoSourceDescriptor? = null;
+        var parsedDash: IDashManifestSource? = null;
+        var parsedHls: IHLSManifestSource? = null;
+        var parsedLive: IVideoSource? = null;
+        var parsedRating: IRating? = null;
+        var parsedSubtitles: List<ISubtitleSource>? = null;
+        var parsedHasGetComments = false;
+        var parsedHasGetPlaybackTracker = false;
+        var parsedHasGetContentRecommendations = false;
+        var parsedHasGetVODEvents = false;
+
+        plugin.busy {
+            val contextName = "VideoDetails";
+            val config = plugin.config;
+            parsedDescription = _content.getOrThrow(config, "description", contextName);
+            parsedVideo = JSVideoSourceDescriptor.fromV8(plugin, _content.getOrThrow(config, "video", contextName));
+            parsedDash = JSSource.fromV8DashNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "dash", contextName), contextName);
+            parsedHls = JSSource.fromV8HLSNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "hls", contextName), contextName);
+            parsedLive = JSSource.fromV8VideoNullable(plugin, _content.getOrThrowNullable<V8ValueObject>(config, "live", contextName), contextName);
+            parsedRating = IRating.fromV8OrDefault(config, _content.getOrDefault<V8ValueObject>(config, "rating", contextName, null), RatingLikes(0));
+
+            if(!_content.has("subtitles"))
+                parsedSubtitles = listOf();
+            else {
+                val subArrs = _content.getOrThrowNullable<V8ValueArray>(config, "subtitles", contextName);
+                if(subArrs != null)
+                    parsedSubtitles = subArrs.keys.map { JSSubtitleSource.fromV8(config, subArrs.get(it)) };
+                else
+                    parsedSubtitles = listOf();
+            }
+
+            parsedHasGetComments = _content.has("getComments");
+            parsedHasGetPlaybackTracker = _content.has("getPlaybackTracker");
+            parsedHasGetContentRecommendations = _content.has("getContentRecommendations");
+            parsedHasGetVODEvents = _content.has("getVODEvents");
+        }
+
+        description = parsedDescription ?: "";
+        video = parsedVideo ?: throw IllegalStateException("Missing video source descriptor");
+        dash = parsedDash;
+        hls = parsedHls;
+        live = parsedLive;
+        rating = parsedRating ?: RatingLikes(0);
+        subtitles = parsedSubtitles ?: listOf();
+        _hasGetComments = parsedHasGetComments;
+        _hasGetPlaybackTracker = parsedHasGetPlaybackTracker;
+        _hasGetContentRecommendations = parsedHasGetContentRecommendations;
+        _hasGetVODEvents = parsedHasGetVODEvents;
+    }
+
+    override fun getPlaybackTracker(): IPlaybackTracker? {
+        val canGetPlaybackTracker = _plugin.busy {
+            _hasGetPlaybackTracker && !_content.isClosed
+        }
+        if(!canGetPlaybackTracker)
+            return null;
+        if(_pluginConfig.id == StateDeveloper.DEV_ID)
+            return StateDeveloper.instance.handleDevCall(_pluginConfig.id, "videoDetail.getComments()") {
+                return@handleDevCall getPlaybackTrackerJS();
+            }
+        else
+            return getPlaybackTrackerJS();
+    }
+    private fun getPlaybackTrackerJS(): IPlaybackTracker? {
+        return _content.requireSourcePlugin("VideoDetails.getPlaybackTracker").busy {
+            V8Plugin.catchScriptErrors(_pluginConfig, "VideoDetails", "videoDetails.getPlaybackTracker()") {
+                val tracker = _content.invokeV8<V8Value>("getPlaybackTracker", arrayOf<Any>())
+                    ?: return@catchScriptErrors null;
+                if(tracker is V8ValueObject)
+                    return@catchScriptErrors JSPlaybackTracker(_plugin, tracker);
+                else
+                    return@catchScriptErrors null;
+            }
+        }
+    }
+
+    override fun getContentRecommendations(client: IPlatformClient): IPager<IPlatformContent>? {
+        val canGetContentRecommendations = _plugin.busy {
+            _hasGetContentRecommendations && !_content.isClosed
+        }
+        if(!canGetContentRecommendations)
+            return  null;
+
+        if(client is DevJSClient)
+            return StateDeveloper.instance.handleDevCall(client.devID, "videoDetail.getContentRecommendations()") {
+                return@handleDevCall getContentRecommendationsJS(client);
+            }
+        else if(client is JSClient)
+            return getContentRecommendationsJS(client);
+
+        return null;
+    }
+    private fun getContentRecommendationsJS(client: JSClient): JSContentPager {
+        return _content.requireSourcePlugin("VideoDetails.getContentRecommendations").busy {
+            val contentPager = _content.invokeV8<V8ValueObject>("getContentRecommendations", arrayOf<Any>());
+            return@busy JSContentPager(_pluginConfig, client, contentPager);
+        }
+    }
+
+    override fun getComments(client: IPlatformClient): IPager<IPlatformComment>? {
+        if(client !is JSClient)
+            return null;
+        val canGetComments = _plugin.busy {
+            _hasGetComments && !_content.isClosed
+        }
+        if(!canGetComments)
+            return null;
+
+        if(client is DevJSClient)
+            return StateDeveloper.instance.handleDevCall(client.devID, "videoDetail.getComments()") {
+                return@handleDevCall getCommentsJS(client);
+            }
+        else
+            return getCommentsJS(client);
+    }
+
+    private fun getCommentsJS(client: JSClient): IPager<IPlatformComment>? {
+        return _content.requireSourcePlugin("VideoDetails.getComments").busy {
+            val commentPager = _content.invokeV8<V8Value>("getComments", arrayOf<Any>());
+            if (commentPager !is V8ValueObject) //TODO: Maybe handle this better?
+                return@busy null;
+
+            return@busy JSCommentPager(_pluginConfig, client, commentPager);
+        }
+    }
+
+    fun hasVODEvents(): Boolean{
+        return _hasGetVODEvents;
+    }
+    fun getVODEvents(url: String): IPager<IPlatformLiveEvent>? = _content.requireSourcePlugin("VideoDetails.getVODEvents").busy {
+        if(!_hasGetVODEvents)
+            return@busy null;
+
+        return@busy JSVODEventPager(_plugin.config, _plugin,
+            _content.invokeV8<V8ValueObject>("getVODEvents", arrayOf<Any>()));
+    }
+}

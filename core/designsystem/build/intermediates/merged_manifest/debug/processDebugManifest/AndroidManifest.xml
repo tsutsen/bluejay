@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.futo.platformplayer.core.designsystem" >
+    package="com.tsutsen.platformplayer.core.designsystem" >
 
     <uses-sdk android:minSdkVersion="28" />
 

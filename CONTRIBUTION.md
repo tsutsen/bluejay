@@ -52,7 +52,7 @@ We encourage developers to write their own plugins. Please refer to the "Getting
 
 ### License
 
-The core is currently licensed under the [Source First License 1.1](./LICENSE.md). All contributors have to sign FUTO Individual Contributor License Agreement before contributions can be accepted. You can read more about it at [https://cla.futo.org/](https://cla.futo.org/).
+The core is currently licensed under the [Source First License 1.1](./LICENSE.md). All contributors have to sign TSUTSEN Individual Contributor License Agreement before contributions can be accepted. You can read more about it at [https://cla.tsutsen.org/](https://cla.tsutsen.org/).
 
 ### How to Contribute
 

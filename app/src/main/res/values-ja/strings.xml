@@ -187,7 +187,7 @@
     <string name="payment_using">支払い方法</string>
     <string name="country">国</string>
     <string name="postal_code">郵便番号</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">消費税 (</string>
     <string name="total">合計</string>
     <string name="pay">支払う</string>

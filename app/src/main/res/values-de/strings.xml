@@ -198,7 +198,7 @@
     <string name="under">IM</string>
     <string name="construction">BAU</string>
     <string name="disable">Deaktivieren</string>
-    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">Der folgende Inhalt kann in Grayjay aufgrund eines fehlenden Plugins nicht geöffnet werden.</string>
+    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">Der folgende Inhalt kann in Bluejay aufgrund eines fehlenden Plugins nicht geöffnet werden.</string>
     <string name="unknown">Unbekannt</string>
     <string name="tap_to_open_in_browser">Tippen Sie, um im Browser zu öffnen</string>
     <string name="missing_plugin">Fehlendes Plugin</string>
@@ -211,7 +211,7 @@
     <string name="payment_using">Zahlung mit</string>
     <string name="country">Land</string>
     <string name="postal_code">Postleitzahl</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">Umsatzsteuer (</string>
     <string name="total">Gesamt</string>
     <string name="pay">Bezahlen</string>
@@ -273,7 +273,7 @@
     <string name="configure_the_auto_updater">Automatischen Updater konfigurieren</string>
     <string name="configure_when_updates_should_be_downloaded">Konfigurieren, wann Updates heruntergeladen werden sollen</string>
     <string name="configure_when_videos_should_be_downloaded">Konfigurieren, wann Videos heruntergeladen werden sollen</string>
-    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Erstellt eine ZIP-Datei mit Ihren Daten, die durch Öffnen mit Grayjay importiert werden kann</string>
+    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Erstellt eine ZIP-Datei mit Ihren Daten, die durch Öffnen mit Bluejay importiert werden kann</string>
     <string name="default_audio_quality">Standard-Audioqualität</string>
     <string name="default_playback_speed">Standard-Wiedergabegeschwindigkeit</string>
     <string name="default_video_quality">Standard-Videoqualität</string>
@@ -459,7 +459,7 @@
     <string name="share_as_text">Als Text teilen</string>
     <string name="share_as_a_list_of_video_urls">Als Liste von Video-URLs teilen</string>
     <string name="share_as_import">Als Import teilen</string>
-    <string name="share_as_a_import_file_for_grayjay">Als Importdatei für Grayjay teilen</string>
+    <string name="share_as_a_import_file_for_grayjay">Als Importdatei für Bluejay teilen</string>
     <string name="failed_to_load_playlist">Fehler beim Laden der Wiedergabeliste</string>
     <string name="please_wait_for_playlist_to_finish_loading">Bitte warten Sie, bis die Wiedergabeliste vollständig geladen ist</string>
     <string name="playlist_copied_as_local_playlist">Wiedergabeliste als lokale Wiedergabeliste kopiert</string>
@@ -592,7 +592,7 @@
     <string name="the_playlist_will_restart_after_the_video_is_finished">Die Playlist wird nach dem Ende des Videos neu gestartet</string>
     <string name="end_of_playlist_reached">Ende der Playlist erreicht</string>
     <string name="enter_url_explain">Geben Sie eine URL ein, um die Plugin-Konfiguration von dort zu laden.</string>
-    <string name="buy_text">Grayjay ist nicht einfach oder billig zu entwickeln und zu warten. Wir haben Vollzeit-Ingenieure, die an der App und an den sie umgebenden Systemen arbeiten. Und wird wahrscheinlich nicht so bald wieder Geld einbringen, wenn überhaupt.\n\nFUTOs Mission ist es, dass Open-Source-Software und nicht-bösartige Software-Geschäftspraktiken eine nachhaltige Einkommensquelle für Projekte und ihre Entwickler werden. Aus diesem Grund sind wir dafür, dass die Nutzer tatsächlich für die Software bezahlen.\n\nDeshalb möchte Grayjay, dass Sie für die Software bezahlen.</string>
+    <string name="buy_text">Bluejay ist nicht einfach oder billig zu entwickeln und zu warten. Wir haben Vollzeit-Ingenieure, die an der App und an den sie umgebenden Systemen arbeiten. Und wird wahrscheinlich nicht so bald wieder Geld einbringen, wenn überhaupt.\n\nFUTOs Mission ist es, dass Open-Source-Software und nicht-bösartige Software-Geschäftspraktiken eine nachhaltige Einkommensquelle für Projekte und ihre Entwickler werden. Aus diesem Grund sind wir dafür, dass die Nutzer tatsächlich für die Software bezahlen.\n\nDeshalb möchte Bluejay, dass Sie für die Software bezahlen.</string>
     <string name="an_uncaught_exception_was_thrown_we_re_sorry_for_the_inconvenience">Ein unabgefangene Ausnahme wurde ausgelöst, es tut uns leid für die Unannehmlichkeiten.</string>
     <string name="set_a_password_for_your_daily_backup">Ein Passwort für Ihr tägliche Sicherung festlegen</string>
     <string name="items_require_migration_or_are_corrupted_would_you_like_to_restore_them_from_backup_now">Elemente erfordern eine Migration oder sind beschädigt. Möchten Sie sie jetzt aus der Sicherung wiederherstellen?</string>
@@ -612,12 +612,12 @@
     <string name="add_to_history">Zum Verlauf hinzufügen</string>
     <string name="add_to_new_playlist">Zu neuer Playlist hinzufügen</string>
     <string name="allow_all_certificates">Alle Zertifikate zulassen</string>
-    <string name="allow_all_certificates_warning">Dies birgt das Risiko, Ihren gesamten Grayjay-Netzwerkverkehr offenzulegen.</string>
+    <string name="allow_all_certificates_warning">Dies birgt das Risiko, Ihren gesamten Bluejay-Netzwerkverkehr offenzulegen.</string>
     <string name="allow_developer_submit">Entwickler-Übermittlungen zulassen</string>
     <string name="allow_developer_submit_description">Erlaubt dem Entwickler, Daten an seinen Server zu senden. Seien Sie vorsichtig, da dies sensible Daten enthalten könnte.</string>
     <string name="allow_developer_submit_warning">Stellen Sie sicher, dass Sie dem Entwickler vertrauen. Er könnte Zugriff auf sensible Daten erhalten. Aktivieren Sie dies nur, wenn Sie dem Entwickler bei der Behebung eines Fehlers helfen möchten.</string>
     <string name="allow_full_screen_portrait">Vollbild im Hochformat beim Ansehen von horizontalen Videos erlauben</string>
-    <string name="allow_grayjay_to_handle_links">Grayjay erlauben, Links zu verarbeiten</string>
+    <string name="allow_grayjay_to_handle_links">Bluejay erlauben, Links zu verarbeiten</string>
     <string name="allow_ipv6">IPV6 erlauben</string>
     <string name="allow_ipv6_description">Wenn das Übertragen über IPV6 erlaubt ist, kann dies in einigen Netzwerken Probleme verursachen</string>
     <string name="allow_under_cutout">Video unter Bildschirmausschnitt erlauben</string>
@@ -831,7 +831,7 @@
     <string name="stopped_after_requestcount_to_avoid_rate_limit_click_load_more_to_load_more">Nach {requestCount} gestoppt, um Ratenbegrenzung zu vermeiden. Klicken Sie auf „Mehr laden“, um mehr zu laden.</string>
     <string name="subscription_group_menu">Gruppen</string>
     <string name="subscriptions_cache_5000">Abonnement-Cache 5000</string>
-    <string name="sync_grayjay">Grayjay synchronisieren</string>
+    <string name="sync_grayjay">Bluejay synchronisieren</string>
     <string name="sync_grayjay_description">Synchronisieren Sie Ihre Daten über mehrere Geräte hinweg</string>
     <string name="synchronization">Synchronisation</string>
     <string name="system_brightness">Systemhelligkeit</string>
@@ -840,7 +840,7 @@
     <string name="system_volume_descr">Gestensteuerung passt Systemlautstärke an</string>
     <string name="test_background_worker">Hintergrund-Worker testen</string>
     <string name="test_background_worker_description"></string>
-    <string name="these_are_all_commentcount_comments_you_have_made_in_grayjay">Dies sind alle {commentCount} Kommentare, die Sie in Grayjay gemacht haben.</string>
+    <string name="these_are_all_commentcount_comments_you_have_made_in_grayjay">Dies sind alle {commentCount} Kommentare, die Sie in Bluejay gemacht haben.</string>
     <string name="these_creators_in_group">Dies sind die Ersteller, die für diese Gruppe sichtbar sind.</string>
     <string name="these_creators_not_in_group">Diese Ersteller sind nicht in dieser Gruppe.</string>
     <string name="time_bar">Zeitbalken</string>

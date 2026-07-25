@@ -170,7 +170,7 @@
     <string name="under">BAJO</string>
     <string name="construction">CONSTRUCCIÓN</string>
     <string name="disable">Deshabilitar</string>
-    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">El siguiente contenido no se puede abrir en Grayjay debido a un complemento faltante.</string>
+    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">El siguiente contenido no se puede abrir en Bluejay debido a un complemento faltante.</string>
     <string name="unknown">Desconocido</string>
     <string name="tap_to_open_in_browser">Toca para abrir en el navegador</string>
     <string name="missing_plugin">Complemento faltante</string>
@@ -184,7 +184,7 @@
     <string name="payment_using">Pago usando</string>
     <string name="country">País</string>
     <string name="postal_code">Código postal</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">Impuesto de ventas (</string>
     <string name="total">Total</string>
     <string name="pay">Pagar</string>
@@ -247,7 +247,7 @@
     <string name="configure_the_auto_updater">Configurar el actualizador automático</string>
     <string name="configure_when_updates_should_be_downloaded">Configurar cuándo se deben descargar las actualizaciones</string>
     <string name="configure_when_videos_should_be_downloaded">Configurar cuándo se deben descargar los videos</string>
-    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Crea un archivo ZIP con tus datos que se pueden importar abriéndolo con Grayjay</string>
+    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Crea un archivo ZIP con tus datos que se pueden importar abriéndolo con Bluejay</string>
     <string name="default_audio_quality">Calidad de audio predeterminada</string>
     <string name="default_playback_speed">Velocidad de reproducción predeterminada</string>
     <string name="default_video_quality">Calidad de video predeterminada</string>
@@ -439,7 +439,7 @@
     <string name="share_as_text">Compartir como texto</string>
     <string name="share_as_a_list_of_video_urls">Compartir como una lista de links de videos</string>
     <string name="share_as_import">Compartir como importación</string>
-    <string name="share_as_a_import_file_for_grayjay">Compartir como archivo de importación para Grayjay</string>
+    <string name="share_as_a_import_file_for_grayjay">Compartir como archivo de importación para Bluejay</string>
     <string name="failed_to_load_playlist">Error al cargar la lista de reproducción</string>
     <string name="please_wait_for_playlist_to_finish_loading">Por favor, espere a que la lista de reproducción termine de cargar</string>
     <string name="playlist_copied_as_local_playlist">Lista de reproducción copiada como lista local</string>
@@ -605,7 +605,7 @@
     <string name="enable_in_home">Habilitar en inicio</string>
     <string name="enable_in_search">Habilitar en búsqueda</string>
     <string name="check">Comprobar</string>
-    <string name="buy_text">Grayjay no es una aplicación fácil ni barata de construir y mantener. Tenemos ingenieros trabajando a tiempo completo en la aplicación y sus sistemas circundantes. Probablemente no recuperaremos el dinero invertido en mucho tiempo, si es que alguna vez lo hacemos.\n\nLa misión de FUTO es que el software de código abierto y las prácticas empresariales no maliciosas se conviertan en una fuente de ingresos sostenible para los proyectos y sus desarrolladores. Por esta razón, estamos a favor de que los usuarios realmente paguen por el software.\n\nPor eso Grayjay quiere que pagues por este software.</string>
+    <string name="buy_text">Bluejay no es una aplicación fácil ni barata de construir y mantener. Tenemos ingenieros trabajando a tiempo completo en la aplicación y sus sistemas circundantes. Probablemente no recuperaremos el dinero invertido en mucho tiempo, si es que alguna vez lo hacemos.\n\nLa misión de TSUTSEN es que el software de código abierto y las prácticas empresariales no maliciosas se conviertan en una fuente de ingresos sostenible para los proyectos y sus desarrolladores. Por esta razón, estamos a favor de que los usuarios realmente paguen por el software.\n\nPor eso Bluejay quiere que pagues por este software.</string>
     <string-array name="home_screen_array">
         <item>Recomendaciones</item>
         <item>Suscripciones</item>

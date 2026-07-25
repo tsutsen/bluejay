@@ -3,21 +3,21 @@ description: Let us know about an unexpected error, a crash, or an incorrect beh
 labels: ["Bug", "Android"]
 title: "Bug: "
 type: bug
-projects: ["futo-org/19"]
+projects: ["tsutsen-org/19"]
 body:
   - type: markdown
     attributes:
       value: |
         # Thank you for taking the time to fill out this bug report.
 
-        The [grayjay-android](https://github.com/futo-org/grayjay-android) issue tracker is reserved for issues relating to the Grayjay Android Application
+        The [bluejay-android](https://github.com/tsutsen-org/bluejay-android) issue tracker is reserved for issues relating to the Bluejay Android Application
 
-        For general usage questions, please see: [The Official FUTO Grayjay Zulip Channel](https://chat.futo.org/#narrow/stream/46-Grayjay)
+        For general usage questions, please see: [The Official TSUTSEN Bluejay Zulip Channel](https://chat.tsutsen.org/#narrow/stream/46-Bluejay)
 
         ## Filing a bug report
 
         To fix your issues faster, we need clear reproduction cases - ideally allowing us to make it happen locally.
-        * Please include all needed context. For example, Device, OS, Application, your Grayjay Configurations and Plugin versioning info.
+        * Please include all needed context. For example, Device, OS, Application, your Bluejay Configurations and Plugin versioning info.
         * if you've found out a particular series of UI interactions can introduce buggy behavior, please label those steps 1-n with markdown
 
   - type: textarea
@@ -29,7 +29,7 @@ body:
         0. Play a YouTube video
         1. Press on Download button
         2. Select quality 1440p
-        3. Grayjay crashes when attempting to download
+        3. Bluejay crashes when attempting to download
     validations:
       required: true
 
@@ -52,9 +52,9 @@ body:
       required: true
 
   - type: input
-    id: grayjay-version
+    id: bluejay-version
     attributes:
-      label: Grayjay Version
+      label: Bluejay Version
       description: In the application, select More > Settings, scroll to the bottom and locate the value next to "Version Name".
       placeholder: "311"
     validations:
@@ -140,7 +140,7 @@ body:
       required: true
 
   - type: textarea
-    id: grayjay-references
+    id: bluejay-references
     attributes:
       label: References
       description: |

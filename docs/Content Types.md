@@ -1,7 +1,7 @@
 # Content Types
-This page will cover the various types of content that are supported, and how to present them to Grayjay.
+This page will cover the various types of content that are supported, and how to present them to Bluejay.
 
-While Grayjay is primarily used for video, it supports various types of video, audio, but also text, images, and articles. In the future more types of content support might be added!
+While Bluejay is primarily used for video, it supports various types of video, audio, but also text, images, and articles. In the future more types of content support might be added!
 
 Content can be presented as a feed object, or a detail object. Feed objects are objects you see inside feeds and overviews such as the Home and Subscription tabs. Generally detail objects have an accompanying overview object.
 
@@ -166,7 +166,7 @@ new UnMuxedVideoDescriptor(
 
 ### Sources
 Inside a VideoDescriptor you need to provide an array of sources. 
-Below you can find several source types that Grayjay supports:
+Below you can find several source types that Bluejay supports:
 
 **Standard Url Video/Audio**
 These are videos available directly on a single url.
@@ -241,7 +241,7 @@ new HLSSource({
 	language: "Unknown" //Optional
 });
 ``` 
-Generally, HLS sources deprioritized in Grayjay. However if your platform requires HLS sources to be prioritized, you set ```priority``` to ```true```.
+Generally, HLS sources deprioritized in Bluejay. However if your platform requires HLS sources to be prioritized, you set ```priority``` to ```true```.
 
 **DashSource**
 These are sources that are described in a Dash Manifest. 

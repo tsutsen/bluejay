@@ -129,7 +129,7 @@
     <string name="enable_in_home">Habilitar em casa</string>
     <string name="enable_in_search">Habilitar na pesquisa</string>
     <string name="check">Verificar</string>
-    <string name="buy_text">O Grayjay não é um aplicativo fácil ou barato de construir e manter. Temos engenheiros em tempo integral trabalhando no aplicativo e seus sistemas adjacentes. E provavelmente não recuperará seu dinheiro tão cedo, se é que vai recuperar.\n\nA missão da FUTO é fazer com que o software de código aberto e as práticas comerciais de software não maliciosas se tornem uma fonte de renda sustentável para projetos e seus desenvolvedores. Por isso, somos a favor de os usuários realmente pagarem pelo software.\n\nÉ por isso que o Grayjay quer que você pague pelo software.</string>
+    <string name="buy_text">O Bluejay não é um aplicativo fácil ou barato de construir e manter. Temos engenheiros em tempo integral trabalhando no aplicativo e seus sistemas adjacentes. E provavelmente não recuperará seu dinheiro tão cedo, se é que vai recuperar.\n\nA missão da TSUTSEN é fazer com que o software de código aberto e as práticas comerciais de software não maliciosas se tornem uma fonte de renda sustentável para projetos e seus desenvolvedores. Por isso, somos a favor de os usuários realmente pagarem pelo software.\n\nÉ por isso que o Bluejay quer que você pague pelo software.</string>
     <string name="an_uncaught_exception_was_thrown_we_re_sorry_for_the_inconvenience">Uma exceção não capturada foi lançada, lamentamos o incômodo.</string>
     <string name="to_help_us_solve_this_please_share_the_below_crash_report_with_us_and_perhaps_adds_some_context_on_what_you_were_doing">Para nos ajudar a resolver isso, por favor, compartilhe o relatório de erro abaixo conosco e, talvez, adicione algum contexto sobre o que você estava fazendo.</string>
     <string name="new_profile">Novo Perfil</string>
@@ -209,7 +209,7 @@
     <string name="under">EM</string>
     <string name="construction">CONSTRUÇÃO</string>
     <string name="disable">Desativar</string>
-    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">O seguinte conteúdo não pode ser aberto no Grayjay devido a um plugin ausente.</string>
+    <string name="the_following_content_cannot_be_opened_in_grayjay_due_to_a_missing_plugin">O seguinte conteúdo não pode ser aberto no Bluejay devido a um plugin ausente.</string>
     <string name="unknown">Desconhecido</string>
     <string name="tap_to_open_in_browser">Toque para abrir no navegador</string>
     <string name="missing_plugin">Plugin ausente</string>
@@ -223,7 +223,7 @@
     <string name="payment_using">Pagamento usando</string>
     <string name="country">País</string>
     <string name="postal_code">Código postal</string>
-    <string name="grayjay">Grayjay</string>
+    <string name="bluejay">Bluejay</string>
     <string name="sales_tax">Imposto sobre vendas (</string>
     <string name="total">Total</string>
     <string name="pay">Pagar</string>
@@ -286,7 +286,7 @@
     <string name="configure_the_auto_updater">Configurar o atualizador automático</string>
     <string name="configure_when_updates_should_be_downloaded">Configurar quando as atualizações devem ser baixadas</string>
     <string name="configure_when_videos_should_be_downloaded">Configurar quando os vídeos devem ser baixados</string>
-    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Cria um arquivo zip com seus dados que podem ser importados ao abri-lo com o Grayjay</string>
+    <string name="creates_a_zip_file_with_your_data_which_can_be_imported_by_opening_it_with_grayjay">Cria um arquivo zip com seus dados que podem ser importados ao abri-lo com o Bluejay</string>
     <string name="default_audio_quality">Qualidade de Áudio Padrão</string>
     <string name="default_playback_speed">Velocidade de Reprodução Padrão</string>
     <string name="default_video_quality">Qualidade de Vídeo Padrão</string>
@@ -473,7 +473,7 @@
     <string name="share_as_text">Compartilhar como Texto</string>
     <string name="share_as_a_list_of_video_urls">Compartilhar como uma lista de URLs de vídeo</string>
     <string name="share_as_import">Compartilhar como Importação</string>
-    <string name="share_as_a_import_file_for_grayjay">Compartilhar como um arquivo de importação para Grayjay</string>
+    <string name="share_as_a_import_file_for_grayjay">Compartilhar como um arquivo de importação para Bluejay</string>
     <string name="failed_to_load_playlist">Falha ao carregar playlist</string>
     <string name="please_wait_for_playlist_to_finish_loading">Por favor, aguarde a playlist terminar de carregar</string>
     <string name="playlist_copied_as_local_playlist">Playlist copiada como playlist local</string>

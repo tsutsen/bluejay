@@ -36,7 +36,7 @@ buildAndDeployPlaystore:
     - sh build-playstore.sh
     - bash venv-playstore.sh
     - . .venv-playstore/bin/activate
-    - python publish_playstore.py --sa /root/grayjay.json --package com.futo.platformplayer.playstore --aab ./app/build/outputs/bundle/playstoreRelease/app-playstore-release.aab --track production --status completed
+    - python publish_playstore.py --sa /root/bluejay.json --package com.tsutsen.platformplayer.playstore --aab ./app/build/outputs/bundle/playstoreRelease/app-playstore-release.aab --track production --status completed
   only:
     - tags
   when: on_success
@@ -59,6 +59,6 @@ updateFdroidRepo:
   before_script:
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - touch ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
-    - ssh-keygen -F gitlab.futo.org >/dev/null 2>&1 || ssh-keyscan -t rsa,ecdsa,ed25519 gitlab.futo.org >> ~/.ssh/known_hosts
+    - ssh-keygen -F gitlab.tsutsen.org >/dev/null 2>&1 || ssh-keyscan -t rsa,ecdsa,ed25519 gitlab.tsutsen.org >> ~/.ssh/known_hosts
   script:
     - python3 update_fdroid_index.py

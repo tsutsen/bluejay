@@ -31,7 +31,7 @@ echo "Purging Cloudflare cache for zone $CLOUDFLARE_ZONE_ID..."
 curl -X POST "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" \
      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
      -H "Content-Type: application/json" \
-     --data '{"files":["https://releases.grayjay.app/app-playstore-release.aab"]}'
+     --data '{"files":["https://releases.bluejay.app/app-playstore-release.aab"]}'
 
 sleep 30
 

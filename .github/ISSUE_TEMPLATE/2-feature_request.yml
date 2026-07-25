@@ -3,19 +3,19 @@ description: Suggest a new feature or other enhancement.
 labels: ["Enhancement", "Android"]
 title: "Feature request: "
 type: feature
-projects: ["futo-org/19"]
+projects: ["tsutsen-org/19"]
 body:
   - type: markdown
     attributes:
       value: |
         # Thank you for opening a feature request.
 
-        The [grayjay-android](https://github.com/futo-org/grayjay-android) issue tracker is reserved for issues and feature requests relating to the Grayjay android application
+        The [bluejay-android](https://github.com/tsutsen-org/bluejay-android) issue tracker is reserved for issues and feature requests relating to the Bluejay android application
 
-        For discussion related to enhancements, please see: [The FUTO Grayjay Zulip Channel](https://chat.futo.org/#narrow/stream/46-Grayjay)
+        For discussion related to enhancements, please see: [The TSUTSEN Bluejay Zulip Channel](https://chat.tsutsen.org/#narrow/stream/46-Bluejay)
 
   - type: textarea
-    id: grayjay-use-case
+    id: bluejay-use-case
     attributes:
       label: Use Cases
       description: |
@@ -26,20 +26,20 @@ body:
       required: true
 
   - type: textarea
-    id: grayjay-proposal
+    id: bluejay-proposal
     attributes:
       label: Proposal
       description: |
-          If you have an idea for a way to address the problem via a change to Grayjay features, please describe it below.
+          If you have an idea for a way to address the problem via a change to Bluejay features, please describe it below.
 
-          In this section, it's helpful to include specific examples of how what you are suggesting might look in the application, this allows us to understand the full picture of what you are proposing. If you're not sure of some details, don't worry! When we evaluate the feature request we may suggest modifications as necessary to work within the design constraints of the Grayjay Core Application.
+          In this section, it's helpful to include specific examples of how what you are suggesting might look in the application, this allows us to understand the full picture of what you are proposing. If you're not sure of some details, don't worry! When we evaluate the feature request we may suggest modifications as necessary to work within the design constraints of the Bluejay Core Application.
       placeholder:
       value:
     validations:
       required: false
 
   - type: textarea
-    id: grayjay-references
+    id: bluejay-references
     attributes:
       label: References
       description: |

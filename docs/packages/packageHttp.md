@@ -2,7 +2,7 @@
 Package http is the main way for a plugin to make web requests, and is likely a package you will always need.
 It offers several ways to make web requests as well as websocket connections.
 
-Before you can use http you need to register it in your plugin config. See [Packages](/app/src/main/java/com/futo/platformplayer/engine/packages).
+Before you can use http you need to register it in your plugin config. See [Packages](/app/src/main/java/com/tsutsen/platformplayer/engine/packages).
 
 ## Basic Info
 Underneath the http package by default exist two web clients. An authenticated client and a unauthenticated client.

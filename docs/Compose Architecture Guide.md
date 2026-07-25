@@ -1,6 +1,6 @@
 # Compose Architecture Guide
 
-This guide documents the Compose-based architecture for Grayjay, including how to use and extend it.
+This guide documents the Compose-based architecture for Bluejay, including how to use and extend it.
 
 ---
 
@@ -23,7 +23,7 @@ This guide documents the Compose-based architecture for Grayjay, including how t
 
 ## Architecture Overview
 
-Grayjay uses a **Compose-first architecture** with the following layers:
+Bluejay uses a **Compose-first architecture** with the following layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -58,7 +58,7 @@ Grayjay uses a **Compose-first architecture** with the following layers:
 
 ## Migration History
 
-Grayjay is migrating from XML Views to Jetpack Compose through three architectural layers:
+Bluejay is migrating from XML Views to Jetpack Compose through three architectural layers:
 
 ### Layer 1: ORIGINAL (XML) — Legacy Reference Only
 - **UI**: XML layouts + Fragment controllers
@@ -102,7 +102,7 @@ These components are shared across all architectures and remain unchanged:
 ## Project Structure
 
 ```
-app/src/main/java/com/futo/platformplayer/compose/
+app/src/main/java/com/tsutsen/platformplayer/compose/
 ├── home/                          # Home/Feed screen
 │   ├── HomeScreen.kt              # Compose UI
 │   └── HomeViewModel.kt           # State management
@@ -144,11 +144,11 @@ app/src/main/java/com/futo/platformplayer/compose/
 
 ```kotlin
 // MyScreenViewModel.kt
-package com.futo.platformplayer.compose.myscreen
+package com.tsutsen.platformplayer.compose.myscreen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.futo.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.logging.Logger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -249,7 +249,7 @@ class MyScreenViewModel @Inject constructor(
 
 ```kotlin
 // MyScreen.kt
-package com.futo.platformplayer.compose.myscreen
+package com.tsutsen.platformplayer.compose.myscreen
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -264,8 +264,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.futo.platformplayer.compose.util.LoadingContent
-import com.futo.platformplayer.compose.util.EmptyState
+import com.tsutsen.platformplayer.compose.util.LoadingContent
+import com.tsutsen.platformplayer.compose.util.EmptyState
 
 /**
  * MyScreen composable using ViewModel + StateFlow pattern.
@@ -401,7 +401,7 @@ is MyScreen -> NavEntry(key) { MyScreen() }
 
 ## Navigation
 
-Grayjay uses **navigation3** for type-safe navigation with per-tab back stacks.
+Bluejay uses **navigation3** for type-safe navigation with per-tab back stacks.
 
 ### Navigation Keys
 
@@ -931,7 +931,7 @@ fun VideoDetailScreen(videoUrl: String, onBack: () -> Unit) { ... }
 
 ## Guidelines
 
-These are the **hard rules** for the Grayjay architecture:
+These are the **hard rules** for the Bluejay architecture:
 
 1. **Never add new XML UI** — XML is a reference/specification only
 2. **Never create new Fragment-based screens** — Use Compose composables
