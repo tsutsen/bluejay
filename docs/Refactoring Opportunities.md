@@ -21,7 +21,7 @@ class StateLibrary {
 
 // HomeScene.kt - Direct access to singleton
 @Composable
-private fun HomeScene(navigator: GrayjayNavigator) {
+private fun HomeScene(navigator: BluejayNavigator) {
     val p = com.tsutsen.platformplayer.states.StatePlatform.instance.getHomeRefresh(this)
     // ...
 }
@@ -95,13 +95,13 @@ sealed class NavKey {
 }
 
 // NavigationState - per-tab back stacks
-class GrayjayNavigationState {
+class BluejayNavigationState {
     val topLevelRoute = MutableStateFlow<NavKey>(Home)
     val backStacks = mutableMapOf<NavKey, MutableList<NavKey>>()
 }
 
 // Navigation actions for specific routes
-class GrayjayNavigator(val state: GrayjayNavigationState) {
+class BluejayNavigator(val state: BluejayNavigationState) {
     fun navigateToVideo(url: String) { ... }
     fun navigateToPlaylist(url: String) { ... }
     // ... 40+ convenience methods
@@ -111,9 +111,9 @@ class GrayjayNavigator(val state: GrayjayNavigationState) {
 ### Enhancement (Better Structure)
 ```kotlin
 // Extract navigation actions into separate class (like architecture-samples)
-class GrayjayNavigationActions(
+class BluejayNavigationActions(
     private val navController: NavHostController,
-    private val navigationState: GrayjayNavigationState
+    private val navigationState: BluejayNavigationState
 ) {
     fun navigateToHome() {
         navigationState.topLevelRoute.value = Home
@@ -133,9 +133,9 @@ class GrayjayNavigationActions(
 // Use in composables
 @Composable
 fun HomeScreen(
-    navigationActions: GrayjayNavigationActions = rememberGrayjayNavigationActions()
+    navigationActions: BluejayNavigationActions = rememberBluejayNavigationActions()
 ) {
-    // Use navigationActions instead of GrayjayNavigator
+    // Use navigationActions instead of BluejayNavigator
 }
 ```
 
@@ -155,7 +155,7 @@ fun HomeScreen(
 ```kotlin
 // HomeScene.kt - Multiple independent state variables
 @Composable
-private fun HomeScene(navigator: GrayjayNavigator) {
+private fun HomeScene(navigator: BluejayNavigator) {
     var uiState by remember { mutableStateOf(FeedUiState(isLoading = true)) }
     var pager by remember { mutableStateOf<ReusableRefreshPager<IPlatformContent>?>(null) }
     var items by remember { mutableStateOf<List<FeedItem>>(emptyList()) }
@@ -183,7 +183,7 @@ data class HomeUiState(
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    navigator: GrayjayNavigator
+    navigator: BluejayNavigator
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -233,7 +233,7 @@ fun HomeScreen(
 ```kotlin
 // Scattered loading logic in each scene
 @Composable
-private fun HomeScene(navigator: GrayjayNavigator) {
+private fun HomeScene(navigator: BluejayNavigator) {
     // ... loading logic
     FeedScreen(
         state = uiState,
@@ -242,7 +242,7 @@ private fun HomeScene(navigator: GrayjayNavigator) {
 }
 
 @Composable
-private fun placeholder(n: GrayjayNavigator, title: String, ...) {
+private fun placeholder(n: BluejayNavigator, title: String, ...) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = title, style = MaterialTheme.typography.headlineMedium)
@@ -326,8 +326,8 @@ class PlatformPlayerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            GrayjayTheme {
-                GrayjayNavGraph()
+            BluejayTheme {
+                BluejayNavGraph()
             }
         }
     }
@@ -573,7 +573,7 @@ app/src/main/java/com/tsutsen/platformplayer/compose/
 ```
 app/src/main/java/com/tsutsen/platformplayer/compose/navigation/
 ├── PlatformPlayerActivity.kt         ← Simplify, remove scenes
-├── GrayjayNavigator.kt               ← Update for standard navigation
+├── BluejayNavigator.kt               ← Update for standard navigation
 └── NavKey.kt                         ← Keep for now, migrate later
 
 app/src/main/java/com/tsutsen/platformplayer/states/

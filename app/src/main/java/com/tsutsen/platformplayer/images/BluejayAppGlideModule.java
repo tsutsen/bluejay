@@ -12,7 +12,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 @GlideModule
-public class GrayjayAppGlideModule extends AppGlideModule {
+public class BluejayAppGlideModule extends AppGlideModule {
     @Override
     public void registerComponents(Context context, Glide glide, Registry registry) {
         Log.i("GrayjayAppGlideModule", "registerComponents called");

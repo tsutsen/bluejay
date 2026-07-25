@@ -108,9 +108,9 @@ app/src/main/java/com/tsutsen/platformplayer/compose/
 │   └── HomeViewModel.kt           # State management
 ├── navigation/                    # Navigation system
 │   ├── PlatformPlayerActivity.kt  # Root activity
-│   ├── GrayjayNavKey.kt           # Navigation routes (sealed class)
-│   ├── GrayjayNavigationState.kt  # Per-tab back stacks
-│   └── GrayjayNavigator.kt        # Navigation controller
+│   ├── BluejayNavKey.kt           # Navigation routes (sealed class)
+│   ├── BluejayNavigationState.kt  # Per-tab back stacks
+│   └── BluejayNavigator.kt        # Navigation controller
 ├── player/                        # Video player
 │   ├── VideoPlayerScene.kt        # Full-screen player
 │   ├── MiniPlayerBar.kt           # Mini player
@@ -379,11 +379,11 @@ private fun MyContent(
 ### Step 3: Register in Navigation
 
 ```kotlin
-// GrayjayNavKey.kt - Add new route
+// BluejayNavKey.kt - Add new route
 @Serializable
 data object MyScreen : NavKey
 
-// GrayjayNavigationState.kt - Add to topLevelRoutes
+// BluejayNavigationState.kt - Add to topLevelRoutes
 val topLevelRoutes: Set<NavKey> = setOf(
     Home, Subscriptions, Playlists, Notifications, Search,
     Settings, Library, MyScreen  // <-- Add here
@@ -393,7 +393,7 @@ val topLevelRoutes: Set<NavKey> = setOf(
 ### Step 4: Add to NavEntry Creation
 
 ```kotlin
-// PlatformPlayerActivity.kt - In createGrayjayNavEntry()
+// PlatformPlayerActivity.kt - In createBluejayNavEntry()
 is MyScreen -> NavEntry(key) { MyScreen() }
 ```
 
@@ -405,7 +405,7 @@ Bluejay uses **navigation3** for type-safe navigation with per-tab back stacks.
 
 ### Navigation Keys
 
-All routes are defined as `@Serializable` data classes in `GrayjayNavKey.kt`:
+All routes are defined as `@Serializable` data classes in `BluejayNavKey.kt`:
 
 ```kotlin
 // Top-level routes (tabs)
@@ -422,10 +422,10 @@ data class SearchResults(val query: String) : NavKey
 
 ### Navigation State
 
-Per-tab back stacks are managed by `GrayjayNavigationState`:
+Per-tab back stacks are managed by `BluejayNavigationState`:
 
 ```kotlin
-class GrayjayNavigationState {
+class BluejayNavigationState {
     val topLevelRoute = MutableStateFlow<NavKey>(Home)
     val backStacks = mutableMapOf<NavKey, MutableList<NavKey>>()
     
@@ -679,7 +679,7 @@ class ThemeStateHolder @Inject constructor(
 fun MyApp(themeStateHolder: ThemeStateHolder = hiltViewModel()) {
     val themeMode by themeStateHolder.themeMode.collectAsState()
     
-    GrayjayTheme(themeMode = themeMode) {
+    BluejayTheme(themeMode = themeMode) {
         // App content
     }
 }
@@ -885,7 +885,7 @@ fun VideoDetailScreen(videoUrl: String, onBack: () -> Unit) { ... }
 1. **Identify XML screen** (e.g., `MyFragment.kt`)
 2. **Create ViewModel** (`MyViewModel.kt`)
 3. **Create Compose screen** (`MyScreen.kt`)
-4. **Add NavKey** (`GrayjayNavKey.kt`)
+4. **Add NavKey** (`BluejayNavKey.kt`)
 5. **Register in navigation** (`PlatformPlayerActivity.kt`)
 6. **Test and remove XML**
 
@@ -903,7 +903,7 @@ fun VideoDetailScreen(videoUrl: String, onBack: () -> Unit) { ... }
 
 ### Issue: Screen not showing
 
-**Solution:** Check NavKey is registered in `topLevelRoutes` and `createGrayjayNavEntry()`.
+**Solution:** Check NavKey is registered in `topLevelRoutes` and `createBluejayNavEntry()`.
 
 ### Issue: State not updating
 
@@ -951,7 +951,7 @@ Use this checklist to track migration progress for each screen:
 - [ ] Identify XML screen (e.g., `MyFragment.kt`)
 - [ ] Create ViewModel (`MyViewModel.kt`)
 - [ ] Create Compose screen (`MyScreen.kt`)
-- [ ] Add NavKey (`GrayjayNavKey.kt`)
+- [ ] Add NavKey (`BluejayNavKey.kt`)
 - [ ] Register in navigation (`PlatformPlayerActivity.kt`)
 - [ ] Test screen functionality
 - [ ] Remove XML fragment (if no longer needed)
