@@ -166,11 +166,8 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                 val currentPager = feedPager
                 if (currentPager != null && currentPager.hasMorePages()) {
                     Logger.i(TAG, "Loading more subscription items...")
-                    val previousSize = allContent.size
                     currentPager.nextPage()
-                    val loaded = currentPager.getResults()
-                    // Append only new items
-                    val newItems = loaded.drop(previousSize)
+                    val newItems = currentPager.getResults()
                     allContent = allContent + newItems
                     Logger.i(TAG, "Loaded ${newItems.size} more items (total: ${allContent.size})")
                     applyFilters()
@@ -330,10 +327,8 @@ class SubscriptionsViewModel @Inject constructor() : ViewModel() {
                     try {
                         isLoadingMore = true
                         Logger.i(TAG, "Filtering by creator, loading more items...")
-                        val previousSize = allContent.size
                         feedPager?.nextPage()
-                        val loaded = feedPager?.getResults() ?: emptyList()
-                        val newItems = loaded.drop(previousSize)
+                        val newItems = feedPager?.getResults() ?: emptyList()
                         allContent = allContent + newItems
                         
                         // Re-apply filters
