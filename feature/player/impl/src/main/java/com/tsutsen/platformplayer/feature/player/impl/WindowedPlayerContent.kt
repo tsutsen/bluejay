@@ -182,6 +182,7 @@ fun WindowedPlayerContent(
         showTopBar = showTopOverlay && !isCollapsedControls,
         showBottomBar = if (isCollapsedControls) true else showBottomOverlay,
         callbacks = gestureCallbacks,
+        disableVerticalDragGestures = true,
         topBar = {
             TopOverlay(
                 title = state.currentVideo?.title ?: "Unknown",

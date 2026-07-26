@@ -58,6 +58,7 @@ fun PlayerControlsScaffold(
     showTopBar: Boolean,
     showBottomBar: Boolean,
     callbacks: PlayerGestureCallbacks,
+    disableVerticalDragGestures: Boolean = false,
     topBar: @Composable () -> Unit,
     bottomBar: @Composable () -> Unit
 ) {
@@ -72,17 +73,19 @@ fun PlayerControlsScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragStart = {
-                            touchX = it.x
-                            currentCallbacks.onVerticalDragStart(it.x)
-                        },
-                        onVerticalDrag = { _, dragAmount ->
-                            currentCallbacks.onVerticalDrag(touchX, dragAmount, size.width.toFloat())
-                        }
-                    )
-                }
+                .then(
+                    if (disableVerticalDragGestures) Modifier else Modifier.pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragStart = {
+                                touchX = it.x
+                                currentCallbacks.onVerticalDragStart(it.x)
+                            },
+                            onVerticalDrag = { _, dragAmount ->
+                                currentCallbacks.onVerticalDrag(touchX, dragAmount, size.width.toFloat())
+                            }
+                        )
+                    }
+                )
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { currentCallbacks.onTap() },
