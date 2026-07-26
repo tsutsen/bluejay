@@ -143,7 +143,21 @@ class PlayerRepositoryImpl(
     override suspend fun play(videoId: String) {
         // Publish loading state IMMEDIATELY, before any network/resolve/ExoPlayer work.
         // This is what lets the UI show a spinner right away instead of a blank gap.
-        _playerState.update { it.copy(isLoading = true, error = null) }
+        // Also set currentVideo to a placeholder so PlayerScreen gets composed immediately.
+        _playerState.update {
+            it.copy(
+                isLoading = true,
+                error = null,
+                currentVideo = ContentItem(
+                    id = videoId,
+                    url = videoId,
+                    title = "Loading...",
+                    author = null,
+                    thumbnailUrl = null,
+                    contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO
+                )
+            )
+        }
 
         try {
             Log.i(TAG, "========================================")
