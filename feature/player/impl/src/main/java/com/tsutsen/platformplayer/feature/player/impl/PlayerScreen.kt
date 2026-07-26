@@ -144,10 +144,8 @@ fun PlayerScreen(
 
     // ==================== ExoPlayer (from repository) ====================
     // Get ExoPlayer from repository - PlayerRepository manages the player lifecycle
-    val player by remember {
-        derivedStateOf {
-            (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
-        }
+    val player = remember(uiState) {
+        (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
     }
 
     LaunchedEffect(uiState) {
@@ -177,18 +175,20 @@ fun PlayerScreen(
     }
 
     // Sync animation state with actual state
-    LaunchedEffect(uiState) {
-        if (uiState is PlayerUiState.Loaded) {
-            val state = uiState as PlayerUiState.Loaded
-            isMinimizedAnim.value = state.isMinimized
-            isFullscreenAnim.value = state.isFullscreen
-            // Show overlays when exiting mini player
-            if (!state.isMinimized) {
-                showTopOverlay = true
-                showBottomOverlay = true
-            }
-            Log.d(TAG, "Animation state synced: isMinimized=${state.isMinimized}, isFullscreen=${state.isFullscreen}")
+    val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
+    val isFullscreenState = (uiState as? PlayerUiState.Loaded)?.isFullscreen
+
+    LaunchedEffect(isMinimizedState, isFullscreenState) {
+        val minimized = isMinimizedState ?: return@LaunchedEffect
+        val fullscreen = isFullscreenState ?: return@LaunchedEffect
+        isMinimizedAnim.value = minimized
+        isFullscreenAnim.value = fullscreen
+        // Show overlays when exiting mini player
+        if (!minimized) {
+            showTopOverlay = true
+            showBottomOverlay = true
         }
+        Log.d(TAG, "Animation state synced: isMinimized=$minimized, isFullscreen=$fullscreen")
     }
 
     when (val state = uiState) {
@@ -423,9 +423,9 @@ fun PlayerScreen(
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                     ViewGroup.LayoutParams.MATCH_PARENT
                                 )
-                                this.player = player
                             }
                         },
+                        update = { view -> view.player = player },
                         modifier = Modifier.fillMaxSize()
                     )
                 } else if (!isMinimizedAnim.value) {
@@ -450,9 +450,9 @@ fun PlayerScreen(
                                             ViewGroup.LayoutParams.MATCH_PARENT,
                                             ViewGroup.LayoutParams.MATCH_PARENT
                                         )
-                                        this.player = player
                                     }
                                 },
+                                update = { view -> view.player = player },
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
