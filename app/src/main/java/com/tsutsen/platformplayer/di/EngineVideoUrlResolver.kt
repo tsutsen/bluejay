@@ -228,7 +228,18 @@ class EngineVideoUrlResolver @Inject constructor() : VideoUrlResolver {
         // Find a working audio-only MediaSource
         val audioMediaSource = audioSources.firstNotNullOfOrNull { audioSource ->
             Log.i(TAG, "Trying audio source: ${audioSource.javaClass.simpleName}")
-            createMediaSourceFromSource(audioSource, httpDataSourceFactory)
+            try {
+                val source = createMediaSourceFromSource(audioSource, httpDataSourceFactory)
+                if (source != null) {
+                    Log.i(TAG, "Successfully created audio MediaSource: ${audioSource.javaClass.simpleName}")
+                } else {
+                    Log.w(TAG, "Failed to create audio MediaSource from: ${audioSource.javaClass.simpleName}")
+                }
+                source
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating audio MediaSource", e)
+                null
+            }
         }
 
         if (audioMediaSource == null) {
@@ -237,7 +248,12 @@ class EngineVideoUrlResolver @Inject constructor() : VideoUrlResolver {
         }
 
         Log.i(TAG, "Merging video + audio MediaSources for unmuxed playback")
-        return MergingMediaSource(videoMediaSource, audioMediaSource)
+        // Use adjustPeriodTimeOffsets to handle timing mismatches between video and audio
+        return MergingMediaSource(
+            true, // adjustPeriodTimeOffsets
+            videoMediaSource,
+            audioMediaSource
+        )
     }
 
     private fun createMediaSourceFromSource(
