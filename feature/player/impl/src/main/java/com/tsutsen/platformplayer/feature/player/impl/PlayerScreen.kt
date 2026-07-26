@@ -936,6 +936,7 @@ fun PlayerScreen(
                             modifier = Modifier.align(Alignment.BottomCenter)
                         ) {
                             BottomOverlay(
+                                player = player,
                                 currentPositionMs = state.currentPositionMs,
                                 durationMs = state.durationMs,
                                 isPlaying = state.isPlaying,

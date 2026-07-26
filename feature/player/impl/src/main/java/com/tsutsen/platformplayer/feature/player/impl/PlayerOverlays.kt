@@ -8,6 +8,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -17,6 +18,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -99,6 +105,7 @@ internal fun TopOverlay(
 
 @Composable
 internal fun BottomOverlay(
+    player: androidx.media3.common.Player?,
     currentPositionMs: Long,
     durationMs: Long,
     isPlaying: Boolean,
@@ -134,40 +141,32 @@ internal fun BottomOverlay(
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Box(
+        // Manual timeline implementation using Media3's pattern
+        var isDragging by remember { mutableStateOf(false) }
+        var seekPosition by remember { mutableFloatStateOf(0f) }
+
+        androidx.compose.material3.Slider(
+            value = if (isDragging) seekPosition else (if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f),
+            onValueChange = {
+                isDragging = true
+                seekPosition = it
+                // Update scrub position for display
+                val seekToMs = (it * durationMs).toLong()
+                onSeek(seekToMs)
+            },
+            onValueChangeFinished = {
+                // Commit the seek
+                val seekToMs = (seekPosition * durationMs).toLong()
+                onSeek(seekToMs)
+                isDragging = false
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .pointerInput(durationMs, isScrubbing) {
-                    detectDragGestures(
-                        onDragStart = {
-                            // Drag started
-                        },
-                        onDragEnd = {
-                            // Drag ended
-                        },
-                        onDragCancel = {
-                            // Drag cancelled
-                        },
-                        onDrag = { change, _ ->
-                            change.consume()
-                            val x = change.position.x
-                            val percent = x.coerceIn(0f, 1f)
-                            val seekToMs = (percent * durationMs).toLong()
-                            onSeek(seekToMs)
-                        }
-                    )
-                }
-        ) {
-            LinearProgressIndicator(
-                progress = if (durationMs > 0) scrubPositionMs.toFloat() / durationMs else 0f,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.Center),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.White.copy(alpha = 0.3f)
-            )
-        }
+                .height(48.dp),
+            enabled = durationMs > 0,
+            colors = androidx.compose.material3.SliderDefaults.colors(),
+            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+        )
         Spacer(modifier = Modifier.height(16.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
