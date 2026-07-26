@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -909,6 +910,21 @@ fun PlayerScreen(
                             showSeekForward = false
                         )
 
+                        // ==================== Top Gradient Overlay ====================
+                        if (showTopOverlay && !isCollapsedControls) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .align(Alignment.TopCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                                        )
+                                    )
+                            )
+                        }
+
                         // ==================== Top Overlay ====================
                         AnimatedVisibility(
                             visible = showTopOverlay && !isCollapsedControls,
@@ -954,6 +970,21 @@ fun PlayerScreen(
                                 },
                                 isScrubbing = isScrubbing,
                                 scrubPositionMs = scrubPositionMs
+                            )
+                        }
+
+                        // ==================== Bottom Gradient Overlay ====================
+                        if (showBottomOverlay && !isCollapsedControls) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                                        )
+                                    )
                             )
                         }
 
