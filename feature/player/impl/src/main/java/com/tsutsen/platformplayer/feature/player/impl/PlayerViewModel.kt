@@ -106,7 +106,7 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val moreComments = withContext(Dispatchers.IO) {
-                    commentRepository.getComments(contentUrl)
+                    commentRepository.loadMoreComments(contentUrl)
                 }
                 
                 if (moreComments.isNotEmpty()) {

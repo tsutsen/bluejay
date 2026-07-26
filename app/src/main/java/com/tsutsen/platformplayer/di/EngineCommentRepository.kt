@@ -19,23 +19,30 @@ import javax.inject.Singleton
 class EngineCommentRepository @Inject constructor() : CommentRepository {
 
     private val TAG = "EngineCommentRepository"
+    private val commentPagers = mutableMapOf<String, Any>()
 
     override suspend fun getComments(contentUrl: String): List<CommentItem> {
         return try {
+            Log.i(TAG, "========================================")
             Log.i(TAG, "Fetching comments for: $contentUrl")
-            val commentsPager = StatePlatform.instance.getComments(contentUrl)
+            Log.i(TAG, "========================================")
+            
+            // Get or create pager
+            if (commentPagers[contentUrl] == null) {
+                Log.i(TAG, "Getting new pager...")
+                val pager = StatePlatform.instance.getComments(contentUrl)
+                commentPagers[contentUrl] = pager
+            }
+            
+            val pager = commentPagers[contentUrl] as com.tsutsen.platformplayer.api.media.structures.IPager<*>
+            pager.nextPage()
+            val results = pager.getResults()
+            
+            Log.i(TAG, "Results size: ${results.size}")
             val comments = mutableListOf<CommentItem>()
-            
-            // Load first page of comments
-            commentsPager.nextPage()
-            val results = commentsPager.getResults()
-            
             for (item in results) {
                 if (item is IPlatformComment) {
-                    val comment = mapToCommentItem(item)
-                    if (comment != null) {
-                        comments.add(comment)
-                    }
+                    mapToCommentItem(item)?.let { comments.add(it) }
                 }
             }
             
@@ -43,6 +50,31 @@ class EngineCommentRepository @Inject constructor() : CommentRepository {
             comments
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch comments", e)
+            emptyList()
+        }
+    }
+    
+    override suspend fun loadMoreComments(contentUrl: String): List<CommentItem> {
+        return try {
+            Log.i(TAG, "Loading more comments for: $contentUrl")
+            
+            val pager = commentPagers[contentUrl] ?: return emptyList()
+            val iPager = pager as com.tsutsen.platformplayer.api.media.structures.IPager<*>
+            iPager.nextPage()
+            val results = iPager.getResults()
+            
+            Log.i(TAG, "More results size: ${results.size}")
+            val comments = mutableListOf<CommentItem>()
+            for (item in results) {
+                if (item is IPlatformComment) {
+                    mapToCommentItem(item)?.let { comments.add(it) }
+                }
+            }
+            
+            Log.i(TAG, "Loaded ${comments.size} more comments")
+            comments
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load more comments", e)
             emptyList()
         }
     }
