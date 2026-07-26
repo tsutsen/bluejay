@@ -145,26 +145,33 @@ class PlayerRepositoryImpl(
         // This is what lets the UI show a spinner right away instead of a blank gap.
         _playerState.update { it.copy(isLoading = true, error = null) }
 
-        withContext(Dispatchers.Main) {
-            try {
-                Log.i(TAG, "========================================")
-                Log.i(TAG, "play() called with videoId: $videoId")
-                Log.i(TAG, "videoId length: ${videoId.length}")
-                Log.i(TAG, "Is streaming URL: ${isStreamingUrl(videoId)}")
-                Log.i(TAG, "Is empty: ${videoId.isEmpty()}")
-                Log.i(TAG, "========================================")
+        try {
+            Log.i(TAG, "========================================")
+            Log.i(TAG, "play() called with videoId: $videoId")
+            Log.i(TAG, "videoId length: ${videoId.length}")
+            Log.i(TAG, "Is streaming URL: ${isStreamingUrl(videoId)}")
+            Log.i(TAG, "Is empty: ${videoId.isEmpty()}")
+            Log.i(TAG, "========================================")
 
-                // Resolve content URL to MediaSource + video details if needed
-                val resolution = if (!isStreamingUrl(videoId)) {
+            // Resolve content URL to MediaSource + video details OFF the main thread.
+            // resolveWithDetails() ultimately calls into VideoUrlResolver, which may do
+            // network I/O — running that under Dispatchers.Main would freeze the whole
+            // UI thread (no frames, no spinner) for the entire resolve, which is exactly
+            // what was causing the "tap -> nothing -> screen already loaded" gap.
+            val resolution = withContext(Dispatchers.IO) {
+                if (!isStreamingUrl(videoId)) {
                     Log.i(TAG, "Content URL detected, resolving to MediaSource + details...")
                     resolveWithDetails(videoId)
                 } else {
                     Log.i(TAG, "Streaming URL detected, creating MediaSource from URL...")
                     ResolutionResult(createMediaSourceFromUrl(videoId), null)
                 }
+            }
 
-                Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
+            Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
 
+            // Only the ExoPlayer instance itself must be touched from the main thread.
+            withContext(Dispatchers.Main) {
                 if (_exoPlayer == null) {
                     Log.i(TAG, "Creating new ExoPlayer instance")
                     _exoPlayer = ExoPlayer.Builder(context)
@@ -223,12 +230,12 @@ class PlayerRepositoryImpl(
                 Log.i(TAG, "========================================")
                 Log.i(TAG, "play() completed successfully")
                 Log.i(TAG, "========================================")
-            } catch (e: Exception) {
-                Log.e(TAG, "========================================")
-                Log.e(TAG, "Failed to play video: $videoId", e)
-                Log.e(TAG, "========================================")
-                _playerState.update { it.copy(isLoading = false, error = e.message ?: "Failed to play video") }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "========================================")
+            Log.e(TAG, "Failed to play video: $videoId", e)
+            Log.e(TAG, "========================================")
+            _playerState.update { it.copy(isLoading = false, error = e.message ?: "Failed to play video") }
         }
     }
 
