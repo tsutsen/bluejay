@@ -38,6 +38,7 @@ sealed interface PlayerUiState {
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
+    data object Loading : PlayerUiState
     data class Error(val message: String) : PlayerUiState
 }
 
@@ -97,6 +98,7 @@ class PlayerViewModel @Inject constructor(
 
     fun play(videoId: String) {
         viewModelScope.launch {
+            _uiState.value = PlayerUiState.Loading
             playerRepository.play(videoId)
             // Fetch comments after video starts playing
             fetchComments(videoId)
