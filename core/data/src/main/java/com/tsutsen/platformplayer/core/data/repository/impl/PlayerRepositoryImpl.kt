@@ -140,47 +140,54 @@ class PlayerRepositoryImpl(
         }
     }
 
+    init {
+        // Create ExoPlayer eagerly so it's ready immediately when play() is called
+        _exoPlayer = ExoPlayer.Builder(context)
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+        _exoPlayer?.addListener(playerListener)
+        _exoPlayer?.addAnalyticsListener(analyticsListener)
+        Log.i(TAG, "ExoPlayer created eagerly in constructor")
+    }
+
     override suspend fun play(videoId: String) {
-        withContext(Dispatchers.Main) {
-            try {
-                Log.i(TAG, "========================================")
-                Log.i(TAG, "play() called with videoId: $videoId")
-                Log.i(TAG, "videoId length: ${videoId.length}")
-                Log.i(TAG, "Is streaming URL: ${isStreamingUrl(videoId)}")
-                Log.i(TAG, "Is empty: ${videoId.isEmpty()}")
-                Log.i(TAG, "========================================")
+        try {
+            Log.i(TAG, "========================================")
+            Log.i(TAG, "play() called with videoId: $videoId")
+            Log.i(TAG, "videoId length: ${videoId.length}")
+            Log.i(TAG, "Is streaming URL: ${isStreamingUrl(videoId)}")
+            Log.i(TAG, "Is empty: ${videoId.isEmpty()}")
+            Log.i(TAG, "========================================")
 
-                // Set loading state immediately
-                _playerState.update { it.copy(isLoading = true) }
+            // Set loading state immediately on main thread so UI can show spinner
+            withContext(Dispatchers.Main) {
+                _playerState.update { it.copy(isLoading = true, currentVideo = null) }
+            }
 
-                // Resolve content URL to MediaSource + video details if needed
-                val resolution = if (!isStreamingUrl(videoId)) {
+            // Resolve content URL to MediaSource + video details if needed
+            // This runs on background thread to avoid blocking UI
+            val resolution = withContext(Dispatchers.IO) {
+                if (!isStreamingUrl(videoId)) {
                     Log.i(TAG, "Content URL detected, resolving to MediaSource + details...")
                     resolveWithDetails(videoId)
                 } else {
                     Log.i(TAG, "Streaming URL detected, creating MediaSource from URL...")
                     ResolutionResult(createMediaSourceFromUrl(videoId), null)
                 }
+            }
 
-                Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
+            Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
 
-                if (_exoPlayer == null) {
-                    Log.i(TAG, "Creating new ExoPlayer instance")
-                    _exoPlayer = ExoPlayer.Builder(context)
-                        .setHandleAudioBecomingNoisy(true)
-                        .build()
-                    _exoPlayer?.addListener(playerListener)
-                    _exoPlayer?.addAnalyticsListener(analyticsListener)
-                } else {
-                    Log.i(TAG, "Using existing ExoPlayer instance")
+            if (resolution.mediaSource == null) {
+                Log.e(TAG, "Failed to create MediaSource, cannot play video")
+                withContext(Dispatchers.Main) {
+                    _playerState.update { it.copy(error = "Failed to resolve video source", isLoading = false) }
                 }
+                return
+            }
 
-                if (resolution.mediaSource == null) {
-                    Log.e(TAG, "Failed to create MediaSource, cannot play video")
-                    _playerState.update { it.copy(error = "Failed to resolve video source") }
-                    return@withContext
-                }
-
+            // Set up player on main thread
+            withContext(Dispatchers.Main) {
                 Log.i(TAG, "Setting MediaSource on ExoPlayer...")
                 _exoPlayer?.setMediaSource(resolution.mediaSource)
                 Log.i(TAG, "Preparing ExoPlayer...")
@@ -215,18 +222,21 @@ class PlayerRepositoryImpl(
                 _playerState.update {
                     it.copy(
                         isPlaying = true,
-                        currentVideo = currentVideo
+                        currentVideo = currentVideo,
+                        isLoading = false
                     )
                 }
 
                 Log.i(TAG, "========================================")
                 Log.i(TAG, "play() completed successfully")
                 Log.i(TAG, "========================================")
-            } catch (e: Exception) {
-                Log.e(TAG, "========================================")
-                Log.e(TAG, "Failed to play video: $videoId", e)
-                Log.e(TAG, "========================================")
-                _playerState.update { it.copy(error = e.message ?: "Failed to play video") }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "========================================")
+            Log.e(TAG, "Failed to play video: $videoId", e)
+            Log.e(TAG, "========================================")
+            withContext(Dispatchers.Main) {
+                _playerState.update { it.copy(error = e.message ?: "Failed to play video", isLoading = false) }
             }
         }
     }
