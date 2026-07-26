@@ -70,7 +70,10 @@ fun HomeScreen(
                     hasMorePages = state.hasMorePages,
                     isWide = isWide,
                     onCardClick = { card ->
-                        if (card is VideoCard) playerViewModel.play(card.url)
+                        if (card is VideoCard) {
+                            android.util.Log.i("HomeScreen", "Video clicked: ${card.title}, URL: ${card.url}")
+                            playerViewModel.play(card.url)
+                        }
                     },
                     onLoadMore = { viewModel.loadNextPage() },
                     onRefresh = { viewModel.refresh() }

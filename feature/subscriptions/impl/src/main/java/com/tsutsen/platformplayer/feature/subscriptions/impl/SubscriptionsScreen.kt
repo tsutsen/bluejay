@@ -106,6 +106,7 @@ fun SubscriptionsScreen(
                         onRefresh = viewModel::refresh,
                         onLoadMore = viewModel::loadMore,
                         onItemClicked = { url ->
+                            android.util.Log.i("SubscriptionsScreen", "Video clicked, URL: $url")
                             playerViewModel.play(url)
                         },
                         modifier = Modifier.padding(paddingValues)

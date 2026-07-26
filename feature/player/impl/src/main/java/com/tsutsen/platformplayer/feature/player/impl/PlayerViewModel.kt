@@ -26,7 +26,9 @@ sealed interface PlayerUiState {
         val currentVideo: ContentItem?,
         val queue: List<ContentItem>,
         val selectedIndex: Int,
-        val error: String?
+        val error: String?,
+        val isLoading: Boolean = false,
+        val isCompleted: Boolean = false
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
@@ -62,7 +64,9 @@ class PlayerViewModel @Inject constructor(
                         currentVideo = playerState.currentVideo,
                         queue = playerState.queue,
                         selectedIndex = playerState.selectedIndex,
-                        error = playerState.error
+                        error = playerState.error,
+                        isLoading = playerState.isLoading,
+                        isCompleted = playerState.isCompleted
                     )
                 }
         }

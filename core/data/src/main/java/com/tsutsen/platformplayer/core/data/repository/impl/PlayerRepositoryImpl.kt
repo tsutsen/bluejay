@@ -13,6 +13,10 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
+import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
+import com.tsutsen.platformplayer.core.data.repository.VideoDetails
+import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
+import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,7 +26,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
@@ -30,9 +33,15 @@ import javax.inject.Singleton
  * Resolves content URLs to streaming URLs via engine plugins.
  */
 @Singleton
-class PlayerRepositoryImpl @Inject constructor(
+class PlayerRepositoryImpl(
     @ApplicationContext private val context: Context
 ) : PlayerRepository {
+
+    private var urlResolver: VideoUrlResolver? = null
+
+    fun setUrlResolver(resolver: VideoUrlResolver?) {
+        this.urlResolver = resolver
+    }
 
     private val TAG = "PlayerRepositoryImpl"
 
@@ -43,7 +52,16 @@ class PlayerRepositoryImpl @Inject constructor(
     private var _exoPlayer: ExoPlayer? = null
 
     private val playerListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            Log.i(TAG, "Playback state changed: $playbackState")
+            _playerState.update { it.copy(
+                isLoading = playbackState == Player.STATE_BUFFERING,
+                isCompleted = playbackState == Player.STATE_ENDED
+            ) }
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            Log.i(TAG, "isPlaying changed: $isPlaying")
             _playerState.update { it.copy(isPlaying = isPlaying) }
         }
 
@@ -58,46 +76,141 @@ class PlayerRepositoryImpl @Inject constructor(
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
             _playerState.update { it.copy(playbackSpeed = playbackParameters.speed) }
         }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            Log.e(TAG, "Player error: ${error.errorCodeName}, message: ${error.message}", error)
+            _playerState.update { it.copy(error = error.message ?: "Unknown error") }
+        }
+
+        override fun onLoadingChanged(isLoading: Boolean) {
+            Log.i(TAG, "Loading changed: $isLoading")
+        }
+
+        override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
+            Log.i(TAG, "Playback suppression reason changed: $playbackSuppressionReason")
+        }
+
+        override fun onIsLoadingChanged(isLoading: Boolean) {
+            Log.i(TAG, "isLoading changed: $isLoading")
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            Log.i(TAG, "MediaItem transitioned: ${mediaItem?.mediaId}, reason: $reason")
+        }
+
+        override fun onEvents(player: Player, events: Player.Events) {
+            Log.i(TAG, "Player events: $events")
+        }
     }
 
     override suspend fun play(videoId: String) {
         withContext(Dispatchers.Main) {
             try {
-                Log.i(TAG, "Playing video: $videoId")
+                Log.i(TAG, "========================================")
+                Log.i(TAG, "play() called with videoId: $videoId")
+                Log.i(TAG, "videoId length: ${videoId.length}")
+                Log.i(TAG, "Is streaming URL: ${isStreamingUrl(videoId)}")
+                Log.i(TAG, "Is empty: ${videoId.isEmpty()}")
+                Log.i(TAG, "========================================")
+
+                // Resolve content URL to MediaSource + video details if needed
+                val resolution = if (!isStreamingUrl(videoId)) {
+                    Log.i(TAG, "Content URL detected, resolving to MediaSource + details...")
+                    resolveWithDetails(videoId)
+                } else {
+                    Log.i(TAG, "Streaming URL detected, creating MediaSource from URL...")
+                    ResolutionResult(createMediaSourceFromUrl(videoId), null)
+                }
+
+                Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
 
                 if (_exoPlayer == null) {
+                    Log.i(TAG, "Creating new ExoPlayer instance")
                     _exoPlayer = ExoPlayer.Builder(context)
                         .setHandleAudioBecomingNoisy(true)
                         .build()
                     _exoPlayer?.addListener(playerListener)
+                } else {
+                    Log.i(TAG, "Using existing ExoPlayer instance")
                 }
 
-                // Create MediaSource based on URL type
-                val mediaSource = createMediaSourceFromUrl(videoId)
+                if (resolution.mediaSource == null) {
+                    Log.e(TAG, "Failed to create MediaSource, cannot play video")
+                    _playerState.update { it.copy(error = "Failed to resolve video source") }
+                    return@withContext
+                }
 
-                _exoPlayer?.setMediaSource(mediaSource)
+                Log.i(TAG, "Setting MediaSource on ExoPlayer...")
+                _exoPlayer?.setMediaSource(resolution.mediaSource)
+                Log.i(TAG, "Preparing ExoPlayer...")
                 _exoPlayer?.prepare()
+                Log.i(TAG, "Setting playWhenReady to true...")
                 _exoPlayer?.playWhenReady = true
+
+                Log.i(TAG, "Updating player state with video details...")
+                Log.i(TAG, "Resolution has videoDetails: ${resolution.videoDetails != null}")
+                if (resolution.videoDetails != null) {
+                    Log.i(TAG, "VideoDetails from resolver: title=${resolution.videoDetails.title}, author=${resolution.videoDetails.authorName}")
+                }
+                val currentVideo = resolution.videoDetails?.let { details ->
+                    Log.i(TAG, "Mapping video details to ContentItem...")
+                    mapVideoDetailsToContentItem(details)
+                } ?: run {
+                    Log.w(TAG, "No video details, using stub ContentItem")
+                    ContentItem(
+                        id = videoId,
+                        url = videoId,
+                        title = "Loading...",
+                        author = null,
+                        thumbnailUrl = null,
+                        contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO
+                    )
+                }
+
+                Log.i(TAG, "Current video title: ${currentVideo.title}")
+                Log.i(TAG, "Current video author: ${currentVideo.author?.name}")
+                Log.i(TAG, "Current video thumbnail: ${currentVideo.thumbnailUrl}")
 
                 _playerState.update {
                     it.copy(
                         isPlaying = true,
-                        currentVideo = ContentItem(
-                            id = videoId,
-                            url = videoId,
-                            title = "Loading...",
-                            author = null,
-                            thumbnailUrl = null,
-                            contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO
-                        )
+                        currentVideo = currentVideo
                     )
                 }
 
-                Log.i(TAG, "Video prepared successfully: $videoId")
+                Log.i(TAG, "========================================")
+                Log.i(TAG, "play() completed successfully")
+                Log.i(TAG, "========================================")
             } catch (e: Exception) {
+                Log.e(TAG, "========================================")
                 Log.e(TAG, "Failed to play video: $videoId", e)
+                Log.e(TAG, "========================================")
                 _playerState.update { it.copy(error = e.message ?: "Failed to play video") }
             }
+        }
+    }
+
+    private suspend fun resolveWithDetails(contentUrl: String): ResolutionResult {
+        return try {
+            Log.i(TAG, "Resolving MediaSource + details for content URL: $contentUrl")
+            Log.i(TAG, "urlResolver is null: ${urlResolver == null}")
+            val resolver = urlResolver
+            if (resolver != null) {
+                Log.i(TAG, "Calling resolver.resolve()...")
+                val resolution = resolver.resolve(contentUrl)
+                Log.i(TAG, "Resolved MediaSource: ${resolution.mediaSource?.javaClass?.simpleName}")
+                Log.i(TAG, "Video details available: ${resolution.videoDetails != null}")
+                if (resolution.videoDetails != null) {
+                    Log.i(TAG, "VideoDetails title: ${resolution.videoDetails.title}")
+                }
+                resolution
+            } else {
+                Log.w(TAG, "WARNING: VideoUrlResolver not provided, creating MediaSource from URL")
+                ResolutionResult(createMediaSourceFromUrl(contentUrl), null)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to resolve, creating from URL: $contentUrl", e)
+            ResolutionResult(createMediaSourceFromUrl(contentUrl), null)
         }
     }
 
@@ -105,24 +218,58 @@ class PlayerRepositoryImpl @Inject constructor(
         return url.contains(".mpd") || url.contains(".m3u8") || url.contains("dash") || url.contains("hls")
     }
 
+    /**
+     * Map VideoDetails to ContentItem for display in the player UI.
+     */
+    private fun mapVideoDetailsToContentItem(details: VideoDetails): ContentItem {
+        return ContentItem(
+            id = details.id,
+            url = details.url,
+            title = details.title,
+            author = details.authorName?.let {
+                Author(
+                    id = details.id,
+                    name = it,
+                    url = details.authorUrl,
+                    thumbnailUrl = details.authorThumbnailUrl
+                )
+            },
+            thumbnailUrl = details.thumbnailUrl,
+            contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+            publishedAt = details.publishedAtMs,
+            durationMs = details.durationMs,
+            viewCount = details.viewCount,
+            description = details.description
+        )
+    }
+
     private fun createMediaSourceFromUrl(url: String): MediaSource {
+        Log.i(TAG, "createMediaSourceFromUrl() called with URL: $url")
+        Log.i(TAG, "URL contains .mpd: ${url.contains(".mpd")}")
+        Log.i(TAG, "URL contains .m3u8: ${url.contains(".m3u8")}")
+        Log.i(TAG, "URL contains 'dash': ${url.contains("dash")}")
+        Log.i(TAG, "URL contains 'hls': ${url.contains("hls")}")
+
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent("Bluejay/1.0")
             .setAllowCrossProtocolRedirects(true)
 
         return when {
             url.contains(".mpd") || url.contains("dash") -> {
-                Log.i(TAG, "Creating DASH MediaSource")
+                Log.i(TAG, "Creating DASH MediaSource for URL: $url")
                 DashMediaSource.Factory(httpDataSourceFactory)
                     .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
             }
             url.contains(".m3u8") || url.contains("hls") -> {
-                Log.i(TAG, "Creating HLS MediaSource")
+                Log.i(TAG, "Creating HLS MediaSource for URL: $url")
                 HlsMediaSource.Factory(httpDataSourceFactory)
                     .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
             }
             else -> {
-                Log.i(TAG, "Creating Progressive MediaSource")
+                // Check if this is a progressive streaming URL that needs DASH conversion
+                Log.i(TAG, "Checking if URL is progressive streaming...")
+                // For now, try progressive media source
+                Log.i(TAG, "Creating Progressive MediaSource for URL: $url")
                 ProgressiveMediaSource.Factory(httpDataSourceFactory)
                     .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
             }

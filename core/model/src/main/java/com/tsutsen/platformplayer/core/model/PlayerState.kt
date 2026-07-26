@@ -12,5 +12,7 @@ data class PlayerState(
     val currentVideo: ContentItem? = null,
     val queue: List<ContentItem> = emptyList(),
     val selectedIndex: Int = 0,
-    val error: String? = null
+    val error: String? = null,
+    val isLoading: Boolean = false,
+    val isCompleted: Boolean = false
 )

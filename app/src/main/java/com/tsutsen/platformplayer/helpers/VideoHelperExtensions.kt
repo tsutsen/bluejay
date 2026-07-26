@@ -3,26 +3,34 @@ package com.tsutsen.platformplayer.helpers
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioUrlSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IHLSManifestAudioSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoUrlSource
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.tsutsen.platformplayer.logging.Logger
 
-/**
- * Stub extension functions for VideoHelper.
- * These functions were part of the deleted XML-based video playback system.
- * They have been replaced with stub implementations for the Compose migration.
- */
-
 fun IVideoSource.getHttpDataSourceFactory(): DataSource.Factory {
     return DefaultHttpDataSource.Factory()
+        .setUserAgent("Bluejay/1.0")
+        .setAllowCrossProtocolRedirects(true)
 }
 
 fun IAudioSource.getHttpDataSourceFactory(): DataSource.Factory = getHttpDataSourceFactory()
 
-fun IPlatformVideoDetails.hasAnySource(): Boolean = true
+fun IPlatformVideoDetails.hasAnySource(): Boolean {
+    return video.videoSources.any { it is IVideoUrlSource || it is IHLSManifestSource }
+        || video.isUnMuxed
+}
 
-fun IPlatformVideoDetails.isDownloadable(): Boolean = true
+fun IPlatformVideoDetails.isDownloadable(): Boolean {
+    val desc = video
+    return desc.videoSources.any { it is IVideoUrlSource || it is IHLSManifestSource }
+        || (desc is com.tsutsen.platformplayer.api.media.models.streams.VideoUnMuxedSourceDescriptor
+            && desc.audioSources.any { it is IAudioUrlSource || it is IHLSManifestAudioSource })
+}
 
 fun IPlatformVideoDetails.playback(): Any? = null
 

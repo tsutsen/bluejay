@@ -191,6 +191,14 @@ fun PlayerScreen(
             val isTablet = configuration.smallestScreenWidthDp >= 600
             val miniPlayerScale = if (isTablet) 0.35f else 0.45f
 
+            // Log when player enters Loaded state
+            Log.d(TAG, "PlayerScreen entered Loaded state")
+            Log.d(TAG, "Current video: ${state.currentVideo?.url}")
+            Log.d(TAG, "Is playing: ${state.isPlaying}")
+            Log.d(TAG, "Is loading: ${state.isLoading}")
+            Log.d(TAG, "Is minimized: ${state.isMinimized}")
+            Log.d(TAG, "Is fullscreen: ${state.isFullscreen}")
+
             // Note: Video loading is handled by PlayerRepositoryImpl
             // PlayerScreen only displays the video using the ExoPlayer from the repository
 
