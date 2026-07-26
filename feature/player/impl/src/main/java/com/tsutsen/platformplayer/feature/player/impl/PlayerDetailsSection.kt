@@ -292,7 +292,9 @@ internal fun CommentsSection(
             )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
             ) {
                 items(comments.size) { index ->
                     val comment = comments[index]
