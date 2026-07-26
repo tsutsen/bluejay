@@ -195,31 +195,6 @@ fun PlayerScreen(
         is PlayerUiState.Initial -> {
             // No player active — don't show anything
         }
-        is PlayerUiState.Loading -> {
-            // Show loading spinner while video is being resolved and loaded
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        strokeWidth = 3.dp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Loading video...",
-                        color = Color.White.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        }
         is PlayerUiState.Loaded -> {
             val isTablet = configuration.smallestScreenWidthDp >= 600
             val miniPlayerScale = if (isTablet) 0.35f else 0.45f
