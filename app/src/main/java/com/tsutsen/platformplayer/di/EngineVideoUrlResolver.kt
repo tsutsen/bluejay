@@ -225,35 +225,36 @@ class EngineVideoUrlResolver @Inject constructor() : VideoUrlResolver {
             return null
         }
 
-        // Find a working audio-only MediaSource
+        // Try to merge video + audio, but fall back to video-only if audio fails
         val audioMediaSource = audioSources.firstNotNullOfOrNull { audioSource ->
             Log.i(TAG, "Trying audio source: ${audioSource.javaClass.simpleName}")
             try {
                 val source = createMediaSourceFromSource(audioSource, httpDataSourceFactory)
                 if (source != null) {
                     Log.i(TAG, "Successfully created audio MediaSource: ${audioSource.javaClass.simpleName}")
+                    source
                 } else {
                     Log.w(TAG, "Failed to create audio MediaSource from: ${audioSource.javaClass.simpleName}")
+                    null
                 }
-                source
             } catch (e: Exception) {
                 Log.e(TAG, "Error creating audio MediaSource", e)
                 null
             }
         }
 
-        if (audioMediaSource == null) {
-            Log.w(TAG, "No audio source resolved, falling back to video-only playback (silent)")
-            return videoMediaSource
+        if (audioMediaSource != null) {
+            Log.i(TAG, "Merging video + audio MediaSources for unmuxed playback")
+            // Use adjustPeriodTimeOffsets to handle timing mismatches between video and audio
+            return MergingMediaSource(
+                true, // adjustPeriodTimeOffsets
+                videoMediaSource,
+                audioMediaSource
+            )
         }
 
-        Log.i(TAG, "Merging video + audio MediaSources for unmuxed playback")
-        // Use adjustPeriodTimeOffsets to handle timing mismatches between video and audio
-        return MergingMediaSource(
-            true, // adjustPeriodTimeOffsets
-            videoMediaSource,
-            audioMediaSource
-        )
+        Log.w(TAG, "No audio source resolved, falling back to video-only playback (silent)")
+        return videoMediaSource
     }
 
     private fun createMediaSourceFromSource(
