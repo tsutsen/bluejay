@@ -53,6 +53,9 @@ class PlayerViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+    
+    // Preserve comments across repository state emissions
+    private var cachedComments: List<CommentItem> = emptyList()
 
     init {
         // Observe repository player state and map to UiState
@@ -75,7 +78,7 @@ class PlayerViewModel @Inject constructor(
                         error = playerState.error,
                         isLoading = playerState.isLoading,
                         isCompleted = playerState.isCompleted,
-                        comments = playerState.comments
+                        comments = cachedComments
                     )
                 }
         }
@@ -83,6 +86,8 @@ class PlayerViewModel @Inject constructor(
 
     fun play(videoId: String) {
         viewModelScope.launch {
+            // Reset comments for new video
+            cachedComments = emptyList()
             playerRepository.play(videoId)
             // Fetch comments after video starts playing
             fetchComments(videoId)
@@ -95,6 +100,7 @@ class PlayerViewModel @Inject constructor(
                 commentRepository.getComments(contentUrl)
             }
             
+            cachedComments = comments
             _uiState.value = when (val state = _uiState.value) {
                 is PlayerUiState.Loaded -> state.copy(comments = comments)
                 else -> state
@@ -112,6 +118,7 @@ class PlayerViewModel @Inject constructor(
                 }
                 
                 if (moreComments.isNotEmpty()) {
+                    cachedComments = cachedComments + moreComments
                     _uiState.value = when (val state = _uiState.value) {
                         is PlayerUiState.Loaded -> {
                             val updatedComments = state.comments + moreComments

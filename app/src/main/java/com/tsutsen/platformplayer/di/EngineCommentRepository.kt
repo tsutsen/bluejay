@@ -21,6 +21,7 @@ class EngineCommentRepository @Inject constructor() : CommentRepository {
     private val TAG = "EngineCommentRepository"
     private val commentPagers = mutableMapOf<String, Any>()
     private val fetchedUrls = mutableSetOf<String>()
+    private val lastResultCount = mutableMapOf<String, Int>()
 
     override suspend fun getComments(contentUrl: String): List<CommentItem> {
         return try {
@@ -68,9 +69,14 @@ class EngineCommentRepository @Inject constructor() : CommentRepository {
             iPager.nextPage()
             val results = iPager.getResults()
             
-            Log.i(TAG, "More results size: ${results.size}")
+            // Only return the NEW items (delta from previous call)
+            val prevCount = lastResultCount[contentUrl] ?: 0
+            val newResults = results.drop(prevCount)
+            lastResultCount[contentUrl] = results.size
+            
+            Log.i(TAG, "More results size: ${results.size}, new items: ${newResults.size}")
             val comments = mutableListOf<CommentItem>()
-            for (item in results) {
+            for (item in newResults) {
                 if (item is IPlatformComment) {
                     mapToCommentItem(item)?.let { comments.add(it) }
                 }
