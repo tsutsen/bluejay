@@ -56,6 +56,7 @@ class PlayerViewModel @Inject constructor(
 
     init {
         // Observe repository player state and map to UiState
+        // Position updates are now handled by the repository's position ticker
         viewModelScope.launch {
             playerRepository.playerState
                 .collect { playerState ->
@@ -77,21 +78,6 @@ class PlayerViewModel @Inject constructor(
                         comments = playerState.comments
                     )
                 }
-        }
-        
-        // Continuously update current position for smooth timeline
-        viewModelScope.launch {
-            while (true) {
-                val player = playerRepository.exoPlayer
-                if (player != null && player.isPlaying) {
-                    val position = player.currentPosition
-                    val currentState = _uiState.value
-                    if (currentState is PlayerUiState.Loaded && currentState.currentPositionMs != position) {
-                        _uiState.value = currentState.copy(currentPositionMs = position)
-                    }
-                }
-                delay(100)
-            }
         }
     }
 

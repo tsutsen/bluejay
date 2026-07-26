@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -106,7 +107,9 @@ internal fun BottomOverlay(
     onNext: () -> Unit,
     onChapters: () -> Unit,
     onFullscreen: () -> Unit,
-    onSeek: (Long) -> Unit = {}
+    onSeek: (Long) -> Unit = {},
+    isScrubbing: Boolean = false,
+    scrubPositionMs: Long = currentPositionMs
 ) {
     Column(
         modifier = Modifier
@@ -119,7 +122,7 @@ internal fun BottomOverlay(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = formatTime(currentPositionMs),
+                text = formatTime(if (isScrubbing) scrubPositionMs else currentPositionMs),
                 color = Color.White,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -135,16 +138,29 @@ internal fun BottomOverlay(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        val position = it.x / size.width
-                        val seekToMs = (position * durationMs).toLong()
-                        onSeek(seekToMs)
-                    }
+                .pointerInput(durationMs, isScrubbing) {
+                    detectDragGestures(
+                        onDragStart = {
+                            // Drag started
+                        },
+                        onDragEnd = {
+                            // Drag ended
+                        },
+                        onDragCancel = {
+                            // Drag cancelled
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val x = change.position.x
+                            val percent = x.coerceIn(0f, 1f)
+                            val seekToMs = (percent * durationMs).toLong()
+                            onSeek(seekToMs)
+                        }
+                    )
                 }
         ) {
             LinearProgressIndicator(
-                progress = if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f,
+                progress = if (durationMs > 0) scrubPositionMs.toFloat() / durationMs else 0f,
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.Center),

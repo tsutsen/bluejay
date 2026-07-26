@@ -114,6 +114,10 @@ fun PlayerScreen(
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
     var isDraggingMiniPlayer by remember { mutableStateOf(false) }
     
+    // Timeline scrub state
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubPositionMs by remember { mutableStateOf(0L) }
+    
     // Animated offset for snap animation - faster, snappier
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
@@ -206,6 +210,12 @@ fun PlayerScreen(
             Log.d(TAG, "Is loading: ${state.isLoading}")
             Log.d(TAG, "Is minimized: ${state.isMinimized}")
             Log.d(TAG, "Is fullscreen: ${state.isFullscreen}")
+
+            // Reset scrub state when video changes
+            LaunchedEffect(state.currentVideo?.url) {
+                isScrubbing = false
+                scrubPositionMs = 0L
+            }
 
             // Note: Video loading is handled by PlayerRepositoryImpl
             // PlayerScreen only displays the video using the ExoPlayer from the repository
@@ -936,7 +946,13 @@ fun PlayerScreen(
                                 onNext = { viewModel.skipNext() },
                                 onChapters = { showChapters = !showChapters },
                                 onFullscreen = { viewModel.toggleFullscreen() },
-                                onSeek = { positionMs -> viewModel.seekTo(positionMs) }
+                                onSeek = { positionMs ->
+                                    scrubPositionMs = positionMs
+                                    isScrubbing = true
+                                    viewModel.seekTo(positionMs)
+                                },
+                                isScrubbing = isScrubbing,
+                                scrubPositionMs = scrubPositionMs
                             )
                         }
 

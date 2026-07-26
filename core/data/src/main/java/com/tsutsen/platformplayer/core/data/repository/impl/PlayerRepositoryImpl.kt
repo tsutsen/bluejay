@@ -22,7 +22,9 @@ import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -75,7 +77,8 @@ class PlayerRepositoryImpl(
             newPosition: Player.PositionInfo,
             reason: Int
         ) {
-            _playerState.update { it.copy(currentPositionMs = newPosition.positionMs) }
+            // Don't update position here - let the position ticker handle it
+            // This avoids race conditions with seekTo() and scrubbing
         }
 
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -105,6 +108,24 @@ class PlayerRepositoryImpl(
 
         override fun onEvents(player: Player, events: Player.Events) {
             Log.i(TAG, "Player events: $events")
+        }
+    }
+
+    // Position ticker: single source of truth for currentPositionMs
+    private val positionScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Default + Job())
+    private var positionTickerJob: Job? = null
+
+    private fun startPositionTicker() {
+        positionTickerJob?.cancel()
+        positionTickerJob = positionScope.launch {
+            while (true) {
+                val player = _exoPlayer
+                if (player != null) {
+                    val position = player.currentPosition
+                    _playerState.update { it.copy(currentPositionMs = position) }
+                }
+                kotlinx.coroutines.delay(100) // 10fps for smooth UI
+            }
         }
     }
 
@@ -193,6 +214,7 @@ class PlayerRepositoryImpl(
                         .build()
                     _exoPlayer?.addListener(playerListener)
                     _exoPlayer?.addAnalyticsListener(analyticsListener)
+                    startPositionTicker()
                 } else {
                     Log.i(TAG, "Using existing ExoPlayer instance")
                 }
@@ -359,7 +381,8 @@ class PlayerRepositoryImpl(
         withContext(Dispatchers.Main) {
             _exoPlayer?.seekTo(positionMs)
         }
-        _playerState.update { it.copy(currentPositionMs = positionMs) }
+        // Don't update currentPositionMs here - let the position ticker handle it
+        // This ensures the UI always shows the actual player position
     }
 
     override suspend fun setVolume(volume: Float) {
@@ -403,6 +426,8 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun close() {
+        positionTickerJob?.cancel()
+        positionTickerJob = null
         _exoPlayer?.release()
         _exoPlayer = null
         _playerState.update {
