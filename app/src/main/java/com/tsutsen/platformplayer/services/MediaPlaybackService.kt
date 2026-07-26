@@ -196,6 +196,10 @@ class MediaPlaybackService : Service() {
         stopSelf()
     }
 
+    fun getMediaSessionToken(): android.support.v4.media.session.MediaSessionCompat.Token? {
+        return _mediaSession?.sessionToken
+    }
+
     fun updateMediaSession(videoUpdated: IPlatformVideo?) {
         Logger.v(TAG, "updateMediaSession");
         var isUpdating = false;
