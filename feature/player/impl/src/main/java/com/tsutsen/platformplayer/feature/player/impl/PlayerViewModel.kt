@@ -8,8 +8,10 @@ import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -87,7 +89,9 @@ class PlayerViewModel @Inject constructor(
 
     private suspend fun fetchComments(contentUrl: String) {
         try {
-            val comments = commentRepository.getComments(contentUrl)
+            val comments = withContext(Dispatchers.IO) {
+                commentRepository.getComments(contentUrl)
+            }
             
             _uiState.value = when (val state = _uiState.value) {
                 is PlayerUiState.Loaded -> state.copy(comments = comments)
@@ -95,6 +99,28 @@ class PlayerViewModel @Inject constructor(
             }
         } catch (e: Exception) {
             android.util.Log.e("PlayerViewModel", "Failed to fetch comments", e)
+        }
+    }
+
+    fun loadMoreComments(contentUrl: String) {
+        viewModelScope.launch {
+            try {
+                val moreComments = withContext(Dispatchers.IO) {
+                    commentRepository.getComments(contentUrl)
+                }
+                
+                if (moreComments.isNotEmpty()) {
+                    _uiState.value = when (val state = _uiState.value) {
+                        is PlayerUiState.Loaded -> {
+                            val updatedComments = state.comments + moreComments
+                            state.copy(comments = updatedComments)
+                        }
+                        else -> state
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerViewModel", "Failed to load more comments", e)
+            }
         }
     }
 

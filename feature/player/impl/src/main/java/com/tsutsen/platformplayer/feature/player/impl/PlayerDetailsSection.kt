@@ -3,6 +3,8 @@ package com.tsutsen.platformplayer.feature.player.impl
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -277,7 +279,8 @@ internal fun TabItem(
 
 @Composable
 internal fun CommentsSection(
-    comments: List<CommentItem>
+    comments: List<CommentItem>,
+    onLoadMore: () -> Unit
 ) {
     Column(modifier = Modifier.padding(16.dp)) {
         if (comments.isEmpty()) {
@@ -288,14 +291,35 @@ internal fun CommentsSection(
                 modifier = Modifier.padding(vertical = 16.dp)
             )
         } else {
-            comments.forEach { comment ->
-                CommentCard(
-                    username = comment.author,
-                    timeAgo = formatRelativeTime(comment.publishedAtMs),
-                    text = comment.text,
-                    likeCount = comment.likeCount.toInt()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(comments.size) { index ->
+                    val comment = comments[index]
+                    CommentCard(
+                        username = comment.author,
+                        timeAgo = formatRelativeTime(comment.publishedAtMs),
+                        text = comment.text,
+                        likeCount = comment.likeCount.toInt()
+                    )
+                    if (index < comments.lastIndex) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+                
+                // Load more button at the end
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TextButton(onClick = onLoadMore) {
+                            Text("Load more comments")
+                        }
+                    }
+                }
             }
         }
     }

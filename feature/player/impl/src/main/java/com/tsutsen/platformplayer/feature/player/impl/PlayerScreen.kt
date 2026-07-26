@@ -514,7 +514,10 @@ fun PlayerScreen(
                             when (selectedTab) {
                                 0 -> {
                                     item {
-                                        CommentsSection(comments = state.comments)
+                                        CommentsSection(
+                                            comments = state.comments,
+                                            onLoadMore = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") }
+                                        )
                                     }
                                 }
                                 1 -> {
