@@ -123,23 +123,6 @@ internal fun BottomOverlay(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Timeline
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = formatTime(if (isScrubbing) scrubPositionMs else currentPositionMs),
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = formatTime(durationMs),
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
         // Controls row first
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -172,12 +155,17 @@ internal fun BottomOverlay(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            // Time display before chapters
-            Text(
-                text = "${formatTime(if (isScrubbing) scrubPositionMs else currentPositionMs)} / ${formatTime(durationMs)}",
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
-            )
+            // Time display before chapters - wrapped to match IconButton height for alignment
+            Box(
+                modifier = Modifier.height(40.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${formatTime(if (isScrubbing) scrubPositionMs else currentPositionMs)} / ${formatTime(durationMs)}",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = onChapters) {
                 Icon(
