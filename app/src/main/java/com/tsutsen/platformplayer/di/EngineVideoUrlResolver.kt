@@ -7,6 +7,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IDashManifestSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IHLSManifestSource
@@ -213,18 +214,30 @@ class EngineVideoUrlResolver @Inject constructor() : VideoUrlResolver {
 
         Log.i(TAG, "Unmuxed: ${videoSources.size} video sources, ${audioSources.size} audio sources")
 
-        // Try to find a video source
-        for (videoSource in videoSources) {
+        // Find a working video-only MediaSource
+        val videoMediaSource = videoSources.firstNotNullOfOrNull { videoSource ->
             Log.i(TAG, "Trying video source: ${videoSource.javaClass.simpleName}")
-            val mediaSource = createMediaSourceFromSource(videoSource, httpDataSourceFactory, contentUrl)
-            if (mediaSource != null) {
-                Log.i(TAG, "Successfully created MediaSource from video source: ${videoSource.javaClass.simpleName}")
-                return mediaSource
-            }
+            createMediaSourceFromSource(videoSource, httpDataSourceFactory, contentUrl)
         }
 
-        Log.w(TAG, "Failed to create MediaSource from any unmuxed video source")
-        return null
+        if (videoMediaSource == null) {
+            Log.w(TAG, "Failed to create MediaSource from any unmuxed video source")
+            return null
+        }
+
+        // Find a working audio-only MediaSource
+        val audioMediaSource = audioSources.firstNotNullOfOrNull { audioSource ->
+            Log.i(TAG, "Trying audio source: ${audioSource.javaClass.simpleName}")
+            createMediaSourceFromSource(audioSource, httpDataSourceFactory)
+        }
+
+        if (audioMediaSource == null) {
+            Log.w(TAG, "No audio source resolved, falling back to video-only playback (silent)")
+            return videoMediaSource
+        }
+
+        Log.i(TAG, "Merging video + audio MediaSources for unmuxed playback")
+        return MergingMediaSource(videoMediaSource, audioMediaSource)
     }
 
     private fun createMediaSourceFromSource(
