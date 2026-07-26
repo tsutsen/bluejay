@@ -140,34 +140,7 @@ internal fun BottomOverlay(
                 style = MaterialTheme.typography.bodySmall
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        // Manual timeline implementation using Media3's pattern
-        var isDragging by remember { mutableStateOf(false) }
-        var seekPosition by remember { mutableFloatStateOf(0f) }
-
-        androidx.compose.material3.Slider(
-            value = if (isDragging) seekPosition else (if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f),
-            onValueChange = {
-                isDragging = true
-                seekPosition = it
-                // Update scrub position for display
-                val seekToMs = (it * durationMs).toLong()
-                onSeek(seekToMs)
-            },
-            onValueChangeFinished = {
-                // Commit the seek
-                val seekToMs = (seekPosition * durationMs).toLong()
-                onSeek(seekToMs)
-                isDragging = false
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            enabled = durationMs > 0,
-            colors = androidx.compose.material3.SliderDefaults.colors(),
-            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        // Controls row first
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -214,6 +187,33 @@ internal fun BottomOverlay(
                 )
             }
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        // Timeline below controls
+        var isDragging by remember { mutableStateOf(false) }
+        var seekPosition by remember { mutableFloatStateOf(0f) }
+
+        androidx.compose.material3.Slider(
+            value = if (isDragging) seekPosition else (if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f),
+            onValueChange = {
+                isDragging = true
+                seekPosition = it
+                // Update scrub position for display
+                val seekToMs = (it * durationMs).toLong()
+                onSeek(seekToMs)
+            },
+            onValueChangeFinished = {
+                // Commit the seek
+                val seekToMs = (seekPosition * durationMs).toLong()
+                onSeek(seekToMs)
+                isDragging = false
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            enabled = durationMs > 0,
+            colors = androidx.compose.material3.SliderDefaults.colors(),
+            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+        )
     }
 }
 
