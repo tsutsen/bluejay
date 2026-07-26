@@ -3,11 +3,13 @@ package com.tsutsen.platformplayer.core.data.repository.impl
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
@@ -106,6 +108,38 @@ class PlayerRepositoryImpl(
         }
     }
 
+    private val analyticsListener = object : AnalyticsListener {
+        override fun onLoadError(
+            eventTime: AnalyticsListener.EventTime,
+            loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
+            mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData,
+            error: java.io.IOException,
+            wasCanceled: Boolean
+        ) {
+            val trackType = when (mediaLoadData.trackType) {
+                C.TRACK_TYPE_VIDEO -> "VIDEO"
+                C.TRACK_TYPE_AUDIO -> "AUDIO"
+                C.TRACK_TYPE_TEXT -> "TEXT"
+                C.TRACK_TYPE_METADATA -> "METADATA"
+                C.TRACK_TYPE_UNKNOWN -> "UNKNOWN"
+                else -> "OTHER"
+            }
+            Log.e(TAG, "LoadError track=$trackType uri=${loadEventInfo.uri} wasCanceled=$wasCanceled", error)
+        }
+
+        override fun onLoadCompleted(
+            eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+            loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
+            mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData
+        ) {
+            Log.i(TAG, "LoadCompleted track=${mediaLoadData.trackType} bytes=${loadEventInfo.bytesLoaded}")
+        }
+
+        override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
+            Log.w(TAG, "Dropped $droppedFrames video frames")
+        }
+    }
+
     override suspend fun play(videoId: String) {
         withContext(Dispatchers.Main) {
             try {
@@ -133,6 +167,7 @@ class PlayerRepositoryImpl(
                         .setHandleAudioBecomingNoisy(true)
                         .build()
                     _exoPlayer?.addListener(playerListener)
+                    _exoPlayer?.addAnalyticsListener(analyticsListener)
                 } else {
                     Log.i(TAG, "Using existing ExoPlayer instance")
                 }
