@@ -352,11 +352,16 @@ fun PlayerScreen(
             // to full height and then shrink again on every boundary crossing. This single height
             // value is shared by the video Box below AND the controls overlay container further
             // down (top/bottom bars, gesture layer) so they always stay in sync with each other.
-            var playerHeightPx by remember { mutableStateOf(maxPlayerHeightPx) }
+            var playerHeightPx by remember { mutableStateOf(0f) }
 
             // Keep the current height valid if container size changes (e.g. rotation)
+            // Start at max height (60%) when first measured, then coerce to range on resize
             LaunchedEffect(maxPlayerHeightPx, minPlayerHeightPx) {
-                playerHeightPx = playerHeightPx.coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+                if (playerHeightPx == 0f) {
+                    playerHeightPx = maxPlayerHeightPx
+                } else {
+                    playerHeightPx = playerHeightPx.coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+                }
             }
 
             val nestedScrollConnection = remember(minPlayerHeightPx, maxPlayerHeightPx) {
