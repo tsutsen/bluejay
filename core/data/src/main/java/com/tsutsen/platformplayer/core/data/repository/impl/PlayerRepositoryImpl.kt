@@ -75,7 +75,8 @@ class PlayerRepositoryImpl(
             newPosition: Player.PositionInfo,
             reason: Int
         ) {
-            _playerState.update { it.copy(currentPositionMs = newPosition.positionMs) }
+            // Don't update position here - let the polling loop handle it
+            // This avoids race conditions with seekTo() and drag operations
         }
 
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -359,7 +360,8 @@ class PlayerRepositoryImpl(
         withContext(Dispatchers.Main) {
             _exoPlayer?.seekTo(positionMs)
         }
-        _playerState.update { it.copy(currentPositionMs = positionMs) }
+        // Don't update currentPositionMs here - let the polling loop handle it
+        // This ensures the UI shows the actual player position, not a stale seek target
     }
 
     override suspend fun setVolume(volume: Float) {
