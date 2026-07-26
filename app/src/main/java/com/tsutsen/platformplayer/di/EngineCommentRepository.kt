@@ -20,6 +20,7 @@ class EngineCommentRepository @Inject constructor() : CommentRepository {
 
     private val TAG = "EngineCommentRepository"
     private val commentPagers = mutableMapOf<String, Any>()
+    private val fetchedUrls = mutableSetOf<String>()
 
     override suspend fun getComments(contentUrl: String): List<CommentItem> {
         return try {
@@ -35,7 +36,11 @@ class EngineCommentRepository @Inject constructor() : CommentRepository {
             }
             
             val pager = commentPagers[contentUrl] as com.tsutsen.platformplayer.api.media.structures.IPager<*>
-            pager.nextPage()
+            // Only call nextPage() if we haven't fetched this URL before
+            if (contentUrl !in fetchedUrls) {
+                pager.nextPage()
+                fetchedUrls.add(contentUrl)
+            }
             val results = pager.getResults()
             
             Log.i(TAG, "Results size: ${results.size}")
