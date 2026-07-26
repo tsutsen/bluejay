@@ -38,6 +38,7 @@ sealed interface PlayerUiState {
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
+    data object Loading : PlayerUiState
     data class Error(val message: String) : PlayerUiState
 }
 
@@ -59,23 +60,49 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             playerRepository.playerState
                 .collect { playerState ->
-                    _uiState.value = PlayerUiState.Loaded(
-                        isPlaying = playerState.isPlaying,
-                        currentPositionMs = playerState.currentPositionMs,
-                        durationMs = playerState.durationMs,
-                        volume = playerState.volume,
-                        brightness = playerState.brightness,
-                        playbackSpeed = playerState.playbackSpeed,
-                        isFullscreen = playerState.isFullscreen,
-                        isMinimized = playerState.isMinimized,
-                        currentVideo = playerState.currentVideo,
-                        queue = playerState.queue,
-                        selectedIndex = playerState.selectedIndex,
-                        error = playerState.error,
-                        isLoading = playerState.isLoading,
-                        isCompleted = playerState.isCompleted,
-                        comments = playerState.comments
-                    )
+                    when (val currentState = _uiState.value) {
+                        is PlayerUiState.Loading -> {
+                            // Stay in Loading state while video is being resolved
+                            if (!playerState.isLoading && playerState.currentVideo != null) {
+                                _uiState.value = PlayerUiState.Loaded(
+                                    isPlaying = playerState.isPlaying,
+                                    currentPositionMs = playerState.currentPositionMs,
+                                    durationMs = playerState.durationMs,
+                                    volume = playerState.volume,
+                                    brightness = playerState.brightness,
+                                    playbackSpeed = playerState.playbackSpeed,
+                                    isFullscreen = playerState.isFullscreen,
+                                    isMinimized = playerState.isMinimized,
+                                    currentVideo = playerState.currentVideo,
+                                    queue = playerState.queue,
+                                    selectedIndex = playerState.selectedIndex,
+                                    error = playerState.error,
+                                    isLoading = playerState.isLoading,
+                                    isCompleted = playerState.isCompleted,
+                                    comments = playerState.comments
+                                )
+                            }
+                        }
+                        else -> {
+                            _uiState.value = PlayerUiState.Loaded(
+                                isPlaying = playerState.isPlaying,
+                                currentPositionMs = playerState.currentPositionMs,
+                                durationMs = playerState.durationMs,
+                                volume = playerState.volume,
+                                brightness = playerState.brightness,
+                                playbackSpeed = playerState.playbackSpeed,
+                                isFullscreen = playerState.isFullscreen,
+                                isMinimized = playerState.isMinimized,
+                                currentVideo = playerState.currentVideo,
+                                queue = playerState.queue,
+                                selectedIndex = playerState.selectedIndex,
+                                error = playerState.error,
+                                isLoading = playerState.isLoading,
+                                isCompleted = playerState.isCompleted,
+                                comments = playerState.comments
+                            )
+                        }
+                    }
                 }
         }
         
@@ -97,6 +124,7 @@ class PlayerViewModel @Inject constructor(
 
     fun play(videoId: String) {
         viewModelScope.launch {
+            _uiState.value = PlayerUiState.Loading
             playerRepository.play(videoId)
             // Fetch comments after video starts playing
             fetchComments(videoId)
