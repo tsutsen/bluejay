@@ -114,10 +114,6 @@ fun PlayerScreen(
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
     var isDraggingMiniPlayer by remember { mutableStateOf(false) }
     
-    // Timeline drag state
-    var isDraggingTimeline by remember { mutableStateOf(false) }
-    var dragTimelinePositionMs by remember { mutableStateOf(0L) }
-    
     // Animated offset for snap animation - faster, snappier
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
@@ -210,9 +206,6 @@ fun PlayerScreen(
             Log.d(TAG, "Is loading: ${state.isLoading}")
             Log.d(TAG, "Is minimized: ${state.isMinimized}")
             Log.d(TAG, "Is fullscreen: ${state.isFullscreen}")
-
-            // Calculate the displayed position: use drag position during drag, actual position otherwise
-            val displayPositionMs = if (isDraggingTimeline) dragTimelinePositionMs else state.currentPositionMs
 
             // Note: Video loading is handled by PlayerRepositoryImpl
             // PlayerScreen only displays the video using the ExoPlayer from the repository
@@ -933,7 +926,7 @@ fun PlayerScreen(
                             modifier = Modifier.align(Alignment.BottomCenter)
                         ) {
                             BottomOverlay(
-                                currentPositionMs = displayPositionMs,
+                                currentPositionMs = state.currentPositionMs,
                                 durationMs = state.durationMs,
                                 isPlaying = state.isPlaying,
                                 onPlayPause = {
@@ -943,14 +936,7 @@ fun PlayerScreen(
                                 onNext = { viewModel.skipNext() },
                                 onChapters = { showChapters = !showChapters },
                                 onFullscreen = { viewModel.toggleFullscreen() },
-                                onSeek = { positionMs ->
-                                    dragTimelinePositionMs = positionMs
-                                    isDraggingTimeline = true
-                                    viewModel.seekTo(positionMs)
-                                },
-                                onDragEnd = {
-                                    isDraggingTimeline = false
-                                }
+                                onSeek = { positionMs -> viewModel.seekTo(positionMs) }
                             )
                         }
 
