@@ -131,6 +131,13 @@ class PlayerRepositoryImpl(
                     Log.i(TAG, "Creating new ExoPlayer instance")
                     _exoPlayer = ExoPlayer.Builder(context)
                         .setHandleAudioBecomingNoisy(true)
+                        .setAudioAttributes(
+                            androidx.media3.common.AudioAttributes.Builder()
+                                .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                                .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
+                                .build(),
+                            true
+                        )
                         .build()
                     _exoPlayer?.addListener(playerListener)
                 } else {
@@ -149,6 +156,9 @@ class PlayerRepositoryImpl(
                 _exoPlayer?.prepare()
                 Log.i(TAG, "Setting playWhenReady to true...")
                 _exoPlayer?.playWhenReady = true
+                
+                // Ensure volume is set correctly
+                _exoPlayer?.volume = 1.0f
 
                 Log.i(TAG, "Updating player state with video details...")
                 Log.i(TAG, "Resolution has videoDetails: ${resolution.videoDetails != null}")
