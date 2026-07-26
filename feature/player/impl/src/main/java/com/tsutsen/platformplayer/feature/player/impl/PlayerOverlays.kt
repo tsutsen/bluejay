@@ -163,7 +163,8 @@ internal fun BottomOverlay(
                 Text(
                     text = "${formatTime(if (isScrubbing) scrubPositionMs else currentPositionMs)} / ${formatTime(durationMs)}",
                     color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
