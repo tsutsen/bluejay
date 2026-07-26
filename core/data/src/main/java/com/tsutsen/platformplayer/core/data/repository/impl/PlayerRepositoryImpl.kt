@@ -55,9 +55,11 @@ class PlayerRepositoryImpl(
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             Log.i(TAG, "Playback state changed: $playbackState")
+            val duration = _exoPlayer?.duration ?: 0L
             _playerState.update { it.copy(
                 isLoading = playbackState == Player.STATE_BUFFERING,
-                isCompleted = playbackState == Player.STATE_ENDED
+                isCompleted = playbackState == Player.STATE_ENDED,
+                durationMs = duration
             ) }
         }
 

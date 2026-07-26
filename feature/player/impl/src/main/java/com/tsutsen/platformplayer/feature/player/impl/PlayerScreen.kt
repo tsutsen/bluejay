@@ -913,7 +913,8 @@ fun PlayerScreen(
                                 onPrevious = { viewModel.skipPrevious() },
                                 onNext = { viewModel.skipNext() },
                                 onChapters = { showChapters = !showChapters },
-                                onFullscreen = { viewModel.toggleFullscreen() }
+                                onFullscreen = { viewModel.toggleFullscreen() },
+                                onSeek = { positionMs -> viewModel.seekTo(positionMs) }
                             )
                         }
 
