@@ -9,6 +9,7 @@ import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -76,6 +77,21 @@ class PlayerViewModel @Inject constructor(
                         comments = playerState.comments
                     )
                 }
+        }
+        
+        // Continuously update current position for smooth timeline
+        viewModelScope.launch {
+            while (true) {
+                val player = playerRepository.exoPlayer
+                if (player != null && player.isPlaying) {
+                    val position = player.currentPosition
+                    val currentState = _uiState.value
+                    if (currentState is PlayerUiState.Loaded && currentState.currentPositionMs != position) {
+                        _uiState.value = currentState.copy(currentPositionMs = position)
+                    }
+                }
+                delay(100)
+            }
         }
     }
 
