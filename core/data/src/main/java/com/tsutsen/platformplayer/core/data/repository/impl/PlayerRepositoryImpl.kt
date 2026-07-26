@@ -150,9 +150,6 @@ class PlayerRepositoryImpl(
                 Log.i(TAG, "Is empty: ${videoId.isEmpty()}")
                 Log.i(TAG, "========================================")
 
-                // Set loading state immediately
-                _playerState.update { it.copy(isLoading = true) }
-
                 // Resolve content URL to MediaSource + video details if needed
                 val resolution = if (!isStreamingUrl(videoId)) {
                     Log.i(TAG, "Content URL detected, resolving to MediaSource + details...")

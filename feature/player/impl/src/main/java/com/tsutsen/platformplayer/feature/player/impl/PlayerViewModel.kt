@@ -60,49 +60,23 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             playerRepository.playerState
                 .collect { playerState ->
-                    when (val currentState = _uiState.value) {
-                        is PlayerUiState.Loading -> {
-                            // Stay in Loading state while video is being resolved
-                            if (!playerState.isLoading && playerState.currentVideo != null) {
-                                _uiState.value = PlayerUiState.Loaded(
-                                    isPlaying = playerState.isPlaying,
-                                    currentPositionMs = playerState.currentPositionMs,
-                                    durationMs = playerState.durationMs,
-                                    volume = playerState.volume,
-                                    brightness = playerState.brightness,
-                                    playbackSpeed = playerState.playbackSpeed,
-                                    isFullscreen = playerState.isFullscreen,
-                                    isMinimized = playerState.isMinimized,
-                                    currentVideo = playerState.currentVideo,
-                                    queue = playerState.queue,
-                                    selectedIndex = playerState.selectedIndex,
-                                    error = playerState.error,
-                                    isLoading = playerState.isLoading,
-                                    isCompleted = playerState.isCompleted,
-                                    comments = playerState.comments
-                                )
-                            }
-                        }
-                        else -> {
-                            _uiState.value = PlayerUiState.Loaded(
-                                isPlaying = playerState.isPlaying,
-                                currentPositionMs = playerState.currentPositionMs,
-                                durationMs = playerState.durationMs,
-                                volume = playerState.volume,
-                                brightness = playerState.brightness,
-                                playbackSpeed = playerState.playbackSpeed,
-                                isFullscreen = playerState.isFullscreen,
-                                isMinimized = playerState.isMinimized,
-                                currentVideo = playerState.currentVideo,
-                                queue = playerState.queue,
-                                selectedIndex = playerState.selectedIndex,
-                                error = playerState.error,
-                                isLoading = playerState.isLoading,
-                                isCompleted = playerState.isCompleted,
-                                comments = playerState.comments
-                            )
-                        }
-                    }
+                    _uiState.value = PlayerUiState.Loaded(
+                        isPlaying = playerState.isPlaying,
+                        currentPositionMs = playerState.currentPositionMs,
+                        durationMs = playerState.durationMs,
+                        volume = playerState.volume,
+                        brightness = playerState.brightness,
+                        playbackSpeed = playerState.playbackSpeed,
+                        isFullscreen = playerState.isFullscreen,
+                        isMinimized = playerState.isMinimized,
+                        currentVideo = playerState.currentVideo,
+                        queue = playerState.queue,
+                        selectedIndex = playerState.selectedIndex,
+                        error = playerState.error,
+                        isLoading = playerState.isLoading,
+                        isCompleted = playerState.isCompleted,
+                        comments = playerState.comments
+                    )
                 }
         }
         
