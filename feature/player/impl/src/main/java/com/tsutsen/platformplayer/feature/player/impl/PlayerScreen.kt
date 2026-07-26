@@ -64,6 +64,8 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.feature.player.impl.CommentCard
+import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -513,11 +515,32 @@ fun PlayerScreen(
                             // Tab Content
                             when (selectedTab) {
                                 0 -> {
-                                    item {
-                                        CommentsSection(
-                                            comments = state.comments,
-                                            onLoadMore = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") }
+                                    // Render comments directly as items in the parent LazyColumn
+                                    items(state.comments.size) { index ->
+                                        val comment = state.comments[index]
+                                        CommentCard(
+                                            username = comment.author,
+                                            timeAgo = formatRelativeTime(comment.publishedAtMs),
+                                            text = comment.text,
+                                            likeCount = comment.likeCount.toInt()
                                         )
+                                        if (index < state.comments.lastIndex) {
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                        }
+                                    }
+                                    
+                                    // Load more button
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            TextButton(onClick = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") }) {
+                                                Text("Load more comments")
+                                            }
+                                        }
                                     }
                                 }
                                 1 -> {

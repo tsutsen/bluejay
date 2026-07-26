@@ -293,11 +293,7 @@ internal fun CommentsSection(
                 modifier = Modifier.padding(vertical = 16.dp)
             )
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
+            Column {
                 comments.forEach { comment ->
                     CommentCard(
                         username = comment.author,
