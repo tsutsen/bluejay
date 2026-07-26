@@ -172,6 +172,13 @@ internal fun BottomOverlay(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
+            // Time display before chapters
+            Text(
+                text = "${formatTime(if (isScrubbing) scrubPositionMs else currentPositionMs)} / ${formatTime(durationMs)}",
+                color = Color.White,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = onChapters) {
                 Icon(
                     imageVector = Icons.Default.MenuBook,
