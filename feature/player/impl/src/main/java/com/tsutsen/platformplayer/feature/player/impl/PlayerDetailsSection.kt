@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.Author
 
 @Composable
@@ -275,15 +276,28 @@ internal fun TabItem(
 }
 
 @Composable
-internal fun CommentsSection() {
+internal fun CommentsSection(
+    comments: List<CommentItem>
+) {
     Column(modifier = Modifier.padding(16.dp)) {
-        // Placeholder comment
-        CommentCard(
-            username = "User123",
-            timeAgo = "2 hours ago",
-            text = "This is a great video! Thanks for sharing.",
-            likeCount = 42
-        )
+        if (comments.isEmpty()) {
+            Text(
+                text = "No comments yet",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        } else {
+            comments.forEach { comment ->
+                CommentCard(
+                    username = comment.author,
+                    timeAgo = formatRelativeTime(comment.publishedAtMs),
+                    text = comment.text,
+                    likeCount = comment.likeCount.toInt()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
     }
 }
 

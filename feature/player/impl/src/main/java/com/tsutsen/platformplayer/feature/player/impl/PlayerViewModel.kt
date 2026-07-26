@@ -2,7 +2,9 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
+import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,7 +30,8 @@ sealed interface PlayerUiState {
         val selectedIndex: Int,
         val error: String?,
         val isLoading: Boolean = false,
-        val isCompleted: Boolean = false
+        val isCompleted: Boolean = false,
+        val comments: List<CommentItem> = emptyList()
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
@@ -41,7 +44,8 @@ sealed interface PlayerUiState {
  */
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    private val playerRepository: PlayerRepository
+    private val playerRepository: PlayerRepository,
+    private val commentRepository: CommentRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
@@ -66,7 +70,8 @@ class PlayerViewModel @Inject constructor(
                         selectedIndex = playerState.selectedIndex,
                         error = playerState.error,
                         isLoading = playerState.isLoading,
-                        isCompleted = playerState.isCompleted
+                        isCompleted = playerState.isCompleted,
+                        comments = playerState.comments
                     )
                 }
         }
@@ -75,6 +80,21 @@ class PlayerViewModel @Inject constructor(
     fun play(videoId: String) {
         viewModelScope.launch {
             playerRepository.play(videoId)
+            // Fetch comments after video starts playing
+            fetchComments(videoId)
+        }
+    }
+
+    private suspend fun fetchComments(contentUrl: String) {
+        try {
+            val comments = commentRepository.getComments(contentUrl)
+            
+            _uiState.value = when (val state = _uiState.value) {
+                is PlayerUiState.Loaded -> state.copy(comments = comments)
+                else -> state
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PlayerViewModel", "Failed to fetch comments", e)
         }
     }
 

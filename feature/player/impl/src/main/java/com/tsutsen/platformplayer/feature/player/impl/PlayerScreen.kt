@@ -62,6 +62,7 @@ import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.model.Author
+import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -513,21 +514,7 @@ fun PlayerScreen(
                             when (selectedTab) {
                                 0 -> {
                                     item {
-                                        CommentsSection()
-                                    }
-                                }
-                                1 -> {
-                                    item {
-                                        RecommendedSection()
-                                    }
-                                }
-                            }
-
-                            // Tab Content
-                            when (selectedTab) {
-                                0 -> {
-                                    item {
-                                        CommentsSection()
+                                        CommentsSection(comments = state.comments)
                                     }
                                 }
                                 1 -> {

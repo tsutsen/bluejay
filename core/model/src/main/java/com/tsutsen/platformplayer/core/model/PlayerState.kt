@@ -14,5 +14,6 @@ data class PlayerState(
     val selectedIndex: Int = 0,
     val error: String? = null,
     val isLoading: Boolean = false,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val comments: List<CommentItem> = emptyList()
 )
