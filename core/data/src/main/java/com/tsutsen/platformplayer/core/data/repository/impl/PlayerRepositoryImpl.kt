@@ -112,7 +112,7 @@ class PlayerRepositoryImpl(
     }
 
     // Position ticker: single source of truth for currentPositionMs
-    private val positionScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Default + Job())
+    private val positionScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + Job())
     private var positionTickerJob: Job? = null
 
     private fun startPositionTicker() {
