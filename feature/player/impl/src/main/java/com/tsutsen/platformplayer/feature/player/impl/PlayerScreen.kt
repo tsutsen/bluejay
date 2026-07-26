@@ -159,14 +159,19 @@ fun PlayerScreen(
     }
 
     // Auto-hide overlays when playing
-    LaunchedEffect(showTopOverlay, showBottomOverlay, uiState) {
+    LaunchedEffect(showTopOverlay, showBottomOverlay) {
         if (showTopOverlay && showBottomOverlay) {
-            if (uiState is PlayerUiState.Loaded && (uiState as PlayerUiState.Loaded).isPlaying) {
-                delay(3000)
-                if (uiState is PlayerUiState.Loaded && (uiState as PlayerUiState.Loaded).isPlaying) {
-                    showTopOverlay = false
-                    showBottomOverlay = false
-                }
+            // Wait until the player is actually playing
+            var currentState: PlayerUiState.Loaded? = uiState as? PlayerUiState.Loaded
+            while (currentState == null || !currentState.isPlaying) {
+                delay(100)
+                currentState = uiState as? PlayerUiState.Loaded
+            }
+            delay(3000)
+            currentState = uiState as? PlayerUiState.Loaded
+            if (currentState != null && currentState.isPlaying) {
+                showTopOverlay = false
+                showBottomOverlay = false
             }
         }
     }
