@@ -12,18 +12,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
 
@@ -52,6 +55,8 @@ fun WindowedPlayerContent(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
     onLoadMoreComments: () -> Unit,
+    // Morph animation: corner radius applied to the video box during WINDOWED↔FLOATING transition
+    cornerRadius: Dp = 0.dp,
     // Shared scaffold state
     isLoading: Boolean,
     brightnessValue: Float,
@@ -86,6 +91,7 @@ fun WindowedPlayerContent(
                 .fillMaxWidth()
                 .height(with(LocalDensity.current) { playerHeightPx.toDp() })
                 .background(Color.Black)
+                .clip(RoundedCornerShape(cornerRadius))
                 .clipToBounds()
         ) {
             PlayerVideoSurface(player = player)
