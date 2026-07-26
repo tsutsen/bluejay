@@ -486,7 +486,9 @@ fun PlayerScreen(
                             item {
                                 VideoStatsRow(
                                     viewCount = state.currentVideo?.viewCount ?: 0,
-                                    publishedAt = state.currentVideo?.publishedAt
+                                    publishedAt = state.currentVideo?.publishedAt,
+                                    likeCount = state.currentVideo?.likeCount,
+                                    dislikeCount = state.currentVideo?.dislikeCount
                                 )
                             }
 

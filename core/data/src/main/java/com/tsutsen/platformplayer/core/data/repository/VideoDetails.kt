@@ -15,5 +15,7 @@ data class VideoDetails(
     val description: String?,
     val durationMs: Long?,
     val viewCount: Long?,
-    val publishedAtMs: Long?
+    val publishedAtMs: Long?,
+    val likeCount: Long?,
+    val dislikeCount: Long?
 )

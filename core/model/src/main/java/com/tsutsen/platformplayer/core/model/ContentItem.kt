@@ -15,7 +15,9 @@ data class ContentItem(
     val durationMs: Long? = null,
     val viewCount: Long? = null,
     val description: String? = null,
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val likeCount: Long? = null,
+    val dislikeCount: Long? = null
 ) : Parcelable
 
 @Parcelize

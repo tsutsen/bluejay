@@ -127,7 +127,9 @@ internal fun ChannelRow(
 @Composable
 internal fun VideoStatsRow(
     viewCount: Long,
-    publishedAt: Long?
+    publishedAt: Long?,
+    likeCount: Long? = null,
+    dislikeCount: Long? = null
 ) {
     Row(
         modifier = Modifier
@@ -146,7 +148,7 @@ internal fun VideoStatsRow(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "1.2K",
+                text = likeCount?.let { formatCount(it) } ?: "",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -162,7 +164,7 @@ internal fun VideoStatsRow(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "45",
+                text = dislikeCount?.let { formatCount(it) } ?: "",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -420,5 +422,13 @@ internal fun RecommendedVideoCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+private fun formatCount(count: Long): String {
+    return when {
+        count >= 1_000_000 -> String.format("%.1fM", count / 1_000_000.0)
+        count >= 1_000 -> String.format("%.1fK", count / 1_000.0)
+        else -> count.toString()
     }
 }

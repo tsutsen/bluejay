@@ -11,6 +11,8 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IDashManifestSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoUrlSource
+import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikeDislikes
+import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikes
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawAudioSource
@@ -101,6 +103,9 @@ class EngineVideoUrlResolver @Inject constructor() : VideoUrlResolver {
      */
     private fun mapToVideoDetails(details: IPlatformVideoDetails, fallbackUrl: String): VideoDetails {
         val author = details.author
+        // Extract likes/dislikes from rating
+        val (likeCount, dislikeCount) = extractLikesDislikes(details.rating)
+        Log.i(TAG, "Rating: likes=${likeCount}, dislikes=${dislikeCount}, type=${details.rating?.type}")
         return VideoDetails(
             id = details.id.value ?: details.id.platform,
             url = details.url.ifEmpty { fallbackUrl },
@@ -112,8 +117,22 @@ class EngineVideoUrlResolver @Inject constructor() : VideoUrlResolver {
             description = details.description,
             durationMs = if (details.duration > 0) details.duration else null,
             viewCount = if (details.viewCount > 0) details.viewCount else null,
-            publishedAtMs = details.datetime?.toInstant()?.toEpochMilli()
+            publishedAtMs = details.datetime?.toInstant()?.toEpochMilli(),
+            likeCount = likeCount,
+            dislikeCount = dislikeCount
         )
+    }
+
+    /**
+     * Extract likes and dislikes from IRating.
+     */
+    private fun extractLikesDislikes(rating: com.tsutsen.platformplayer.api.media.models.ratings.IRating?): Pair<Long?, Long?> {
+        if (rating == null) return Pair(null, null)
+        return when (rating) {
+            is RatingLikes -> Pair(rating.likes, null)
+            is RatingLikeDislikes -> Pair(rating.likes, rating.dislikes)
+            else -> Pair(null, null)
+        }
     }
 
     private fun resolveVideoSource(

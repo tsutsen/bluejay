@@ -239,7 +239,9 @@ class PlayerRepositoryImpl(
             publishedAt = details.publishedAtMs,
             durationMs = details.durationMs,
             viewCount = details.viewCount,
-            description = details.description
+            description = details.description,
+            likeCount = details.likeCount,
+            dislikeCount = details.dislikeCount
         )
     }
 
