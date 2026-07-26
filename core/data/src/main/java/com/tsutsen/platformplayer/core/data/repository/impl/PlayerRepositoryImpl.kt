@@ -141,6 +141,10 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun play(videoId: String) {
+        // Publish loading state IMMEDIATELY, before any network/resolve/ExoPlayer work.
+        // This is what lets the UI show a spinner right away instead of a blank gap.
+        _playerState.update { it.copy(isLoading = true, error = null) }
+
         withContext(Dispatchers.Main) {
             try {
                 Log.i(TAG, "========================================")
@@ -174,7 +178,7 @@ class PlayerRepositoryImpl(
 
                 if (resolution.mediaSource == null) {
                     Log.e(TAG, "Failed to create MediaSource, cannot play video")
-                    _playerState.update { it.copy(error = "Failed to resolve video source") }
+                    _playerState.update { it.copy(isLoading = false, error = "Failed to resolve video source") }
                     return@withContext
                 }
 
@@ -223,7 +227,7 @@ class PlayerRepositoryImpl(
                 Log.e(TAG, "========================================")
                 Log.e(TAG, "Failed to play video: $videoId", e)
                 Log.e(TAG, "========================================")
-                _playerState.update { it.copy(error = e.message ?: "Failed to play video") }
+                _playerState.update { it.copy(isLoading = false, error = e.message ?: "Failed to play video") }
             }
         }
     }

@@ -876,6 +876,18 @@ fun PlayerScreen(
                             }
                         }
 
+                        // ==================== Loading Spinner ====================
+                        AnimatedVisibility(
+                            visible = state.isLoading,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.align(Alignment.Center)
+                        ) {
+                            CircularProgressIndicator(
+                                color = Color.White
+                            )
+                        }
+
                         // ==================== Double-tap seek indicators ====================
                         SeekIndicators(
                             showSeekBack = false,
