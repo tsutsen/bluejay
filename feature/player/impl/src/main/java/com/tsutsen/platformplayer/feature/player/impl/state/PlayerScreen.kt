@@ -414,18 +414,14 @@ fun PlayerScreen(
             val layoutDragX = if (isDraggingMiniPlayer) miniPlayerOffsetX else animatedMiniOffsetX
             val layoutDragY = if (isDraggingMiniPlayer) miniPlayerOffsetY else animatedMiniOffsetY
 
-            // Use window dimensions for video layout during fullscreen to avoid
-            // the stutter where the container is nav-bar-constrained and then jumps
-            // when the nav bar hides. The video animates from its current size to
-            // full window size immediately, without waiting for the nav bar to hide.
-            val effectiveContainerWidth = if (isFullscreen && windowWidthPx > 0f) windowWidthPx else containerSize.width
-            val effectiveContainerHeight = if (isFullscreen && windowHeightPx > 0f) windowHeightPx else containerSize.height
-
+            // Always use the measured Compose container for NORMAL geometry.
+            // Fullscreen target uses the stable window size so the animation
+            // does not wait on (or jump with) the nav bar.
             val videoLayout = computeVideoLayout(
                 miniProgress = morphProgress.value,
                 fullscreenProgress = fullscreenP,
-                containerWidth = effectiveContainerWidth,
-                containerHeight = effectiveContainerHeight,
+                containerWidth = containerSize.width,
+                containerHeight = containerSize.height,
                 playerHeightPx = playerHeightPx,
                 miniWidthPx = miniWidthPx,
                 miniHeightPx = miniHeightPx,
@@ -433,8 +429,8 @@ fun PlayerScreen(
                 floatingRestY = floatingRestY,
                 dragOffsetX = layoutDragX,
                 dragOffsetY = layoutDragY,
-                fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else effectiveContainerWidth,
-                fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else effectiveContainerHeight
+                fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else containerSize.width,
+                fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else containerSize.height
             )
 
             val gestureCallbacks = PlayerGestureCallbacks(
