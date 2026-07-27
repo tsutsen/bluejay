@@ -97,6 +97,7 @@ fun PlayerScreen(
 
     // Morph (drag-to-mini) state — continuous 0..1 progress from NORMAL to FLOATING
     val morphProgress = remember { Animatable(0f) }
+    var isDraggingMorph by remember { mutableStateOf(false) }
 
     // Fullscreen progress — continuous 0..1 from NORMAL to FULLSCREEN
     val fullscreenProgress = remember { Animatable(0f) }
@@ -149,7 +150,8 @@ fun PlayerScreen(
     val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
     val isFullscreenState = (uiState as? PlayerUiState.Loaded)?.isFullscreen
 
-    LaunchedEffect(isMinimizedState) {
+    LaunchedEffect(isMinimizedState, isDraggingMorph) {
+        if (isDraggingMorph) return@LaunchedEffect
         val minimized = isMinimizedState ?: return@LaunchedEffect
         val target = if (minimized) 1f else 0f
         if (kotlin.math.abs(morphProgress.value - target) > 0.01f) {
@@ -190,6 +192,7 @@ fun PlayerScreen(
 
             val miniWidth = 280.dp
             val miniHeight = miniWidth * 9f / 16f
+            val dragTravelPx = containerSize.height * 0.45f  // 45% of screen height = full morph
 
             val isMinimized = state.isMinimized
             val isFullscreen = state.isFullscreen
@@ -448,6 +451,29 @@ fun PlayerScreen(
                         viewModel.toggleFullscreen()
                     },
                     onExpand = { viewModel.exitMiniPlayer() },
+                    onMorphDragStart = {
+                        isDraggingMorph = true
+                    },
+                    onMorphDrag = { dragY ->
+                        // Convert dragY to progress 0..1
+                        val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
+                        coroutineScope.launch {
+                            morphProgress.snapTo(progress)
+                        }
+                    },
+                    onMorphDragEnd = { dragY ->
+                        isDraggingMorph = false
+                        val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
+                        if (progress > 0.4f) {
+                            // Commit: minimize
+                            viewModel.minimize()
+                        } else {
+                            // Reject: spring back to NORMAL
+                            coroutineScope.launch {
+                                morphProgress.animateTo(0f, transitionSpringSpec)
+                            }
+                        }
+                    },
                     onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
                     onClose = {
                         Log.d(TAG, "Close mini player: close")

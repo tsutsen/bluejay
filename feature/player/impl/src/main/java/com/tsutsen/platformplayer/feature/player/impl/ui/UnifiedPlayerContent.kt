@@ -155,6 +155,10 @@ fun UnifiedPlayerContent(
     onMinimize: () -> Unit,
     onFullscreen: () -> Unit,
     onExpand: () -> Unit,
+    // Morph drag callbacks (for interactive morph)
+    onMorphDragStart: () -> Unit,
+    onMorphDrag: (dragY: Float) -> Unit,
+    onMorphDragEnd: (dragY: Float) -> Unit,
     onPlayPause: () -> Unit,
     onClose: () -> Unit,
     onReplayToggle: () -> Unit,
@@ -368,12 +372,12 @@ fun UnifiedPlayerContent(
             onDragStateChanged = onDragStateChanged,
             onOffsetChanged = onOffsetChanged,
             gestureCallbacks = gestureCallbacks,
-            onMinimize = onMinimize,
-            onFullscreen = onFullscreen,
+            onMorphDragStart = onMorphDragStart,
+            onMorphDrag = onMorphDrag,
+            onMorphDragEnd = onMorphDragEnd,
             onExpand = onExpand,
             onSeek = onSeek,
-            isCollapsedControls = isCollapsedControls,
-            scrollState = scrollState
+            isCollapsedControls = isCollapsedControls
         )
 
         // ==================== 4. ControlsLayer ====================
@@ -451,93 +455,70 @@ fun GestureLayer(
     onDragStateChanged: (Boolean) -> Unit,
     onOffsetChanged: (x: Float, y: Float) -> Unit,
     gestureCallbacks: PlayerGestureCallbacks,
-    onMinimize: () -> Unit,
-    onFullscreen: () -> Unit,
+    onMorphDragStart: () -> Unit,
+    onMorphDrag: (dragY: Float) -> Unit,
+    onMorphDragEnd: (dragY: Float) -> Unit,
     onExpand: () -> Unit,
     onSeek: (Long) -> Unit,
-    isCollapsedControls: Boolean,
-    scrollState: LazyListState
+    isCollapsedControls: Boolean
 ) {
     val density = LocalDensity.current
 
     Box(modifier = modifier) {
-        // ==================== NORMAL mode gestures ====================
+        // ==================== NORMAL mode gestures (video bounds only) ====================
         if (miniProgress <= MINI_SETTLED_THRESHOLD && fullscreenProgress <= FULLSCREEN_SETTLED_THRESHOLD) {
-            // Swipe down on video area → transition to mini
+            // Single gesture box sized to videoLayout — details below stay free to scroll
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(with(density) { 200.dp.toPx().dp }) // Top 200dp of screen
-                    .pointerInput(miniProgress) {
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { _, dragAmount ->
-                                // Swipe down (positive dragAmount) → transition to mini
-                                if (dragAmount > 0) {
-                                    onMinimize()
+                    .offset {
+                        IntOffset(videoLayout.offsetX.toInt(), videoLayout.offsetY.toInt())
+                    }
+                    .size(
+                        width = with(density) { videoLayout.widthPx.toDp() },
+                        height = with(density) { videoLayout.heightPx.toDp() }
+                    )
+                    .pointerInput(Unit) {
+                        var totalDragY = 0f
+
+                        detectTapGestures(
+                            onTap = { gestureCallbacks.onTap() },
+                            onDoubleTap = { position ->
+                                // Double-tap left/right thirds of video → seek ±5s
+                                val videoWidth = videoLayout.widthPx
+                                val third = videoWidth / 3f
+                                if (position.x < third) {
+                                    onSeek(-5000)
+                                } else if (position.x > videoWidth - third) {
+                                    onSeek(5000)
                                 }
+                            }
+                        )
+
+                        detectVerticalDragGestures(
+                            onDragStart = {
+                                totalDragY = 0f
+                                onMorphDragStart()
+                            },
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                totalDragY += dragAmount
+                                // positive = down → toward mini (0→1)
+                                // We need dragTravelPx from the parent; pass progress 0..1
+                                // The caller will compute the actual progress.
+                                onMorphDrag(totalDragY)
+                            },
+                            onDragEnd = {
+                                onMorphDragEnd(totalDragY)
+                            },
+                            onDragCancel = {
+                                onMorphDragEnd(0f)
                             }
                         )
                     }
             )
-
-            // Swipe up on details (when at top) → transition to fullscreen
-            if (!isCollapsedControls) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight()
-                        .offset(y = with(density) { 200.dp.toPx().dp }) // Below video area
-                        .pointerInput(scrollState.firstVisibleItemIndex, scrollState.firstVisibleItemScrollOffset) {
-                            if (scrollState.firstVisibleItemIndex == 0 && scrollState.firstVisibleItemScrollOffset == 0) {
-                                detectVerticalDragGestures(
-                                    onVerticalDrag = { _, dragAmount ->
-                                        // Swipe up (negative dragAmount) → transition to fullscreen
-                                        if (dragAmount < 0) {
-                                            onFullscreen()
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                )
-            }
-
-            // Double-tap left/right thirds → rewind ±5 seconds
-            val thirdWidthDp = with(density) { (containerWidth / 3).toDp() }
-            Box(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // Left third
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(thirdWidthDp)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onDoubleTap = {
-                                    onSeek(-5000)
-                                }
-                            )
-                        }
-                )
-                // Right third
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .fillMaxHeight()
-                        .width(thirdWidthDp)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onDoubleTap = {
-                                    onSeek(5000)
-                                }
-                            )
-                        }
-                )
-            }
         }
 
-        // ==================== FULLSCREEN mode gestures ====================
+        // ==================== FULLSCREEN mode gestures (full screen) ====================
         if (fullscreenProgress > FULLSCREEN_SETTLED_THRESHOLD) {
             // Brightness/volume swipe
             var touchX = 0f
