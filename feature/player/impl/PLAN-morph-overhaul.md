@@ -152,14 +152,16 @@ PlayerViewModel.kt           (~170 lines)  ← keep as-is (minor: clean up getPl
 
 **Commit**: `6d2f5d96` - refactor(player): Phase 3 - shared morph box, no tree swap
 
-### Phase 4: Smooth the Mini-Player Snap
+### Phase 4: Smooth the Mini-Player Snap ✅ COMPLETE
 **Goal**: No "jump then glide" artifact.
 
-1. In `PlayerMorphBox.kt`, the floating offset is driven by `morphProgress` directly (not by a separate `animateFloatAsState`).
-2. As `morphProgress` approaches 1f, the floating chrome naturally slides to its corner position (geometry is lerped).
-3. Remove `miniPlayerOffsetX/Y` state from `PlayerScreen.kt` — no longer needed.
+1. In `PlayerMorphBox.kt`, the floating offset is driven by `morphProgress` directly (not by a separate `animateFloatAsState`). ✅
+2. As `morphProgress` approaches 1f, the floating chrome naturally slides to its corner position (geometry is lerped). ✅
+3. Remove `miniPlayerOffsetX/Y` state from `PlayerScreen.kt` — no longer needed. ✅
 
-**Verification**: Mini-player glides smoothly to corner during morph, no instant snap.
+**Verification**: Mini-player glides smoothly to corner during morph, no instant snap. ✅
+
+**Commit**: `b13a47b3` - refactor(player): Phase 4 - smooth mini-player snap, no jump artifact
 
 ### Phase 5: Fullscreen Crossfade (optional, future)
 **Goal**: Fullscreen enters/exits with a smooth transition instead of instant switch.
