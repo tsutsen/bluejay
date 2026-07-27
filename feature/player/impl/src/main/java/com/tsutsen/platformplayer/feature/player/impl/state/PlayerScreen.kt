@@ -145,7 +145,7 @@ fun PlayerScreen(
 
     val transitionSpringSpec = spring<Float>(
         stiffness = Spring.StiffnessMedium,
-        dampingRatio = Spring.DampingRatioMediumBouncy
+        dampingRatio = Spring.DampingRatioNoBouncy
     )
     val transitionDpSpec = spring<Dp>(
         stiffness = Spring.StiffnessMediumLow,
