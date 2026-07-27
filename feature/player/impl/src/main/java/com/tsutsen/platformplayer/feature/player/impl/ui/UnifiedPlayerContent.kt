@@ -910,6 +910,14 @@ fun ControlsLayer(
                     (1f - MINI_CONTROLS_FADE_START)).coerceIn(0f, 1f)
                 // smoothstep easing (3x^2 - 2x^3) for a gentler ease-in/ease-out than linear
                 val miniControlsAlpha = rawProgress * rawProgress * (3f - 2f * rawProgress)
+                // Shadow: offset + dim black box behind controls
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset(y = 4.dp * miniControlsAlpha)
+                        .graphicsLayer { alpha = 0.15f * miniControlsAlpha }
+                        .background(Color.Black, RoundedCornerShape(videoLayout.cornerRadius))
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
