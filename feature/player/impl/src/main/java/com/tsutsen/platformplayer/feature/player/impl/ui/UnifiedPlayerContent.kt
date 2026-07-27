@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -33,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,12 +101,9 @@ private const val FULLSCREEN_SETTLED_THRESHOLD = 0.01f
  * - FULLSCREEN: video fills container + scaffold controls (full-size)
  * - All transitions between the above via continuous geometry interpolation
  *
- * Two separate gesture subtrees coexist:
- * 1. [PlayerControlsScaffold] for NORMAL/COMPACT/FULLSCREEN (brightness/volume swipe, tap)
- * 2. Bespoke mini gesture Box for FLOATING (drag-to-reposition, tap-to-expand)
- *
- * Pointer input on each is conditionally attached based on the animation progresses,
- * not just alpha-gated (zero-alpha content still intercepts touches in Compose).
+ * Separated into:
+ * 1. [GestureLayer] - handles all gestures for the current mode
+ * 2. [ControlsLayer] - handles all controls for the current mode
  */
 @Composable
 fun UnifiedPlayerContent(
@@ -348,8 +348,372 @@ fun UnifiedPlayerContent(
             }
         }
 
-        // ==================== 3. Controls scaffold (NORMAL/COMPACT/FULLSCREEN only) ====================
-        // Mini mode is handled separately below with its own gesture layer.
+        // ==================== 3. GestureLayer ====================
+        // Handles all gestures for the current mode.
+        GestureLayer(
+            modifier = Modifier.fillMaxSize(),
+            miniProgress = miniProgress,
+            fullscreenProgress = fullscreenProgress,
+            containerWidth = containerWidth,
+            containerHeight = containerHeight,
+            miniWidthPx = miniWidthPx,
+            miniHeightPx = miniHeightPx,
+            floatingRestX = floatingRestX,
+            floatingRestY = floatingRestY,
+            currentOffsetX = currentOffsetX,
+            currentOffsetY = currentOffsetY,
+            isDraggingMiniPlayer = isDraggingMiniPlayer,
+            onDragStateChanged = onDragStateChanged,
+            onOffsetChanged = onOffsetChanged,
+            gestureCallbacks = gestureCallbacks,
+            onMinimize = onMinimize,
+            onFullscreen = onFullscreen,
+            onExpand = onExpand,
+            onSeek = onSeek,
+            isCollapsedControls = isCollapsedControls,
+            scrollState = scrollState
+        )
+
+        // ==================== 4. ControlsLayer ====================
+        // Handles all controls for the current mode.
+        ControlsLayer(
+            modifier = Modifier.fillMaxSize(),
+            videoLayout = videoLayout,
+            miniProgress = miniProgress,
+            fullscreenProgress = fullscreenProgress,
+            normalBarAlpha = normalBarAlpha,
+            compactBarAlpha = compactBarAlpha,
+            fullscreenBarAlpha = fullscreenBarAlpha,
+            isCollapsedControls = isCollapsedControls,
+            showTopOverlay = showTopOverlay,
+            showBottomOverlay = showBottomOverlay,
+            resolvedShowTopBar = resolvedShowTopBar,
+            resolvedShowBottomBar = resolvedShowBottomBar,
+            isLoading = isLoading,
+            brightnessValue = brightnessValue,
+            volumeValue = volumeValue,
+            showBrightnessIndicator = showBrightnessIndicator,
+            showVolumeIndicator = showVolumeIndicator,
+            state = state,
+            player = player,
+            isLooping = isLooping,
+            isScrubbing = isScrubbing,
+            scrubPositionMs = scrubPositionMs,
+            expandedDescription = expandedDescription,
+            selectedTab = selectedTab,
+            onToggleDescription = onToggleDescription,
+            onTabSelected = onTabSelected,
+            onLoopToggle = onLoopToggle,
+            onPlayPause = onPlayPause,
+            onPrevious = onPrevious,
+            onNext = onNext,
+            onChapters = onChapters,
+            onFullscreenToggle = onFullscreenToggle,
+            onMinimize = onMinimize,
+            onExpand = onExpand,
+            onClose = onClose,
+            onMoreOptions = onMoreOptions,
+            onWatchLater = onWatchLater,
+            onReplayToggle = onReplayToggle,
+            onOptions = onOptions,
+            onSeek = onSeek
+        )
+    }
+}
+
+// ==================== GestureLayer ====================
+
+/**
+ * Handles all gestures for the current mode.
+ * - NORMAL: swipe down on player → mini, swipe up on details (when at top) → fullscreen, double-tap left/right thirds → rewind ±5s
+ * - COMPACT: swipe down on player → mini
+ * - FULLSCREEN: swipe left/right for brightness/volume, double-tap left/right thirds → rewind ±5s
+ * - FLOATING: drag-to-reposition with edge snapping
+ */
+@Composable
+fun GestureLayer(
+    modifier: Modifier,
+    miniProgress: Float,
+    fullscreenProgress: Float,
+    containerWidth: Float,
+    containerHeight: Float,
+    miniWidthPx: Float,
+    miniHeightPx: Float,
+    floatingRestX: Float,
+    floatingRestY: Float,
+    currentOffsetX: Float,
+    currentOffsetY: Float,
+    isDraggingMiniPlayer: Boolean,
+    onDragStateChanged: (Boolean) -> Unit,
+    onOffsetChanged: (x: Float, y: Float) -> Unit,
+    gestureCallbacks: PlayerGestureCallbacks,
+    onMinimize: () -> Unit,
+    onFullscreen: () -> Unit,
+    onExpand: () -> Unit,
+    onSeek: (Long) -> Unit,
+    isCollapsedControls: Boolean,
+    scrollState: LazyListState
+) {
+    val density = LocalDensity.current
+
+    Box(modifier = modifier) {
+        // ==================== NORMAL mode gestures ====================
+        if (miniProgress <= MINI_SETTLED_THRESHOLD && fullscreenProgress <= FULLSCREEN_SETTLED_THRESHOLD) {
+            // Swipe down on video area → transition to mini
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(with(density) { 200.dp.toPx().dp }) // Top 200dp of screen
+                    .pointerInput(miniProgress) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { _, dragAmount ->
+                                // Swipe down (positive dragAmount) → transition to mini
+                                if (dragAmount > 0) {
+                                    onMinimize()
+                                }
+                            }
+                        )
+                    }
+            )
+
+            // Swipe up on details (when at top) → transition to fullscreen
+            if (!isCollapsedControls) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                        .offset(y = with(density) { 200.dp.toPx().dp }) // Below video area
+                        .pointerInput(scrollState.firstVisibleItemIndex, scrollState.firstVisibleItemScrollOffset) {
+                            if (scrollState.firstVisibleItemIndex == 0 && scrollState.firstVisibleItemScrollOffset == 0) {
+                                detectVerticalDragGestures(
+                                    onVerticalDrag = { _, dragAmount ->
+                                        // Swipe up (negative dragAmount) → transition to fullscreen
+                                        if (dragAmount < 0) {
+                                            onFullscreen()
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                )
+            }
+
+            // Double-tap left/right thirds → rewind ±5 seconds
+            val thirdWidthDp = with(density) { (containerWidth / 3).toDp() }
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Left third
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(thirdWidthDp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    onSeek(-5000)
+                                }
+                            )
+                        }
+                )
+                // Right third
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .width(thirdWidthDp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    onSeek(5000)
+                                }
+                            )
+                        }
+                )
+            }
+        }
+
+        // ==================== FULLSCREEN mode gestures ====================
+        if (fullscreenProgress > FULLSCREEN_SETTLED_THRESHOLD) {
+            // Brightness/volume swipe
+            var touchX = 0f
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragStart = {
+                                touchX = it.x
+                                gestureCallbacks.onVerticalDragStart(it.x)
+                            },
+                            onVerticalDrag = { _, dragAmount ->
+                                gestureCallbacks.onVerticalDrag(touchX, dragAmount, containerWidth)
+                            }
+                        )
+                    }
+            )
+
+            // Double-tap left/right thirds → rewind ±5 seconds
+            val thirdWidthDp = with(density) { (containerWidth / 3).toDp() }
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Left third
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(thirdWidthDp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    onSeek(-5000)
+                                }
+                            )
+                        }
+                )
+                // Right third
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .width(thirdWidthDp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    onSeek(5000)
+                                }
+                            )
+                        }
+                )
+            }
+        }
+
+        // ==================== FLOATING mode gestures ====================
+        if (miniProgress > MINI_DRAG_THRESHOLD) {
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = (floatingRestX + currentOffsetX).toInt(),
+                            y = (floatingRestY + currentOffsetY).toInt()
+                        )
+                    }
+                    .size(
+                        width = with(density) { miniWidthPx.toDp() },
+                        height = with(density) { miniHeightPx.toDp() }
+                    )
+                    .pointerInput(miniProgress, isDraggingMiniPlayer) {
+                        if (!isDraggingMiniPlayer) {
+                            var localOffsetX = currentOffsetX
+                            var localOffsetY = currentOffsetY
+
+                            detectDragGestures(
+                                onDragStart = {
+                                    Log.d(TAG, "Mini drag start")
+                                    onDragStateChanged(true)
+                                },
+                                onDrag = { change, dragAmount: Offset ->
+                                    change.consume()
+                                    localOffsetX += dragAmount.x
+                                    localOffsetY += dragAmount.y
+                                    onOffsetChanged(localOffsetX, localOffsetY)
+                                },
+                                onDragEnd = {
+                                    Log.d(TAG, "Mini drag end")
+                                    onDragStateChanged(false)
+                                    // Snap to nearest edge
+                                    val edgeThreshold = 100f
+                                    val paddingPx = 16.dp.toPx()
+                                    val initialX = containerWidth - miniWidthPx - paddingPx
+                                    val initialY = containerHeight - miniHeightPx - paddingPx
+                                    val actualX = initialX + localOffsetX
+                                    val actualY = initialY + localOffsetY
+
+                                    var snappedX = localOffsetX
+                                    if (actualX < edgeThreshold) {
+                                        snappedX = -initialX
+                                    } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
+                                        snappedX = 0f
+                                    }
+
+                                    var snappedY = localOffsetY
+                                    if (actualY < edgeThreshold) {
+                                        snappedY = -initialY
+                                    } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
+                                        snappedY = 0f
+                                    }
+
+                                    onOffsetChanged(snappedX, snappedY)
+                                },
+                                onDragCancel = {
+                                    Log.d(TAG, "Mini drag cancel")
+                                    onDragStateChanged(false)
+                                }
+                            )
+                        }
+                    }
+            )
+        }
+    }
+}
+
+// ==================== ControlsLayer ====================
+
+/**
+ * Handles all controls for the current mode.
+ * - NORMAL: top/bottom overlay
+ * - COMPACT: compactcontrolsrow
+ * - FULLSCREEN: top/bottom overlay
+ * - FLOATING: mini controls
+ */
+@Composable
+fun ControlsLayer(
+    modifier: Modifier,
+    videoLayout: VideoLayout,
+    miniProgress: Float,
+    fullscreenProgress: Float,
+    normalBarAlpha: Float,
+    compactBarAlpha: Float,
+    fullscreenBarAlpha: Float,
+    isCollapsedControls: Boolean,
+    showTopOverlay: Boolean,
+    showBottomOverlay: Boolean,
+    resolvedShowTopBar: Boolean,
+    resolvedShowBottomBar: Boolean,
+    isLoading: Boolean,
+    brightnessValue: Float,
+    volumeValue: Float,
+    showBrightnessIndicator: Boolean,
+    showVolumeIndicator: Boolean,
+    state: PlayerUiState.Loaded,
+    player: ExoPlayer?,
+    isLooping: Boolean,
+    isScrubbing: Boolean,
+    scrubPositionMs: Long,
+    expandedDescription: Boolean,
+    selectedTab: Int,
+    onToggleDescription: () -> Unit,
+    onTabSelected: (Int) -> Unit,
+    onLoopToggle: () -> Unit,
+    onPlayPause: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onChapters: () -> Unit,
+    onFullscreenToggle: () -> Unit,
+    onMinimize: () -> Unit,
+    onExpand: () -> Unit,
+    onClose: () -> Unit,
+    onMoreOptions: () -> Unit,
+    onWatchLater: () -> Unit,
+    onReplayToggle: () -> Unit,
+    onOptions: () -> Unit,
+    onSeek: (Long) -> Unit
+) {
+    val density = LocalDensity.current
+
+    Box(modifier = modifier) {
+        // ==================== NORMAL/COMPACT/FULLSCREEN controls ====================
+        // Only render when not in mini mode
         if (miniProgress <= MINI_DRAG_THRESHOLD) {
             PlayerControlsScaffold(
                 modifier = Modifier
@@ -370,8 +734,14 @@ fun UnifiedPlayerContent(
                 showVolumeIndicator = showVolumeIndicator,
                 showTopBar = resolvedShowTopBar,
                 showBottomBar = resolvedShowBottomBar,
-                callbacks = gestureCallbacks,
-                disableVerticalDragGestures = disableVerticalDrag,
+                callbacks = PlayerGestureCallbacks(
+                    onTap = { /* handled by GestureLayer */ },
+                    onDoubleTap = { /* handled by GestureLayer */ },
+                    onVerticalDragStart = { /* handled by GestureLayer */ },
+                    onVerticalDrag = { _, _, _ -> /* handled by GestureLayer */ }
+                ),
+                disableVerticalDragGestures = true,
+                disableTapGestures = true,
                 topBar = {
                     // §4.3: weighted alpha cross-fade for top bar content
                     val topAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha)
@@ -450,8 +820,7 @@ fun UnifiedPlayerContent(
             )
         }
 
-        // ==================== 4. Mini player (FLOATING mode only) ====================
-        // Separate from scaffold to avoid gesture conflicts.
+        // ==================== FLOATING mode controls ====================
         if (miniProgress > MINI_DRAG_THRESHOLD) {
             Box(
                 modifier = Modifier
@@ -465,56 +834,6 @@ fun UnifiedPlayerContent(
                         width = with(density) { videoLayout.widthPx.toDp() },
                         height = with(density) { videoLayout.heightPx.toDp() }
                     )
-                    .pointerInput(miniProgress, isDraggingMiniPlayer) {
-                        if (!isDraggingMiniPlayer) {
-                            var localOffsetX = currentOffsetX
-                            var localOffsetY = currentOffsetY
-
-                            detectDragGestures(
-                                onDragStart = {
-                                    Log.d(TAG, "Mini drag start")
-                                    onDragStateChanged(true)
-                                },
-                                onDrag = { change, dragAmount: Offset ->
-                                    change.consume()
-                                    localOffsetX += dragAmount.x
-                                    localOffsetY += dragAmount.y
-                                    onOffsetChanged(localOffsetX, localOffsetY)
-                                },
-                                onDragEnd = {
-                                    Log.d(TAG, "Mini drag end")
-                                    onDragStateChanged(false)
-                                    // Snap to nearest edge
-                                    val edgeThreshold = 100f
-                                    val paddingPx = 16.dp.toPx()
-                                    val initialX = containerWidth - miniWidthPx - paddingPx
-                                    val initialY = containerHeight - miniHeightPx - paddingPx
-                                    val actualX = initialX + localOffsetX
-                                    val actualY = initialY + localOffsetY
-
-                                    var snappedX = localOffsetX
-                                    if (actualX < edgeThreshold) {
-                                        snappedX = -initialX
-                                    } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
-                                        snappedX = 0f
-                                    }
-
-                                    var snappedY = localOffsetY
-                                    if (actualY < edgeThreshold) {
-                                        snappedY = -initialY
-                                    } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
-                                        snappedY = 0f
-                                    }
-
-                                    onOffsetChanged(snappedX, snappedY)
-                                },
-                                onDragCancel = {
-                                    Log.d(TAG, "Mini drag cancel")
-                                    onDragStateChanged(false)
-                                }
-                            )
-                        }
-                    }
             ) {
                 // Mini player background scrim
                 Box(
