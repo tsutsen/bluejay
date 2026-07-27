@@ -59,6 +59,7 @@ fun PlayerControlsScaffold(
     showBottomBar: Boolean,
     callbacks: PlayerGestureCallbacks,
     disableVerticalDragGestures: Boolean = false,
+    disableTapGestures: Boolean = false,
     topBar: @Composable () -> Unit,
     bottomBar: @Composable () -> Unit
 ) {
@@ -74,7 +75,8 @@ fun PlayerControlsScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .then(
-                    if (disableVerticalDragGestures) Modifier else Modifier.pointerInput(Unit) {
+                    if (disableVerticalDragGestures) Modifier
+                    else Modifier.pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onDragStart = {
                                 touchX = it.x
@@ -86,12 +88,15 @@ fun PlayerControlsScaffold(
                         )
                     }
                 )
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { currentCallbacks.onTap() },
-                        onDoubleTap = { currentCallbacks.onDoubleTap() }
-                    )
-                }
+                .then(
+                    if (disableTapGestures) Modifier
+                    else Modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { currentCallbacks.onTap() },
+                            onDoubleTap = { currentCallbacks.onDoubleTap() }
+                        )
+                    }
+                )
         )
 
         // ==================== Brightness Indicator ====================

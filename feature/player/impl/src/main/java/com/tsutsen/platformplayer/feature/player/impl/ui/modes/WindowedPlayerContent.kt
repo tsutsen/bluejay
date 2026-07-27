@@ -8,6 +8,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,11 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
 
@@ -84,8 +88,17 @@ fun WindowedPlayerContent(
     scrubPositionMs: Long,
     // COMPACT-only
     isLooping: Boolean,
-    onLoopToggle: () -> Unit
+    onLoopToggle: () -> Unit,
+    // Morph (drag-to-mini) state
+    morphProgress: Float,
+    onMorphDragStart: () -> Unit,
+    onMorphDrag: (Float) -> Unit,
+    onMorphDragEnd: () -> Unit,
+    onClose: () -> Unit
 ) {
+    val detailAlpha = (1f - (morphProgress - 0.6f) / 0.4f).coerceIn(0f, 1f)
+    val userScrollEnabled = morphProgress < 0.9f
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
         // ==================== Video box (height driven by scroll, shared by NORMAL/COMPACT) ====================
@@ -95,6 +108,31 @@ fun WindowedPlayerContent(
                 .height(with(LocalDensity.current) { playerHeightPx.toDp() })
                 .background(Color.Black)
                 .clipToBounds()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { gestureCallbacks.onTap() },
+                        onDoubleTap = { gestureCallbacks.onDoubleTap() }
+                    )
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = {
+                            onMorphDragStart()
+                        },
+                        onDrag = { change, dragAmount ->
+                            if (dragAmount.y > 0f || morphProgress > 0f) {
+                                change.consume()
+                                onMorphDrag(dragAmount.y)
+                            }
+                        },
+                        onDragEnd = {
+                            onMorphDragEnd()
+                        },
+                        onDragCancel = {
+                            onMorphDragEnd()
+                        }
+                    )
+                }
         ) {
             PlayerVideoSurface(player = player)
         }
@@ -102,11 +140,13 @@ fun WindowedPlayerContent(
         // ==================== Scrollable video details ====================
         LazyColumn(
             state = scrollState,
+            userScrollEnabled = userScrollEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
                 .nestedScroll(nestedScrollConnection)
                 .background(MaterialTheme.colorScheme.surface)
+                .graphicsLayer { alpha = detailAlpha }
         ) {
             item {
                 Text(
@@ -175,71 +215,94 @@ fun WindowedPlayerContent(
         }
         } // end Column
 
-        // ==================== Controls scaffold: NORMAL bars, or COMPACT row ====================
-        PlayerControlsScaffold(
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .fillMaxWidth()
-            .height(with(LocalDensity.current) { playerHeightPx.toDp() })
-            .clipToBounds(),
-        isLoading = isLoading,
-        brightnessValue = brightnessValue,
-        volumeValue = volumeValue,
-        showBrightnessIndicator = showBrightnessIndicator,
-        showVolumeIndicator = showVolumeIndicator,
-        showTopBar = showTopOverlay && !isCollapsedControls,
-        showBottomBar = if (isCollapsedControls) true else showBottomOverlay,
-        callbacks = gestureCallbacks,
-        disableVerticalDragGestures = true,
-        topBar = {
-            TopOverlay(
-                title = state.currentVideo?.title ?: "Unknown",
-                channelName = state.currentVideo?.author?.name ?: "Unknown",
-                onMinimize = onMinimize,
-                onReplayToggle = onReplayToggle,
-                onWatchLater = onWatchLater,
-                onOptions = onOptions
-            )
-        },
-        bottomBar = {
-            AnimatedContent(
-                targetState = isCollapsedControls,
-                transitionSpec = {
-                    (slideInVertically(initialOffsetY = { it }) + fadeIn()).togetherWith(
-                        slideOutVertically(targetOffsetY = { it }) + fadeOut()
-                    )
-                }
-            ) { collapsed ->
-                if (collapsed) {
-                    CompactControlsRow(
-                        isPlaying = state.isPlaying,
-                        isLooping = isLooping,
-                        onMinimize = onMinimize,
-                        onPlayPause = onPlayPause,
-                        onChapters = onChapters,
-                        onLoopToggle = onLoopToggle,
-                        onWatchLater = onWatchLater,
-                        onOptions = onOptions,
-                        onFullscreen = onFullscreenToggle
-                    )
-                } else {
-                    BottomOverlay(
-                        player = player,
-                        currentPositionMs = state.currentPositionMs,
-                        durationMs = state.durationMs,
-                        isPlaying = state.isPlaying,
-                        onPlayPause = onPlayPause,
-                        onPrevious = onPrevious,
-                        onNext = onNext,
-                        onChapters = onChapters,
-                        onFullscreen = onFullscreenToggle,
-                        onSeek = onSeek,
-                        isScrubbing = isScrubbing,
-                        scrubPositionMs = scrubPositionMs
-                    )
-                }
+        // ==================== Controls scaffold: NORMAL bars, COMPACT row, or MINI row ====================
+        // At MINI variant (morphProgress >= 0.5f), bypass the scaffold entirely and render
+        // MiniControlsRow directly. The scaffold's gesture layer would intercept all pointer
+        // events before the video Box's drag gesture ever sees them.
+        if (morphProgress >= 0.5f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .height(with(LocalDensity.current) { playerHeightPx.toDp() })
+                    .clipToBounds()
+                    .background(Color.Black.copy(alpha = 0.6f))
+            ) {
+                MiniControlsRow(
+                    state = state,
+                    onPlayPause = onPlayPause,
+                    onClose = onClose,
+                    onMoreOptions = onOptions,
+                    onFullscreen = onFullscreenToggle
+                )
             }
+        } else {
+            PlayerControlsScaffold(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .height(with(LocalDensity.current) { playerHeightPx.toDp() })
+                    .clipToBounds(),
+                isLoading = isLoading,
+                brightnessValue = brightnessValue,
+                volumeValue = volumeValue,
+                showBrightnessIndicator = showBrightnessIndicator,
+                showVolumeIndicator = showVolumeIndicator,
+                showTopBar = showTopOverlay && !isCollapsedControls,
+                showBottomBar = if (isCollapsedControls) true else showBottomOverlay,
+                callbacks = gestureCallbacks,
+                disableVerticalDragGestures = true,
+                disableTapGestures = true,
+                topBar = {
+                    TopOverlay(
+                        title = state.currentVideo?.title ?: "Unknown",
+                        channelName = state.currentVideo?.author?.name ?: "Unknown",
+                        onMinimize = onMinimize,
+                        onReplayToggle = onReplayToggle,
+                        onWatchLater = onWatchLater,
+                        onOptions = onOptions
+                    )
+                },
+                bottomBar = {
+                    AnimatedContent(
+                        targetState = isCollapsedControls,
+                        transitionSpec = {
+                            (slideInVertically(initialOffsetY = { it }) + fadeIn()).togetherWith(
+                                slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                            )
+                        }
+                    ) { collapsed ->
+                        if (collapsed) {
+                            CompactControlsRow(
+                                isPlaying = state.isPlaying,
+                                isLooping = isLooping,
+                                onMinimize = onMinimize,
+                                onPlayPause = onPlayPause,
+                                onChapters = onChapters,
+                                onLoopToggle = onLoopToggle,
+                                onWatchLater = onWatchLater,
+                                onOptions = onOptions,
+                                onFullscreen = onFullscreenToggle
+                            )
+                        } else {
+                            BottomOverlay(
+                                player = player,
+                                currentPositionMs = state.currentPositionMs,
+                                durationMs = state.durationMs,
+                                isPlaying = state.isPlaying,
+                                onPlayPause = onPlayPause,
+                                onPrevious = onPrevious,
+                                onNext = onNext,
+                                onChapters = onChapters,
+                                onFullscreen = onFullscreenToggle,
+                                onSeek = onSeek,
+                                isScrubbing = isScrubbing,
+                                scrubPositionMs = scrubPositionMs
+                            )
+                        }
+                    }
+                }
+            )
         }
-        )
     } // end Box
 }
