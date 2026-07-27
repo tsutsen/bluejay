@@ -192,6 +192,12 @@ fun PlayerScreen(
     LaunchedEffect(isFullscreenState) {
         val fullscreen = isFullscreenState ?: return@LaunchedEffect
         val target = if (fullscreen) 1f else 0f
+        // When entering fullscreen, wait for the system UI to take effect
+        // before starting the animation. This avoids the stutter where the
+        // container is nav-bar-constrained and then jumps when the nav bar hides.
+        if (fullscreen && morphProgress.value < 0.5f) {
+            kotlinx.coroutines.delay(50)
+        }
         if (kotlin.math.abs(fullscreenProgress.value - target) > 0.01f) {
             fullscreenProgress.animateTo(target, transitionSpringSpec)
         }
@@ -407,11 +413,19 @@ fun PlayerScreen(
             // Use raw offset during drag to avoid fighting the spring
             val layoutDragX = if (isDraggingMiniPlayer) miniPlayerOffsetX else animatedMiniOffsetX
             val layoutDragY = if (isDraggingMiniPlayer) miniPlayerOffsetY else animatedMiniOffsetY
+
+            // Use window dimensions for video layout during fullscreen to avoid
+            // the stutter where the container is nav-bar-constrained and then jumps
+            // when the nav bar hides. The video animates from its current size to
+            // full window size immediately, without waiting for the nav bar to hide.
+            val effectiveContainerWidth = if (isFullscreen && windowWidthPx > 0f) windowWidthPx else containerSize.width
+            val effectiveContainerHeight = if (isFullscreen && windowHeightPx > 0f) windowHeightPx else containerSize.height
+
             val videoLayout = computeVideoLayout(
                 miniProgress = morphProgress.value,
                 fullscreenProgress = fullscreenP,
-                containerWidth = containerSize.width,
-                containerHeight = containerSize.height,
+                containerWidth = effectiveContainerWidth,
+                containerHeight = effectiveContainerHeight,
                 playerHeightPx = playerHeightPx,
                 miniWidthPx = miniWidthPx,
                 miniHeightPx = miniHeightPx,
@@ -419,8 +433,8 @@ fun PlayerScreen(
                 floatingRestY = floatingRestY,
                 dragOffsetX = layoutDragX,
                 dragOffsetY = layoutDragY,
-                fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else containerSize.width,
-                fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else containerSize.height
+                fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else effectiveContainerWidth,
+                fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else effectiveContainerHeight
             )
 
             val gestureCallbacks = PlayerGestureCallbacks(
