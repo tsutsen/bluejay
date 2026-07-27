@@ -489,8 +489,9 @@ fun PlayerScreen(
                         containerSize = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
                     }
             ) {
-                // Scrim: dim content behind the player overlay in windowed modes
-                val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) * 1.0f
+                // Scrim: dim content behind the player overlay in windowed modes.
+                // In fullscreen mode, the scrim is always 100% opaque black.
+                val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) + fullscreenP
                 if (scrimAlpha > 0.01f) {
                     Box(
                         modifier = Modifier
