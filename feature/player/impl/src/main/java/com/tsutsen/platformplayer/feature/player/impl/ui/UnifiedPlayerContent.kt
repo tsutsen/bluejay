@@ -348,77 +348,7 @@ fun UnifiedPlayerContent(
             }
         }
 
-        // ==================== 3. Mini gesture layer (drag-to-reposition) ====================
-        // Only active when miniProgress ≈ 1 (pure FLOATING mode).
-        if (miniProgress > MINI_DRAG_THRESHOLD) {
-            Box(
-                modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            x = videoLayout.offsetX.toInt(),
-                            y = videoLayout.offsetY.toInt()
-                        )
-                    }
-                    .size(
-                        width = with(density) { videoLayout.widthPx.toDp() },
-                        height = with(density) { videoLayout.heightPx.toDp() }
-                    )
-                    .pointerInput(miniProgress, isDraggingMiniPlayer) {
-                        if (!isDraggingMiniPlayer) {
-                            detectDragGestures(
-                                onDragStart = {
-                                    Log.d(TAG, "Mini drag start")
-                                    onDragStateChanged(true)
-                                },
-                                onDrag = { change, dragAmount: Offset ->
-                                    change.consume()
-                                    // Accumulate drag offset relative to resting position
-                                    onOffsetChanged(
-                                        dragAmount.x,
-                                        dragAmount.y
-                                    )
-                                },
-                                onDragEnd = {
-                                    Log.d(TAG, "Mini drag end")
-                                    onDragStateChanged(false)
-                                    // Snap to nearest edge
-                                    val edgeThreshold = 100f
-                                    val paddingPx = 16.dp.toPx()
-                                    val initialX = containerWidth - miniWidthPx - paddingPx
-                                    val initialY = containerHeight - miniHeightPx - paddingPx
-                                    val actualX = initialX + currentOffsetX
-                                    val actualY = initialY + currentOffsetY
-
-                                    var snappedX = currentOffsetX
-                                    if (actualX < edgeThreshold) {
-                                        snappedX = -initialX
-                                    } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
-                                        snappedX = 0f
-                                    }
-
-                                    var snappedY = currentOffsetY
-                                    if (actualY < edgeThreshold) {
-                                        snappedY = -initialY
-                                    } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
-                                        snappedY = 0f
-                                    }
-
-                                    onOffsetChanged(snappedX, snappedY)
-                                },
-                                onDragCancel = {
-                                    Log.d(TAG, "Mini drag cancel")
-                                    onDragStateChanged(false)
-                                }
-                            )
-                        } else {
-                            // When dragging, just consume touches
-                            detectTapGestures(onTap = {}) // placeholder
-                        }
-                    }
-            )
-        }
-
-        // ==================== 4. Controls scaffold (NORMAL/COMPACT/FULLSCREEN) ====================
+        // ==================== 3. Controls scaffold (NORMAL/COMPACT/FULLSCREEN) ====================
         // Scaffold is positioned at the video location, constrained to video height.
         // For mini mode, it's positioned at (videoLayout.offsetX, videoLayout.offsetY)
         // with size (videoLayout.widthPx, videoLayout.heightPx).
@@ -619,5 +549,73 @@ fun UnifiedPlayerContent(
             }
         )
 
+        // ==================== 4. Mini gesture layer (drag-to-reposition) ====================
+        // Only active when miniProgress ≈ 1 (pure FLOATING mode).
+        // Positioned on top of scaffold to receive drag gestures.
+        if (miniProgress > MINI_DRAG_THRESHOLD) {
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = videoLayout.offsetX.toInt(),
+                            y = videoLayout.offsetY.toInt()
+                        )
+                    }
+                    .size(
+                        width = with(density) { videoLayout.widthPx.toDp() },
+                        height = with(density) { videoLayout.heightPx.toDp() }
+                    )
+                    .pointerInput(miniProgress, isDraggingMiniPlayer) {
+                        if (!isDraggingMiniPlayer) {
+                            var localOffsetX = currentOffsetX
+                            var localOffsetY = currentOffsetY
+
+                            detectDragGestures(
+                                onDragStart = {
+                                    Log.d(TAG, "Mini drag start")
+                                    onDragStateChanged(true)
+                                },
+                                onDrag = { change, dragAmount: Offset ->
+                                    change.consume()
+                                    localOffsetX += dragAmount.x
+                                    localOffsetY += dragAmount.y
+                                    onOffsetChanged(localOffsetX, localOffsetY)
+                                },
+                                onDragEnd = {
+                                    Log.d(TAG, "Mini drag end")
+                                    onDragStateChanged(false)
+                                    // Snap to nearest edge
+                                    val edgeThreshold = 100f
+                                    val paddingPx = 16.dp.toPx()
+                                    val initialX = containerWidth - miniWidthPx - paddingPx
+                                    val initialY = containerHeight - miniHeightPx - paddingPx
+                                    val actualX = initialX + localOffsetX
+                                    val actualY = initialY + localOffsetY
+
+                                    var snappedX = localOffsetX
+                                    if (actualX < edgeThreshold) {
+                                        snappedX = -initialX
+                                    } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
+                                        snappedX = 0f
+                                    }
+
+                                    var snappedY = localOffsetY
+                                    if (actualY < edgeThreshold) {
+                                        snappedY = -initialY
+                                    } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
+                                        snappedY = 0f
+                                    }
+
+                                    onOffsetChanged(snappedX, snappedY)
+                                },
+                                onDragCancel = {
+                                    Log.d(TAG, "Mini drag cancel")
+                                    onDragStateChanged(false)
+                                }
+                            )
+                        }
+                    }
+            )
+        }
     }
 }
