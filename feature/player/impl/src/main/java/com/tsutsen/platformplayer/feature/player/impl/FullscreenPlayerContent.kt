@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.media3.exoplayer.ExoPlayer
 
@@ -41,42 +42,49 @@ fun FullscreenPlayerContent(
     Box(modifier = Modifier.fillMaxSize()) {
         PlayerVideoSurface(player = player)
 
-        PlayerControlsScaffold(
+        // Gesture layer (vertical drag enabled in FULLSCREEN for brightness/volume)
+        PlayerGestureLayer(
             modifier = Modifier.fillMaxSize(),
-            isLoading = isLoading,
-            brightnessValue = brightnessValue,
-            volumeValue = volumeValue,
-            showBrightnessIndicator = showBrightnessIndicator,
-            showVolumeIndicator = showVolumeIndicator,
-            showTopBar = showTopOverlay,
-            showBottomBar = showBottomOverlay,
             callbacks = gestureCallbacks,
-            topBar = {
-                TopOverlay(
-                    title = state.currentVideo?.title ?: "Unknown",
-                    channelName = state.currentVideo?.author?.name ?: "Unknown",
-                    onMinimize = onMinimize,
-                    onReplayToggle = onReplayToggle,
-                    onWatchLater = onWatchLater,
-                    onOptions = onOptions
-                )
-            },
-            bottomBar = {
-                BottomOverlay(
-                    player = player,
-                    currentPositionMs = state.currentPositionMs,
-                    durationMs = state.durationMs,
-                    isPlaying = state.isPlaying,
-                    onPlayPause = onPlayPause,
-                    onPrevious = onPrevious,
-                    onNext = onNext,
-                    onChapters = onChapters,
-                    onFullscreen = onFullscreenToggle,
-                    onSeek = onSeek,
-                    isScrubbing = isScrubbing,
-                    scrubPositionMs = scrubPositionMs
-                )
-            }
+            disableVerticalDragGestures = false
         )
+
+        // Brightness/Volume indicators
+        if (showBrightnessIndicator) {
+            BrightnessIndicator(brightness = brightnessValue, modifier = Modifier.align(Alignment.CenterStart))
+        }
+        if (showVolumeIndicator) {
+            VolumeIndicator(volume = volumeValue, modifier = Modifier.align(Alignment.CenterEnd))
+        }
+
+        // Top bar
+        if (showTopOverlay) {
+            TopOverlay(
+                title = state.currentVideo?.title ?: "Unknown",
+                channelName = state.currentVideo?.author?.name ?: "Unknown",
+                onMinimize = onMinimize,
+                onReplayToggle = onReplayToggle,
+                onWatchLater = onWatchLater,
+                onOptions = onOptions
+            )
+        }
+
+        // Bottom bar
+        if (showBottomOverlay) {
+            BottomOverlay(
+                player = player,
+                currentPositionMs = state.currentPositionMs,
+                durationMs = state.durationMs,
+                isPlaying = state.isPlaying,
+                onPlayPause = onPlayPause,
+                onPrevious = onPrevious,
+                onNext = onNext,
+                onChapters = onChapters,
+                onFullscreen = onFullscreenToggle,
+                onSeek = onSeek,
+                isScrubbing = isScrubbing,
+                scrubPositionMs = scrubPositionMs
+            )
+        }
     }
 }

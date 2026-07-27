@@ -12,7 +12,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,11 +24,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
@@ -304,60 +300,9 @@ fun PlayerScreen(
                 }
             }
 
-            // ==================== Collapsing player height (shared by video content AND controls overlay) ====================
-            val scrollState = rememberLazyListState()
-            val maxPlayerHeightPx = containerSize.height * 0.6f
-            val minPlayerHeightPx = containerSize.height * 0.2f
-
-            var playerHeightPx by remember { mutableStateOf(0f) }
-
-            LaunchedEffect(maxPlayerHeightPx, minPlayerHeightPx) {
-                playerHeightPx = if (playerHeightPx == 0f) {
-                    maxPlayerHeightPx
-                } else {
-                    playerHeightPx.coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
-                }
-            }
-
-            val nestedScrollConnection = remember(minPlayerHeightPx, maxPlayerHeightPx) {
-                object : NestedScrollConnection {
-                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                        val delta = available.y
-                        val previousHeight = playerHeightPx
-                        val consumed = when {
-                            delta < 0f -> {
-                                val newHeight = (previousHeight + delta).coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
-                                newHeight - previousHeight
-                            }
-                            delta > 0f &&
-                                scrollState.firstVisibleItemIndex == 0 &&
-                                scrollState.firstVisibleItemScrollOffset == 0 -> {
-                                val newHeight = (previousHeight + delta).coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
-                                newHeight - previousHeight
-                            }
-                            else -> 0f
-                        }
-                        if (consumed != 0f) {
-                            playerHeightPx += consumed
-                        }
-                        return Offset(0f, consumed)
-                    }
-                }
-            }
-
-            val isCollapsedControls = !isFullscreenAnim.value &&
-                containerSize.height > 0f &&
-                (playerHeightPx / containerSize.height) <= 0.3f
-
-            // playerMode is the single source of truth other files should key off - see
-            // PlayerMode.kt. Uses morphState.progress (not the raw boolean) so the mode
-            // switches at the visual threshold rather than waiting for the ViewModel to settle.
-            val playerMode = computePlayerMode(
-                isMinimized = morphProgress > 0.5f,
-                isFullscreen = isFullscreenAnim.value,
-                isCollapsedControls = isCollapsedControls
-            )
-            Log.d(TAG, "playerMode=$playerMode, morphProgress=$morphProgress")
+            // ==================== Scroll state (extracted to PlayerScrollState) ====================
+            val scrollState = rememberPlayerScrollState(containerSize.height)
+            val isCollapsedControls = !isFullscreenAnim.value && scrollState.isCollapsedControls
 
             val gestureCallbacks = PlayerGestureCallbacks(
                 onTap = {
@@ -414,35 +359,13 @@ fun PlayerScreen(
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = fullscreenScrimAlpha)))
                 }
 
-                when (playerMode) {
-                    PlayerMode.FLOATING -> FloatingPlayerContent(
-                        player = player,
-                        state = state,
-                        miniWidth = miniWidth,
-                        miniHeight = miniHeight,
-                        cornerRadius = morphedCornerRadius,
-                        offsetX = floatingOffsetX,
-                        offsetY = floatingOffsetY,
-                        containerWidth = containerSize.width,
-                        containerHeight = containerSize.height,
-                        isDragging = isDraggingMiniPlayer,
-                        onDragStateChanged = { isDraggingMiniPlayer = it },
-                        onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
-                        onExpand = { viewModel.exitMiniPlayer() },
-                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
-                        onClose = {
-                            Log.d(TAG, "Close mini player: close")
-                            viewModel.close()
-                        },
-                        onMoreOptions = { showMiniPlayerOptions = true },
-                        onFullscreen = {
-                            Log.d(TAG, "Fullscreen from mini player: exit mini then enter fullscreen")
-                            viewModel.exitMiniPlayer()
-                            viewModel.toggleFullscreen()
-                        }
-                    )
-
-                    PlayerMode.FULLSCREEN -> FullscreenPlayerContent(
+                // ==================== Mode dispatch ====================
+                // FLOATING: morphProgress > 0.5f (morphed to mini)
+                // FULLSCREEN: isFullscreenAnim.value
+                // NORMAL/COMPACT: otherwise (windowed, with COMPACT determined by scroll)
+                if (isFullscreenAnim.value) {
+                    // FULLSCREEN mode
+                    FullscreenPlayerContent(
                         player = player,
                         state = state,
                         isLoading = state.isLoading,
@@ -473,100 +396,124 @@ fun PlayerScreen(
                         isScrubbing = isScrubbing,
                         scrubPositionMs = scrubPositionMs
                     )
+                } else if (morphProgress > 0.5f) {
+                    // FLOATING mode (morphed to mini)
+                    FloatingPlayerContent(
+                        player = player,
+                        state = state,
+                        miniWidth = miniWidth,
+                        miniHeight = miniHeight,
+                        cornerRadius = morphedCornerRadius,
+                        offsetX = floatingOffsetX,
+                        offsetY = floatingOffsetY,
+                        containerWidth = containerSize.width,
+                        containerHeight = containerSize.height,
+                        isDragging = isDraggingMiniPlayer,
+                        onDragStateChanged = { isDraggingMiniPlayer = it },
+                        onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
+                        onExpand = { viewModel.exitMiniPlayer() },
+                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
+                        onClose = {
+                            Log.d(TAG, "Close mini player: close")
+                            viewModel.close()
+                        },
+                        onMoreOptions = { showMiniPlayerOptions = true },
+                        onFullscreen = {
+                            Log.d(TAG, "Fullscreen from mini player: exit mini then enter fullscreen")
+                            viewModel.exitMiniPlayer()
+                            viewModel.toggleFullscreen()
+                        }
+                    )
+                } else {
+                    // NORMAL/COMPACT mode (windowed)
+                    val morphedPlayerHeightPx = scrollState.playerHeightPx - (scrollState.playerHeightPx - scrollState.minPlayerHeightPx) * morphProgress
 
-                    PlayerMode.NORMAL, PlayerMode.COMPACT -> {
-                        // Morph-aware windowed player: the video box height is interpolated
-                        // off morphProgress so a drag-down gesture smoothly shrinks the box
-                        // into the mini-player shape.
-                        val morphedPlayerHeightPx = playerHeightPx - (playerHeightPx - minPlayerHeightPx) * morphProgress
-
-                        WindowedPlayerContent(
-                            modifier = Modifier.pointerInput(isMorphDragging) {
-                                if (isMorphDragging) {
-                                    detectDragGestures(
-                                        onDragStart = {
-                                            morphState.onDragStart()
-                                            isMorphDragging = true
-                                        },
-                                        onDrag = { change, dragAmount ->
-                                            change.consume()
-                                            dragDeltaY += dragAmount.y
-                                            // Positive drag (down) → increases progress toward floating
-                                            coroutineScope.launch {
-                                                morphState.onDrag(dragAmount.y, dragTravelPx)
-                                            }
-                                        },
-                                        onDragEnd = {
-                                            coroutineScope.launch {
-                                                morphState.onDragEnd(
-                                                    velocityPxPerSec = dragDeltaY * 60f, // rough px/s
-                                                    dragTravelPx = dragTravelPx,
-                                                    onSettledMinimized = {
-                                                        Log.d(TAG, "Morph drag: settled to minimized")
-                                                        viewModel.minimize()
-                                                    },
-                                                    onSettledExpanded = {
-                                                        Log.d(TAG, "Morph drag: settled to expanded")
-                                                        viewModel.exitMiniPlayer()
-                                                    }
-                                                )
-                                            }
-                                            isMorphDragging = false
-                                            dragDeltaY = 0f
-                                        },
-                                        onDragCancel = {
-                                            isMorphDragging = false
-                                            dragDeltaY = 0f
+                    WindowedPlayerContent(
+                        modifier = Modifier.pointerInput(isMorphDragging) {
+                            if (isMorphDragging) {
+                                detectDragGestures(
+                                    onDragStart = {
+                                        morphState.onDragStart()
+                                        isMorphDragging = true
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        dragDeltaY += dragAmount.y
+                                        // Positive drag (down) → increases progress toward floating
+                                        coroutineScope.launch {
+                                            morphState.onDrag(dragAmount.y, dragTravelPx)
                                         }
-                                    )
-                                }
-                            },
-                            player = player,
-                            state = state,
-                            playerHeightPx = morphedPlayerHeightPx,
-                            scrollState = scrollState,
-                            nestedScrollConnection = nestedScrollConnection,
-                            isCollapsedControls = isCollapsedControls,
-                            expandedDescription = expandedDescription,
-                            onToggleDescription = { expandedDescription = !expandedDescription },
-                            selectedTab = selectedTab,
-                            onTabSelected = { selectedTab = it },
-                            onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
-                            cornerRadius = morphedCornerRadius,
-                            isLoading = state.isLoading,
-                            brightnessValue = brightnessValue,
-                            volumeValue = volumeValue,
-                            showBrightnessIndicator = showBrightnessIndicator,
-                            showVolumeIndicator = showVolumeIndicator,
-                            showTopOverlay = showTopOverlay,
-                            showBottomOverlay = showBottomOverlay,
-                            gestureCallbacks = gestureCallbacks,
-                            onMinimize = {
-                                Log.d(TAG, "Minimize button clicked")
-                                viewModel.minimize()
-                            },
-                            onReplayToggle = { viewModel.toggleReplay() },
-                            onWatchLater = { /* TODO */ },
-                            onOptions = { showOptionsModal = true },
-                            onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
-                            onPrevious = { viewModel.skipPrevious() },
-                            onNext = { viewModel.skipNext() },
-                            onChapters = { showChapters = !showChapters },
-                            onFullscreenToggle = { viewModel.toggleFullscreen() },
-                            onSeek = { positionMs ->
-                                scrubPositionMs = positionMs
-                                isScrubbing = true
-                                viewModel.seekTo(positionMs)
-                            },
-                            isScrubbing = isScrubbing,
-                            scrubPositionMs = scrubPositionMs,
-                            isLooping = isLooping,
-                            onLoopToggle = {
-                                isLooping = !isLooping
-                                player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                                    },
+                                    onDragEnd = {
+                                        coroutineScope.launch {
+                                            morphState.onDragEnd(
+                                                velocityPxPerSec = dragDeltaY * 60f, // rough px/s
+                                                dragTravelPx = dragTravelPx,
+                                                onSettledMinimized = {
+                                                    Log.d(TAG, "Morph drag: settled to minimized")
+                                                    viewModel.minimize()
+                                                },
+                                                onSettledExpanded = {
+                                                    Log.d(TAG, "Morph drag: settled to expanded")
+                                                    viewModel.exitMiniPlayer()
+                                                }
+                                            )
+                                        }
+                                        isMorphDragging = false
+                                        dragDeltaY = 0f
+                                    },
+                                    onDragCancel = {
+                                        isMorphDragging = false
+                                        dragDeltaY = 0f
+                                    }
+                                )
                             }
-                        )
-                    }
+                        },
+                        player = player,
+                        state = state,
+                        playerHeightPx = morphedPlayerHeightPx,
+                        scrollState = scrollState.scrollState,
+                        nestedScrollConnection = scrollState.nestedScrollConnection,
+                        isCollapsedControls = isCollapsedControls,
+                        expandedDescription = expandedDescription,
+                        onToggleDescription = { expandedDescription = !expandedDescription },
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                        onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
+                        cornerRadius = morphedCornerRadius,
+                        isLoading = state.isLoading,
+                        brightnessValue = brightnessValue,
+                        volumeValue = volumeValue,
+                        showBrightnessIndicator = showBrightnessIndicator,
+                        showVolumeIndicator = showVolumeIndicator,
+                        showTopOverlay = showTopOverlay,
+                        showBottomOverlay = showBottomOverlay,
+                        gestureCallbacks = gestureCallbacks,
+                        onMinimize = {
+                            Log.d(TAG, "Minimize button clicked")
+                            viewModel.minimize()
+                        },
+                        onReplayToggle = { viewModel.toggleReplay() },
+                        onWatchLater = { /* TODO */ },
+                        onOptions = { showOptionsModal = true },
+                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
+                        onPrevious = { viewModel.skipPrevious() },
+                        onNext = { viewModel.skipNext() },
+                        onChapters = { showChapters = !showChapters },
+                        onFullscreenToggle = { viewModel.toggleFullscreen() },
+                        onSeek = { positionMs ->
+                            scrubPositionMs = positionMs
+                            isScrubbing = true
+                            viewModel.seekTo(positionMs)
+                        },
+                        isScrubbing = isScrubbing,
+                        scrubPositionMs = scrubPositionMs,
+                        isLooping = isLooping,
+                        onLoopToggle = {
+                            isLooping = !isLooping
+                            player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                        }
+                    )
                 }
 
                 // ==================== Options modal (full-screen dialog) ====================

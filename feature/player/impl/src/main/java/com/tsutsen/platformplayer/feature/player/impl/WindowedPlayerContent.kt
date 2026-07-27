@@ -174,22 +174,27 @@ fun WindowedPlayerContent(
         } // end Column
 
         // ==================== Controls scaffold: NORMAL bars, or COMPACT row ====================
-        PlayerControlsScaffold(
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .fillMaxWidth()
-            .height(with(LocalDensity.current) { playerHeightPx.toDp() })
-            .clipToBounds(),
-        isLoading = isLoading,
-        brightnessValue = brightnessValue,
-        volumeValue = volumeValue,
-        showBrightnessIndicator = showBrightnessIndicator,
-        showVolumeIndicator = showVolumeIndicator,
-        showTopBar = showTopOverlay && !isCollapsedControls,
-        showBottomBar = if (isCollapsedControls) true else showBottomOverlay,
-        callbacks = gestureCallbacks,
-        disableVerticalDragGestures = true,
-        topBar = {
+        // Gesture layer (always on, but vertical drag disabled in NORMAL/COMPACT)
+        PlayerGestureLayer(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .height(with(LocalDensity.current) { playerHeightPx.toDp() })
+                .clipToBounds(),
+            callbacks = gestureCallbacks,
+            disableVerticalDragGestures = true
+        )
+
+        // Brightness/Volume indicators
+        if (showBrightnessIndicator) {
+            BrightnessIndicator(brightness = brightnessValue, modifier = Modifier.align(Alignment.CenterStart))
+        }
+        if (showVolumeIndicator) {
+            VolumeIndicator(volume = volumeValue, modifier = Modifier.align(Alignment.CenterEnd))
+        }
+
+        // Top bar
+        if (showTopOverlay && !isCollapsedControls) {
             TopOverlay(
                 title = state.currentVideo?.title ?: "Unknown",
                 channelName = state.currentVideo?.author?.name ?: "Unknown",
@@ -198,8 +203,10 @@ fun WindowedPlayerContent(
                 onWatchLater = onWatchLater,
                 onOptions = onOptions
             )
-        },
-        bottomBar = {
+        }
+
+        // Bottom bar
+        if (isCollapsedControls || showBottomOverlay) {
             if (isCollapsedControls) {
                 CompactControlsRow(
                     isPlaying = state.isPlaying,
@@ -229,6 +236,5 @@ fun WindowedPlayerContent(
                 )
             }
         }
-        )
     } // end Box
 }
