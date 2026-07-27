@@ -264,7 +264,13 @@ fun PlayerScreen(
             // Force visible during transitions and while scrubbing.
 
             // Auto-hide controls in NORMAL and FULLSCREEN when playing and settled
-            LaunchedEffect(controlsVisible, state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value) {
+            // Skip auto-hide during morph drag
+            LaunchedEffect(controlsVisible, state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, morphProgress.value) {
+                // Don't auto-hide during morph
+                if (morphProgress.value > 0.01f && morphProgress.value < 0.99f) {
+                    hideControlsJob?.cancel()
+                    return@LaunchedEffect
+                }
                 val settled = !isMinimizedAnim.value // mini has its own chrome
                 val canAutoHide = settled && state.isPlaying && controlsVisible
                 if (canAutoHide) {
@@ -370,6 +376,8 @@ fun PlayerScreen(
 
             val gestureCallbacks = PlayerGestureCallbacks(
                 onTap = {
+                    // Don't toggle controls during morph
+                    if (morphProgress.value > 0.01f && morphProgress.value < 0.99f) return@PlayerGestureCallbacks
                     controlsVisible = !controlsVisible
                     hideControlsJob?.cancel()
                     if (controlsVisible && state.isPlaying) {

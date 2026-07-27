@@ -197,31 +197,24 @@ fun UnifiedPlayerContent(
     )
 
     // ==================== Scaffold bar visibility (§4.7) ====================
-    // Force bars visible during active transitions to avoid flicker from two
-    // independent animation systems fighting near thresholds.
-    val isTransitioning =
-        (miniProgress > MINI_SETTLED_THRESHOLD && miniProgress < (1f - MINI_SETTLED_THRESHOLD)) ||
-            (fullscreenProgress > FULLSCREEN_SETTLED_THRESHOLD &&
-                fullscreenProgress < (1f - FULLSCREEN_SETTLED_THRESHOLD))
+    // Fade windowed chrome with morph progress
+    val miniMorphAlpha = (1f - miniProgress).coerceIn(0f, 1f)
 
-    val resolvedShowTopBar = if (isTransitioning) {
-        true
-    } else {
-        when {
-            miniProgress > (1f - MINI_SETTLED_THRESHOLD) -> true // mini keeps its bars
-            fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> showTopOverlay
-            else -> showTopOverlay && !isCollapsedControls // NORMAL/COMPACT
-        }
+    val resolvedShowTopBar = when {
+        // Hide during mini morph (alpha handles fade)
+        miniProgress > MINI_SETTLED_THRESHOLD -> miniMorphAlpha > 0.01f &&
+            (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
+                fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD))
+        fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> showTopOverlay
+        else -> showTopOverlay && !isCollapsedControls // NORMAL/COMPACT
     }
 
-    val resolvedShowBottomBar = if (isTransitioning) {
-        true
-    } else {
-        when {
-            miniProgress > (1f - MINI_SETTLED_THRESHOLD) -> true
-            fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> showBottomOverlay
-            else -> if (isCollapsedControls) true else showBottomOverlay
-        }
+    val resolvedShowBottomBar = when {
+        miniProgress > MINI_SETTLED_THRESHOLD -> miniMorphAlpha > 0.01f &&
+            (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
+                fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD))
+        fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> showBottomOverlay
+        else -> if (isCollapsedControls) true else showBottomOverlay
     }
 
     // ==================== Scaffold vertical drag gating (§4.6) ====================
@@ -773,8 +766,8 @@ fun ControlsLayer(
                 disableVerticalDragGestures = true,
                 disableTapGestures = true,
                 topBar = {
-                    // §4.3: weighted alpha cross-fade for top bar content
-                    val topAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha)
+                    // §4.3: weighted alpha cross-fade for top bar content, faded by morph
+                    val topAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha) * (1f - miniProgress).coerceIn(0f, 1f)
                     if (topAlpha > 0.01f) {
                         Box(modifier = Modifier.alpha(topAlpha)) {
                             TopOverlay(
@@ -790,50 +783,14 @@ fun ControlsLayer(
                 },
                 bottomBar = {
                     // §4.3: layer NORMAL bottom, COMPACT row, and FULLSCREEN bottom
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        // FULLSCREEN bottom overlay (only when fullscreen-dominant)
-                        if (fullscreenBarAlpha > 0.99f) {
-                            Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
-                                BottomOverlay(
-                                    player = player,
-                                    currentPositionMs = state.currentPositionMs,
-                                    durationMs = state.durationMs,
-                                    isPlaying = state.isPlaying,
-                                    onPlayPause = onPlayPause,
-                                    onPrevious = onPrevious,
-                                    onNext = onNext,
-                                    onChapters = onChapters,
-                                    onFullscreen = onFullscreenToggle,
-                                    onSeek = onSeek,
-                                    isScrubbing = isScrubbing,
-                                    scrubPositionMs = scrubPositionMs
-                                )
-                            }
-                        }
-
-                        // NORMAL ↔ COMPACT: animated swap (only when not fullscreen-dominant)
-                        if (fullscreenBarAlpha < 0.99f && miniProgress < MINI_DRAG_THRESHOLD) {
-                            AnimatedContent(
-                                targetState = isCollapsedControls,
-                                transitionSpec = {
-                                    fadeIn() togetherWith fadeOut()
-                                },
-                                label = "normalCompactControls"
-                            ) { collapsed ->
-                                if (collapsed) {
-                                    CompactControlsRow(
-                                        isPlaying = state.isPlaying,
-                                        isLooping = isLooping,
-                                        onMinimize = onMinimize,
-                                        onPlayPause = onPlayPause,
-                                        onChapters = onChapters,
-                                        onLoopToggle = onLoopToggle,
-                                        onWatchLater = onWatchLater,
-                                        onOptions = onOptions,
-                                        onFullscreen = onFullscreenToggle
-                                    )
-                                } else {
-                                    Box(modifier = Modifier.fillMaxWidth()) {
+                    // Faded by mini morph progress
+                    val bottomAlpha = (1f - miniProgress).coerceIn(0f, 1f)
+                    if (bottomAlpha > 0.01f) {
+                        Box(modifier = Modifier.alpha(bottomAlpha)) {
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                // FULLSCREEN bottom overlay (only when fullscreen-dominant)
+                                if (fullscreenBarAlpha > 0.99f) {
+                                    Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
                                         BottomOverlay(
                                             player = player,
                                             currentPositionMs = state.currentPositionMs,
@@ -848,6 +805,48 @@ fun ControlsLayer(
                                             isScrubbing = isScrubbing,
                                             scrubPositionMs = scrubPositionMs
                                         )
+                                    }
+                                }
+
+                                // NORMAL ↔ COMPACT: animated swap (only when not fullscreen-dominant)
+                                if (fullscreenBarAlpha < 0.99f && miniProgress < MINI_DRAG_THRESHOLD) {
+                                    AnimatedContent(
+                                        targetState = isCollapsedControls,
+                                        transitionSpec = {
+                                            fadeIn() togetherWith fadeOut()
+                                        },
+                                        label = "normalCompactControls"
+                                    ) { collapsed ->
+                                        if (collapsed) {
+                                            CompactControlsRow(
+                                                isPlaying = state.isPlaying,
+                                                isLooping = isLooping,
+                                                onMinimize = onMinimize,
+                                                onPlayPause = onPlayPause,
+                                                onChapters = onChapters,
+                                                onLoopToggle = onLoopToggle,
+                                                onWatchLater = onWatchLater,
+                                                onOptions = onOptions,
+                                                onFullscreen = onFullscreenToggle
+                                            )
+                                        } else {
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                BottomOverlay(
+                                                    player = player,
+                                                    currentPositionMs = state.currentPositionMs,
+                                                    durationMs = state.durationMs,
+                                                    isPlaying = state.isPlaying,
+                                                    onPlayPause = onPlayPause,
+                                                    onPrevious = onPrevious,
+                                                    onNext = onNext,
+                                                    onChapters = onChapters,
+                                                    onFullscreen = onFullscreenToggle,
+                                                    onSeek = onSeek,
+                                                    isScrubbing = isScrubbing,
+                                                    scrubPositionMs = scrubPositionMs
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
