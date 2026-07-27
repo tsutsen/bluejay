@@ -904,18 +904,6 @@ fun ControlsLayer(
                         height = with(density) { videoLayout.heightPx.toDp() }
                     )
             ) {
-                // Mini player background scrim — fades in over the same wide window as the
-                // controls so the scrim doesn't pop in ahead of/behind them.
-                val scrimAlpha = ((miniProgress - MINI_CONTROLS_FADE_START) /
-                    (1f - MINI_CONTROLS_FADE_START)).coerceIn(0f, 1f)
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = scrimAlpha }
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .clip(RoundedCornerShape(videoLayout.cornerRadius))
-                )
-
                 // Mini player controls: eased fade + slight scale/slide so they settle in
                 // rather than snapping, driven continuously by miniProgress.
                 val rawProgress = ((miniProgress - MINI_CONTROLS_FADE_START) /
