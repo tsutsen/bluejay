@@ -833,11 +833,7 @@ fun ControlsLayer(
                                         onFullscreen = onFullscreenToggle
                                     )
                                 } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clipToBounds()
-                                    ) {
+                                    Box(modifier = Modifier.fillMaxWidth()) {
                                         BottomOverlay(
                                             player = player,
                                             currentPositionMs = state.currentPositionMs,
