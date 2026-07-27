@@ -184,6 +184,17 @@ PlayerViewModel.kt           (~170 lines)  ← keep as-is (minor: clean up getPl
 
 **Commit**: `fec66313` - refactor(player): Phase 5 - fullscreen crossfade, Phase 6 - polish
 
+### Phase 7: Layout Restructure (Critical Fixes) ✅ COMPLETE
+**Goal**: Fix fundamental layout issues that broke the player.
+
+1. PlayerMorphBox uses morphed dimensions (not fillMaxSize) for outer container. ✅
+2. Video box positioned correctly with offset and morphed size. ✅
+3. Gesture layer only covers video area (not entire screen). ✅
+4. PlayerScrollState initializes playerHeightPx to maxPlayerHeightPx (not 0). ✅
+5. Video box, details LazyColumn, and controls are separate siblings. ✅
+
+**Commit**: `3a37b870` - fix(player): restructure layout to fix mini player, scroll, and controls
+
 ---
 
 ## Risks & Mitigations

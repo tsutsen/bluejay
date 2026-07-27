@@ -18,6 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
@@ -42,7 +43,8 @@ fun WindowedPlayerContent(
     onToggleDescription: () -> Unit,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
-    onLoadMoreComments: () -> Unit
+    onLoadMoreComments: () -> Unit,
+    nestedScrollConnection: androidx.compose.ui.input.nestedscroll.NestedScrollConnection? = null
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // ==================== Scrollable video details ====================
@@ -51,6 +53,7 @@ fun WindowedPlayerContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
+                .then(if (nestedScrollConnection != null) Modifier.nestedScroll(nestedScrollConnection) else Modifier)
                 .background(MaterialTheme.colorScheme.surface)
         ) {
             item {
