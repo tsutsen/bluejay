@@ -833,20 +833,26 @@ fun ControlsLayer(
                                         onFullscreen = onFullscreenToggle
                                     )
                                 } else {
-                                    BottomOverlay(
-                                        player = player,
-                                        currentPositionMs = state.currentPositionMs,
-                                        durationMs = state.durationMs,
-                                        isPlaying = state.isPlaying,
-                                        onPlayPause = onPlayPause,
-                                        onPrevious = onPrevious,
-                                        onNext = onNext,
-                                        onChapters = onChapters,
-                                        onFullscreen = onFullscreenToggle,
-                                        onSeek = onSeek,
-                                        isScrubbing = isScrubbing,
-                                        scrubPositionMs = scrubPositionMs
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clipToBounds()
+                                    ) {
+                                        BottomOverlay(
+                                            player = player,
+                                            currentPositionMs = state.currentPositionMs,
+                                            durationMs = state.durationMs,
+                                            isPlaying = state.isPlaying,
+                                            onPlayPause = onPlayPause,
+                                            onPrevious = onPrevious,
+                                            onNext = onNext,
+                                            onChapters = onChapters,
+                                            onFullscreen = onFullscreenToggle,
+                                            onSeek = onSeek,
+                                            isScrubbing = isScrubbing,
+                                            scrubPositionMs = scrubPositionMs
+                                        )
+                                    }
                                 }
                             }
                         }
