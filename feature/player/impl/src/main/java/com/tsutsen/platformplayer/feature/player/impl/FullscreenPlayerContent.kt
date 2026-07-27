@@ -46,7 +46,7 @@ fun FullscreenPlayerContent(
         PlayerGestureLayer(
             modifier = Modifier.fillMaxSize(),
             callbacks = gestureCallbacks,
-            disableVerticalDragGestures = false
+            mode = PlayerMode.FULLSCREEN
         )
 
         // Brightness/Volume indicators

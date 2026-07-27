@@ -94,7 +94,6 @@ fun PlayerScreen(
     // to its snapped corner position after a drag settles.
     var miniPlayerOffsetX by remember { mutableStateOf(0f) }
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
-    var isDraggingMiniPlayer by remember { mutableStateOf(false) }
 
     // Animated offset for snap animation - faster, snappier
     val animatedMiniOffsetX by animateFloatAsState(
@@ -320,7 +319,6 @@ fun PlayerScreen(
                         viewModel.toggleFullscreen()
                     }
                 },
-                onVerticalDragStart = { },
                 onVerticalDrag = { touchX, dragAmountPx, areaWidthPx ->
                     val delta = -dragAmountPx / 500f
                     if (touchX < areaWidthPx / 2) {
@@ -408,8 +406,6 @@ fun PlayerScreen(
                         offsetY = floatingOffsetY,
                         containerWidth = containerSize.width,
                         containerHeight = containerSize.height,
-                        isDragging = isDraggingMiniPlayer,
-                        onDragStateChanged = { isDraggingMiniPlayer = it },
                         onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
                         onExpand = { viewModel.exitMiniPlayer() },
                         onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
@@ -429,12 +425,11 @@ fun PlayerScreen(
                     val morphedPlayerHeightPx = scrollState.playerHeightPx - (scrollState.playerHeightPx - scrollState.minPlayerHeightPx) * morphProgress
 
                     WindowedPlayerContent(
-                        modifier = Modifier.pointerInput(isMorphDragging) {
-                            if (isMorphDragging) {
+                        modifier = Modifier.pointerInput(Unit) {
+                            if (morphState.isDragging) {
                                 detectDragGestures(
                                     onDragStart = {
                                         morphState.onDragStart()
-                                        isMorphDragging = true
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
@@ -459,11 +454,9 @@ fun PlayerScreen(
                                                 }
                                             )
                                         }
-                                        isMorphDragging = false
                                         dragDeltaY = 0f
                                     },
                                     onDragCancel = {
-                                        isMorphDragging = false
                                         dragDeltaY = 0f
                                     }
                                 )

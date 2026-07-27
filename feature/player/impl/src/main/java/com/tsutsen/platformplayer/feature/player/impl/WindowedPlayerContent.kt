@@ -174,7 +174,8 @@ fun WindowedPlayerContent(
         } // end Column
 
         // ==================== Controls scaffold: NORMAL bars, or COMPACT row ====================
-        // Gesture layer (always on, but vertical drag disabled in NORMAL/COMPACT)
+        // Gesture layer (vertical drag disabled in NORMAL/COMPACT — morph drag target instead)
+        val gestureMode = if (isCollapsedControls) PlayerMode.COMPACT else PlayerMode.NORMAL
         PlayerGestureLayer(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -182,7 +183,7 @@ fun WindowedPlayerContent(
                 .height(with(LocalDensity.current) { playerHeightPx.toDp() })
                 .clipToBounds(),
             callbacks = gestureCallbacks,
-            disableVerticalDragGestures = true
+            mode = gestureMode
         )
 
         // Brightness/Volume indicators

@@ -18,6 +18,21 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 
 /**
+ * Player modes for gesture handling.
+ *
+ * The gesture layer uses this to decide whether to enable brightness/volume vertical drag.
+ * NORMAL/COMPACT = morph drag target (vertical drag disabled on gesture layer).
+ * FULLSCREEN = brightness/volume target (vertical drag enabled).
+ * FLOATING = handled by FloatingPlayerContent's own drag logic.
+ */
+enum class PlayerMode {
+    NORMAL,
+    COMPACT,
+    FLOATING,
+    FULLSCREEN
+}
+
+/**
  * Gesture callbacks shared across NORMAL, COMPACT, and FULLSCREEN modes.
  *
  * Each mode wires its own behavior into these lambdas — see PlayerScreen.kt for the
@@ -27,48 +42,44 @@ import androidx.compose.ui.unit.dp
 data class PlayerGestureCallbacks(
     val onTap: () -> Unit,
     val onDoubleTap: () -> Unit,
-    val onVerticalDragStart: (touchX: Float) -> Unit,
-    // areaWidthPx is the gesture layer's own width - callers use it to decide left-half
-    // (brightness) vs right-half (volume), same split the original inline code did with
-    // `size.width` from inside the pointerInput block.
     val onVerticalDrag: (touchX: Float, dragAmountPx: Float, areaWidthPx: Float) -> Unit
 )
 
 /**
  * Gesture layer: tap, double-tap, and vertical drag for brightness/volume.
  *
- * Uses a stable `Unit` key so the pointerInput block is never torn down during
- * mode transitions. The `disableVerticalDragGestures` flag is the only way to
- * disable the vertical drag — the tap gestures are always active.
+ * Mode-aware: vertical drag is only active in FULLSCREEN mode (brightness/volume).
+ * In NORMAL/COMPACT, the video area is a morph drag target instead.
  *
- * Lambdas are read through `rememberUpdatedState` because `pointerInput(Unit)`
- * only starts once, so direct closure capture would go stale.
+ * Uses a stable `Unit` key so the pointerInput block is never torn down during
+ * mode transitions. Lambdas are read through `rememberUpdatedState` because
+ * `pointerInput(Unit)` only starts once, so direct closure capture would go stale.
  */
 @Composable
 internal fun PlayerGestureLayer(
     modifier: Modifier,
     callbacks: PlayerGestureCallbacks,
-    disableVerticalDragGestures: Boolean = false
+    mode: PlayerMode = PlayerMode.NORMAL
 ) {
     val currentCallbacks by rememberUpdatedState(callbacks)
+    val enableVerticalDrag = mode == PlayerMode.FULLSCREEN
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .then(
-                if (disableVerticalDragGestures) Modifier else Modifier.pointerInput(Unit) {
+                if (enableVerticalDrag) Modifier.pointerInput(Unit) {
                     var lastTouchX = 0f
                     detectVerticalDragGestures(
                         onDragStart = {
                             lastTouchX = it.x
-                            currentCallbacks.onVerticalDragStart(lastTouchX)
                         },
                         onVerticalDrag = { change, dragAmount ->
                             lastTouchX = change.position.x
                             currentCallbacks.onVerticalDrag(lastTouchX, dragAmount, size.width.toFloat())
                         }
                     )
-                }
+                } else Modifier
             )
             .pointerInput(Unit) {
                 detectTapGestures(

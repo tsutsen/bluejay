@@ -93,18 +93,20 @@ PlayerViewModel.kt           (~170 lines)  ← keep as-is (minor: clean up getPl
 
 ## Implementation Phases
 
-### Phase 0: Foundation (no behavior change)
+### Phase 0: Foundation (no behavior change) ✅ COMPLETE
 **Goal**: Clean up dead code and restructure files without changing behavior.
 
-1. Delete `PlayerMode.kt` — enum is unused.
-2. Delete dead code: `SeekIndicators` (always hidden), `CommentsSection` function (never called), `onVerticalDragStart` callback (empty), `floatingOffsetX/Y` animated values (only activate at >0.99f).
-3. Split `PlayerDetailsSection.kt` into individual component files.
-4. Split `PlayerOverlays.kt` into `OverlayBars.kt` + `OverlayIndicators.kt` + `OverlayModals.kt`.
-5. Extract scroll math from `PlayerScreen.kt` into `PlayerScrollState.kt`.
-6. Extract gesture handlers from `PlayerControlsScaffold.kt` into `PlayerGestures.kt`.
-7. Rename `PlayerControlsScaffold.kt` → `PlayerOverlays.kt` (bars only).
+1. Delete `PlayerMode.kt` — enum is unused. ✅
+2. Delete dead code: `SeekIndicators` (always hidden), `CommentsSection` function (never called), `onVerticalDragStart` callback (empty), `floatingOffsetX/Y` animated values (only activate at >0.99f). ✅
+3. Split `PlayerDetailsSection.kt` into individual component files. ✅
+4. Split `PlayerOverlays.kt` into `OverlayBars.kt` + `OverlayIndicators.kt` + `OverlayModals.kt`. ✅
+5. Extract scroll math from `PlayerScreen.kt` into `PlayerScrollState.kt`. ✅
+6. Extract gesture handlers from `PlayerControlsScaffold.kt` into `PlayerGestures.kt`. ✅
+7. Rename `PlayerControlsScaffold.kt` → `PlayerOverlays.kt` (bars only). ✅
 
-**Verification**: App works identically after Phase 0. No behavior changes.
+**Verification**: App works identically after Phase 0. No behavior changes. ✅
+
+**Commit**: `e51af265` - refactor(player): Phase 0 - extract monolithic files into focused modules
 
 ### Phase 1: Gesture Fix
 **Goal**: Correct gesture semantics per mode.
