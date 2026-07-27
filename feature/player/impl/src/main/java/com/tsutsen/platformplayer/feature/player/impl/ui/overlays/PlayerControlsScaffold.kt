@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -68,7 +69,7 @@ fun PlayerControlsScaffold(
     // rather than closed over directly, or they'd go stale after the first composition.
     val currentCallbacks by rememberUpdatedState(callbacks)
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.clipToBounds()) {
         // ==================== Gesture layer (brightness/volume swipe, tap-to-toggle) ====================
         var touchX = 0f
         Box(
