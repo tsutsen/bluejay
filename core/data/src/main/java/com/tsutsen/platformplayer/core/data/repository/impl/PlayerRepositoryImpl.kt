@@ -410,7 +410,15 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun toggleFullscreen() {
-        _playerState.update { it.copy(isFullscreen = !it.isFullscreen) }
+        _playerState.update { currentState ->
+            if (currentState.isFullscreen) {
+                // Exit fullscreen
+                currentState.copy(isFullscreen = false, isMinimized = false)
+            } else {
+                // Enter fullscreen (exit mini mode if active)
+                currentState.copy(isFullscreen = true, isMinimized = false)
+            }
+        }
     }
 
     override suspend fun minimize() {
