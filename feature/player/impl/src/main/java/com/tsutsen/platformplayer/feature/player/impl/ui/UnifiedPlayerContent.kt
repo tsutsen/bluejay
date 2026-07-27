@@ -44,6 +44,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -530,6 +531,17 @@ fun GestureLayer(
 
         // ==================== FLOATING mode gestures ====================
         if (miniProgress > MINI_DRAG_THRESHOLD) {
+            // rememberUpdatedState keeps these fresh inside the pointerInput(Unit) coroutine
+            // below. Since its key never changes, that coroutine launches ONCE and lives for
+            // the whole composition — without this, onDragStart captured currentOffsetX/Y and
+            // floatingRestX/Y from whatever they were at first composition, so every drag
+            // after the first (and every re-entry into FLOATING mode) started from a stale
+            // base position instead of the real current one.
+            val latestOffsetX by rememberUpdatedState(currentOffsetX)
+            val latestOffsetY by rememberUpdatedState(currentOffsetY)
+            val latestRestX by rememberUpdatedState(floatingRestX)
+            val latestRestY by rememberUpdatedState(floatingRestY)
+
             Box(
                 modifier = Modifier
                     .offset {
@@ -543,9 +555,6 @@ fun GestureLayer(
                         height = with(density) { videoLayout.heightPx.toDp() }
                     )
                     .pointerInput(Unit) {
-                        var localOffsetX = currentOffsetX
-                        var localOffsetY = currentOffsetY
-
                         detectTapGestures(
                             onTap = {
                                 Log.d(TAG, "Mini tap → expand")
@@ -554,15 +563,17 @@ fun GestureLayer(
                         )
                     }
                     .pointerInput(Unit) {
-                        var localOffsetX = currentOffsetX
-                        var localOffsetY = currentOffsetY
+                        var localOffsetX = latestOffsetX
+                        var localOffsetY = latestOffsetY
 
                         detectDragGestures(
                             onDragStart = {
                                 Log.d(TAG, "Mini drag start")
                                 onDragStateChanged(true)
-                                localOffsetX = currentOffsetX
-                                localOffsetY = currentOffsetY
+                                // Re-sync from the live values on every drag start, not just
+                                // once when this coroutine first launched.
+                                localOffsetX = latestOffsetX
+                                localOffsetY = latestOffsetY
                             },
                             onDrag = { change, dragAmount: Offset ->
                                 change.consume()
@@ -573,11 +584,16 @@ fun GestureLayer(
                             onDragEnd = {
                                 Log.d(TAG, "Mini drag end")
                                 onDragStateChanged(false)
-                                // Snap to nearest edge
+                                // Snap to nearest edge, measured from the actual remembered
+                                // rest position (floatingRestX/Y) rather than assuming
+                                // bottom-right. This is what lets the mini player keep its
+                                // last snapped corner across minimize/expand cycles, as long
+                                // as the caller updates floatingRestX/Y with the snapped
+                                // result (see onOffsetChanged below) and doesn't reset it
+                                // back to a default corner when re-entering FLOATING mode.
                                 val edgeThreshold = 100f
-                                val paddingPx = 16.dp.toPx()
-                                val initialX = containerWidth - miniWidthPx - paddingPx
-                                val initialY = containerHeight - miniHeightPx - paddingPx
+                                val initialX = latestRestX
+                                val initialY = latestRestY
                                 val actualX = initialX + localOffsetX
                                 val actualY = initialY + localOffsetY
 
@@ -585,14 +601,14 @@ fun GestureLayer(
                                 if (actualX < edgeThreshold) {
                                     snappedX = -initialX
                                 } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
-                                    snappedX = 0f
+                                    snappedX = (containerWidth - miniWidthPx) - initialX
                                 }
 
                                 var snappedY = localOffsetY
                                 if (actualY < edgeThreshold) {
                                     snappedY = -initialY
                                 } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
-                                    snappedY = 0f
+                                    snappedY = (containerHeight - miniHeightPx) - initialY
                                 }
 
                                 onOffsetChanged(snappedX, snappedY)
@@ -607,6 +623,7 @@ fun GestureLayer(
         }
     }
 }
+
 
 // ==================== ControlsLayer ====================
 

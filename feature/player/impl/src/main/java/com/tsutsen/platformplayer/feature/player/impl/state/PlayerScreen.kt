@@ -357,6 +357,28 @@ fun PlayerScreen(
             // Floating resting position: BottomEnd + 16dp padding
             val floatingRestX = containerSize.width - miniWidthPx - paddingPx
             val floatingRestY = containerSize.height - miniHeightPx - paddingPx
+
+            // Re-clamp the remembered offset whenever the container size changes (rotation,
+            // fold/unfold, multi-window resize). floatingRestX/Y move with the container but
+            // miniPlayerOffsetX/Y is a raw pixel delta from that anchor, so without this a
+            // position snapped away from the default corner could end up partially or fully
+            // off-screen after a resize. Skipped while actively dragging so it doesn't fight
+            // the gesture.
+            LaunchedEffect(containerSize, isDraggingMiniPlayer) {
+                if (containerSize == Size.Zero || isDraggingMiniPlayer) return@LaunchedEffect
+                val minOffsetX = -floatingRestX
+                val maxOffsetX = (containerSize.width - miniWidthPx) - floatingRestX
+                val minOffsetY = -floatingRestY
+                val maxOffsetY = (containerSize.height - miniHeightPx) - floatingRestY
+                // Guard against a degenerate container smaller than the mini player itself
+                // (e.g. a very small multi-window split), where min > max would crash coerceIn.
+                if (minOffsetX > maxOffsetX || minOffsetY > maxOffsetY) return@LaunchedEffect
+                val clampedX = miniPlayerOffsetX.coerceIn(minOffsetX, maxOffsetX)
+                val clampedY = miniPlayerOffsetY.coerceIn(minOffsetY, maxOffsetY)
+                if (clampedX != miniPlayerOffsetX) miniPlayerOffsetX = clampedX
+                if (clampedY != miniPlayerOffsetY) miniPlayerOffsetY = clampedY
+            }
+
             // Use raw offset during drag to avoid fighting the spring
             val layoutDragX = if (isDraggingMiniPlayer) miniPlayerOffsetX else animatedMiniOffsetX
             val layoutDragY = if (isDraggingMiniPlayer) miniPlayerOffsetY else animatedMiniOffsetY
@@ -493,8 +515,9 @@ fun PlayerScreen(
                     },
                     onExpand = {
                         viewModel.exitMiniPlayer()
-                        miniPlayerOffsetX = 0f
-                        miniPlayerOffsetY = 0f
+                        // Deliberately NOT resetting miniPlayerOffsetX/Y here — keeping it
+                        // lets the mini player reopen at the same corner it was last
+                        // dragged/snapped to instead of always resetting to bottom-right.
                     },
                     onMorphDragStart = {
                         isDraggingMorph = true
@@ -510,9 +533,9 @@ fun PlayerScreen(
                         isDraggingMorph = false
                         val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
                         if (progress > 0.4f) {
-                            // Commit: minimize (reset offset so mini opens at default corner)
-                            miniPlayerOffsetX = 0f
-                            miniPlayerOffsetY = 0f
+                            // Commit: minimize. miniPlayerOffsetX/Y is intentionally left as-is
+                            // so the mini player reopens at whatever corner it was last
+                            // snapped to (see onExpand above for the matching change).
                             viewModel.minimize()
                         } else {
                             // Reject: spring back to NORMAL
