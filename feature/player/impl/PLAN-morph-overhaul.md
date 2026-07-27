@@ -184,16 +184,32 @@ PlayerViewModel.kt           (~170 lines)  ← keep as-is (minor: clean up getPl
 
 **Commit**: `fec66313` - refactor(player): Phase 5 - fullscreen crossfade, Phase 6 - polish
 
-### Phase 7: Layout Restructure (Critical Fixes) ✅ COMPLETE
-**Goal**: Fix fundamental layout issues that broke the player.
+### Phase 7: Adopt Compose-Migration Architecture ✅ COMPLETE
+**Goal**: Replace morph box architecture with proven Column-based approach from compose-migration branch.
 
-1. PlayerMorphBox uses morphed dimensions (not fillMaxSize) for outer container. ✅
-2. Video box positioned correctly with offset and morphed size. ✅
-3. Gesture layer only covers video area (not entire screen). ✅
-4. PlayerScrollState initializes playerHeightPx to maxPlayerHeightPx (not 0). ✅
-5. Video box, details LazyColumn, and controls are separate siblings. ✅
+**Architecture**:
+- Video box and details LazyColumn share a Column container (compete for space)
+- PlayerControlsScaffold handles gesture layer + overlays for NORMAL/COMPACT
+- Nested scroll allows video box to shrink as user scrolls details
+- COMPACT mode is just NORMAL with video box <=30% height (control row swap)
+- FloatingPlayerContent handles FLOATING mode separately
+- FullscreenPlayerContent handles FULLSCREEN mode separately
 
-**Commit**: `3a37b870` - fix(player): restructure layout to fix mini player, scroll, and controls
+**Removed**:
+- PlayerMorphBox.kt, PlayerMorphState.kt, PlayerScrollState.kt
+- PlayerGestures.kt, FloatingChrome.kt
+- OverlayBars.kt, OverlayIndicators.kt, OverlayModals.kt
+
+**Kept/Updated**:
+- PlayerControlsScaffold.kt (from compose-migration)
+- PlayerMode.kt (from compose-migration)
+- FloatingPlayerContent.kt (from compose-migration)
+- FullscreenPlayerContent.kt (updated to use PlayerControlsScaffold)
+- WindowedPlayerContent.kt (rewritten to use Column + nested scroll)
+- PlayerScreen.kt (rewritten to dispatch to mode-specific composables)
+- PlayerOverlays.kt (from compose-migration)
+
+**Commit**: `a7e6267b` - refactor(player): adopt compose-migration architecture for NORMAL/COMPACT modes
 
 ---
 
