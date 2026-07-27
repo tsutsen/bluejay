@@ -961,18 +961,18 @@ fun ControlsLayer(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Close",
                                 tint = Color.White,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // Bottom row: Title + author + More options
+                    // Bottom row: Title + author + Fullscreen
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.dp, vertical = 8.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1010,14 +1010,14 @@ fun ControlsLayer(
                                 }
                             }
                             IconButton(
-                                onClick = onMoreOptions,
+                                onClick = onFullscreenToggle,
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "More options",
+                                    imageVector = Icons.Default.Fullscreen,
+                                    contentDescription = "Fullscreen",
                                     tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }

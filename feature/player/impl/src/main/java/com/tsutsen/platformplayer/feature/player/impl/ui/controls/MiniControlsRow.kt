@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.ui.unit.Dp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -31,16 +30,14 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Shared compact control row used by [UnifiedPlayerContent] for the mini player overlay.
- * Renders play/pause + close at
- * the top, title + author + more-options + fullscreen at the bottom, and a progress bar
- * along the bottom edge.
+ * Renders play/pause + close at the top, title + author + fullscreen at the bottom,
+ * and a progress bar along the bottom edge.
  */
 @Composable
 fun MiniControlsRow(
     state: PlayerUiState.Loaded,
     onPlayPause: () -> Unit,
     onClose: () -> Unit,
-    onMoreOptions: () -> Unit,
     onFullscreen: () -> Unit,
     miniHeight: Dp = 157.5.dp  // 280 * 9/16
 ) {
@@ -67,16 +64,16 @@ fun MiniControlsRow(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Title + author + More + Fullscreen row (bottom)
+        // Title + author + Fullscreen row (bottom)
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -98,20 +95,12 @@ fun MiniControlsRow(
                     )
                 }
             }
-            IconButton(onClick = onMoreOptions, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "More options",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
             IconButton(onClick = onFullscreen, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.Default.Fullscreen,
                     contentDescription = "Fullscreen",
                     tint = Color.White,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
