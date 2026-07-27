@@ -29,10 +29,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -70,6 +66,8 @@ fun FloatingPlayerContent(
     offsetY: Float,
     containerWidth: Float,
     containerHeight: Float,
+    isDragging: Boolean,
+    onDragStateChanged: (Boolean) -> Unit,
     onOffsetChanged: (x: Float, y: Float) -> Unit,
     onExpand: () -> Unit,
     onPlayPause: () -> Unit,
@@ -81,8 +79,6 @@ fun FloatingPlayerContent(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        var isDragging by remember { mutableStateOf(false) }
-        
         Box(
             modifier = Modifier
                 .size(miniWidth, miniHeight)
@@ -98,7 +94,7 @@ fun FloatingPlayerContent(
                 var localOffsetY = offsetY
 
                 detectDragGestures(
-                    onDragStart = { isDragging = true },
+                    onDragStart = { onDragStateChanged(true) },
                     onDrag = { change, dragAmount: Offset ->
                         change.consume()
                         localOffsetX += dragAmount.x
@@ -106,7 +102,7 @@ fun FloatingPlayerContent(
                         onOffsetChanged(localOffsetX, localOffsetY)
                     },
                     onDragEnd = {
-                        isDragging = false
+                        onDragStateChanged(false)
                         // Snap to nearest edge or keep position
                         val miniWidthPx = miniWidth.toPx()
                         val miniHeightPx = miniHeight.toPx()
@@ -134,7 +130,7 @@ fun FloatingPlayerContent(
 
                         onOffsetChanged(snappedX, snappedY)
                     },
-                    onDragCancel = { isDragging = false }
+                    onDragCancel = { onDragStateChanged(false) }
                 )
             }
     ) {

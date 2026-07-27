@@ -42,49 +42,44 @@ fun FullscreenPlayerContent(
     Box(modifier = Modifier.fillMaxSize()) {
         PlayerVideoSurface(player = player)
 
-        // Gesture layer (vertical drag enabled in FULLSCREEN for brightness/volume)
-        PlayerGestureLayer(
+        // Controls scaffold with gesture layer
+        PlayerControlsScaffold(
             modifier = Modifier.fillMaxSize(),
+            isLoading = isLoading,
+            brightnessValue = brightnessValue,
+            volumeValue = volumeValue,
+            showBrightnessIndicator = showBrightnessIndicator,
+            showVolumeIndicator = showVolumeIndicator,
+            showTopBar = showTopOverlay,
+            showBottomBar = showBottomOverlay,
             callbacks = gestureCallbacks,
-            mode = PlayerMode.FULLSCREEN
+            disableVerticalDragGestures = false,
+            topBar = {
+                TopOverlay(
+                    title = state.currentVideo?.title ?: "Unknown",
+                    channelName = state.currentVideo?.author?.name ?: "Unknown",
+                    onMinimize = onMinimize,
+                    onReplayToggle = onReplayToggle,
+                    onWatchLater = onWatchLater,
+                    onOptions = onOptions
+                )
+            },
+            bottomBar = {
+                BottomOverlay(
+                    player = player,
+                    currentPositionMs = state.currentPositionMs,
+                    durationMs = state.durationMs,
+                    isPlaying = state.isPlaying,
+                    onPlayPause = onPlayPause,
+                    onPrevious = onPrevious,
+                    onNext = onNext,
+                    onChapters = onChapters,
+                    onFullscreen = onFullscreenToggle,
+                    onSeek = onSeek,
+                    isScrubbing = isScrubbing,
+                    scrubPositionMs = scrubPositionMs
+                )
+            }
         )
-
-        // Brightness/Volume indicators
-        if (showBrightnessIndicator) {
-            BrightnessIndicator(brightness = brightnessValue, modifier = Modifier.align(Alignment.CenterStart))
-        }
-        if (showVolumeIndicator) {
-            VolumeIndicator(volume = volumeValue, modifier = Modifier.align(Alignment.CenterEnd))
-        }
-
-        // Top bar
-        if (showTopOverlay) {
-            TopOverlay(
-                title = state.currentVideo?.title ?: "Unknown",
-                channelName = state.currentVideo?.author?.name ?: "Unknown",
-                onMinimize = onMinimize,
-                onReplayToggle = onReplayToggle,
-                onWatchLater = onWatchLater,
-                onOptions = onOptions
-            )
-        }
-
-        // Bottom bar
-        if (showBottomOverlay) {
-            BottomOverlay(
-                player = player,
-                currentPositionMs = state.currentPositionMs,
-                durationMs = state.durationMs,
-                isPlaying = state.isPlaying,
-                onPlayPause = onPlayPause,
-                onPrevious = onPrevious,
-                onNext = onNext,
-                onChapters = onChapters,
-                onFullscreen = onFullscreenToggle,
-                onSeek = onSeek,
-                isScrubbing = isScrubbing,
-                scrubPositionMs = scrubPositionMs
-            )
-        }
     }
 }
