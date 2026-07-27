@@ -444,6 +444,8 @@ fun PlayerScreen(
                     isDraggingMiniPlayer = isDraggingMiniPlayer,
                     onDragStateChanged = { isDraggingMiniPlayer = it },
                     onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
+                    currentOffsetX = miniPlayerOffsetX,
+                    currentOffsetY = miniPlayerOffsetY,
                     onOptions = { showOptionsModal = true },
                     onChapters = { showChapters = !showChapters },
                     expandedDescription = expandedDescription,

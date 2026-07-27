@@ -129,6 +129,8 @@ fun UnifiedPlayerContent(
     isDraggingMiniPlayer: Boolean,
     onDragStateChanged: (Boolean) -> Unit,
     onOffsetChanged: (x: Float, y: Float) -> Unit,
+    currentOffsetX: Float,
+    currentOffsetY: Float,
     // Modal callbacks (modal rendering stays in PlayerScreen)
     onOptions: () -> Unit,
     onChapters: () -> Unit,
@@ -346,7 +348,77 @@ fun UnifiedPlayerContent(
             }
         }
 
-        // ==================== 3. Controls scaffold (NORMAL/COMPACT/FULLSCREEN) ====================
+        // ==================== 3. Mini gesture layer (drag-to-reposition) ====================
+        // Only active when miniProgress ≈ 1 (pure FLOATING mode).
+        if (miniProgress > MINI_DRAG_THRESHOLD) {
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = videoLayout.offsetX.toInt(),
+                            y = videoLayout.offsetY.toInt()
+                        )
+                    }
+                    .size(
+                        width = with(density) { videoLayout.widthPx.toDp() },
+                        height = with(density) { videoLayout.heightPx.toDp() }
+                    )
+                    .pointerInput(miniProgress, isDraggingMiniPlayer) {
+                        if (!isDraggingMiniPlayer) {
+                            detectDragGestures(
+                                onDragStart = {
+                                    Log.d(TAG, "Mini drag start")
+                                    onDragStateChanged(true)
+                                },
+                                onDrag = { change, dragAmount: Offset ->
+                                    change.consume()
+                                    // Accumulate drag offset relative to resting position
+                                    onOffsetChanged(
+                                        dragAmount.x,
+                                        dragAmount.y
+                                    )
+                                },
+                                onDragEnd = {
+                                    Log.d(TAG, "Mini drag end")
+                                    onDragStateChanged(false)
+                                    // Snap to nearest edge
+                                    val edgeThreshold = 100f
+                                    val paddingPx = 16.dp.toPx()
+                                    val initialX = containerWidth - miniWidthPx - paddingPx
+                                    val initialY = containerHeight - miniHeightPx - paddingPx
+                                    val actualX = initialX + currentOffsetX
+                                    val actualY = initialY + currentOffsetY
+
+                                    var snappedX = currentOffsetX
+                                    if (actualX < edgeThreshold) {
+                                        snappedX = -initialX
+                                    } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
+                                        snappedX = 0f
+                                    }
+
+                                    var snappedY = currentOffsetY
+                                    if (actualY < edgeThreshold) {
+                                        snappedY = -initialY
+                                    } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
+                                        snappedY = 0f
+                                    }
+
+                                    onOffsetChanged(snappedX, snappedY)
+                                },
+                                onDragCancel = {
+                                    Log.d(TAG, "Mini drag cancel")
+                                    onDragStateChanged(false)
+                                }
+                            )
+                        } else {
+                            // When dragging, just consume touches
+                            detectTapGestures(onTap = {}) // placeholder
+                        }
+                    }
+            )
+        }
+
+        // ==================== 4. Controls scaffold (NORMAL/COMPACT/FULLSCREEN) ====================
         // Scaffold is positioned at the video location, constrained to video height.
         // For mini mode, it's positioned at (videoLayout.offsetX, videoLayout.offsetY)
         // with size (videoLayout.widthPx, videoLayout.heightPx).
@@ -384,6 +456,43 @@ fun UnifiedPlayerContent(
                             onWatchLater = onWatchLater,
                             onOptions = onOptions
                         )
+                    }
+                }
+                // Mini controls overlay
+                if (miniControlsAlpha > 0.01f) {
+                    Box(modifier = Modifier.alpha(miniControlsAlpha)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Play/Pause
+                            IconButton(
+                                onClick = onPlayPause,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = if (state.isPlaying) "Pause" else "Play",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            // Close
+                            IconButton(
+                                onClick = onClose,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 }
             },
@@ -442,6 +551,68 @@ fun UnifiedPlayerContent(
                                 isScrubbing = isScrubbing,
                                 scrubPositionMs = scrubPositionMs
                             )
+                        }
+                    }
+                    // Mini controls overlay
+                    if (miniControlsAlpha > 0.01f) {
+                        Box(modifier = Modifier.alpha(miniControlsAlpha)) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                // Title + author
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = state.currentVideo?.title ?: "Unknown",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        val authorName = state.currentVideo?.author?.name
+                                        if (!authorName.isNullOrEmpty()) {
+                                            Text(
+                                                text = authorName,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.White.copy(alpha = 0.7f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                    IconButton(
+                                        onClick = onMoreOptions,
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.MoreVert,
+                                            contentDescription = "More options",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                // Progress bar
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(3.dp)
+                                ) {
+                                    LinearProgressIndicator(
+                                        progress = if (state.durationMs > 0) {
+                                            state.currentPositionMs.toFloat() / state.durationMs
+                                        } else 0f,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        trackColor = Color.Transparent
+                                    )
+                                }
+                            }
                         }
                     }
                 }
