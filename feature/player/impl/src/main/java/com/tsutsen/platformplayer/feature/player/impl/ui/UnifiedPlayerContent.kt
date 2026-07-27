@@ -348,210 +348,110 @@ fun UnifiedPlayerContent(
             }
         }
 
-        // ==================== 3. Controls scaffold (NORMAL/COMPACT/FULLSCREEN) ====================
-        // Scaffold is positioned at the video location, constrained to video height.
-        // For mini mode, it's positioned at (videoLayout.offsetX, videoLayout.offsetY)
-        // with size (videoLayout.widthPx, videoLayout.heightPx).
-        PlayerControlsScaffold(
-            modifier = Modifier
-                .offset {
-                    IntOffset(
-                        x = videoLayout.offsetX.toInt(),
-                        y = videoLayout.offsetY.toInt()
-                    )
-                }
-                .size(
-                    width = with(density) { videoLayout.widthPx.toDp() },
-                    height = with(density) { videoLayout.heightPx.toDp() }
-                ),
-            isLoading = isLoading,
-            brightnessValue = brightnessValue,
-            volumeValue = volumeValue,
-            showBrightnessIndicator = showBrightnessIndicator,
-            showVolumeIndicator = showVolumeIndicator,
-            showTopBar = resolvedShowTopBar,
-            showBottomBar = resolvedShowBottomBar,
-            callbacks = gestureCallbacks,
-            disableVerticalDragGestures = disableVerticalDrag,
-            topBar = {
-                // §4.3: weighted alpha cross-fade for top bar content
-                val topAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha)
-                if (topAlpha > 0.01f) {
-                    Box(modifier = Modifier.alpha(topAlpha)) {
-                        TopOverlay(
-                            title = state.currentVideo?.title ?: "Unknown",
-                            channelName = state.currentVideo?.author?.name ?: "Unknown",
-                            onMinimize = onMinimize,
-                            onReplayToggle = onReplayToggle,
-                            onWatchLater = onWatchLater,
-                            onOptions = onOptions
+        // ==================== 3. Controls scaffold (NORMAL/COMPACT/FULLSCREEN only) ====================
+        // Mini mode is handled separately below with its own gesture layer.
+        if (miniProgress <= MINI_DRAG_THRESHOLD) {
+            PlayerControlsScaffold(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = videoLayout.offsetX.toInt(),
+                            y = videoLayout.offsetY.toInt()
                         )
                     }
-                }
-                // Mini controls overlay
-                if (miniControlsAlpha > 0.01f) {
-                    Box(modifier = Modifier.alpha(miniControlsAlpha)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Play/Pause
-                            IconButton(
-                                onClick = onPlayPause,
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = if (state.isPlaying) "Pause" else "Play",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            // Close
-                            IconButton(
-                                onClick = onClose,
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            bottomBar = {
-                // §4.3: layer NORMAL bottom, COMPACT row, and FULLSCREEN bottom with各自的 alpha
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    // NORMAL bottom overlay
-                    if (normalBarAlpha > 0.01f && !isCollapsedControls) {
-                        Box(modifier = Modifier.alpha(normalBarAlpha)) {
-                            BottomOverlay(
-                                player = player,
-                                currentPositionMs = state.currentPositionMs,
-                                durationMs = state.durationMs,
-                                isPlaying = state.isPlaying,
-                                onPlayPause = onPlayPause,
-                                onPrevious = onPrevious,
-                                onNext = onNext,
-                                onChapters = onChapters,
-                                onFullscreen = onFullscreenToggle,
-                                onSeek = onSeek,
-                                isScrubbing = isScrubbing,
-                                scrubPositionMs = scrubPositionMs
-                            )
-                        }
-                    }
-                    // COMPACT control row
-                    if (compactBarAlpha > 0.01f) {
-                        Box(modifier = Modifier.alpha(compactBarAlpha)) {
-                            CompactControlsRow(
-                                isPlaying = state.isPlaying,
-                                isLooping = isLooping,
+                    .size(
+                        width = with(density) { videoLayout.widthPx.toDp() },
+                        height = with(density) { videoLayout.heightPx.toDp() }
+                    ),
+                isLoading = isLoading,
+                brightnessValue = brightnessValue,
+                volumeValue = volumeValue,
+                showBrightnessIndicator = showBrightnessIndicator,
+                showVolumeIndicator = showVolumeIndicator,
+                showTopBar = resolvedShowTopBar,
+                showBottomBar = resolvedShowBottomBar,
+                callbacks = gestureCallbacks,
+                disableVerticalDragGestures = disableVerticalDrag,
+                topBar = {
+                    // §4.3: weighted alpha cross-fade for top bar content
+                    val topAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha)
+                    if (topAlpha > 0.01f) {
+                        Box(modifier = Modifier.alpha(topAlpha)) {
+                            TopOverlay(
+                                title = state.currentVideo?.title ?: "Unknown",
+                                channelName = state.currentVideo?.author?.name ?: "Unknown",
                                 onMinimize = onMinimize,
-                                onPlayPause = onPlayPause,
-                                onChapters = onChapters,
-                                onLoopToggle = onLoopToggle,
+                                onReplayToggle = onReplayToggle,
                                 onWatchLater = onWatchLater,
-                                onOptions = onOptions,
-                                onFullscreen = onFullscreenToggle
+                                onOptions = onOptions
                             )
                         }
                     }
-                    // FULLSCREEN bottom overlay
-                    if (fullscreenBarAlpha > 0.01f) {
-                        Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
-                            BottomOverlay(
-                                player = player,
-                                currentPositionMs = state.currentPositionMs,
-                                durationMs = state.durationMs,
-                                isPlaying = state.isPlaying,
-                                onPlayPause = onPlayPause,
-                                onPrevious = onPrevious,
-                                onNext = onNext,
-                                onChapters = onChapters,
-                                onFullscreen = onFullscreenToggle,
-                                onSeek = onSeek,
-                                isScrubbing = isScrubbing,
-                                scrubPositionMs = scrubPositionMs
-                            )
+                },
+                bottomBar = {
+                    // §4.3: layer NORMAL bottom, COMPACT row, and FULLSCREEN bottom
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        // NORMAL bottom overlay
+                        if (normalBarAlpha > 0.01f && !isCollapsedControls) {
+                            Box(modifier = Modifier.alpha(normalBarAlpha)) {
+                                BottomOverlay(
+                                    player = player,
+                                    currentPositionMs = state.currentPositionMs,
+                                    durationMs = state.durationMs,
+                                    isPlaying = state.isPlaying,
+                                    onPlayPause = onPlayPause,
+                                    onPrevious = onPrevious,
+                                    onNext = onNext,
+                                    onChapters = onChapters,
+                                    onFullscreen = onFullscreenToggle,
+                                    onSeek = onSeek,
+                                    isScrubbing = isScrubbing,
+                                    scrubPositionMs = scrubPositionMs
+                                )
+                            }
                         }
-                    }
-                    // Mini controls overlay
-                    if (miniControlsAlpha > 0.01f) {
-                        Box(modifier = Modifier.alpha(miniControlsAlpha)) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                // Title + author
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = state.currentVideo?.title ?: "Unknown",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        val authorName = state.currentVideo?.author?.name
-                                        if (!authorName.isNullOrEmpty()) {
-                                            Text(
-                                                text = authorName,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = Color.White.copy(alpha = 0.7f),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                    IconButton(
-                                        onClick = onMoreOptions,
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.MoreVert,
-                                            contentDescription = "More options",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                                // Progress bar
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(3.dp)
-                                ) {
-                                    LinearProgressIndicator(
-                                        progress = if (state.durationMs > 0) {
-                                            state.currentPositionMs.toFloat() / state.durationMs
-                                        } else 0f,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        trackColor = Color.Transparent
-                                    )
-                                }
+                        // COMPACT control row
+                        if (compactBarAlpha > 0.01f) {
+                            Box(modifier = Modifier.alpha(compactBarAlpha)) {
+                                CompactControlsRow(
+                                    isPlaying = state.isPlaying,
+                                    isLooping = isLooping,
+                                    onMinimize = onMinimize,
+                                    onPlayPause = onPlayPause,
+                                    onChapters = onChapters,
+                                    onLoopToggle = onLoopToggle,
+                                    onWatchLater = onWatchLater,
+                                    onOptions = onOptions,
+                                    onFullscreen = onFullscreenToggle
+                                )
+                            }
+                        }
+                        // FULLSCREEN bottom overlay
+                        if (fullscreenBarAlpha > 0.01f) {
+                            Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
+                                BottomOverlay(
+                                    player = player,
+                                    currentPositionMs = state.currentPositionMs,
+                                    durationMs = state.durationMs,
+                                    isPlaying = state.isPlaying,
+                                    onPlayPause = onPlayPause,
+                                    onPrevious = onPrevious,
+                                    onNext = onNext,
+                                    onChapters = onChapters,
+                                    onFullscreen = onFullscreenToggle,
+                                    onSeek = onSeek,
+                                    isScrubbing = isScrubbing,
+                                    scrubPositionMs = scrubPositionMs
+                                )
                             }
                         }
                     }
                 }
-            }
-        )
+            )
+        }
 
-        // ==================== 4. Mini gesture layer (drag-to-reposition) ====================
-        // Only active when miniProgress ≈ 1 (pure FLOATING mode).
-        // Positioned on top of scaffold to receive drag gestures.
+        // ==================== 4. Mini player (FLOATING mode only) ====================
+        // Separate from scaffold to avoid gesture conflicts.
         if (miniProgress > MINI_DRAG_THRESHOLD) {
             Box(
                 modifier = Modifier
@@ -615,7 +515,111 @@ fun UnifiedPlayerContent(
                             )
                         }
                     }
-            )
+            ) {
+                // Mini player background scrim
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                )
+
+                // Mini player controls
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Top row: Play/Pause + Close
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onPlayPause,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (state.isPlaying) "Pause" else "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = onClose,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Bottom row: Title + author + More options
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = state.currentVideo?.title ?: "Unknown",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                val authorName = state.currentVideo?.author?.name
+                                if (!authorName.isNullOrEmpty()) {
+                                    Text(
+                                        text = authorName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            IconButton(
+                                onClick = onMoreOptions,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More options",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        // Progress bar
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp)
+                        ) {
+                            LinearProgressIndicator(
+                                progress = if (state.durationMs > 0) {
+                                    state.currentPositionMs.toFloat() / state.durationMs
+                                } else 0f,
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = Color.Transparent
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
