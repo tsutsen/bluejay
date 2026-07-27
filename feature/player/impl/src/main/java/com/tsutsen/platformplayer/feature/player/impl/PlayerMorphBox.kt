@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -63,11 +64,17 @@ fun PlayerMorphBox(
     // Video box geometry: lerp directly from morphProgress (no separate animation)
     // This ensures the video box glides smoothly to its corner position during morph
     val morphedHeight = playerHeightPx - (playerHeightPx - miniHeightPx) * morphProgress
+    val morphedWidth = containerWidth - (containerWidth - miniWidthPx) * morphProgress
     val morphedCornerRadius = 12f * morphProgress
 
     // Position: lerp from top-left (0,0) to bottom-right corner based on morphProgress
-    val targetX = (containerWidth - miniWidthPx) * morphProgress
-    val targetY = (containerHeight - miniHeightPx) * morphProgress
+    val targetX = (containerWidth - morphedWidth) * morphProgress
+    val targetY = (containerHeight - morphedHeight) * morphProgress
+
+    // Outer container uses the morphed dimensions (not fillMaxSize)
+    val outerWidthDp = with(density) { morphedWidth.toDp() }
+    val outerHeightDp = with(density) { morphedHeight.toDp() }
+    val morphedCornerRadiusDp = with(density) { morphedCornerRadius.toDp() }
 
     val windowedAlpha by animateFloatAsState(
         targetValue = if (morphProgress < 0.4f) 1f else 0f,
@@ -82,7 +89,10 @@ fun PlayerMorphBox(
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .width(outerWidthDp)
+            .height(outerHeightDp)
+            .offset { IntOffset(targetX.toInt(), targetY.toInt()) }
+            .clip(RoundedCornerShape(morphedCornerRadiusDp))
             .pointerInput(isMorphDragging) {
                 if (isMorphDragging) {
                     detectDragGestures(
@@ -120,14 +130,12 @@ fun PlayerMorphBox(
 
         // Video box - always visible, geometry lerps with morphProgress
         val morphedHeightDp = with(density) { morphedHeight.toDp() }
+        val morphedWidthDp = with(density) { morphedWidth.toDp() }
         val morphedCornerRadiusDp = with(density) { morphedCornerRadius.toDp() }
 
         Box(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .fillMaxWidth()
-                .height(morphedHeightDp)
-                .offset { IntOffset(targetX.toInt(), targetY.toInt()) }
+                .fillMaxSize()
                 .clip(RoundedCornerShape(morphedCornerRadiusDp))
                 .clipToBounds()
                 .background(Color.Black)

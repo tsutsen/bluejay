@@ -27,7 +27,7 @@ class PlayerScrollState(
     val maxPlayerHeightPx: Float = containerHeightPx * 0.6f
     val minPlayerHeightPx: Float = containerHeightPx * 0.2f
 
-    var playerHeightPx by mutableStateOf(0f)
+    var playerHeightPx by mutableStateOf(maxPlayerHeightPx)
 
     val nestedScrollConnection: NestedScrollConnection
         get() = object : NestedScrollConnection {

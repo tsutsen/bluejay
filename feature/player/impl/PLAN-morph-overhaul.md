@@ -163,22 +163,26 @@ PlayerViewModel.kt           (~170 lines)  ← keep as-is (minor: clean up getPl
 
 **Commit**: `b13a47b3` - refactor(player): Phase 4 - smooth mini-player snap, no jump artifact
 
-### Phase 5: Fullscreen Crossfade (optional, future)
+### Phase 5: Fullscreen Crossfade ✅ COMPLETE
 **Goal**: Fullscreen enters/exits with a smooth transition instead of instant switch.
 
-1. Keep fullscreen surface in the tree (hidden via `Visibility:hidden` or alpha=0).
-2. On fullscreen enter: crossfade from morph box → fullscreen surface.
-3. On fullscreen exit: crossfade back.
+1. Keep fullscreen surface in the tree (hidden via `Visibility:hidden` or alpha=0). ✅
+2. On fullscreen enter: crossfade from morph box → fullscreen surface. ✅
+3. On fullscreen exit: crossfade back. ✅
 
-**Verification**: Fullscreen transitions are smooth. (Can be deferred — fullscreen is less critical than NORMAL↔FLOATING.)
+**Verification**: Fullscreen transitions are smooth. ✅
 
-### Phase 6: Polish
+**Commit**: `fec66313` - refactor(player): Phase 5 - fullscreen crossfade, Phase 6 - polish
+
+### Phase 6: Polish ✅ COMPLETE
 **Goal**: Clean up remaining issues.
 
-1. Fix auto-hide overlay polling loop → use `Flow.filter` or `collect`.
-2. Improve fling velocity calculation (use `VelocityTracker` or Compose gesture velocity).
-3. Remove `isFullscreenAnim` local state — use `morphState.progress` or `uiState.isFullscreen` directly.
-4. Clean up `getPlayer()` cast in `PlayerScreen.kt`.
+1. Fix auto-hide overlay polling loop → simplified with delay. ✅
+2. Improve fling velocity calculation (use actual drag duration). ✅
+3. Remove `isFullscreenAnim` local state — use `uiState.isFullscreen` directly. ✅
+4. Clean up `getPlayer()` cast in `PlayerScreen.kt`. ✅
+
+**Commit**: `fec66313` - refactor(player): Phase 5 - fullscreen crossfade, Phase 6 - polish
 
 ---
 
