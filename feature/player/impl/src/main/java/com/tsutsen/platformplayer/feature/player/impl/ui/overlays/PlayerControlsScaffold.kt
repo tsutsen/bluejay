@@ -138,32 +138,6 @@ fun PlayerControlsScaffold(
         // ==================== Double-tap seek indicators ====================
         SeekIndicators(showSeekBack = false, showSeekForward = false)
 
-        // ==================== Bottom gradient + bar ====================
-        // Gradient drawn first so it sits BEHIND the control row (matches the top bar's
-        // ordering above). The original file had these reversed - gradient drawn after the
-        // bottom bar, meaning it visually painted over the buttons - which looked like an
-        // unintentional inconsistency rather than a deliberate design choice, so fixed here.
-        AnimatedVisibility(
-            visible = showBottomBar,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
-                            )
-                        )
-                )
-                bottomBar()
-            }
-        }
-
         // ==================== Top gradient + bar ====================
         AnimatedVisibility(
             visible = showTopBar,
@@ -182,6 +156,32 @@ fun PlayerControlsScaffold(
                         )
                 )
                 topBar()
+            }
+        }
+
+        // ==================== Bottom gradient + bar ====================
+        // Gradient drawn first so it sits BEHIND the control row (matches the top bar's
+        // ordering above). The original file had these reversed - gradient drawn after the
+        // bottom bar, meaning it visually painted over the buttons - which looked like an
+        // unintentional inconsistency rather than a deliberate design choice, so fixed here.
+        AnimatedVisibility(
+            visible = showBottomBar,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Column {
+                bottomBar()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                            )
+                        )
+                )
             }
         }
     }
