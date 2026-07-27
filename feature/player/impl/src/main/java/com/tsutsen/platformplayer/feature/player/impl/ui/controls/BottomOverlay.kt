@@ -111,7 +111,7 @@ internal fun BottomOverlay(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         // Timeline below controls
         var isDragging by remember { mutableStateOf(false) }
         var seekPosition by remember { mutableFloatStateOf(0f) }
