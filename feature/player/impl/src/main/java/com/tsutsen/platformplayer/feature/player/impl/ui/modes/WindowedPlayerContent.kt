@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -91,6 +92,9 @@ fun WindowedPlayerContent(
     onLoopToggle: () -> Unit,
     // Morph (drag-to-mini) state
     morphProgress: Float,
+    morphWidth: Float,
+    morphHeight: Float,
+    miniHeight: androidx.compose.ui.unit.Dp,
     onMorphDragStart: () -> Unit,
     onMorphDrag: (Float) -> Unit,
     onMorphDragEnd: () -> Unit,
@@ -101,11 +105,11 @@ fun WindowedPlayerContent(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-        // ==================== Video box (height driven by scroll, shared by NORMAL/COMPACT) ====================
+        // ==================== Video box (width/height driven by morph, shared by NORMAL/COMPACT) ====================
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(with(LocalDensity.current) { playerHeightPx.toDp() })
+                .width(with(LocalDensity.current) { morphWidth.toDp() })
+                .height(with(LocalDensity.current) { morphHeight.toDp() })
                 .background(Color.Black)
                 .clipToBounds()
                 .pointerInput(Unit) {
@@ -120,7 +124,11 @@ fun WindowedPlayerContent(
                             onMorphDragStart()
                         },
                         onDrag = { change, dragAmount ->
-                            if (dragAmount.y > 0f || morphProgress > 0f) {
+                            // Accept downward drags always; upward drags reverse progress only
+                            // when past a small deadzone (5%) to prevent accidental reversal.
+                            val shouldAccept = dragAmount.y > 0f ||
+                                (dragAmount.y < 0f && morphProgress > 0.05f)
+                            if (shouldAccept) {
                                 change.consume()
                                 onMorphDrag(dragAmount.y)
                             }
@@ -224,7 +232,7 @@ fun WindowedPlayerContent(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .fillMaxWidth()
-                    .height(with(LocalDensity.current) { playerHeightPx.toDp() })
+                    .height(miniHeight)
                     .clipToBounds()
                     .background(Color.Black.copy(alpha = 0.6f))
             ) {
@@ -233,7 +241,8 @@ fun WindowedPlayerContent(
                     onPlayPause = onPlayPause,
                     onClose = onClose,
                     onMoreOptions = onOptions,
-                    onFullscreen = onFullscreenToggle
+                    onFullscreen = onFullscreenToggle,
+                    miniHeight = miniHeight
                 )
             }
         } else {

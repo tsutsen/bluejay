@@ -222,20 +222,8 @@ fun PlayerScreen(
                 }
             }
 
-            val miniScaleTarget = if (isTablet) 0.35f else 0.45f
             val p = morphProgress.value
-            val scale = (1f + (miniScaleTarget - 1f) * p).coerceIn(0f, 1f)
             val cornerRadius = (12f * p).coerceAtLeast(0f).dp
-
-            // Compute resting translation targets from the same math FloatingPlayerContent uses
-            val density = LocalDensity.current
-            val miniWidthPx = with(density) { miniWidth.toPx() }
-            val miniHeightPx = with(density) { miniHeight.toPx() }
-            val paddingPx = with(density) { 16.dp.toPx() }
-            val miniRestingTranslationX = containerSize.width - miniWidthPx - paddingPx
-            val miniRestingTranslationY = containerSize.height - miniHeightPx - paddingPx
-            val morphTranslationX = miniRestingTranslationX * p
-            val morphTranslationY = miniRestingTranslationY * p
 
             // detailAlpha fades over the last 40% of the gesture
             val detailAlpha = (1f - (morphProgress.value - 0.6f) / 0.4f).coerceIn(0f, 1f)
@@ -354,6 +342,21 @@ fun PlayerScreen(
             val isCollapsedControls = !isFullscreenAnim.value &&
                 containerSize.height > 0f &&
                 (playerHeightPx / containerSize.height) <= 0.45f
+
+            // Morph width/height from container size to fixed mini dimensions
+            val density = LocalDensity.current
+            val miniWidthPx = with(density) { miniWidth.toPx() }
+            val miniHeightPx = with(density) { miniHeight.toPx() }
+            val morphWidth = containerSize.width - (containerSize.width - miniWidthPx) * p
+            val morphHeight = playerHeightPx - (playerHeightPx - miniHeightPx) * p
+
+            // Compute resting translation targets matching FloatingPlayerContent's layout:
+            //   align(BottomEnd) + padding(16.dp) → top-left at (containerWidth - miniWidth - 16dp, containerHeight - miniHeight - 16dp)
+            val paddingPx = 16f * density.density  // 16dp in pixels
+            val miniRestingTranslationX = containerSize.width - miniWidthPx - paddingPx
+            val miniRestingTranslationY = containerSize.height - miniHeightPx - paddingPx
+            val morphTranslationX = miniRestingTranslationX * p
+            val morphTranslationY = miniRestingTranslationY * p
 
             // playerMode is the single source of truth other files should key off - see
             // PlayerMode.kt. Kept here for logging/analytics hooks even though the `when`
@@ -478,8 +481,6 @@ fun PlayerScreen(
 
                     PlayerMode.NORMAL, PlayerMode.COMPACT -> WindowedPlayerContent(
                         modifier = Modifier.graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
                             translationX = morphTranslationX
                             translationY = morphTranslationY
                             shape = RoundedCornerShape(cornerRadius)
@@ -529,6 +530,9 @@ fun PlayerScreen(
                             player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
                         },
                         morphProgress = morphProgress.value,
+                        morphWidth = morphWidth,
+                        morphHeight = morphHeight,
+                        miniHeight = miniHeight,
                         onMorphDragStart = {
                             isDraggingMorph = true
                         },
