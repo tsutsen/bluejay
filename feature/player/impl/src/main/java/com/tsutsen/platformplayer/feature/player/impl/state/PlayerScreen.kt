@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +35,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -70,6 +72,29 @@ fun PlayerScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
+
+    // ==================== True window size (nav-bar independent) ====================
+    // Read directly from the platform View rather than from a locally-measured Compose
+    // container. containerSize (measured further down via onGloballyPositioned) reflects
+    // whatever constraints this composable's ancestors give it, which may shrink to make
+    // room for the nav bar and only expand once it's hidden. The underlying View here is
+    // the real window content area — already edge-to-edge — so its size doesn't change
+    // when the nav bar is shown/hidden, only on genuine resizes (rotation, multi-window,
+    // fold/unfold). Fullscreen geometry is driven off this instead, so entering fullscreen
+    // no longer waits on the nav bar being hidden first.
+    val view = LocalView.current
+    var windowWidthPx by remember { mutableStateOf(0f) }
+    var windowHeightPx by remember { mutableStateOf(0f) }
+    DisposableEffect(view) {
+        fun syncWindowSize() {
+            windowWidthPx = view.width.toFloat()
+            windowHeightPx = view.height.toFloat()
+        }
+        syncWindowSize()
+        val listener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> syncWindowSize() }
+        view.addOnLayoutChangeListener(listener)
+        onDispose { view.removeOnLayoutChangeListener(listener) }
+    }
 
     var showOptionsModal by remember { mutableStateOf(false) }
     var showChapters by remember { mutableStateOf(false) }
@@ -393,7 +418,9 @@ fun PlayerScreen(
                 floatingRestX = floatingRestX,
                 floatingRestY = floatingRestY,
                 dragOffsetX = layoutDragX,
-                dragOffsetY = layoutDragY
+                dragOffsetY = layoutDragY,
+                fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else containerSize.width,
+                fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else containerSize.height
             )
 
             val gestureCallbacks = PlayerGestureCallbacks(

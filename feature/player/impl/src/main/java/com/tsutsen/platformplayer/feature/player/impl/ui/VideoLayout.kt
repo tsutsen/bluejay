@@ -47,7 +47,9 @@ fun computeVideoLayout(
     floatingRestX: Float,
     floatingRestY: Float,
     dragOffsetX: Float,
-    dragOffsetY: Float
+    dragOffsetY: Float,
+    fullscreenWidthPx: Float = containerWidth,
+    fullscreenHeightPx: Float = containerHeight
 ): VideoLayout {
     // Three anchor positions
     val normalWidth = containerWidth
@@ -60,8 +62,8 @@ fun computeVideoLayout(
     val floatingX = floatingRestX + dragOffsetX
     val floatingY = floatingRestY + dragOffsetY
 
-    val fullscreenWidth = containerWidth
-    val fullscreenHeight = containerHeight
+    val fullscreenWidth = fullscreenWidthPx
+    val fullscreenHeight = fullscreenHeightPx
     val fullscreenX = 0f
     val fullscreenY = 0f
 
