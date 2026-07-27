@@ -59,8 +59,12 @@ fun computeVideoLayout(
 
     val floatingWidth = miniWidthPx
     val floatingHeight = miniHeightPx
-    val floatingX = floatingRestX + dragOffsetX
-    val floatingY = floatingRestY + dragOffsetY
+    // Scale drag offset by miniProgress so it disappears naturally during expand.
+    // This avoids a geometry discontinuity when transitioning from mini to normal.
+    val effectiveDragX = dragOffsetX * miniProgress
+    val effectiveDragY = dragOffsetY * miniProgress
+    val floatingX = floatingRestX + effectiveDragX
+    val floatingY = floatingRestY + effectiveDragY
 
     val fullscreenWidth = fullscreenWidthPx
     val fullscreenHeight = fullscreenHeightPx
