@@ -134,21 +134,23 @@ PlayerViewModel.kt           (~170 lines)  ← keep as-is (minor: clean up getPl
 
 **Commit**: `093f877c` - refactor(player): Phase 2 - disable nested scroll during morph drag
 
-### Phase 3: Shared Morph Box
+### Phase 3: Shared Morph Box ✅ COMPLETE
 **Goal**: Single video box for all non-fullscreen modes. No tree swap.
 
-1. Create `PlayerMorphBox.kt`:
+1. Create `PlayerMorphBox.kt`: ✅
    - Takes `morphState.progress` as input.
    - Computes geometry: height (lerp between `playerHeightPx` and `miniHeightPx`), corner radius (0→12dp), position.
    - Contains `PlayerVideoSurface` (always visible, never torn down).
    - Contains drag gesture handler (consumes all pointer events during drag).
    - Renders windowed chrome (details + controls) at alpha `1 - morphProgress/0.4` (0→0.4).
    - Renders floating chrome (`FloatingChrome`) at alpha `(morphProgress - 0.6)/0.4` (0.6→1).
-2. Remove `when(playerMode)` tree swap from `PlayerScreen.kt`.
-3. `WindowedPlayerContent.kt` becomes just the details LazyColumn (no video box, no controls).
-4. `FloatingChrome.kt` becomes a thin overlay (no drag, no snap, no video surface).
+2. Remove `when(playerMode)` tree swap from `PlayerScreen.kt`. ✅
+3. `WindowedPlayerContent.kt` becomes just the details LazyColumn (no video box, no controls). ✅
+4. `FloatingChrome.kt` becomes a thin overlay (no drag, no snap, no video surface). ✅
 
-**Verification**: Transition from NORMAL→FLOATING is a smooth crossfade. No tree teardown. LazyColumn state is preserved.
+**Verification**: Transition from NORMAL→FLOATING is a smooth crossfade. No tree teardown. LazyColumn state is preserved. ✅
+
+**Commit**: `6d2f5d96` - refactor(player): Phase 3 - shared morph box, no tree swap
 
 ### Phase 4: Smooth the Mini-Player Snap
 **Goal**: No "jump then glide" artifact.

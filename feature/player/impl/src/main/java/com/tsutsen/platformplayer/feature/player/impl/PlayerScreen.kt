@@ -85,21 +85,6 @@ fun PlayerScreen(
         initialMinimized = (uiState as? PlayerUiState.Loaded)?.isMinimized ?: false
     )
 
-    // Animated offset for the floating mini-player snap animation
-    var miniPlayerOffsetX by remember { mutableStateOf(0f) }
-    var miniPlayerOffsetY by remember { mutableStateOf(0f) }
-
-    val animatedMiniOffsetX by animateFloatAsState(
-        targetValue = miniPlayerOffsetX,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
-        label = "animatedMiniOffsetX"
-    )
-    val animatedMiniOffsetY by animateFloatAsState(
-        targetValue = miniPlayerOffsetY,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
-        label = "animatedMiniOffsetY"
-    )
-
     val transitionSpringSpec = spring<Float>(
         stiffness = Spring.StiffnessMediumLow,
         dampingRatio = Spring.DampingRatioNoBouncy
@@ -201,17 +186,6 @@ fun PlayerScreen(
                 targetValue = (12 * morphProgress).dp,
                 animationSpec = transitionDpSpec,
                 label = "morphCornerRadius"
-            )
-
-            val floatingOffsetX by animateFloatAsState(
-                targetValue = if (morphProgress > 0.99f) miniPlayerOffsetX else 0f,
-                animationSpec = transitionSpringSpec,
-                label = "floatingOffsetX"
-            )
-            val floatingOffsetY by animateFloatAsState(
-                targetValue = if (morphProgress > 0.99f) miniPlayerOffsetY else 0f,
-                animationSpec = transitionSpringSpec,
-                label = "floatingOffsetY"
             )
 
             val fullscreenScrimAlpha by animateFloatAsState(

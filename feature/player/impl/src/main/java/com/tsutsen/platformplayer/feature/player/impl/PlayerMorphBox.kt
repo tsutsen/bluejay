@@ -59,26 +59,15 @@ fun PlayerMorphBox(
     floatingContent: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
-    val morphedHeight by animateFloatAsState(
-        targetValue = playerHeightPx - (playerHeightPx - miniHeightPx) * morphProgress,
-        animationSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow),
-        label = "morphBoxHeight"
-    )
-    val morphedCornerRadius by animateFloatAsState(
-        targetValue = 12f * morphProgress,
-        animationSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow),
-        label = "morphCornerRadius"
-    )
-    val floatingOffsetX by animateFloatAsState(
-        targetValue = if (morphProgress > 0.99f) 0f else 0f,
-        animationSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow),
-        label = "floatingOffsetX"
-    )
-    val floatingOffsetY by animateFloatAsState(
-        targetValue = if (morphProgress > 0.99f) 0f else 0f,
-        animationSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow),
-        label = "floatingOffsetY"
-    )
+
+    // Video box geometry: lerp directly from morphProgress (no separate animation)
+    // This ensures the video box glides smoothly to its corner position during morph
+    val morphedHeight = playerHeightPx - (playerHeightPx - miniHeightPx) * morphProgress
+    val morphedCornerRadius = 12f * morphProgress
+
+    // Position: lerp from top-left (0,0) to bottom-right corner based on morphProgress
+    val targetX = (containerWidth - miniWidthPx) * morphProgress
+    val targetY = (containerHeight - miniHeightPx) * morphProgress
 
     val windowedAlpha by animateFloatAsState(
         targetValue = if (morphProgress < 0.4f) 1f else 0f,
@@ -138,16 +127,7 @@ fun PlayerMorphBox(
                 .align(Alignment.TopStart)
                 .fillMaxWidth()
                 .height(morphedHeightDp)
-                .offset {
-                    if (morphProgress > 0.99f) {
-                        IntOffset(
-                            x = (containerWidth - miniWidthPx).toInt() + floatingOffsetX.toInt(),
-                            y = (containerHeight - miniHeightPx).toInt() + floatingOffsetY.toInt()
-                        )
-                    } else {
-                        IntOffset(0, 0)
-                    }
-                }
+                .offset { IntOffset(targetX.toInt(), targetY.toInt()) }
                 .clip(RoundedCornerShape(morphedCornerRadiusDp))
                 .clipToBounds()
                 .background(Color.Black)
