@@ -286,7 +286,7 @@ fun PlayerScreen(
 
             // ==================== Collapsing player height (shared by video content AND controls overlay) ====================
             val scrollState = rememberLazyListState()
-            val maxPlayerHeightPx = containerSize.height * 0.6f
+            val maxPlayerHeightPx = containerSize.height * 0.7f
             val minPlayerHeightPx = containerSize.height * 0.2f
 
             var playerHeightPx by remember { mutableStateOf(0f) }
