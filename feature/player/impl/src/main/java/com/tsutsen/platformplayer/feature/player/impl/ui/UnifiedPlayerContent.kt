@@ -258,19 +258,16 @@ fun UnifiedPlayerContent(
         PlayerVideoSurface(player = player, modifier = Modifier.then(videoModifier))
 
         // ==================== 2. Details panel (LazyColumn) ====================
-        // Stays in composition, fades + translates. Pointer input gated by alpha.
+        // Stays in composition, fades + translates. Starts below video, fills remaining height.
+        val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .offset(y = detailsOffsetY)
+                .fillMaxHeight()
                 .graphicsLayer {
                     alpha = detailsAlpha
                     translationY = detailsTranslateY
-                }
-                .pointerInput(detailsAlpha) {
-                    if (detailsAlpha > 0.05f) {
-                        // Pointer input only when details are visible enough to interact with
-                        detectTapGestures(onTap = { gestureCallbacks.onTap() })
-                    }
                 }
                 .then(nestedScrollModifier)
         ) {
@@ -350,10 +347,21 @@ fun UnifiedPlayerContent(
         }
 
         // ==================== 3. Controls scaffold (NORMAL/COMPACT/FULLSCREEN) ====================
+        // Scaffold is positioned at the video location, constrained to video height.
+        // For mini mode, it's positioned at (videoLayout.offsetX, videoLayout.offsetY)
+        // with size (videoLayout.widthPx, videoLayout.heightPx).
         PlayerControlsScaffold(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .fillMaxSize(),
+                .offset {
+                    IntOffset(
+                        x = videoLayout.offsetX.toInt(),
+                        y = videoLayout.offsetY.toInt()
+                    )
+                }
+                .size(
+                    width = with(density) { videoLayout.widthPx.toDp() },
+                    height = with(density) { videoLayout.heightPx.toDp() }
+                ),
             isLoading = isLoading,
             brightnessValue = brightnessValue,
             volumeValue = volumeValue,
@@ -440,181 +448,5 @@ fun UnifiedPlayerContent(
             }
         )
 
-        // ==================== 4. Mini player overlay ====================
-        // §4.6: separate from scaffold. Always composed (surface persistence),
-        // but pointer input conditionally attached.
-        Box(
-            modifier = Modifier
-                .then(videoModifier)
-                .pointerInput(miniProgress, isDraggingMiniPlayer) {
-                    // §4.4: drag only when miniProgress ≈ 1 (pure FLOATING)
-                    if (miniProgress > MINI_DRAG_THRESHOLD && !isDraggingMiniPlayer) {
-                        // Initialize relative to current video position — when
-                        // miniProgress ≈ 1, videoLayout.offsetX ≈ floatingRestX + dragOffset,
-                        // so this gives us the current accumulated drag offset.
-                        var localOffsetX = videoLayout.offsetX - floatingRestX
-                        var localOffsetY = videoLayout.offsetY - floatingRestY
-
-                        detectDragGestures(
-                            onDragStart = {
-                                Log.d(TAG, "Mini drag start")
-                                onDragStateChanged(true)
-                            },
-                            onDrag = { change, dragAmount: Offset ->
-                                change.consume()
-                                // The offset is accumulated relative to the resting position
-                                // and passed to the parent which updates miniPlayerOffsetX/Y
-                                localOffsetX += dragAmount.x
-                                localOffsetY += dragAmount.y
-                                onOffsetChanged(localOffsetX, localOffsetY)
-                            },
-                            onDragEnd = {
-                                Log.d(TAG, "Mini drag end")
-                                onDragStateChanged(false)
-                                // Snap to nearest edge
-                                val edgeThreshold = 100f
-                                val paddingPx = 16.dp.toPx()
-                                val initialX = containerWidth - miniWidthPx - paddingPx
-                                val initialY = containerHeight - miniHeightPx - paddingPx
-                                val actualX = initialX + localOffsetX
-                                val actualY = initialY + localOffsetY
-
-                                var snappedX = localOffsetX
-                                if (actualX < edgeThreshold) {
-                                    snappedX = -initialX
-                                } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
-                                    snappedX = 0f
-                                }
-
-                                var snappedY = localOffsetY
-                                if (actualY < edgeThreshold) {
-                                    snappedY = -initialY
-                                } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
-                                    snappedY = 0f
-                                }
-
-                                onOffsetChanged(snappedX, snappedY)
-                            },
-                            onDragCancel = {
-                                Log.d(TAG, "Mini drag cancel")
-                                onDragStateChanged(false)
-                            }
-                        )
-                    } else if (miniProgress > MINI_SETTLED_THRESHOLD &&
-                        miniProgress < (1f - MINI_SETTLED_THRESHOLD)
-                    ) {
-                        // Mid-transition: no gestures (morphing between modes)
-                    } else if (miniProgress <= MINI_SETTLED_THRESHOLD) {
-                        // Settled at NORMAL: no mini gestures
-                    } else {
-                        // Settled at FLOATING but not dragging: tap-to-expand
-                        detectTapGestures(
-                            onTap = {
-                                Log.d(TAG, "Tap background: expand mini player")
-                                onExpand()
-                            }
-                        )
-                    }
-                }
-        ) {
-            // Background scrim
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.6f * miniControlsAlpha))
-            )
-
-            // Mini control UI
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onPlayPause,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (state.isPlaying) "Pause" else "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = state.currentVideo?.title ?: "Unknown",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        val authorName = state.currentVideo?.author?.name
-                        if (!authorName.isNullOrEmpty()) {
-                            Text(
-                                text = authorName,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.7f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                    IconButton(
-                        onClick = onMoreOptions,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = onFullscreen,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Fullscreen,
-                            contentDescription = "Fullscreen",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    LinearProgressIndicator(
-                        progress = if (state.durationMs > 0) {
-                            state.currentPositionMs.toFloat() / state.durationMs
-                        } else 0f,
-                        modifier = Modifier.fillMaxWidth().height(3.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Transparent
-                    )
-                }
-            }
-        }
     }
 }
