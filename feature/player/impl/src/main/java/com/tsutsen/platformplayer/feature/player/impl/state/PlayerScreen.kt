@@ -327,7 +327,7 @@ fun PlayerScreen(
 
             val isCollapsedControls = !isFullscreenAnim.value &&
                 containerSize.height > 0f &&
-                (playerHeightPx / containerSize.height) <= 0.3f
+                (playerHeightPx / containerSize.height) <= 0.5f
 
             // playerMode is the single source of truth other files should key off - see
             // PlayerMode.kt. Kept here for logging/analytics hooks even though the `when`
