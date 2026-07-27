@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -144,11 +143,12 @@ fun PlayerControlsScaffold(
             enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
             exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
         ) {
-            Column {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)
+                        .align(Alignment.TopCenter)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
@@ -160,28 +160,31 @@ fun PlayerControlsScaffold(
         }
 
         // ==================== Bottom gradient + bar ====================
-        // Gradient drawn first so it sits BEHIND the control row (matches the top bar's
-        // ordering above). The original file had these reversed - gradient drawn after the
-        // bottom bar, meaning it visually painted over the buttons - which looked like an
-        // unintentional inconsistency rather than a deliberate design choice, so fixed here.
+        // Gradient sits BEHIND the control row (overlaid, mirroring the top bar above),
+        // anchored to the bottom edge. The previous version used a Column, which stacks the
+        // bar and gradient sequentially instead of overlapping them - that pushes the actual
+        // control row away from the screen edge and leaves the gradient occupying the edge
+        // on its own, so the bar visually reads as displaced/swapped relative to where the
+        // top bar sits.
         AnimatedVisibility(
             visible = showBottomBar,
             enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
             exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            Column {
-                bottomBar()
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)
+                        .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
                             )
                         )
                 )
+                bottomBar()
             }
         }
     }
