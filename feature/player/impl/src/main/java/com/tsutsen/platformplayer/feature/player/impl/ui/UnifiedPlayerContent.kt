@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -878,10 +879,15 @@ fun ControlsLayer(
                         .background(Color.Black.copy(alpha = 0.6f))
                 )
 
-                // Mini player controls
-                Column(
-                    modifier = Modifier.fillMaxSize()
+                // Mini player controls with fade-in animation
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(),
+                    exit = fadeOut()
                 ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                     // Top row: Play/Pause + Close
                     Row(
                         modifier = Modifier
@@ -985,6 +991,7 @@ fun ControlsLayer(
                             )
                         }
                     }
+                }
                 }
             }
         }
