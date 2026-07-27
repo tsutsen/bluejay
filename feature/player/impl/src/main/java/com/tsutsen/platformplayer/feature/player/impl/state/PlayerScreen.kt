@@ -5,7 +5,6 @@ import android.content.pm.ActivityInfo
 import android.util.Log
 import android.view.View
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -37,6 +36,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.Player
+import com.tsutsen.platformplayer.feature.player.impl.ui.UnifiedPlayerContent
+import com.tsutsen.platformplayer.feature.player.impl.ui.computeVideoLayout
+import com.tsutsen.platformplayer.feature.player.impl.ui.VideoLayout
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -109,10 +111,6 @@ fun PlayerScreen(
         stiffness = Spring.StiffnessMediumLow,
         dampingRatio = Spring.DampingRatioNoBouncy
     )
-    val transitionDpSpec = spring<Dp>(
-        stiffness = Spring.StiffnessMediumLow,
-        dampingRatio = Spring.DampingRatioNoBouncy
-    )
 
     // ==================== Animation state (persists across recompositions) ====================
     val isMinimizedAnim = remember { mutableStateOf(false) }
@@ -171,8 +169,6 @@ fun PlayerScreen(
             // No player active — don't show anything
         }
         is PlayerUiState.Loaded -> {
-            val isTablet = configuration.smallestScreenWidthDp >= 600
-
             Log.d(TAG, "PlayerScreen entered Loaded state")
             Log.d(TAG, "Current video: ${state.currentVideo?.url}")
             Log.d(TAG, "Is playing: ${state.isPlaying}")
@@ -192,26 +188,18 @@ fun PlayerScreen(
             val isFullscreen = state.isFullscreen
 
             // ==================== Animated values ====================
-            val miniScaleTarget = if (isTablet) 0.35f else 0.45f
-            val scale by animateFloatAsState(
-                targetValue = if (isMinimizedAnim.value) miniScaleTarget else 1.0f,
+            // §2: Two independent continuous progress floats drive geometry.
+            // isMinimizedAnim / isFullscreenAnim remain the discrete source of truth;
+            // these floats are the animated intermediates consumed by computeVideoLayout.
+            val miniProgress by animateFloatAsState(
+                targetValue = if (isMinimizedAnim.value) 1f else 0f,
                 animationSpec = transitionSpringSpec,
-                label = "miniScale"
+                label = "miniProgress"
             )
-            val cornerRadius by animateDpAsState(
-                targetValue = if (isMinimizedAnim.value) 12.dp else 0.dp,
-                animationSpec = transitionDpSpec,
-                label = "cornerRadius"
-            )
-            val translationX by animateFloatAsState(
-                targetValue = if (isMinimizedAnim.value) containerSize.width * 0.85f else 0f,
+            val fullscreenProgress by animateFloatAsState(
+                targetValue = if (isFullscreenAnim.value) 1f else 0f,
                 animationSpec = transitionSpringSpec,
-                label = "translationX"
-            )
-            val translationY by animateFloatAsState(
-                targetValue = if (isMinimizedAnim.value) containerSize.height * 0.8f else 0f,
-                animationSpec = transitionSpringSpec,
-                label = "translationY"
+                label = "fullscreenProgress"
             )
             val fullscreenScrimAlpha by animateFloatAsState(
                 targetValue = if (isFullscreenAnim.value) 0.3f else 0f,
@@ -329,17 +317,6 @@ fun PlayerScreen(
                 containerSize.height > 0f &&
                 (playerHeightPx / containerSize.height) <= 0.45f
 
-            // playerMode is the single source of truth other files should key off - see
-            // PlayerMode.kt. Kept here for logging/analytics hooks even though the `when`
-            // below still reads the underlying isMinimizedAnim/isFullscreenAnim directly
-            // (those drive the cross-fade animation state, not just the discrete mode).
-            val playerMode = computePlayerMode(
-                isMinimized = isMinimizedAnim.value,
-                isFullscreen = isFullscreenAnim.value,
-                isCollapsedControls = isCollapsedControls
-            )
-            Log.d(TAG, "playerMode=$playerMode")
-
             val gestureCallbacks = PlayerGestureCallbacks(
                 onTap = {
                     controlsVisible = true
@@ -390,35 +367,34 @@ fun PlayerScreen(
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = fullscreenScrimAlpha)))
                 }
 
-                when (playerMode) {
-                    PlayerMode.FLOATING -> FloatingPlayerContent(
-                        player = player,
-                        state = state,
-                        miniWidth = miniWidth,
-                        miniHeight = miniHeight,
-                        cornerRadius = cornerRadius,
-                        offsetX = animatedMiniOffsetX,
-                        offsetY = animatedMiniOffsetY,
-                        containerWidth = containerSize.width,
-                        containerHeight = containerSize.height,
-                        isDragging = isDraggingMiniPlayer,
-                        onDragStateChanged = { isDraggingMiniPlayer = it },
-                        onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
-                        onExpand = { viewModel.exitMiniPlayer() },
-                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
-                        onClose = {
-                            Log.d(TAG, "Close mini player: close")
-                            viewModel.close()
-                        },
-                        onMoreOptions = { showMiniPlayerOptions = true },
-                        onFullscreen = {
-                            Log.d(TAG, "Fullscreen from mini player: exit mini then enter fullscreen")
-                            viewModel.exitMiniPlayer()
-                            viewModel.toggleFullscreen()
-                        }
-                    )
+                // §1-2: Compute video geometry from continuous progresses.
+                // Phase 1: FULLSCREEN still on old discrete path; NORMAL/COMPACT/FLOATING
+                // flow through the unified composable with a single persistent surface.
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                val miniWidthPx = with(density) { miniWidth.toPx() }
+                val miniHeightPx = with(density) { miniHeight.toPx() }
+                val paddingPx = with(density) { 16.dp.toPx() }
+                val floatingRestX = containerSize.width - miniWidthPx - paddingPx
+                val floatingRestY = containerSize.height - miniHeightPx - paddingPx
 
-                    PlayerMode.FULLSCREEN -> FullscreenPlayerContent(
+                val videoLayout = computeVideoLayout(
+                    miniProgress = miniProgress,
+                    fullscreenProgress = fullscreenProgress,
+                    containerWidth = containerSize.width,
+                    containerHeight = containerSize.height,
+                    playerHeightPx = playerHeightPx,
+                    miniWidthPx = miniWidthPx,
+                    miniHeightPx = miniHeightPx,
+                    floatingRestX = floatingRestX,
+                    floatingRestY = floatingRestY,
+                    dragOffsetX = animatedMiniOffsetX,
+                    dragOffsetY = animatedMiniOffsetY
+                )
+
+                if (isFullscreenAnim.value) {
+                    // Phase 1: FULLSCREEN uses the old discrete composable.
+                    // Step 6 extends this to the unified path.
+                    FullscreenPlayerContent(
                         player = player,
                         state = state,
                         isLoading = state.isLoading,
@@ -449,15 +425,33 @@ fun PlayerScreen(
                         isScrubbing = isScrubbing,
                         scrubPositionMs = scrubPositionMs
                     )
-
-                    PlayerMode.NORMAL, PlayerMode.COMPACT -> WindowedPlayerContent(
-                        modifier = Modifier,
+                } else {
+                    // Phase 1: NORMAL / COMPACT / FLOATING via unified composable.
+                    // fullscreenProgress is held at 0f — step 6 wires it in.
+                    UnifiedPlayerContent(
                         player = player,
                         state = state,
+                        videoLayout = videoLayout,
+                        miniProgress = miniProgress,
+                        fullscreenProgress = 0f,
+                        containerWidth = containerSize.width,
+                        containerHeight = containerSize.height,
                         playerHeightPx = playerHeightPx,
+                        miniWidthPx = miniWidthPx,
+                        miniHeightPx = miniHeightPx,
+                        floatingRestX = floatingRestX,
+                        floatingRestY = floatingRestY,
+                        isCollapsedControls = isCollapsedControls,
+                        showTopOverlay = showTopOverlay,
+                        showBottomOverlay = showBottomOverlay,
                         scrollState = scrollState,
                         nestedScrollConnection = nestedScrollConnection,
-                        isCollapsedControls = isCollapsedControls,
+                        gestureCallbacks = gestureCallbacks,
+                        isDraggingMiniPlayer = isDraggingMiniPlayer,
+                        onDragStateChanged = { isDraggingMiniPlayer = it },
+                        onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
+                        onOptions = { showOptionsModal = true },
+                        onChapters = { showChapters = !showChapters },
                         expandedDescription = expandedDescription,
                         onToggleDescription = { expandedDescription = !expandedDescription },
                         selectedTab = selectedTab,
@@ -468,33 +462,39 @@ fun PlayerScreen(
                         volumeValue = volumeValue,
                         showBrightnessIndicator = showBrightnessIndicator,
                         showVolumeIndicator = showVolumeIndicator,
-                        showTopOverlay = showTopOverlay,
-                        showBottomOverlay = showBottomOverlay,
-                        gestureCallbacks = gestureCallbacks,
-                        onMinimize = {
-                            Log.d(TAG, "Minimize button clicked")
-                            viewModel.minimize()
-                        },
-                        onReplayToggle = { viewModel.toggleReplay() },
-                        onWatchLater = { /* TODO */ },
-                        onOptions = { showOptionsModal = true },
-                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
-                        onPrevious = { viewModel.skipPrevious() },
-                        onNext = { viewModel.skipNext() },
-                        onChapters = { showChapters = !showChapters },
-                        onFullscreenToggle = { viewModel.toggleFullscreen() },
-                        onSeek = { positionMs ->
-                            scrubPositionMs = positionMs
-                            isScrubbing = true
-                            viewModel.seekTo(positionMs)
-                        },
                         isScrubbing = isScrubbing,
                         scrubPositionMs = scrubPositionMs,
                         isLooping = isLooping,
                         onLoopToggle = {
                             isLooping = !isLooping
                             player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
-                        }
+                        },
+                        onMinimize = {
+                            Log.d(TAG, "Minimize button clicked")
+                            viewModel.minimize()
+                        },
+                        onFullscreen = {
+                            Log.d(TAG, "Fullscreen from mini player: exit mini then enter fullscreen")
+                            viewModel.exitMiniPlayer()
+                            viewModel.toggleFullscreen()
+                        },
+                        onExpand = { viewModel.exitMiniPlayer() },
+                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
+                        onClose = {
+                            Log.d(TAG, "Close mini player: close")
+                            viewModel.close()
+                        },
+                        onReplayToggle = { viewModel.toggleReplay() },
+                        onWatchLater = { /* TODO */ },
+                        onPrevious = { viewModel.skipPrevious() },
+                        onNext = { viewModel.skipNext() },
+                        onSeek = { positionMs ->
+                            scrubPositionMs = positionMs
+                            isScrubbing = true
+                            viewModel.seekTo(positionMs)
+                        },
+                        onMoreOptions = { showMiniPlayerOptions = true },
+                        onFullscreenToggle = { viewModel.toggleFullscreen() }
                     )
                 }
 
