@@ -375,9 +375,6 @@ fun UnifiedPlayerContent(
             onDragStateChanged = onDragStateChanged,
             onOffsetChanged = onOffsetChanged,
             gestureCallbacks = gestureCallbacks,
-            onMorphDragStart = onMorphDragStart,
-            onMorphDrag = onMorphDrag,
-            onMorphDragEnd = onMorphDragEnd,
             onExpand = onExpand,
             onSeek = onSeek,
             isCollapsedControls = isCollapsedControls
@@ -426,7 +423,11 @@ fun UnifiedPlayerContent(
             onWatchLater = onWatchLater,
             onReplayToggle = onReplayToggle,
             onOptions = onOptions,
-            onSeek = onSeek
+            onSeek = onSeek,
+            gestureCallbacks = gestureCallbacks,
+            onMorphDragStart = onMorphDragStart,
+            onMorphDrag = onMorphDrag,
+            onMorphDragEnd = onMorphDragEnd
         )
     }
 }
@@ -458,9 +459,6 @@ fun GestureLayer(
     onDragStateChanged: (Boolean) -> Unit,
     onOffsetChanged: (x: Float, y: Float) -> Unit,
     gestureCallbacks: PlayerGestureCallbacks,
-    onMorphDragStart: () -> Unit,
-    onMorphDrag: (dragY: Float) -> Unit,
-    onMorphDragEnd: (dragY: Float) -> Unit,
     onExpand: () -> Unit,
     onSeek: (Long) -> Unit,
     isCollapsedControls: Boolean
@@ -468,98 +466,6 @@ fun GestureLayer(
     val density = LocalDensity.current
 
     Box(modifier = modifier) {
-        // ==================== NORMAL mode gestures (video bounds only) ====================
-        if (miniProgress <= MINI_SETTLED_THRESHOLD && fullscreenProgress <= FULLSCREEN_SETTLED_THRESHOLD) {
-            // Single gesture box sized to videoLayout — details below stay free to scroll
-            Box(
-                modifier = Modifier
-                    .offset {
-                        IntOffset(videoLayout.offsetX.toInt(), videoLayout.offsetY.toInt())
-                    }
-                    .size(
-                        width = with(density) { videoLayout.widthPx.toDp() },
-                        height = with(density) { videoLayout.heightPx.toDp() }
-                    )
-                    .pointerInput(Unit) {
-                        val touchSlop = 12f // default touch slop in px
-                        var lastTapTime = 0L
-                        var lastTapX = 0f
-                        var lastTapY = 0f
-                        val doubleTapTimeoutMs = 300L
-
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            var totalDragY = 0f
-                            var pastSlop = false
-                            var pointerId = down.id
-                            var isDownward = false
-
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == pointerId }
-                                    ?: break
-
-                                if (!change.pressed) {
-                                    // Pointer up
-                                    if (!pastSlop) {
-                                        // Short press — treat as tap / double-tap
-                                        val now = System.currentTimeMillis()
-                                        val dx = change.previousPosition.x - lastTapX
-                                        val dy = change.previousPosition.y - lastTapY
-                                        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-
-                                        if (now - lastTapTime < doubleTapTimeoutMs && dist < touchSlop) {
-                                            // Double-tap: seek ±5s based on x position
-                                            val videoWidth = videoLayout.widthPx
-                                            val third = videoWidth / 3f
-                                            if (change.position.x < third) {
-                                                onSeek(-5000)
-                                            } else if (change.position.x > videoWidth - third) {
-                                                onSeek(5000)
-                                            }
-                                        } else {
-                                            // Single tap
-                                            gestureCallbacks.onTap()
-                                        }
-                                        lastTapTime = now
-                                        lastTapX = change.position.x
-                                        lastTapY = change.position.y
-                                    } else {
-                                        // Drag ended — decide commit
-                                        onMorphDragEnd(totalDragY)
-                                    }
-                                    break
-                                }
-
-                                val dy = change.position.y - change.previousPosition.y
-                                if (!pastSlop) {
-                                    totalDragY += dy
-                                    if (kotlin.math.abs(totalDragY) > touchSlop) {
-                                        pastSlop = true
-                                        if (totalDragY > 0f) {
-                                            // Downward intent — commit to morph
-                                            isDownward = true
-                                            onMorphDragStart()
-                                            change.consume()
-                                            onMorphDrag(totalDragY)
-                                        } else {
-                                            // Upward — don't steal; let nested scroll handle
-                                            break
-                                        }
-                                    }
-                                } else {
-                                    if (isDownward) {
-                                        totalDragY += dy
-                                        change.consume()
-                                        onMorphDrag(totalDragY)
-                                    }
-                                }
-                            }
-                        }
-                    }
-            )
-        }
-
         // ==================== FULLSCREEN mode gestures (full screen) ====================
         if (fullscreenProgress > FULLSCREEN_SETTLED_THRESHOLD) {
             // Brightness/volume swipe
@@ -746,7 +652,11 @@ fun ControlsLayer(
     onWatchLater: () -> Unit,
     onReplayToggle: () -> Unit,
     onOptions: () -> Unit,
-    onSeek: (Long) -> Unit
+    onSeek: (Long) -> Unit,
+    gestureCallbacks: PlayerGestureCallbacks,
+    onMorphDragStart: () -> Unit,
+    onMorphDrag: (dragY: Float) -> Unit,
+    onMorphDragEnd: (dragY: Float) -> Unit
 ) {
     val density = LocalDensity.current
 
@@ -765,7 +675,84 @@ fun ControlsLayer(
                     .size(
                         width = with(density) { videoLayout.widthPx.toDp() },
                         height = with(density) { videoLayout.heightPx.toDp() }
-                    ),
+                    )
+                    .pointerInput(Unit) {
+                        val touchSlop = 12f // default touch slop in px
+                        var lastTapTime = 0L
+                        var lastTapX = 0f
+                        var lastTapY = 0f
+                        val doubleTapTimeoutMs = 300L
+
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            var totalDragY = 0f
+                            var pastSlop = false
+                            var pointerId = down.id
+                            var isDownward = false
+
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == pointerId }
+                                    ?: break
+
+                                // Check if this pointer just went up (pressed changed from true to false)
+                                if (change.previousPressed && !change.pressed) {
+                                    if (!pastSlop) {
+                                        // Short press — treat as tap / double-tap
+                                        val now = System.currentTimeMillis()
+                                        val dx = change.previousPosition.x - lastTapX
+                                        val dy = change.previousPosition.y - lastTapY
+                                        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+
+                                        if (now - lastTapTime < doubleTapTimeoutMs && dist < touchSlop) {
+                                            // Double-tap: seek ±5s based on x position
+                                            val videoWidth = videoLayout.widthPx
+                                            val third = videoWidth / 3f
+                                            if (change.position.x < third) {
+                                                onSeek(-5000)
+                                            } else if (change.position.x > videoWidth - third) {
+                                                onSeek(5000)
+                                            }
+                                        } else {
+                                            // Single tap
+                                            gestureCallbacks.onTap()
+                                        }
+                                        lastTapTime = now
+                                        lastTapX = change.position.x
+                                        lastTapY = change.position.y
+                                    } else {
+                                        // Drag ended — decide commit
+                                        onMorphDragEnd(totalDragY)
+                                    }
+                                    break
+                                }
+
+                                val dy = change.position.y - change.previousPosition.y
+                                if (!pastSlop) {
+                                    totalDragY += dy
+                                    if (kotlin.math.abs(totalDragY) > touchSlop) {
+                                        pastSlop = true
+                                        if (totalDragY > 0f) {
+                                            // Downward intent — commit to morph
+                                            isDownward = true
+                                            onMorphDragStart()
+                                            change.consume()
+                                            onMorphDrag(totalDragY)
+                                        } else {
+                                            // Upward — don't steal; let nested scroll handle
+                                            break
+                                        }
+                                    }
+                                } else {
+                                    if (isDownward) {
+                                        totalDragY += dy
+                                        change.consume()
+                                        onMorphDrag(totalDragY)
+                                    }
+                                }
+                            }
+                        }
+                    },
                 isLoading = isLoading,
                 brightnessValue = brightnessValue,
                 volumeValue = volumeValue,
