@@ -212,7 +212,7 @@ fun PlayerScreen(
     // Fade-in animation when player is first spawned
     LaunchedEffect(uiState) {
         if (uiState is PlayerUiState.Loaded) {
-            playerFadeInProgress.animateTo(1f, tween(durationMillis = 300))
+            playerFadeInProgress.animateTo(1f, tween(durationMillis = 600))
         } else {
             playerFadeInProgress.animateTo(0f)
         }
