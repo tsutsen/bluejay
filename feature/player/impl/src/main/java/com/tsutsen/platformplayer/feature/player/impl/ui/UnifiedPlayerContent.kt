@@ -352,6 +352,7 @@ fun UnifiedPlayerContent(
         // Handles all gestures for the current mode.
         GestureLayer(
             modifier = Modifier.fillMaxSize(),
+            videoLayout = videoLayout,
             miniProgress = miniProgress,
             fullscreenProgress = fullscreenProgress,
             containerWidth = containerWidth,
@@ -433,6 +434,7 @@ fun UnifiedPlayerContent(
 @Composable
 fun GestureLayer(
     modifier: Modifier,
+    videoLayout: VideoLayout,
     miniProgress: Float,
     fullscreenProgress: Float,
     containerWidth: Float,
@@ -594,63 +596,74 @@ fun GestureLayer(
                 modifier = Modifier
                     .offset {
                         IntOffset(
-                            x = (floatingRestX + currentOffsetX).toInt(),
-                            y = (floatingRestY + currentOffsetY).toInt()
+                            x = videoLayout.offsetX.toInt(),
+                            y = videoLayout.offsetY.toInt()
                         )
                     }
                     .size(
-                        width = with(density) { miniWidthPx.toDp() },
-                        height = with(density) { miniHeightPx.toDp() }
+                        width = with(density) { videoLayout.widthPx.toDp() },
+                        height = with(density) { videoLayout.heightPx.toDp() }
                     )
-                    .pointerInput(miniProgress, isDraggingMiniPlayer) {
-                        if (!isDraggingMiniPlayer) {
-                            var localOffsetX = currentOffsetX
-                            var localOffsetY = currentOffsetY
+                    .pointerInput(Unit) {
+                        var localOffsetX = currentOffsetX
+                        var localOffsetY = currentOffsetY
 
-                            detectDragGestures(
-                                onDragStart = {
-                                    Log.d(TAG, "Mini drag start")
-                                    onDragStateChanged(true)
-                                },
-                                onDrag = { change, dragAmount: Offset ->
-                                    change.consume()
-                                    localOffsetX += dragAmount.x
-                                    localOffsetY += dragAmount.y
-                                    onOffsetChanged(localOffsetX, localOffsetY)
-                                },
-                                onDragEnd = {
-                                    Log.d(TAG, "Mini drag end")
-                                    onDragStateChanged(false)
-                                    // Snap to nearest edge
-                                    val edgeThreshold = 100f
-                                    val paddingPx = 16.dp.toPx()
-                                    val initialX = containerWidth - miniWidthPx - paddingPx
-                                    val initialY = containerHeight - miniHeightPx - paddingPx
-                                    val actualX = initialX + localOffsetX
-                                    val actualY = initialY + localOffsetY
+                        detectTapGestures(
+                            onTap = {
+                                Log.d(TAG, "Mini tap → expand")
+                                onExpand()
+                            }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        var localOffsetX = currentOffsetX
+                        var localOffsetY = currentOffsetY
 
-                                    var snappedX = localOffsetX
-                                    if (actualX < edgeThreshold) {
-                                        snappedX = -initialX
-                                    } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
-                                        snappedX = 0f
-                                    }
+                        detectDragGestures(
+                            onDragStart = {
+                                Log.d(TAG, "Mini drag start")
+                                onDragStateChanged(true)
+                                localOffsetX = currentOffsetX
+                                localOffsetY = currentOffsetY
+                            },
+                            onDrag = { change, dragAmount: Offset ->
+                                change.consume()
+                                localOffsetX += dragAmount.x
+                                localOffsetY += dragAmount.y
+                                onOffsetChanged(localOffsetX, localOffsetY)
+                            },
+                            onDragEnd = {
+                                Log.d(TAG, "Mini drag end")
+                                onDragStateChanged(false)
+                                // Snap to nearest edge
+                                val edgeThreshold = 100f
+                                val paddingPx = 16.dp.toPx()
+                                val initialX = containerWidth - miniWidthPx - paddingPx
+                                val initialY = containerHeight - miniHeightPx - paddingPx
+                                val actualX = initialX + localOffsetX
+                                val actualY = initialY + localOffsetY
 
-                                    var snappedY = localOffsetY
-                                    if (actualY < edgeThreshold) {
-                                        snappedY = -initialY
-                                    } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
-                                        snappedY = 0f
-                                    }
-
-                                    onOffsetChanged(snappedX, snappedY)
-                                },
-                                onDragCancel = {
-                                    Log.d(TAG, "Mini drag cancel")
-                                    onDragStateChanged(false)
+                                var snappedX = localOffsetX
+                                if (actualX < edgeThreshold) {
+                                    snappedX = -initialX
+                                } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
+                                    snappedX = 0f
                                 }
-                            )
-                        }
+
+                                var snappedY = localOffsetY
+                                if (actualY < edgeThreshold) {
+                                    snappedY = -initialY
+                                } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
+                                    snappedY = 0f
+                                }
+
+                                onOffsetChanged(snappedX, snappedY)
+                            },
+                            onDragCancel = {
+                                Log.d(TAG, "Mini drag cancel")
+                                onDragStateChanged(false)
+                            }
+                        )
                     }
             )
         }
@@ -890,7 +903,19 @@ fun ControlsLayer(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            // Tap title area to expand (gesture layer also handles tap)
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onTap = {
+                                                Log.d(TAG, "Mini title tap → expand")
+                                                onExpand()
+                                            }
+                                        )
+                                    }
+                            ) {
                                 Text(
                                     text = state.currentVideo?.title ?: "Unknown",
                                     style = MaterialTheme.typography.bodySmall,
