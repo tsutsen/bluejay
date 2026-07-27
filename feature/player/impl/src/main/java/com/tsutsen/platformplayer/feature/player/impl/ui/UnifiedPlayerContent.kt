@@ -723,6 +723,11 @@ fun ControlsLayer(
                                 if (change.previousPressed && !change.pressed) {
                                     if (!pastSlop) {
                                         // Short press — treat as tap / double-tap
+                                        // Skip tap handling in mini mode — the mini player's own
+                                        // gesture layer handles tap-to-expand; we don't want to
+                                        // also toggle controls which would fight the morph.
+                                        if (miniProgress > MINI_SETTLED_THRESHOLD) break
+
                                         val now = System.currentTimeMillis()
                                         val dx = change.previousPosition.x - lastTapX
                                         val dy = change.previousPosition.y - lastTapY
