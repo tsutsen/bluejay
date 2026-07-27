@@ -48,6 +48,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -912,6 +913,7 @@ fun ControlsLayer(
                         .fillMaxSize()
                         .graphicsLayer { alpha = scrimAlpha }
                         .background(Color.Black.copy(alpha = 0.6f))
+                        .clip(RoundedCornerShape(videoLayout.cornerRadius))
                 )
 
                 // Mini player controls: eased fade + slight scale/slide so they settle in
@@ -930,6 +932,7 @@ fun ControlsLayer(
                             scaleY = scale
                             translationY = (1f - miniControlsAlpha) * 12.dp.toPx()
                         }
+                        .clip(RoundedCornerShape(videoLayout.cornerRadius))
                 ) {
                     Column(
                         modifier = Modifier.fillMaxSize()
