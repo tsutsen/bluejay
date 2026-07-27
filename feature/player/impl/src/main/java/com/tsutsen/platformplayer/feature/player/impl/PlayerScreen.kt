@@ -466,7 +466,7 @@ fun PlayerScreen(
                         state = state,
                         playerHeightPx = morphedPlayerHeightPx,
                         scrollState = scrollState.scrollState,
-                        nestedScrollConnection = scrollState.nestedScrollConnection,
+                        nestedScrollConnection = if (morphState.isDragging) null else scrollState.nestedScrollConnection,
                         isCollapsedControls = isCollapsedControls,
                         expandedDescription = expandedDescription,
                         onToggleDescription = { expandedDescription = !expandedDescription },

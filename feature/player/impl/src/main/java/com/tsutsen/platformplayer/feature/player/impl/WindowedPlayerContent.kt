@@ -48,7 +48,7 @@ fun WindowedPlayerContent(
     state: PlayerUiState.Loaded,
     playerHeightPx: Float,
     scrollState: LazyListState,
-    nestedScrollConnection: NestedScrollConnection,
+    nestedScrollConnection: NestedScrollConnection?,
     isCollapsedControls: Boolean,
     expandedDescription: Boolean,
     onToggleDescription: () -> Unit,
@@ -103,7 +103,13 @@ fun WindowedPlayerContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .nestedScroll(nestedScrollConnection)
+                .then(
+                    if (nestedScrollConnection != null) {
+                        Modifier.nestedScroll(nestedScrollConnection)
+                    } else {
+                        Modifier
+                    }
+                )
                 .background(MaterialTheme.colorScheme.surface)
         ) {
             item {

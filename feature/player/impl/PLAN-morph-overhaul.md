@@ -108,15 +108,17 @@ PlayerViewModel.kt           (~170 lines)  ← keep as-is (minor: clean up getPl
 
 **Commit**: `e51af265` - refactor(player): Phase 0 - extract monolithic files into focused modules
 
-### Phase 1: Gesture Fix
+### Phase 1: Gesture Fix ✅ COMPLETE
 **Goal**: Correct gesture semantics per mode.
 
-1. In NORMAL/COMPACT: disable brightness/volume vertical drag on the video area. The video area becomes a morph drag target.
-2. In FULLSCREEN: brightness/volume vertical drag remains active on the video area.
-3. Fix `pointerInput` key: use stable key (`Unit` or `morphState`) instead of `isMorphDragging`. Gate drag logic internally with `if (morphState.isDragging)`.
-4. Remove `isDraggingMiniPlayer` state from `PlayerScreen.kt` — the morph state owns drag state.
+1. In NORMAL/COMPACT: disable brightness/volume vertical drag on the video area. The video area becomes a morph drag target. ✅
+2. In FULLSCREEN: brightness/volume vertical drag remains active on the video area. ✅
+3. Fix `pointerInput` key: use stable key (`Unit` or `morphState`) instead of `isMorphDragging`. Gate drag logic internally with `if (morphState.isDragging)`. ✅
+4. Remove `isDraggingMiniPlayer` state from `PlayerScreen.kt` — `FloatingPlayerContent` owns its own drag state. ✅
 
-**Verification**: Swipe-down on video in NORMAL triggers morph drag. Brightness/volume only works in FULLSCREEN.
+**Verification**: Swipe-down on video in NORMAL triggers morph drag. Brightness/volume only works in FULLSCREEN. ✅
+
+**Commit**: `15adc3ef` - refactor(player): Phase 1 - mode-aware gestures and morph drag fix
 
 ### Phase 2: Eliminate Nested Scroll vs Morph Conflict
 **Goal**: No more jitter during morph drag.
