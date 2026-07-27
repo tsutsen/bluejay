@@ -4,11 +4,14 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.util.Log
 import android.view.View
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -143,9 +146,9 @@ fun PlayerScreen(
         label = "animatedMiniOffsetY"
     )
 
-    val transitionSpringSpec = spring<Float>(
-        stiffness = Spring.StiffnessMedium,
-        dampingRatio = Spring.DampingRatioNoBouncy
+    val transitionSpringSpec = tween<Float>(
+        durationMillis = 300,
+        easing = FastOutSlowInEasing
     )
     val transitionDpSpec = spring<Dp>(
         stiffness = Spring.StiffnessMediumLow,
