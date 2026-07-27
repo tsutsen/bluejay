@@ -284,6 +284,13 @@ fun PlayerScreen(
                 if (!state.isPlaying) controlsVisible = true
             }
 
+            // Hide controls during morph drag (progress > 0.2)
+            LaunchedEffect(morphProgress.value) {
+                if (morphProgress.value > 0.2f) {
+                    controlsVisible = false
+                }
+            }
+
             // ==================== Collapsing player height (shared by video content AND controls overlay) ====================
             val scrollState = rememberLazyListState()
             val maxPlayerHeightPx = containerSize.height * 0.7f
@@ -413,7 +420,7 @@ fun PlayerScreen(
                     }
             ) {
                 // Scrim: dim content behind the player overlay in windowed modes
-                val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) * 0.45f
+                val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) * 1.0f
                 if (scrimAlpha > 0.01f) {
                     Box(
                         modifier = Modifier
