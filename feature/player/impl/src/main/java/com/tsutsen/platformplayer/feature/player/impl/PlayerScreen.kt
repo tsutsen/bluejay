@@ -9,7 +9,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -45,14 +43,15 @@ private const val TAG = "PlayerScreen"
  * Rendered at the activity level on top of whatever screen is behind it.
  * No navigation needed — player just appears/disappears based on PlayerState.
  *
- * This file only hoists state and shared effects (system UI, orientation, auto-hide, the
- * collapsing-height nested-scroll math) and then dispatches to one of the four mode-specific
- * composables based on [PlayerMode]:
- *   FLOATING   -> FloatingPlayerContent.kt
- *   NORMAL/COMPACT -> WindowedPlayerContent.kt (COMPACT is a control-row swap inside NORMAL)
- *   FULLSCREEN -> FullscreenPlayerContent.kt
- * Shared video-surface and control-scaffold code lives in PlayerVideoSurface.kt and
- * PlayerControlsScaffold.kt respectively.
+ * This file hoists state and shared effects (system UI, orientation, auto-hide, scroll state)
+ * and delegates to:
+ *   - PlayerMorphBox: shared morph box for NORMAL ↔ FLOATING transitions (video box + drag + chrome crossfade)
+ *   - FullscreenPlayerContent: fullscreen mode (separate tree, no morph)
+ *   - OptionsModal/ChaptersPanel: full-screen dialogs
+ *
+ * The morph box owns the video box geometry, drag gesture, and chrome crossfade.
+ * Windowed content (details LazyColumn) and floating chrome (mini player overlay)
+ * are passed as lambdas and crossfade based on morphProgress.
  */
 @Composable
 fun PlayerScreen(
@@ -82,20 +81,14 @@ fun PlayerScreen(
     var isLooping by remember { mutableStateOf(false) }
 
     // ==================== Morph state (WINDOWED <-> FLOATING) ====================
-    // Continuous 0f→1f progress replaces the old boolean isMinimizedAnim. Drives the
-    // video-box height, corner radius, and (in floating mode) the mini-player offset
-    // so the morph tracks the finger 1:1 during a drag instead of only animating after.
     val morphState = rememberPlayerMorphState(
         initialMinimized = (uiState as? PlayerUiState.Loaded)?.isMinimized ?: false
     )
 
-    // Animated offset for the floating mini-player snap animation (separate from morph drag).
-    // When morphState.progress == 1f the mini-player is rendered; this offset lets it glide
-    // to its snapped corner position after a drag settles.
+    // Animated offset for the floating mini-player snap animation
     var miniPlayerOffsetX by remember { mutableStateOf(0f) }
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
 
-    // Animated offset for snap animation - faster, snappier
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
         animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
@@ -116,7 +109,7 @@ fun PlayerScreen(
         dampingRatio = Spring.DampingRatioNoBouncy
     )
 
-    // ==================== Animation state (persists across recompositions) ====================
+    // ==================== Animation state ====================
     val isFullscreenAnim = remember { mutableStateOf(false) }
 
     // Timeline scrub state
@@ -125,7 +118,7 @@ fun PlayerScreen(
 
     var containerSize by remember { mutableStateOf(Size.Zero) }
 
-    // ==================== ExoPlayer (from repository) ====================
+    // ==================== ExoPlayer ====================
     val player = remember(uiState) {
         (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
     }
@@ -168,7 +161,7 @@ fun PlayerScreen(
         Log.d(TAG, "Animation state synced: morphProgress=${morphState.progress.value}, isFullscreen=$fullscreen")
     }
 
-    // Sync morph progress when the ViewModel settles the state (button tap, etc.)
+    // Sync morph progress when the ViewModel settles the state
     LaunchedEffect(uiState) {
         val loaded = uiState as? PlayerUiState.Loaded ?: return@LaunchedEffect
         val target = if (loaded.isMinimized) 1f else 0f
@@ -198,25 +191,18 @@ fun PlayerScreen(
 
             val miniWidth = 280.dp
             val miniHeight = miniWidth * 9f / 16f
-
             val isMinimized = state.isMinimized
             val isFullscreen = state.isFullscreen
 
             // ==================== Morph-driven animated values ====================
-            // These are derived directly from morphState.progress (0f=windowed, 1f=floating)
-            // so the UI tracks the finger 1:1 during a drag.
             val morphProgress by morphState.progress.asState()
 
-            // Video box dimensions: lerp between windowed (full-width, scroll-driven height)
-            // and floating (miniWidth, miniHeight).
             val morphedCornerRadius by animateDpAsState(
                 targetValue = (12 * morphProgress).dp,
                 animationSpec = transitionDpSpec,
                 label = "morphCornerRadius"
             )
 
-            // Floating-mode offset: only applied when morph is complete (progress ≈ 1f).
-            // During the morph the windowed player stays in its scroll-driven position.
             val floatingOffsetX by animateFloatAsState(
                 targetValue = if (morphProgress > 0.99f) miniPlayerOffsetX else 0f,
                 animationSpec = transitionSpringSpec,
@@ -299,7 +285,7 @@ fun PlayerScreen(
                 }
             }
 
-            // ==================== Scroll state (extracted to PlayerScrollState) ====================
+            // ==================== Scroll state ====================
             val scrollState = rememberPlayerScrollState(containerSize.height)
             val isCollapsedControls = !isFullscreenAnim.value && scrollState.isCollapsedControls
 
@@ -341,10 +327,9 @@ fun PlayerScreen(
                 }
             )
 
-            // Drag-to-morph state for the windowed video box
+            // Morph drag state
             var dragDeltaY by remember { mutableStateOf(0f) }
-            var isMorphDragging by remember { mutableStateOf(false) }
-            val dragTravelPx = containerSize.height * 0.35f // total drag for full 0→1 morph
+            val dragTravelPx = containerSize.height * 0.35f
 
             Box(
                 modifier = Modifier
@@ -355,14 +340,8 @@ fun PlayerScreen(
             ) {
                 if (isFullscreenAnim.value) {
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = fullscreenScrimAlpha)))
-                }
 
-                // ==================== Mode dispatch ====================
-                // FLOATING: morphProgress > 0.5f (morphed to mini)
-                // FULLSCREEN: isFullscreenAnim.value
-                // NORMAL/COMPACT: otherwise (windowed, with COMPACT determined by scroll)
-                if (isFullscreenAnim.value) {
-                    // FULLSCREEN mode
+                    // ==================== FULLSCREEN mode ====================
                     FullscreenPlayerContent(
                         player = player,
                         state = state,
@@ -394,122 +373,147 @@ fun PlayerScreen(
                         isScrubbing = isScrubbing,
                         scrubPositionMs = scrubPositionMs
                     )
-                } else if (morphProgress > 0.5f) {
-                    // FLOATING mode (morphed to mini)
-                    FloatingPlayerContent(
+                } else {
+                    // ==================== NORMAL/FLOATING mode (shared morph box) ====================
+                    PlayerMorphBox(
                         player = player,
-                        state = state,
-                        miniWidth = miniWidth,
-                        miniHeight = miniHeight,
-                        cornerRadius = morphedCornerRadius,
-                        offsetX = floatingOffsetX,
-                        offsetY = floatingOffsetY,
+                        morphProgress = morphProgress,
+                        playerHeightPx = scrollState.playerHeightPx,
+                        miniHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { miniHeight.toPx() },
+                        miniWidthPx = with(androidx.compose.ui.platform.LocalDensity.current) { miniWidth.toPx() },
                         containerWidth = containerSize.width,
                         containerHeight = containerSize.height,
-                        onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
-                        onExpand = { viewModel.exitMiniPlayer() },
-                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
-                        onClose = {
-                            Log.d(TAG, "Close mini player: close")
-                            viewModel.close()
+                        isMorphDragging = morphState.isDragging,
+                        onDragStart = {
+                            morphState.onDragStart()
                         },
-                        onMoreOptions = { showMiniPlayerOptions = true },
-                        onFullscreen = {
-                            Log.d(TAG, "Fullscreen from mini player: exit mini then enter fullscreen")
-                            viewModel.exitMiniPlayer()
-                            viewModel.toggleFullscreen()
-                        }
-                    )
-                } else {
-                    // NORMAL/COMPACT mode (windowed)
-                    val morphedPlayerHeightPx = scrollState.playerHeightPx - (scrollState.playerHeightPx - scrollState.minPlayerHeightPx) * morphProgress
-
-                    WindowedPlayerContent(
-                        modifier = Modifier.pointerInput(Unit) {
-                            if (morphState.isDragging) {
-                                detectDragGestures(
-                                    onDragStart = {
-                                        morphState.onDragStart()
+                        onDrag = { dragAmount ->
+                            dragDeltaY += dragAmount
+                            coroutineScope.launch {
+                                morphState.onDrag(dragAmount, dragTravelPx)
+                            }
+                        },
+                        onDragEnd = {
+                            coroutineScope.launch {
+                                morphState.onDragEnd(
+                                    velocityPxPerSec = dragDeltaY * 60f,
+                                    dragTravelPx = dragTravelPx,
+                                    onSettledMinimized = {
+                                        Log.d(TAG, "Morph drag: settled to minimized")
+                                        viewModel.minimize()
                                     },
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        dragDeltaY += dragAmount.y
-                                        // Positive drag (down) → increases progress toward floating
-                                        coroutineScope.launch {
-                                            morphState.onDrag(dragAmount.y, dragTravelPx)
-                                        }
-                                    },
-                                    onDragEnd = {
-                                        coroutineScope.launch {
-                                            morphState.onDragEnd(
-                                                velocityPxPerSec = dragDeltaY * 60f, // rough px/s
-                                                dragTravelPx = dragTravelPx,
-                                                onSettledMinimized = {
-                                                    Log.d(TAG, "Morph drag: settled to minimized")
-                                                    viewModel.minimize()
-                                                },
-                                                onSettledExpanded = {
-                                                    Log.d(TAG, "Morph drag: settled to expanded")
-                                                    viewModel.exitMiniPlayer()
-                                                }
-                                            )
-                                        }
-                                        dragDeltaY = 0f
-                                    },
-                                    onDragCancel = {
-                                        dragDeltaY = 0f
+                                    onSettledExpanded = {
+                                        Log.d(TAG, "Morph drag: settled to expanded")
+                                        viewModel.exitMiniPlayer()
                                     }
                                 )
                             }
+                            dragDeltaY = 0f
                         },
-                        player = player,
-                        state = state,
-                        playerHeightPx = morphedPlayerHeightPx,
-                        scrollState = scrollState.scrollState,
-                        nestedScrollConnection = if (morphState.isDragging) null else scrollState.nestedScrollConnection,
-                        isCollapsedControls = isCollapsedControls,
-                        expandedDescription = expandedDescription,
-                        onToggleDescription = { expandedDescription = !expandedDescription },
-                        selectedTab = selectedTab,
-                        onTabSelected = { selectedTab = it },
-                        onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
-                        cornerRadius = morphedCornerRadius,
-                        isLoading = state.isLoading,
-                        brightnessValue = brightnessValue,
-                        volumeValue = volumeValue,
-                        showBrightnessIndicator = showBrightnessIndicator,
-                        showVolumeIndicator = showVolumeIndicator,
-                        showTopOverlay = showTopOverlay,
-                        showBottomOverlay = showBottomOverlay,
-                        gestureCallbacks = gestureCallbacks,
-                        onMinimize = {
-                            Log.d(TAG, "Minimize button clicked")
-                            viewModel.minimize()
+                        onExpand = { viewModel.exitMiniPlayer() },
+                        windowedContent = {
+                            // Windowed chrome: details LazyColumn + controls
+                            WindowedPlayerContent(
+                                player = player,
+                                state = state,
+                                scrollState = scrollState.scrollState,
+                                expandedDescription = expandedDescription,
+                                onToggleDescription = { expandedDescription = !expandedDescription },
+                                selectedTab = selectedTab,
+                                onTabSelected = { selectedTab = it },
+                                onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") }
+                            )
+
+                            // Gesture layer (tap, double-tap, vertical drag for brightness/volume)
+                            val gestureMode = if (isCollapsedControls) PlayerMode.COMPACT else PlayerMode.NORMAL
+                            PlayerGestureLayer(
+                                modifier = Modifier.fillMaxSize(),
+                                callbacks = gestureCallbacks,
+                                mode = gestureMode
+                            )
+
+                            // Brightness/Volume indicators
+                            if (showBrightnessIndicator) {
+                                BrightnessIndicator(brightness = brightnessValue, modifier = Modifier.align(Alignment.CenterStart))
+                            }
+                            if (showVolumeIndicator) {
+                                VolumeIndicator(volume = volumeValue, modifier = Modifier.align(Alignment.CenterEnd))
+                            }
+
+                            // Top bar
+                            if (showTopOverlay && !isCollapsedControls) {
+                                TopOverlay(
+                                    title = state.currentVideo?.title ?: "Unknown",
+                                    channelName = state.currentVideo?.author?.name ?: "Unknown",
+                                    onMinimize = { viewModel.minimize() },
+                                    onReplayToggle = { viewModel.toggleReplay() },
+                                    onWatchLater = { /* TODO */ },
+                                    onOptions = { showOptionsModal = true }
+                                )
+                            }
+
+                            // Bottom bar
+                            if (isCollapsedControls || showBottomOverlay) {
+                                if (isCollapsedControls) {
+                                    CompactControlsRow(
+                                        isPlaying = state.isPlaying,
+                                        isLooping = isLooping,
+                                        onMinimize = { viewModel.minimize() },
+                                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
+                                        onChapters = { showChapters = !showChapters },
+                                        onLoopToggle = {
+                                            isLooping = !isLooping
+                                            player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                                        },
+                                        onWatchLater = { /* TODO */ },
+                                        onOptions = { showOptionsModal = true },
+                                        onFullscreen = { viewModel.toggleFullscreen() }
+                                    )
+                                } else {
+                                    BottomOverlay(
+                                        player = player,
+                                        currentPositionMs = state.currentPositionMs,
+                                        durationMs = state.durationMs,
+                                        isPlaying = state.isPlaying,
+                                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
+                                        onPrevious = { viewModel.skipPrevious() },
+                                        onNext = { viewModel.skipNext() },
+                                        onChapters = { showChapters = !showChapters },
+                                        onFullscreen = { viewModel.toggleFullscreen() },
+                                        onSeek = { positionMs ->
+                                            scrubPositionMs = positionMs
+                                            isScrubbing = true
+                                            viewModel.seekTo(positionMs)
+                                        },
+                                        isScrubbing = isScrubbing,
+                                        scrubPositionMs = scrubPositionMs
+                                    )
+                                }
+                            }
                         },
-                        onReplayToggle = { viewModel.toggleReplay() },
-                        onWatchLater = { /* TODO */ },
-                        onOptions = { showOptionsModal = true },
-                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
-                        onPrevious = { viewModel.skipPrevious() },
-                        onNext = { viewModel.skipNext() },
-                        onChapters = { showChapters = !showChapters },
-                        onFullscreenToggle = { viewModel.toggleFullscreen() },
-                        onSeek = { positionMs ->
-                            scrubPositionMs = positionMs
-                            isScrubbing = true
-                            viewModel.seekTo(positionMs)
-                        },
-                        isScrubbing = isScrubbing,
-                        scrubPositionMs = scrubPositionMs,
-                        isLooping = isLooping,
-                        onLoopToggle = {
-                            isLooping = !isLooping
-                            player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                        floatingContent = {
+                            // Floating chrome: mini player overlay
+                            FloatingChrome(
+                                player = player,
+                                state = state,
+                                onExpand = { viewModel.exitMiniPlayer() },
+                                onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
+                                onClose = {
+                                    Log.d(TAG, "Close mini player: close")
+                                    viewModel.close()
+                                },
+                                onMoreOptions = { showMiniPlayerOptions = true },
+                                onFullscreen = {
+                                    Log.d(TAG, "Fullscreen from mini player: exit mini then enter fullscreen")
+                                    viewModel.exitMiniPlayer()
+                                    viewModel.toggleFullscreen()
+                                }
+                            )
                         }
                     )
                 }
 
-                // ==================== Options modal (full-screen dialog) ====================
+                // ==================== Options modal ====================
                 if (showOptionsModal) {
                     OptionsModal(
                         playbackSpeed = selectedSpeed,
@@ -526,7 +530,7 @@ fun PlayerScreen(
                     )
                 }
 
-                // ==================== Chapters panel (full-screen dialog) ====================
+                // ==================== Chapters panel ====================
                 if (showChapters) {
                     ChaptersPanel(
                         chapters = emptyList(),

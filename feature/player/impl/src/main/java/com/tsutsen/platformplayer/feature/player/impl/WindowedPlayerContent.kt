@@ -12,104 +12,45 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
 
 /**
- * NORMAL and COMPACT modes. These are the same video box + scrollable detail page - COMPACT
- * is just what NORMAL looks like once the user has scrolled the video box down to <=30% of
- * the container height (see `isCollapsedControls` in PlayerScreen.kt). The only thing that
- * changes is which control row [PlayerControlsScaffold] draws: the full top/bottom overlay
- * (title, timeline, playback buttons) in NORMAL, vs. just [CompactControlsRow] in COMPACT.
+ * Windowed mode content: just the scrollable details LazyColumn.
  *
- * If you're looking for where COMPACT "starts", it's the `isCollapsedControls` condition
- * passed in from the caller - there's no separate composable for it because there's nothing
- * structurally separate to render; only the control row and top-bar visibility differ.
+ * The video box, controls, and gesture layer are all handled by PlayerMorphBox
+ * and the gesture layer in PlayerScreen.kt. This composable only renders the
+ * details below the video box (title, channel, stats, description, tabs, etc.).
+ *
+ * In NORMAL mode, this is visible below the video box.
+ * In COMPACT mode, this is partially visible (video box is scrolled up).
+ * In FLOATING mode, this fades out during morph (handled by PlayerMorphBox alpha).
  */
 @Composable
 fun WindowedPlayerContent(
-    modifier: Modifier,
     player: ExoPlayer?,
     state: PlayerUiState.Loaded,
-    playerHeightPx: Float,
     scrollState: LazyListState,
-    nestedScrollConnection: NestedScrollConnection?,
-    isCollapsedControls: Boolean,
     expandedDescription: Boolean,
     onToggleDescription: () -> Unit,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
-    onLoadMoreComments: () -> Unit,
-    // Morph animation: corner radius applied to the video box during WINDOWED↔FLOATING transition
-    cornerRadius: Dp = 0.dp,
-    // Shared scaffold state
-    isLoading: Boolean,
-    brightnessValue: Float,
-    volumeValue: Float,
-    showBrightnessIndicator: Boolean,
-    showVolumeIndicator: Boolean,
-    showTopOverlay: Boolean,
-    showBottomOverlay: Boolean,
-    gestureCallbacks: PlayerGestureCallbacks,
-    // NORMAL top/bottom bar callbacks
-    onMinimize: () -> Unit,
-    onReplayToggle: () -> Unit,
-    onWatchLater: () -> Unit,
-    onOptions: () -> Unit,
-    onPlayPause: () -> Unit,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onChapters: () -> Unit,
-    onFullscreenToggle: () -> Unit,
-    onSeek: (Long) -> Unit,
-    isScrubbing: Boolean,
-    scrubPositionMs: Long,
-    // COMPACT-only
-    isLooping: Boolean,
-    onLoopToggle: () -> Unit
+    onLoadMoreComments: () -> Unit
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-        // ==================== Video box (height driven by scroll, shared by NORMAL/COMPACT) ====================
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(with(LocalDensity.current) { playerHeightPx.toDp() })
-                .background(Color.Black)
-                .clip(RoundedCornerShape(cornerRadius))
-                .clipToBounds()
-        ) {
-            PlayerVideoSurface(player = player)
-        }
-
+    Column(modifier = Modifier.fillMaxSize()) {
         // ==================== Scrollable video details ====================
         LazyColumn(
             state = scrollState,
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .then(
-                    if (nestedScrollConnection != null) {
-                        Modifier.nestedScroll(nestedScrollConnection)
-                    } else {
-                        Modifier
-                    }
-                )
                 .background(MaterialTheme.colorScheme.surface)
         ) {
             item {
@@ -177,71 +118,5 @@ fun WindowedPlayerContent(
                 }
             }
         }
-        } // end Column
-
-        // ==================== Controls scaffold: NORMAL bars, or COMPACT row ====================
-        // Gesture layer (vertical drag disabled in NORMAL/COMPACT — morph drag target instead)
-        val gestureMode = if (isCollapsedControls) PlayerMode.COMPACT else PlayerMode.NORMAL
-        PlayerGestureLayer(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .fillMaxWidth()
-                .height(with(LocalDensity.current) { playerHeightPx.toDp() })
-                .clipToBounds(),
-            callbacks = gestureCallbacks,
-            mode = gestureMode
-        )
-
-        // Brightness/Volume indicators
-        if (showBrightnessIndicator) {
-            BrightnessIndicator(brightness = brightnessValue, modifier = Modifier.align(Alignment.CenterStart))
-        }
-        if (showVolumeIndicator) {
-            VolumeIndicator(volume = volumeValue, modifier = Modifier.align(Alignment.CenterEnd))
-        }
-
-        // Top bar
-        if (showTopOverlay && !isCollapsedControls) {
-            TopOverlay(
-                title = state.currentVideo?.title ?: "Unknown",
-                channelName = state.currentVideo?.author?.name ?: "Unknown",
-                onMinimize = onMinimize,
-                onReplayToggle = onReplayToggle,
-                onWatchLater = onWatchLater,
-                onOptions = onOptions
-            )
-        }
-
-        // Bottom bar
-        if (isCollapsedControls || showBottomOverlay) {
-            if (isCollapsedControls) {
-                CompactControlsRow(
-                    isPlaying = state.isPlaying,
-                    isLooping = isLooping,
-                    onMinimize = onMinimize,
-                    onPlayPause = onPlayPause,
-                    onChapters = onChapters,
-                    onLoopToggle = onLoopToggle,
-                    onWatchLater = onWatchLater,
-                    onOptions = onOptions,
-                    onFullscreen = onFullscreenToggle
-                )
-            } else {
-                BottomOverlay(
-                    player = player,
-                    currentPositionMs = state.currentPositionMs,
-                    durationMs = state.durationMs,
-                    isPlaying = state.isPlaying,
-                    onPlayPause = onPlayPause,
-                    onPrevious = onPrevious,
-                    onNext = onNext,
-                    onChapters = onChapters,
-                    onFullscreen = onFullscreenToggle,
-                    onSeek = onSeek,
-                    isScrubbing = isScrubbing,
-                    scrubPositionMs = scrubPositionMs
-                )
-            }
-        }
-    } // end Box
+    }
 }

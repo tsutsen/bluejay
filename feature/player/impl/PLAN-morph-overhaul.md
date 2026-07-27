@@ -120,17 +120,19 @@ PlayerViewModel.kt           (~170 lines)  ← keep as-is (minor: clean up getPl
 
 **Commit**: `15adc3ef` - refactor(player): Phase 1 - mode-aware gestures and morph drag fix
 
-### Phase 2: Eliminate Nested Scroll vs Morph Conflict
+### Phase 2: Eliminate Nested Scroll vs Morph Conflict ✅ COMPLETE
 **Goal**: No more jitter during morph drag.
 
-1. Disable nested scroll height consumption during morph drag:
+1. Disable nested scroll height consumption during morph drag: ✅
    ```kotlin
    nestedScrollConnection = if (!morphState.isDragging) scrollState.connection else null
    ```
-2. During morph drag, video box height is driven purely by `morphProgress` (not scroll).
-3. When morph settles, re-enable nested scroll.
+2. During morph drag, video box height is driven purely by `morphProgress` (not scroll). ✅
+3. When morph settles, re-enable nested scroll. ✅
 
-**Verification**: Morph drag is smooth, no height jumps from scroll fighting.
+**Verification**: Morph drag is smooth, no height jumps from scroll fighting. ✅
+
+**Commit**: `093f877c` - refactor(player): Phase 2 - disable nested scroll during morph drag
 
 ### Phase 3: Shared Morph Box
 **Goal**: Single video box for all non-fullscreen modes. No tree swap.
