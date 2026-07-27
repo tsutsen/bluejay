@@ -30,8 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * Shared compact control row used by both [FloatingPlayerContent] and the morphing
- * (drag-to-mini) transition in [WindowedPlayerContent]. Renders play/pause + close at
+ * Shared compact control row used by [UnifiedPlayerContent] for the mini player overlay.
+ * Renders play/pause + close at
  * the top, title + author + more-options + fullscreen at the bottom, and a progress bar
  * along the bottom edge.
  */

@@ -1,20 +1,48 @@
-# Drag-to-Mini-Player Polish — Implementation Plan
+# Drag-to-Mini-Player Polish & Unification — Implementation Plan
 
 **Status:** Implemented  
 **Created:** 2026-07-27  
-**Scope:** `feature/player/impl` — `PlayerScreen.kt`, `WindowedPlayerContent.kt`, `MiniControlsRow.kt`
+**Scope:** `feature/player/impl` — `PlayerScreen.kt`, `UnifiedPlayerContent.kt`, `VideoLayout.kt`, `MiniControlsRow.kt`
 
 ---
 
 ## Problem Statement
 
-The current drag-to-mini implementation has four polish issues that need fixing before
-the feature feels production-ready:
+The drag-to-mini feature had four polish issues and a fundamental architecture problem:
+the normal player and mini player were separate composables that unmounted/remounted on
+transition, causing discontinuities and state loss.
+
+### Polish Issues
 
 1. **Wrong final position** — The dragged player lands past the mini player's resting corner
 2. **No dimension morphing** — Width and height stay fixed during drag (only scale/translate)
 3. **Unidirectional drag** — Upward drag during morph doesn't reverse progress
 4. **Controls shrink with player** — MiniControlsRow elements get smaller as the player shrinks
+
+### Architecture Problem
+
+The player used separate composables (`WindowedPlayerContent` for NORMAL/COMPACT, `FloatingPlayerContent`
+for FLOATING, `FullscreenPlayerContent` for FULLSCREEN) dispatched via `when (playerMode)`. Each mode
+swap unmounted the entire composable tree and recreated it, causing:
+- Discontinuous transitions (no smooth geometry interpolation)
+- State loss across the boundary (scroll position, video surface recreation)
+- Inability to cross-fade between control rows
+
+### Solution: Unified Player
+
+Replace the `when` dispatch with a single `UnifiedPlayerContent` composable that handles all four
+modes in one persistent tree. Geometry is computed by `computeVideoLayout()` in `VideoLayout.kt`,
+which returns a `VideoLayout` data class with width, height, offset, and corner radius — all in
+pixels/Dp. The composable receives this layout and positions `PlayerVideoSurface` accordingly.
+
+```
+PlayerScreen (holds morphProgress + fullscreenProgress Animatables)
+└── UnifiedPlayerContent (single persistent tree)
+    ├── PlayerVideoSurface (positioned via VideoLayout)
+    ├── LazyColumn detail panel (fades + translates during morph)
+    ├── PlayerControlsScaffold (cross-fades NORMAL/COMPACT/FULLSCREEN bars)
+    └── Mini player overlay (scrim + MiniControlsRow, drag-to-corner)
+```
 
 ---
 

@@ -86,9 +86,9 @@ private const val MINI_SETTLED_THRESHOLD = 0.01f
 private const val FULLSCREEN_SETTLED_THRESHOLD = 0.01f
 
 /**
- * Unified player content composable that replaces the three mode-specific composables
- * (WindowedPlayerContent, FloatingPlayerContent, FullscreenPlayerContent) with a single
- * persistent layout tree. The [PlayerVideoSurface] never leaves composition across mode
+ * Unified player content composable that replaces the four mode-specific composables
+ * (WindowedPlayerContent, FloatingPlayerContent, FullscreenPlayerContent, and the old
+ * PlayerControlsScaffold-based layout) with a single persistent layout tree. The [PlayerVideoSurface] never leaves composition across mode
  * changes — it is positioned and sized via the [videoLayout] geometry computed by the
  * caller.
  *
