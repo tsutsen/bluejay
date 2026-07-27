@@ -263,19 +263,25 @@ fun PlayerScreen(
             // Auto-hide after 3s when playing and settled in NORMAL or FULLSCREEN.
             // Force visible during transitions and while scrubbing.
 
-            LaunchedEffect(isFullscreen, controlsVisible, state.isPlaying) {
-                val settled = isMinimizedAnim.value == false && isFullscreenAnim.value == false
-                if (isFullscreen && controlsVisible && state.isPlaying && settled) {
+            // Auto-hide controls in NORMAL and FULLSCREEN when playing and settled
+            LaunchedEffect(controlsVisible, state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value) {
+                val settled = !isMinimizedAnim.value // mini has its own chrome
+                val canAutoHide = settled && state.isPlaying && controlsVisible
+                if (canAutoHide) {
+                    hideControlsJob?.cancel()
                     hideControlsJob = launch {
                         delay(3000)
                         controlsVisible = false
                     }
                 } else {
                     hideControlsJob?.cancel()
-                    if (!isFullscreen || !state.isPlaying || !settled) {
-                        controlsVisible = true
-                    }
+                    // Don't force true here — only force when entering modes / scrubbing
                 }
+            }
+
+            // Show controls when pausing
+            LaunchedEffect(state.isPlaying) {
+                if (!state.isPlaying) controlsVisible = true
             }
 
             // ==================== Collapsing player height (shared by video content AND controls overlay) ====================
@@ -338,6 +344,9 @@ fun PlayerScreen(
             // Floating resting position: BottomEnd + 16dp padding
             val floatingRestX = containerSize.width - miniWidthPx - paddingPx
             val floatingRestY = containerSize.height - miniHeightPx - paddingPx
+            // Use raw offset during drag to avoid fighting the spring
+            val layoutDragX = if (isDraggingMiniPlayer) miniPlayerOffsetX else animatedMiniOffsetX
+            val layoutDragY = if (isDraggingMiniPlayer) miniPlayerOffsetY else animatedMiniOffsetY
             val videoLayout = computeVideoLayout(
                 miniProgress = morphProgress.value,
                 fullscreenProgress = fullscreenP,
@@ -348,14 +357,21 @@ fun PlayerScreen(
                 miniHeightPx = miniHeightPx,
                 floatingRestX = floatingRestX,
                 floatingRestY = floatingRestY,
-                dragOffsetX = animatedMiniOffsetX,
-                dragOffsetY = animatedMiniOffsetY
+                dragOffsetX = layoutDragX,
+                dragOffsetY = layoutDragY
             )
 
             val gestureCallbacks = PlayerGestureCallbacks(
                 onTap = {
-                    controlsVisible = true
+                    controlsVisible = !controlsVisible
                     hideControlsJob?.cancel()
+                    if (controlsVisible && state.isPlaying) {
+                        // Restart auto-hide timer via the LaunchedEffect above
+                        hideControlsJob = coroutineScope.launch {
+                            delay(3000)
+                            controlsVisible = false
+                        }
+                    }
                 },
                 onDoubleTap = {
                     if (isFullscreen) {
@@ -396,6 +412,16 @@ fun PlayerScreen(
                         containerSize = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
                     }
             ) {
+                // Scrim: dim content behind the player overlay in windowed modes
+                val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) * 0.45f
+                if (scrimAlpha > 0.01f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = scrimAlpha))
+                    )
+                }
+
                 // Unified player content — handles NORMAL, COMPACT, FLOATING, and FULLSCREEN
                 // in a single persistent composable tree with smooth geometry transitions.
                 UnifiedPlayerContent(
@@ -450,7 +476,11 @@ fun PlayerScreen(
                         Log.d(TAG, "Fullscreen button clicked")
                         viewModel.toggleFullscreen()
                     },
-                    onExpand = { viewModel.exitMiniPlayer() },
+                    onExpand = {
+                        viewModel.exitMiniPlayer()
+                        miniPlayerOffsetX = 0f
+                        miniPlayerOffsetY = 0f
+                    },
                     onMorphDragStart = {
                         isDraggingMorph = true
                     },
@@ -465,7 +495,9 @@ fun PlayerScreen(
                         isDraggingMorph = false
                         val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
                         if (progress > 0.4f) {
-                            // Commit: minimize
+                            // Commit: minimize (reset offset so mini opens at default corner)
+                            miniPlayerOffsetX = 0f
+                            miniPlayerOffsetY = 0f
                             viewModel.minimize()
                         } else {
                             // Reject: spring back to NORMAL

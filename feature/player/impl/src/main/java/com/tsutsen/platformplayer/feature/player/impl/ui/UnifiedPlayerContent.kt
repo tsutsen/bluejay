@@ -36,6 +36,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -787,43 +791,8 @@ fun ControlsLayer(
                 bottomBar = {
                     // §4.3: layer NORMAL bottom, COMPACT row, and FULLSCREEN bottom
                     Box(modifier = Modifier.fillMaxWidth()) {
-                        // NORMAL bottom overlay
-                        if (normalBarAlpha > 0.01f && !isCollapsedControls) {
-                            Box(modifier = Modifier.alpha(normalBarAlpha)) {
-                                BottomOverlay(
-                                    player = player,
-                                    currentPositionMs = state.currentPositionMs,
-                                    durationMs = state.durationMs,
-                                    isPlaying = state.isPlaying,
-                                    onPlayPause = onPlayPause,
-                                    onPrevious = onPrevious,
-                                    onNext = onNext,
-                                    onChapters = onChapters,
-                                    onFullscreen = onFullscreenToggle,
-                                    onSeek = onSeek,
-                                    isScrubbing = isScrubbing,
-                                    scrubPositionMs = scrubPositionMs
-                                )
-                            }
-                        }
-                        // COMPACT control row
-                        if (compactBarAlpha > 0.01f) {
-                            Box(modifier = Modifier.alpha(compactBarAlpha)) {
-                                CompactControlsRow(
-                                    isPlaying = state.isPlaying,
-                                    isLooping = isLooping,
-                                    onMinimize = onMinimize,
-                                    onPlayPause = onPlayPause,
-                                    onChapters = onChapters,
-                                    onLoopToggle = onLoopToggle,
-                                    onWatchLater = onWatchLater,
-                                    onOptions = onOptions,
-                                    onFullscreen = onFullscreenToggle
-                                )
-                            }
-                        }
-                        // FULLSCREEN bottom overlay
-                        if (fullscreenBarAlpha > 0.01f) {
+                        // FULLSCREEN bottom overlay (only when fullscreen-dominant)
+                        if (fullscreenBarAlpha > 0.99f) {
                             Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
                                 BottomOverlay(
                                     player = player,
@@ -839,6 +808,46 @@ fun ControlsLayer(
                                     isScrubbing = isScrubbing,
                                     scrubPositionMs = scrubPositionMs
                                 )
+                            }
+                        }
+
+                        // NORMAL ↔ COMPACT: animated swap (only when not fullscreen-dominant)
+                        if (fullscreenBarAlpha < 0.99f && miniProgress < MINI_DRAG_THRESHOLD) {
+                            AnimatedContent(
+                                targetState = isCollapsedControls,
+                                transitionSpec = {
+                                    fadeIn() togetherWith fadeOut()
+                                },
+                                label = "normalCompactControls"
+                            ) { collapsed ->
+                                if (collapsed) {
+                                    CompactControlsRow(
+                                        isPlaying = state.isPlaying,
+                                        isLooping = isLooping,
+                                        onMinimize = onMinimize,
+                                        onPlayPause = onPlayPause,
+                                        onChapters = onChapters,
+                                        onLoopToggle = onLoopToggle,
+                                        onWatchLater = onWatchLater,
+                                        onOptions = onOptions,
+                                        onFullscreen = onFullscreenToggle
+                                    )
+                                } else {
+                                    BottomOverlay(
+                                        player = player,
+                                        currentPositionMs = state.currentPositionMs,
+                                        durationMs = state.durationMs,
+                                        isPlaying = state.isPlaying,
+                                        onPlayPause = onPlayPause,
+                                        onPrevious = onPrevious,
+                                        onNext = onNext,
+                                        onChapters = onChapters,
+                                        onFullscreen = onFullscreenToggle,
+                                        onSeek = onSeek,
+                                        isScrubbing = isScrubbing,
+                                        scrubPositionMs = scrubPositionMs
+                                    )
+                                }
                             }
                         }
                     }
