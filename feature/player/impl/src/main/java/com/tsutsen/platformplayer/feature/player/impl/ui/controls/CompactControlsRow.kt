@@ -52,11 +52,16 @@ internal fun CompactControlsRow(
     onFullscreen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Box(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.6f))
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.Center)
+                .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -109,5 +114,6 @@ internal fun CompactControlsRow(
                 tint = Color.White
             )
         }
+    }
     }
 }

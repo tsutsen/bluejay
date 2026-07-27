@@ -172,7 +172,7 @@ fun PlayerControlsScaffold(
             exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
