@@ -91,6 +91,15 @@ private const val MINI_DRAG_THRESHOLD = 0.98f
 private const val MINI_SETTLED_THRESHOLD = 0.01f
 
 /**
+ * miniProgress value at which the mini player's own controls (play/pause, close,
+ * title, more-options) begin fading in. Kept well before [MINI_DRAG_THRESHOLD] so the
+ * fade has room to play out instead of snapping in over the last 2% of the morph.
+ * By this point normalBarAlpha/compactBarAlpha have already faded out most of the way,
+ * so there's no visible overlap with the windowed controls.
+ */
+private const val MINI_CONTROLS_FADE_START = 0.6f
+
+/**
  * Threshold below which the fullscreen player is considered "settled" at NORMAL.
  * Above this, fullscreen is considered "settled" at FULLSCREEN.
  */
@@ -858,7 +867,7 @@ fun ControlsLayer(
         }
 
         // ==================== FLOATING mode controls ====================
-        if (miniProgress > MINI_DRAG_THRESHOLD) {
+        if (miniProgress > MINI_CONTROLS_FADE_START) {
             Box(
                 modifier = Modifier
                     .offset {
@@ -872,18 +881,33 @@ fun ControlsLayer(
                         height = with(density) { videoLayout.heightPx.toDp() }
                     )
             ) {
-                // Mini player background scrim
+                // Mini player background scrim — fades in over the same wide window as the
+                // controls so the scrim doesn't pop in ahead of/behind them.
+                val scrimAlpha = ((miniProgress - MINI_CONTROLS_FADE_START) /
+                    (1f - MINI_CONTROLS_FADE_START)).coerceIn(0f, 1f)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .graphicsLayer { alpha = scrimAlpha }
                         .background(Color.Black.copy(alpha = 0.6f))
                 )
 
-                // Mini player controls with fade-in animation
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                // Mini player controls: eased fade + slight scale/slide so they settle in
+                // rather than snapping, driven continuously by miniProgress.
+                val rawProgress = ((miniProgress - MINI_CONTROLS_FADE_START) /
+                    (1f - MINI_CONTROLS_FADE_START)).coerceIn(0f, 1f)
+                // smoothstep easing (3x^2 - 2x^3) for a gentler ease-in/ease-out than linear
+                val miniControlsAlpha = rawProgress * rawProgress * (3f - 2f * rawProgress)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = miniControlsAlpha
+                            val scale = 0.92f + 0.08f * miniControlsAlpha
+                            scaleX = scale
+                            scaleY = scale
+                            translationY = (1f - miniControlsAlpha) * 12.dp.toPx()
+                        }
                 ) {
                     Column(
                         modifier = Modifier.fillMaxSize()
@@ -991,7 +1015,7 @@ fun ControlsLayer(
                             )
                         }
                     }
-                }
+                    } // closes Column(fillMaxSize) — top row / spacer / bottom row
                 }
             }
         }
