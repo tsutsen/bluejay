@@ -1,5 +1,11 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
@@ -194,19 +201,11 @@ fun WindowedPlayerContent(
             )
         },
         bottomBar = {
-            if (isCollapsedControls) {
-                CompactControlsRow(
-                    isPlaying = state.isPlaying,
-                    isLooping = isLooping,
-                    onMinimize = onMinimize,
-                    onPlayPause = onPlayPause,
-                    onChapters = onChapters,
-                    onLoopToggle = onLoopToggle,
-                    onWatchLater = onWatchLater,
-                    onOptions = onOptions,
-                    onFullscreen = onFullscreenToggle
-                )
-            } else {
+            AnimatedVisibility(
+                visible = !isCollapsedControls,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+            ) {
                 BottomOverlay(
                     player = player,
                     currentPositionMs = state.currentPositionMs,
@@ -220,6 +219,23 @@ fun WindowedPlayerContent(
                     onSeek = onSeek,
                     isScrubbing = isScrubbing,
                     scrubPositionMs = scrubPositionMs
+                )
+            }
+            AnimatedVisibility(
+                visible = isCollapsedControls,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+            ) {
+                CompactControlsRow(
+                    isPlaying = state.isPlaying,
+                    isLooping = isLooping,
+                    onMinimize = onMinimize,
+                    onPlayPause = onPlayPause,
+                    onChapters = onChapters,
+                    onLoopToggle = onLoopToggle,
+                    onWatchLater = onWatchLater,
+                    onOptions = onOptions,
+                    onFullscreen = onFullscreenToggle
                 )
             }
         }
