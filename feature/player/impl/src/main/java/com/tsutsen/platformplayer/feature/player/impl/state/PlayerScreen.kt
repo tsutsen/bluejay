@@ -71,8 +71,6 @@ fun PlayerScreen(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
 
-    var showTopOverlay by remember { mutableStateOf(true) }
-    var showBottomOverlay by remember { mutableStateOf(true) }
     var showOptionsModal by remember { mutableStateOf(false) }
     var showChapters by remember { mutableStateOf(false) }
     var showBrightnessIndicator by remember { mutableStateOf(false) }
@@ -82,6 +80,10 @@ fun PlayerScreen(
     var selectedSpeed by remember { mutableStateOf(1.0f) }
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
+
+    // Control visibility (unified system)
+    var controlsVisible by remember { mutableStateOf(true) }
+    var hideControlsJob by remember { mutableStateOf<Job?>(null) }
 
     // Detail page state
     var expandedDescription by remember { mutableStateOf(false) }
@@ -95,7 +97,6 @@ fun PlayerScreen(
 
     // Morph (drag-to-mini) state — continuous 0..1 progress from NORMAL to FLOATING
     val morphProgress = remember { Animatable(0f) }
-    var isDraggingMorph by remember { mutableStateOf(false) }
 
     // Fullscreen progress — continuous 0..1 from NORMAL to FULLSCREEN
     val fullscreenProgress = remember { Animatable(0f) }
@@ -144,46 +145,31 @@ fun PlayerScreen(
         }
     }
 
-    // Auto-hide overlays when playing
-    LaunchedEffect(showTopOverlay, showBottomOverlay) {
-        if (showTopOverlay && showBottomOverlay) {
-            var currentState: PlayerUiState.Loaded? = uiState as? PlayerUiState.Loaded
-            while (currentState == null || !currentState.isPlaying) {
-                delay(100)
-                currentState = uiState as? PlayerUiState.Loaded
-            }
-            delay(3000)
-            currentState = uiState as? PlayerUiState.Loaded
-            if (currentState != null && currentState.isPlaying) {
-                showTopOverlay = false
-                showBottomOverlay = false
-            }
-        }
-    }
-
     // Sync animation state with actual state
     val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
     val isFullscreenState = (uiState as? PlayerUiState.Loaded)?.isFullscreen
 
-    LaunchedEffect(isMinimizedState, isFullscreenState) {
+    LaunchedEffect(isMinimizedState) {
         val minimized = isMinimizedState ?: return@LaunchedEffect
-        val fullscreen = isFullscreenState ?: return@LaunchedEffect
-        // Expanding from mini: snap morph to 0 so unified composable mounts at full size
-        if (!minimized && isMinimizedAnim.value) {
-            morphProgress.snapTo(0f)
-        }
-        // Sync fullscreen progress with discrete state
-        val fullscreenTarget = if (fullscreen) 1f else 0f
-        if (kotlin.math.abs(fullscreenProgress.value - fullscreenTarget) > 0.01f) {
-            fullscreenProgress.animateTo(fullscreenTarget, transitionSpringSpec)
+        val target = if (minimized) 1f else 0f
+        if (kotlin.math.abs(morphProgress.value - target) > 0.01f) {
+            morphProgress.animateTo(target, transitionSpringSpec)
         }
         isMinimizedAnim.value = minimized
-        isFullscreenAnim.value = fullscreen
         if (!minimized) {
-            showTopOverlay = true
-            showBottomOverlay = true
+            controlsVisible = true
         }
-        Log.d(TAG, "Animation state synced: isMinimized=$minimized, isFullscreen=$fullscreen")
+        Log.d(TAG, "Animation state synced: isMinimized=$minimized")
+    }
+
+    LaunchedEffect(isFullscreenState) {
+        val fullscreen = isFullscreenState ?: return@LaunchedEffect
+        val target = if (fullscreen) 1f else 0f
+        if (kotlin.math.abs(fullscreenProgress.value - target) > 0.01f) {
+            fullscreenProgress.animateTo(target, transitionSpringSpec)
+        }
+        isFullscreenAnim.value = fullscreen
+        Log.d(TAG, "Fullscreen synced: isFullscreen=$fullscreen")
     }
 
     when (val state = uiState) {
@@ -191,9 +177,6 @@ fun PlayerScreen(
             // No player active — don't show anything
         }
         is PlayerUiState.Loaded -> {
-            val isTablet = configuration.smallestScreenWidthDp >= 600
-
-            Log.d(TAG, "PlayerScreen entered Loaded state")
             Log.d(TAG, "Current video: ${state.currentVideo?.url}")
             Log.d(TAG, "Is playing: ${state.isPlaying}")
             Log.d(TAG, "Is loading: ${state.isLoading}")
@@ -207,27 +190,15 @@ fun PlayerScreen(
 
             val miniWidth = 280.dp
             val miniHeight = miniWidth * 9f / 16f
-            val dragTravelPx = containerSize.height * 0.9f  // 90% drag = full mini
 
             val isMinimized = state.isMinimized
             val isFullscreen = state.isFullscreen
 
             // ==================== Animated values (lerp-derived from morphProgress) ====================
-            // Sync morphProgress to the discrete state only when the user isn't dragging.
-            // Gated to skip if morphProgress is already within epsilon of target — otherwise it
-            // redundantly re-animates to the same value every time isMinimizedAnim flips.
-            // NOTE: morphProgress.value is intentionally NOT a key here — including it would
-            // restart the effect on every animation frame, cancelling/restarting the spring
+            // Sync morphProgress to the discrete state via the LaunchedEffect above.
+            // NOTE: morphProgress.value is intentionally NOT a key in the LaunchedEffect —
+            // including it would restart the effect on every animation frame, cancelling/restarting the spring
             // and producing sluggish or stuttering motion.
-            val morphTarget = if (isMinimizedAnim.value) 1f else 0f
-            LaunchedEffect(isMinimizedAnim.value) {
-                if (!isDraggingMorph && kotlin.math.abs(morphProgress.value - morphTarget) > 0.01f) {
-                    morphProgress.animateTo(
-                        targetValue = morphTarget,
-                        animationSpec = transitionSpringSpec
-                    )
-                }
-            }
 
             val p = morphProgress.value
             val cornerRadius = (12f * p).coerceAtLeast(0f).dp
@@ -284,19 +255,23 @@ fun PlayerScreen(
                 }
             }
 
-            // ==================== Auto-hide controls in fullscreen ====================
-            var controlsVisible by remember { mutableStateOf(true) }
-            var hideControlsJob by remember { mutableStateOf<Job?>(null) }
+            // ==================== Auto-hide controls ====================
+            // Unified system: controlsVisible drives both top and bottom bars.
+            // Auto-hide after 3s when playing and settled in NORMAL or FULLSCREEN.
+            // Force visible during transitions and while scrubbing.
 
-            LaunchedEffect(isFullscreen, controlsVisible) {
-                if (isFullscreen && controlsVisible) {
+            LaunchedEffect(isFullscreen, controlsVisible, state.isPlaying) {
+                val settled = isMinimizedAnim.value == false && isFullscreenAnim.value == false
+                if (isFullscreen && controlsVisible && state.isPlaying && settled) {
                     hideControlsJob = launch {
                         delay(3000)
                         controlsVisible = false
                     }
                 } else {
                     hideControlsJob?.cancel()
-                    if (!isFullscreen) controlsVisible = true
+                    if (!isFullscreen || !state.isPlaying || !settled) {
+                        controlsVisible = true
+                    }
                 }
             }
 
@@ -306,6 +281,13 @@ fun PlayerScreen(
             val minPlayerHeightPx = containerSize.height * 0.2f
 
             var playerHeightPx by remember { mutableStateOf(0f) }
+
+            // Reset player height when leaving mini/fullscreen to avoid stale layout
+            LaunchedEffect(isMinimizedAnim.value, isFullscreenAnim.value) {
+                if (!isMinimizedAnim.value && !isFullscreenAnim.value) {
+                    playerHeightPx = maxPlayerHeightPx
+                }
+            }
 
             LaunchedEffect(maxPlayerHeightPx, minPlayerHeightPx) {
                 playerHeightPx = if (playerHeightPx == 0f) {
@@ -367,19 +349,10 @@ fun PlayerScreen(
                 dragOffsetY = animatedMiniOffsetY
             )
 
-            val playerMode = computePlayerMode(
-                isMinimized = isMinimizedAnim.value,
-                isFullscreen = isFullscreenAnim.value,
-                isCollapsedControls = isCollapsedControls
-            )
-            Log.d(TAG, "playerMode=$playerMode")
-
             val gestureCallbacks = PlayerGestureCallbacks(
                 onTap = {
                     controlsVisible = true
                     hideControlsJob?.cancel()
-                    showTopOverlay = !showTopOverlay
-                    showBottomOverlay = !showBottomOverlay
                 },
                 onDoubleTap = {
                     if (isFullscreen) {
@@ -436,8 +409,9 @@ fun PlayerScreen(
                     floatingRestX = floatingRestX,
                     floatingRestY = floatingRestY,
                     isCollapsedControls = isCollapsedControls,
-                    showTopOverlay = showTopOverlay,
-                    showBottomOverlay = showBottomOverlay,
+                    controlsVisible = controlsVisible,
+                    showTopOverlay = controlsVisible,
+                    showBottomOverlay = controlsVisible,
                     scrollState = scrollState,
                     nestedScrollConnection = nestedScrollConnection,
                     gestureCallbacks = gestureCallbacks,
