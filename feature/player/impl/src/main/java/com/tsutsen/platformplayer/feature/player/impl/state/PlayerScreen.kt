@@ -284,9 +284,9 @@ fun PlayerScreen(
                 if (!state.isPlaying) controlsVisible = true
             }
 
-            // Hide controls during morph drag (progress > 0.2)
+            // Hide controls during morph drag (progress > 0.8)
             LaunchedEffect(morphProgress.value) {
-                if (morphProgress.value > 0.2f) {
+                if (morphProgress.value > 0.8f) {
                     controlsVisible = false
                 }
             }
