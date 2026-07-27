@@ -158,6 +158,7 @@ fun PlayerScreen(
     // ==================== Animation state (persists across recompositions) ====================
     val isMinimizedAnim = remember { mutableStateOf(false) }
     val isFullscreenAnim = remember { mutableStateOf(false) }
+    val playerFadeInProgress = remember { Animatable(0f) }
 
     var containerSize by remember { mutableStateOf(Size.Zero) }
 
@@ -206,6 +207,15 @@ fun PlayerScreen(
         }
         isFullscreenAnim.value = fullscreen
         Log.d(TAG, "Fullscreen synced: isFullscreen=$fullscreen")
+    }
+
+    // Fade-in animation when player is first spawned
+    LaunchedEffect(uiState) {
+        if (uiState is PlayerUiState.Loaded) {
+            playerFadeInProgress.animateTo(1f, tween(durationMillis = 300))
+        } else {
+            playerFadeInProgress.animateTo(0f)
+        }
     }
 
     when (val state = uiState) {
@@ -489,10 +499,16 @@ fun PlayerScreen(
                         containerSize = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
                     }
             ) {
-                // Scrim: dim content behind the player overlay in windowed modes.
-                // In fullscreen mode, the scrim is always 100% opaque black.
-                val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) + fullscreenP
-                if (scrimAlpha > 0.01f) {
+                // Fade-in animation for player spawn
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = playerFadeInProgress.value }
+                ) {
+                    // Scrim: dim content behind the player overlay in windowed modes.
+                    // In fullscreen mode, the scrim is always 100% opaque black.
+                    val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) + fullscreenP
+                    if (scrimAlpha > 0.01f) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -602,6 +618,7 @@ fun PlayerScreen(
                     onMoreOptions = { showMiniPlayerOptions = true },
                     onFullscreenToggle = { viewModel.toggleFullscreen() }
                 )
+                }
 
                 // ==================== Options modal (full-screen dialog) ====================
                 if (showOptionsModal) {
