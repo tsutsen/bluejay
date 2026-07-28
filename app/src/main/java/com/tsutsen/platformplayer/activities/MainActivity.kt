@@ -25,7 +25,7 @@ import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.dualscreen.CompanionWindowManager
-import com.tsutsen.platformplayer.feature.player.impl.PlayerScreen
+import com.tsutsen.platformplayer.feature.player.impl.PlayerView
 import com.tsutsen.platformplayer.feature.dualscreen.ScreenCoordinator
 import com.tsutsen.platformplayer.states.StateApp
 import dagger.hilt.android.AndroidEntryPoint
@@ -299,7 +299,7 @@ private fun GrayjayMainActivity(
             )
             // Player overlay — only rendered when there's a video to play
             if (playerState.currentVideo != null) {
-                PlayerScreen()
+                PlayerView()
             }
         }
     )

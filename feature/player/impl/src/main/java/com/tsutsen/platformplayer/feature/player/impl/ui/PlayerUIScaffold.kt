@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
@@ -29,27 +28,20 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Gesture + overlay behavior shared by NORMAL, COMPACT, and FULLSCREEN. All three modes wrap
- * their video box in this exact same set of layers - the old file duplicated the gesture
- * layer, brightness/volume indicators, loading spinner, seek indicators, and gradient scrims
- * once for all three (it was a single `if (fullscreen) ... else ...` block that all three
- * modes funneled through), which made it easy to lose track of which mode you were editing.
- * Pulling it out means each mode's own file only has to say what its top/bottom bar is.
+ * their video box in this exact same set of layers — gesture detection, brightness/volume
+ * indicators, loading spinner, seek indicators, and gradient scrims.
  *
- * FLOATING does not use this - it has its own drag gesture and its own compact control row,
- * see FloatingPlayerContent.kt.
+ * FLOATING does not use this — it has its own drag gesture and its own compact control row.
  */
 data class PlayerGestureCallbacks(
     val onTap: () -> Unit,
     val onDoubleTap: () -> Unit,
     val onVerticalDragStart: (touchX: Float) -> Unit,
-    // areaWidthPx is the gesture layer's own width - callers use it to decide left-half
-    // (brightness) vs right-half (volume), same split the original inline code did with
-    // `size.width` from inside the pointerInput block.
     val onVerticalDrag: (touchX: Float, dragAmountPx: Float, areaWidthPx: Float) -> Unit
 )
 
 @Composable
-fun PlayerControlsScaffold(
+fun PlayerUIScaffold(
     modifier: Modifier,
     isLoading: Boolean,
     brightnessValue: Float,
@@ -64,13 +56,10 @@ fun PlayerControlsScaffold(
     topBar: @Composable () -> Unit,
     bottomBar: @Composable () -> Unit
 ) {
-    // pointerInput below is keyed on Unit (matches the original - the gesture detector
-    // coroutines only start once), so lambdas must be read through rememberUpdatedState
-    // rather than closed over directly, or they'd go stale after the first composition.
     val currentCallbacks by rememberUpdatedState(callbacks)
 
     Box(modifier = modifier.clipToBounds()) {
-        // ==================== Gesture layer (brightness/volume swipe, tap-to-toggle) ====================
+        // ==================== Gesture layer ====================
         var touchX = 0f
         Box(
             modifier = Modifier
@@ -166,12 +155,6 @@ fun PlayerControlsScaffold(
         }
 
         // ==================== Bottom gradient + bar ====================
-        // Gradient sits BEHIND the control row (overlaid, mirroring the top bar above),
-        // anchored to the bottom edge. The previous version used a Column, which stacks the
-        // bar and gradient sequentially instead of overlapping them - that pushes the actual
-        // control row away from the screen edge and leaves the gradient occupying the edge
-        // on its own, so the bar visually reads as displaced/swapped relative to where the
-        // top bar sits.
         AnimatedVisibility(
             visible = showBottomBar,
             enter = fadeIn() + slideInVertically(initialOffsetY = { it }),

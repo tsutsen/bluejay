@@ -1,17 +1,11 @@
-package com.tsutsen.platformplayer.feature.player.impl
+package com.tsutsen.platformplayer.feature.player.impl.ui.overlays
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import com.tsutsen.platformplayer.feature.player.impl.PlayerUiState
+import com.tsutsen.platformplayer.feature.player.impl.formatTime
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.ui.unit.Dp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
@@ -24,27 +18,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
- * Shared compact control row used by [UnifiedPlayerContent] for the mini player overlay.
+ * Shared compact control row used by [PlayerControls] for the mini player overlay.
  * Renders play/pause + close at the top, title + author + fullscreen at the bottom,
  * and a progress bar along the bottom edge.
  */
 @Composable
-fun MiniControlsRow(
+internal fun PlayerFloatingOverlay(
     state: PlayerUiState.Loaded,
     onPlayPause: () -> Unit,
     onClose: () -> Unit,
-    onFullscreen: () -> Unit,
-    miniHeight: Dp = 157.5.dp  // 280 * 9/16
+    onFullscreen: () -> Unit
 ) {
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .height(miniHeight)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         // Play/pause + Close row (top)
         Row(
             modifier = Modifier.fillMaxWidth().padding(8.dp),

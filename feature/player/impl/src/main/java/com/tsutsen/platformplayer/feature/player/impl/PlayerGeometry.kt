@@ -1,4 +1,4 @@
-package com.tsutsen.platformplayer.feature.player.impl.ui
+package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -29,12 +29,6 @@ data class VideoLayout(
  * (the path through NORMAL as an implicit third anchor) — acceptable for phase 1 since
  * fullscreenProgress is held at 0 during NORMAL↔FLOATING transitions. Validate the sag
  * during MINI↔FULLSCREEN before shipping.
- *
- * @param floatingRestX Absolute X of the mini player's resting position (BottomEnd + 16dp padding).
- *   Computed as `containerWidth - miniWidthPx - 16.dp.toPx()`.
- * @param floatingRestY Absolute Y of the mini player's resting position.
- *   Computed as `containerHeight - miniHeightPx - 16.dp.toPx()`.
- * @param dragOffsetX/Y Additional offset from user drag, added on top of the resting position.
  */
 fun computeVideoLayout(
     miniProgress: Float,
@@ -59,8 +53,6 @@ fun computeVideoLayout(
 
     val floatingWidth = miniWidthPx
     val floatingHeight = miniHeightPx
-    // Scale drag offset by miniProgress so it disappears naturally during expand.
-    // This avoids a geometry discontinuity when transitioning from mini to normal.
     val effectiveDragX = dragOffsetX * miniProgress
     val effectiveDragY = dragOffsetY * miniProgress
     val floatingX = floatingRestX + effectiveDragX

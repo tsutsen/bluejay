@@ -1,8 +1,11 @@
-package com.tsutsen.platformplayer.feature.player.impl
+package com.tsutsen.platformplayer.feature.player.impl.ui.overlays
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -15,7 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun TopOverlay(
+internal fun PlayerNormalTopOverlay(
     title: String,
     channelName: String,
     onMinimize: () -> Unit,

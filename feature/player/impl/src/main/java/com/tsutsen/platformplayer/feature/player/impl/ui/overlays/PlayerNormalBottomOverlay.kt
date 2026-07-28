@@ -1,23 +1,13 @@
-package com.tsutsen.platformplayer.feature.player.impl
+package com.tsutsen.platformplayer.feature.player.impl.ui.overlays
 
+import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -32,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 
 @Composable
-internal fun BottomOverlay(
+internal fun PlayerNormalBottomOverlay(
     player: Player?,
     currentPositionMs: Long,
     durationMs: Long,
@@ -51,7 +41,7 @@ internal fun BottomOverlay(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Controls row first
+        // Controls row
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -83,7 +73,6 @@ internal fun BottomOverlay(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            // Time display before chapters - wrapped to match IconButton height for alignment
             Box(
                 modifier = Modifier.height(40.dp),
                 contentAlignment = Alignment.Center
@@ -91,7 +80,7 @@ internal fun BottomOverlay(
                 Text(
                     text = "${formatTime(if (isScrubbing) scrubPositionMs else currentPositionMs)} / ${formatTime(durationMs)}",
                     color = Color.White,
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -112,7 +101,7 @@ internal fun BottomOverlay(
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
-        // Timeline below controls
+        // Timeline
         var isDragging by remember { mutableStateOf(false) }
         var seekPosition by remember { mutableFloatStateOf(0f) }
 
@@ -121,12 +110,10 @@ internal fun BottomOverlay(
             onValueChange = {
                 isDragging = true
                 seekPosition = it
-                // Update scrub position for display
                 val seekToMs = (it * durationMs).toLong()
                 onSeek(seekToMs)
             },
             onValueChangeFinished = {
-                // Commit the seek
                 val seekToMs = (seekPosition * durationMs).toLong()
                 onSeek(seekToMs)
                 isDragging = false
@@ -136,7 +123,7 @@ internal fun BottomOverlay(
                 .height(48.dp),
             enabled = durationMs > 0,
             colors = SliderDefaults.colors(),
-            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            interactionSource = remember { MutableInteractionSource() }
         )
     }
 }
