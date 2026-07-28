@@ -171,10 +171,34 @@ fun PlayerContent(
         // ==================== 1. Persistent video surface ====================
         PlayerVideoSurface(player = player, modifier = Modifier.then(videoModifier))
 
-        // ==================== 2. Details panel (LazyColumn) ====================
-        // Only compose the details panel when NOT in floating mode — otherwise the
-        // full-screen LazyColumn would intercept all pointer events, blocking scroll
-        // of the feed behind the floating mini player.
+        // ==================== 2. GestureLayer ====================
+        PlayerGestures(
+            modifier = Modifier.fillMaxSize(),
+            videoLayout = videoLayout,
+            miniProgress = miniProgress,
+            fullscreenProgress = fullscreenProgress,
+            containerWidth = containerWidth,
+            containerHeight = containerHeight,
+            miniWidthPx = miniWidthPx,
+            miniHeightPx = miniHeightPx,
+            floatingRestX = floatingRestX,
+            floatingRestY = floatingRestY,
+            currentOffsetX = currentOffsetX,
+            currentOffsetY = currentOffsetY,
+            isDraggingMiniPlayer = isDraggingMiniPlayer,
+            onDragStateChanged = onDragStateChanged,
+            onOffsetChanged = onOffsetChanged,
+            gestureCallbacks = gestureCallbacks,
+            onExpand = onExpand,
+            onSeek = onSeek,
+            isCollapsedControls = isCollapsedControls,
+            onSpeedHoldStart = onSpeedHoldStart,
+            onSpeedHoldEnd = onSpeedHoldEnd
+        )
+
+        // ==================== 3. Details panel (LazyColumn) ====================
+        // Rendered on top of the gesture layer so the LazyColumn can receive scroll
+        // events in the area below the video. Only compose when NOT in floating mode.
         if (miniProgress < MINI_SETTLED_THRESHOLD && fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD) {
             val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
             Box(
@@ -199,31 +223,6 @@ fun PlayerContent(
                 )
             }
         }
-
-        // ==================== 3. GestureLayer ====================
-        PlayerGestures(
-            modifier = Modifier.fillMaxSize(),
-            videoLayout = videoLayout,
-            miniProgress = miniProgress,
-            fullscreenProgress = fullscreenProgress,
-            containerWidth = containerWidth,
-            containerHeight = containerHeight,
-            miniWidthPx = miniWidthPx,
-            miniHeightPx = miniHeightPx,
-            floatingRestX = floatingRestX,
-            floatingRestY = floatingRestY,
-            currentOffsetX = currentOffsetX,
-            currentOffsetY = currentOffsetY,
-            isDraggingMiniPlayer = isDraggingMiniPlayer,
-            onDragStateChanged = onDragStateChanged,
-            onOffsetChanged = onOffsetChanged,
-            gestureCallbacks = gestureCallbacks,
-            onExpand = onExpand,
-            onSeek = onSeek,
-            isCollapsedControls = isCollapsedControls,
-            onSpeedHoldStart = onSpeedHoldStart,
-            onSpeedHoldEnd = onSpeedHoldEnd
-        )
 
         // ==================== 4. ControlsLayer ====================
         PlayerControls(
