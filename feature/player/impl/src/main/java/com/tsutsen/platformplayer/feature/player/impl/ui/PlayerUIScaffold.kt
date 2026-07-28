@@ -37,7 +37,9 @@ data class PlayerGestureCallbacks(
     val onTap: () -> Unit,
     val onDoubleTap: () -> Unit,
     val onVerticalDragStart: (touchX: Float) -> Unit,
-    val onVerticalDrag: (touchX: Float, dragAmountPx: Float, areaWidthPx: Float) -> Unit
+    val onVerticalDrag: (touchX: Float, dragAmountPx: Float, areaWidthPx: Float) -> Unit,
+    val onSpeedHoldStart: () -> Unit = {},
+    val onSpeedHoldEnd: () -> Unit = {}
 )
 
 @Composable

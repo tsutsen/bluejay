@@ -5,6 +5,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -51,7 +53,9 @@ fun PlayerGestures(
     gestureCallbacks: PlayerGestureCallbacks,
     onExpand: () -> Unit,
     onSeek: (Long) -> Unit,
-    isCollapsedControls: Boolean
+    isCollapsedControls: Boolean,
+    onSpeedHoldStart: () -> Unit = {},
+    onSpeedHoldEnd: () -> Unit = {}
 ) {
     val density = LocalDensity.current
 
@@ -72,6 +76,26 @@ fun PlayerGestures(
                             onVerticalDrag = { _, dragAmount ->
                                 gestureCallbacks.onVerticalDrag(touchX, dragAmount, containerWidth)
                             }
+                        )
+                    }
+            )
+
+            // 2x playback speed while held down
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = {
+                                onSpeedHoldStart()
+                            },
+                            onDragEnd = {
+                                onSpeedHoldEnd()
+                            },
+                            onDragCancel = {
+                                onSpeedHoldEnd()
+                            },
+                            onDrag = { _, _ -> }
                         )
                     }
             )
@@ -109,6 +133,63 @@ fun PlayerGestures(
                         }
                 )
             }
+        }
+
+        // ==================== NORMAL/COMPACT mode gestures ====================
+        if (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD && miniProgress < MINI_DRAG_THRESHOLD) {
+            // Double-tap left/right thirds → rewind ±5 seconds
+            val thirdWidthDp = with(density) { (containerWidth / 3).toDp() }
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Left third
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(thirdWidthDp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    onSeek(-5000)
+                                }
+                            )
+                        }
+                )
+                // Right third
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .width(thirdWidthDp)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    onSeek(5000)
+                                }
+                            )
+                        }
+                )
+            }
+
+            // 2x playback speed while held down
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = {
+                                onSpeedHoldStart()
+                            },
+                            onDragEnd = {
+                                onSpeedHoldEnd()
+                            },
+                            onDragCancel = {
+                                onSpeedHoldEnd()
+                            },
+                            onDrag = { _, _ -> }
+                        )
+                    }
+            )
         }
 
         // ==================== FLOATING mode gestures ====================

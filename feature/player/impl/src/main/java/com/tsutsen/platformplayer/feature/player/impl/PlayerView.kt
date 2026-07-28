@@ -407,6 +407,14 @@ fun PlayerView(
                         showVolumeIndicator = true
                         coroutineScope.launch { delay(1500); showVolumeIndicator = false }
                     }
+                },
+                onSpeedHoldStart = {
+                    Log.d(TAG, "Speed hold start: 2x")
+                    viewModel.setPlaybackSpeed(2f)
+                },
+                onSpeedHoldEnd = {
+                    Log.d(TAG, "Speed hold end: normal")
+                    viewModel.setPlaybackSpeed(1f)
                 }
             )
 
@@ -516,7 +524,9 @@ fun PlayerView(
                             viewModel.seekTo(positionMs)
                         },
                         onMoreOptions = { showMiniPlayerOptions = true },
-                        onFullscreenToggle = { viewModel.toggleFullscreen() }
+                        onFullscreenToggle = { viewModel.toggleFullscreen() },
+                        onSpeedHoldStart = { viewModel.setPlaybackSpeed(2f) },
+                        onSpeedHoldEnd = { viewModel.setPlaybackSpeed(1f) }
                     )
                 }
 

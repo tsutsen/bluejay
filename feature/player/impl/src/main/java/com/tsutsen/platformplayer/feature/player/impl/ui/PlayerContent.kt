@@ -95,7 +95,9 @@ fun PlayerContent(
     onNext: () -> Unit,
     onSeek: (Long) -> Unit,
     onMoreOptions: () -> Unit,
-    onFullscreenToggle: () -> Unit
+    onFullscreenToggle: () -> Unit,
+    onSpeedHoldStart: () -> Unit = {},
+    onSpeedHoldEnd: () -> Unit = {}
 ) {
     val density = LocalDensity.current
 
@@ -213,7 +215,9 @@ fun PlayerContent(
             gestureCallbacks = gestureCallbacks,
             onExpand = onExpand,
             onSeek = onSeek,
-            isCollapsedControls = isCollapsedControls
+            isCollapsedControls = isCollapsedControls,
+            onSpeedHoldStart = onSpeedHoldStart,
+            onSpeedHoldEnd = onSpeedHoldEnd
         )
 
         // ==================== 4. ControlsLayer ====================
