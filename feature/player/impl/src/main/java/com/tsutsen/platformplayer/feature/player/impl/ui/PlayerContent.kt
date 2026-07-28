@@ -205,7 +205,9 @@ fun PlayerContent(
         // during fullscreen exit and morph transitions. Once fully faded (alpha < 0.01),
         // it is removed from composition so the LazyColumn no longer intercepts pointer
         // events, allowing the feed behind the floating mini player to be scrolled.
-        val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
+        // Use playerHeightPx (fixed normal height) instead of videoLayout.heightPx (which
+        // shrinks during morph) to avoid fighting with detailsTranslateY.
+        val detailsOffsetY = with(density) { playerHeightPx.coerceAtLeast(0f).toDp() }
             // Fade out details earlier than controls for a cascading effect
             val detailsFadeAlpha = if (miniProgress <= DETAILS_FADE_START) {
                 1f
