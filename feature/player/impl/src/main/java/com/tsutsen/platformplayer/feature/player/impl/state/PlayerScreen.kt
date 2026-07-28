@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.Player
 import com.tsutsen.platformplayer.feature.player.impl.ui.UnifiedPlayerContent
@@ -280,24 +281,25 @@ fun PlayerScreen(
             LaunchedEffect(isFullscreen, isSmallWindow) {
                 val activity = context as? Activity
                 if (activity != null) {
+                    val insetsController = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
                     if (isFullscreen) {
-                        activity.window.decorView.systemUiVisibility = (
-                            View.SYSTEM_UI_FLAG_FULLSCREEN or
-                                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                            )
+                        // Wait for the Compose nav bar fade (300ms) to finish before hiding
+                        // the system bars — otherwise both happen at once and feel abrupt.
+                        kotlinx.coroutines.delay(300)
+                        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                        insetsController.systemBarsBehavior =
+                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                         if (isSmallWindow) {
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                         }
-                        Log.d(TAG, "System UI hidden for fullscreen")
+                        Log.d(TAG, "System UI hidden for fullscreen (animated)")
                     } else {
-                        activity.window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                        insetsController.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                         if (isSmallWindow) {
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
-                        Log.d(TAG, "System UI restored")
+                        Log.d(TAG, "System UI restored (animated)")
                     }
                 }
             }

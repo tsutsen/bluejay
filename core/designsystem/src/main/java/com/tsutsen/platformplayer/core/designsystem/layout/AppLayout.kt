@@ -1,12 +1,9 @@
 package com.tsutsen.platformplayer.core.designsystem.layout
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -167,14 +164,8 @@ fun AppLayout(
         Row(modifier = modifier.fillMaxSize()) {
             AnimatedVisibility(
                 visible = config.showNavigation,
-                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
-                    initialOffsetY = { -it },
-                    animationSpec = tween(300)
-                ),
-                exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
-                    targetOffsetY = { -it },
-                    animationSpec = tween(300)
-                )
+                enter = fadeIn(animationSpec = tween(300)),
+                exit = fadeOut(animationSpec = tween(300))
             ) {
                 navigationContent()
             }
@@ -190,14 +181,8 @@ fun AppLayout(
             }
             AnimatedVisibility(
                 visible = config.showNavigation,
-                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(300)
-                ),
-                exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(300)
-                )
+                enter = fadeIn(animationSpec = tween(300)),
+                exit = fadeOut(animationSpec = tween(300))
             ) {
                 navigationContent()
             }
