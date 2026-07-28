@@ -55,6 +55,7 @@ fun PlayerUIScaffold(
     callbacks: PlayerGestureCallbacks,
     disableVerticalDragGestures: Boolean = false,
     disableTapGestures: Boolean = false,
+    gradientAlpha: Float = 1f,
     topBar: @Composable () -> Unit,
     bottomBar: @Composable () -> Unit
 ) {
@@ -136,7 +137,7 @@ fun PlayerUIScaffold(
 
         // ==================== Top gradient + bar ====================
         AnimatedVisibility(
-            visible = showTopBar,
+            visible = showTopBar && gradientAlpha > 0.01f,
             enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
             exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
         ) {
@@ -148,7 +149,7 @@ fun PlayerUIScaffold(
                         .align(Alignment.TopCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                                colors = listOf(Color.Black.copy(alpha = 0.7f * gradientAlpha), Color.Transparent)
                             )
                         )
                 )
@@ -158,7 +159,7 @@ fun PlayerUIScaffold(
 
         // ==================== Bottom gradient + bar ====================
         AnimatedVisibility(
-            visible = showBottomBar,
+            visible = showBottomBar && gradientAlpha > 0.01f,
             enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
             exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier.align(Alignment.BottomCenter)
@@ -171,7 +172,7 @@ fun PlayerUIScaffold(
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f * gradientAlpha))
                             )
                         )
                 )
@@ -180,3 +181,4 @@ fun PlayerUIScaffold(
         }
     }
 }
+

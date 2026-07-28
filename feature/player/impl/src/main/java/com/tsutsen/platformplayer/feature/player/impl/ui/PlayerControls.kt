@@ -103,8 +103,11 @@ fun PlayerControls(
             } else {
                 (MORPH_TRANSITION_END - miniProgress) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
             }.coerceAtLeast(0f)
+            val gradientAlpha = normalAlpha
             if (normalAlpha > 0.01f) {
                 Box(modifier = Modifier.alpha(normalAlpha)) {
+                    // Fade out gradient backgrounds along with controls
+                    val gradientAlpha = normalAlpha
                     PlayerUIScaffold(
                         modifier = Modifier
                             .offset {
@@ -194,6 +197,7 @@ fun PlayerControls(
                         showVolumeIndicator = showVolumeIndicator,
                         showTopBar = resolvedShowTopBar,
                         showBottomBar = resolvedShowBottomBar,
+                        gradientAlpha = gradientAlpha,
                         callbacks = PlayerGestureCallbacks(
                             onTap = { /* handled by gesture layer */ },
                             onDoubleTap = { /* handled by gesture layer */ },
