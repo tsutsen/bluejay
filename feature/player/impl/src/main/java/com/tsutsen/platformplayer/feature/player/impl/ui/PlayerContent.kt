@@ -198,31 +198,38 @@ fun PlayerContent(
 
         // ==================== 3. Details panel (LazyColumn) ====================
         // Rendered on top of the gesture layer so the LazyColumn can receive scroll
-        // events in the area below the video. Fades out smoothly during morph.
+        // events in the area below the video. During morph transition, the panel
+        // fades out smoothly via alpha. Once fully faded (alpha < 0.01), it is removed
+        // from composition so the LazyColumn no longer intercepts pointer events,
+        // allowing the feed behind the floating mini player to be scrolled.
         if (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD) {
             val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
-            // Fade out details during morph: alpha goes from 1 to 0 as miniProgress goes 0 to 1
             val detailsFadeAlpha = (1f - miniProgress).coerceAtLeast(0f)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = detailsOffsetY)
-                    .fillMaxHeight()
-                    .graphicsLayer {
-                        alpha = detailsAlpha * detailsFadeAlpha
-                        translationY = detailsTranslateY
-                    }
-                    .then(nestedScrollModifier)
-            ) {
-                PlayerDetails(
-                    state = state,
-                    scrollState = scrollState,
-                    expandedDescription = expandedDescription,
-                    onToggleDescription = onToggleDescription,
-                    selectedTab = selectedTab,
-                    onTabSelected = onTabSelected,
-                    onLoadMoreComments = onLoadMoreComments
-                )
+            val detailsAlphaFinal = detailsAlpha * detailsFadeAlpha
+            
+            // Keep panel in composition while visible (alpha > 0.01), remove when fully faded
+            if (detailsAlphaFinal > 0.01f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset(y = detailsOffsetY)
+                        .fillMaxHeight()
+                        .graphicsLayer {
+                            alpha = detailsAlphaFinal
+                            translationY = detailsTranslateY
+                        }
+                        .then(nestedScrollModifier)
+                ) {
+                    PlayerDetails(
+                        state = state,
+                        scrollState = scrollState,
+                        expandedDescription = expandedDescription,
+                        onToggleDescription = onToggleDescription,
+                        selectedTab = selectedTab,
+                        onTabSelected = onTabSelected,
+                        onLoadMoreComments = onLoadMoreComments
+                    )
+                }
             }
         }
 
