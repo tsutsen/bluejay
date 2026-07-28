@@ -172,27 +172,32 @@ fun PlayerContent(
         PlayerVideoSurface(player = player, modifier = Modifier.then(videoModifier))
 
         // ==================== 2. Details panel (LazyColumn) ====================
-        val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(y = detailsOffsetY)
-                .fillMaxHeight()
-                .graphicsLayer {
-                    alpha = detailsAlpha
-                    translationY = detailsTranslateY
-                }
-                .then(nestedScrollModifier)
-        ) {
-            PlayerDetails(
-                state = state,
-                scrollState = scrollState,
-                expandedDescription = expandedDescription,
-                onToggleDescription = onToggleDescription,
-                selectedTab = selectedTab,
-                onTabSelected = onTabSelected,
-                onLoadMoreComments = onLoadMoreComments
-            )
+        // Only compose the details panel when NOT in floating mode — otherwise the
+        // full-screen LazyColumn would intercept all pointer events, blocking scroll
+        // of the feed behind the floating mini player.
+        if (miniProgress < MINI_SETTLED_THRESHOLD && fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD) {
+            val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = detailsOffsetY)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        alpha = detailsAlpha
+                        translationY = detailsTranslateY
+                    }
+                    .then(nestedScrollModifier)
+            ) {
+                PlayerDetails(
+                    state = state,
+                    scrollState = scrollState,
+                    expandedDescription = expandedDescription,
+                    onToggleDescription = onToggleDescription,
+                    selectedTab = selectedTab,
+                    onTabSelected = onTabSelected,
+                    onLoadMoreComments = onLoadMoreComments
+                )
+            }
         }
 
         // ==================== 3. GestureLayer ====================
