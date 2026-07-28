@@ -124,7 +124,12 @@ fun PlayerContent(
     val miniMorphAlpha = (1f - miniProgress).coerceIn(0f, 1f)
 
     val resolvedShowTopBar = when {
-        miniProgress > MINI_SETTLED_THRESHOLD -> miniMorphAlpha > 0.01f &&
+        // NOTE: must mirror the `else` (idle) branch's `!isCollapsedControls` check.
+        // Without it, starting a drag while controls were collapsed flips this from
+        // false -> true on the very first pixel of drag movement, while gradientAlpha
+        // (normalAlpha) is still ~1.0 (it doesn't start fading until MORPH_TRANSITION_START),
+        // so the top scrim pops in at full opacity instead of fading in with everything else.
+        miniProgress > MINI_SETTLED_THRESHOLD -> miniMorphAlpha > 0.01f && !isCollapsedControls &&
             (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
                 fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD))
         fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> showTopOverlay
@@ -205,9 +210,7 @@ fun PlayerContent(
         // during fullscreen exit and morph transitions. Once fully faded (alpha < 0.01),
         // it is removed from composition so the LazyColumn no longer intercepts pointer
         // events, allowing the feed behind the floating mini player to be scrolled.
-        // Use playerHeightPx (fixed normal height) instead of videoLayout.heightPx (which
-        // shrinks during morph) to avoid fighting with detailsTranslateY.
-        val detailsOffsetY = with(density) { playerHeightPx.coerceAtLeast(0f).toDp() }
+        val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
             // Fade out details earlier than controls for a cascading effect
             val detailsFadeAlpha = if (miniProgress <= DETAILS_FADE_START) {
                 1f
