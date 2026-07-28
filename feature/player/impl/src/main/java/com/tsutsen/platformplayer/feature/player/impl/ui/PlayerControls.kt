@@ -95,7 +95,14 @@ fun PlayerControls(
     Box(modifier = modifier) {
         // ==================== Normal controls (fade out during morph) ====================
         if (miniProgress <= MINI_DRAG_THRESHOLD) {
-            val normalAlpha = (1f - miniProgress * 2).coerceAtLeast(0f)
+            // Fade out normal controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
+            val normalAlpha = if (miniProgress <= MORPH_TRANSITION_START) {
+                1f
+            } else if (miniProgress >= MORPH_TRANSITION_END) {
+                0f
+            } else {
+                (MORPH_TRANSITION_END - miniProgress) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
+            }.coerceAtLeast(0f)
             if (normalAlpha > 0.01f) {
                 Box(modifier = Modifier.alpha(normalAlpha)) {
                     PlayerUIScaffold(
@@ -282,9 +289,15 @@ fun PlayerControls(
         }
         
         // ==================== Floating controls (fade in during morph) ====================
-        if (miniProgress > MINI_CONTROLS_FADE_START) {
-            val floatingAlpha = ((miniProgress - MINI_CONTROLS_FADE_START) /
-                (1f - MINI_CONTROLS_FADE_START)).coerceIn(0f, 1f)
+        if (miniProgress > MORPH_TRANSITION_START) {
+            // Fade in floating controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
+            val floatingAlpha = if (miniProgress <= MORPH_TRANSITION_START) {
+                0f
+            } else if (miniProgress >= MORPH_TRANSITION_END) {
+                1f
+            } else {
+                (miniProgress - MORPH_TRANSITION_START) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
+            }.coerceIn(0f, 1f)
             
             Box(
                 modifier = Modifier
