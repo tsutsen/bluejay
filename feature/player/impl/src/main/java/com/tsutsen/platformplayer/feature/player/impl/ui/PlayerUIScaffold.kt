@@ -136,11 +136,7 @@ fun PlayerUIScaffold(
         SeekIndicators(showSeekBack = false, showSeekForward = false)
 
         // ==================== Top gradient + bar ====================
-        AnimatedVisibility(
-            visible = showTopBar && gradientAlpha > 0.01f,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
-        ) {
+        if (showTopBar && gradientAlpha > 0.01f) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 Box(
                     modifier = Modifier
@@ -158,12 +154,7 @@ fun PlayerUIScaffold(
         }
 
         // ==================== Bottom gradient + bar ====================
-        AnimatedVisibility(
-            visible = showBottomBar && gradientAlpha > 0.01f,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
+        if (showBottomBar && gradientAlpha > 0.01f) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                 Box(
                     modifier = Modifier
