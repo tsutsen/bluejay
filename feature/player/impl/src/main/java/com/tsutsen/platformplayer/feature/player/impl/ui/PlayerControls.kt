@@ -317,15 +317,17 @@ fun PlayerControls(
                     )
                     .alpha(floatingAlpha)
             ) {
-                // Shadow
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .offset(y = 4.dp * floatingAlpha)
-                        .graphicsLayer { alpha = 0.15f * floatingAlpha }
-                        .background(androidx.compose.ui.graphics.Color.Black,
-                            androidx.compose.foundation.shape.RoundedCornerShape(videoLayout.cornerRadius))
-                )
+                // Shadow (hidden during morph transition)
+                if (floatingAlpha > 0.5f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .offset(y = 4.dp * floatingAlpha)
+                            .graphicsLayer { alpha = 0.15f * floatingAlpha }
+                            .background(androidx.compose.ui.graphics.Color.Black,
+                                androidx.compose.foundation.shape.RoundedCornerShape(videoLayout.cornerRadius))
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
