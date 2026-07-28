@@ -31,6 +31,8 @@ const val MINI_DRAG_THRESHOLD = 0.98f
 const val MINI_SETTLED_THRESHOLD = 0.01f
 const val MORPH_TRANSITION_START = 0.3f  // When morph transition begins
 const val MORPH_TRANSITION_END = 0.7f    // When morph transition completes
+const val DETAILS_FADE_START = 0.1f      // Details start fading out earlier
+const val DETAILS_FADE_END = 0.4f        // Details fully faded before controls complete
 const val FULLSCREEN_SETTLED_THRESHOLD = 0.01f
 
 /**
@@ -204,13 +206,13 @@ fun PlayerContent(
         // it is removed from composition so the LazyColumn no longer intercepts pointer
         // events, allowing the feed behind the floating mini player to be scrolled.
         val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
-            // Fade out details during morph: from MORPH_TRANSITION_START to MORPH_TRANSITION_END
-            val detailsFadeAlpha = if (miniProgress <= MORPH_TRANSITION_START) {
+            // Fade out details earlier than controls for a cascading effect
+            val detailsFadeAlpha = if (miniProgress <= DETAILS_FADE_START) {
                 1f
-            } else if (miniProgress >= MORPH_TRANSITION_END) {
+            } else if (miniProgress >= DETAILS_FADE_END) {
                 0f
             } else {
-                (MORPH_TRANSITION_END - miniProgress) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
+                (DETAILS_FADE_END - miniProgress) / (DETAILS_FADE_END - DETAILS_FADE_START)
             }.coerceAtLeast(0f)
             val detailsAlphaFinal = detailsAlpha * detailsFadeAlpha
             
