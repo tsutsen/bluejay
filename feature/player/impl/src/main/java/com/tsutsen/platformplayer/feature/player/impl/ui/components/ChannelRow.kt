@@ -59,40 +59,42 @@ internal fun ChannelRow(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Channel Info
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = author?.name ?: "Unknown Channel",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = "125K subscribers",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Subscribe Button
-        Button(
-            onClick = onSubscribe,
-            modifier = Modifier.height(36.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
+        // Channel Info + Subscribe Button
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Subscribe",
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = author?.name ?: "Unknown Channel",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = "125K subscribers",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
-        Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Button(
+                onClick = onSubscribe,
+                modifier = Modifier.height(36.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "Subscribe",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        }
 
         // Watch Later
         IconButton(onClick = onWatchLater) {
