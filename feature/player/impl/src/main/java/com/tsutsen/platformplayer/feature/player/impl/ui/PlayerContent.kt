@@ -198,12 +198,11 @@ fun PlayerContent(
 
         // ==================== 3. Details panel (LazyColumn) ====================
         // Rendered on top of the gesture layer so the LazyColumn can receive scroll
-        // events in the area below the video. During morph transition, the panel
-        // fades out smoothly via alpha. Once fully faded (alpha < 0.01), it is removed
-        // from composition so the LazyColumn no longer intercepts pointer events,
-        // allowing the feed behind the floating mini player to be scrolled.
-        if (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD) {
-            val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
+        // events in the area below the video. The panel fades in/out smoothly via alpha
+        // during fullscreen exit and morph transitions. Once fully faded (alpha < 0.01),
+        // it is removed from composition so the LazyColumn no longer intercepts pointer
+        // events, allowing the feed behind the floating mini player to be scrolled.
+        val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
             val detailsFadeAlpha = (1f - miniProgress).coerceAtLeast(0f)
             val detailsAlphaFinal = detailsAlpha * detailsFadeAlpha
             
@@ -231,7 +230,6 @@ fun PlayerContent(
                     )
                 }
             }
-        }
 
         // ==================== 4. ControlsLayer ====================
         PlayerControls(
