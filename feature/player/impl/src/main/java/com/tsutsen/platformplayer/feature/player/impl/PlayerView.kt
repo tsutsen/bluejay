@@ -390,11 +390,11 @@ fun PlayerView(
 
             // ==================== Gesture bindings ====================
             // Parse YAML spec once and build bindings per mode
-            val gestureMode = when {
-                morph.progress > 0.5f -> PlayerMode.FLOATING
-                fullscreenP > 0.5f -> PlayerMode.FULLSCREEN
-                else -> PlayerMode.NORMAL
-            }
+            val gestureMode = computePlayerMode(
+                miniProgress = morph.progress,
+                fullscreenProgress = fullscreenP,
+                config = config,
+            )
 
             val gestureBindings = buildGestureBindings(
                 mode = gestureMode,

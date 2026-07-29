@@ -1,13 +1,5 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-/** Player mode for gesture spec lookup. */
-enum class PlayerMode {
-    FULLSCREEN,
-    NORMAL,
-    COMPACT,
-    FLOATING
-}
-
 /** Action assigned to a gesture in the spec. */
 enum class SpecAction(
     val yamlName: String
@@ -51,7 +43,9 @@ fun buildGestureSpecs(rawMap: Map<String, Map<String, Map<String, String>>>): Ma
     val result = mutableMapOf<PlayerMode, ModeGestureSpec>()
 
     for ((modeName, zoneMap) in rawMap) {
-        val mode = try { PlayerMode.valueOf(modeName) } catch (_: IllegalArgumentException) { continue }
+        // COMPACT in YAML maps to NORMAL — it's a visual variant, not a separate mode
+        val modeNameResolved = if (modeName == "COMPACT") "NORMAL" else modeName
+        val mode = try { PlayerMode.valueOf(modeNameResolved) } catch (_: IllegalArgumentException) { continue }
         val zoneSpecs = mutableMapOf<GestureZone, ZoneGestureSpec>()
 
         for ((zoneName, gestureMap) in zoneMap) {

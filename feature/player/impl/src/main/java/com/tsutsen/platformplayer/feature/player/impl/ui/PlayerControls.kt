@@ -138,13 +138,11 @@ fun PlayerControls(
             // controlsVisibleFactor — when controls auto-hide, normalAlpha → 0 and
             // AnimatedVisibility would remove the gesture handler from composition,
             // making taps fall through silently.
-                // In fullscreen, effectiveNormalAlpha=0 but we still need the subtree visible.
-                // Use maxOf so the subtree (gesture handler + bars) stays visible in both modes.
-                val subtreeAlpha = maxOf(effectiveNormalAlpha, visibility.fullscreenBarAlpha)
+                // combinedBarAlpha covers both normal and fullscreen modes
+                val subtreeAlpha = visibility.combinedBarAlpha * controlsVisibleAlpha
                 Box(modifier = Modifier.alpha(subtreeAlpha)) {
-                    // Gradient alpha must account for fullscreen too — in fullscreen
-                    // normalBarAlpha=0 but fullscreenBarAlpha>0, so gradients should still appear.
-                    val gradientAlpha = maxOf(visibility.normalBarAlpha, visibility.fullscreenBarAlpha) * controlsVisibleAlpha
+                    // combinedBarAlpha covers both normal and fullscreen modes
+                    val gradientAlpha = visibility.combinedBarAlpha * controlsVisibleAlpha
                     PlayerUIScaffold(
                         modifier = Modifier
                             .offset {
@@ -167,13 +165,11 @@ fun PlayerControls(
                         volumeValue = volumeValue,
                         showBrightnessIndicator = showBrightnessIndicator,
                         showVolumeIndicator = showVolumeIndicator,
-                        showTopBar = visibility.showNormalTopBar || visibility.showFullscreenBar,
-                        showBottomBar = visibility.showNormalBottomBar || visibility.showFullscreenBar,
+                        showTopBar = visibility.showTopBar,
+                        showBottomBar = visibility.showBottomBar,
                         gradientAlpha = gradientAlpha,
                         topBar = {
-                            // Use maxOf so top bar stays visible in BOTH normal and fullscreen modes.
-                            // In fullscreen, normalBarAlpha=0 but fullscreenBarAlpha>0.
-                            val topBarVisibleAlpha = maxOf(visibility.normalBarAlpha, visibility.fullscreenBarAlpha) * controlsVisibleAlpha
+                            val topBarVisibleAlpha = visibility.combinedBarAlpha * controlsVisibleAlpha
                             if (topBarVisibleAlpha > 0.01f) {
                                 Box(
                                     modifier = Modifier
@@ -194,9 +190,7 @@ fun PlayerControls(
                             }
                         },
                         bottomBar = {
-                            // Use maxOf so bottom bar stays visible in BOTH normal and fullscreen modes.
-                            // In fullscreen, normalBarAlpha=0 but fullscreenBarAlpha>0.
-                            val bottomBarVisibleAlpha = maxOf(visibility.normalBarAlpha, visibility.fullscreenBarAlpha) * controlsVisibleAlpha
+                            val bottomBarVisibleAlpha = visibility.combinedBarAlpha * controlsVisibleAlpha
                             if (bottomBarVisibleAlpha > 0.01f) {
                                 Box(
                                     modifier = Modifier

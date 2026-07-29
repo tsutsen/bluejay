@@ -27,7 +27,25 @@ data class ControlsVisibility(
     val showMiniControls: Boolean,
     val showFloatingOverlay: Boolean,
     val showDetails: Boolean,
+    /** Derived mode — the single source of truth for mode-specific logic */
+    val mode: PlayerMode,
 )
+
+/**
+ * Combined bar alpha that works across all modes.
+ * Use this instead of normalBarAlpha or fullscreenBarAlpha individually
+ * to avoid "forgot to account for fullscreen" bugs.
+ */
+val ControlsVisibility.combinedBarAlpha: Float
+    get() = maxOf(normalBarAlpha, fullscreenBarAlpha)
+
+/** True when top bar should be drawn (normal OR fullscreen mode) */
+val ControlsVisibility.showTopBar: Boolean
+    get() = showNormalTopBar || showFullscreenBar
+
+/** True when bottom bar should be drawn (normal OR fullscreen mode) */
+val ControlsVisibility.showBottomBar: Boolean
+    get() = showNormalBottomBar || showFullscreenBar
 
 fun computeControlsVisibility(
     miniProgress: Float,
@@ -62,6 +80,8 @@ fun computeControlsVisibility(
 
     Log.d(TAG, "computeControlsVisibility: normalBarAlpha=$normalBarAlpha compactBarAlpha=$compactBarAlpha fullscreenBarAlpha=$fullscreenBarAlpha miniControlsAlpha=$miniControlsAlpha floatingAlpha=$floatingAlpha controlsVisibleFactor=$controlsVisibleFactor")
 
+    val mode = computePlayerMode(miniProgress, fullscreenProgress, config)
+
     return ControlsVisibility(
         normalBarAlpha = normalBarAlpha,
         compactBarAlpha = compactBarAlpha,
@@ -77,5 +97,6 @@ fun computeControlsVisibility(
         showMiniControls = miniControlsAlpha > 0.01f,
         showFloatingOverlay = floatingAlpha > 0.01f,
         showDetails = detailsAlpha > 0.01f,
+        mode = mode,
     )
 }
