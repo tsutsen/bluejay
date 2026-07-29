@@ -164,6 +164,8 @@ fun PlayerView(
             else fullscreen.exitFullscreen()
         }
         isFullscreenAnim.value = isFullscreenStateValue
+        // Show controls when entering fullscreen (they may have been hidden by auto-hide)
+        if (isFullscreenStateValue) autoHide.show()
         Log.d(TAG, "Fullscreen synced: isFullscreen=$isFullscreenStateValue")
     }
 

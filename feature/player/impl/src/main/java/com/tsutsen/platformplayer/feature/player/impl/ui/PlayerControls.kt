@@ -167,19 +167,16 @@ fun PlayerControls(
                         showBottomBar = visibility.showNormalBottomBar,
                         gradientAlpha = gradientAlpha,
                         topBar = {
-                            val topAlpha = visibility.normalBarAlpha
-                            AnimatedVisibility(
-                                visible = topAlpha > 0.01f,
-                                enter = fadeIn(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
-                                exit = fadeOut(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
-                            ) {
+                            // Use maxOf so top bar stays visible in BOTH normal and fullscreen modes.
+                            // In fullscreen, normalBarAlpha=0 but fullscreenBarAlpha>0.
+                            val topBarVisibleAlpha = maxOf(visibility.normalBarAlpha, visibility.fullscreenBarAlpha) * controlsVisibleAlpha
+                            if (topBarVisibleAlpha > 0.01f) {
                                 Box(
-                                    modifier = Modifier.graphicsLayer {
-                                        // Slide up and out on hide, slide down and in on show -
-                                        // driven by the same controlsVisibleAlpha as the fade,
-                                        // so both directions are symmetric by construction.
-                                        translationY = (1f - controlsVisibleAlpha) * -config.controlsSlideDistanceDp.dp.toPx()
-                                    }
+                                    modifier = Modifier
+                                        .alpha(topBarVisibleAlpha)
+                                        .graphicsLayer {
+                                            translationY = (1f - controlsVisibleAlpha) * -config.controlsSlideDistanceDp.dp.toPx()
+                                        }
                                 ) {
                                     PlayerNormalTopOverlay(
                                         title = state.currentVideo?.title ?: "Unknown",
@@ -193,26 +190,20 @@ fun PlayerControls(
                             }
                         },
                         bottomBar = {
-                            AnimatedVisibility(
-                                visible = visibility.normalBarAlpha > 0.01f,
-                                enter = fadeIn(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
-                                exit = fadeOut(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
-                            ) {
+                            // Use maxOf so bottom bar stays visible in BOTH normal and fullscreen modes.
+                            // In fullscreen, normalBarAlpha=0 but fullscreenBarAlpha>0.
+                            val bottomBarVisibleAlpha = maxOf(visibility.normalBarAlpha, visibility.fullscreenBarAlpha) * controlsVisibleAlpha
+                            if (bottomBarVisibleAlpha > 0.01f) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .alpha(bottomBarVisibleAlpha)
                                         .graphicsLayer {
-                                            // Slide down and out on hide, slide up and in on
-                                            // show - mirrors the top bar's upward slide.
                                             translationY = (1f - controlsVisibleAlpha) * config.controlsSlideDistanceDp.dp.toPx()
                                         }
                                 ) {
                                     // FULLSCREEN bottom overlay
-                                    AnimatedVisibility(
-                                        visible = visibility.showFullscreenBar,
-                                        enter = fadeIn(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
-                                        exit = fadeOut(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
-                                    ) {
+                                    if (visibility.fullscreenBarAlpha > 0.99f) {
                                         PlayerNormalBottomOverlay(
                                             player = player,
                                             currentPositionMs = state.currentPositionMs,
@@ -229,8 +220,8 @@ fun PlayerControls(
                                         )
                                     }
 
-                                    // NORMAL ↔ COMPACT: animated swap
-                                    if (!visibility.showFullscreenBar && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
+                                    // NORMAL ↔ COMPACT: animated swap (hidden when fullscreen)
+                                    if (visibility.fullscreenBarAlpha < 0.99f && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
                                         androidx.compose.animation.AnimatedContent(
                                             targetState = visibility.showCompactBar,
                                             transitionSpec = {
