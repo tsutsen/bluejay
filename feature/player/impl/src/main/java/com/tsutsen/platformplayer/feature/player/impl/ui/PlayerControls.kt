@@ -118,19 +118,6 @@ fun PlayerControls(
         // ==================== Normal controls (fade out during morph) ====================
         if (miniProgress <= PlayerMorphConfig.Default.miniDragThreshold) {
             val config = PlayerMorphConfig.Default
-            // Fade out normal controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
-            val normalAlpha = visibility.normalBarAlpha
-            // Combine with the restored controls hide/show animation - this drives the VISUAL
-            // fade of the bars only. Composition below is still gated on normalAlpha (morph
-            // position) alone: if it were gated on effectiveNormalAlpha instead, the gesture
-            // detector inside (tap, double-tap-seek, morph-drag-start) would stop being
-            // composed the moment controlsVisible goes false - e.g. while the video is loading
-            // and controls default to hidden - which removes the only handler that could ever
-            // detect the tap needed to bring controls back. Modifier.alpha(0f) still receives
-            // touches in Compose, so keeping this subtree composed and just fading it visually
-            // preserves tap-to-reveal even while fully transparent.
-            val effectiveNormalAlpha = normalAlpha * controlsVisibleAlpha
-            Log.d(TAG, "normalAlpha=$normalAlpha controlsVisibleAlpha=$controlsVisibleAlpha effectiveNormalAlpha=$effectiveNormalAlpha")
             // Keep the subtree composed regardless of controlsVisible so the gesture
             // handler (.playerGesture on PlayerUIScaffold) remains active for
             // tap-to-reveal.  Modifier.alpha(0f) still receives touches in Compose.
@@ -198,7 +185,7 @@ fun PlayerControls(
                                         }
                                 ) {
                                     // FULLSCREEN bottom overlay
-                                    if (visibility.fullscreenBarAlpha > 0.99f) {
+                                    if (visibility.mode == PlayerMode.FULLSCREEN) {
                                         PlayerNormalBottomOverlay(
                                             player = player,
                                             currentPositionMs = state.currentPositionMs,
@@ -216,7 +203,7 @@ fun PlayerControls(
                                     }
 
                                     // NORMAL ↔ COMPACT: animated swap (hidden when fullscreen)
-                                    if (visibility.fullscreenBarAlpha < 0.99f && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
+                                    if (visibility.mode != PlayerMode.FULLSCREEN && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
                                         androidx.compose.animation.AnimatedContent(
                                             targetState = visibility.mode == PlayerMode.COMPACT,
                                             transitionSpec = {

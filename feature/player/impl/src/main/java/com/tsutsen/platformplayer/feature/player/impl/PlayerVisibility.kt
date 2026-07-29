@@ -8,15 +8,9 @@ private const val TAG = "PlayerVisibility"
  * All visibility/alpha values for the player UI, computed once from a single set of inputs.
  * Mirrors the pure-function pattern of `computeVideoLayout()` — no Compose state, no side effects,
  * fully unit-testable.
- *
- * `barAlpha` is the single alpha for top+bottom overlay bars — covers both NORMAL and FULLSCREEN
- * modes. Consumers should use this, not the per-mode alphas below (kept for debugging/animation).
  */
 data class ControlsVisibility(
-    /** Combined alpha for top+bottom bars — use this in 99% of cases */
     val barAlpha: Float,
-    val normalBarAlpha: Float,
-    val fullscreenBarAlpha: Float,
     val floatingAlpha: Float,
     val detailsAlpha: Float,
     val detailsTranslateY: Float,
@@ -53,21 +47,18 @@ fun computeControlsVisibility(
 
     val normalBarAlpha = normalMorphFade * fullscreenMorphFade * (1f - collapseAlpha) * controlsVisibleFactor
     val fullscreenBarAlpha = progressAlpha(fullscreenProgress, 0f, 1f) * controlsVisibleFactor
-    // Single alpha that covers both NORMAL and FULLSCREEN — consumers use this
     val barAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha)
 
     val floatingAlpha = progressAlpha(miniProgress, config.morphTransitionStart, config.morphTransitionEnd)
     val detailsAlpha = progressAlpha(miniProgress, config.detailsFadeStart, config.detailsFadeEnd, reversed = true)
     val detailsTranslateY = miniProgress * config.detailsTranslateFraction
 
-    Log.d(TAG, "computeControlsVisibility: barAlpha=$barAlpha normalBarAlpha=$normalBarAlpha fullscreenBarAlpha=$fullscreenBarAlpha floatingAlpha=$floatingAlpha controlsVisibleFactor=$controlsVisibleFactor")
+    Log.d(TAG, "computeControlsVisibility: barAlpha=$barAlpha floatingAlpha=$floatingAlpha controlsVisibleFactor=$controlsVisibleFactor")
 
     val mode = computePlayerMode(miniProgress, fullscreenProgress, playerHeightRatio, config)
 
     return ControlsVisibility(
         barAlpha = barAlpha,
-        normalBarAlpha = normalBarAlpha,
-        fullscreenBarAlpha = fullscreenBarAlpha,
         floatingAlpha = floatingAlpha,
         detailsAlpha = detailsAlpha,
         detailsTranslateY = detailsTranslateY,
