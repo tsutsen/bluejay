@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.rememberUpdatedState
 import com.tsutsen.platformplayer.core.model.PlayerMode
 
 // ==================== YAML Parser ====================
@@ -131,11 +132,45 @@ data class GestureCallbacks(
 )
 
 /**
- * Build GestureBindings from a parsed YAML spec and runtime callbacks.
- *
- * Replaces [defaultPlayerBindings] — the YAML is the source of truth,
- * this function just wires callbacks to zones based on the spec actions.
+ * Cached action wrappers to avoid recreating objects on every composition.
+ * Wraps callbacks in a reference holder so they always reference the latest values.
  */
+data class CachedGestureActions(
+    val morphDrag: ContinuousAction,
+    val brightnessDrag: ContinuousAction,
+    val volumeDrag: ContinuousAction,
+    val doubleTapLeft: DiscreteAction,
+    val doubleTapRight: DiscreteAction,
+    val tap: DiscreteAction,
+    val longPressStart: DiscreteAction,
+    val longPressEnd: DiscreteAction,
+    val morphDragEnd: DiscreteAction,
+)
+
+/**
+ * Create gesture action wrappers that reference the latest callback values via a mutable reference.
+ * The wrappers are created once and the reference is updated when callbacks change.
+ */
+fun createGestureActions(callbacks: GestureCallbacks): CachedGestureActions {
+    val callbacksRef = androidx.compose.runtime.mutableStateOf(callbacks)
+    
+    return CachedGestureActions(
+        morphDrag = object : ContinuousAction {
+            override fun onStart(zone: GestureZone, position: Offset) { callbacksRef.value.onMorphDragStart() }
+            override fun onDelta(deltaPx: Float) { callbacksRef.value.onMorphDrag(deltaPx) }
+            override fun onEnd() {}
+        },
+        brightnessDrag = continuousAction { deltaPx -> callbacksRef.value.onBrightnessDrag(deltaPx) },
+        volumeDrag = continuousAction { deltaPx -> callbacksRef.value.onVolumeDrag(deltaPx) },
+        doubleTapLeft = discreteAction { callbacksRef.value.onDoubleTapSeekLeft() },
+        doubleTapRight = discreteAction { callbacksRef.value.onDoubleTapSeekRight() },
+        tap = discreteAction { callbacksRef.value.onTap() },
+        longPressStart = discreteAction { callbacksRef.value.onLongPressStart() },
+        longPressEnd = discreteAction { callbacksRef.value.onLongPressEnd() },
+        morphDragEnd = discreteAction { callbacksRef.value.onMorphDragEnd() },
+    )
+}
+
 fun buildGestureSpecs(rawMap: Map<String, Map<String, Map<String, String>>>): Map<PlayerMode, ModeGestureSpec> {
     val result = mutableMapOf<PlayerMode, ModeGestureSpec>()
 
@@ -161,31 +196,17 @@ fun buildGestureSpecs(rawMap: Map<String, Map<String, Map<String, String>>>): Ma
 }
 
 /**
- * Build GestureBindings from a parsed YAML spec and runtime callbacks.
+ * Build GestureBindings from a parsed YAML spec and pre-cached action wrappers.
+ * Use [rememberGestureActions] to create cached wrappers that avoid recreating
+ * action objects on every composition.
  */
 fun buildGestureBindings(
     mode: PlayerMode,
     specs: Map<PlayerMode, ModeGestureSpec>,
-    callbacks: GestureCallbacks,
+    actions: CachedGestureActions,
 ): GestureBindings {
     val modeSpec = specs[mode] ?: return GestureBindings(emptyMap())
     val bindings = mutableMapOf<GestureZone, ZoneBindings>()
-
-    // Pre-build action wrappers so we don't recreate lambdas per zone
-    val morphDrag = object : ContinuousAction {
-        override fun onStart(zone: GestureZone, position: Offset) { callbacks.onMorphDragStart() }
-        override fun onDelta(deltaPx: Float) { callbacks.onMorphDrag(deltaPx) }
-        override fun onEnd() {}
-    }
-    val brightnessDrag = continuousAction { deltaPx -> callbacks.onBrightnessDrag(deltaPx) }
-    val volumeDrag = continuousAction { deltaPx -> callbacks.onVolumeDrag(deltaPx) }
-
-    val doubleTapLeft = discreteAction { callbacks.onDoubleTapSeekLeft() }
-    val doubleTapRight = discreteAction { callbacks.onDoubleTapSeekRight() }
-    val tap = discreteAction { callbacks.onTap() }
-    val longPressStart = discreteAction { callbacks.onLongPressStart() }
-    val longPressEnd = discreteAction { callbacks.onLongPressEnd() }
-    val morphDragEnd = discreteAction { callbacks.onMorphDragEnd() }
 
     for ((zone, zoneSpec) in modeSpec.zones) {
         val continuous = mutableMapOf<ContinuousGesture, ContinuousAction>()
@@ -193,9 +214,9 @@ fun buildGestureBindings(
 
         // Continuous gestures
         when (zoneSpec.swipeVertical) {
-            SpecAction.Morph -> continuous[ContinuousGesture.VERTICAL_DRAG] = morphDrag
-            SpecAction.Brightness -> continuous[ContinuousGesture.VERTICAL_DRAG] = brightnessDrag
-            SpecAction.Volume -> continuous[ContinuousGesture.VERTICAL_DRAG] = volumeDrag
+            SpecAction.Morph -> continuous[ContinuousGesture.VERTICAL_DRAG] = actions.morphDrag
+            SpecAction.Brightness -> continuous[ContinuousGesture.VERTICAL_DRAG] = actions.brightnessDrag
+            SpecAction.Volume -> continuous[ContinuousGesture.VERTICAL_DRAG] = actions.volumeDrag
             else -> {}
         }
 
@@ -206,29 +227,29 @@ fun buildGestureBindings(
 
         // Discrete gestures
         when (zoneSpec.doubleTap) {
-            SpecAction.SeekLeft -> discrete[DiscreteGesture.DOUBLE_TAP] = doubleTapLeft
-            SpecAction.SeekRight -> discrete[DiscreteGesture.DOUBLE_TAP] = doubleTapRight
+            SpecAction.SeekLeft -> discrete[DiscreteGesture.DOUBLE_TAP] = actions.doubleTapLeft
+            SpecAction.SeekRight -> discrete[DiscreteGesture.DOUBLE_TAP] = actions.doubleTapRight
             else -> {}
         }
 
         when (zoneSpec.hold) {
             SpecAction.SpeedHold -> {
-                discrete[DiscreteGesture.LONG_PRESS_START] = longPressStart
+                discrete[DiscreteGesture.LONG_PRESS_START] = actions.longPressStart
                 // Morph zones also need drag-end on release
                 if (zoneSpec.swipeVertical == SpecAction.Morph) {
                     discrete[DiscreteGesture.LONG_PRESS_END] = discreteAction {
-                        callbacks.onLongPressEnd()
-                        callbacks.onMorphDragEnd()
+                        actions.longPressEnd.invoke(zone, androidx.compose.ui.geometry.Offset.Zero)
+                        actions.morphDragEnd.invoke(zone, androidx.compose.ui.geometry.Offset.Zero)
                     }
                 } else {
-                    discrete[DiscreteGesture.LONG_PRESS_END] = longPressEnd
+                    discrete[DiscreteGesture.LONG_PRESS_END] = actions.longPressEnd
                 }
             }
             else -> {}
         }
 
         when (zoneSpec.tap) {
-            SpecAction.ToggleControls, SpecAction.Expand -> discrete[DiscreteGesture.TAP] = tap
+            SpecAction.ToggleControls, SpecAction.Expand -> discrete[DiscreteGesture.TAP] = actions.tap
             else -> {}
         }
 

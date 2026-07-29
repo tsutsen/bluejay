@@ -104,14 +104,11 @@ fun PlayerControls(
     val density = LocalDensity.current
 
     // ==================== Controls hide/show animation ====================
-    // `controlsVisible` was previously threaded through as a parameter but never actually
-    // applied to anything - restoring that here. Also tracks morph-drag-active locally so
-    // controls hide the instant a morph swipe starts, regardless of what drives
-    // `controlsVisible` upstream. `isMorphDragging` is flipped in the gesture handler below,
-    // right where onMorphDragStart()/onMorphDragEnd() already fire.
-    var isMorphDragging by remember { mutableStateOf(false) }
+    // `controlsVisible` is managed by PlayerView's autoHide state and LaunchedEffects.
+    // Controls hide during morph drag via the auto-hide logic in PlayerView,
+    // so we don't need a separate isMorphDragging flag here.
     val controlsVisibleAlpha by animateFloatAsState(
-        targetValue = if (controlsVisible && !isMorphDragging) 1f else 0f,
+        targetValue = if (controlsVisible) 1f else 0f,
         animationSpec = tween(durationMillis = 200),
         label = "controlsVisibility"
     )

@@ -23,9 +23,9 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,6 +85,11 @@ fun PlayerView(
     var selectedSpeed by remember { mutableStateOf(1.0f) }
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
+    
+    // Single Job references for brightness/volume indicator hide delays
+    // to prevent race conditions during continuous drag
+    var brightnessHideJob by remember { mutableStateOf<Job?>(null) }
+    var volumeHideJob by remember { mutableStateOf<Job?>(null) }
 
     val autoHide = rememberAutoHideState(autoHideMs = PlayerMorphConfig.Default.autoHideMs)
 
@@ -101,17 +106,12 @@ fun PlayerView(
 
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableStateOf(0L) }
-    var isDraggingMorph by remember { mutableStateOf(false) }
-    var lockedGestureMode by remember { mutableStateOf(PlayerMode.NORMAL) }
-    // Morph drag tracking — mirrors player-morph's approach:
-    // progress = dragStartProgress + (totalDragY / dragTravelPx)
-    // dragMorphProgress overrides morph.progress during drag to avoid
-    // Animatable.snapTo() suspend overhead that causes frame stuttering.
-    var morphDragStartProgress by remember { mutableStateOf(0f) }
-    var dragMorphProgress by remember { mutableStateOf<Float?>(null) }
+    
+    // Extracted gesture state management
+    val gestureState = rememberGestureState()
 
     // Effective morph progress: dragMorphProgress during drag, morph.progress otherwise
-    fun effectiveMorphProgress() = dragMorphProgress ?: morph.progress
+    fun effectiveMorphProgress() = gestureState.dragMorphProgress ?: morph.progress
 
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
@@ -160,21 +160,22 @@ fun PlayerView(
     val uiMode = (uiState as? PlayerUiState.Loaded)?.mode
 
     // Sync morph progress to mode — only runs when drag is NOT active.
-    // isDraggingMorph is a KEY (like player-morph) so the effect re-runs
+    // gestureState.isDraggingMorph is a KEY so the effect re-runs
     // on drag start and cancels any in-flight animation via Compose lifecycle.
-    LaunchedEffect(uiMode, isDraggingMorph) {
+    LaunchedEffect(uiMode, gestureState.isDraggingMorph) {
         val mode = uiMode ?: return@LaunchedEffect
-        if (isDraggingMorph) return@LaunchedEffect
+        if (gestureState.isDraggingMorph) return@LaunchedEffect
 
         val morphTarget = if (mode == PlayerMode.FLOATING) 1f else 0f
-        if (kotlin.math.abs(effectiveMorphProgress() - morphTarget) > 0.01f) {
+        val currentProgress = effectiveMorphProgress()
+        if (kotlin.math.abs(currentProgress - morphTarget) > 0.01f) {
             morph.animateTo(morphTarget)
         }
         isMinimizedAnim.value = (mode == PlayerMode.FLOATING)
 
         // Sync fullscreen (NORMAL↔FULLSCREEN)
         val fsTarget = if (mode == PlayerMode.FULLSCREEN) 1f else 0f
-        if (mode == PlayerMode.FULLSCREEN && effectiveMorphProgress() < 0.5f) {
+        if (mode == PlayerMode.FULLSCREEN && currentProgress < 0.5f) {
             kotlinx.coroutines.delay(50)
         }
         if (kotlin.math.abs(fullscreen.progress - fsTarget) > 0.01f) {
@@ -405,8 +406,8 @@ fun PlayerView(
             // Lock gesture mode on drag start so bindings don't change mid-gesture.
             // Without this, effectiveMorphProgress() crosses thresholds → mode flips to FLOATING →
             // gestures become "none" → drag dies mid-swipe.
-            val gestureMode = if (isDraggingMorph) {
-                lockedGestureMode
+            val gestureMode = if (gestureState.isDraggingMorph) {
+                gestureState.lockedGestureMode
             } else {
                 computePlayerMode(
                     miniProgress = effectiveMorphProgress(),
@@ -416,73 +417,67 @@ fun PlayerView(
                 )
             }
 
-            val gestureBindings = rememberUpdatedState(
+            // Cache GestureBindings to avoid recreating the binding map on every composition.
+            // Action wrappers are recreated when mode/specs change, but they're cheap.
+            val gestureBindings = remember(gestureMode, gestureSpecs) {
                 buildGestureBindings(
                     mode = gestureMode,
                     specs = gestureSpecs,
-                    callbacks = GestureCallbacks(
-                    onMorphDragStart = {
-                        lockedGestureMode = computePlayerMode(
-                            miniProgress = effectiveMorphProgress(),
-                            fullscreenProgress = fullscreenP,
-                            playerHeightRatio = playerHeightRatio,
-                            config = config,
+                    actions = createGestureActions(
+                        GestureCallbacks(
+                            onMorphDragStart = {
+                                gestureState.onDragStart(
+                                    onModeComputed = { mode -> gestureState.lockedGestureMode = mode },
+                                    onStartProgress = { effectiveMorphProgress() }
+                                )
+                            },
+                            onMorphDrag = { totalDragY ->
+                                gestureState.onDrag(totalDragY, dragTravelPx)
+                            },
+                            onMorphDragEnd = {
+                                val progress = effectiveMorphProgress()
+                                gestureState.onDragEnd(
+                                    currentProgress = progress,
+                                    onSnapTo = { morph.snapTo(it) },
+                                    onMinimize = { viewModel.minimize() }
+                                )
+                            },
+                            onBrightnessDrag = { delta ->
+                                val newBrightness = (brightnessValue - delta / 500f).coerceIn(0f, 1f)
+                                brightnessValue = newBrightness
+                                viewModel.setBrightness(newBrightness)
+                                showBrightnessIndicator = true
+                                brightnessHideJob?.cancel()
+                                brightnessHideJob = coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
+                            },
+                            onVolumeDrag = { delta ->
+                                val newVolume = (volumeValue - delta / 500f).coerceIn(0f, 1f)
+                                volumeValue = newVolume
+                                viewModel.setVolume(newVolume)
+                                showVolumeIndicator = true
+                                volumeHideJob?.cancel()
+                                volumeHideJob = coroutineScope.launch { delay(1500); showVolumeIndicator = false }
+                            },
+                            onDoubleTapSeekLeft = { onSeek(-5000) },
+                            onDoubleTapSeekRight = { onSeek(5000) },
+                            onTap = {
+                                if (effectiveMorphProgress() > 0.01f && effectiveMorphProgress() < 0.99f) return@GestureCallbacks
+                                autoHide.notifyInteraction()
+                            },
+                            onLongPressStart = {
+                                Log.d(TAG, "Speed hold start: 2x")
+                                viewModel.setPlaybackSpeed(2f)
+                            },
+                            onLongPressEnd = {
+                                Log.d(TAG, "Speed hold end: normal")
+                                viewModel.setPlaybackSpeed(1f)
+                            },
                         )
-                        morphDragStartProgress = effectiveMorphProgress()
-                        dragMorphProgress = null // clear stale override
-                        isDraggingMorph = true
-                    },
-                    onMorphDrag = { totalDragY ->
-                        if (!isDraggingMorph) {
-                            isDraggingMorph = true
-                            lockedGestureMode = gestureMode
-                            morphDragStartProgress = effectiveMorphProgress()
-                        }
-                        // IMPERATIVE update — no coroutine/snapTo overhead
-                        dragMorphProgress = (morphDragStartProgress + totalDragY / dragTravelPx).coerceIn(0f, 1f)
-                    },
-                    onMorphDragEnd = {
-                        val progress = effectiveMorphProgress()
-                        // Sync Animatable to drag value, then clear override
-                        morph.snapTo(progress)
-                        dragMorphProgress = null
-                        isDraggingMorph = false
-                        lockedGestureMode = PlayerMode.NORMAL
-                        if (progress >= config.morphSettleThreshold) {
-                            viewModel.minimize()
-                        }
-                    },
-                    onBrightnessDrag = { delta ->
-                        val newBrightness = (brightnessValue - delta / 500f).coerceIn(0f, 1f)
-                        brightnessValue = newBrightness
-                        viewModel.setBrightness(newBrightness)
-                        showBrightnessIndicator = true
-                        coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
-                    },
-                    onVolumeDrag = { delta ->
-                        val newVolume = (volumeValue - delta / 500f).coerceIn(0f, 1f)
-                        volumeValue = newVolume
-                        viewModel.setVolume(newVolume)
-                        showVolumeIndicator = true
-                        coroutineScope.launch { delay(1500); showVolumeIndicator = false }
-                    },
-                    onDoubleTapSeekLeft = { onSeek(-5000) },
-                    onDoubleTapSeekRight = { onSeek(5000) },
-                    onTap = {
-                        if (effectiveMorphProgress() > 0.01f && effectiveMorphProgress() < 0.99f) return@GestureCallbacks
-                        autoHide.notifyInteraction()
-                    },
-                    onLongPressStart = {
-                        Log.d(TAG, "Speed hold start: 2x")
-                        viewModel.setPlaybackSpeed(2f)
-                    },
-                    onLongPressEnd = {
-                        Log.d(TAG, "Speed hold end: normal")
-                        viewModel.setPlaybackSpeed(1f)
-                    },
-                ),
+                    ),
                 )
-            )
+            }
+
+            val gestureBindingsState = rememberUpdatedState(gestureBindings)
 
             // ==================== Compose ====================
             Box(
@@ -526,7 +521,7 @@ fun PlayerView(
                         controlsVisible = autoHide.isVisible,
                         scrollState = scrollState,
                         nestedScrollConnection = nestedScrollConnection,
-                        gestureBindingsState = gestureBindings,
+                        gestureBindingsState = gestureBindingsState,
                         isDraggingMiniPlayer = isDraggingMiniPlayer,
                         onDragStateChanged = { isDraggingMiniPlayer = it },
                         onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
