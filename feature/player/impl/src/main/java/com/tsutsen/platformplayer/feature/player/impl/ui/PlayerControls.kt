@@ -114,19 +114,21 @@ fun PlayerControls(
         label = "controlsVisibility"
     )
 
-    Box(modifier = modifier.playerGesture(
-        bindings = gestureBindings,
-        areaWidth = videoLayout.widthPx,
-        areaHeight = videoLayout.heightPx
-    )) {
+    Box(modifier = modifier) {
         // ==================== Normal controls (fade out during morph) ====================
         if (miniProgress <= PlayerMorphConfig.Default.miniDragThreshold) {
             val config = PlayerMorphConfig.Default
             // Fade out normal controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
             val normalAlpha = visibility.normalBarAlpha
             // Combine with the restored controls hide/show animation - this drives the VISUAL
-            // fade of the bars only. The gesture layer is on the outer Box (always composed),
-            // so tap-to-reveal works even when controls are hidden.
+            // fade of the bars only. Composition below is still gated on normalAlpha (morph
+            // position) alone: if it were gated on effectiveNormalAlpha instead, the gesture
+            // detector inside (tap, double-tap-seek, morph-drag-start) would stop being
+            // composed the moment controlsVisible goes false - e.g. while the video is loading
+            // and controls default to hidden - which removes the only handler that could ever
+            // detect the tap needed to bring controls back. Modifier.alpha(0f) still receives
+            // touches in Compose, so keeping this subtree composed and just fading it visually
+            // preserves tap-to-reveal even while fully transparent.
             val effectiveNormalAlpha = normalAlpha * controlsVisibleAlpha
             AnimatedVisibility(
                 visible = normalAlpha > 0.01f,
@@ -147,6 +149,11 @@ fun PlayerControls(
                             .size(
                                 width = with(density) { videoLayout.widthPx.toDp() },
                                 height = with(density) { videoLayout.heightPx.toDp() }
+                            )
+                            .playerGesture(
+                                bindings = gestureBindings,
+                                areaWidth = videoLayout.widthPx,
+                                areaHeight = videoLayout.heightPx
                             ),
                         isLoading = isLoading,
                         brightnessValue = brightnessValue,

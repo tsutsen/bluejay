@@ -1,7 +1,5 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import android.content.Context
-import android.view.MotionEvent
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -9,27 +7,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-
-/**
- * PlayerView subclass that unconditionally refuses to claim touch input.
- *
- * `isClickable = false` / `isFocusable = false` on the outer PlayerView are not enough:
- * once a video track loads, PlayerView attaches an internal SurfaceView (inside
- * ContentFrameLayout/AspectRatioFrameLayout) for rendering. That child is hit-tested by
- * the platform's normal ViewGroup#dispatchTouchEvent *before* Compose's pointerInput
- * pipeline on sibling composables (e.g. the playerGesture-modified control layer drawn on
- * top in PlayerContent's Box) gets a chance to see the event - regardless of Compose z-order.
- * Before a frame is available there's nothing to intercept, which is why this only
- * manifested "once the video loads."
- *
- * Overriding dispatchTouchEvent to always return false makes this guarantee explicit and
- * immune to whatever PlayerView does internally (SurfaceView, subtitle overlay, controller
- * auto-show, etc.) - it never consumes ACTION_DOWN, so the event is free to propagate to
- * the Compose gesture layer above it.
- */
-private class TouchTransparentPlayerView(context: Context) : PlayerView(context) {
-    override fun dispatchTouchEvent(ev: MotionEvent): Boolean = false
-}
 
 /**
  * The single ExoPlayer video surface, shared by NORMAL, COMPACT, FULLSCREEN, and FLOATING.
@@ -46,16 +23,14 @@ fun PlayerVideoSurface(
 ) {
     AndroidView(
         factory = { ctx ->
-            TouchTransparentPlayerView(ctx).apply {
+            PlayerView(ctx).apply {
                 useController = false
                 setControllerAutoShow(false)
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                // Belt-and-suspenders: these no longer do the real work (dispatchTouchEvent
-                // override above does), but kept so nothing inside PlayerView tries to grab
-                // focus/click state either.
+                // Disable native touch handling so Compose gesture layer can intercept touches
                 isClickable = false
                 isFocusable = false
                 isFocusableInTouchMode = false
