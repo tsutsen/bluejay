@@ -372,41 +372,59 @@ fun PlayerView(
                 config = config,
             )
 
-            // ==================== Gesture callbacks ====================
-            val gestureCallbacks = PlayerGestureCallbacks(
+            // ==================== Seek callback ====================
+            val onSeek = { positionMs: Long ->
+                scrubPositionMs = positionMs
+                isScrubbing = true
+                viewModel.seekTo(positionMs)
+            }
+
+            // ==================== Gesture bindings ====================
+            val gestureBindings = defaultPlayerBindings(
+                onFullscreenDrag = { delta ->
+                    val newProgress = (fullscreenP - delta / containerSize.height).coerceIn(0f, 1f)
+                    if (kotlin.math.abs(fullscreen.progress - newProgress) > 0.01f) {
+                        if (newProgress > fullscreen.progress) fullscreen.enterFullscreen()
+                        else fullscreen.exitFullscreen()
+                    }
+                },
+                onMiniDrag = { delta ->
+                    val newProgress = (morph.progress - delta / dragTravelPx).coerceIn(0f, 1f)
+                    if (kotlin.math.abs(morph.progress - newProgress) > 0.01f) {
+                        if (newProgress > morph.progress) {
+                            if (newProgress >= config.morphSettleThreshold) viewModel.minimize()
+                            else morph.drag(newProgress * dragTravelPx, dragTravelPx)
+                        } else {
+                            morph.drag(newProgress * dragTravelPx, dragTravelPx)
+                        }
+                    }
+                },
+                onBrightnessDrag = { delta ->
+                    val newBrightness = (brightnessValue - delta / 500f).coerceIn(0f, 1f)
+                    brightnessValue = newBrightness
+                    viewModel.setBrightness(newBrightness)
+                    showBrightnessIndicator = true
+                    coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
+                },
+                onVolumeDrag = { delta ->
+                    val newVolume = (volumeValue - delta / 500f).coerceIn(0f, 1f)
+                    volumeValue = newVolume
+                    viewModel.setVolume(newVolume)
+                    showVolumeIndicator = true
+                    coroutineScope.launch { delay(1500); showVolumeIndicator = false }
+                },
+                onDoubleTapSeekLeft = { onSeek(-5000) },
+                onDoubleTapSeekRight = { onSeek(5000) },
+                onDoubleTapFullscreen = { viewModel.toggleFullscreen() },
                 onTap = {
-                    if (morph.progress > 0.01f && morph.progress < 0.99f) return@PlayerGestureCallbacks
+                    if (morph.progress > 0.01f && morph.progress < 0.99f) return@defaultPlayerBindings
                     autoHide.notifyInteraction()
                 },
-                onDoubleTap = {
-                    if (isFullscreen) {
-                        Log.d(TAG, "Double-tap: exit fullscreen")
-                        viewModel.exitFullscreen()
-                    } else {
-                        Log.d(TAG, "Double-tap: enter fullscreen")
-                        viewModel.toggleFullscreen()
-                    }
-                },
-                onVerticalDragStart = { },
-                onVerticalDrag = { touchX, dragAmountPx, areaWidthPx ->
-                    val delta = -dragAmountPx / 500f
-                    if (touchX < areaWidthPx / 2) {
-                        brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
-                        viewModel.setBrightness(brightnessValue)
-                        showBrightnessIndicator = true
-                        coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
-                    } else {
-                        volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
-                        viewModel.setVolume(volumeValue)
-                        showVolumeIndicator = true
-                        coroutineScope.launch { delay(1500); showVolumeIndicator = false }
-                    }
-                },
-                onSpeedHoldStart = {
+                onLongPressStart = {
                     Log.d(TAG, "Speed hold start: 2x")
                     viewModel.setPlaybackSpeed(2f)
                 },
-                onSpeedHoldEnd = {
+                onLongPressEnd = {
                     Log.d(TAG, "Speed hold end: normal")
                     viewModel.setPlaybackSpeed(1f)
                 }
@@ -452,7 +470,7 @@ fun PlayerView(
                         controlsVisible = autoHide.isVisible,
                         scrollState = scrollState,
                         nestedScrollConnection = nestedScrollConnection,
-                        gestureCallbacks = gestureCallbacks,
+                        gestureBindings = gestureBindings,
                         isDraggingMiniPlayer = isDraggingMiniPlayer,
                         onDragStateChanged = { isDraggingMiniPlayer = it },
                         onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
@@ -488,13 +506,6 @@ fun PlayerView(
                         onExpand = {
                             viewModel.exitMiniPlayer()
                         },
-                        onMorphDragStart = { morph.startDrag() },
-                        onMorphDrag = { dragY ->
-                            morph.drag(dragY, dragTravelPx)
-                        },
-                        onMorphDragEnd = { dragY ->
-                            morph.endDrag(dragY, dragTravelPx)
-                        },
                         onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
                         onClose = {
                             Log.d(TAG, "Close mini player: close")
@@ -504,15 +515,9 @@ fun PlayerView(
                         onWatchLater = { /* TODO */ },
                         onPrevious = { viewModel.skipPrevious() },
                         onNext = { viewModel.skipNext() },
-                        onSeek = { positionMs ->
-                            scrubPositionMs = positionMs
-                            isScrubbing = true
-                            viewModel.seekTo(positionMs)
-                        },
+                        onSeek = onSeek,
                         onMoreOptions = { showMiniPlayerOptions = true },
-                        onFullscreenToggle = { viewModel.toggleFullscreen() },
-                        onSpeedHoldStart = { viewModel.setPlaybackSpeed(2f) },
-                        onSpeedHoldEnd = { viewModel.setPlaybackSpeed(1f) }
+                        onFullscreenToggle = { viewModel.toggleFullscreen() }
                     )
                 }
 

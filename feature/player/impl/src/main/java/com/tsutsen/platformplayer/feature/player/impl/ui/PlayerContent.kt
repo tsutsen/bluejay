@@ -15,12 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -37,6 +34,9 @@ private const val TAG = "PlayerContent"
  *
  * The [PlayerVideoSurface] never leaves composition across mode changes — it is positioned
  * and sized via the [videoLayout] geometry computed by the caller.
+ *
+ * Gesture handling is unified through `gestureBindings` passed down from PlayerView,
+ * applied via the `playerGesture` modifier in PlayerControls.kt.
  */
 @Composable
 fun PlayerContent(
@@ -57,7 +57,7 @@ fun PlayerContent(
     controlsVisible: Boolean,
     scrollState: LazyListState,
     nestedScrollConnection: NestedScrollConnection,
-    gestureCallbacks: PlayerGestureCallbacks,
+    gestureBindings: GestureBindings,
     isDraggingMiniPlayer: Boolean,
     onDragStateChanged: (Boolean) -> Unit,
     onOffsetChanged: (x: Float, y: Float) -> Unit,
@@ -82,9 +82,6 @@ fun PlayerContent(
     onMinimize: () -> Unit,
     onFullscreen: () -> Unit,
     onExpand: () -> Unit,
-    onMorphDragStart: () -> Unit,
-    onMorphDrag: (dragY: Float) -> Unit,
-    onMorphDragEnd: (dragY: Float) -> Unit,
     onPlayPause: () -> Unit,
     onClose: () -> Unit,
     onReplayToggle: () -> Unit,
@@ -138,39 +135,14 @@ fun PlayerContent(
         // ==================== 1. Persistent video surface ====================
         PlayerVideoSurface(player = player, modifier = Modifier.then(videoModifier))
 
-        // ==================== 2. GestureLayer ====================
-        PlayerGestures(
-            modifier = Modifier.fillMaxSize(),
-            videoLayout = videoLayout,
-            miniProgress = miniProgress,
-            fullscreenProgress = fullscreenProgress,
-            containerWidth = containerWidth,
-            containerHeight = containerHeight,
-            miniWidthPx = miniWidthPx,
-            miniHeightPx = miniHeightPx,
-            floatingRestX = floatingRestX,
-            floatingRestY = floatingRestY,
-            currentOffsetX = currentOffsetX,
-            currentOffsetY = currentOffsetY,
-            isDraggingMiniPlayer = isDraggingMiniPlayer,
-            onDragStateChanged = onDragStateChanged,
-            onOffsetChanged = onOffsetChanged,
-            gestureCallbacks = gestureCallbacks,
-            onExpand = onExpand,
-            onSeek = onSeek,
-            visibility = visibility,
-            onSpeedHoldStart = onSpeedHoldStart,
-            onSpeedHoldEnd = onSpeedHoldEnd
-        )
-
-        // ==================== 3. Details panel (LazyColumn) ====================
+        // ==================== 2. Details panel (LazyColumn) ====================
         // Rendered on top of the gesture layer so the LazyColumn can receive scroll
         // events in the area below the video. The panel fades in/out smoothly via alpha
         // during morph transitions. Once fully faded (alpha < 0.01),
         // it is removed from composition so the LazyColumn no longer intercepts pointer
         // events, allowing the feed behind the floating mini player to be scrolled.
         val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
-        
+
         AnimatedVisibility(
             visible = visibility.showDetails,
             enter = fadeIn(animationSpec = tween(config.effectiveDuration(250))),
@@ -198,7 +170,7 @@ fun PlayerContent(
             }
         }
 
-        // ==================== 4. ControlsLayer ====================
+        // ==================== 3. ControlsLayer ====================
         PlayerControls(
             modifier = Modifier.fillMaxSize(),
             videoLayout = videoLayout,
@@ -236,10 +208,17 @@ fun PlayerContent(
             onReplayToggle = onReplayToggle,
             onOptions = onOptions,
             onSeek = onSeek,
-            gestureCallbacks = gestureCallbacks,
-            onMorphDragStart = onMorphDragStart,
-            onMorphDrag = onMorphDrag,
-            onMorphDragEnd = onMorphDragEnd
+            gestureBindings = gestureBindings,
+            containerWidth = containerWidth,
+            containerHeight = containerHeight,
+            miniWidthPx = miniWidthPx,
+            miniHeightPx = miniHeightPx,
+            floatingRestX = floatingRestX,
+            floatingRestY = floatingRestY,
+            currentOffsetX = currentOffsetX,
+            currentOffsetY = currentOffsetY,
+            onDragStateChanged = onDragStateChanged,
+            onOffsetChanged = onOffsetChanged,
         )
     }
 }

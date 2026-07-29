@@ -12,20 +12,19 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -36,8 +35,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
-import kotlin.math.abs
-import kotlin.math.sqrt
 
 private const val TAG = "PlayerControls"
 
@@ -45,7 +42,10 @@ private const val TAG = "PlayerControls"
  * Handles all controls for the current mode.
  * - NORMAL/COMPACT/FULLSCREEN: PlayerUIScaffold with top/bottom bars
  * - FLOATING: mini controls with eased fade-in
- * 
+ *
+ * Gesture detection is handled by the unified `playerGesture` modifier applied
+ * to the outer Box — replaces all hand-rolled gesture handlers.
+ *
  * During morph transition, both control sets are composited with alpha blending
  * for a smooth animated transition.
  */
@@ -87,10 +87,17 @@ fun PlayerControls(
     onReplayToggle: () -> Unit,
     onOptions: () -> Unit,
     onSeek: (Long) -> Unit,
-    gestureCallbacks: PlayerGestureCallbacks,
-    onMorphDragStart: () -> Unit,
-    onMorphDrag: (dragY: Float) -> Unit,
-    onMorphDragEnd: (dragY: Float) -> Unit
+    gestureBindings: GestureBindings,
+    containerWidth: Float,
+    containerHeight: Float,
+    miniWidthPx: Float,
+    miniHeightPx: Float,
+    floatingRestX: Float,
+    floatingRestY: Float,
+    currentOffsetX: Float,
+    currentOffsetY: Float,
+    onDragStateChanged: (Boolean) -> Unit,
+    onOffsetChanged: (x: Float, y: Float) -> Unit,
 ) {
     val density = LocalDensity.current
 
@@ -143,96 +150,11 @@ fun PlayerControls(
                                 width = with(density) { videoLayout.widthPx.toDp() },
                                 height = with(density) { videoLayout.heightPx.toDp() }
                             )
-                            .pointerInput(Unit) {
-                                var lastTapTime = 0L
-                                var lastTapX = 0f
-                                var lastTapY = 0f
-
-                                awaitEachGesture {
-                                    // requireUnconsumed = true is essential here: without it, a
-                                    // tap that started on a child control (Play/Pause, minimize,
-                                    // chapters, etc.) still reaches this loop even after the
-                                    // child's own clickable already consumed it, and gets
-                                    // (mis)treated as a background tap - toggling
-                                    // controlsVisible as an unwanted side effect of pressing any
-                                    // button. That's what caused controls to blink on
-                                    // play/pause: the button press toggled controlsVisible off,
-                                    // then the isPlaying-changed effect in PlayerView.kt forced
-                                    // it back on a frame later.
-                                    val down = awaitFirstDown(requireUnconsumed = true)
-                                    var totalDragY = 0f
-                                    var pastSlop = false
-                                    var pointerId = down.id
-                                    var isDownward = false
-
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        val change = event.changes.firstOrNull { it.id == pointerId }
-                                            ?: break
-
-                                        // A child (e.g. a button's long-press ripple) claimed
-                                        // this touch after the initial down - bail out rather
-                                        // than treating it as a background tap or morph drag.
-                                        // Once pastSlop is true we've already claimed the
-                                        // gesture ourselves via change.consume() below, so this
-                                        // check only applies before that point.
-                                        if (!pastSlop && change.isConsumed) break
-
-                                        if (change.previousPressed && !change.pressed) {
-                                            if (!pastSlop) {
-                                                if (miniProgress > PlayerMorphConfig.Default.miniSettledThreshold) break
-
-                                                val now = System.currentTimeMillis()
-                                                val dx = change.previousPosition.x - lastTapX
-                                                val dy = change.previousPosition.y - lastTapY
-                                                val dist = sqrt(dx * dx + dy * dy)
-
-                                                if (now - lastTapTime < PlayerMorphConfig.Default.doubleTapIntervalMs && dist < PlayerMorphConfig.Default.touchSlop) {
-                                                    val videoWidth = videoLayout.widthPx
-                                                    val third = videoWidth / 3f
-                                                    if (change.position.x < third) {
-                                                        onSeek(-5000)
-                                                    } else if (change.position.x > videoWidth - third) {
-                                                        onSeek(5000)
-                                                    }
-                                                } else {
-                                                    gestureCallbacks.onTap()
-                                                }
-                                                lastTapTime = now
-                                                lastTapX = change.position.x
-                                                lastTapY = change.position.y
-                                            } else {
-                                                isMorphDragging = false
-                                                onMorphDragEnd(totalDragY)
-                                            }
-                                            break
-                                        }
-
-                                        val dy = change.position.y - change.previousPosition.y
-                                        if (!pastSlop) {
-                                            totalDragY += dy
-                                            if (abs(totalDragY) > PlayerMorphConfig.Default.touchSlop) {
-                                                pastSlop = true
-                                                if (totalDragY > 0f) {
-                                                    isDownward = true
-                                                    isMorphDragging = true
-                                                    onMorphDragStart()
-                                                    change.consume()
-                                                    onMorphDrag(totalDragY)
-                                                } else {
-                                                    break
-                                                }
-                                            }
-                                        } else {
-                                            if (isDownward) {
-                                                totalDragY += dy
-                                                change.consume()
-                                                onMorphDrag(totalDragY)
-                                            }
-                                        }
-                                    }
-                                }
-                            },
+                            .playerGesture(
+                                bindings = gestureBindings,
+                                areaWidth = videoLayout.widthPx,
+                                areaHeight = videoLayout.heightPx
+                            ),
                         isLoading = isLoading,
                         brightnessValue = brightnessValue,
                         volumeValue = volumeValue,
@@ -241,14 +163,6 @@ fun PlayerControls(
                         showTopBar = visibility.showNormalTopBar,
                         showBottomBar = visibility.showNormalBottomBar,
                         gradientAlpha = gradientAlpha,
-                        callbacks = PlayerGestureCallbacks(
-                            onTap = { /* handled by gesture layer */ },
-                            onDoubleTap = { /* handled by gesture layer */ },
-                            onVerticalDragStart = { /* handled by gesture layer */ },
-                            onVerticalDrag = { _, _, _ -> /* handled by gesture layer */ }
-                        ),
-                        disableVerticalDragGestures = true,
-                        disableTapGestures = true,
                         topBar = {
                             val topAlpha = visibility.normalBarAlpha
                             AnimatedVisibility(
@@ -358,7 +272,7 @@ fun PlayerControls(
                 }
             }
         }
-        
+
         // ==================== Floating controls (fade in during morph) ====================
         // NOTE: this subtree is ALWAYS composed (no outer `if` gate on miniProgress).
         // Gating composition on a miniProgress threshold caused the whole Box - including
@@ -374,6 +288,11 @@ fun PlayerControls(
             enter = fadeIn(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(250))),
             exit = fadeOut(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(250))),
         ) {
+            val latestOffsetX by rememberUpdatedState(currentOffsetX)
+            val latestOffsetY by rememberUpdatedState(currentOffsetY)
+            val latestRestX by rememberUpdatedState(floatingRestX)
+            val latestRestY by rememberUpdatedState(floatingRestY)
+
             Box(
                 modifier = Modifier
                     .offset {
@@ -386,6 +305,58 @@ fun PlayerControls(
                         width = with(density) { videoLayout.widthPx.toDp() },
                         height = with(density) { videoLayout.heightPx.toDp() }
                     )
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                onExpand()
+                            }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        var localOffsetX = latestOffsetX
+                        var localOffsetY = latestOffsetY
+
+                        detectDragGestures(
+                            onDragStart = {
+                                onDragStateChanged(true)
+                                localOffsetX = latestOffsetX
+                                localOffsetY = latestOffsetY
+                            },
+                            onDrag = { change, dragAmount: Offset ->
+                                change.consume()
+                                localOffsetX += dragAmount.x
+                                localOffsetY += dragAmount.y
+                                onOffsetChanged(localOffsetX, localOffsetY)
+                            },
+                            onDragEnd = {
+                                onDragStateChanged(false)
+                                val edgeThreshold = 100f
+                                val initialX = latestRestX
+                                val initialY = latestRestY
+                                val actualX = initialX + localOffsetX
+                                val actualY = initialY + localOffsetY
+
+                                var snappedX = localOffsetX
+                                if (actualX < edgeThreshold) {
+                                    snappedX = -initialX
+                                } else if (actualX > containerWidth - miniWidthPx - edgeThreshold) {
+                                    snappedX = (containerWidth - miniWidthPx) - initialX
+                                }
+
+                                var snappedY = localOffsetY
+                                if (actualY < edgeThreshold) {
+                                    snappedY = -initialY
+                                } else if (actualY > containerHeight - miniHeightPx - edgeThreshold) {
+                                    snappedY = (containerHeight - miniHeightPx) - initialY
+                                }
+
+                                onOffsetChanged(snappedX, snappedY)
+                            },
+                            onDragCancel = {
+                                onDragStateChanged(false)
+                            }
+                        )
+                    }
             ) {
                 if (floatingAlpha > 0.5f) {
                     // Shadow (hidden during morph transition)
