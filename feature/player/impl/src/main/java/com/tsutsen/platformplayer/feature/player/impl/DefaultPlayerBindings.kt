@@ -119,33 +119,31 @@ fun defaultPlayerBindings(
         continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to brightnessDrag)
     )
 
-    // BOTTOM row: mini drag + tap + speed x2
+    // BOTTOM row: volume/brightness + tap + speed x2 (mirrors MIDDLE in fullscreen)
     val bottomDiscrete = mapOf(
         DiscreteGesture.TAP to tap,
         DiscreteGesture.LONG_PRESS_START to longPressStart,
         DiscreteGesture.LONG_PRESS_END to longPressEnd
     )
-    val bottomContinuous = mapOf(ContinuousGesture.VERTICAL_DRAG to miniDrag)
 
-    // BOTTOM_LEFT: mini drag + rewind 5s + tap + speed x2
+    // BOTTOM_LEFT: volume + rewind 5s + tap + speed x2
     addZone(
         GestureZone(GestureRow.BOTTOM, GestureColumn.LEFT),
         discrete = bottomDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
-        continuous = bottomContinuous
+        continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to volumeDrag)
     )
 
-    // BOTTOM_CENTER: mini drag + tap + speed x2
+    // BOTTOM_CENTER: tap + speed x2
     addZone(
         GestureZone(GestureRow.BOTTOM, GestureColumn.CENTER),
-        discrete = bottomDiscrete,
-        continuous = bottomContinuous
+        discrete = bottomDiscrete
     )
 
-    // BOTTOM_RIGHT: mini drag + forward 5s + tap + speed x2
+    // BOTTOM_RIGHT: brightness + forward 5s + tap + speed x2
     addZone(
         GestureZone(GestureRow.BOTTOM, GestureColumn.RIGHT),
         discrete = bottomDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
-        continuous = bottomContinuous
+        continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to brightnessDrag)
     )
 
     // Normal mode: all zones handle morph instead of brightness/volume
@@ -164,6 +162,22 @@ fun defaultPlayerBindings(
         addZone(
             GestureZone(GestureRow.MIDDLE, GestureColumn.RIGHT),
             discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
+            continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
+        )
+        // Override BOTTOM zones with morph too
+        addZone(
+            GestureZone(GestureRow.BOTTOM, GestureColumn.LEFT),
+            discrete = bottomDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
+            continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
+        )
+        addZone(
+            GestureZone(GestureRow.BOTTOM, GestureColumn.CENTER),
+            discrete = bottomDiscrete,
+            continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
+        )
+        addZone(
+            GestureZone(GestureRow.BOTTOM, GestureColumn.RIGHT),
+            discrete = bottomDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
             continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
         )
     }

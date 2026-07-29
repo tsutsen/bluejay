@@ -387,11 +387,15 @@ fun PlayerView(
             val gestureBindings = defaultPlayerBindings(
                 isFullscreen = fullscreenP > 0.5f,
                 onMorphDrag = { delta ->
-                    // Swipe-down in fullscreen → morph to mini (exit fullscreen)
-                    val newProgress = (fullscreenP - delta / containerSize.height).coerceIn(0f, 1f)
-                    if (kotlin.math.abs(fullscreen.progress - newProgress) > 0.01f) {
-                        if (newProgress > fullscreen.progress) fullscreen.enterFullscreen()
-                        else fullscreen.exitFullscreen()
+                    // Swipe-down → morph to floating mini-player (from normal or fullscreen)
+                    val newProgress = (morph.progress - delta / containerSize.height).coerceIn(0f, 1f)
+                    if (kotlin.math.abs(morph.progress - newProgress) > 0.01f) {
+                        if (newProgress > morph.progress) {
+                            if (newProgress >= config.morphSettleThreshold) viewModel.minimize()
+                            else morph.drag(newProgress * containerSize.height, containerSize.height)
+                        } else {
+                            morph.drag(newProgress * containerSize.height, containerSize.height)
+                        }
                     }
                 },
                 onMiniDrag = { delta ->
