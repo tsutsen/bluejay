@@ -159,10 +159,20 @@ fun PlayerView(
     // ==================== Animation sync ====================
     val uiMode = (uiState as? PlayerUiState.Loaded)?.mode
 
-    // Sync morph progress to mode — only runs when drag is NOT active.
-    // gestureState.isDraggingMorph is a KEY so the effect re-runs
-    // on drag start and cancels any in-flight animation via Compose lifecycle.
-    LaunchedEffect(uiMode, gestureState.isDraggingMorph) {
+    // Cancel in-flight animations when drag starts.
+    // This prevents the animation from fighting the user's drag.
+    LaunchedEffect(gestureState.isDraggingMorph) {
+        if (gestureState.isDraggingMorph) {
+            morph.cancelAnimation()
+            fullscreen.cancelAnimation()
+        }
+    }
+
+    // Sync morph progress to mode — only runs when uiMode actually changes.
+    // We don't include isDraggingMorph as a key because when drag ends,
+    // uiMode is still stale (ViewModel hasn't emitted the new mode yet),
+    // and trying to sync to the stale mode fights the drag that just ended.
+    LaunchedEffect(uiMode) {
         val mode = uiMode ?: return@LaunchedEffect
         if (gestureState.isDraggingMorph) return@LaunchedEffect
 

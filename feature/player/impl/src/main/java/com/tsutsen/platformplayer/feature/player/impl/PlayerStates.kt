@@ -28,6 +28,7 @@ data class MorphState(
     val restore: () -> Unit,
     val animateTo: (target: Float) -> Unit,
     val snapTo: (target: Float) -> Unit,
+    val cancelAnimation: () -> Unit,
 )
 
 @Composable
@@ -73,6 +74,7 @@ fun rememberMorphState(
             animJob?.cancel()
             animJob = scope.launch { morphProgress.snapTo(target) }
         },
+        cancelAnimation = { animJob?.cancel() },
     )
 }
 
@@ -86,6 +88,7 @@ data class FullscreenState(
     val progress: Float,
     val enterFullscreen: () -> Unit,
     val exitFullscreen: () -> Unit,
+    val cancelAnimation: () -> Unit,
 )
 
 @Composable
@@ -98,15 +101,18 @@ fun rememberFullscreenState(
         durationMillis = 300,
         easing = FastOutSlowInEasing
     )
+    var animJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+    fun launchAnimation(target: Float) {
+        animJob?.cancel()
+        animJob = scope.launch { fullscreenProgress.animateTo(target, transitionSpringSpec) }
+    }
 
     return FullscreenState(
         progress = fullscreenProgress.value,
-        enterFullscreen = {
-            scope.launch { fullscreenProgress.animateTo(1f, transitionSpringSpec) }
-        },
-        exitFullscreen = {
-            scope.launch { fullscreenProgress.animateTo(0f, transitionSpringSpec) }
-        },
+        enterFullscreen = { launchAnimation(1f) },
+        exitFullscreen = { launchAnimation(0f) },
+        cancelAnimation = { animJob?.cancel() },
     )
 }
 
