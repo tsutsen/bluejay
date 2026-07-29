@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.util.Log
+import com.tsutsen.platformplayer.core.model.PlayerMode
 import android.view.View
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -143,35 +144,34 @@ fun PlayerView(
     }
 
     // ==================== Animation sync ====================
-    val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
-    val isFullscreenState = (uiState as? PlayerUiState.Loaded)?.isFullscreen
+    val uiMode = (uiState as? PlayerUiState.Loaded)?.mode
 
-    LaunchedEffect(isMinimizedState, morph.isDragging) {
-        if (morph.isDragging) return@LaunchedEffect
-        val minimized = isMinimizedState ?: return@LaunchedEffect
-        val target = if (minimized) 1f else 0f
-        if (kotlin.math.abs(morph.progress - target) > 0.01f) {
-            morph.animateTo(target)
+    LaunchedEffect(uiMode, morph.isDragging) {
+        val mode = uiMode ?: return@LaunchedEffect
+
+        // Sync morph (NORMAL↔FLOATING)
+        if (!morph.isDragging) {
+            val morphTarget = if (mode == PlayerMode.FLOATING) 1f else 0f
+            if (kotlin.math.abs(morph.progress - morphTarget) > 0.01f) {
+                morph.animateTo(morphTarget)
+            }
+            isMinimizedAnim.value = (mode == PlayerMode.FLOATING)
         }
-        isMinimizedAnim.value = minimized
-        if (!minimized) autoHide.show()
-        Log.d(TAG, "Animation state synced: isMinimized=$minimized target=$target")
-    }
 
-    LaunchedEffect(isFullscreenState) {
-        val isFullscreenStateValue = isFullscreenState ?: return@LaunchedEffect
-        val target = if (isFullscreenStateValue) 1f else 0f
-        if (isFullscreenStateValue && morph.progress < 0.5f) {
+        // Sync fullscreen (NORMAL↔FULLSCREEN)
+        val fsTarget = if (mode == PlayerMode.FULLSCREEN) 1f else 0f
+        if (mode == PlayerMode.FULLSCREEN && morph.progress < 0.5f) {
             kotlinx.coroutines.delay(50)
         }
-        if (kotlin.math.abs(fullscreen.progress - target) > 0.01f) {
-            if (isFullscreenStateValue) fullscreen.enterFullscreen()
+        if (kotlin.math.abs(fullscreen.progress - fsTarget) > 0.01f) {
+            if (mode == PlayerMode.FULLSCREEN) fullscreen.enterFullscreen()
             else fullscreen.exitFullscreen()
         }
-        isFullscreenAnim.value = isFullscreenStateValue
-        // Show controls when entering fullscreen (they may have been hidden by auto-hide)
-        if (isFullscreenStateValue) autoHide.show()
-        Log.d(TAG, "Fullscreen synced: isFullscreen=$isFullscreenStateValue")
+        isFullscreenAnim.value = (mode == PlayerMode.FULLSCREEN)
+
+        // Show controls on mode change
+        if (mode != PlayerMode.FLOATING) autoHide.show()
+        Log.d(TAG, "Mode synced: $mode")
     }
 
     LaunchedEffect(uiState) {
@@ -190,8 +190,7 @@ fun PlayerView(
             Log.d(TAG, "Current video: ${state.currentVideo?.url}")
             Log.d(TAG, "Is playing: ${state.isPlaying}")
             Log.d(TAG, "Is loading: ${state.isLoading}")
-            Log.d(TAG, "Is minimized: ${state.isMinimized}")
-            Log.d(TAG, "Is fullscreen: ${state.isFullscreen}")
+            Log.d(TAG, "Mode: ${state.mode}")
 
             val config = PlayerMorphConfig.Default
 
@@ -204,8 +203,7 @@ fun PlayerView(
             val miniHeight = miniWidth * config.miniPlayerAspectRatio
             val dragTravelPx = containerSize.height * config.morphDragTravelFraction
 
-            val isMinimized = state.isMinimized
-            val isFullscreen = state.isFullscreen
+            val mode = state.mode
 
             val p = morph.progress
             val cornerRadius = (12f * p).coerceAtLeast(0f).dp
@@ -217,11 +215,11 @@ fun PlayerView(
             }
 
             // ==================== Orientation & system UI ====================
-            LaunchedEffect(isLandscape, isSmallWindow, isFullscreen) {
-                if (isLandscape && isSmallWindow && !isFullscreen && !isMinimized) {
+            LaunchedEffect(isLandscape, isSmallWindow, mode) {
+                if (isLandscape && isSmallWindow && mode == PlayerMode.NORMAL) {
                     Log.d(TAG, "Auto-entering fullscreen: landscape + phone")
                     viewModel.toggleFullscreen()
-                } else if (!isLandscape && isFullscreen) {
+                } else if (!isLandscape && mode == PlayerMode.FULLSCREEN) {
                     Log.d(TAG, "Exiting fullscreen: portrait")
                     viewModel.exitFullscreen()
                 }
@@ -235,11 +233,11 @@ fun PlayerView(
                 }
             }
 
-            LaunchedEffect(isFullscreen, isSmallWindow) {
+            LaunchedEffect(mode, isSmallWindow) {
                 val activity = context as? Activity
                 if (activity != null) {
                     val insetsController = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
-                    if (isFullscreen) {
+                    if (mode == PlayerMode.FULLSCREEN) {
                         kotlinx.coroutines.delay(300)
                         insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
                         insetsController.systemBarsBehavior =
@@ -279,7 +277,6 @@ fun PlayerView(
                 if (settled && state.isPlaying) {
                     autoHide.notifyInteraction()
                 }
-                // Don't force-hide when !settled — let the other effects manage visibility
             }
 
             LaunchedEffect(state.isPlaying) {
@@ -293,7 +290,7 @@ fun PlayerView(
             var playerHeightPx by remember { mutableStateOf(0f) }
 
             LaunchedEffect(isMinimizedAnim.value, isFullscreenAnim.value) {
-                if (!isMinimizedAnim.value && !isFullscreenAnim.value) {
+                if (!isMinimizedAnim.value) {
                     playerHeightPx = maxPlayerHeightPx
                 }
             }

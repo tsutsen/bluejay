@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import android.util.Log
+import com.tsutsen.platformplayer.core.model.PlayerMode
 
 private const val TAG = "PlayerVisibility"
 

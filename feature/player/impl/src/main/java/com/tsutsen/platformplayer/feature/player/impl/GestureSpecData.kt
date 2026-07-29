@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import com.tsutsen.platformplayer.core.model.PlayerMode
+
 /** Action assigned to a gesture in the spec. */
 enum class SpecAction(
     val yamlName: String

@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.ui.geometry.Offset
+import com.tsutsen.platformplayer.core.model.PlayerMode
 
 /**
  * Callbacks supplied by the caller (PlayerView) for each action type.

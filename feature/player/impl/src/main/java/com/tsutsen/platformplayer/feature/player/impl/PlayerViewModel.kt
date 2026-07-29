@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.PlayerMode
 import com.tsutsen.platformplayer.core.model.PlayerState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -26,8 +27,7 @@ sealed interface PlayerUiState {
         val volume: Float,
         val brightness: Float,
         val playbackSpeed: Float,
-        val isFullscreen: Boolean,
-        val isMinimized: Boolean,
+        val mode: PlayerMode,
         val currentVideo: ContentItem?,
         val queue: List<ContentItem>,
         val selectedIndex: Int,
@@ -70,8 +70,7 @@ class PlayerViewModel @Inject constructor(
                         volume = playerState.volume,
                         brightness = playerState.brightness,
                         playbackSpeed = playerState.playbackSpeed,
-                        isFullscreen = playerState.isFullscreen,
-                        isMinimized = playerState.isMinimized,
+                        mode = playerState.mode,
                         currentVideo = playerState.currentVideo,
                         queue = playerState.queue,
                         selectedIndex = playerState.selectedIndex,

@@ -20,6 +20,7 @@ import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.PlayerMode
 import com.tsutsen.platformplayer.core.model.PlayerState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -411,26 +412,24 @@ class PlayerRepositoryImpl(
 
     override suspend fun toggleFullscreen() {
         _playerState.update { currentState ->
-            if (currentState.isFullscreen) {
-                // Exit fullscreen
-                currentState.copy(isFullscreen = false, isMinimized = false)
+            if (currentState.mode == PlayerMode.FULLSCREEN) {
+                currentState.copy(mode = PlayerMode.NORMAL)
             } else {
-                // Enter fullscreen (exit mini mode if active)
-                currentState.copy(isFullscreen = true, isMinimized = false)
+                currentState.copy(mode = PlayerMode.FULLSCREEN)
             }
         }
     }
 
     override suspend fun minimize() {
-        _playerState.update { it.copy(isMinimized = true, isFullscreen = false) }
+        _playerState.update { it.copy(mode = PlayerMode.FLOATING) }
     }
 
     override suspend fun exitFullscreen() {
-        _playerState.update { it.copy(isFullscreen = false) }
+        _playerState.update { it.copy(mode = PlayerMode.NORMAL) }
     }
 
     override suspend fun exitMiniPlayer() {
-        _playerState.update { it.copy(isMinimized = false, isFullscreen = false) }
+        _playerState.update { it.copy(mode = PlayerMode.NORMAL) }
     }
 
     override suspend fun close() {
@@ -441,8 +440,7 @@ class PlayerRepositoryImpl(
         _playerState.update {
             PlayerState(
                 isPlaying = false,
-                isMinimized = false,
-                isFullscreen = false,
+                mode = PlayerMode.NORMAL,
                 currentVideo = null,
                 currentPositionMs = 0L,
                 durationMs = 0L,

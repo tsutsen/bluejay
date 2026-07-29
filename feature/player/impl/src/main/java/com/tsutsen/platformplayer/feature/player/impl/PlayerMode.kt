@@ -1,31 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-/**
- * Discrete player mode derived from continuous progress values.
- *
- * Computed ONCE from miniProgress + fullscreenProgress + playerHeightRatio,
- * then passed everywhere. Consumers should NEVER derive mode themselves — use this enum.
- *
- * Transition graph:
- *   NORMAL ↔ COMPACT       (playerHeightRatio crosses midpoint)
- *   NORMAL ↔ FULLSCREEN    (fullscreenProgress crosses 0.5)
- *   NORMAL ↔ FLOATING      (miniProgress crosses settleThreshold)
- *   COMPACT ↔ FULLSCREEN   (enter fullscreen from compact)
- *   COMPACT ↔ FLOATING     (minimize from compact)
- */
-enum class PlayerMode {
-    /** Full embedded player — tall enough for normal controls */
-    NORMAL,
-
-    /** Collapsed embedded player — only compact controls fit */
-    COMPACT,
-
-    /** Video fills the container, system bars hidden */
-    FULLSCREEN,
-
-    /** Mini floating player anchored to corner */
-    FLOATING,
-}
+import com.tsutsen.platformplayer.core.model.PlayerMode
 
 /**
  * Derive discrete mode from continuous progress values.
