@@ -139,8 +139,9 @@ fun PlayerControls(
             // AnimatedVisibility would remove the gesture handler from composition,
             // making taps fall through silently.
                 Box(modifier = Modifier.alpha(effectiveNormalAlpha)) {
-                    // Fade out gradient backgrounds along with controls
-                    val gradientAlpha = effectiveNormalAlpha
+                    // Gradient alpha must account for fullscreen too — in fullscreen
+                    // normalBarAlpha=0 but fullscreenBarAlpha>0, so gradients should still appear.
+                    val gradientAlpha = maxOf(visibility.normalBarAlpha, visibility.fullscreenBarAlpha) * controlsVisibleAlpha
                     PlayerUIScaffold(
                         modifier = Modifier
                             .offset {
