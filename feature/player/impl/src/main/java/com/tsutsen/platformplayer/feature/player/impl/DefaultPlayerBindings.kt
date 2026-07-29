@@ -5,16 +5,17 @@ import androidx.compose.ui.geometry.Offset
 /**
  * Default gesture bindings matching current app behavior.
  *
- * Row precedence: TOP row handles brightness (left) / volume (right) + 2x hold,
+ * Row precedence: TOP row handles morph (swipe-down to exit fullscreen) + 2x hold,
  *                  BOTTOM row handles minimize drag + 2x hold.
- * Column precedence: double-tap seek (LEFT/RIGHT columns, all rows),
- *                     fullscreen toggle (CENTER column).
+ * Zone precedence: TOP_LEFT = brightness, TOP_RIGHT = volume (fullscreen-only).
+ * Column precedence: double-tap seek (LEFT/RIGHT columns), fullscreen toggle (CENTER).
  * Global: TAP toggles controls visibility.
  *
- * Brightness/volume are fullscreen-only (TOP row zone bindings). In normal mode (MIDDLE row)
- * there is no vertical drag binding — only tap/double-tap actions.
+ * Brightness/volume are FULLSCREEN-ONLY via zone bindings. Normal mode (MIDDLE row)
+ * has NO vertical drag binding — only tap/double-tap.
  */
 fun defaultPlayerBindings(
+    onMorphDrag: (dragAmount: Float) -> Unit,
     onMiniDrag: (dragAmount: Float) -> Unit,
     onBrightnessDrag: (dragAmount: Float) -> Unit,
     onVolumeDrag: (dragAmount: Float) -> Unit,
@@ -32,6 +33,11 @@ fun defaultPlayerBindings(
     val doubleTapFullscreen = DiscreteAction { _, _ -> onDoubleTapFullscreen() }
     val tap = DiscreteAction { _, _ -> onTap() }
 
+    val morphDrag = object : ContinuousAction {
+        override fun onStart(zone: GestureZone, position: Offset) {}
+        override fun onDelta(deltaPx: Float) { onMorphDrag(deltaPx) }
+        override fun onEnd() {}
+    }
     val miniDrag = object : ContinuousAction {
         override fun onStart(zone: GestureZone, position: Offset) {}
         override fun onDelta(deltaPx: Float) { onMiniDrag(deltaPx) }
@@ -50,6 +56,13 @@ fun defaultPlayerBindings(
 
     return GestureBindings(
         byRow = mapOf(
+            GestureRow.TOP to ZoneBindings(
+                discrete = mapOf(
+                    DiscreteGesture.LONG_PRESS_START to longPressStart,
+                    DiscreteGesture.LONG_PRESS_END to longPressEnd,
+                ),
+                continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
+            ),
             GestureRow.BOTTOM to ZoneBindings(
                 discrete = mapOf(
                     DiscreteGesture.LONG_PRESS_START to longPressStart,
