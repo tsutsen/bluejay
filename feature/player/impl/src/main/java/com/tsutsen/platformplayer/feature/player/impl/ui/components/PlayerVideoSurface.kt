@@ -30,6 +30,10 @@ fun PlayerVideoSurface(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
+                // Disable native touch handling so Compose gesture layer can intercept touches
+                isClickable = false
+                isFocusable = false
+                isFocusableInTouchMode = false
             }
         },
         update = { view -> view.player = player },
