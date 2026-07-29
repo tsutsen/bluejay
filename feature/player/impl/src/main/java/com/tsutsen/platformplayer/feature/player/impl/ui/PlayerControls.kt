@@ -130,6 +130,7 @@ fun PlayerControls(
             // touches in Compose, so keeping this subtree composed and just fading it visually
             // preserves tap-to-reveal even while fully transparent.
             val effectiveNormalAlpha = normalAlpha * controlsVisibleAlpha
+            Log.d(TAG, "normalAlpha=$normalAlpha controlsVisibleAlpha=$controlsVisibleAlpha effectiveNormalAlpha=$effectiveNormalAlpha")
             AnimatedVisibility(
                 visible = normalAlpha > 0.01f,
                 enter = fadeIn(animationSpec = tween(config.effectiveDuration(200))),

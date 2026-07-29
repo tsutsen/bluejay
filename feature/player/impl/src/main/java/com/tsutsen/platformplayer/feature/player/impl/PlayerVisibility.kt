@@ -1,5 +1,9 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import android.util.Log
+
+private const val TAG = "PlayerVisibility"
+
 /**
  * All visibility/alpha values for the player UI, computed once from a single set of inputs.
  * Mirrors the pure-function pattern of `computeVideoLayout()` — no Compose state, no side effects,
@@ -55,6 +59,8 @@ fun computeControlsVisibility(
     val floatingAlpha = progressAlpha(miniProgress, config.morphTransitionStart, config.morphTransitionEnd)
     val detailsAlpha = progressAlpha(miniProgress, config.detailsFadeStart, config.detailsFadeEnd, reversed = true)
     val detailsTranslateY = miniProgress * config.detailsTranslateFraction
+
+    Log.d(TAG, "computeControlsVisibility: normalBarAlpha=$normalBarAlpha compactBarAlpha=$compactBarAlpha fullscreenBarAlpha=$fullscreenBarAlpha miniControlsAlpha=$miniControlsAlpha floatingAlpha=$floatingAlpha controlsVisibleFactor=$controlsVisibleFactor")
 
     return ControlsVisibility(
         normalBarAlpha = normalBarAlpha,
