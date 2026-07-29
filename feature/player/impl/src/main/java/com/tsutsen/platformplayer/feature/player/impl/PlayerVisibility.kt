@@ -21,10 +21,8 @@ data class ControlsVisibility(
     val floatingAlpha: Float,
     val detailsAlpha: Float,
     val detailsTranslateY: Float,
-    /** True when top+bottom bars should be drawn (NORMAL or FULLSCREEN) */
+    /** True when top+bottom bars should be drawn (NORMAL, COMPACT, or FULLSCREEN) */
     val showBars: Boolean,
-    /** True when in compact mode (small player height) — NORMAL mode only */
-    val isCompact: Boolean,
     val showMiniControls: Boolean,
     val showFloatingOverlay: Boolean,
     val showDetails: Boolean,
@@ -57,8 +55,6 @@ fun computeControlsVisibility(
 
     val normalBarAlpha = normalMorphFade * fullscreenMorphFade * (1f - collapseAlpha) * controlsVisibleFactor
     val fullscreenBarAlpha = progressAlpha(fullscreenProgress, 0f, 1f) * controlsVisibleFactor
-    // collapseAlpha: 0 = full controls, 1 = compact — for normal↔compact crossfade
-    val isCompact = collapseAlpha > 0.5f
     // Single alpha that covers both NORMAL and FULLSCREEN — consumers use this
     val barAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha)
 
@@ -69,7 +65,7 @@ fun computeControlsVisibility(
 
     Log.d(TAG, "computeControlsVisibility: barAlpha=$barAlpha normalBarAlpha=$normalBarAlpha fullscreenBarAlpha=$fullscreenBarAlpha miniControlsAlpha=$miniControlsAlpha floatingAlpha=$floatingAlpha controlsVisibleFactor=$controlsVisibleFactor")
 
-    val mode = computePlayerMode(miniProgress, fullscreenProgress, config)
+    val mode = computePlayerMode(miniProgress, fullscreenProgress, playerHeightRatio, config)
 
     return ControlsVisibility(
         barAlpha = barAlpha,
@@ -83,7 +79,6 @@ fun computeControlsVisibility(
         showMiniControls = miniControlsAlpha > 0.01f,
         showFloatingOverlay = floatingAlpha > 0.01f,
         showDetails = detailsAlpha > 0.01f,
-        isCompact = isCompact,
         mode = mode,
     )
 }

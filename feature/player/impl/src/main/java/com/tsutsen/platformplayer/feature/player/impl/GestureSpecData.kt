@@ -43,9 +43,7 @@ fun buildGestureSpecs(rawMap: Map<String, Map<String, Map<String, String>>>): Ma
     val result = mutableMapOf<PlayerMode, ModeGestureSpec>()
 
     for ((modeName, zoneMap) in rawMap) {
-        // COMPACT in YAML maps to NORMAL — it's a visual variant, not a separate mode
-        val modeNameResolved = if (modeName == "COMPACT") "NORMAL" else modeName
-        val mode = try { PlayerMode.valueOf(modeNameResolved) } catch (_: IllegalArgumentException) { continue }
+        val mode = try { PlayerMode.valueOf(modeName) } catch (_: IllegalArgumentException) { continue }
         val zoneSpecs = mutableMapOf<GestureZone, ZoneGestureSpec>()
 
         for ((zoneName, gestureMap) in zoneMap) {

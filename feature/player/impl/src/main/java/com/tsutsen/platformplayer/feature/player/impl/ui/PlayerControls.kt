@@ -218,7 +218,7 @@ fun PlayerControls(
                                     // NORMAL ↔ COMPACT: animated swap (hidden when fullscreen)
                                     if (visibility.fullscreenBarAlpha < 0.99f && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
                                         androidx.compose.animation.AnimatedContent(
-                                            targetState = visibility.isCompact,
+                                            targetState = visibility.mode == PlayerMode.COMPACT,
                                             transitionSpec = {
                                                 androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
                                             },

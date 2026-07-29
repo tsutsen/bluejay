@@ -393,6 +393,7 @@ fun PlayerView(
             val gestureMode = computePlayerMode(
                 miniProgress = morph.progress,
                 fullscreenProgress = fullscreenP,
+                playerHeightRatio = playerHeightRatio,
                 config = config,
             )
 
