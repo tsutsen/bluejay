@@ -125,6 +125,11 @@ fun PlayerView(
 
     var containerSize by remember { mutableStateOf(Size.Zero) }
 
+    // Parse gesture spec YAML once — drives which gestures are active per zone/mode
+    val gestureSpecs = remember {
+        buildGestureSpecs(GestureSpecParser.parse(GestureSpecResource.YAML))
+    }
+
     val player = remember(uiState) {
         (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
     }
@@ -384,60 +389,57 @@ fun PlayerView(
             }
 
             // ==================== Gesture bindings ====================
-            val gestureBindings = defaultPlayerBindings(
-                isFullscreen = fullscreenP > 0.5f,
-                onMorphDrag = { delta ->
-                    // Swipe-down → morph to floating mini-player (from normal or fullscreen)
-                    val newProgress = (morph.progress - delta / containerSize.height).coerceIn(0f, 1f)
-                    if (kotlin.math.abs(morph.progress - newProgress) > 0.01f) {
-                        if (newProgress > morph.progress) {
-                            if (newProgress >= config.morphSettleThreshold) viewModel.minimize()
-                            else morph.drag(newProgress * containerSize.height, containerSize.height)
-                        } else {
-                            morph.drag(newProgress * containerSize.height, containerSize.height)
+            // Parse YAML spec once and build bindings per mode
+            val gestureMode = when {
+                morph.progress > 0.5f -> PlayerMode.FLOATING
+                fullscreenP > 0.5f -> PlayerMode.FULLSCREEN
+                else -> PlayerMode.NORMAL
+            }
+
+            val gestureBindings = buildGestureBindings(
+                mode = gestureMode,
+                specs = gestureSpecs,
+                callbacks = GestureCallbacks(
+                    onMorphDrag = { delta ->
+                        val newProgress = (morph.progress - delta / containerSize.height).coerceIn(0f, 1f)
+                        if (kotlin.math.abs(morph.progress - newProgress) > 0.01f) {
+                            if (newProgress > morph.progress) {
+                                if (newProgress >= config.morphSettleThreshold) viewModel.minimize()
+                                else morph.drag(newProgress * containerSize.height, containerSize.height)
+                            } else {
+                                morph.drag(newProgress * containerSize.height, containerSize.height)
+                            }
                         }
-                    }
-                },
-                onMiniDrag = { delta ->
-                    val newProgress = (morph.progress - delta / dragTravelPx).coerceIn(0f, 1f)
-                    if (kotlin.math.abs(morph.progress - newProgress) > 0.01f) {
-                        if (newProgress > morph.progress) {
-                            if (newProgress >= config.morphSettleThreshold) viewModel.minimize()
-                            else morph.drag(newProgress * dragTravelPx, dragTravelPx)
-                        } else {
-                            morph.drag(newProgress * dragTravelPx, dragTravelPx)
-                        }
-                    }
-                },
-                onBrightnessDrag = { delta ->
-                    val newBrightness = (brightnessValue - delta / 500f).coerceIn(0f, 1f)
-                    brightnessValue = newBrightness
-                    viewModel.setBrightness(newBrightness)
-                    showBrightnessIndicator = true
-                    coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
-                },
-                onVolumeDrag = { delta ->
-                    val newVolume = (volumeValue - delta / 500f).coerceIn(0f, 1f)
-                    volumeValue = newVolume
-                    viewModel.setVolume(newVolume)
-                    showVolumeIndicator = true
-                    coroutineScope.launch { delay(1500); showVolumeIndicator = false }
-                },
-                onDoubleTapSeekLeft = { onSeek(-5000) },
-                onDoubleTapSeekRight = { onSeek(5000) },
-                onDoubleTapFullscreen = { viewModel.toggleFullscreen() },
-                onTap = {
-                    if (morph.progress > 0.01f && morph.progress < 0.99f) return@defaultPlayerBindings
-                    autoHide.notifyInteraction()
-                },
-                onLongPressStart = {
-                    Log.d(TAG, "Speed hold start: 2x")
-                    viewModel.setPlaybackSpeed(2f)
-                },
-                onLongPressEnd = {
-                    Log.d(TAG, "Speed hold end: normal")
-                    viewModel.setPlaybackSpeed(1f)
-                }
+                    },
+                    onBrightnessDrag = { delta ->
+                        val newBrightness = (brightnessValue - delta / 500f).coerceIn(0f, 1f)
+                        brightnessValue = newBrightness
+                        viewModel.setBrightness(newBrightness)
+                        showBrightnessIndicator = true
+                        coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
+                    },
+                    onVolumeDrag = { delta ->
+                        val newVolume = (volumeValue - delta / 500f).coerceIn(0f, 1f)
+                        volumeValue = newVolume
+                        viewModel.setVolume(newVolume)
+                        showVolumeIndicator = true
+                        coroutineScope.launch { delay(1500); showVolumeIndicator = false }
+                    },
+                    onDoubleTapSeekLeft = { onSeek(-5000) },
+                    onDoubleTapSeekRight = { onSeek(5000) },
+                    onTap = {
+                        if (morph.progress > 0.01f && morph.progress < 0.99f) return@GestureCallbacks
+                        autoHide.notifyInteraction()
+                    },
+                    onLongPressStart = {
+                        Log.d(TAG, "Speed hold start: 2x")
+                        viewModel.setPlaybackSpeed(2f)
+                    },
+                    onLongPressEnd = {
+                        Log.d(TAG, "Speed hold end: normal")
+                        viewModel.setPlaybackSpeed(1f)
+                    },
+                ),
             )
 
             // ==================== Compose ====================

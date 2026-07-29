@@ -26,6 +26,50 @@ android {
     buildFeatures {
         compose true
     }
+
+    sourceSets {
+        main {
+            java.srcDirs += "${buildDir}/generated/src"
+        }
+    }
+}
+
+// Generate GestureSpecResource.kt from spec/gestures.yaml
+tasks.register('generateGestureSpec') {
+    def yamlFile = file('../spec/gestures.yaml')
+    def outputFile = file("${buildDir}/generated/src/com/tsutsen/platformplayer/feature/player/impl/GestureSpecResource.kt")
+
+    inputs.file(yamlFile)
+    outputs.file(outputFile)
+
+    doLast {
+        outputFile.parentFile.mkdirs()
+        def yamlContent = yamlFile.text
+        // Escape backslashes, dollar signs, and quotes for Kotlin string
+        def escaped = yamlContent
+            .replace('\\', '\\\\')
+            .replace('$', '\\$')
+            .replace('"', '\\"')
+
+        def kt = "package com.tsutsen.platformplayer.feature.player.impl\n"
+        kt += "\n"
+        kt += "/** Auto-generated from spec/gestures.yaml — do not edit */\n"
+        kt += "object GestureSpecResource {\n"
+        kt += "    @JvmField\n"
+        kt += "    val YAML = \"\"\"\n"
+        kt += escaped
+        kt += "\"\"\"\n"
+        kt += "}\n"
+        outputFile.text = kt
+    }
+}
+
+// Wire generation into compile tasks for library module
+afterEvaluate {
+    tasks.named('compileDebugKotlin').configure { dependsOn('generateGestureSpec') }
+    tasks.named('compileReleaseKotlin').configure { dependsOn('generateGestureSpec') }
+    tasks.named('kspDebugKotlin').configure { dependsOn('generateGestureSpec') }
+    tasks.named('kspReleaseKotlin').configure { dependsOn('generateGestureSpec') }
 }
 
 dependencies {

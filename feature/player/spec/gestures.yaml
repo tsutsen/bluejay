@@ -1,0 +1,271 @@
+# Gesture specification for player modes
+# Each zone is a cell in a 3x3 grid overlaying the video surface.
+#
+# Zones:
+#   TOP_LEFT    TOP_CENTER    TOP_RIGHT
+#   MIDDLE_LEFT MIDDLE_CENTER MIDDLE_RIGHT
+#   BOTTOM_LEFT BOTTOM_CENTER BOTTOM_RIGHT
+#
+# Gesture types:
+#   SWIPE_VERTICAL   — continuous vertical drag (delta > 0 = down, < 0 = up)
+#   SWIPE_HORIZONTAL — continuous horizontal drag (delta > 0 = right, < 0 = left)
+#   DOUBLE_TAP       — two quick taps
+#   HOLD             — long press (press → action start, release → action end)
+#   TAP              — single tap (triggers controls show/hide)
+#
+# Actions:
+#   morph          — swipe-down: minimize to floating; swipe-up: restore from drag
+#   brightness     — swipe-down: decrease; swipe-up: increase
+#   volume         — swipe-down: decrease; swipe-up: increase
+#   seek-left      — seek back 5 seconds
+#   seek-right     — seek forward 5 seconds
+#   speed-hold     — press: 2x speed; release: restore normal speed
+#   toggle-controls — show/hide overlay controls
+#   expand         — expand floating player back to current mode
+#   play-pause     — toggle playback
+#   none           — no action
+
+---
+FULLSCREEN:
+  # TOP row — morph zone (swipe-down minimizes to floating)
+  TOP_LEFT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  TOP_CENTER:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  TOP_RIGHT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+  # MIDDLE row — media controls
+  MIDDLE_LEFT:
+    SWIPE_VERTICAL: volume
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  MIDDLE_CENTER:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  MIDDLE_RIGHT:
+    SWIPE_VERTICAL: brightness
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+  # BOTTOM row — mirrors MIDDLE
+  BOTTOM_LEFT:
+    SWIPE_VERTICAL: volume
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  BOTTOM_CENTER:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  BOTTOM_RIGHT:
+    SWIPE_VERTICAL: brightness
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+---
+NORMAL:
+  # All zones: morph (swipe-down minimizes to floating)
+  # Double-tap and hold same as fullscreen
+  TOP_LEFT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  TOP_CENTER:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  TOP_RIGHT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+  MIDDLE_LEFT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  MIDDLE_CENTER:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  MIDDLE_RIGHT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+  BOTTOM_LEFT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  BOTTOM_CENTER:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  BOTTOM_RIGHT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+---
+COMPACT:
+  # Embedded player (smaller, within feed/post)
+  # Same gesture map as NORMAL — all zones morph, same double-tap/hold
+  TOP_LEFT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  TOP_CENTER:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  TOP_RIGHT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+  MIDDLE_LEFT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  MIDDLE_CENTER:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  MIDDLE_RIGHT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+  BOTTOM_LEFT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-left
+    HOLD: speed-hold
+    TAP: toggle-controls
+  BOTTOM_CENTER:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: speed-hold
+    TAP: toggle-controls
+  BOTTOM_RIGHT:
+    SWIPE_VERTICAL: morph
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: seek-right
+    HOLD: speed-hold
+    TAP: toggle-controls
+
+---
+FLOATING:
+  # Mini floating player — no grid gestures.
+  # Expand is handled by a separate detectTapGestures on the overlay itself.
+  TOP_LEFT:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
+  TOP_CENTER:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
+  TOP_RIGHT:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
+
+  MIDDLE_LEFT:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
+  MIDDLE_CENTER:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
+  MIDDLE_RIGHT:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
+
+  BOTTOM_LEFT:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
+  BOTTOM_CENTER:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
+  BOTTOM_RIGHT:
+    SWIPE_VERTICAL: none
+    SWIPE_HORIZONTAL: none
+    DOUBLE_TAP: none
+    HOLD: none
+    TAP: none
