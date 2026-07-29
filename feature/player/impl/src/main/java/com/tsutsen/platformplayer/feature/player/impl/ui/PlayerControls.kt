@@ -138,7 +138,10 @@ fun PlayerControls(
             // controlsVisibleFactor — when controls auto-hide, normalAlpha → 0 and
             // AnimatedVisibility would remove the gesture handler from composition,
             // making taps fall through silently.
-                Box(modifier = Modifier.alpha(effectiveNormalAlpha)) {
+                // In fullscreen, effectiveNormalAlpha=0 but we still need the subtree visible.
+                // Use maxOf so the subtree (gesture handler + bars) stays visible in both modes.
+                val subtreeAlpha = maxOf(effectiveNormalAlpha, visibility.fullscreenBarAlpha)
+                Box(modifier = Modifier.alpha(subtreeAlpha)) {
                     // Gradient alpha must account for fullscreen too — in fullscreen
                     // normalBarAlpha=0 but fullscreenBarAlpha>0, so gradients should still appear.
                     val gradientAlpha = maxOf(visibility.normalBarAlpha, visibility.fullscreenBarAlpha) * controlsVisibleAlpha
@@ -164,8 +167,8 @@ fun PlayerControls(
                         volumeValue = volumeValue,
                         showBrightnessIndicator = showBrightnessIndicator,
                         showVolumeIndicator = showVolumeIndicator,
-                        showTopBar = visibility.showNormalTopBar,
-                        showBottomBar = visibility.showNormalBottomBar,
+                        showTopBar = visibility.showNormalTopBar || visibility.showFullscreenBar,
+                        showBottomBar = visibility.showNormalBottomBar || visibility.showFullscreenBar,
                         gradientAlpha = gradientAlpha,
                         topBar = {
                             // Use maxOf so top bar stays visible in BOTH normal and fullscreen modes.
