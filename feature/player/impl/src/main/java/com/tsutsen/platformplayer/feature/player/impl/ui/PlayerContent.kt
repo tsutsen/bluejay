@@ -129,19 +129,26 @@ fun PlayerContent(
         // false -> true on the very first pixel of drag movement, while gradientAlpha
         // (normalAlpha) is still ~1.0 (it doesn't start fading until MORPH_TRANSITION_START),
         // so the top scrim pops in at full opacity instead of fading in with everything else.
+        //
+        // Deliberately NOT gated on showTopOverlay (raw controlsVisible) here: that's an
+        // un-animated boolean, so gating composition on it directly cuts the top bar (and its
+        // fade+slide graphicsLayer) out of composition the instant controls should hide, before
+        // gradientAlpha's 200ms tween gets a single frame to render. Hiding due to
+        // controlsVisible is handled entirely by the animated gradientAlpha downstream in
+        // PlayerControls.kt / PlayerUIScaffold.kt - this only decides structural applicability.
         miniProgress > MINI_SETTLED_THRESHOLD -> miniMorphAlpha > 0.01f && !isCollapsedControls &&
             (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
                 fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD))
-        fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> showTopOverlay
-        else -> showTopOverlay && !isCollapsedControls
+        fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> true
+        else -> !isCollapsedControls
     }
 
     val resolvedShowBottomBar = when {
         miniProgress > MINI_SETTLED_THRESHOLD -> miniMorphAlpha > 0.01f &&
             (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
                 fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD))
-        fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> showBottomOverlay
-        else -> if (isCollapsedControls) true else showBottomOverlay
+        fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> true
+        else -> true
     }
 
     // ==================== Nested scroll connection ====================

@@ -37,6 +37,7 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 private const val TAG = "PlayerControls"
+private const val CONTROLS_SLIDE_DISTANCE_DP = 24
 
 /**
  * Handles all controls for the current mode.
@@ -152,7 +153,17 @@ fun PlayerControls(
                                 var lastTapY = 0f
 
                                 awaitEachGesture {
-                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    // requireUnconsumed = true is essential here: without it, a
+                                    // tap that started on a child control (Play/Pause, minimize,
+                                    // chapters, etc.) still reaches this loop even after the
+                                    // child's own clickable already consumed it, and gets
+                                    // (mis)treated as a background tap - toggling
+                                    // controlsVisible as an unwanted side effect of pressing any
+                                    // button. That's what caused controls to blink on
+                                    // play/pause: the button press toggled controlsVisible off,
+                                    // then the isPlaying-changed effect in PlayerView.kt forced
+                                    // it back on a frame later.
+                                    val down = awaitFirstDown(requireUnconsumed = true)
                                     var totalDragY = 0f
                                     var pastSlop = false
                                     var pointerId = down.id
@@ -162,6 +173,14 @@ fun PlayerControls(
                                         val event = awaitPointerEvent()
                                         val change = event.changes.firstOrNull { it.id == pointerId }
                                             ?: break
+
+                                        // A child (e.g. a button's long-press ripple) claimed
+                                        // this touch after the initial down - bail out rather
+                                        // than treating it as a background tap or morph drag.
+                                        // Once pastSlop is true we've already claimed the
+                                        // gesture ourselves via change.consume() below, so this
+                                        // check only applies before that point.
+                                        if (!pastSlop && change.isConsumed) break
 
                                         if (change.previousPressed && !change.pressed) {
                                             if (!pastSlop) {
@@ -237,7 +256,15 @@ fun PlayerControls(
                         topBar = {
                             val topAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha) * (1f - miniProgress).coerceIn(0f, 1f)
                             if (topAlpha > 0.01f) {
-                                Box(modifier = Modifier.alpha(topAlpha)) {
+                                Box(
+                                    modifier = Modifier.graphicsLayer {
+                                        alpha = topAlpha
+                                        // Slide up and out on hide, slide down and in on show -
+                                        // driven by the same controlsVisibleAlpha as the fade,
+                                        // so both directions are symmetric by construction.
+                                        translationY = (1f - controlsVisibleAlpha) * -CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
+                                    }
+                                ) {
                                     PlayerNormalTopOverlay(
                                         title = state.currentVideo?.title ?: "Unknown",
                                         channelName = state.currentVideo?.author?.name ?: "Unknown",
@@ -252,7 +279,15 @@ fun PlayerControls(
                         bottomBar = {
                             val bottomAlpha = (1f - miniProgress).coerceIn(0f, 1f)
                             if (bottomAlpha > 0.01f) {
-                                Box(modifier = Modifier.fillMaxWidth()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .graphicsLayer {
+                                            // Slide down and out on hide, slide up and in on
+                                            // show - mirrors the top bar's upward slide.
+                                            translationY = (1f - controlsVisibleAlpha) * CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
+                                        }
+                                ) {
                                     // FULLSCREEN bottom overlay
                                     if (fullscreenBarAlpha > 0.99f) {
                                         Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
