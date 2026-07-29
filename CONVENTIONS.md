@@ -786,5 +786,5 @@ docs(conventions): add conventions document
 
 ---
 
-*Last updated: 2025-07-29*
+*Last updated: 2026-07-29*
 *Owner: Bluejay Core Team*
