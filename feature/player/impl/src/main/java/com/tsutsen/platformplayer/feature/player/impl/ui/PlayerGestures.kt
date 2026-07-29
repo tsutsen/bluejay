@@ -1,8 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import android.util.Log
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -47,6 +45,7 @@ fun PlayerGestures(
     gestureCallbacks: PlayerGestureCallbacks,
     onExpand: () -> Unit,
     onSeek: (Long) -> Unit,
+    visibility: ControlsVisibility,
     onSpeedHoldStart: () -> Unit = {},
     onSpeedHoldEnd: () -> Unit = {}
 ) {
@@ -54,7 +53,7 @@ fun PlayerGestures(
 
     Box(modifier = modifier) {
         // ==================== FULLSCREEN mode gestures ====================
-        if (fullscreenProgress > PlayerMorphConfig.Default.fullscreenSettledThreshold) {
+        if (visibility.showFullscreenBar) {
             // Brightness/volume swipe
             var touchX = 0f
             Box(
@@ -129,7 +128,7 @@ fun PlayerGestures(
         }
 
         // ==================== NORMAL/COMPACT mode gestures ====================
-        if (fullscreenProgress < PlayerMorphConfig.Default.fullscreenSettledThreshold && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
+        if (!visibility.showFullscreenBar && !visibility.showFloatingOverlay) {
             // Double-tap left/right thirds → rewind ±5 seconds
             val thirdWidthDp = with(density) { (containerWidth / 3).toDp() }
             Box(
@@ -186,7 +185,7 @@ fun PlayerGestures(
         }
 
         // ==================== FLOATING mode gestures ====================
-        if (miniProgress > PlayerMorphConfig.Default.miniDragThreshold) {
+        if (visibility.showFloatingOverlay) {
             val latestOffsetX by rememberUpdatedState(currentOffsetX)
             val latestOffsetY by rememberUpdatedState(currentOffsetY)
             val latestRestX by rememberUpdatedState(floatingRestX)

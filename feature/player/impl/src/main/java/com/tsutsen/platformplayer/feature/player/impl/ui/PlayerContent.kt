@@ -1,6 +1,10 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -154,6 +158,7 @@ fun PlayerContent(
             gestureCallbacks = gestureCallbacks,
             onExpand = onExpand,
             onSeek = onSeek,
+            visibility = visibility,
             onSpeedHoldStart = onSpeedHoldStart,
             onSpeedHoldEnd = onSpeedHoldEnd
         )
@@ -165,32 +170,33 @@ fun PlayerContent(
         // it is removed from composition so the LazyColumn no longer intercepts pointer
         // events, allowing the feed behind the floating mini player to be scrolled.
         val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
-        val detailsAlphaFinal = visibility.detailsAlpha
         
-        // Keep panel in composition while visible (alpha > 0.01), remove when fully faded
-        if (detailsAlphaFinal > 0.01f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offset(y = detailsOffsetY)
-                        .fillMaxHeight()
-                        .graphicsLayer {
-                            alpha = detailsAlphaFinal
-                            translationY = visibility.detailsTranslateY
-                        }
-                        .then(nestedScrollModifier)
-                ) {
-                    PlayerDetails(
-                        state = state,
-                        scrollState = scrollState,
-                        expandedDescription = expandedDescription,
-                        onToggleDescription = onToggleDescription,
-                        selectedTab = selectedTab,
-                        onTabSelected = onTabSelected,
-                        onLoadMoreComments = onLoadMoreComments
-                    )
-                }
+        AnimatedVisibility(
+            visible = visibility.showDetails,
+            enter = fadeIn(animationSpec = tween(config.effectiveDuration(250))),
+            exit = fadeOut(animationSpec = tween(config.effectiveDuration(250))),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = detailsOffsetY)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        translationY = visibility.detailsTranslateY
+                    }
+                    .then(nestedScrollModifier)
+            ) {
+                PlayerDetails(
+                    state = state,
+                    scrollState = scrollState,
+                    expandedDescription = expandedDescription,
+                    onToggleDescription = onToggleDescription,
+                    selectedTab = selectedTab,
+                    onTabSelected = onTabSelected,
+                    onLoadMoreComments = onLoadMoreComments
+                )
             }
+        }
 
         // ==================== 4. ControlsLayer ====================
         PlayerControls(

@@ -5,6 +5,12 @@ import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerCompactO
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerFloatingOverlay
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalBottomOverlay
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalTopOverlay
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -14,9 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -120,7 +123,11 @@ fun PlayerControls(
             // touches in Compose, so keeping this subtree composed and just fading it visually
             // preserves tap-to-reveal even while fully transparent.
             val effectiveNormalAlpha = normalAlpha * controlsVisibleAlpha
-            if (normalAlpha > 0.01f) {
+            AnimatedVisibility(
+                visible = normalAlpha > 0.01f,
+                enter = fadeIn(animationSpec = tween(config.effectiveDuration(200))),
+                exit = fadeOut(animationSpec = tween(config.effectiveDuration(200))),
+            ) {
                 Box(modifier = Modifier.alpha(effectiveNormalAlpha)) {
                     // Fade out gradient backgrounds along with controls
                     val gradientAlpha = effectiveNormalAlpha
@@ -244,10 +251,13 @@ fun PlayerControls(
                         disableTapGestures = true,
                         topBar = {
                             val topAlpha = visibility.normalBarAlpha
-                            if (topAlpha > 0.01f) {
+                            AnimatedVisibility(
+                                visible = topAlpha > 0.01f,
+                                enter = fadeIn(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
+                                exit = fadeOut(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
+                            ) {
                                 Box(
                                     modifier = Modifier.graphicsLayer {
-                                        alpha = topAlpha
                                         // Slide up and out on hide, slide down and in on show -
                                         // driven by the same controlsVisibleAlpha as the fade,
                                         // so both directions are symmetric by construction.
@@ -266,8 +276,11 @@ fun PlayerControls(
                             }
                         },
                         bottomBar = {
-                            val bottomAlpha = visibility.normalBarAlpha
-                            if (bottomAlpha > 0.01f) {
+                            AnimatedVisibility(
+                                visible = visibility.normalBarAlpha > 0.01f,
+                                enter = fadeIn(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
+                                exit = fadeOut(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -278,23 +291,25 @@ fun PlayerControls(
                                         }
                                 ) {
                                     // FULLSCREEN bottom overlay
-                                    if (visibility.showFullscreenBar) {
-                                        Box(modifier = Modifier.alpha(visibility.fullscreenBarAlpha)) {
-                                            PlayerNormalBottomOverlay(
-                                                player = player,
-                                                currentPositionMs = state.currentPositionMs,
-                                                durationMs = state.durationMs,
-                                                isPlaying = state.isPlaying,
-                                                onPlayPause = onPlayPause,
-                                                onPrevious = onPrevious,
-                                                onNext = onNext,
-                                                onChapters = onChapters,
-                                                onFullscreen = onFullscreenToggle,
-                                                onSeek = onSeek,
-                                                isScrubbing = isScrubbing,
-                                                scrubPositionMs = scrubPositionMs
-                                            )
-                                        }
+                                    AnimatedVisibility(
+                                        visible = visibility.showFullscreenBar,
+                                        enter = fadeIn(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
+                                        exit = fadeOut(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(200))),
+                                    ) {
+                                        PlayerNormalBottomOverlay(
+                                            player = player,
+                                            currentPositionMs = state.currentPositionMs,
+                                            durationMs = state.durationMs,
+                                            isPlaying = state.isPlaying,
+                                            onPlayPause = onPlayPause,
+                                            onPrevious = onPrevious,
+                                            onNext = onNext,
+                                            onChapters = onChapters,
+                                            onFullscreen = onFullscreenToggle,
+                                            onSeek = onSeek,
+                                            isScrubbing = isScrubbing,
+                                            scrubPositionMs = scrubPositionMs
+                                        )
                                     }
 
                                     // NORMAL ↔ COMPACT: animated swap
@@ -352,10 +367,13 @@ fun PlayerControls(
         // read as an abrupt pop-in that clipped the still-fading normal controls. Keeping the
         // container composed across the full [0,1] range and driving visibility purely through
         // floatingAlpha keeps layout continuous; only the expensive inner content is gated.
-        run {
-            // Fade in floating controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
-            val floatingAlpha = visibility.floatingAlpha
+        val floatingAlpha = visibility.floatingAlpha
 
+        AnimatedVisibility(
+            visible = visibility.showFloatingOverlay,
+            enter = fadeIn(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(250))),
+            exit = fadeOut(animationSpec = tween(PlayerMorphConfig.Default.effectiveDuration(250))),
+        ) {
             Box(
                 modifier = Modifier
                     .offset {
@@ -368,42 +386,35 @@ fun PlayerControls(
                         width = with(density) { videoLayout.widthPx.toDp() },
                         height = with(density) { videoLayout.heightPx.toDp() }
                     )
-                    .graphicsLayer { alpha = floatingAlpha }
             ) {
-                // Skip composing the (relatively heavy) content entirely while invisible.
-                // This still avoids the pop-in bug because the outer Box above - which owns
-                // the offset/size that must stay continuous with videoLayout - is unconditional.
-                if (floatingAlpha > 0.01f) {
+                if (floatingAlpha > 0.5f) {
                     // Shadow (hidden during morph transition)
-                    if (floatingAlpha > 0.5f) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .offset(y = 4.dp * floatingAlpha)
-                                .graphicsLayer { alpha = 0.15f * floatingAlpha }
-                                .background(androidx.compose.ui.graphics.Color.Black,
-                                    androidx.compose.foundation.shape.RoundedCornerShape(videoLayout.cornerRadius))
-                        )
-                    }
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer {
-                                alpha = floatingAlpha
-                                val scale = 0.92f + 0.08f * floatingAlpha
-                                scaleX = scale
-                                scaleY = scale
-                                translationY = (1f - floatingAlpha) * 12.dp.toPx()
-                            }
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(videoLayout.cornerRadius))
-                    ) {
-                        PlayerFloatingOverlay(
-                            state = state,
-                            onPlayPause = onPlayPause,
-                            onClose = onClose,
-                            onFullscreen = onFullscreenToggle
-                        )
-                    }
+                            .offset(y = 4.dp * floatingAlpha)
+                            .graphicsLayer { alpha = 0.15f * floatingAlpha }
+                            .background(androidx.compose.ui.graphics.Color.Black,
+                                androidx.compose.foundation.shape.RoundedCornerShape(videoLayout.cornerRadius))
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val scale = 0.92f + 0.08f * floatingAlpha
+                            scaleX = scale
+                            scaleY = scale
+                            translationY = (1f - floatingAlpha) * 12.dp.toPx()
+                        }
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(videoLayout.cornerRadius))
+                ) {
+                    PlayerFloatingOverlay(
+                        state = state,
+                        onPlayPause = onPlayPause,
+                        onClose = onClose,
+                        onFullscreen = onFullscreenToggle
+                    )
                 }
             }
         }
