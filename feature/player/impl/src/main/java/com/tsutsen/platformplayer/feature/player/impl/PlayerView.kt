@@ -101,6 +101,10 @@ fun PlayerView(
     var scrubPositionMs by remember { mutableStateOf(0L) }
     var isDraggingMorph by remember { mutableStateOf(false) }
     var lockedGestureMode by remember { mutableStateOf(PlayerMode.NORMAL) }
+    // Cumulative morph drag tracking — mirrors player-morph's approach:
+    // progress = dragStartProgress + (totalDragY / dragTravelPx)
+    // This is absolute from gesture start, not incremental from morph.progress.
+    var morphDragStartProgress by remember { mutableStateOf(0f) }
 
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
@@ -149,10 +153,9 @@ fun PlayerView(
     val uiMode = (uiState as? PlayerUiState.Loaded)?.mode
 
     // Sync morph progress to mode — only runs when drag is NOT active.
-    // Keyed on uiMode change (from repository actions like minimize/restore).
-    // The isDraggingMorph guard is INSIDE the body, not a key,
-    // so drag-induced recompositions don't cancel in-flight animations.
-    LaunchedEffect(uiMode) {
+    // isDraggingMorph is a KEY (like player-morph) so the effect re-runs
+    // on drag start and cancels any in-flight animation via Compose lifecycle.
+    LaunchedEffect(uiMode, isDraggingMorph) {
         val mode = uiMode ?: return@LaunchedEffect
         if (isDraggingMorph) return@LaunchedEffect
 
@@ -417,22 +420,26 @@ fun PlayerView(
                             playerHeightRatio = playerHeightRatio,
                             config = config,
                         )
+                        morphDragStartProgress = morph.progress
                         isDraggingMorph = true
                     },
-                    onMorphDrag = { delta ->
+                    onMorphDrag = { totalDragY ->
                         // Guard: ensure drag state is set even if onStart was missed
                         if (!isDraggingMorph) {
                             isDraggingMorph = true
                             lockedGestureMode = gestureMode
+                            morphDragStartProgress = morph.progress
                         }
-                        // delta > 0 = swipe down → increase progress (toward floating=1)
-                        val newProgress = (morph.progress + delta / containerSize.height).coerceIn(0f, 1f)
+                        // totalDragY = cumulative distance from gesture start (mirrors player-morph)
+                        // > 0 = dragged down → increase progress, < 0 = dragged up → decrease
+                        val newProgress = (morphDragStartProgress + totalDragY / dragTravelPx).coerceIn(0f, 1f)
                         morph.snapTo(newProgress)
                     },
                     onMorphDragEnd = {
+                        val progress = morph.progress
                         isDraggingMorph = false
-                        lockedGestureMode = PlayerMode.NORMAL // reset lock
-                        if (morph.progress >= config.morphSettleThreshold) {
+                        lockedGestureMode = PlayerMode.NORMAL
+                        if (progress >= config.morphSettleThreshold) {
                             viewModel.minimize()
                         }
                         // else: sync effect will animate back to 0
