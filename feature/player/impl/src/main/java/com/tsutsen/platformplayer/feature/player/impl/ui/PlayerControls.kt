@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,7 +89,7 @@ fun PlayerControls(
     onReplayToggle: () -> Unit,
     onOptions: () -> Unit,
     onSeek: (Long) -> Unit,
-    gestureBindings: GestureBindings,
+    gestureBindingsState: State<GestureBindings>,
     containerWidth: Float,
     containerHeight: Float,
     miniWidthPx: Float,
@@ -141,9 +142,8 @@ fun PlayerControls(
                                 height = with(density) { videoLayout.heightPx.toDp() }
                             )
                             .playerGesture(
-                                bindings = gestureBindings,
-                                areaWidth = videoLayout.widthPx,
-                                areaHeight = videoLayout.heightPx
+                                bindings = gestureBindingsState,
+                                areaSize = rememberUpdatedState(videoLayout.widthPx to videoLayout.heightPx)
                             ),
                         isLoading = isLoading,
                         brightnessValue = brightnessValue,

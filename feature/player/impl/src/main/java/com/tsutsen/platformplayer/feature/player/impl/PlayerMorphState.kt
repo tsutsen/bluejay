@@ -34,7 +34,6 @@ fun rememberMorphState(
     val morphProgress = remember { Animatable(0f) }
     var isDragging by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    // Track in-flight animation job so snapTo can cancel it
     var animJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     val transitionSpringSpec = tween<Float>(
@@ -43,6 +42,7 @@ fun rememberMorphState(
     )
 
     fun launchAnimation(target: Float) {
+        animJob?.cancel()
         animJob = scope.launch { morphProgress.animateTo(target, transitionSpringSpec) }
     }
 
@@ -66,7 +66,6 @@ fun rememberMorphState(
         restore = { launchAnimation(0f) },
         animateTo = { target -> launchAnimation(target) },
         snapTo = { target ->
-            // Cancel any in-flight animation so it doesn't fight the drag
             animJob?.cancel()
             animJob = scope.launch { morphProgress.snapTo(target) }
         },

@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.runtime.State
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
@@ -57,7 +58,7 @@ fun PlayerContent(
     controlsVisible: Boolean,
     scrollState: LazyListState,
     nestedScrollConnection: NestedScrollConnection,
-    gestureBindings: GestureBindings,
+    gestureBindingsState: State<GestureBindings>,
     isDraggingMiniPlayer: Boolean,
     onDragStateChanged: (Boolean) -> Unit,
     onOffsetChanged: (x: Float, y: Float) -> Unit,
@@ -208,7 +209,7 @@ fun PlayerContent(
             onReplayToggle = onReplayToggle,
             onOptions = onOptions,
             onSeek = onSeek,
-            gestureBindings = gestureBindings,
+            gestureBindingsState = gestureBindingsState,
             containerWidth = containerWidth,
             containerHeight = containerHeight,
             miniWidthPx = miniWidthPx,

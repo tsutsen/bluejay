@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.abs
@@ -17,19 +18,24 @@ import kotlin.math.abs
  * 3. Track movement; classify dominant axis + direction once past touch-slop;
  *    disambiguate tap vs. double-tap (timeout + distance) vs. long-press (drag).
  * 4. Defensively re-check `change.isConsumed` before claiming the gesture.
- * 5. Look up the resolved action via `bindings.resolveDiscrete(...)` /
+ * 5. Look up the resolved action via `bindings.value.resolveDiscrete(...)` /
  *    `resolveContinuous(...)` and drive it. No business logic lives here.
  *
  * Zone-based: each zone has its own independent set of gestures. No precedence,
  * no fallback. If a zone has no binding for a gesture, that gesture does nothing.
+ *
+ * IMPORTANT: `bindings` and `areaSize` are [State] objects because `pointerInput(Unit)`
+ * starts its coroutine exactly once and never restarts. Without State, the coroutine
+ * would capture stale values from the first composition (e.g., Size.Zero before layout).
+ * Using [State] ensures every access inside the long-lived coroutine reads the current value.
  */
 fun Modifier.playerGesture(
-    bindings: GestureBindings,
-    areaWidth: Float,
-    areaHeight: Float,
+    bindings: State<GestureBindings>,
+    areaSize: State<Pair<Float, Float>>,
 ): Modifier = pointerInput(Unit) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = true)
+        val (areaWidth, areaHeight) = areaSize.value
         val zone = resolveGestureZone(down.position, areaWidth, areaHeight)
 
         var totalDragY = 0f
@@ -59,11 +65,11 @@ fun Modifier.playerGesture(
 
                     if (now - lastTapTime < doubleTapTimeout && dist < PlayerMorphConfig.Default.touchSlop) {
                         // Double tap
-                        bindings.resolveDiscrete(zone, DiscreteGesture.DOUBLE_TAP)?.invoke(zone, change.position)
+                        bindings.value.resolveDiscrete(zone, DiscreteGesture.DOUBLE_TAP)?.invoke(zone, change.position)
                         lastTapTime = 0L
                     } else {
                         // Single tap
-                        bindings.resolveDiscrete(zone, DiscreteGesture.TAP)?.invoke(zone, change.position)
+                        bindings.value.resolveDiscrete(zone, DiscreteGesture.TAP)?.invoke(zone, change.position)
                         lastTapTime = now
                         lastTapX = change.position.x
                         lastTapY = change.position.y
@@ -71,7 +77,7 @@ fun Modifier.playerGesture(
                 } else {
                     // Drag ended
                     if (isLongPress) {
-                        bindings.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_END)?.invoke(zone, change.position)
+                        bindings.value.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_END)?.invoke(zone, change.position)
                     }
                 }
                 break
@@ -82,16 +88,16 @@ fun Modifier.playerGesture(
                 totalDragY += dy
                 if (abs(totalDragY) > PlayerMorphConfig.Default.touchSlop) {
                     pastSlop = true
-                    val continuousAction = bindings.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)
+                    val continuousAction = bindings.value.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)
                     if (continuousAction != null) {
                         continuousAction.onStart(zone, change.position)
                         isLongPress = true
-                        bindings.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_START)?.invoke(zone, change.position)
+                        bindings.value.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_START)?.invoke(zone, change.position)
                         change.consume()
                     }
                 }
             } else {
-                val continuousAction = bindings.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)
+                val continuousAction = bindings.value.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)
                 if (continuousAction != null) {
                     continuousAction.onDelta(dy)
                     change.consume()
