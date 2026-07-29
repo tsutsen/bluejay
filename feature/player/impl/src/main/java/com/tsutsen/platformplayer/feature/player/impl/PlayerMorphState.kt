@@ -22,6 +22,7 @@ data class MorphState(
     val drag: (dragY: Float, dragTravelPx: Float) -> Unit,
     val endDrag: (dragY: Float, dragTravelPx: Float) -> Unit,
     val restore: () -> Unit,
+    val animateTo: (target: Float) -> Unit,
 )
 
 @Composable
@@ -57,6 +58,9 @@ fun rememberMorphState(
         },
         restore = {
             scope.launch { morphProgress.animateTo(0f, transitionSpringSpec) }
+        },
+        animateTo = { target ->
+            scope.launch { morphProgress.animateTo(target, transitionSpringSpec) }
         },
     )
 }

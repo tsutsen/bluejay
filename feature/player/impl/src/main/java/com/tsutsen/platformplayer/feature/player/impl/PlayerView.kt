@@ -146,11 +146,11 @@ fun PlayerView(
         val minimized = isMinimizedState ?: return@LaunchedEffect
         val target = if (minimized) 1f else 0f
         if (kotlin.math.abs(morph.progress - target) > 0.01f) {
-            morph.restore()
+            morph.animateTo(target)
         }
         isMinimizedAnim.value = minimized
         if (!minimized) autoHide.show()
-        Log.d(TAG, "Animation state synced: isMinimized=$minimized")
+        Log.d(TAG, "Animation state synced: isMinimized=$minimized target=$target")
     }
 
     LaunchedEffect(isFullscreenState) {
@@ -253,28 +253,30 @@ fun PlayerView(
             }
 
             // ==================== Auto-hide controls ====================
-            LaunchedEffect(autoHide.isVisible, state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, morph.progress) {
+            // Only schedule the auto-hide timer when settled and playing.
+            // Do NOT force-hide here — other LaunchedEffects handle
+            // show/hide for pause, morph transitions, and fullscreen.
+            LaunchedEffect(state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, morph.progress) {
+                // During morph transition: hide controls (they'll be replaced by mini controls)
                 if (morph.progress > config.miniSettledThreshold && morph.progress < (1f - config.miniSettledThreshold)) {
                     autoHide.hide()
                     return@LaunchedEffect
                 }
-                val settled = !isMinimizedAnim.value
-                val canAutoHide = settled && state.isPlaying && autoHide.isVisible
-                if (canAutoHide) {
-                    autoHide.notifyInteraction()
-                } else {
+                // When morph is mostly done (mini-player settled): hide normal controls
+                if (morph.progress > config.controlsHideAtProgress) {
                     autoHide.hide()
+                    return@LaunchedEffect
                 }
+                // Only schedule auto-hide timer when settled, playing, and controls are visible
+                val settled = !isMinimizedAnim.value && !isFullscreenAnim.value
+                if (settled && state.isPlaying) {
+                    autoHide.notifyInteraction()
+                }
+                // Don't force-hide when !settled — let the other effects manage visibility
             }
 
             LaunchedEffect(state.isPlaying) {
                 if (!state.isPlaying) autoHide.show()
-            }
-
-            LaunchedEffect(morph.progress) {
-                if (morph.progress > config.controlsHideAtProgress) {
-                    autoHide.hide()
-                }
             }
 
             // ==================== Collapsing player height ====================

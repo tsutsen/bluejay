@@ -131,11 +131,13 @@ fun PlayerControls(
             // preserves tap-to-reveal even while fully transparent.
             val effectiveNormalAlpha = normalAlpha * controlsVisibleAlpha
             Log.d(TAG, "normalAlpha=$normalAlpha controlsVisibleAlpha=$controlsVisibleAlpha effectiveNormalAlpha=$effectiveNormalAlpha")
-            AnimatedVisibility(
-                visible = normalAlpha > 0.01f,
-                enter = fadeIn(animationSpec = tween(config.effectiveDuration(200))),
-                exit = fadeOut(animationSpec = tween(config.effectiveDuration(200))),
-            ) {
+            // Keep the subtree composed regardless of controlsVisible so the gesture
+            // handler (.playerGesture on PlayerUIScaffold) remains active for
+            // tap-to-reveal.  Modifier.alpha(0f) still receives touches in Compose.
+            // AnimatedVisibility was removed here because normalAlpha includes
+            // controlsVisibleFactor — when controls auto-hide, normalAlpha → 0 and
+            // AnimatedVisibility would remove the gesture handler from composition,
+            // making taps fall through silently.
                 Box(modifier = Modifier.alpha(effectiveNormalAlpha)) {
                     // Fade out gradient backgrounds along with controls
                     val gradientAlpha = effectiveNormalAlpha
@@ -272,7 +274,6 @@ fun PlayerControls(
                     )
                 }
             }
-        }
 
         // ==================== Floating controls (fade in during morph) ====================
         // NOTE: this subtree is ALWAYS composed (no outer `if` gate on miniProgress).

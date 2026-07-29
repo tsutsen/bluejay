@@ -70,76 +70,78 @@ fun defaultPlayerBindings(
         bindings[zone] = ZoneBindings(discrete = discrete, continuous = continuous)
     }
 
-    // TOP row: morph + speed x2 (long press)
+    // TOP row: morph + speed x2 (long press) + tap (show/hide controls)
     val topDiscrete = mapOf(
+        DiscreteGesture.TAP to tap,
         DiscreteGesture.LONG_PRESS_START to longPressStart,
         DiscreteGesture.LONG_PRESS_END to longPressEnd
     )
     val topContinuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
 
-    // TOP_LEFT: morph + brightness + rewind 5s + speed x2
+    // TOP_LEFT: morph + brightness + rewind 5s + tap + speed x2
     addZone(
         GestureZone(GestureRow.TOP, GestureColumn.LEFT),
         discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
         continuous = topContinuous + mapOf(ContinuousGesture.VERTICAL_DRAG to brightnessDrag)
     )
 
-    // TOP_CENTER: morph + speed x2
+    // TOP_CENTER: morph + tap + speed x2
     addZone(
         GestureZone(GestureRow.TOP, GestureColumn.CENTER),
         discrete = topDiscrete,
         continuous = topContinuous
     )
 
-    // TOP_RIGHT: morph + forward 5s + speed x2
+    // TOP_RIGHT: morph + forward 5s + tap + speed x2
     addZone(
         GestureZone(GestureRow.TOP, GestureColumn.RIGHT),
         discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
         continuous = topContinuous + mapOf(ContinuousGesture.VERTICAL_DRAG to volumeDrag)
     )
 
-    // MIDDLE_LEFT: volume + rewind 5s + speed x2
+    // MIDDLE_LEFT: volume + rewind 5s + tap + speed x2
     addZone(
         GestureZone(GestureRow.MIDDLE, GestureColumn.LEFT),
         discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
         continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to volumeDrag)
     )
 
-    // MIDDLE_CENTER: speed x2 only
+    // MIDDLE_CENTER: tap + speed x2
     addZone(
         GestureZone(GestureRow.MIDDLE, GestureColumn.CENTER),
         discrete = topDiscrete
     )
 
-    // MIDDLE_RIGHT: brightness + forward 5s + speed x2
+    // MIDDLE_RIGHT: brightness + forward 5s + tap + speed x2
     addZone(
         GestureZone(GestureRow.MIDDLE, GestureColumn.RIGHT),
         discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
         continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to brightnessDrag)
     )
 
-    // BOTTOM row: mini drag + speed x2
+    // BOTTOM row: mini drag + tap + speed x2
     val bottomDiscrete = mapOf(
+        DiscreteGesture.TAP to tap,
         DiscreteGesture.LONG_PRESS_START to longPressStart,
         DiscreteGesture.LONG_PRESS_END to longPressEnd
     )
     val bottomContinuous = mapOf(ContinuousGesture.VERTICAL_DRAG to miniDrag)
 
-    // BOTTOM_LEFT: mini drag + rewind 5s + speed x2
+    // BOTTOM_LEFT: mini drag + rewind 5s + tap + speed x2
     addZone(
         GestureZone(GestureRow.BOTTOM, GestureColumn.LEFT),
         discrete = bottomDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
         continuous = bottomContinuous
     )
 
-    // BOTTOM_CENTER: mini drag + speed x2
+    // BOTTOM_CENTER: mini drag + tap + speed x2
     addZone(
         GestureZone(GestureRow.BOTTOM, GestureColumn.CENTER),
         discrete = bottomDiscrete,
         continuous = bottomContinuous
     )
 
-    // BOTTOM_RIGHT: mini drag + forward 5s + speed x2
+    // BOTTOM_RIGHT: mini drag + forward 5s + tap + speed x2
     addZone(
         GestureZone(GestureRow.BOTTOM, GestureColumn.RIGHT),
         discrete = bottomDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
@@ -148,7 +150,7 @@ fun defaultPlayerBindings(
 
     // Normal mode: all zones handle morph instead of brightness/volume
     if (!isFullscreen) {
-        // Override MIDDLE zones with morph + same double-tap/long-press
+        // Override MIDDLE zones with morph + tap + same double-tap/long-press
         addZone(
             GestureZone(GestureRow.MIDDLE, GestureColumn.LEFT),
             discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
