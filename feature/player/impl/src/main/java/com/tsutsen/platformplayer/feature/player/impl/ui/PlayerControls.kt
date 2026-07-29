@@ -52,13 +52,8 @@ fun PlayerControls(
     videoLayout: VideoLayout,
     miniProgress: Float,
     fullscreenProgress: Float,
-    normalBarAlpha: Float,
-    compactBarAlpha: Float,
-    fullscreenBarAlpha: Float,
-    isCollapsedControls: Boolean,
+    visibility: ControlsVisibility,
     controlsVisible: Boolean,
-    showTopOverlay: Boolean,
-    showBottomOverlay: Boolean,
     resolvedShowTopBar: Boolean,
     resolvedShowBottomBar: Boolean,
     isLoading: Boolean,
@@ -112,14 +107,9 @@ fun PlayerControls(
     Box(modifier = modifier) {
         // ==================== Normal controls (fade out during morph) ====================
         if (miniProgress <= PlayerMorphConfig.Default.miniDragThreshold) {
-            // Fade out normal controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
             val config = PlayerMorphConfig.Default
-            val normalAlpha = progressAlpha(
-                miniProgress,
-                config.morphTransitionStart,
-                config.morphTransitionEnd,
-                reversed = true
-            ).coerceAtLeast(0f)
+            // Fade out normal controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
+            val normalAlpha = visibility.normalBarAlpha
             // Combine with the restored controls hide/show animation - this drives the VISUAL
             // fade of the bars only. Composition below is still gated on normalAlpha (morph
             // position) alone: if it were gated on effectiveNormalAlpha instead, the gesture
@@ -241,8 +231,8 @@ fun PlayerControls(
                         volumeValue = volumeValue,
                         showBrightnessIndicator = showBrightnessIndicator,
                         showVolumeIndicator = showVolumeIndicator,
-                        showTopBar = resolvedShowTopBar,
-                        showBottomBar = resolvedShowBottomBar,
+                        showTopBar = visibility.showNormalTopBar,
+                        showBottomBar = visibility.showNormalBottomBar,
                         gradientAlpha = gradientAlpha,
                         callbacks = PlayerGestureCallbacks(
                             onTap = { /* handled by gesture layer */ },
@@ -253,7 +243,7 @@ fun PlayerControls(
                         disableVerticalDragGestures = true,
                         disableTapGestures = true,
                         topBar = {
-                            val topAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha) * (1f - miniProgress).coerceIn(0f, 1f)
+                            val topAlpha = visibility.normalBarAlpha
                             if (topAlpha > 0.01f) {
                                 Box(
                                     modifier = Modifier.graphicsLayer {
@@ -276,7 +266,7 @@ fun PlayerControls(
                             }
                         },
                         bottomBar = {
-                            val bottomAlpha = (1f - miniProgress).coerceIn(0f, 1f)
+                            val bottomAlpha = visibility.normalBarAlpha
                             if (bottomAlpha > 0.01f) {
                                 Box(
                                     modifier = Modifier
@@ -288,8 +278,8 @@ fun PlayerControls(
                                         }
                                 ) {
                                     // FULLSCREEN bottom overlay
-                                    if (fullscreenBarAlpha > 0.99f) {
-                                        Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
+                                    if (visibility.showFullscreenBar) {
+                                        Box(modifier = Modifier.alpha(visibility.fullscreenBarAlpha)) {
                                             PlayerNormalBottomOverlay(
                                                 player = player,
                                                 currentPositionMs = state.currentPositionMs,
@@ -308,9 +298,9 @@ fun PlayerControls(
                                     }
 
                                     // NORMAL ↔ COMPACT: animated swap
-                                    if (fullscreenBarAlpha < 0.99f && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
+                                    if (!visibility.showFullscreenBar && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
                                         androidx.compose.animation.AnimatedContent(
-                                            targetState = isCollapsedControls,
+                                            targetState = visibility.showCompactBar,
                                             transitionSpec = {
                                                 androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
                                             },
@@ -364,11 +354,7 @@ fun PlayerControls(
         // floatingAlpha keeps layout continuous; only the expensive inner content is gated.
         run {
             // Fade in floating controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
-            val floatingAlpha = progressAlpha(
-                miniProgress,
-                PlayerMorphConfig.Default.morphTransitionStart,
-                PlayerMorphConfig.Default.morphTransitionEnd
-            )
+            val floatingAlpha = visibility.floatingAlpha
 
             Box(
                 modifier = Modifier

@@ -48,10 +48,9 @@ fun PlayerContent(
     miniHeightPx: Float,
     floatingRestX: Float,
     floatingRestY: Float,
-    isCollapsedControls: Boolean,
+    visibility: ControlsVisibility,
+    playerHeightRatio: Float,
     controlsVisible: Boolean,
-    showTopOverlay: Boolean,
-    showBottomOverlay: Boolean,
     scrollState: LazyListState,
     nestedScrollConnection: NestedScrollConnection,
     gestureCallbacks: PlayerGestureCallbacks,
@@ -97,52 +96,8 @@ fun PlayerContent(
     val density = LocalDensity.current
     val config = PlayerMorphConfig.Default
 
-    // ==================== Derived alpha weights for control cross-fade ====================
-    val normalBarAlpha = (1f - miniProgress) * (1f - fullscreenProgress) *
-        (if (isCollapsedControls) 0f else 1f)
-    val compactBarAlpha = (1f - miniProgress) * (1f - fullscreenProgress) *
-        (if (isCollapsedControls) 1f else 0f)
-    val miniControlsAlpha = miniProgress
-    val fullscreenBarAlpha = fullscreenProgress * (1f - miniProgress)
-
-    // ==================== Details panel fade/translate ====================
-    val detailsAlpha = (1f - miniProgress) * (1f - fullscreenProgress)
-    val detailsTranslateY = lerp(
-        0f,
-        containerHeight * 0.3f,
-        maxOf(miniProgress, fullscreenProgress)
-    )
-
-    // ==================== Scaffold bar visibility ====================
-    val miniMorphAlpha = (1f - miniProgress).coerceIn(0f, 1f)
-
-    val resolvedShowTopBar = when {
-        // NOTE: must mirror the `else` (idle) branch's `!isCollapsedControls` check.
-        // Without it, starting a drag while controls were collapsed flips this from
-        // false -> true on the very first pixel of drag movement, while gradientAlpha
-        // (normalAlpha) is still ~1.0 (it doesn't start fading until MORPH_TRANSITION_START),
-        // so the top scrim pops in at full opacity instead of fading in with everything else.
-        //
-        // Deliberately NOT gated on showTopOverlay (raw controlsVisible) here: that's an
-        // un-animated boolean, so gating composition on it directly cuts the top bar (and its
-        // fade+slide graphicsLayer) out of composition the instant controls should hide, before
-        // gradientAlpha's 200ms tween gets a single frame to render. Hiding due to
-        // controlsVisible is handled entirely by the animated gradientAlpha downstream in
-        // PlayerControls.kt / PlayerUIScaffold.kt - this only decides structural applicability.
-        miniProgress > config.miniSettledThreshold -> miniMorphAlpha > config.miniSettledThreshold && !isCollapsedControls &&
-            (fullscreenProgress < config.fullscreenSettledThreshold ||
-                fullscreenProgress > (1f - config.fullscreenSettledThreshold))
-        fullscreenProgress > (1f - config.fullscreenSettledThreshold) -> true
-        else -> !isCollapsedControls
-    }
-
-    val resolvedShowBottomBar = when {
-        miniProgress > config.miniSettledThreshold -> miniMorphAlpha > config.miniSettledThreshold &&
-            (fullscreenProgress < config.fullscreenSettledThreshold ||
-                fullscreenProgress > (1f - config.fullscreenSettledThreshold))
-        fullscreenProgress > (1f - config.fullscreenSettledThreshold) -> true
-        else -> true
-    }
+    val resolvedShowTopBar = visibility.showNormalTopBar
+    val resolvedShowBottomBar = visibility.showNormalBottomBar
 
     // ==================== Nested scroll connection ====================
     val nestedScrollModifier = remember(nestedScrollConnection, miniProgress, fullscreenProgress) {
@@ -199,7 +154,6 @@ fun PlayerContent(
             gestureCallbacks = gestureCallbacks,
             onExpand = onExpand,
             onSeek = onSeek,
-            isCollapsedControls = isCollapsedControls,
             onSpeedHoldStart = onSpeedHoldStart,
             onSpeedHoldEnd = onSpeedHoldEnd
         )
@@ -207,21 +161,14 @@ fun PlayerContent(
         // ==================== 3. Details panel (LazyColumn) ====================
         // Rendered on top of the gesture layer so the LazyColumn can receive scroll
         // events in the area below the video. The panel fades in/out smoothly via alpha
-        // during fullscreen exit and morph transitions. Once fully faded (alpha < 0.01),
+        // during morph transitions. Once fully faded (alpha < 0.01),
         // it is removed from composition so the LazyColumn no longer intercepts pointer
         // events, allowing the feed behind the floating mini player to be scrolled.
         val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
-            // Fade out details earlier than controls for a cascading effect
-            val detailsFadeAlpha = progressAlpha(
-                miniProgress,
-                config.detailsFadeStart,
-                config.detailsFadeEnd,
-                reversed = true
-            ).coerceAtLeast(0f)
-            val detailsAlphaFinal = detailsAlpha * detailsFadeAlpha
-            
-            // Keep panel in composition while visible (alpha > 0.01), remove when fully faded
-            if (detailsAlphaFinal > 0.01f) {
+        val detailsAlphaFinal = visibility.detailsAlpha
+        
+        // Keep panel in composition while visible (alpha > 0.01), remove when fully faded
+        if (detailsAlphaFinal > 0.01f) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -229,7 +176,7 @@ fun PlayerContent(
                         .fillMaxHeight()
                         .graphicsLayer {
                             alpha = detailsAlphaFinal
-                            translationY = detailsTranslateY
+                            translationY = visibility.detailsTranslateY
                         }
                         .then(nestedScrollModifier)
                 ) {
@@ -251,13 +198,8 @@ fun PlayerContent(
             videoLayout = videoLayout,
             miniProgress = miniProgress,
             fullscreenProgress = fullscreenProgress,
-            normalBarAlpha = normalBarAlpha,
-            compactBarAlpha = compactBarAlpha,
-            fullscreenBarAlpha = fullscreenBarAlpha,
-            isCollapsedControls = isCollapsedControls,
+            visibility = visibility,
             controlsVisible = controlsVisible,
-            showTopOverlay = showTopOverlay,
-            showBottomOverlay = showBottomOverlay,
             resolvedShowTopBar = resolvedShowTopBar,
             resolvedShowBottomBar = resolvedShowBottomBar,
             isLoading = isLoading,

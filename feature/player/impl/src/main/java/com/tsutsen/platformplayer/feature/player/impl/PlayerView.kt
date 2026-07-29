@@ -329,10 +329,6 @@ fun PlayerView(
                 }
             }
 
-            val isCollapsedControls = !isFullscreenAnim.value &&
-                containerSize.height > 0f &&
-                (playerHeightPx / containerSize.height) <= config.collapsedControlsThreshold
-
             // ==================== Geometry ====================
             val density = LocalDensity.current
             val miniWidthPx = with(density) { miniWidth.toPx() }
@@ -371,6 +367,15 @@ fun PlayerView(
                 dragOffsetY = layoutDragY,
                 fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else containerSize.width,
                 fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else containerSize.height
+            )
+
+            val playerHeightRatio = if (containerSize.height > 0f) playerHeightPx / containerSize.height else 1f
+            val visibility = computeControlsVisibility(
+                miniProgress = morphProgress.value,
+                fullscreenProgress = fullscreenP,
+                playerHeightRatio = playerHeightRatio,
+                controlsVisible = controlsVisible,
+                config = config,
             )
 
             // ==================== Gesture callbacks ====================
@@ -455,10 +460,9 @@ fun PlayerView(
                         miniHeightPx = miniHeightPx,
                         floatingRestX = floatingRestX,
                         floatingRestY = floatingRestY,
-                        isCollapsedControls = isCollapsedControls,
+                        visibility = visibility,
+                        playerHeightRatio = playerHeightRatio,
                         controlsVisible = controlsVisible,
-                        showTopOverlay = controlsVisible,
-                        showBottomOverlay = controlsVisible,
                         scrollState = scrollState,
                         nestedScrollConnection = nestedScrollConnection,
                         gestureCallbacks = gestureCallbacks,

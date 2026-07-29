@@ -47,7 +47,6 @@ fun PlayerGestures(
     gestureCallbacks: PlayerGestureCallbacks,
     onExpand: () -> Unit,
     onSeek: (Long) -> Unit,
-    isCollapsedControls: Boolean,
     onSpeedHoldStart: () -> Unit = {},
     onSpeedHoldEnd: () -> Unit = {}
 ) {
