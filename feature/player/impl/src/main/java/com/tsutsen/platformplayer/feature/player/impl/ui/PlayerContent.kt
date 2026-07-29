@@ -97,8 +97,8 @@ fun PlayerContent(
     val density = LocalDensity.current
     val config = PlayerMorphConfig.Default
 
-    val resolvedShowTopBar = visibility.showNormalTopBar
-    val resolvedShowBottomBar = visibility.showNormalBottomBar
+    val resolvedShowTopBar = visibility.showBars
+    val resolvedShowBottomBar = visibility.showBars
 
     // ==================== Nested scroll connection ====================
     val nestedScrollModifier = remember(nestedScrollConnection, miniProgress, fullscreenProgress) {

@@ -138,11 +138,8 @@ fun PlayerControls(
             // controlsVisibleFactor — when controls auto-hide, normalAlpha → 0 and
             // AnimatedVisibility would remove the gesture handler from composition,
             // making taps fall through silently.
-                // combinedBarAlpha covers both normal and fullscreen modes
-                val subtreeAlpha = visibility.combinedBarAlpha * controlsVisibleAlpha
-                Box(modifier = Modifier.alpha(subtreeAlpha)) {
-                    // combinedBarAlpha covers both normal and fullscreen modes
-                    val gradientAlpha = visibility.combinedBarAlpha * controlsVisibleAlpha
+                Box(modifier = Modifier.alpha(visibility.barAlpha * controlsVisibleAlpha)) {
+                    val gradientAlpha = visibility.barAlpha * controlsVisibleAlpha
                     PlayerUIScaffold(
                         modifier = Modifier
                             .offset {
@@ -165,11 +162,11 @@ fun PlayerControls(
                         volumeValue = volumeValue,
                         showBrightnessIndicator = showBrightnessIndicator,
                         showVolumeIndicator = showVolumeIndicator,
-                        showTopBar = visibility.showTopBar,
-                        showBottomBar = visibility.showBottomBar,
+                        showTopBar = visibility.showBars,
+                        showBottomBar = visibility.showBars,
                         gradientAlpha = gradientAlpha,
                         topBar = {
-                            val topBarVisibleAlpha = visibility.combinedBarAlpha * controlsVisibleAlpha
+                            val topBarVisibleAlpha = visibility.barAlpha * controlsVisibleAlpha
                             if (topBarVisibleAlpha > 0.01f) {
                                 Box(
                                     modifier = Modifier
@@ -190,7 +187,7 @@ fun PlayerControls(
                             }
                         },
                         bottomBar = {
-                            val bottomBarVisibleAlpha = visibility.combinedBarAlpha * controlsVisibleAlpha
+                            val bottomBarVisibleAlpha = visibility.barAlpha * controlsVisibleAlpha
                             if (bottomBarVisibleAlpha > 0.01f) {
                                 Box(
                                     modifier = Modifier
@@ -221,7 +218,7 @@ fun PlayerControls(
                                     // NORMAL ↔ COMPACT: animated swap (hidden when fullscreen)
                                     if (visibility.fullscreenBarAlpha < 0.99f && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
                                         androidx.compose.animation.AnimatedContent(
-                                            targetState = visibility.showCompactBar,
+                                            targetState = visibility.isCompact,
                                             transitionSpec = {
                                                 androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
                                             },
