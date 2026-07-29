@@ -9,7 +9,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+// ==================== Morph State ====================
 
 /**
  * State holder for morph progress Animatable and drag callbacks.
@@ -68,6 +72,93 @@ fun rememberMorphState(
         snapTo = { target ->
             animJob?.cancel()
             animJob = scope.launch { morphProgress.snapTo(target) }
+        },
+    )
+}
+
+// ==================== Fullscreen State ====================
+
+/**
+ * State holder for fullscreen progress Animatable.
+ * Encapsulates enter/exit fullscreen animation logic.
+ */
+data class FullscreenState(
+    val progress: Float,
+    val enterFullscreen: () -> Unit,
+    val exitFullscreen: () -> Unit,
+)
+
+@Composable
+fun rememberFullscreenState(
+    config: PlayerMorphConfig = PlayerMorphConfig.Default,
+): FullscreenState {
+    val fullscreenProgress = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val transitionSpringSpec = tween<Float>(
+        durationMillis = 300,
+        easing = FastOutSlowInEasing
+    )
+
+    return FullscreenState(
+        progress = fullscreenProgress.value,
+        enterFullscreen = {
+            scope.launch { fullscreenProgress.animateTo(1f, transitionSpringSpec) }
+        },
+        exitFullscreen = {
+            scope.launch { fullscreenProgress.animateTo(0f, transitionSpringSpec) }
+        },
+    )
+}
+
+// ==================== Auto-Hide State ====================
+
+/**
+ * State holder for the controls auto-hide timer.
+ * Sole owner of hideControlsJob — eliminates the dual-writer race in PlayerView.kt.
+ */
+data class AutoHideState(
+    val isVisible: Boolean,
+    val hide: () -> Unit,
+    val show: () -> Unit,
+    val notifyInteraction: () -> Unit,
+)
+
+@Composable
+fun rememberAutoHideState(
+    autoHideMs: Long = 3000,
+    initialState: Boolean = true,
+): AutoHideState {
+    var isVisible by remember { mutableStateOf(initialState) }
+    var hideJob by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun scheduleHide() {
+        hideJob?.cancel()
+        hideJob = scope.launch {
+            delay(autoHideMs)
+            isVisible = false
+        }
+    }
+
+    fun cancelSchedule() {
+        hideJob?.cancel()
+        hideJob = null
+    }
+
+    return AutoHideState(
+        isVisible = isVisible,
+        hide = {
+            cancelSchedule()
+            isVisible = false
+        },
+        show = {
+            cancelSchedule()
+            isVisible = true
+        },
+        notifyInteraction = {
+            cancelSchedule()
+            isVisible = true
+            scheduleHide()
         },
     )
 }
