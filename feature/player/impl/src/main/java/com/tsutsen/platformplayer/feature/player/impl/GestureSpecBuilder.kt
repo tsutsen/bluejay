@@ -8,7 +8,9 @@ import com.tsutsen.platformplayer.core.model.PlayerMode
  * The builder wires these into the right zones based on the YAML spec.
  */
 data class GestureCallbacks(
+    val onMorphDragStart: () -> Unit = {},
     val onMorphDrag: (deltaPx: Float) -> Unit = {},
+    val onMorphDragEnd: () -> Unit = {},
     val onBrightnessDrag: (deltaPx: Float) -> Unit = {},
     val onVolumeDrag: (deltaPx: Float) -> Unit = {},
     val onDoubleTapSeekLeft: () -> Unit = {},
@@ -33,7 +35,11 @@ fun buildGestureBindings(
     val bindings = mutableMapOf<GestureZone, ZoneBindings>()
 
     // Pre-build action wrappers so we don't recreate lambdas per zone
-    val morphDrag = continuousAction { deltaPx -> callbacks.onMorphDrag(deltaPx) }
+    val morphDrag = object : ContinuousAction {
+        override fun onStart(zone: GestureZone, position: Offset) { callbacks.onMorphDragStart() }
+        override fun onDelta(deltaPx: Float) { callbacks.onMorphDrag(deltaPx) }
+        override fun onEnd() {}
+    }
     val brightnessDrag = continuousAction { deltaPx -> callbacks.onBrightnessDrag(deltaPx) }
     val volumeDrag = continuousAction { deltaPx -> callbacks.onVolumeDrag(deltaPx) }
 
@@ -42,6 +48,7 @@ fun buildGestureBindings(
     val tap = discreteAction { callbacks.onTap() }
     val longPressStart = discreteAction { callbacks.onLongPressStart() }
     val longPressEnd = discreteAction { callbacks.onLongPressEnd() }
+    val morphDragEnd = discreteAction { callbacks.onMorphDragEnd() }
 
     for ((zone, zoneSpec) in modeSpec.zones) {
         val continuous = mutableMapOf<ContinuousGesture, ContinuousAction>()
@@ -70,7 +77,15 @@ fun buildGestureBindings(
         when (zoneSpec.hold) {
             SpecAction.SpeedHold -> {
                 discrete[DiscreteGesture.LONG_PRESS_START] = longPressStart
-                discrete[DiscreteGesture.LONG_PRESS_END] = longPressEnd
+                // Morph zones also need drag-end on release
+                if (zoneSpec.swipeVertical == SpecAction.Morph) {
+                    discrete[DiscreteGesture.LONG_PRESS_END] = discreteAction {
+                        callbacks.onLongPressEnd()
+                        callbacks.onMorphDragEnd()
+                    }
+                } else {
+                    discrete[DiscreteGesture.LONG_PRESS_END] = longPressEnd
+                }
             }
             else -> {}
         }

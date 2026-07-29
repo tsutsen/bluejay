@@ -99,6 +99,7 @@ fun PlayerView(
 
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableStateOf(0L) }
+    var isDraggingMorph by remember { mutableStateOf(false) }
 
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
@@ -146,11 +147,11 @@ fun PlayerView(
     // ==================== Animation sync ====================
     val uiMode = (uiState as? PlayerUiState.Loaded)?.mode
 
-    LaunchedEffect(uiMode, morph.isDragging) {
+    LaunchedEffect(uiMode, isDraggingMorph) {
         val mode = uiMode ?: return@LaunchedEffect
 
-        // Sync morph (NORMAL↔FLOATING)
-        if (!morph.isDragging) {
+        // Sync morph (NORMAL↔FLOATING) — skip while dragging
+        if (!isDraggingMorph) {
             val morphTarget = if (mode == PlayerMode.FLOATING) 1f else 0f
             if (kotlin.math.abs(morph.progress - morphTarget) > 0.01f) {
                 morph.animateTo(morphTarget)
@@ -398,16 +399,17 @@ fun PlayerView(
                 mode = gestureMode,
                 specs = gestureSpecs,
                 callbacks = GestureCallbacks(
+                    onMorphDragStart = { isDraggingMorph = true },
                     onMorphDrag = { delta ->
                         val newProgress = (morph.progress - delta / containerSize.height).coerceIn(0f, 1f)
-                        if (kotlin.math.abs(morph.progress - newProgress) > 0.01f) {
-                            if (newProgress > morph.progress) {
-                                if (newProgress >= config.morphSettleThreshold) viewModel.minimize()
-                                else morph.drag(newProgress * containerSize.height, containerSize.height)
-                            } else {
-                                morph.drag(newProgress * containerSize.height, containerSize.height)
-                            }
+                        morph.snapTo(newProgress)
+                    },
+                    onMorphDragEnd = {
+                        isDraggingMorph = false
+                        if (morph.progress >= config.morphSettleThreshold) {
+                            viewModel.minimize()
                         }
+                        // else: sync effect will animate back to 0
                     },
                     onBrightnessDrag = { delta ->
                         val newBrightness = (brightnessValue - delta / 500f).coerceIn(0f, 1f)
