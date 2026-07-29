@@ -381,6 +381,7 @@ fun PlayerView(
 
             // ==================== Gesture bindings ====================
             val gestureBindings = defaultPlayerBindings(
+                isFullscreen = fullscreenP > 0.5f,
                 onMorphDrag = { delta ->
                     // Swipe-down in fullscreen → morph to mini (exit fullscreen)
                     val newProgress = (fullscreenP - delta / containerSize.height).coerceIn(0f, 1f)

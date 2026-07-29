@@ -8,7 +8,7 @@ import androidx.compose.ui.geometry.Offset
 enum class DiscreteGesture { TAP, DOUBLE_TAP, LONG_PRESS_START, LONG_PRESS_END }
 
 /**
- * Continuous gestures stream events (vertical drag for brightness/volume/fullscreen/minimize).
+ * Continuous gestures stream events (vertical drag for brightness/volume/morph).
  */
 enum class ContinuousGesture { VERTICAL_DRAG }
 
@@ -29,7 +29,8 @@ interface ContinuousAction {
 }
 
 /**
- * Bindings for a specific zone (or row/column/global scope).
+ * Bindings for a specific zone — each zone has its own independent set of gestures.
+ * No precedence, no fallback. If a zone has no binding for a gesture, that gesture does nothing.
  */
 data class ZoneBindings(
     val discrete: Map<DiscreteGesture, DiscreteAction> = emptyMap(),
@@ -37,27 +38,21 @@ data class ZoneBindings(
 )
 
 /**
- * Gesture binding table with precedence resolution.
+ * Gesture binding table — zone-based, no precedence.
  *
- * Precedence: zone-specific > row > column > global.
- * Row beats column deliberately — see the TOP/BOTTOM row vs LEFT/RIGHT column overlap
- * in the default table, where row wins for drag and column wins for double-tap.
+ * Each zone has its own complete set of gestures. The binding table is mode-specific:
+ * - Fullscreen: TOP zones handle morph, MIDDLE/BOTTOM zones handle brightness/volume
+ * - Normal: All zones handle morph (swipe-down to exit)
+ *
+ * Controls (seek bar, buttons) take precedence over gestures via requireUnconsumed=true
+ * in the gesture recognizer — if a child consumes the touch, no gesture fires.
  */
 data class GestureBindings(
-    val byZone: Map<GestureZone, ZoneBindings> = emptyMap(),
-    val byRow: Map<GestureRow, ZoneBindings> = emptyMap(),
-    val byColumn: Map<GestureColumn, ZoneBindings> = emptyMap(),
-    val global: ZoneBindings = ZoneBindings()
+    val byZone: Map<GestureZone, ZoneBindings>
 ) {
     fun resolveDiscrete(zone: GestureZone, gesture: DiscreteGesture): DiscreteAction? =
         byZone[zone]?.discrete?.get(gesture)
-            ?: byRow[zone.row]?.discrete?.get(gesture)
-            ?: byColumn[zone.column]?.discrete?.get(gesture)
-            ?: global.discrete[gesture]
 
     fun resolveContinuous(zone: GestureZone, gesture: ContinuousGesture): ContinuousAction? =
         byZone[zone]?.continuous?.get(gesture)
-            ?: byRow[zone.row]?.continuous?.get(gesture)
-            ?: byColumn[zone.column]?.continuous?.get(gesture)
-            ?: global.continuous[gesture]
 }

@@ -3,18 +3,26 @@ package com.tsutsen.platformplayer.feature.player.impl
 import androidx.compose.ui.geometry.Offset
 
 /**
- * Default gesture bindings matching current app behavior.
+ * Default gesture bindings — zone-based, mode-specific.
  *
- * Row precedence: TOP row handles morph (swipe-down to exit fullscreen) + 2x hold,
- *                  BOTTOM row handles minimize drag + 2x hold.
- * Zone precedence: TOP_LEFT = brightness, TOP_RIGHT = volume (fullscreen-only).
- * Column precedence: double-tap seek (LEFT/RIGHT columns), fullscreen toggle (CENTER).
- * Global: TAP toggles controls visibility.
+ * Each zone has its own independent set of gestures. No precedence, no fallback.
  *
- * Brightness/volume are FULLSCREEN-ONLY via zone bindings. Normal mode (MIDDLE row)
- * has NO vertical drag binding — only tap/double-tap.
+ * Fullscreen:
+ * - TOP row: morph (swipe-down to exit) + speed x2 (long press)
+ * - TOP_LEFT: + brightness (swipe-up/down) + rewind 5s (double-tap)
+ * - TOP_RIGHT: + forward 5s (double-tap)
+ * - MIDDLE_LEFT: volume (swipe-up/down) + rewind 5s (double-tap)
+ * - MIDDLE_RIGHT: brightness (swipe-up/down) + forward 5s (double-tap)
+ * - BOTTOM row: mini drag (swipe-up/down) + speed x2 (long press)
+ *
+ * Normal mode:
+ * - All zones: morph (swipe-down to exit) + same double-tap/long-press as fullscreen
+ *
+ * Controls (seek bar, buttons) take precedence over gestures via requireUnconsumed=true
+ * in the gesture recognizer — if a child consumes the touch, no gesture fires.
  */
 fun defaultPlayerBindings(
+    isFullscreen: Boolean,
     onMorphDrag: (dragAmount: Float) -> Unit,
     onMiniDrag: (dragAmount: Float) -> Unit,
     onBrightnessDrag: (dragAmount: Float) -> Unit,
@@ -54,52 +62,109 @@ fun defaultPlayerBindings(
         override fun onEnd() {}
     }
 
-    return GestureBindings(
-        byRow = mapOf(
-            GestureRow.TOP to ZoneBindings(
-                discrete = mapOf(
-                    DiscreteGesture.LONG_PRESS_START to longPressStart,
-                    DiscreteGesture.LONG_PRESS_END to longPressEnd,
-                ),
-                continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
-            ),
-            GestureRow.BOTTOM to ZoneBindings(
-                discrete = mapOf(
-                    DiscreteGesture.LONG_PRESS_START to longPressStart,
-                    DiscreteGesture.LONG_PRESS_END to longPressEnd,
-                ),
-                continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to miniDrag)
-            )
-        ),
-        byZone = mapOf(
-            GestureZone(GestureRow.TOP, GestureColumn.LEFT) to ZoneBindings(
-                discrete = mapOf(
-                    DiscreteGesture.LONG_PRESS_START to longPressStart,
-                    DiscreteGesture.LONG_PRESS_END to longPressEnd,
-                ),
-                continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to brightnessDrag)
-            ),
-            GestureZone(GestureRow.TOP, GestureColumn.RIGHT) to ZoneBindings(
-                discrete = mapOf(
-                    DiscreteGesture.LONG_PRESS_START to longPressStart,
-                    DiscreteGesture.LONG_PRESS_END to longPressEnd,
-                ),
-                continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to volumeDrag)
-            )
-        ),
-        byColumn = mapOf(
-            GestureColumn.LEFT to ZoneBindings(
-                discrete = mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft)
-            ),
-            GestureColumn.RIGHT to ZoneBindings(
-                discrete = mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight)
-            ),
-            GestureColumn.CENTER to ZoneBindings(
-                discrete = mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapFullscreen)
-            )
-        ),
-        global = ZoneBindings(
-            discrete = mapOf(DiscreteGesture.TAP to tap)
-        )
+    // Build zone-based bindings for the current mode
+    val bindings = mutableMapOf<GestureZone, ZoneBindings>()
+
+    // Helper to add a zone with all its gestures
+    fun addZone(zone: GestureZone, discrete: Map<DiscreteGesture, DiscreteAction> = emptyMap(), continuous: Map<ContinuousGesture, ContinuousAction> = emptyMap()) {
+        bindings[zone] = ZoneBindings(discrete = discrete, continuous = continuous)
+    }
+
+    // TOP row: morph + speed x2 (long press)
+    val topDiscrete = mapOf(
+        DiscreteGesture.LONG_PRESS_START to longPressStart,
+        DiscreteGesture.LONG_PRESS_END to longPressEnd
     )
+    val topContinuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
+
+    // TOP_LEFT: morph + brightness + rewind 5s + speed x2
+    addZone(
+        GestureZone(GestureRow.TOP, GestureColumn.LEFT),
+        discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
+        continuous = topContinuous + mapOf(ContinuousGesture.VERTICAL_DRAG to brightnessDrag)
+    )
+
+    // TOP_CENTER: morph + speed x2
+    addZone(
+        GestureZone(GestureRow.TOP, GestureColumn.CENTER),
+        discrete = topDiscrete,
+        continuous = topContinuous
+    )
+
+    // TOP_RIGHT: morph + forward 5s + speed x2
+    addZone(
+        GestureZone(GestureRow.TOP, GestureColumn.RIGHT),
+        discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
+        continuous = topContinuous + mapOf(ContinuousGesture.VERTICAL_DRAG to volumeDrag)
+    )
+
+    // MIDDLE_LEFT: volume + rewind 5s + speed x2
+    addZone(
+        GestureZone(GestureRow.MIDDLE, GestureColumn.LEFT),
+        discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
+        continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to volumeDrag)
+    )
+
+    // MIDDLE_CENTER: speed x2 only
+    addZone(
+        GestureZone(GestureRow.MIDDLE, GestureColumn.CENTER),
+        discrete = topDiscrete
+    )
+
+    // MIDDLE_RIGHT: brightness + forward 5s + speed x2
+    addZone(
+        GestureZone(GestureRow.MIDDLE, GestureColumn.RIGHT),
+        discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
+        continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to brightnessDrag)
+    )
+
+    // BOTTOM row: mini drag + speed x2
+    val bottomDiscrete = mapOf(
+        DiscreteGesture.LONG_PRESS_START to longPressStart,
+        DiscreteGesture.LONG_PRESS_END to longPressEnd
+    )
+    val bottomContinuous = mapOf(ContinuousGesture.VERTICAL_DRAG to miniDrag)
+
+    // BOTTOM_LEFT: mini drag + rewind 5s + speed x2
+    addZone(
+        GestureZone(GestureRow.BOTTOM, GestureColumn.LEFT),
+        discrete = bottomDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
+        continuous = bottomContinuous
+    )
+
+    // BOTTOM_CENTER: mini drag + speed x2
+    addZone(
+        GestureZone(GestureRow.BOTTOM, GestureColumn.CENTER),
+        discrete = bottomDiscrete,
+        continuous = bottomContinuous
+    )
+
+    // BOTTOM_RIGHT: mini drag + forward 5s + speed x2
+    addZone(
+        GestureZone(GestureRow.BOTTOM, GestureColumn.RIGHT),
+        discrete = bottomDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
+        continuous = bottomContinuous
+    )
+
+    // Normal mode: all zones handle morph instead of brightness/volume
+    if (!isFullscreen) {
+        // Override MIDDLE zones with morph + same double-tap/long-press
+        addZone(
+            GestureZone(GestureRow.MIDDLE, GestureColumn.LEFT),
+            discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
+            continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
+        )
+        addZone(
+            GestureZone(GestureRow.MIDDLE, GestureColumn.CENTER),
+            discrete = topDiscrete,
+            continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
+        )
+        addZone(
+            GestureZone(GestureRow.MIDDLE, GestureColumn.RIGHT),
+            discrete = topDiscrete + mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
+            continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to morphDrag)
+        )
+    }
+
+    return GestureBindings(byZone = bindings)
 }
