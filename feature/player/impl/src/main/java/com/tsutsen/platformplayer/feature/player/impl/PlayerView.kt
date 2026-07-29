@@ -159,23 +159,18 @@ fun PlayerView(
     // ==================== Animation sync ====================
     val uiMode = (uiState as? PlayerUiState.Loaded)?.mode
 
-    // Cancel in-flight animations when drag starts.
+    // Single LaunchedEffect handles both drag cancellation and mode sync.
+    // When isDraggingMorph changes, the effect is cancelled/re-fired.
+    // When uiMode changes, the effect re-fires with the new mode.
     // This prevents the animation from fighting the user's drag.
-    LaunchedEffect(gestureState.isDraggingMorph) {
+    LaunchedEffect(uiMode, gestureState.isDraggingMorph) {
         if (gestureState.isDraggingMorph) {
             morph.cancelAnimation()
             fullscreen.cancelAnimation()
+            return@LaunchedEffect
         }
-    }
 
-    // Sync morph progress to mode — only runs when uiMode actually changes.
-    // We don't include isDraggingMorph as a key because when drag ends,
-    // uiMode is still stale (ViewModel hasn't emitted the new mode yet),
-    // and trying to sync to the stale mode fights the drag that just ended.
-    LaunchedEffect(uiMode) {
         val mode = uiMode ?: return@LaunchedEffect
-        if (gestureState.isDraggingMorph) return@LaunchedEffect
-
         val morphTarget = if (mode == PlayerMode.FLOATING) 1f else 0f
         val currentProgress = effectiveMorphProgress()
         if (kotlin.math.abs(currentProgress - morphTarget) > 0.01f) {
