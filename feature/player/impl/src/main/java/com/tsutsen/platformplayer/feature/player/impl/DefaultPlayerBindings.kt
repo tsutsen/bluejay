@@ -5,13 +5,16 @@ import androidx.compose.ui.geometry.Offset
 /**
  * Default gesture bindings matching current app behavior.
  *
- * Row precedence: TOP row handles fullscreen drag + 2x hold, BOTTOM row handles minimize drag + 2x hold.
- * Column precedence: LEFT/RIGHT columns handle brightness/volume (MIDDLE row only, since rows win for drag),
- *                     double-tap seek (all rows), fullscreen toggle (CENTER column).
+ * Row precedence: TOP row handles brightness (left) / volume (right) + 2x hold,
+ *                  BOTTOM row handles minimize drag + 2x hold.
+ * Column precedence: double-tap seek (LEFT/RIGHT columns, all rows),
+ *                     fullscreen toggle (CENTER column).
  * Global: TAP toggles controls visibility.
+ *
+ * Brightness/volume are fullscreen-only (TOP row zone bindings). In normal mode (MIDDLE row)
+ * there is no vertical drag binding — only tap/double-tap actions.
  */
 fun defaultPlayerBindings(
-    onFullscreenDrag: (dragAmount: Float) -> Unit,
     onMiniDrag: (dragAmount: Float) -> Unit,
     onBrightnessDrag: (dragAmount: Float) -> Unit,
     onVolumeDrag: (dragAmount: Float) -> Unit,
@@ -29,11 +32,6 @@ fun defaultPlayerBindings(
     val doubleTapFullscreen = DiscreteAction { _, _ -> onDoubleTapFullscreen() }
     val tap = DiscreteAction { _, _ -> onTap() }
 
-    val fullscreenDrag = object : ContinuousAction {
-        override fun onStart(zone: GestureZone, position: Offset) {}
-        override fun onDelta(deltaPx: Float) { onFullscreenDrag(deltaPx) }
-        override fun onEnd() {}
-    }
     val miniDrag = object : ContinuousAction {
         override fun onStart(zone: GestureZone, position: Offset) {}
         override fun onDelta(deltaPx: Float) { onMiniDrag(deltaPx) }
@@ -52,13 +50,6 @@ fun defaultPlayerBindings(
 
     return GestureBindings(
         byRow = mapOf(
-            GestureRow.TOP to ZoneBindings(
-                discrete = mapOf(
-                    DiscreteGesture.LONG_PRESS_START to longPressStart,
-                    DiscreteGesture.LONG_PRESS_END to longPressEnd,
-                ),
-                continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to fullscreenDrag)
-            ),
             GestureRow.BOTTOM to ZoneBindings(
                 discrete = mapOf(
                     DiscreteGesture.LONG_PRESS_START to longPressStart,
@@ -67,14 +58,28 @@ fun defaultPlayerBindings(
                 continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to miniDrag)
             )
         ),
-        byColumn = mapOf(
-            GestureColumn.LEFT to ZoneBindings(
-                discrete = mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft),
+        byZone = mapOf(
+            GestureZone(GestureRow.TOP, GestureColumn.LEFT) to ZoneBindings(
+                discrete = mapOf(
+                    DiscreteGesture.LONG_PRESS_START to longPressStart,
+                    DiscreteGesture.LONG_PRESS_END to longPressEnd,
+                ),
                 continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to brightnessDrag)
             ),
-            GestureColumn.RIGHT to ZoneBindings(
-                discrete = mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight),
+            GestureZone(GestureRow.TOP, GestureColumn.RIGHT) to ZoneBindings(
+                discrete = mapOf(
+                    DiscreteGesture.LONG_PRESS_START to longPressStart,
+                    DiscreteGesture.LONG_PRESS_END to longPressEnd,
+                ),
                 continuous = mapOf(ContinuousGesture.VERTICAL_DRAG to volumeDrag)
+            )
+        ),
+        byColumn = mapOf(
+            GestureColumn.LEFT to ZoneBindings(
+                discrete = mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapLeft)
+            ),
+            GestureColumn.RIGHT to ZoneBindings(
+                discrete = mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapRight)
             ),
             GestureColumn.CENTER to ZoneBindings(
                 discrete = mapOf(DiscreteGesture.DOUBLE_TAP to doubleTapFullscreen)

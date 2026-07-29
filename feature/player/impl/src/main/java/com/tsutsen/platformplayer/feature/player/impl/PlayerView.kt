@@ -381,13 +381,6 @@ fun PlayerView(
 
             // ==================== Gesture bindings ====================
             val gestureBindings = defaultPlayerBindings(
-                onFullscreenDrag = { delta ->
-                    val newProgress = (fullscreenP - delta / containerSize.height).coerceIn(0f, 1f)
-                    if (kotlin.math.abs(fullscreen.progress - newProgress) > 0.01f) {
-                        if (newProgress > fullscreen.progress) fullscreen.enterFullscreen()
-                        else fullscreen.exitFullscreen()
-                    }
-                },
                 onMiniDrag = { delta ->
                     val newProgress = (morph.progress - delta / dragTravelPx).coerceIn(0f, 1f)
                     if (kotlin.math.abs(morph.progress - newProgress) > 0.01f) {
@@ -443,8 +436,10 @@ fun PlayerView(
                         .fillMaxSize()
                         .graphicsLayer { alpha = playerFadeInProgress.value }
                 ) {
+                    // Skip scrim during loading — it would intercept all touches and block gestures.
+                    // The fade animation (playerFadeInProgress) already handles the visual transition.
                     val scrimAlpha = (1f - morph.progress) * (1f - fullscreenP) + fullscreenP
-                    if (scrimAlpha > 0.01f) {
+                    if (scrimAlpha > 0.01f && !state.isLoading) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
