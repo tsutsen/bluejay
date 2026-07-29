@@ -83,8 +83,7 @@ fun PlayerView(
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
 
-    var controlsVisible by remember { mutableStateOf(true) }
-    var hideControlsJob by remember { mutableStateOf<Job?>(null) }
+    val autoHide = rememberAutoHideState(autoHideMs = PlayerMorphConfig.Default.autoHideMs)
 
     var expandedDescription by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
@@ -94,10 +93,8 @@ fun PlayerView(
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
     var isDraggingMiniPlayer by remember { mutableStateOf(false) }
 
-    val morphProgress = remember { androidx.compose.animation.core.Animatable(0f) }
-    var isDraggingMorph by remember { mutableStateOf(false) }
-
-    val fullscreenProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+    val morph = rememberMorphState(onMinimize = { viewModel.minimize() })
+    val fullscreen = rememberFullscreenState()
 
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableStateOf(0L) }
@@ -144,29 +141,30 @@ fun PlayerView(
     val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
     val isFullscreenState = (uiState as? PlayerUiState.Loaded)?.isFullscreen
 
-    LaunchedEffect(isMinimizedState, isDraggingMorph) {
-        if (isDraggingMorph) return@LaunchedEffect
+    LaunchedEffect(isMinimizedState, morph.isDragging) {
+        if (morph.isDragging) return@LaunchedEffect
         val minimized = isMinimizedState ?: return@LaunchedEffect
         val target = if (minimized) 1f else 0f
-        if (kotlin.math.abs(morphProgress.value - target) > 0.01f) {
-            morphProgress.animateTo(target, transitionSpringSpec)
+        if (kotlin.math.abs(morph.progress - target) > 0.01f) {
+            morph.restore()
         }
         isMinimizedAnim.value = minimized
-        if (!minimized) controlsVisible = true
+        if (!minimized) autoHide.show()
         Log.d(TAG, "Animation state synced: isMinimized=$minimized")
     }
 
     LaunchedEffect(isFullscreenState) {
-        val fullscreen = isFullscreenState ?: return@LaunchedEffect
-        val target = if (fullscreen) 1f else 0f
-        if (fullscreen && morphProgress.value < 0.5f) {
+        val isFullscreenStateValue = isFullscreenState ?: return@LaunchedEffect
+        val target = if (isFullscreenStateValue) 1f else 0f
+        if (isFullscreenStateValue && morph.progress < 0.5f) {
             kotlinx.coroutines.delay(50)
         }
-        if (kotlin.math.abs(fullscreenProgress.value - target) > 0.01f) {
-            fullscreenProgress.animateTo(target, transitionSpringSpec)
+        if (kotlin.math.abs(fullscreen.progress - target) > 0.01f) {
+            if (isFullscreenStateValue) fullscreen.enterFullscreen()
+            else fullscreen.exitFullscreen()
         }
-        isFullscreenAnim.value = fullscreen
-        Log.d(TAG, "Fullscreen synced: isFullscreen=$fullscreen")
+        isFullscreenAnim.value = isFullscreenStateValue
+        Log.d(TAG, "Fullscreen synced: isFullscreen=$isFullscreenStateValue")
     }
 
     LaunchedEffect(uiState) {
@@ -202,9 +200,9 @@ fun PlayerView(
             val isMinimized = state.isMinimized
             val isFullscreen = state.isFullscreen
 
-            val p = morphProgress.value
+            val p = morph.progress
             val cornerRadius = (12f * p).coerceAtLeast(0f).dp
-            val fullscreenP = fullscreenProgress.value
+            val fullscreenP = fullscreen.progress
 
             val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             val isSmallWindow = with(context.resources.displayMetrics) {
@@ -255,31 +253,27 @@ fun PlayerView(
             }
 
             // ==================== Auto-hide controls ====================
-            LaunchedEffect(controlsVisible, state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, morphProgress.value) {
-                if (morphProgress.value > config.miniSettledThreshold && morphProgress.value < (1f - config.miniSettledThreshold)) {
-                    hideControlsJob?.cancel()
+            LaunchedEffect(autoHide.isVisible, state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, morph.progress) {
+                if (morph.progress > config.miniSettledThreshold && morph.progress < (1f - config.miniSettledThreshold)) {
+                    autoHide.hide()
                     return@LaunchedEffect
                 }
                 val settled = !isMinimizedAnim.value
-                val canAutoHide = settled && state.isPlaying && controlsVisible
+                val canAutoHide = settled && state.isPlaying && autoHide.isVisible
                 if (canAutoHide) {
-                    hideControlsJob?.cancel()
-                    hideControlsJob = launch {
-                        delay(config.autoHideMs)
-                        controlsVisible = false
-                    }
+                    autoHide.notifyInteraction()
                 } else {
-                    hideControlsJob?.cancel()
+                    autoHide.hide()
                 }
             }
 
             LaunchedEffect(state.isPlaying) {
-                if (!state.isPlaying) controlsVisible = true
+                if (!state.isPlaying) autoHide.show()
             }
 
-            LaunchedEffect(morphProgress.value) {
-                if (morphProgress.value > config.controlsHideAtProgress) {
-                    controlsVisible = false
+            LaunchedEffect(morph.progress) {
+                if (morph.progress > config.controlsHideAtProgress) {
+                    autoHide.hide()
                 }
             }
 
@@ -354,7 +348,7 @@ fun PlayerView(
             val layoutDragY = if (isDraggingMiniPlayer) miniPlayerOffsetY else animatedMiniOffsetY
 
             val videoLayout = computeVideoLayout(
-                miniProgress = morphProgress.value,
+                miniProgress = morph.progress,
                 fullscreenProgress = fullscreenP,
                 containerWidth = containerSize.width,
                 containerHeight = containerSize.height,
@@ -371,25 +365,18 @@ fun PlayerView(
 
             val playerHeightRatio = if (containerSize.height > 0f) playerHeightPx / containerSize.height else 1f
             val visibility = computeControlsVisibility(
-                miniProgress = morphProgress.value,
+                miniProgress = morph.progress,
                 fullscreenProgress = fullscreenP,
                 playerHeightRatio = playerHeightRatio,
-                controlsVisible = controlsVisible,
+                controlsVisible = autoHide.isVisible,
                 config = config,
             )
 
             // ==================== Gesture callbacks ====================
             val gestureCallbacks = PlayerGestureCallbacks(
                 onTap = {
-                    if (morphProgress.value > 0.01f && morphProgress.value < 0.99f) return@PlayerGestureCallbacks
-                    controlsVisible = !controlsVisible
-                    hideControlsJob?.cancel()
-                    if (controlsVisible && state.isPlaying) {
-                        hideControlsJob = coroutineScope.launch {
-                            delay(3000)
-                            controlsVisible = false
-                        }
-                    }
+                    if (morph.progress > 0.01f && morph.progress < 0.99f) return@PlayerGestureCallbacks
+                    autoHide.notifyInteraction()
                 },
                 onDoubleTap = {
                     if (isFullscreen) {
@@ -438,7 +425,7 @@ fun PlayerView(
                         .fillMaxSize()
                         .graphicsLayer { alpha = playerFadeInProgress.value }
                 ) {
-                    val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) + fullscreenP
+                    val scrimAlpha = (1f - morph.progress) * (1f - fullscreenP) + fullscreenP
                     if (scrimAlpha > 0.01f) {
                         Box(
                             modifier = Modifier
@@ -451,7 +438,7 @@ fun PlayerView(
                         player = player,
                         state = state,
                         videoLayout = videoLayout,
-                        miniProgress = morphProgress.value,
+                        miniProgress = morph.progress,
                         fullscreenProgress = fullscreenP,
                         containerWidth = containerSize.width,
                         containerHeight = containerSize.height,
@@ -462,7 +449,7 @@ fun PlayerView(
                         floatingRestY = floatingRestY,
                         visibility = visibility,
                         playerHeightRatio = playerHeightRatio,
-                        controlsVisible = controlsVisible,
+                        controlsVisible = autoHide.isVisible,
                         scrollState = scrollState,
                         nestedScrollConnection = nestedScrollConnection,
                         gestureCallbacks = gestureCallbacks,
@@ -501,19 +488,12 @@ fun PlayerView(
                         onExpand = {
                             viewModel.exitMiniPlayer()
                         },
-                        onMorphDragStart = { isDraggingMorph = true },
+                        onMorphDragStart = { morph.startDrag() },
                         onMorphDrag = { dragY ->
-                            val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
-                            coroutineScope.launch { morphProgress.snapTo(progress) }
+                            morph.drag(dragY, dragTravelPx)
                         },
                         onMorphDragEnd = { dragY ->
-                            isDraggingMorph = false
-                            val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
-                            if (progress > config.morphSettleThreshold) {
-                                viewModel.minimize()
-                            } else {
-                                coroutineScope.launch { morphProgress.animateTo(0f, transitionSpringSpec) }
-                            }
+                            morph.endDrag(dragY, dragTravelPx)
                         },
                         onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
                         onClose = {
