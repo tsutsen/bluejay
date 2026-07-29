@@ -5,8 +5,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -28,10 +26,6 @@ import androidx.compose.ui.unit.IntOffset
 import kotlin.math.sqrt
 
 private const val TAG = "PlayerGestures"
-
-const val TOUCH_SLOP = 12f
-const val DOUBLE_TAP_TIMEOUT_MS = 300L
-
 
 @Composable
 fun PlayerGestures(
@@ -61,7 +55,7 @@ fun PlayerGestures(
 
     Box(modifier = modifier) {
         // ==================== FULLSCREEN mode gestures ====================
-        if (fullscreenProgress > FULLSCREEN_SETTLED_THRESHOLD) {
+        if (fullscreenProgress > PlayerMorphConfig.Default.fullscreenSettledThreshold) {
             // Brightness/volume swipe
             var touchX = 0f
             Box(
@@ -136,7 +130,7 @@ fun PlayerGestures(
         }
 
         // ==================== NORMAL/COMPACT mode gestures ====================
-        if (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD && miniProgress < MINI_DRAG_THRESHOLD) {
+        if (fullscreenProgress < PlayerMorphConfig.Default.fullscreenSettledThreshold && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
             // Double-tap left/right thirds → rewind ±5 seconds
             val thirdWidthDp = with(density) { (containerWidth / 3).toDp() }
             Box(
@@ -193,7 +187,7 @@ fun PlayerGestures(
         }
 
         // ==================== FLOATING mode gestures ====================
-        if (miniProgress > MINI_DRAG_THRESHOLD) {
+        if (miniProgress > PlayerMorphConfig.Default.miniDragThreshold) {
             val latestOffsetX by rememberUpdatedState(currentOffsetX)
             val latestOffsetY by rememberUpdatedState(currentOffsetY)
             val latestRestX by rememberUpdatedState(floatingRestX)

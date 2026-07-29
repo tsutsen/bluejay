@@ -27,14 +27,6 @@ import androidx.media3.exoplayer.ExoPlayer
 
 private const val TAG = "PlayerContent"
 
-const val MINI_DRAG_THRESHOLD = 0.98f
-const val MINI_SETTLED_THRESHOLD = 0.01f
-const val MORPH_TRANSITION_START = 0.3f  // When morph transition begins
-const val MORPH_TRANSITION_END = 0.7f    // When morph transition completes
-const val DETAILS_FADE_START = 0.1f      // Details start fading out earlier
-const val DETAILS_FADE_END = 0.4f        // Details fully faded before controls complete
-const val FULLSCREEN_SETTLED_THRESHOLD = 0.01f
-
 /**
  * Unified player content composable. Computes derived alpha weights, resolved visibility,
  * and video geometry, then delegates to GestureLayer, ControlsLayer, and DetailsPanel.
@@ -103,6 +95,7 @@ fun PlayerContent(
     onSpeedHoldEnd: () -> Unit = {}
 ) {
     val density = LocalDensity.current
+    val config = PlayerMorphConfig.Default
 
     // ==================== Derived alpha weights for control cross-fade ====================
     val normalBarAlpha = (1f - miniProgress) * (1f - fullscreenProgress) *
@@ -136,24 +129,24 @@ fun PlayerContent(
         // gradientAlpha's 200ms tween gets a single frame to render. Hiding due to
         // controlsVisible is handled entirely by the animated gradientAlpha downstream in
         // PlayerControls.kt / PlayerUIScaffold.kt - this only decides structural applicability.
-        miniProgress > MINI_SETTLED_THRESHOLD -> miniMorphAlpha > 0.01f && !isCollapsedControls &&
-            (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
-                fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD))
-        fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> true
+        miniProgress > config.miniSettledThreshold -> miniMorphAlpha > config.miniSettledThreshold && !isCollapsedControls &&
+            (fullscreenProgress < config.fullscreenSettledThreshold ||
+                fullscreenProgress > (1f - config.fullscreenSettledThreshold))
+        fullscreenProgress > (1f - config.fullscreenSettledThreshold) -> true
         else -> !isCollapsedControls
     }
 
     val resolvedShowBottomBar = when {
-        miniProgress > MINI_SETTLED_THRESHOLD -> miniMorphAlpha > 0.01f &&
-            (fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
-                fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD))
-        fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> true
+        miniProgress > config.miniSettledThreshold -> miniMorphAlpha > config.miniSettledThreshold &&
+            (fullscreenProgress < config.fullscreenSettledThreshold ||
+                fullscreenProgress > (1f - config.fullscreenSettledThreshold))
+        fullscreenProgress > (1f - config.fullscreenSettledThreshold) -> true
         else -> true
     }
 
     // ==================== Nested scroll connection ====================
     val nestedScrollModifier = remember(nestedScrollConnection, miniProgress, fullscreenProgress) {
-        if (miniProgress < MINI_SETTLED_THRESHOLD && fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD) {
+        if (miniProgress < config.miniSettledThreshold && fullscreenProgress < config.fullscreenSettledThreshold) {
             Modifier.nestedScroll(nestedScrollConnection)
         } else {
             Modifier
@@ -219,13 +212,12 @@ fun PlayerContent(
         // events, allowing the feed behind the floating mini player to be scrolled.
         val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
             // Fade out details earlier than controls for a cascading effect
-            val detailsFadeAlpha = if (miniProgress <= DETAILS_FADE_START) {
-                1f
-            } else if (miniProgress >= DETAILS_FADE_END) {
-                0f
-            } else {
-                (DETAILS_FADE_END - miniProgress) / (DETAILS_FADE_END - DETAILS_FADE_START)
-            }.coerceAtLeast(0f)
+            val detailsFadeAlpha = progressAlpha(
+                miniProgress,
+                config.detailsFadeStart,
+                config.detailsFadeEnd,
+                reversed = true
+            ).coerceAtLeast(0f)
             val detailsAlphaFinal = detailsAlpha * detailsFadeAlpha
             
             // Keep panel in composition while visible (alpha > 0.01), remove when fully faded

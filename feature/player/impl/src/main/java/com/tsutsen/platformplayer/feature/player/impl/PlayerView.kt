@@ -188,14 +188,16 @@ fun PlayerView(
             Log.d(TAG, "Is minimized: ${state.isMinimized}")
             Log.d(TAG, "Is fullscreen: ${state.isFullscreen}")
 
+            val config = PlayerMorphConfig.Default
+
             LaunchedEffect(state.currentVideo?.url) {
                 isScrubbing = false
                 scrubPositionMs = 0L
             }
 
-            val miniWidth = 280.dp
-            val miniHeight = miniWidth * 9f / 16f
-            val dragTravelPx = containerSize.height * 0.45f
+            val miniWidth = config.miniPlayerWidthDp
+            val miniHeight = miniWidth * config.miniPlayerAspectRatio
+            val dragTravelPx = containerSize.height * config.morphDragTravelFraction
 
             val isMinimized = state.isMinimized
             val isFullscreen = state.isFullscreen
@@ -254,7 +256,7 @@ fun PlayerView(
 
             // ==================== Auto-hide controls ====================
             LaunchedEffect(controlsVisible, state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, morphProgress.value) {
-                if (morphProgress.value > 0.01f && morphProgress.value < 0.99f) {
+                if (morphProgress.value > config.miniSettledThreshold && morphProgress.value < (1f - config.miniSettledThreshold)) {
                     hideControlsJob?.cancel()
                     return@LaunchedEffect
                 }
@@ -263,7 +265,7 @@ fun PlayerView(
                 if (canAutoHide) {
                     hideControlsJob?.cancel()
                     hideControlsJob = launch {
-                        delay(3000)
+                        delay(config.autoHideMs)
                         controlsVisible = false
                     }
                 } else {
@@ -276,7 +278,7 @@ fun PlayerView(
             }
 
             LaunchedEffect(morphProgress.value) {
-                if (morphProgress.value > 0.8f) {
+                if (morphProgress.value > config.controlsHideAtProgress) {
                     controlsVisible = false
                 }
             }
@@ -329,13 +331,13 @@ fun PlayerView(
 
             val isCollapsedControls = !isFullscreenAnim.value &&
                 containerSize.height > 0f &&
-                (playerHeightPx / containerSize.height) <= 0.45f
+                (playerHeightPx / containerSize.height) <= config.collapsedControlsThreshold
 
             // ==================== Geometry ====================
             val density = LocalDensity.current
             val miniWidthPx = with(density) { miniWidth.toPx() }
             val miniHeightPx = with(density) { miniHeight.toPx() }
-            val paddingPx = 16f * density.density
+            val paddingPx = with(density) { config.miniPlayerPaddingDp.toPx() }
             val floatingRestX = containerSize.width - miniWidthPx - paddingPx
             val floatingRestY = containerSize.height - miniHeightPx - paddingPx
 
@@ -503,7 +505,7 @@ fun PlayerView(
                         onMorphDragEnd = { dragY ->
                             isDraggingMorph = false
                             val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
-                            if (progress > 0.4f) {
+                            if (progress > config.morphSettleThreshold) {
                                 viewModel.minimize()
                             } else {
                                 coroutineScope.launch { morphProgress.animateTo(0f, transitionSpringSpec) }

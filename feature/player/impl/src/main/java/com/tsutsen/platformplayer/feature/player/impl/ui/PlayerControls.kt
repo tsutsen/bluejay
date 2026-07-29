@@ -37,7 +37,6 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 private const val TAG = "PlayerControls"
-private const val CONTROLS_SLIDE_DISTANCE_DP = 24
 
 /**
  * Handles all controls for the current mode.
@@ -112,15 +111,15 @@ fun PlayerControls(
 
     Box(modifier = modifier) {
         // ==================== Normal controls (fade out during morph) ====================
-        if (miniProgress <= MINI_DRAG_THRESHOLD) {
+        if (miniProgress <= PlayerMorphConfig.Default.miniDragThreshold) {
             // Fade out normal controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
-            val normalAlpha = if (miniProgress <= MORPH_TRANSITION_START) {
-                1f
-            } else if (miniProgress >= MORPH_TRANSITION_END) {
-                0f
-            } else {
-                (MORPH_TRANSITION_END - miniProgress) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
-            }.coerceAtLeast(0f)
+            val config = PlayerMorphConfig.Default
+            val normalAlpha = progressAlpha(
+                miniProgress,
+                config.morphTransitionStart,
+                config.morphTransitionEnd,
+                reversed = true
+            ).coerceAtLeast(0f)
             // Combine with the restored controls hide/show animation - this drives the VISUAL
             // fade of the bars only. Composition below is still gated on normalAlpha (morph
             // position) alone: if it were gated on effectiveNormalAlpha instead, the gesture
@@ -184,14 +183,14 @@ fun PlayerControls(
 
                                         if (change.previousPressed && !change.pressed) {
                                             if (!pastSlop) {
-                                                if (miniProgress > MINI_SETTLED_THRESHOLD) break
+                                                if (miniProgress > PlayerMorphConfig.Default.miniSettledThreshold) break
 
                                                 val now = System.currentTimeMillis()
                                                 val dx = change.previousPosition.x - lastTapX
                                                 val dy = change.previousPosition.y - lastTapY
                                                 val dist = sqrt(dx * dx + dy * dy)
 
-                                                if (now - lastTapTime < DOUBLE_TAP_TIMEOUT_MS && dist < TOUCH_SLOP) {
+                                                if (now - lastTapTime < PlayerMorphConfig.Default.doubleTapIntervalMs && dist < PlayerMorphConfig.Default.touchSlop) {
                                                     val videoWidth = videoLayout.widthPx
                                                     val third = videoWidth / 3f
                                                     if (change.position.x < third) {
@@ -215,7 +214,7 @@ fun PlayerControls(
                                         val dy = change.position.y - change.previousPosition.y
                                         if (!pastSlop) {
                                             totalDragY += dy
-                                            if (abs(totalDragY) > TOUCH_SLOP) {
+                                            if (abs(totalDragY) > PlayerMorphConfig.Default.touchSlop) {
                                                 pastSlop = true
                                                 if (totalDragY > 0f) {
                                                     isDownward = true
@@ -262,7 +261,7 @@ fun PlayerControls(
                                         // Slide up and out on hide, slide down and in on show -
                                         // driven by the same controlsVisibleAlpha as the fade,
                                         // so both directions are symmetric by construction.
-                                        translationY = (1f - controlsVisibleAlpha) * -CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
+                                        translationY = (1f - controlsVisibleAlpha) * -config.controlsSlideDistanceDp.dp.toPx()
                                     }
                                 ) {
                                     PlayerNormalTopOverlay(
@@ -285,7 +284,7 @@ fun PlayerControls(
                                         .graphicsLayer {
                                             // Slide down and out on hide, slide up and in on
                                             // show - mirrors the top bar's upward slide.
-                                            translationY = (1f - controlsVisibleAlpha) * CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
+                                            translationY = (1f - controlsVisibleAlpha) * config.controlsSlideDistanceDp.dp.toPx()
                                         }
                                 ) {
                                     // FULLSCREEN bottom overlay
@@ -309,7 +308,7 @@ fun PlayerControls(
                                     }
 
                                     // NORMAL ↔ COMPACT: animated swap
-                                    if (fullscreenBarAlpha < 0.99f && miniProgress < MINI_DRAG_THRESHOLD) {
+                                    if (fullscreenBarAlpha < 0.99f && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
                                         androidx.compose.animation.AnimatedContent(
                                             targetState = isCollapsedControls,
                                             transitionSpec = {
@@ -365,13 +364,11 @@ fun PlayerControls(
         // floatingAlpha keeps layout continuous; only the expensive inner content is gated.
         run {
             // Fade in floating controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
-            val floatingAlpha = if (miniProgress <= MORPH_TRANSITION_START) {
-                0f
-            } else if (miniProgress >= MORPH_TRANSITION_END) {
-                1f
-            } else {
-                (miniProgress - MORPH_TRANSITION_START) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
-            }.coerceIn(0f, 1f)
+            val floatingAlpha = progressAlpha(
+                miniProgress,
+                PlayerMorphConfig.Default.morphTransitionStart,
+                PlayerMorphConfig.Default.morphTransitionEnd
+            )
 
             Box(
                 modifier = Modifier
