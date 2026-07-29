@@ -254,7 +254,7 @@ private fun GrayjayMainActivity(
         }
     }
 
-    val showNavChrome = !playerState.isFullscreen
+    val showNavChrome = playerState.mode != com.tsutsen.platformplayer.core.model.PlayerMode.FULLSCREEN
 
     AppLayout(
         config = config.copy(showNavigation = showNavChrome),
