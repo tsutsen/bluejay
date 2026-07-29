@@ -17,13 +17,11 @@ data class ControlsVisibility(
     val barAlpha: Float,
     val normalBarAlpha: Float,
     val fullscreenBarAlpha: Float,
-    val miniControlsAlpha: Float,
     val floatingAlpha: Float,
     val detailsAlpha: Float,
     val detailsTranslateY: Float,
     /** True when top+bottom bars should be drawn (NORMAL, COMPACT, or FULLSCREEN) */
     val showBars: Boolean,
-    val showMiniControls: Boolean,
     val showFloatingOverlay: Boolean,
     val showDetails: Boolean,
     /** Derived mode — the single source of truth for mode-specific logic */
@@ -58,12 +56,11 @@ fun computeControlsVisibility(
     // Single alpha that covers both NORMAL and FULLSCREEN — consumers use this
     val barAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha)
 
-    val miniControlsAlpha = progressAlpha(miniProgress, config.morphTransitionStart, config.morphTransitionEnd)
     val floatingAlpha = progressAlpha(miniProgress, config.morphTransitionStart, config.morphTransitionEnd)
     val detailsAlpha = progressAlpha(miniProgress, config.detailsFadeStart, config.detailsFadeEnd, reversed = true)
     val detailsTranslateY = miniProgress * config.detailsTranslateFraction
 
-    Log.d(TAG, "computeControlsVisibility: barAlpha=$barAlpha normalBarAlpha=$normalBarAlpha fullscreenBarAlpha=$fullscreenBarAlpha miniControlsAlpha=$miniControlsAlpha floatingAlpha=$floatingAlpha controlsVisibleFactor=$controlsVisibleFactor")
+    Log.d(TAG, "computeControlsVisibility: barAlpha=$barAlpha normalBarAlpha=$normalBarAlpha fullscreenBarAlpha=$fullscreenBarAlpha floatingAlpha=$floatingAlpha controlsVisibleFactor=$controlsVisibleFactor")
 
     val mode = computePlayerMode(miniProgress, fullscreenProgress, playerHeightRatio, config)
 
@@ -71,12 +68,10 @@ fun computeControlsVisibility(
         barAlpha = barAlpha,
         normalBarAlpha = normalBarAlpha,
         fullscreenBarAlpha = fullscreenBarAlpha,
-        miniControlsAlpha = miniControlsAlpha,
         floatingAlpha = floatingAlpha,
         detailsAlpha = detailsAlpha,
         detailsTranslateY = detailsTranslateY,
         showBars = barAlpha > 0.01f,
-        showMiniControls = miniControlsAlpha > 0.01f,
         showFloatingOverlay = floatingAlpha > 0.01f,
         showDetails = detailsAlpha > 0.01f,
         mode = mode,
