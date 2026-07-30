@@ -398,12 +398,12 @@ fun PlayerView(
                             is GestureIndicator.TextBadge -> badgeState = GestureBadgeState(
                                 label = indicator.label,
                                 icon = indicator.icon,
-                                visible = true,
+                                showAt = System.currentTimeMillis(),
                             )
                             is GestureIndicator.Badge -> badgeState = GestureBadgeState(
                                 label = indicator.format(indicator.value),
                                 icon = indicator.icon,
-                                visible = true,
+                                showAt = System.currentTimeMillis(),
                             )
                             else -> Unit
                         }

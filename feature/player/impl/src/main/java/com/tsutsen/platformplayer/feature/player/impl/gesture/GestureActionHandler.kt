@@ -55,6 +55,9 @@ class PlayerGestureActionHandler(
     // --- speed state ---
     private var originalSpeed = 1f
 
+    // --- badge refresh tracking ---
+    private var lastBadgeRefreshTime = 0L
+
     // --- morph drag state ---
     private var morphStartDelta = 0f
 
@@ -199,6 +202,9 @@ class PlayerGestureActionHandler(
         /** Horizontal px to travel for one ±0.1x speed step. */
         private const val SPEED_SWIPE_STEP_PX = 200f
         private const val SPEED_STEP = 0.1f
+
+        /** Badge refresh interval — slightly less than hide delay so badge stays visible. */
+        private const val BADGE_REFRESH_MS = 1400L
     }
 
     // ---- Speed hold with optional swipe modulation ----
@@ -221,6 +227,11 @@ class PlayerGestureActionHandler(
                     lastSpeedHoldReported = snapped
                     viewModel.setPlaybackSpeed(snapped)
                     onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
+                    lastBadgeRefreshTime = System.currentTimeMillis()
+                } else if (System.currentTimeMillis() - lastBadgeRefreshTime >= BADGE_REFRESH_MS) {
+                    // Periodically refresh badge to keep it visible during long holds
+                    onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
+                    lastBadgeRefreshTime = System.currentTimeMillis()
                 }
             }
             GesturePhase.END -> {
