@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
+import com.tsutsen.platformplayer.feature.player.impl.GestureIndicatorOverlay
 
 private const val TAG = "PlayerControls"
 private const val CONTROLS_SLIDE_DISTANCE_DP = 24
@@ -131,7 +132,6 @@ fun PlayerControls(
                                 height = with(density) { videoLayout.heightPx.toDp() }
                             ),
                         isLoading = isLoading,
-                        activeIndicator = activeIndicator,
                         showTopBar = resolvedShowTopBar,
                         showBottomBar = resolvedShowBottomBar,
                         gradientAlpha = gradientAlpha,
@@ -241,6 +241,25 @@ fun PlayerControls(
                             }
                         }
                     )
+                }
+            }
+
+            // ==================== Gesture Indicator (always on top, independent of controls) ====================
+            if (normalAlpha > 0.01f) {
+                Box(
+                    modifier = Modifier
+                        .offset {
+                            IntOffset(
+                                x = videoLayout.offsetX.toInt(),
+                                y = videoLayout.offsetY.toInt()
+                            )
+                        }
+                        .size(
+                            width = with(density) { videoLayout.widthPx.toDp() },
+                            height = with(density) { videoLayout.heightPx.toDp() }
+                        )
+                ) {
+                    GestureIndicatorOverlay(indicator = activeIndicator)
                 }
             }
         }

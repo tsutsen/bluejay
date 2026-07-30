@@ -167,7 +167,6 @@ class PlayerGestureActionHandler(
             }
             GesturePhase.END -> {
                 viewModel.setPlaybackSpeed(originalSpeed)
-                onIndicator(GestureAction.SPEEDUP.defaultIndicator(originalSpeed))
                 onIndicatorEnd()
             }
         }

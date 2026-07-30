@@ -46,7 +46,6 @@ data class PlayerGestureCallbacks(
 fun PlayerUIScaffold(
     modifier: Modifier,
     isLoading: Boolean,
-    activeIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator?,
     showTopBar: Boolean,
     showBottomBar: Boolean,
     callbacks: PlayerGestureCallbacks,
@@ -88,9 +87,6 @@ fun PlayerUIScaffold(
                     }
                 )
         )
-
-        // ==================== Gesture Indicator ====================
-        GestureIndicatorOverlay(indicator = activeIndicator)
 
         // ==================== Loading Spinner ====================
         AnimatedVisibility(
