@@ -145,7 +145,7 @@ class PlayerGestureActionHandler(
                 icon = if (isBack) Icons.Default.Replay10 else Icons.Default.Forward10,
             )
         )
-        onIndicatorEnd()
+        // Skip onIndicatorEnd — badge auto-hides via overlay
     }
 
     // ---- Brightness (swipe vertical, continuous) ----
@@ -226,7 +226,7 @@ class PlayerGestureActionHandler(
             GesturePhase.END -> {
                 viewModel.setPlaybackSpeed(originalSpeed)
                 onIndicator(GestureAction.SPEEDUP.defaultIndicator(originalSpeed))
-                onIndicatorEnd()
+                // Skip onIndicatorEnd — badge auto-hides via overlay
             }
         }
     }

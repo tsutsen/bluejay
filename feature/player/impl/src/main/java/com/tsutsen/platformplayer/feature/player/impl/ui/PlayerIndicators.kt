@@ -39,12 +39,11 @@ private const val INDICATOR_HIDE_DELAY_MS = 1500L
 /**
  * State for the centre text badge (seek, speed, etc).
  * The badge composable is always present — visibility is driven by alpha animation.
- * [showAt] is a monotonically increasing token; changing it triggers a fresh fade-in → delay → fade-out.
  */
 data class GestureBadgeState(
     val label: String = "",
     val icon: ImageVector = Icons.Default.Replay10,
-    val showAt: Long = 0L,
+    val visible: Boolean = false,
 )
 
 /**
@@ -60,12 +59,14 @@ internal fun GestureIndicatorOverlay(
 ) {
     val badgeAlpha = remember { Animatable(0f) }
 
-    // Each new showAt token triggers a fresh fade-in → delay → fade-out cycle.
-    LaunchedEffect(badgeState.showAt) {
-        if (badgeState.showAt > 0L) {
+    // Auto-hide: fade in → wait → fade out. Cancels on new visible=true or immediate fade-out.
+    LaunchedEffect(badgeState.visible) {
+        if (badgeState.visible) {
             badgeAlpha.snapTo(0f)
             badgeAlpha.animateTo(1f, animationSpec = tween(INDICATOR_ANIM_MS))
             delay(INDICATOR_HIDE_DELAY_MS)
+            badgeAlpha.animateTo(0f, animationSpec = tween(INDICATOR_ANIM_MS))
+        } else if (badgeAlpha.value > 0f) {
             badgeAlpha.animateTo(0f, animationSpec = tween(INDICATOR_ANIM_MS))
         }
     }
