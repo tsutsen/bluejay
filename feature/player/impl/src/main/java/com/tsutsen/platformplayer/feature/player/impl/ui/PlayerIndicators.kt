@@ -46,6 +46,7 @@ data class GestureBadgeState(
     val label: String = "",
     val icon: ImageVector = Icons.Default.Replay10,
     val visible: Boolean = false,
+    val keepAlive: Int = 0, // increments on every emission to force effect restart
 )
 
 /**
@@ -72,8 +73,8 @@ internal fun GestureIndicatorOverlay(
 
     var session by remember { mutableStateOf<Session?>(null) }
 
-    // Process incoming badge state
-    LaunchedEffect(badgeState) {
+    // Process incoming badge state — keepAlive forces restart on every emission
+    LaunchedEffect(badgeState.key, badgeState.keepAlive) {
         when {
             !badgeState.visible -> {
                 // Hide request (from onIndicatorEnd)

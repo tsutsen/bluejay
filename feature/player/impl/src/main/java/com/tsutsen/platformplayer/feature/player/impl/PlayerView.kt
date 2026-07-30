@@ -79,6 +79,7 @@ fun PlayerView(
     var showChapters by remember { mutableStateOf(false) }
     var activeProgressIndicator by remember { mutableStateOf<GestureIndicator.Progress?>(null) }
     var badgeState by remember { mutableStateOf(GestureBadgeState()) }
+    var badgeKeepAliveCounter by remember { mutableStateOf(0) }
     var selectedSpeed by remember { mutableStateOf(1.0f) }
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
@@ -395,18 +396,26 @@ fun PlayerView(
                     onIndicator = { indicator ->
                         when (indicator) {
                             is GestureIndicator.Progress -> activeProgressIndicator = indicator
-                            is GestureIndicator.TextBadge -> badgeState = GestureBadgeState(
-                                key = indicator.key,
-                                label = indicator.label,
-                                icon = indicator.icon,
-                                visible = true,
-                            )
-                            is GestureIndicator.Badge -> badgeState = GestureBadgeState(
-                                key = indicator.key,
-                                label = indicator.format(indicator.value),
-                                icon = indicator.icon,
-                                visible = true,
-                            )
+                            is GestureIndicator.TextBadge -> {
+                                badgeKeepAliveCounter++
+                                badgeState = GestureBadgeState(
+                                    key = indicator.key,
+                                    label = indicator.label,
+                                    icon = indicator.icon,
+                                    visible = true,
+                                    keepAlive = badgeKeepAliveCounter,
+                                )
+                            }
+                            is GestureIndicator.Badge -> {
+                                badgeKeepAliveCounter++
+                                badgeState = GestureBadgeState(
+                                    key = indicator.key,
+                                    label = indicator.format(indicator.value),
+                                    icon = indicator.icon,
+                                    visible = true,
+                                    keepAlive = badgeKeepAliveCounter,
+                                )
+                            }
                             else -> Unit
                         }
                     },
