@@ -180,17 +180,18 @@ class PlayerGestureActionHandler(
         }
     }
 
-    // ---- Morph to floating (swipe vertical downward) ----
+    // ---- Morph to floating (swipe vertical, direction depends on sector) ----
+    //    Top row in FULLSCREEN: swipe UP (negative delta) to morph
+    //    Middle/bottom in NORMAL/COMPACT: swipe DOWN (positive delta) to morph
     private fun handleMorphToFloating(frame: GestureFrame) {
         when (frame.phase) {
             GesturePhase.START -> {
-                // Only downward swipes trigger morph
                 morphStartDelta = 0f
                 onMorphDragStart()
             }
             GesturePhase.ACTIVE -> {
-                // totalDelta.y > 0 = swipe down
-                val dragY = frame.totalDelta.y.coerceAtLeast(0f)
+                // Use absolute vertical delta — direction is determined by sector config
+                val dragY = kotlin.math.abs(frame.totalDelta.y)
                 if (dragY > 0f) {
                     morphStartDelta = dragY
                     onMorphDrag(dragY)
