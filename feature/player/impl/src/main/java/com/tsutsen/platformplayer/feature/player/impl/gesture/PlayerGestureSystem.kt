@@ -177,6 +177,7 @@ fun PlayerGestureSystem(
                             var gestureRecognized = false
                             var gestureType: GestureType? = null
                             var holdTriggered = false
+                            var startFrameSent = false
                             var isSwipeDownward = false
 
                             // Check for double-tap first (compare with previous tap)
@@ -299,13 +300,14 @@ fun PlayerGestureSystem(
                                                     gestureType = gestureType!!,
                                                     action = action,
                                                     phase = GesturePhase.START,
-                                                    instantDelta = Offset(totalDeltaX, totalDeltaY),
+                                                    instantDelta = Offset.Zero,
                                                     totalDelta = Offset(totalDeltaX, totalDeltaY),
                                                     elapsedMs = elapsed,
                                                     fingerPosition = pos
                                                 )
                                             )
                                         }
+                                        startFrameSent = true
                                         change.consume()
                                     }
 
@@ -324,16 +326,19 @@ fun PlayerGestureSystem(
                                                     gestureType = GestureType.HOLD,
                                                     action = action,
                                                     phase = GesturePhase.START,
-                                                    totalDelta = Offset.Zero, // modulation starts at 0
+                                                    instantDelta = Offset.Zero,
+                                                    totalDelta = Offset.Zero,
                                                     elapsedMs = elapsed,
                                                     fingerPosition = pos
                                                 )
                                             )
                                         }
+                                        startFrameSent = true
                                     }
 
                                     // ---- Continuous frames for recognised gestures ----
-                                    if (gestureRecognized && gestureType != GestureType.DOUBLE_TAP) {
+                                    // Skip ACTIVE on the same iteration as START to avoid duplicate delta
+                                    if (gestureRecognized && gestureType != GestureType.DOUBLE_TAP && startFrameSent) {
                                         val instantDx = pos.x - lastPos.x
                                         val instantDy = pos.y - lastPos.y
                                         val newElapsed = System.currentTimeMillis() - downTime
