@@ -10,8 +10,7 @@ internal object GestureAnimationConstants {
 
     /**
      * How often to refresh a hold badge to keep it visible.
-     * Set to hide_delay + anim_ms so the refresh fires just before
-     * the fade-out would begin (1500 + 200 = 1700ms).
+     * Set to hide_delay so the refresh fires before fade-out begins.
      */
-    const val BADGE_REFRESH_MS: Long = INDICATOR_HIDE_DELAY_MS + INDICATOR_ANIM_MS
+    const val BADGE_REFRESH_MS: Long = INDICATOR_HIDE_DELAY_MS
 }
