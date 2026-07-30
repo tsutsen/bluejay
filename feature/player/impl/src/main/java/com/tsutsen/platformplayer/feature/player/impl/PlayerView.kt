@@ -387,7 +387,6 @@ fun PlayerView(
             val gestureHandler = remember {
                 com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureActionHandler(
                     viewModel = viewModel,
-                    currentPositionMs = { state.currentPositionMs },
                     screenHeight = { containerSize.height },
                     context = context,
                     activity = context as? android.app.Activity,

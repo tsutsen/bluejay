@@ -153,6 +153,14 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /** Seek relative to current ExoPlayer position (avoids stale UI state). */
+    fun seekBy(deltaMs: Long) {
+        val current = playerRepository.exoPlayer?.currentPosition ?: return
+        viewModelScope.launch {
+            playerRepository.seekTo((current + deltaMs).coerceIn(0, playerRepository.exoPlayer?.duration ?: Long.MAX_VALUE))
+        }
+    }
+
     fun setVolume(volume: Float) {
         viewModelScope.launch {
             playerRepository.setVolume(volume)

@@ -20,7 +20,6 @@ interface GestureActionHandler {
  * Concrete handler wired to a [PlayerViewModel] and player callbacks.
  *
  * @property viewModel       for seek, speed, fullscreen, minimize
- * @property currentPositionMs supplier of current playback position
  * @property screenHeight    screen height in px (for normalising brightness delta)
  * @property onIndicator     called with a [GestureIndicator] spec on each ACTIVE/END frame.
  *                           emits [GestureIndicator.None] for actions without indicators.
@@ -31,7 +30,6 @@ interface GestureActionHandler {
  */
 class PlayerGestureActionHandler(
     private val viewModel: PlayerViewModel,
-    private val currentPositionMs: () -> Long,
     private val screenHeight: () -> Float,
     private val context: Context,
     private val activity: Activity? = null,
@@ -95,8 +93,8 @@ class PlayerGestureActionHandler(
 
     override fun handleInstantAction(event: InstantActionEvent) {
         when (event.action) {
-            GestureAction.REWIND_BACK -> viewModel.seekTo(currentPositionMs() - 5000)
-            GestureAction.REWIND_FORWARD -> viewModel.seekTo(currentPositionMs() + 5000)
+            GestureAction.REWIND_BACK -> viewModel.seekBy(-5000)
+            GestureAction.REWIND_FORWARD -> viewModel.seekBy(5000)
             GestureAction.MORPH_TO_FLOATING -> viewModel.minimize()
             GestureAction.MORPH_TO_FULLSCREEN -> viewModel.toggleFullscreen()
             GestureAction.CONTEXT_MENU -> {} // stub
