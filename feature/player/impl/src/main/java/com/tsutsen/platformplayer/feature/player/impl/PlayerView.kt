@@ -132,12 +132,14 @@ fun PlayerView(
         (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
     }
 
-    LaunchedEffect(uiState) {
-        if (uiState is PlayerUiState.Loaded) {
-            val state = uiState as PlayerUiState.Loaded
-            brightnessValue = state.brightness
-            volumeValue = state.volume
-        }
+    // Initialize brightness/volume from state on first load only.
+    // Gesture handler owns these values during interaction; no re-sync during playback.
+    var initialized by remember { mutableStateOf(false) }
+    val loadedState = uiState as? PlayerUiState.Loaded
+    if (loadedState != null && !initialized) {
+        brightnessValue = loadedState.brightness
+        volumeValue = loadedState.volume
+        initialized = true
     }
 
     // ==================== Animation sync ====================
