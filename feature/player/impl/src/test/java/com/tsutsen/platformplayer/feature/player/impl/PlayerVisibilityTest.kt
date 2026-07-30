@@ -35,9 +35,11 @@ class PlayerVisibilityTest {
     }
 
     @Test
-    fun `controls hidden when controlsVisible is false`() {
+    fun `bar alpha unaffected by controlsVisible parameter`() {
+        // controlsVisible no longer affects barAlpha — visibility animation
+        // is handled by controlsVisibleAlpha in PlayerControls.kt
         val v = computeControlsVisibility(0f, 0f, 1f, false)
-        assertEquals(0f, v.barAlpha, 0.001f)
+        assertEquals(1f, v.barAlpha, 0.001f)
     }
 
     @Test

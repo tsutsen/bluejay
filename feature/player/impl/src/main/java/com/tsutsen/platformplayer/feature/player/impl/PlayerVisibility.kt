@@ -27,7 +27,9 @@ fun computeControlsVisibility(
     controlsVisible: Boolean,
     config: PlayerMorphConfig = PlayerMorphConfig.Default,
 ): ControlsVisibility {
-    val controlsVisibleFactor = if (controlsVisible) 1f else 0f
+    // Note: controlsVisible is no longer used here — visibility animation
+    // is handled by controlsVisibleAlpha in PlayerControls.kt via animateFloatAsState.
+    // This function only computes morph/fullscreen/collapse alpha.
 
     // Continuous crossfade replaces isCollapsedControls boolean.
     // playerHeightRatio 0.4+ → fully normal. 0.2- → fully compact. Between → crossfade.
@@ -43,8 +45,8 @@ fun computeControlsVisibility(
     )
     val fullscreenMorphFade = progressAlpha(fullscreenProgress, 0f, 1f, reversed = true)
 
-    val normalBarAlpha = normalMorphFade * fullscreenMorphFade * (1f - collapseAlpha) * controlsVisibleFactor
-    val fullscreenBarAlpha = progressAlpha(fullscreenProgress, 0f, 1f) * controlsVisibleFactor
+    val normalBarAlpha = normalMorphFade * fullscreenMorphFade * (1f - collapseAlpha)
+    val fullscreenBarAlpha = progressAlpha(fullscreenProgress, 0f, 1f)
     val barAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha)
 
     val floatingAlpha = progressAlpha(miniProgress, config.morphTransitionStart, config.morphTransitionEnd)
