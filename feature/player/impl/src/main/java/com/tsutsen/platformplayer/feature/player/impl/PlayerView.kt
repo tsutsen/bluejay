@@ -280,7 +280,10 @@ fun PlayerView(
             // show/hide for pause, morph transitions, and fullscreen.
             // Note: morph.progress is NOT a key — it changes every drag event
             // and would cause unnecessary re-runs that fight the drag.
-            LaunchedEffect(state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value) {
+            // Compact mode: never auto-hide controls (they're always visible)
+            val isCompactMode = (uiState as? PlayerUiState.Loaded)?.mode == PlayerMode.COMPACT
+            
+            LaunchedEffect(state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, isCompactMode) {
                 // During morph transition: hide controls (they'll be replaced by mini controls)
                 if (morph.progress > config.miniSettledThreshold && morph.progress < (1f - config.miniSettledThreshold)) {
                     autoHide.hide()
@@ -289,6 +292,11 @@ fun PlayerView(
                 // When morph is mostly done (mini-player settled): hide normal controls
                 if (morph.progress > config.controlsHideAtProgress) {
                     autoHide.hide()
+                    return@LaunchedEffect
+                }
+                // Compact mode: never auto-hide
+                if (isCompactMode) {
+                    autoHide.show()
                     return@LaunchedEffect
                 }
                 // Only schedule auto-hide timer when settled, playing, and controls are visible
