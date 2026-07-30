@@ -2,7 +2,6 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
-import android.util.Log
 import android.view.View
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -53,7 +52,6 @@ private const val TAG = "PlayerScreen"
 fun PlayerView(
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
-    Log.d(TAG, "PlayerScreen COMPOSE created (overlay mode)")
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -155,7 +153,6 @@ fun PlayerView(
         }
         isMinimizedAnim.value = minimized
         if (!minimized) controlsVisible = true
-        Log.d(TAG, "Animation state synced: isMinimized=$minimized")
     }
 
     LaunchedEffect(isFullscreenState) {
@@ -168,7 +165,6 @@ fun PlayerView(
             fullscreenProgress.animateTo(target, transitionSpringSpec)
         }
         isFullscreenAnim.value = fullscreen
-        Log.d(TAG, "Fullscreen synced: isFullscreen=$fullscreen")
     }
 
     LaunchedEffect(uiState) {
@@ -184,11 +180,6 @@ fun PlayerView(
             // No player active — don't show anything
         }
         is PlayerUiState.Loaded -> {
-            Log.d(TAG, "Current video: ${state.currentVideo?.url}")
-            Log.d(TAG, "Is playing: ${state.isPlaying}")
-            Log.d(TAG, "Is loading: ${state.isLoading}")
-            Log.d(TAG, "Is minimized: ${state.isMinimized}")
-            Log.d(TAG, "Is fullscreen: ${state.isFullscreen}")
 
             LaunchedEffect(state.currentVideo?.url) {
                 isScrubbing = false
@@ -214,10 +205,8 @@ fun PlayerView(
             // ==================== Orientation & system UI ====================
             LaunchedEffect(isLandscape, isSmallWindow, isFullscreen) {
                 if (isLandscape && isSmallWindow && !isFullscreen && !isMinimized) {
-                    Log.d(TAG, "Auto-entering fullscreen: landscape + phone")
                     viewModel.toggleFullscreen()
                 } else if (!isLandscape && isFullscreen) {
-                    Log.d(TAG, "Exiting fullscreen: portrait")
                     viewModel.exitFullscreen()
                 }
             }
@@ -226,7 +215,6 @@ fun PlayerView(
                 val activity = context as? Activity
                 if (activity != null) {
                     androidx.core.view.WindowCompat.setDecorFitsSystemWindows(activity.window, false)
-                    Log.d(TAG, "Edge-to-edge enabled for PlayerScreen")
                 }
             }
 
@@ -242,14 +230,12 @@ fun PlayerView(
                         if (isSmallWindow) {
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                         }
-                        Log.d(TAG, "System UI hidden for fullscreen (animated)")
                     } else {
                         insetsController.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
                         insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                         if (isSmallWindow) {
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
-                        Log.d(TAG, "System UI restored (animated)")
                     }
                 }
             }
@@ -398,7 +384,6 @@ fun PlayerView(
                             is GestureIndicator.Progress -> activeProgressIndicator = indicator
                             is GestureIndicator.TextBadge -> {
                                 badgeKeepAliveCounter++
-                                Log.d(TAG, "onIndicator TextBadge: key=${indicator.key}, label=${indicator.label}, keepAlive=${badgeKeepAliveCounter}")
                                 badgeState = GestureBadgeState(
                                     key = indicator.key,
                                     label = indicator.label,
@@ -409,7 +394,6 @@ fun PlayerView(
                             }
                             is GestureIndicator.Badge -> {
                                 badgeKeepAliveCounter++
-                                Log.d(TAG, "onIndicator Badge: key=${indicator.key}, label=${indicator.format(indicator.value)}, keepAlive=${badgeKeepAliveCounter}")
                                 badgeState = GestureBadgeState(
                                     key = indicator.key,
                                     label = indicator.format(indicator.value),
@@ -422,7 +406,6 @@ fun PlayerView(
                         }
                     },
                     onIndicatorEnd = {
-                        Log.d(TAG, "onIndicatorEnd called")
                         activeProgressIndicator = null
                         // Badges auto-hide via their own fade animation — don't touch badgeState here
                     },
@@ -512,11 +495,9 @@ fun PlayerView(
                             player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
                         },
                         onMinimize = {
-                            Log.d(TAG, "Minimize button clicked")
                             viewModel.minimize()
                         },
                         onFullscreen = {
-                            Log.d(TAG, "Fullscreen button clicked")
                             viewModel.toggleFullscreen()
                         },
                         onExpand = {
@@ -538,7 +519,6 @@ fun PlayerView(
                         },
                         onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
                         onClose = {
-                            Log.d(TAG, "Close mini player: close")
                             viewModel.close()
                         },
                         onReplayToggle = { viewModel.toggleReplay() },

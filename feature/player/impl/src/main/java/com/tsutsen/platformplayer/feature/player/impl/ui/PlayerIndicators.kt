@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +38,6 @@ import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationCo
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.delay
 
-private const val TAG = "BadgeOverlay"
 
 /**
  * State for the centre text badge (seek, speed, etc).
@@ -78,7 +76,6 @@ internal fun GestureIndicatorOverlay(
 
     // Process incoming badge state — keepAlive forces restart on every emission
     LaunchedEffect(badgeState.key, badgeState.keepAlive) {
-        Log.d(TAG, "Effect fired: key=${badgeState.key}, keepAlive=${badgeState.keepAlive}, visible=${badgeState.visible}, session=${session}")
         when {
             !badgeState.visible -> {
                 // Hide request (from onIndicatorEnd)
@@ -113,16 +110,12 @@ internal fun GestureIndicatorOverlay(
         if (!s.visible) return@LaunchedEffect
 
         val waitMs = s.hideAt - System.currentTimeMillis()
-        Log.d(TAG, "Auto-hide waiting: waitMs=$waitMs, session=$s")
         if (waitMs > 0) delay(waitMs)
 
         // Only fade out if this session is still current (no new emission intervened)
-        Log.d(TAG, "Auto-hide check: session==$s? ${session == s}")
         if (session == s) {
-            Log.d(TAG, "Auto-hide: fading out")
             session = s.copy(visible = false)
         } else {
-            Log.d(TAG, "Auto-hide: cancelled by new emission")
         }
     }
 

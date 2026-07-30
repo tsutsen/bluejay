@@ -3,7 +3,6 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
-import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Replay10
@@ -13,8 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-private const val TAG_H = "GestureHandler"
 
 /**
  * Frame-based handler that dispatches gesture frames to the appropriate action.
