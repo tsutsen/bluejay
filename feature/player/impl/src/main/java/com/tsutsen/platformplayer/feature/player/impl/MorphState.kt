@@ -4,8 +4,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import com.tsutsen.platformplayer.core.model.PlayerMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -43,7 +46,9 @@ class MorphState(
     private val morphProgress = Animatable(0f)
     private var animJob: Job? = null
 
-    private var phase: MorphPhase = MorphPhase.Idle
+    var phase: MorphPhase by mutableStateOf(MorphPhase.Idle)
+        private set
+    
     private var dragTravelPx: Float = 1f // Default, updated via onDrag()
 
     sealed interface MorphPhase {
