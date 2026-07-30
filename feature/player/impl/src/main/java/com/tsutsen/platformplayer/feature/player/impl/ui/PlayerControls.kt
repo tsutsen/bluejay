@@ -178,7 +178,9 @@ fun PlayerControls(
                 },
                 bottomBar = {
                     val bottomBarVisibleAlpha = visibility.barAlpha * controlsVisibleAlpha
-                    if (bottomBarVisibleAlpha > 0.01f) {
+                    
+                    // FULLSCREEN bottom overlay (always shown when fullscreen)
+                    if (visibility.mode == PlayerMode.FULLSCREEN) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -187,61 +189,69 @@ fun PlayerControls(
                                     translationY = (1f - controlsVisibleAlpha) * config.controlsSlideDistanceDp.dp.toPx()
                                 }
                         ) {
-                            // FULLSCREEN bottom overlay
-                            if (visibility.mode == PlayerMode.FULLSCREEN) {
-                                PlayerNormalBottomOverlay(
-                                    player = player,
-                                    currentPositionMs = state.currentPositionMs,
-                                    durationMs = state.durationMs,
-                                    isPlaying = state.isPlaying,
-                                    onPlayPause = onPlayPause,
-                                    onPrevious = onPrevious,
-                                    onNext = onNext,
-                                    onChapters = onChapters,
-                                    onFullscreen = onFullscreenToggle,
-                                    onSeek = onSeek,
-                                    isScrubbing = isScrubbing,
-                                    scrubPositionMs = scrubPositionMs
-                                )
-                            }
-
-                            // NORMAL ↔ COMPACT: animated swap (hidden when fullscreen)
-                            if (visibility.mode != PlayerMode.FULLSCREEN && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
-                                androidx.compose.animation.AnimatedContent(
-                                    targetState = visibility.mode == PlayerMode.COMPACT,
-                                    transitionSpec = {
-                                        androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
-                                    },
-                                    label = "normalCompactControls"
-                                ) { collapsed ->
-                                    if (collapsed) {
-                                        PlayerCompactOverlay(
-                                            isPlaying = state.isPlaying,
-                                            isLooping = isLooping,
-                                            onMinimize = onMinimize,
-                                            onPlayPause = onPlayPause,
-                                            onChapters = onChapters,
-                                            onLoopToggle = onLoopToggle,
-                                            onWatchLater = onWatchLater,
-                                            onOptions = onOptions,
-                                            onFullscreen = onFullscreenToggle
-                                        )
-                                    } else {
-                                        PlayerNormalBottomOverlay(
-                                            player = player,
-                                            currentPositionMs = state.currentPositionMs,
-                                            durationMs = state.durationMs,
-                                            isPlaying = state.isPlaying,
-                                            onPlayPause = onPlayPause,
-                                            onPrevious = onPrevious,
-                                            onNext = onNext,
-                                            onChapters = onChapters,
-                                            onFullscreen = onFullscreenToggle,
-                                            onSeek = onSeek,
-                                            isScrubbing = isScrubbing,
-                                            scrubPositionMs = scrubPositionMs
-                                        )
-                                    }
+                            PlayerNormalBottomOverlay(
+                                player = player,
+                                currentPositionMs = state.currentPositionMs,
+                                durationMs = state.durationMs,
+                                isPlaying = state.isPlaying,
+                                onPlayPause = onPlayPause,
+                                onPrevious = onPrevious,
+                                onNext = onNext,
+                                onChapters = onChapters,
+                                onFullscreen = onFullscreenToggle,
+                                onSeek = onSeek,
+                                isScrubbing = isScrubbing,
+                                scrubPositionMs = scrubPositionMs
+                            )
+                        }
+                    }
+                    
+                    // NORMAL ↔ COMPACT: animated swap (hidden when fullscreen)
+                    // Shown independently of barAlpha because compact mode needs its own controls
+                    if (visibility.mode != PlayerMode.FULLSCREEN && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
+                        val compactAlpha = if (visibility.mode == PlayerMode.COMPACT) controlsVisibleAlpha else bottomBarVisibleAlpha
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .alpha(compactAlpha)
+                                .graphicsLayer {
+                                    translationY = (1f - controlsVisibleAlpha) * config.controlsSlideDistanceDp.dp.toPx()
+                                }
+                        ) {
+                            androidx.compose.animation.AnimatedContent(
+                                targetState = visibility.mode == PlayerMode.COMPACT,
+                                transitionSpec = {
+                                    androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
+                                },
+                                label = "normalCompactControls"
+                            ) { collapsed ->
+                                if (collapsed) {
+                                    PlayerCompactOverlay(
+                                        isPlaying = state.isPlaying,
+                                        isLooping = isLooping,
+                                        onMinimize = onMinimize,
+                                        onPlayPause = onPlayPause,
+                                        onChapters = onChapters,
+                                        onLoopToggle = onLoopToggle,
+                                        onWatchLater = onWatchLater,
+                                        onOptions = onOptions,
+                                        onFullscreen = onFullscreenToggle
+                                    )
+                                } else {
+                                    PlayerNormalBottomOverlay(
+                                        player = player,
+                                        currentPositionMs = state.currentPositionMs,
+                                        durationMs = state.durationMs,
+                                        isPlaying = state.isPlaying,
+                                        onPlayPause = onPlayPause,
+                                        onPrevious = onPrevious,
+                                        onNext = onNext,
+                                        onChapters = onChapters,
+                                        onFullscreen = onFullscreenToggle,
+                                        onSeek = onSeek,
+                                        isScrubbing = isScrubbing,
+                                        scrubPositionMs = scrubPositionMs
+                                    )
                                 }
                             }
                         }
