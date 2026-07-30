@@ -58,9 +58,20 @@ class PlayerGestureActionHandler(
     // --- morph drag state ---
     private var morphStartDelta = 0f
 
+    // --- consecutive double-tap seek accumulation ---
+    private var lastSeekAction: GestureAction? = null
+    private var lastSeekTimeMs: Long = 0L
+    private var accumulatedSeekMs: Long = 0L
+
     init {
         audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
+    }
+
+    companion object {
+        private const val SEEK_STEP_MS = 5000L
+        /** Window in which same-direction double-taps accumulate into one running total. */
+        private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
     }
 
     fun snapshotBrightness() {
@@ -96,29 +107,48 @@ class PlayerGestureActionHandler(
 
     override fun handleInstantAction(event: InstantActionEvent) {
         when (event.action) {
-            GestureAction.REWIND_BACK -> {
-                viewModel.seekBy(-5000)
-                onIndicator(GestureIndicator.TextBadge(
-                    key = "rewind_back",
-                    label = "-5s",
-                    icon = Icons.Default.Replay10,
-                ))
-                onIndicatorEnd()
-            }
-            GestureAction.REWIND_FORWARD -> {
-                viewModel.seekBy(5000)
-                onIndicator(GestureIndicator.TextBadge(
-                    key = "rewind_forward",
-                    label = "+5s",
-                    icon = Icons.Default.Forward10,
-                ))
-                onIndicatorEnd()
-            }
+            GestureAction.REWIND_BACK,
+            GestureAction.REWIND_FORWARD -> handleAccumulatedSeek(event.action)
             GestureAction.MORPH_TO_FLOATING -> viewModel.minimize()
             GestureAction.MORPH_TO_FULLSCREEN -> viewModel.toggleFullscreen()
             GestureAction.CONTEXT_MENU -> {} // stub
             else -> {}
         }
+    }
+
+    /**
+     * Applies a ±5s seek and, if the same direction was tapped again within
+     * [SEEK_ACCUMULATE_WINDOW_MS], accumulates the total so the badge shows
+     * e.g. -15s / +20s instead of always -5s / +5s.
+     */
+    private fun handleAccumulatedSeek(action: GestureAction) {
+        val now = System.currentTimeMillis()
+        val stepMs = if (action == GestureAction.REWIND_BACK) -SEEK_STEP_MS else SEEK_STEP_MS
+
+        accumulatedSeekMs = if (
+            action == lastSeekAction &&
+            now - lastSeekTimeMs < SEEK_ACCUMULATE_WINDOW_MS
+        ) {
+            accumulatedSeekMs + stepMs
+        } else {
+            stepMs
+        }
+        lastSeekAction = action
+        lastSeekTimeMs = now
+
+        viewModel.seekBy(stepMs)
+
+        val seconds = accumulatedSeekMs / 1000
+        val label = if (seconds > 0) "+${seconds}s" else "${seconds}s"
+        val isBack = action == GestureAction.REWIND_BACK
+        onIndicator(
+            GestureIndicator.TextBadge(
+                key = if (isBack) "rewind_back" else "rewind_forward",
+                label = label,
+                icon = if (isBack) Icons.Default.Replay10 else Icons.Default.Forward10,
+            )
+        )
+        onIndicatorEnd()
     }
 
     // ---- Brightness (swipe vertical, continuous) ----

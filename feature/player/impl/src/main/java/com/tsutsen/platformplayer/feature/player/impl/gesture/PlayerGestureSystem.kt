@@ -10,14 +10,17 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -28,7 +31,7 @@ private const val SWIPE_THRESHOLD = 30f          // px to recognise swipe vs jit
 private const val HOLD_JITTER_THRESHOLD = 15f    // max drift before hold still activates
 private const val HOLD_TIMEOUT_MS = 500L         // ms to trigger hold
 private const val DOUBLE_TAP_TIMEOUT_MS = 300L   // max gap between taps for double-tap
-private const val TOUCH_SLOP = 12f               // tap drift tolerance
+private const val DOUBLE_TAP_SLOP_DP = 36f       // tap drift tolerance between the two taps (dp)
 
 // ---- morph drag thresholds (from existing code) ----
 private const val MORPH_DRAG_MIN_VELLOCITY = 0.3f // fraction of container height
@@ -72,7 +75,9 @@ fun PlayerGestureSystem(
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    var pendingTapJob: Job? = null
+    // Survive recomposition / pointerInput restart so an in-flight deferred single-tap
+    // can still be cancelled when a second tap arrives.
+    var pendingTapJob by remember { mutableStateOf<Job?>(null) }
     val currentHandler by rememberUpdatedState(handler)
     val currentConfigs by rememberUpdatedState(gestureConfigs)
     val currentOverlayMode by rememberUpdatedState(overlayMode)
@@ -86,6 +91,7 @@ fun PlayerGestureSystem(
     val currentOnOffsetChanged by rememberUpdatedState(onOffsetChanged)
     val currentContainerWidth by rememberUpdatedState(containerWidth)
     val currentContainerHeight by rememberUpdatedState(containerHeight)
+    val currentDoubleTapSlopPx by rememberUpdatedState(with(density) { DOUBLE_TAP_SLOP_DP.dp.toPx() })
 
     Box(modifier = modifier) {
         // ---- Floating mode: drag + tap ----
@@ -200,7 +206,7 @@ fun PlayerGestureSystem(
                                 (downPos.y - lastTapPos.y) * (downPos.y - lastTapPos.y)
                             )
 
-                            if (timeSinceLastTap < DOUBLE_TAP_TIMEOUT_MS && distFromLastTap < TOUCH_SLOP) {
+                            if (timeSinceLastTap < DOUBLE_TAP_TIMEOUT_MS && distFromLastTap < currentDoubleTapSlopPx) {
                                 // Double-tap detected — cancel pending single-tap
                                 pendingTapJob?.cancel()
                                 pendingTapJob = null
