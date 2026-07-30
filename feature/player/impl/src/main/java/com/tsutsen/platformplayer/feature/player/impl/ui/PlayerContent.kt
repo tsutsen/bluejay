@@ -29,6 +29,11 @@ import androidx.media3.exoplayer.ExoPlayer
 
 private const val TAG = "PlayerContent"
 
+// Details panel fades out earlier than controls to prevent visual overlap during morph.
+// Details start fading at 0.1 and are fully gone by 0.4, while controls fade later.
+const val DETAILS_FADE_START = 0.1f
+const val DETAILS_FADE_END = 0.4f
+
 /**
  * Unified player content composable. Computes derived alpha weights, resolved visibility,
  * and video geometry, then delegates to GestureLayer, ControlsLayer, and DetailsPanel.
@@ -60,6 +65,7 @@ fun PlayerContent(
     nestedScrollConnection: NestedScrollConnection,
     gestureBindingsState: State<GestureBindings>,
     isDraggingMiniPlayer: Boolean,
+    isMorphDragging: Boolean,
     onDragStateChanged: (Boolean) -> Unit,
     onOffsetChanged: (x: Float, y: Float) -> Unit,
     currentOffsetX: Float,
@@ -144,8 +150,20 @@ fun PlayerContent(
         // events, allowing the feed behind the floating mini player to be scrolled.
         val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
 
+        // Details fade out earlier than controls to prevent visual overlap during morph.
+        val detailsFadeAlpha = if (miniProgress <= DETAILS_FADE_START) {
+            1f
+        } else if (miniProgress >= DETAILS_FADE_END) {
+            0f
+        } else {
+            (DETAILS_FADE_END - miniProgress) / (DETAILS_FADE_END - DETAILS_FADE_START)
+        }.coerceAtLeast(0f)
+
+        val detailsAlpha = (1f - miniProgress) * (1f - fullscreenProgress)
+        val detailsAlphaFinal = detailsAlpha * detailsFadeAlpha
+
         AnimatedVisibility(
-            visible = visibility.showDetails,
+            visible = visibility.showDetails && detailsAlphaFinal > 0.01f,
             enter = fadeIn(animationSpec = tween(config.effectiveDuration(250))),
             exit = fadeOut(animationSpec = tween(config.effectiveDuration(250))),
         ) {
@@ -156,6 +174,7 @@ fun PlayerContent(
                     .fillMaxHeight()
                     .graphicsLayer {
                         translationY = visibility.detailsTranslateY
+                        alpha = detailsAlphaFinal
                     }
                     .then(nestedScrollModifier)
             ) {
@@ -220,6 +239,7 @@ fun PlayerContent(
             currentOffsetY = currentOffsetY,
             onDragStateChanged = onDragStateChanged,
             onOffsetChanged = onOffsetChanged,
+            isMorphDragging = isMorphDragging,
         )
     }
 }

@@ -106,6 +106,9 @@ fun PlayerView(
 
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableStateOf(0L) }
+    
+    // Track morph drag state to hide controls during drag
+    var isMorphDragging by remember { mutableStateOf(false) }
 
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
@@ -425,6 +428,7 @@ fun PlayerView(
                     actions = createGestureActions(
                         GestureCallbacks(
                             onMorphDragStart = {
+                                isMorphDragging = true
                                 morph.onDragStart(
                                     onModeComputed = {},
                                     onStartProgress = { morph.progress }
@@ -434,6 +438,7 @@ fun PlayerView(
                                 morph.onDrag(deltaY, dragTravelPx)
                             },
                             onMorphDragEnd = {
+                                isMorphDragging = false
                                 val progress = morph.progress
                                 morph.onDragEnd(
                                     onSnapTo = { morph.snapTo(it) },
@@ -521,6 +526,7 @@ fun PlayerView(
                         nestedScrollConnection = nestedScrollConnection,
                         gestureBindingsState = gestureBindingsState,
                         isDraggingMiniPlayer = isDraggingMiniPlayer,
+                        isMorphDragging = isMorphDragging,
                         onDragStateChanged = { isDraggingMiniPlayer = it },
                         onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
                         currentOffsetX = miniPlayerOffsetX,
