@@ -1,40 +1,30 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import android.util.Log
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerCompactOverlay
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerFloatingOverlay
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalBottomOverlay
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalTopOverlay
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
-import kotlin.math.abs
-import kotlin.math.sqrt
 
 private const val TAG = "PlayerControls"
 private const val CONTROLS_SLIDE_DISTANCE_DP = 24
@@ -90,7 +80,7 @@ fun PlayerControls(
     onReplayToggle: () -> Unit,
     onOptions: () -> Unit,
     onSeek: (Long) -> Unit,
-    gestureCallbacks: PlayerGestureCallbacks,
+    isMorphDragging: Boolean,
     onMorphDragStart: () -> Unit,
     onMorphDrag: (dragY: Float) -> Unit,
     onMorphDragEnd: (dragY: Float) -> Unit
@@ -98,12 +88,8 @@ fun PlayerControls(
     val density = LocalDensity.current
 
     // ==================== Controls hide/show animation ====================
-    // `controlsVisible` was previously threaded through as a parameter but never actually
-    // applied to anything - restoring that here. Also tracks morph-drag-active locally so
-    // controls hide the instant a morph swipe starts, regardless of what drives
-    // `controlsVisible` upstream. `isMorphDragging` is flipped in the gesture handler below,
-    // right where onMorphDragStart()/onMorphDragEnd() already fire.
-    var isMorphDragging by remember { mutableStateOf(false) }
+    // `isMorphDragging` is driven by PlayerGestureSystem and passed in from PlayerView;
+    // when true, controls fade out instantly so the morph drag visual is unobstructed.
     val controlsVisibleAlpha by animateFloatAsState(
         targetValue = if (controlsVisible && !isMorphDragging) 1f else 0f,
         animationSpec = tween(durationMillis = 200),
@@ -146,97 +132,7 @@ fun PlayerControls(
                             .size(
                                 width = with(density) { videoLayout.widthPx.toDp() },
                                 height = with(density) { videoLayout.heightPx.toDp() }
-                            )
-                            .pointerInput(Unit) {
-                                var lastTapTime = 0L
-                                var lastTapX = 0f
-                                var lastTapY = 0f
-
-                                awaitEachGesture {
-                                    // requireUnconsumed = true is essential here: without it, a
-                                    // tap that started on a child control (Play/Pause, minimize,
-                                    // chapters, etc.) still reaches this loop even after the
-                                    // child's own clickable already consumed it, and gets
-                                    // (mis)treated as a background tap - toggling
-                                    // controlsVisible as an unwanted side effect of pressing any
-                                    // button. That's what caused controls to blink on
-                                    // play/pause: the button press toggled controlsVisible off,
-                                    // then the isPlaying-changed effect in PlayerView.kt forced
-                                    // it back on a frame later.
-                                    val down = awaitFirstDown(requireUnconsumed = true)
-                                    var totalDragY = 0f
-                                    var pastSlop = false
-                                    var pointerId = down.id
-                                    var isDownward = false
-
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        val change = event.changes.firstOrNull { it.id == pointerId }
-                                            ?: break
-
-                                        // A child (e.g. a button's long-press ripple) claimed
-                                        // this touch after the initial down - bail out rather
-                                        // than treating it as a background tap or morph drag.
-                                        // Once pastSlop is true we've already claimed the
-                                        // gesture ourselves via change.consume() below, so this
-                                        // check only applies before that point.
-                                        if (!pastSlop && change.isConsumed) break
-
-                                        if (change.previousPressed && !change.pressed) {
-                                            if (!pastSlop) {
-                                                if (miniProgress > MINI_SETTLED_THRESHOLD) break
-
-                                                val now = System.currentTimeMillis()
-                                                val dx = change.previousPosition.x - lastTapX
-                                                val dy = change.previousPosition.y - lastTapY
-                                                val dist = sqrt(dx * dx + dy * dy)
-
-                                                if (now - lastTapTime < DOUBLE_TAP_TIMEOUT_MS && dist < TOUCH_SLOP) {
-                                                    val videoWidth = videoLayout.widthPx
-                                                    val third = videoWidth / 3f
-                                                    if (change.position.x < third) {
-                                                        onSeek(-5000)
-                                                    } else if (change.position.x > videoWidth - third) {
-                                                        onSeek(5000)
-                                                    }
-                                                } else {
-                                                    gestureCallbacks.onTap()
-                                                }
-                                                lastTapTime = now
-                                                lastTapX = change.position.x
-                                                lastTapY = change.position.y
-                                            } else {
-                                                isMorphDragging = false
-                                                onMorphDragEnd(totalDragY)
-                                            }
-                                            break
-                                        }
-
-                                        val dy = change.position.y - change.previousPosition.y
-                                        if (!pastSlop) {
-                                            totalDragY += dy
-                                            if (abs(totalDragY) > TOUCH_SLOP) {
-                                                pastSlop = true
-                                                if (totalDragY > 0f) {
-                                                    isDownward = true
-                                                    isMorphDragging = true
-                                                    onMorphDragStart()
-                                                    change.consume()
-                                                    onMorphDrag(totalDragY)
-                                                } else {
-                                                    break
-                                                }
-                                            }
-                                        } else {
-                                            if (isDownward) {
-                                                totalDragY += dy
-                                                change.consume()
-                                                onMorphDrag(totalDragY)
-                                            }
-                                        }
-                                    }
-                                }
-                            },
+                            ),
                         isLoading = isLoading,
                         brightnessValue = brightnessValue,
                         volumeValue = volumeValue,

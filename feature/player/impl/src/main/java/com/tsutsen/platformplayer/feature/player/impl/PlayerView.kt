@@ -371,10 +371,44 @@ fun PlayerView(
                 fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else containerSize.height
             )
 
-            // ==================== Gesture callbacks ====================
-            val gestureCallbacks = PlayerGestureCallbacks(
-                onTap = {
-                    if (morphProgress.value > 0.01f && morphProgress.value < 0.99f) return@PlayerGestureCallbacks
+            // ==================== Overlay mode ====================
+            val overlayMode = when {
+                isMinimized && !isFullscreen -> PlayerOverlayMode.FLOATING
+                isFullscreen -> PlayerOverlayMode.FULLSCREEN
+                isCollapsedControls -> PlayerOverlayMode.COMPACT
+                else -> PlayerOverlayMode.NORMAL
+            }
+
+            // ==================== Gesture configs (defaults, user overrides later) ====================
+            val gestureConfigs = remember {
+                com.tsutsen.platformplayer.feature.player.impl.gesture.buildDefaultGestureConfigs()
+            }
+
+            // ==================== Gesture action handler ====================
+            val gestureHandler = remember {
+                com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureActionHandler(
+                    viewModel = viewModel,
+                    currentPositionMs = { state.currentPositionMs },
+                    screenHeight = containerSize.height,
+                    context = context,
+                    activity = context as? android.app.Activity,
+                    onBrightnessChanged = { bv ->
+                        brightnessValue = bv
+                        showBrightnessIndicator = true
+                        coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
+                    },
+                    onVolumeChanged = { vv ->
+                        volumeValue = vv
+                        showVolumeIndicator = true
+                        coroutineScope.launch { delay(1500); showVolumeIndicator = false }
+                    },
+                    onSpeedChanged = { /* TODO: drive speed badge UI */ }
+                )
+            }
+
+            // ==================== Tap handler (toggle controls) ====================
+            val onTap: () -> Unit = {
+                if (morphProgress.value !in 0.01f..0.99f) {
                     controlsVisible = !controlsVisible
                     hideControlsJob?.cancel()
                     if (controlsVisible && state.isPlaying) {
@@ -383,40 +417,8 @@ fun PlayerView(
                             controlsVisible = false
                         }
                     }
-                },
-                onDoubleTap = {
-                    if (isFullscreen) {
-                        Log.d(TAG, "Double-tap: exit fullscreen")
-                        viewModel.exitFullscreen()
-                    } else {
-                        Log.d(TAG, "Double-tap: enter fullscreen")
-                        viewModel.toggleFullscreen()
-                    }
-                },
-                onVerticalDragStart = { },
-                onVerticalDrag = { touchX, dragAmountPx, areaWidthPx ->
-                    val delta = -dragAmountPx / 500f
-                    if (touchX < areaWidthPx / 2) {
-                        brightnessValue = (brightnessValue + delta).coerceIn(0f, 1f)
-                        viewModel.setBrightness(brightnessValue)
-                        showBrightnessIndicator = true
-                        coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
-                    } else {
-                        volumeValue = (volumeValue + delta).coerceIn(0f, 1f)
-                        viewModel.setVolume(volumeValue)
-                        showVolumeIndicator = true
-                        coroutineScope.launch { delay(1500); showVolumeIndicator = false }
-                    }
-                },
-                onSpeedHoldStart = {
-                    Log.d(TAG, "Speed hold start: 2x")
-                    viewModel.setPlaybackSpeed(2f)
-                },
-                onSpeedHoldEnd = {
-                    Log.d(TAG, "Speed hold end: normal")
-                    viewModel.setPlaybackSpeed(1f)
                 }
-            )
+            }
 
             // ==================== Compose ====================
             Box(
@@ -459,7 +461,12 @@ fun PlayerView(
                         showBottomOverlay = controlsVisible,
                         scrollState = scrollState,
                         nestedScrollConnection = nestedScrollConnection,
-                        gestureCallbacks = gestureCallbacks,
+                        overlayMode = overlayMode,
+                        gestureConfigs = gestureConfigs,
+                        gestureHandler = gestureHandler,
+                        isScrubbing = isScrubbing,
+                        isMorphDragging = isDraggingMorph,
+                        onTap = onTap,
                         isDraggingMiniPlayer = isDraggingMiniPlayer,
                         onDragStateChanged = { isDraggingMiniPlayer = it },
                         onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
@@ -477,7 +484,6 @@ fun PlayerView(
                         volumeValue = volumeValue,
                         showBrightnessIndicator = showBrightnessIndicator,
                         showVolumeIndicator = showVolumeIndicator,
-                        isScrubbing = isScrubbing,
                         scrubPositionMs = scrubPositionMs,
                         isLooping = isLooping,
                         onLoopToggle = {
@@ -524,9 +530,7 @@ fun PlayerView(
                             viewModel.seekTo(positionMs)
                         },
                         onMoreOptions = { showMiniPlayerOptions = true },
-                        onFullscreenToggle = { viewModel.toggleFullscreen() },
-                        onSpeedHoldStart = { viewModel.setPlaybackSpeed(2f) },
-                        onSpeedHoldEnd = { viewModel.setPlaybackSpeed(1f) }
+                        onFullscreenToggle = { viewModel.toggleFullscreen() }
                     )
                 }
 

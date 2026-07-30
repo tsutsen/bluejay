@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
+import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureActionHandler
+import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs
+import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureSystem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -24,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
+import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureSystem
 
 private const val TAG = "PlayerContent"
 
@@ -62,12 +66,17 @@ fun PlayerContent(
     showBottomOverlay: Boolean,
     scrollState: LazyListState,
     nestedScrollConnection: NestedScrollConnection,
-    gestureCallbacks: PlayerGestureCallbacks,
+    overlayMode: com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode,
+    gestureConfigs: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs,
+    gestureHandler: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureActionHandler,
+    isScrubbing: Boolean,
+    isMorphDragging: Boolean,
     isDraggingMiniPlayer: Boolean,
     onDragStateChanged: (Boolean) -> Unit,
     onOffsetChanged: (x: Float, y: Float) -> Unit,
     currentOffsetX: Float,
     currentOffsetY: Float,
+    onTap: () -> Unit,
     onOptions: () -> Unit,
     onChapters: () -> Unit,
     expandedDescription: Boolean,
@@ -80,7 +89,6 @@ fun PlayerContent(
     volumeValue: Float,
     showBrightnessIndicator: Boolean,
     showVolumeIndicator: Boolean,
-    isScrubbing: Boolean,
     scrubPositionMs: Long,
     isLooping: Boolean,
     onLoopToggle: () -> Unit,
@@ -98,9 +106,7 @@ fun PlayerContent(
     onNext: () -> Unit,
     onSeek: (Long) -> Unit,
     onMoreOptions: () -> Unit,
-    onFullscreenToggle: () -> Unit,
-    onSpeedHoldStart: () -> Unit = {},
-    onSpeedHoldEnd: () -> Unit = {}
+    onFullscreenToggle: () -> Unit
 ) {
     val density = LocalDensity.current
 
@@ -187,28 +193,30 @@ fun PlayerContent(
         PlayerVideoSurface(player = player, modifier = Modifier.then(videoModifier))
 
         // ==================== 2. GestureLayer ====================
-        PlayerGestures(
+        PlayerGestureSystem(
             modifier = Modifier.fillMaxSize(),
-            videoLayout = videoLayout,
-            miniProgress = miniProgress,
-            fullscreenProgress = fullscreenProgress,
+            overlayMode = overlayMode,
+            gestureConfigs = gestureConfigs,
+            handler = gestureHandler,
+            isScrubbing = isScrubbing,
             containerWidth = containerWidth,
             containerHeight = containerHeight,
-            miniWidthPx = miniWidthPx,
-            miniHeightPx = miniHeightPx,
+            onTap = onTap,
+            onMorphDragStart = onMorphDragStart,
+            onMorphDrag = onMorphDrag,
+            onMorphDragEnd = onMorphDragEnd,
+            // Floating mode
+            floatingVideoLayout = videoLayout,
+            isDraggingMiniPlayer = isDraggingMiniPlayer,
+            onDragStateChanged = onDragStateChanged,
+            onOffsetChanged = onOffsetChanged,
+            onExpand = onExpand,
             floatingRestX = floatingRestX,
             floatingRestY = floatingRestY,
             currentOffsetX = currentOffsetX,
             currentOffsetY = currentOffsetY,
-            isDraggingMiniPlayer = isDraggingMiniPlayer,
-            onDragStateChanged = onDragStateChanged,
-            onOffsetChanged = onOffsetChanged,
-            gestureCallbacks = gestureCallbacks,
-            onExpand = onExpand,
-            onSeek = onSeek,
-            isCollapsedControls = isCollapsedControls,
-            onSpeedHoldStart = onSpeedHoldStart,
-            onSpeedHoldEnd = onSpeedHoldEnd
+            miniWidthPx = miniWidthPx,
+            miniHeightPx = miniHeightPx
         )
 
         // ==================== 3. Details panel (LazyColumn) ====================
@@ -296,7 +304,7 @@ fun PlayerContent(
             onReplayToggle = onReplayToggle,
             onOptions = onOptions,
             onSeek = onSeek,
-            gestureCallbacks = gestureCallbacks,
+            isMorphDragging = isMorphDragging,
             onMorphDragStart = onMorphDragStart,
             onMorphDrag = onMorphDrag,
             onMorphDragEnd = onMorphDragEnd
