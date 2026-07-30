@@ -115,75 +115,115 @@ fun PlayerControls(
 
     Box(modifier = modifier) {
         // ==================== Normal controls (fade out during morph) ====================
-        if (miniProgress <= PlayerMorphConfig.Default.miniDragThreshold) {
-            val config = PlayerMorphConfig.Default
-            // Keep the subtree composed regardless of controlsVisible so the gesture
-            // handler (.playerGesture on PlayerUIScaffold) remains active for
-            // tap-to-reveal.  Modifier.alpha(0f) still receives touches in Compose.
-            // AnimatedVisibility was removed here because normalAlpha includes
-            // controlsVisibleFactor — when controls auto-hide, normalAlpha → 0 and
-            // AnimatedVisibility would remove the gesture handler from composition,
-            // making taps fall through silently.
-                Box(modifier = Modifier.alpha(visibility.barAlpha * controlsVisibleAlpha)) {
-                    val gradientAlpha = visibility.barAlpha * controlsVisibleAlpha
-                    PlayerUIScaffold(
-                        modifier = Modifier
-                            .offset {
-                                IntOffset(
-                                    x = videoLayout.offsetX.toInt(),
-                                    y = videoLayout.offsetY.toInt()
+        // IMPORTANT: this subtree must stay composed across the ENTIRE [0,1] morph range,
+        // same as the floating overlay below. It carries the .playerGesture modifier that
+        // tracks the swipe-down-to-morph drag; gating it behind `miniProgress <= threshold`
+        // used to tear the node (and its live pointerInput coroutine) out of the tree the
+        // instant the drag crossed the threshold, cancelling the gesture mid-swipe and
+        // forcing a fresh awaitFirstDown() on the next frame — that's what produced the
+        // stutter/snap-back. Visibility is driven purely by alpha instead (barAlpha already
+        // goes to 0 well before the drag completes), exactly like the controlsVisible case
+        // documented below. Modifier.alpha(0f) still receives touches in Compose, which is
+        // what keeps the gesture handler alive for the rest of the drag.
+        val config = PlayerMorphConfig.Default
+        Box(modifier = Modifier.alpha(visibility.barAlpha * controlsVisibleAlpha)) {
+            val gradientAlpha = visibility.barAlpha * controlsVisibleAlpha
+            PlayerUIScaffold(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = videoLayout.offsetX.toInt(),
+                            y = videoLayout.offsetY.toInt()
+                        )
+                    }
+                    .size(
+                        width = with(density) { videoLayout.widthPx.toDp() },
+                        height = with(density) { videoLayout.heightPx.toDp() }
+                    )
+                    .playerGesture(
+                        bindings = gestureBindingsState,
+                        areaSize = rememberUpdatedState(videoLayout.widthPx to videoLayout.heightPx)
+                    ),
+                isLoading = isLoading,
+                brightnessValue = brightnessValue,
+                volumeValue = volumeValue,
+                showBrightnessIndicator = showBrightnessIndicator,
+                showVolumeIndicator = showVolumeIndicator,
+                showTopBar = visibility.showBars,
+                showBottomBar = visibility.showBars,
+                gradientAlpha = gradientAlpha,
+                topBar = {
+                    val topBarVisibleAlpha = visibility.barAlpha * controlsVisibleAlpha
+                    if (topBarVisibleAlpha > 0.01f) {
+                        Box(
+                            modifier = Modifier
+                                .alpha(topBarVisibleAlpha)
+                                .graphicsLayer {
+                                    translationY = (1f - controlsVisibleAlpha) * -config.controlsSlideDistanceDp.dp.toPx()
+                                }
+                        ) {
+                            PlayerNormalTopOverlay(
+                                title = state.currentVideo?.title ?: "Unknown",
+                                channelName = state.currentVideo?.author?.name ?: "Unknown",
+                                onMinimize = onMinimize,
+                                onReplayToggle = onReplayToggle,
+                                onWatchLater = onWatchLater,
+                                onOptions = onOptions
+                            )
+                        }
+                    }
+                },
+                bottomBar = {
+                    val bottomBarVisibleAlpha = visibility.barAlpha * controlsVisibleAlpha
+                    if (bottomBarVisibleAlpha > 0.01f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .alpha(bottomBarVisibleAlpha)
+                                .graphicsLayer {
+                                    translationY = (1f - controlsVisibleAlpha) * config.controlsSlideDistanceDp.dp.toPx()
+                                }
+                        ) {
+                            // FULLSCREEN bottom overlay
+                            if (visibility.mode == PlayerMode.FULLSCREEN) {
+                                PlayerNormalBottomOverlay(
+                                    player = player,
+                                    currentPositionMs = state.currentPositionMs,
+                                    durationMs = state.durationMs,
+                                    isPlaying = state.isPlaying,
+                                    onPlayPause = onPlayPause,
+                                    onPrevious = onPrevious,
+                                    onNext = onNext,
+                                    onChapters = onChapters,
+                                    onFullscreen = onFullscreenToggle,
+                                    onSeek = onSeek,
+                                    isScrubbing = isScrubbing,
+                                    scrubPositionMs = scrubPositionMs
                                 )
                             }
-                            .size(
-                                width = with(density) { videoLayout.widthPx.toDp() },
-                                height = with(density) { videoLayout.heightPx.toDp() }
-                            )
-                            .playerGesture(
-                                bindings = gestureBindingsState,
-                                areaSize = rememberUpdatedState(videoLayout.widthPx to videoLayout.heightPx)
-                            ),
-                        isLoading = isLoading,
-                        brightnessValue = brightnessValue,
-                        volumeValue = volumeValue,
-                        showBrightnessIndicator = showBrightnessIndicator,
-                        showVolumeIndicator = showVolumeIndicator,
-                        showTopBar = visibility.showBars,
-                        showBottomBar = visibility.showBars,
-                        gradientAlpha = gradientAlpha,
-                        topBar = {
-                            val topBarVisibleAlpha = visibility.barAlpha * controlsVisibleAlpha
-                            if (topBarVisibleAlpha > 0.01f) {
-                                Box(
-                                    modifier = Modifier
-                                        .alpha(topBarVisibleAlpha)
-                                        .graphicsLayer {
-                                            translationY = (1f - controlsVisibleAlpha) * -config.controlsSlideDistanceDp.dp.toPx()
-                                        }
-                                ) {
-                                    PlayerNormalTopOverlay(
-                                        title = state.currentVideo?.title ?: "Unknown",
-                                        channelName = state.currentVideo?.author?.name ?: "Unknown",
-                                        onMinimize = onMinimize,
-                                        onReplayToggle = onReplayToggle,
-                                        onWatchLater = onWatchLater,
-                                        onOptions = onOptions
-                                    )
-                                }
-                            }
-                        },
-                        bottomBar = {
-                            val bottomBarVisibleAlpha = visibility.barAlpha * controlsVisibleAlpha
-                            if (bottomBarVisibleAlpha > 0.01f) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .alpha(bottomBarVisibleAlpha)
-                                        .graphicsLayer {
-                                            translationY = (1f - controlsVisibleAlpha) * config.controlsSlideDistanceDp.dp.toPx()
-                                        }
-                                ) {
-                                    // FULLSCREEN bottom overlay
-                                    if (visibility.mode == PlayerMode.FULLSCREEN) {
+
+                            // NORMAL ↔ COMPACT: animated swap (hidden when fullscreen)
+                            if (visibility.mode != PlayerMode.FULLSCREEN && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
+                                androidx.compose.animation.AnimatedContent(
+                                    targetState = visibility.mode == PlayerMode.COMPACT,
+                                    transitionSpec = {
+                                        androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
+                                    },
+                                    label = "normalCompactControls"
+                                ) { collapsed ->
+                                    if (collapsed) {
+                                        PlayerCompactOverlay(
+                                            isPlaying = state.isPlaying,
+                                            isLooping = isLooping,
+                                            onMinimize = onMinimize,
+                                            onPlayPause = onPlayPause,
+                                            onChapters = onChapters,
+                                            onLoopToggle = onLoopToggle,
+                                            onWatchLater = onWatchLater,
+                                            onOptions = onOptions,
+                                            onFullscreen = onFullscreenToggle
+                                        )
+                                    } else {
                                         PlayerNormalBottomOverlay(
                                             player = player,
                                             currentPositionMs = state.currentPositionMs,
@@ -199,52 +239,13 @@ fun PlayerControls(
                                             scrubPositionMs = scrubPositionMs
                                         )
                                     }
-
-                                    // NORMAL ↔ COMPACT: animated swap (hidden when fullscreen)
-                                    if (visibility.mode != PlayerMode.FULLSCREEN && miniProgress < PlayerMorphConfig.Default.miniDragThreshold) {
-                                        androidx.compose.animation.AnimatedContent(
-                                            targetState = visibility.mode == PlayerMode.COMPACT,
-                                            transitionSpec = {
-                                                androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
-                                            },
-                                            label = "normalCompactControls"
-                                        ) { collapsed ->
-                                            if (collapsed) {
-                                                PlayerCompactOverlay(
-                                                    isPlaying = state.isPlaying,
-                                                    isLooping = isLooping,
-                                                    onMinimize = onMinimize,
-                                                    onPlayPause = onPlayPause,
-                                                    onChapters = onChapters,
-                                                    onLoopToggle = onLoopToggle,
-                                                    onWatchLater = onWatchLater,
-                                                    onOptions = onOptions,
-                                                    onFullscreen = onFullscreenToggle
-                                                )
-                                            } else {
-                                                PlayerNormalBottomOverlay(
-                                                    player = player,
-                                                    currentPositionMs = state.currentPositionMs,
-                                                    durationMs = state.durationMs,
-                                                    isPlaying = state.isPlaying,
-                                                    onPlayPause = onPlayPause,
-                                                    onPrevious = onPrevious,
-                                                    onNext = onNext,
-                                                    onChapters = onChapters,
-                                                    onFullscreen = onFullscreenToggle,
-                                                    onSeek = onSeek,
-                                                    isScrubbing = isScrubbing,
-                                                    scrubPositionMs = scrubPositionMs
-                                                )
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
-                    )
+                    }
                 }
-            }
+            )
+        }
 
         // ==================== Floating controls (fade in during morph) ====================
         // NOTE: this subtree is ALWAYS composed (no outer `if` gate on miniProgress).

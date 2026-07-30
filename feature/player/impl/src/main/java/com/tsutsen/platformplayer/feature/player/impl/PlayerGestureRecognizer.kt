@@ -45,63 +45,81 @@ fun Modifier.playerGesture(
         var lastTapX = 0f
         var lastTapY = 0f
         var isLongPress = false
+        var lastPosition = down.position
+        var endedCleanly = false
 
-        while (true) {
-            val event = awaitPointerEvent()
-            val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+        try {
+            while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                lastPosition = change.position
 
-            // Defensively re-check consumption before claiming
-            if (!pastSlop && change.isConsumed) break
+                // Defensively re-check consumption before claiming
+                if (!pastSlop && change.isConsumed) break
 
-            if (change.previousPressed && !change.pressed) {
-                // Gesture ended
-                if (!pastSlop) {
-                    // Tap or double-tap
-                    val now = System.currentTimeMillis()
-                    val dx = change.position.x - lastTapX
-                    val dy = change.position.y - lastTapY
-                    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                    val doubleTapTimeout = PlayerMorphConfig.Default.doubleTapIntervalMs
+                if (change.previousPressed && !change.pressed) {
+                    // Gesture ended
+                    if (!pastSlop) {
+                        // Tap or double-tap
+                        val now = System.currentTimeMillis()
+                        val dx = change.position.x - lastTapX
+                        val dy = change.position.y - lastTapY
+                        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                        val doubleTapTimeout = PlayerMorphConfig.Default.doubleTapIntervalMs
 
-                    if (now - lastTapTime < doubleTapTimeout && dist < PlayerMorphConfig.Default.touchSlop) {
-                        // Double tap
-                        bindings.value.resolveDiscrete(zone, DiscreteGesture.DOUBLE_TAP)?.invoke(zone, change.position)
-                        lastTapTime = 0L
+                        if (now - lastTapTime < doubleTapTimeout && dist < PlayerMorphConfig.Default.touchSlop) {
+                            // Double tap
+                            bindings.value.resolveDiscrete(zone, DiscreteGesture.DOUBLE_TAP)?.invoke(zone, change.position)
+                            lastTapTime = 0L
+                        } else {
+                            // Single tap
+                            bindings.value.resolveDiscrete(zone, DiscreteGesture.TAP)?.invoke(zone, change.position)
+                            lastTapTime = now
+                            lastTapX = change.position.x
+                            lastTapY = change.position.y
+                        }
                     } else {
-                        // Single tap
-                        bindings.value.resolveDiscrete(zone, DiscreteGesture.TAP)?.invoke(zone, change.position)
-                        lastTapTime = now
-                        lastTapX = change.position.x
-                        lastTapY = change.position.y
+                        // Drag ended
+                        if (isLongPress) {
+                            bindings.value.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)?.onEnd()
+                            bindings.value.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_END)?.invoke(zone, change.position)
+                        }
+                    }
+                    endedCleanly = true
+                    break
+                }
+
+                val dy = change.position.y - change.previousPosition.y
+                if (!pastSlop) {
+                    totalDragY += dy
+                    if (abs(totalDragY) > PlayerMorphConfig.Default.touchSlop) {
+                        pastSlop = true
+                        val continuousAction = bindings.value.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)
+                        if (continuousAction != null) {
+                            continuousAction.onStart(zone, change.position)
+                            isLongPress = true
+                            bindings.value.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_START)?.invoke(zone, change.position)
+                            change.consume()
+                        }
                     }
                 } else {
-                    // Drag ended
-                    if (isLongPress) {
-                        bindings.value.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_END)?.invoke(zone, change.position)
-                    }
-                }
-                break
-            }
-
-            val dy = change.position.y - change.previousPosition.y
-            if (!pastSlop) {
-                totalDragY += dy
-                if (abs(totalDragY) > PlayerMorphConfig.Default.touchSlop) {
-                    pastSlop = true
                     val continuousAction = bindings.value.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)
                     if (continuousAction != null) {
-                        continuousAction.onStart(zone, change.position)
-                        isLongPress = true
-                        bindings.value.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_START)?.invoke(zone, change.position)
+                        continuousAction.onDelta(dy)
                         change.consume()
                     }
                 }
-            } else {
-                val continuousAction = bindings.value.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)
-                if (continuousAction != null) {
-                    continuousAction.onDelta(dy)
-                    change.consume()
-                }
+            }
+        } finally {
+            // If this coroutine gets cancelled mid-drag (composable removed from the tree,
+            // parent takes over the gesture, etc.), the loop above never reaches its normal
+            // "drag ended" branch, so the bound action never learns the drag stopped. That
+            // leaves external gesture state (e.g. drag-driven morph progress) stuck mid-gesture,
+            // which is exactly the state that produced the swipe-to-morph stutter. Make sure
+            // onEnd() / LONG_PRESS_END always fire exactly once, however the gesture concludes.
+            if (isLongPress && !endedCleanly) {
+                bindings.value.resolveContinuous(zone, ContinuousGesture.VERTICAL_DRAG)?.onEnd()
+                bindings.value.resolveDiscrete(zone, DiscreteGesture.LONG_PRESS_END)?.invoke(zone, lastPosition)
             }
         }
     }

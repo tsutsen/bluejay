@@ -232,20 +232,22 @@ fun buildGestureBindings(
             else -> {}
         }
 
-        when (zoneSpec.hold) {
-            SpecAction.SpeedHold -> {
-                discrete[DiscreteGesture.LONG_PRESS_START] = actions.longPressStart
-                // Morph zones also need drag-end on release
-                if (zoneSpec.swipeVertical == SpecAction.Morph) {
-                    discrete[DiscreteGesture.LONG_PRESS_END] = discreteAction {
-                        actions.longPressEnd.invoke(zone, androidx.compose.ui.geometry.Offset.Zero)
-                        actions.morphDragEnd.invoke(zone, androidx.compose.ui.geometry.Offset.Zero)
-                    }
-                } else {
-                    discrete[DiscreteGesture.LONG_PRESS_END] = actions.longPressEnd
-                }
+        val isSpeedHoldZone = zoneSpec.hold == SpecAction.SpeedHold
+        val isMorphZone = zoneSpec.swipeVertical == SpecAction.Morph
+
+        if (isSpeedHoldZone) {
+            discrete[DiscreteGesture.LONG_PRESS_START] = actions.longPressStart
+        }
+
+        // LONG_PRESS_END fires for any zone with a continuous drag that needs a release
+        // signal — not just speed-hold zones. A morph zone with no hold action configured
+        // still needs onMorphDragEnd() to fire on release, or the drag never settles/animates
+        // and gestureState is left stuck mid-gesture.
+        if (isSpeedHoldZone || isMorphZone) {
+            discrete[DiscreteGesture.LONG_PRESS_END] = discreteAction {
+                if (isSpeedHoldZone) actions.longPressEnd.invoke(zone, androidx.compose.ui.geometry.Offset.Zero)
+                if (isMorphZone) actions.morphDragEnd.invoke(zone, androidx.compose.ui.geometry.Offset.Zero)
             }
-            else -> {}
         }
 
         when (zoneSpec.tap) {

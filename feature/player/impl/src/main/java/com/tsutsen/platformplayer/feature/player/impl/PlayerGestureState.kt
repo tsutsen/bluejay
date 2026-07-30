@@ -48,6 +48,14 @@ class GestureState {
     var dragMorphProgress by mutableStateOf<Float?>(null)
         internal set
 
+    // Running total of vertical movement since the drag started. The gesture recognizer
+    // feeds onDrag() a per-frame delta (this move event's dy), not a cumulative total, so
+    // this has to be accumulated here. Progress must be derived from the accumulated
+    // distance, never from a single frame's delta directly — otherwise progress just
+    // reflects momentary per-frame noise instead of how far the finger has actually
+    // travelled, which reads as the player stuttering/snapping back and forth during drag.
+    private var accumulatedDragY = 0f
+
     /**
      * Called when a morph drag starts.
      * @param onModeComputed Callback to update lockedGestureMode with the computed mode
@@ -57,6 +65,7 @@ class GestureState {
         isDraggingMorph = true
         val startProgress = onStartProgress()
         morphDragStartProgress = startProgress
+        accumulatedDragY = 0f
         dragMorphProgress = null // Clear stale override
         onModeComputed(computePlayerMode(
             miniProgress = startProgress,
@@ -68,15 +77,18 @@ class GestureState {
 
     /**
      * Called during morph drag. Updates progress imperatively.
-     * @param totalDragY Total vertical drag in pixels
+     * @param deltaY This frame's incremental vertical movement in pixels (NOT a running total —
+     *   the caller passes the raw per-move-event delta from the gesture recognizer).
      * @param dragTravelPx Total drag distance for full morph
      * @return Updated progress (also sets internal state)
      */
-    fun onDrag(totalDragY: Float, dragTravelPx: Float): Float {
+    fun onDrag(deltaY: Float, dragTravelPx: Float): Float {
         if (!isDraggingMorph) {
             isDraggingMorph = true
+            accumulatedDragY = 0f
         }
-        val progress = (morphDragStartProgress + totalDragY / dragTravelPx).coerceIn(0f, 1f)
+        accumulatedDragY += deltaY
+        val progress = (morphDragStartProgress + accumulatedDragY / dragTravelPx).coerceIn(0f, 1f)
         dragMorphProgress = progress
         return progress
     }
@@ -97,6 +109,7 @@ class GestureState {
 
         isDraggingMorph = false
         dragMorphProgress = null
+        accumulatedDragY = 0f
         lockedGestureMode = PlayerMode.NORMAL
 
         // Sync Animatable to drag value

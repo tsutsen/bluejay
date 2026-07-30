@@ -436,8 +436,8 @@ fun PlayerView(
                                     onStartProgress = { effectiveMorphProgress() }
                                 )
                             },
-                            onMorphDrag = { totalDragY ->
-                                gestureState.onDrag(totalDragY, dragTravelPx)
+                            onMorphDrag = { deltaY ->
+                                gestureState.onDrag(deltaY, dragTravelPx)
                             },
                             onMorphDragEnd = {
                                 val progress = effectiveMorphProgress()
