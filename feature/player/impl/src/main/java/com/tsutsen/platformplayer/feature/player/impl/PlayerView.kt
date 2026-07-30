@@ -463,7 +463,7 @@ fun PlayerView(
                             onDoubleTapSeekRight = { onSeek(5000) },
                             onTap = {
                                 if (morph.progress > 0.01f && morph.progress < 0.99f) return@GestureCallbacks
-                                autoHide.notifyInteraction()
+                                autoHide.toggle()
                             },
                             onLongPressStart = {
                                 Log.d(TAG, "Speed hold start: 2x")

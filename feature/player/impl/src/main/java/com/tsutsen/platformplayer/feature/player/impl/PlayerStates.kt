@@ -61,6 +61,7 @@ data class AutoHideState(
     val isVisible: Boolean,
     val hide: () -> Unit,
     val show: () -> Unit,
+    val toggle: () -> Unit,
     val notifyInteraction: () -> Unit,
 )
 
@@ -95,6 +96,11 @@ fun rememberAutoHideState(
         show = {
             cancelSchedule()
             isVisible = true
+        },
+        toggle = {
+            cancelSchedule()
+            isVisible = !isVisible
+            if (isVisible) scheduleHide()
         },
         notifyInteraction = {
             cancelSchedule()
