@@ -259,7 +259,7 @@ fun PlayerControls(
                             height = with(density) { videoLayout.heightPx.toDp() }
                         )
                 ) {
-                    GestureIndicatorOverlay(indicator = activeIndicator)
+                    GestureIndicatorOverlay(targetIndicator = activeIndicator)
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -112,117 +113,75 @@ internal fun SeekIndicators(
     }
 }
 
+private const val INDICATOR_ANIM_MS = 200
+
 /**
- * Unified gesture indicator overlay. Renders the active indicator with fade-in/out.
- * Handles [GestureIndicator.None] by rendering nothing.
+ * Unified gesture indicator overlay with fade-in / fade-out animations.
+ *
+ * [AnimatedVisibility.updateTo] cross-fades when the indicator reference changes,
+ * so rapid updates (e.g. consecutive swipe frames or double-tap seeks) produce
+ * a smooth visual transition instead of a hard cut.
+ * Handles [GestureIndicator.None] and null by rendering nothing.
  */
 @Composable
 internal fun GestureIndicatorOverlay(
-    indicator: GestureIndicator?,
+    targetIndicator: GestureIndicator?,
 ) {
-    when (indicator) {
-        is GestureIndicator.Progress -> ProgressIndicatorOverlay(
-            indicator = indicator,
-            alignment = if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd,
-        )
-        is GestureIndicator.Badge -> BadgeIndicatorOverlay(indicator = indicator)
-        is GestureIndicator.TextBadge -> TextBadgeIndicatorOverlay(indicator = indicator)
-        else -> Unit // None or null
+    AnimatedVisibility(
+        visible = targetIndicator != null && targetIndicator != GestureIndicator.None,
+        enter = fadeIn(animationSpec = tween(INDICATOR_ANIM_MS)),
+        exit = fadeOut(animationSpec = tween(INDICATOR_ANIM_MS)),
+    ) {
+        val indicator = targetIndicator!! // safe: guarded by visible
+        when (indicator) {
+            is GestureIndicator.Progress -> {
+                val alignment = if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
+                    Box(modifier = Modifier.fillMaxHeight().width(120.dp)) {
+                        ProgressIndicator(
+                            value = indicator.value,
+                            icon = indicator.icon,
+                            format = indicator.format,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                }
+            }
+            is GestureIndicator.Badge -> {
+                BadgeIndicatorOverlay(label = indicator.format(indicator.value), icon = indicator.icon)
+            }
+            is GestureIndicator.TextBadge -> {
+                BadgeIndicatorOverlay(label = indicator.label, icon = indicator.icon)
+            }
+            else -> Unit
+        }
     }
 }
 
 @Composable
-private fun ProgressIndicatorOverlay(
-    indicator: GestureIndicator.Progress,
-    alignment: Alignment,
-) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
-        AnimatedVisibility(
-            visible = true,
-            enter = fadeIn(),
-            exit = fadeOut(),
+private fun BadgeIndicatorOverlay(label: String, icon: ImageVector) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Surface(
+            color = Color.Black.copy(alpha = 0.7f),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.padding(16.dp)
         ) {
-            Box(modifier = Modifier.fillMaxHeight().width(120.dp)) {
-                ProgressIndicator(
-                    value = indicator.value,
-                    icon = indicator.icon,
-                    format = indicator.format,
-                    modifier = Modifier.align(Alignment.Center)
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BadgeIndicatorOverlay(
-    indicator: GestureIndicator.Badge,
-) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        AnimatedVisibility(
-            visible = true,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Surface(
-                color = Color.Black.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = indicator.icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = indicator.format(indicator.value),
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TextBadgeIndicatorOverlay(
-    indicator: GestureIndicator.TextBadge,
-) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        AnimatedVisibility(
-            visible = true,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Surface(
-                color = Color.Black.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = indicator.icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = indicator.label,
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = label,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
             }
         }
     }
