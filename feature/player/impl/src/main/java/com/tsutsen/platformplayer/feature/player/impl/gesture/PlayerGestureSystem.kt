@@ -254,8 +254,10 @@ fun PlayerGestureSystem(
                                         }
 
                                         // ---- Morph drag precedence check ----
+                                        // FULLSCREEN/NORMAL/COMPACT: downward swipe → morph to floating
                                         val isMorphCandidate = (
-                                            (currentOverlayMode == com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.NORMAL ||
+                                            (currentOverlayMode == com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.FULLSCREEN ||
+                                             currentOverlayMode == com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.NORMAL ||
                                              currentOverlayMode == com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.COMPACT) &&
                                             gestureType == GestureType.SWIPE_VERTICAL &&
                                             isSwipeDownward
