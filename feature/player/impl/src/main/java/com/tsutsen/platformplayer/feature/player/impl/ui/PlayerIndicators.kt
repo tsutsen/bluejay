@@ -30,11 +30,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.delay
 
-private const val INDICATOR_ANIM_MS = 200
-private const val INDICATOR_HIDE_DELAY_MS = 1500L
+private const val INDICATOR_ANIM_MS = GestureAnimationConstants.INDICATOR_ANIM_MS
+private const val INDICATOR_HIDE_DELAY_MS = GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS
 
 /**
  * State for the centre text badge (seek, speed, etc).
