@@ -389,7 +389,7 @@ fun PlayerView(
                 com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureActionHandler(
                     viewModel = viewModel,
                     currentPositionMs = { state.currentPositionMs },
-                    screenHeight = containerSize.height,
+                    screenHeight = { containerSize.height },
                     context = context,
                     activity = context as? android.app.Activity,
                     onBrightnessChanged = { bv ->

@@ -41,7 +41,7 @@ interface GestureActionHandler {
 class PlayerGestureActionHandler(
     private val viewModel: PlayerViewModel,
     private val currentPositionMs: () -> Long,
-    private val screenHeight: Float,
+    private val screenHeight: () -> Float,
     private val context: Context,
     private val activity: Activity? = null,
     private val onBrightnessChanged: (Float) -> Unit = {},
@@ -122,7 +122,7 @@ class PlayerGestureActionHandler(
             }
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (brighter), positive = down (darker)
-                val delta = -frame.instantDelta.y / screenHeight
+                val delta = -frame.instantDelta.y / screenHeight()
                 currentBrightness = (currentBrightness + delta).coerceIn(0f, 1f)
                 activity?.window?.attributes = (activity.window.attributes).apply {
                     screenBrightness = currentBrightness
@@ -143,7 +143,7 @@ class PlayerGestureActionHandler(
             }
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (louder), positive = down (quieter)
-                val delta = -frame.instantDelta.y / screenHeight
+                val delta = -frame.instantDelta.y / screenHeight()
                 currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
                 val index = (currentVolume * maxVolume).toInt().coerceIn(0, maxVolume)
                 audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
