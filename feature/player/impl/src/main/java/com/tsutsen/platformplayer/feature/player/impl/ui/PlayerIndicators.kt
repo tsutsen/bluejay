@@ -5,6 +5,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -114,25 +120,42 @@ internal fun SeekIndicators(
 }
 
 private const val INDICATOR_ANIM_MS = 200
+private const val INDICATOR_HIDE_DELAY_MS = 1500L
 
 /**
  * Unified gesture indicator overlay with fade-in / fade-out animations.
  *
- * [AnimatedVisibility.updateTo] cross-fades when the indicator reference changes,
- * so rapid updates (e.g. consecutive swipe frames or double-tap seeks) produce
- * a smooth visual transition instead of a hard cut.
- * Handles [GestureIndicator.None] and null by rendering nothing.
+ * [displayedIndicator] mirrors [targetIndicator] on appearance. On disappearance
+ * (target becomes null/None), it stays alive during the fadeOut so the content
+ * lambda never sees null. A [LaunchedEffect] clears it after the hide delay,
+ * triggering the exit animation.
  */
 @Composable
 internal fun GestureIndicatorOverlay(
     targetIndicator: GestureIndicator?,
 ) {
+    val scope = rememberCoroutineScope()
+    var displayedIndicator by remember { mutableStateOf<GestureIndicator?>(null) }
+
+    // When target appears (or changes to a real indicator), update immediately.
+    // When target disappears, schedule fade-out.
+    LaunchedEffect(targetIndicator) {
+        val effective = if (targetIndicator == GestureIndicator.None) null else targetIndicator
+        if (effective != null) {
+            displayedIndicator = effective
+        } else {
+            // Keep displayedIndicator alive for fadeOut, then clear
+            kotlinx.coroutines.delay(INDICATOR_HIDE_DELAY_MS)
+            displayedIndicator = null
+        }
+    }
+
     AnimatedVisibility(
-        visible = targetIndicator != null && targetIndicator != GestureIndicator.None,
+        visible = displayedIndicator != null,
         enter = fadeIn(animationSpec = tween(INDICATOR_ANIM_MS)),
         exit = fadeOut(animationSpec = tween(INDICATOR_ANIM_MS)),
     ) {
-        val indicator = targetIndicator!! // safe: guarded by visible
+        val indicator = displayedIndicator!! // safe: visible guards non-null
         when (indicator) {
             is GestureIndicator.Progress -> {
                 val alignment = if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd

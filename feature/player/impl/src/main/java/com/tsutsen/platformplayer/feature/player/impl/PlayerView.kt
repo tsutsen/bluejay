@@ -394,7 +394,7 @@ fun PlayerView(
                         activeIndicator = indicator
                     },
                     onIndicatorEnd = {
-                        coroutineScope.launch { delay(1500); activeIndicator = null }
+                        activeIndicator = null // overlay owns the fade-out delay
                     },
                 )
             }
