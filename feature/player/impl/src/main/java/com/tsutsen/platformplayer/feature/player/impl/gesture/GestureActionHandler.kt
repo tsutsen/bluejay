@@ -3,6 +3,9 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Replay10
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 
 /**
@@ -93,8 +96,24 @@ class PlayerGestureActionHandler(
 
     override fun handleInstantAction(event: InstantActionEvent) {
         when (event.action) {
-            GestureAction.REWIND_BACK -> viewModel.seekBy(-5000)
-            GestureAction.REWIND_FORWARD -> viewModel.seekBy(5000)
+            GestureAction.REWIND_BACK -> {
+                viewModel.seekBy(-5000)
+                onIndicator(GestureIndicator.TextBadge(
+                    key = "rewind_back",
+                    label = "-5s",
+                    icon = Icons.Default.Replay10,
+                ))
+                onIndicatorEnd()
+            }
+            GestureAction.REWIND_FORWARD -> {
+                viewModel.seekBy(5000)
+                onIndicator(GestureIndicator.TextBadge(
+                    key = "rewind_forward",
+                    label = "+5s",
+                    icon = Icons.Default.Forward10,
+                ))
+                onIndicatorEnd()
+            }
             GestureAction.MORPH_TO_FLOATING -> viewModel.minimize()
             GestureAction.MORPH_TO_FULLSCREEN -> viewModel.toggleFullscreen()
             GestureAction.CONTEXT_MENU -> {} // stub

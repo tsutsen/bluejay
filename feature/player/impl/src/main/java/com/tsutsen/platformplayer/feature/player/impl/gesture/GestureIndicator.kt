@@ -36,6 +36,13 @@ sealed interface GestureIndicator {
         val format: (Float) -> String = { "%.2fx".format(it) },
     ) : GestureIndicator
 
+    /** Text badge: icon + pre-formatted label (e.g. "+5s", "-5s"). */
+    data class TextBadge(
+        override val key: String,
+        val label: String,
+        val icon: ImageVector,
+    ) : GestureIndicator
+
     val key: String
 }
 

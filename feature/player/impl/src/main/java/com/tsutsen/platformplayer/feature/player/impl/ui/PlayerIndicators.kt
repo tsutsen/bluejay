@@ -126,6 +126,7 @@ internal fun GestureIndicatorOverlay(
             alignment = if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd,
         )
         is GestureIndicator.Badge -> BadgeIndicatorOverlay(indicator = indicator)
+        is GestureIndicator.TextBadge -> TextBadgeIndicatorOverlay(indicator = indicator)
         else -> Unit // None or null
     }
 }
@@ -181,6 +182,43 @@ private fun BadgeIndicatorOverlay(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = indicator.format(indicator.value),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TextBadgeIndicatorOverlay(
+    indicator: GestureIndicator.TextBadge,
+) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = indicator.icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = indicator.label,
                         color = Color.White,
                         style = MaterialTheme.typography.bodyLarge
                     )
