@@ -1,9 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import android.util.Log
 import com.tsutsen.platformplayer.core.model.PlayerMode
-
-private const val TAG = "PlayerVisibility"
 
 /**
  * All visibility/alpha values for the player UI, computed once from a single set of inputs.
@@ -53,8 +50,6 @@ fun computeControlsVisibility(
     val floatingAlpha = progressAlpha(miniProgress, config.morphTransitionStart, config.morphTransitionEnd)
     val detailsAlpha = progressAlpha(miniProgress, config.detailsFadeStart, config.detailsFadeEnd, reversed = true)
     val detailsTranslateY = miniProgress * config.detailsTranslateFraction
-
-    Log.d(TAG, "computeControlsVisibility: barAlpha=$barAlpha floatingAlpha=$floatingAlpha controlsVisibleFactor=$controlsVisibleFactor")
 
     val mode = computePlayerMode(miniProgress, fullscreenProgress, playerHeightRatio, config)
 
