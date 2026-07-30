@@ -281,7 +281,7 @@ fun PlayerView(
             // Note: morph.progress is NOT a key — it changes every drag event
             // and would cause unnecessary re-runs that fight the drag.
             // Compact mode: never auto-hide controls (they're always visible)
-            val isCompactMode = (uiState as? PlayerUiState.Loaded)?.mode == PlayerMode.COMPACT
+            val isCompactMode = visibility.mode == PlayerMode.COMPACT
             
             LaunchedEffect(state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, isCompactMode) {
                 // During morph transition: hide controls (they'll be replaced by mini controls)
