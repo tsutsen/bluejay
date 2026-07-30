@@ -10,12 +10,17 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.sqrt
 
 // ---- gesture recognition thresholds ----
@@ -66,6 +71,8 @@ fun PlayerGestureSystem(
     miniHeightPx: Float = 0f,
 ) {
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    var pendingTapJob: Job? = null
     val currentHandler by rememberUpdatedState(handler)
     val currentConfigs by rememberUpdatedState(gestureConfigs)
     val currentOverlayMode by rememberUpdatedState(overlayMode)
@@ -181,6 +188,10 @@ fun PlayerGestureSystem(
                             var startJustSent = false
                             var isSwipeDownward = false
 
+                            // Cancel any pending single-tap on new down event
+                            pendingTapJob?.cancel()
+                            pendingTapJob = null
+
                             // Check for double-tap first (compare with previous tap)
                             val now = System.currentTimeMillis()
                             val timeSinceLastTap = now - lastTapTime
@@ -190,7 +201,9 @@ fun PlayerGestureSystem(
                             )
 
                             if (timeSinceLastTap < DOUBLE_TAP_TIMEOUT_MS && distFromLastTap < TOUCH_SLOP) {
-                                // Double-tap detected
+                                // Double-tap detected — cancel pending single-tap
+                                pendingTapJob?.cancel()
+                                pendingTapJob = null
                                 gestureRecognized = true
                                 gestureType = GestureType.DOUBLE_TAP
                                 val action = cfg.resolve(sector, GestureType.DOUBLE_TAP)
@@ -231,8 +244,11 @@ fun PlayerGestureSystem(
                                                 )
                                             }
                                         } else if (!gestureRecognized) {
-                                            // Single tap — toggle controls
-                                            currentOnTap()
+                                            // Single tap — defer to avoid firing on first tap of a double-tap
+                                            pendingTapJob = scope.launch {
+                                                delay(DOUBLE_TAP_TIMEOUT_MS)
+                                                currentOnTap()
+                                            }
                                         }
                                         break
                                     }
