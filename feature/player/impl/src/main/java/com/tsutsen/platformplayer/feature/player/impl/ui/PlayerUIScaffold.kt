@@ -46,10 +46,7 @@ data class PlayerGestureCallbacks(
 fun PlayerUIScaffold(
     modifier: Modifier,
     isLoading: Boolean,
-    brightnessValue: Float,
-    volumeValue: Float,
-    showBrightnessIndicator: Boolean,
-    showVolumeIndicator: Boolean,
+    activeIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator?,
     showTopBar: Boolean,
     showBottomBar: Boolean,
     callbacks: PlayerGestureCallbacks,
@@ -92,35 +89,8 @@ fun PlayerUIScaffold(
                 )
         )
 
-        // ==================== Brightness Indicator ====================
-        AnimatedVisibility(
-            visible = showBrightnessIndicator,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Box(modifier = Modifier.fillMaxHeight().width(120.dp)) {
-                BrightnessIndicator(
-                    brightness = brightnessValue,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-        }
-
-        // ==================== Volume Indicator ====================
-        AnimatedVisibility(
-            visible = showVolumeIndicator,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.CenterEnd)
-        ) {
-            Box(modifier = Modifier.fillMaxHeight().width(120.dp)) {
-                VolumeIndicator(
-                    volume = volumeValue,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-        }
+        // ==================== Gesture Indicator ====================
+        GestureIndicatorOverlay(indicator = activeIndicator)
 
         // ==================== Loading Spinner ====================
         AnimatedVisibility(

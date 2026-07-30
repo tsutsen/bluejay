@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -75,10 +76,7 @@ fun PlayerView(
     // ==================== State ====================
     var showOptionsModal by remember { mutableStateOf(false) }
     var showChapters by remember { mutableStateOf(false) }
-    var showBrightnessIndicator by remember { mutableStateOf(false) }
-    var showVolumeIndicator by remember { mutableStateOf(false) }
-    var brightnessValue by remember { mutableStateOf(1.0f) }
-    var volumeValue by remember { mutableStateOf(1.0f) }
+    var activeIndicator by remember { mutableStateOf<GestureIndicator?>(null) }
     var selectedSpeed by remember { mutableStateOf(1.0f) }
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
@@ -132,13 +130,12 @@ fun PlayerView(
         (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
     }
 
-    // Initialize brightness/volume from state on first load only.
-    // Gesture handler owns these values during interaction; no re-sync during playback.
+    // Initialize from state on first load only (for indicator defaults).
+    // Gesture handler owns indicator state during interaction.
     var initialized by remember { mutableStateOf(false) }
     val loadedState = uiState as? PlayerUiState.Loaded
     if (loadedState != null && !initialized) {
-        brightnessValue = loadedState.brightness
-        volumeValue = loadedState.volume
+        // Seed initial values so indicators start from current system state
         initialized = true
     }
 
@@ -394,21 +391,12 @@ fun PlayerView(
                     screenHeight = { containerSize.height },
                     context = context,
                     activity = context as? android.app.Activity,
-                    onBrightnessChanged = { bv ->
-                        brightnessValue = bv
-                        showBrightnessIndicator = true
+                    onIndicator = { indicator ->
+                        activeIndicator = indicator
                     },
-                    onVolumeChanged = { vv ->
-                        volumeValue = vv
-                        showVolumeIndicator = true
+                    onIndicatorEnd = {
+                        coroutineScope.launch { delay(1500); activeIndicator = null }
                     },
-                    onBrightnessEnd = {
-                        coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
-                    },
-                    onVolumeEnd = {
-                        coroutineScope.launch { delay(1500); showVolumeIndicator = false }
-                    },
-                    onSpeedChanged = { /* TODO: drive speed badge UI */ }
                 )
             }
 
@@ -486,10 +474,7 @@ fun PlayerView(
                         onTabSelected = { selectedTab = it },
                         onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
                         isLoading = state.isLoading,
-                        brightnessValue = brightnessValue,
-                        volumeValue = volumeValue,
-                        showBrightnessIndicator = showBrightnessIndicator,
-                        showVolumeIndicator = showVolumeIndicator,
+                        activeIndicator = activeIndicator,
                         scrubPositionMs = scrubPositionMs,
                         isLooping = isLooping,
                         onLoopToggle = {

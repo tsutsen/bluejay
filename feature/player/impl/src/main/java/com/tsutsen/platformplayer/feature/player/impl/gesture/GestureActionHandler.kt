@@ -3,15 +3,6 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
-import android.provider.Settings
-import android.view.WindowManager
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 
 /**
@@ -31,9 +22,9 @@ interface GestureActionHandler {
  * @property viewModel       for seek, speed, fullscreen, minimize
  * @property currentPositionMs supplier of current playback position
  * @property screenHeight    screen height in px (for normalising brightness delta)
- * @property onBrightnessChanged  called with new brightness value (0..1) to drive UI indicator
- * @property onVolumeChanged      called with new volume value (0..1) to drive UI indicator
- * @property onSpeedChanged       called with new speed value to drive UI indicator
+ * @property onIndicator     called with a [GestureIndicator] spec on each ACTIVE/END frame.
+ *                           emits [GestureIndicator.None] for actions without indicators.
+ * @property onIndicatorEnd  called once when the gesture ends — UI should start hide timer here.
  * @property onMorphDragStart  called when a morph-to-floating swipe begins
  * @property onMorphDrag       called with cumulative downward drag px during morph swipe
  * @property onMorphDragEnd    called when morph swipe ends (decides commit or cancel)
@@ -44,11 +35,8 @@ class PlayerGestureActionHandler(
     private val screenHeight: () -> Float,
     private val context: Context,
     private val activity: Activity? = null,
-    private val onBrightnessChanged: (Float) -> Unit = {},
-    private val onVolumeChanged: (Float) -> Unit = {},
-    private val onSpeedChanged: (Float) -> Unit = {},
-    private val onBrightnessEnd: () -> Unit = {},
-    private val onVolumeEnd: () -> Unit = {},
+    private val onIndicator: (GestureIndicator) -> Unit = {},
+    private val onIndicatorEnd: () -> Unit = {},
     private val onMorphDragStart: () -> Unit = {},
     private val onMorphDrag: (dragY: Float) -> Unit = {},
     private val onMorphDragEnd: (dragY: Float) -> Unit = {},
@@ -129,11 +117,11 @@ class PlayerGestureActionHandler(
                 activity?.window?.attributes = (activity.window.attributes).apply {
                     screenBrightness = currentBrightness
                 }
-                onBrightnessChanged(currentBrightness)
+                onIndicator(GestureAction.BRIGHTNESS.defaultIndicator(currentBrightness))
             }
             GesturePhase.END -> {
-                onBrightnessChanged(currentBrightness)
-                onBrightnessEnd()
+                onIndicator(GestureAction.BRIGHTNESS.defaultIndicator(currentBrightness))
+                onIndicatorEnd()
             }
         }
     }
@@ -150,11 +138,11 @@ class PlayerGestureActionHandler(
                 currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
                 val index = (currentVolume * maxVolume).toInt().coerceIn(0, maxVolume)
                 audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
-                onVolumeChanged(currentVolume)
+                onIndicator(GestureAction.VOLUME.defaultIndicator(currentVolume))
             }
             GesturePhase.END -> {
-                onVolumeChanged(currentVolume)
-                onVolumeEnd()
+                onIndicator(GestureAction.VOLUME.defaultIndicator(currentVolume))
+                onIndicatorEnd()
             }
         }
     }
@@ -168,26 +156,25 @@ class PlayerGestureActionHandler(
                 snapshotSpeed()
                 // Apply base multiplier on hold activation
                 viewModel.setPlaybackSpeed(baseMultiplier)
-                onSpeedChanged(baseMultiplier)
+                onIndicator(GestureAction.SPEEDUP.defaultIndicator(baseMultiplier))
             }
             GesturePhase.ACTIVE -> {
                 // totalDelta.x: positive = swipe right (faster), negative = left (slower)
                 val modulation = frame.totalDelta.x / sensitivity
                 val speed = (baseMultiplier + modulation).coerceIn(0.25f, 4f)
                 viewModel.setPlaybackSpeed(speed)
-                onSpeedChanged(speed)
+                onIndicator(GestureAction.SPEEDUP.defaultIndicator(speed))
             }
             GesturePhase.END -> {
                 viewModel.setPlaybackSpeed(originalSpeed)
-                onSpeedChanged(originalSpeed)
+                onIndicator(GestureAction.SPEEDUP.defaultIndicator(originalSpeed))
+                onIndicatorEnd()
             }
         }
     }
 
     // ---- Morph to floating (swipe vertical downward) ----
-    //    Only reached via handler path when config resolves to MORPH_TO_FLOATING.
-    //    The morph precedence path in PlayerGestureSystem bypasses this and
-    //    fires callbacks directly for FULLSCREEN/NORMAL/COMPACT downward swipes.
+    //    No indicator — morph is visual through the player animation itself.
     private fun handleMorphToFloating(frame: GestureFrame) {
         when (frame.phase) {
             GesturePhase.START -> {
