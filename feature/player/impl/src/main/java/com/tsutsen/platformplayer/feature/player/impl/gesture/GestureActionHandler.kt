@@ -3,10 +3,18 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
+import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Replay10
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+private const val TAG_H = "GestureHandler"
 
 /**
  * Frame-based handler that dispatches gesture frames to the appropriate action.
@@ -57,6 +65,9 @@ class PlayerGestureActionHandler(
 
     // --- morph drag state ---
     private var morphStartDelta = 0f
+
+    // --- speed hold keep-alive ---
+    private var speedHoldJob: Job? = null
 
     // --- speed hold state ---
     private var lastSpeedHoldReported = 0f
@@ -200,7 +211,8 @@ class PlayerGestureActionHandler(
         private const val SPEED_SWIPE_STEP_PX = 200f
         private const val SPEED_STEP = 0.1f
 
-
+        /** Keep-alive interval for speed hold — keeps badge visible during still holds. */
+        private const val KEEP_ALIVE_INTERVAL_MS = 100L
     }
 
     // ---- Speed hold with optional swipe modulation ----
@@ -212,6 +224,17 @@ class PlayerGestureActionHandler(
                 lastSpeedHoldReported = 0f
                 viewModel.setPlaybackSpeed(baseMultiplier)
                 onIndicator(GestureAction.SPEEDUP.defaultIndicator(baseMultiplier))
+                // Start keep-alive coroutine — emits onIndicator periodically so badge stays visible
+                speedHoldJob?.cancel()
+                speedHoldJob = CoroutineScope(Dispatchers.Default).launch {
+                    while (true) {
+                        delay(KEEP_ALIVE_INTERVAL_MS)
+                        val steps = 0
+                        val speed = (baseMultiplier + steps * SPEED_STEP).coerceIn(0.25f, 4f)
+                        val snapped = (speed * 10).toInt() / 10f
+                        onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
+                    }
+                }
             }
             GesturePhase.ACTIVE -> {
                 // totalDelta.x: positive = swipe right (faster), negative = left (slower)
@@ -223,10 +246,12 @@ class PlayerGestureActionHandler(
                     lastSpeedHoldReported = snapped
                     viewModel.setPlaybackSpeed(snapped)
                 }
-                // Emit every frame — overlay resets its hide timer on each emission
+                // Emit on finger movement — keep-alive coroutine handles the rest
                 onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
             }
             GesturePhase.END -> {
+                speedHoldJob?.cancel()
+                speedHoldJob = null
                 viewModel.setPlaybackSpeed(originalSpeed)
                 onIndicator(GestureAction.SPEEDUP.defaultIndicator(originalSpeed))
                 onIndicatorEnd()

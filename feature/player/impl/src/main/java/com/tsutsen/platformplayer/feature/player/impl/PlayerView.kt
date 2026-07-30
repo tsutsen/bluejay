@@ -398,6 +398,7 @@ fun PlayerView(
                             is GestureIndicator.Progress -> activeProgressIndicator = indicator
                             is GestureIndicator.TextBadge -> {
                                 badgeKeepAliveCounter++
+                                Log.d(TAG, "onIndicator TextBadge: key=${indicator.key}, label=${indicator.label}, keepAlive=${badgeKeepAliveCounter}")
                                 badgeState = GestureBadgeState(
                                     key = indicator.key,
                                     label = indicator.label,
@@ -408,6 +409,7 @@ fun PlayerView(
                             }
                             is GestureIndicator.Badge -> {
                                 badgeKeepAliveCounter++
+                                Log.d(TAG, "onIndicator Badge: key=${indicator.key}, label=${indicator.format(indicator.value)}, keepAlive=${badgeKeepAliveCounter}")
                                 badgeState = GestureBadgeState(
                                     key = indicator.key,
                                     label = indicator.format(indicator.value),
@@ -420,6 +422,7 @@ fun PlayerView(
                         }
                     },
                     onIndicatorEnd = {
+                        Log.d(TAG, "onIndicatorEnd called")
                         activeProgressIndicator = null
                         // Badges auto-hide via their own fade animation — don't touch badgeState here
                     },
