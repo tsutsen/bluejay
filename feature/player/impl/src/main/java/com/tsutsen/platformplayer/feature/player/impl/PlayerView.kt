@@ -426,7 +426,7 @@ fun PlayerView(
                         GestureCallbacks(
                             onMorphDragStart = {
                                 morph.onDragStart(
-                                    onModeComputed = { mode -> morph.lockedGestureMode = mode },
+                                    onModeComputed = {},
                                     onStartProgress = { morph.progress }
                                 )
                             },

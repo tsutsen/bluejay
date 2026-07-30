@@ -26,6 +26,13 @@ import kotlinx.coroutines.launch
  *
  * This eliminates the `Animatable + nullable-override + isDragging flag` pattern
  * where "which source of truth wins" bugs could occur.
+ *
+ * Everything that belongs to a single drag gesture — start progress, accumulated
+ * movement, the travel distance used to convert pixels to progress, and the mode
+ * locked in for the gesture's duration — lives together as fields on
+ * [MorphPhase.Dragging] rather than as separate sibling vars. That makes a drag
+ * snapshot atomic: there's no way to read a "torn" combination of drag-related
+ * fields, because there's only ever one field (`phase`) to read.
  */
 @Composable
 fun rememberMorphState(
@@ -46,14 +53,20 @@ class MorphState(
     private val morphProgress = Animatable(0f)
     private var animJob: Job? = null
 
-    var phase: MorphPhase by mutableStateOf(MorphPhase.Idle)
-        private set
-    
-    private var dragTravelPx: Float = 1f // Default, updated via onDrag()
+    // Must be observable — this is the value onDrag() mutates on every pointer-move frame,
+    // and it's the sole trigger for recomposing anything reading `progress` mid-drag. As a
+    // plain var, mutating it would be invisible to Compose's snapshot system: nothing would
+    // re-read `progress` until some unrelated state happened to change.
+    private var phase: MorphPhase by mutableStateOf(MorphPhase.Idle)
 
     sealed interface MorphPhase {
         data object Idle : MorphPhase
-        data class Dragging(val startProgress: Float, val accumulatedDragY: Float) : MorphPhase
+        data class Dragging(
+            val startProgress: Float,
+            val accumulatedDragY: Float,
+            val dragTravelPx: Float,
+            val lockedMode: PlayerMode,
+        ) : MorphPhase
         data class Animating(val target: Float) : MorphPhase
     }
 
@@ -65,41 +78,46 @@ class MorphState(
      */
     val progress: Float
         get() = when (val p = phase) {
-            is MorphPhase.Dragging -> {
-                val raw = (p.startProgress + p.accumulatedDragY / dragTravelPx).coerceIn(0f, 1f)
-                raw
-            }
+            is MorphPhase.Dragging -> (p.startProgress + p.accumulatedDragY / p.dragTravelPx).coerceIn(0f, 1f)
             else -> morphProgress.value
         }
 
     /** Whether the user is currently dragging the morph. */
     val isDragging: Boolean get() = phase is MorphPhase.Dragging
 
-    /** The gesture mode locked during drag to prevent mode changes mid-gesture. */
-    var lockedGestureMode: PlayerMode = PlayerMode.NORMAL
-        internal set
+    /** The gesture mode locked for the duration of the current drag, if any. */
+    val lockedGestureMode: PlayerMode
+        get() = (phase as? MorphPhase.Dragging)?.lockedMode ?: PlayerMode.NORMAL
 
     // ---- Drag lifecycle ----
 
     /**
      * Called when a morph drag starts.
-     * @param onModeComputed Callback to update lockedGestureMode with the computed mode
+     * @param onModeComputed Callback to notify the caller of the locked mode for this drag
      * @param onStartProgress Current progress to use as drag start point
      */
     fun onDragStart(
         onModeComputed: (PlayerMode) -> Unit,
         onStartProgress: () -> Float,
     ) {
+        // A drag starting always wins over whatever animation was in flight — cancel it
+        // outright rather than leaving it to race the new drag's writes to morphProgress.
+        animJob?.cancel()
+
         val startProgress = onStartProgress()
-        phase = MorphPhase.Dragging(startProgress, 0f)
-        onModeComputed(
-            computePlayerMode(
-                miniProgress = startProgress,
-                fullscreenProgress = 0f,
-                playerHeightRatio = 1f,
-                config = config,
-            )
+        val lockedMode = computePlayerMode(
+            miniProgress = startProgress,
+            fullscreenProgress = 0f,
+            playerHeightRatio = 1f,
+            config = config,
         )
+        phase = MorphPhase.Dragging(
+            startProgress = startProgress,
+            accumulatedDragY = 0f,
+            dragTravelPx = 1f, // placeholder — overwritten by the first onDrag() call
+            lockedMode = lockedMode,
+        )
+        onModeComputed(lockedMode)
     }
 
     /**
@@ -109,16 +127,21 @@ class MorphState(
      * @return Updated progress
      */
     fun onDrag(deltaY: Float, dragTravelPx: Float): Float {
-        this.dragTravelPx = dragTravelPx
         val p = phase
-        if (p !is MorphPhase.Dragging) {
-            phase = MorphPhase.Dragging(0f, deltaY)
-            return (0f + deltaY / dragTravelPx).coerceIn(0f, 1f)
+        // onDrag() should only ever be called between onDragStart() and onDragEnd() — the
+        // gesture recognizer guarantees onStart() precedes onDelta(). If this fires, the
+        // wiring is broken somewhere upstream; fail loudly instead of silently defaulting
+        // to startProgress = 0f, which would just read as an unexplained visual snap.
+        check(p is MorphPhase.Dragging) {
+            "MorphState.onDrag() called without a preceding onDragStart()"
         }
-        val newAccumulated = p.accumulatedDragY + deltaY
-        phase = MorphPhase.Dragging(p.startProgress, newAccumulated)
-        val progress = (p.startProgress + newAccumulated / dragTravelPx).coerceIn(0f, 1f)
-        return progress
+
+        val updated = p.copy(
+            accumulatedDragY = p.accumulatedDragY + deltaY,
+            dragTravelPx = dragTravelPx,
+        )
+        phase = updated
+        return (updated.startProgress + updated.accumulatedDragY / updated.dragTravelPx).coerceIn(0f, 1f)
     }
 
     /**
@@ -131,13 +154,15 @@ class MorphState(
         onSnapTo: (Float) -> Unit,
         onMinimize: () -> Unit,
     ): Boolean {
-        val p = phase
-        if (p !is MorphPhase.Dragging) return false
+        val p = phase as? MorphPhase.Dragging ?: return false
 
-        val progress = (p.startProgress + p.accumulatedDragY / dragTravelPx).coerceIn(0f, 1f)
-        onSnapTo(progress)
+        val progressAtRelease = (p.startProgress + p.accumulatedDragY / p.dragTravelPx).coerceIn(0f, 1f)
+        onSnapTo(progressAtRelease)
 
-        if (progress >= config.morphSettleThreshold) {
+        if (progressAtRelease >= config.morphSettleThreshold) {
+            // No animation follows on this path — make sure nothing stale is left running
+            // that could still write to morphProgress after we've settled into Idle.
+            animJob?.cancel()
             onMinimize()
             phase = MorphPhase.Idle
         } else {
@@ -158,13 +183,23 @@ class MorphState(
 
     /** Instantly set morph to target progress. */
     fun snapTo(target: Float) {
-        scope.launch { morphProgress.snapTo(target) }
+        animJob?.cancel()
+        animJob = scope.launch { morphProgress.snapTo(target) }
     }
 
-    /** Cancel any in-flight animation and return to Idle. */
+    /**
+     * Cancel any in-flight settle/restore animation and return to Idle.
+     *
+     * Deliberately a no-op on the phase itself while a drag is active: this is called from
+     * PlayerView's mode-sync effect specifically to cancel a *competing animation* the moment
+     * a new drag begins, not to abort the drag. Resetting `phase` unconditionally here would
+     * wipe out the just-started Dragging phase (and its startProgress) on every drag start.
+     */
     fun cancelAnimation() {
         animJob?.cancel()
-        phase = MorphPhase.Idle
+        if (phase !is MorphPhase.Dragging) {
+            phase = MorphPhase.Idle
+        }
     }
 
     // ---- Internal ----
