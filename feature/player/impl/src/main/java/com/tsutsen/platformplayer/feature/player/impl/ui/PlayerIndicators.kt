@@ -14,14 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrightnessHigh
-import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -29,106 +24,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-
-@Composable
-internal fun BrightnessIndicator(
-    brightness: Float,
-    modifier: Modifier = Modifier
-) {
-    ProgressIndicator(
-        value = brightness,
-        icon = Icons.Default.BrightnessHigh,
-        modifier = modifier
-    )
-}
-
-@Composable
-internal fun VolumeIndicator(
-    volume: Float,
-    modifier: Modifier = Modifier
-) {
-    ProgressIndicator(
-        value = volume,
-        icon = Icons.Default.VolumeUp,
-        modifier = modifier
-    )
-}
-
-@Composable
-internal fun SeekIndicators(
-    showSeekBack: Boolean,
-    showSeekForward: Boolean
-) {
-    Row(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        if (showSeekBack) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    color = Color.Black.copy(alpha = 0.7f),
-                    shape = CircleShape,
-                    modifier = Modifier.size(64.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Replay10,
-                        contentDescription = "Seek back 10s",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-        }
-        if (showSeekForward) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    color = Color.Black.copy(alpha = 0.7f),
-                    shape = CircleShape,
-                    modifier = Modifier.size(64.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Forward10,
-                        contentDescription = "Seek forward 10s",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-        }
-    }
-}
 
 private const val INDICATOR_ANIM_MS = 200
 private const val INDICATOR_HIDE_DELAY_MS = 1500L
 
 /**
- * Simple state for the centre text badge (seek, speed, etc).
+ * State for the centre text badge (seek, speed, etc).
  * The badge composable is always present — visibility is driven by alpha animation.
+ * [showAt] is a monotonically increasing token; changing it triggers a fresh fade-in → delay → fade-out.
  */
 data class GestureBadgeState(
     val label: String = "",
     val icon: ImageVector = Icons.Default.Replay10,
-    val visible: Boolean = false,
+    val showAt: Long = 0L,
 )
 
 /**
@@ -142,24 +58,14 @@ internal fun GestureIndicatorOverlay(
     activeProgressIndicator: GestureIndicator.Progress?,
     badgeState: GestureBadgeState,
 ) {
-    val scope = rememberCoroutineScope()
     val badgeAlpha = remember { Animatable(0f) }
 
-    // Drive badge alpha from visibility state
-    LaunchedEffect(badgeState.visible) {
-        if (badgeState.visible) {
+    // Each new showAt token triggers a fresh fade-in → delay → fade-out cycle.
+    LaunchedEffect(badgeState.showAt) {
+        if (badgeState.showAt > 0L) {
             badgeAlpha.snapTo(0f)
-            badgeAlpha.animateTo(
-                1f,
-                animationSpec = tween(INDICATOR_ANIM_MS)
-            )
+            badgeAlpha.animateTo(1f, animationSpec = tween(INDICATOR_ANIM_MS))
             delay(INDICATOR_HIDE_DELAY_MS)
-            badgeAlpha.animateTo(
-                0f,
-                animationSpec = tween(INDICATOR_ANIM_MS)
-            )
-        } else if (badgeAlpha.value > 0f) {
-            // Force fade-out if state is set to invisible while still visible
             badgeAlpha.animateTo(0f, animationSpec = tween(INDICATOR_ANIM_MS))
         }
     }

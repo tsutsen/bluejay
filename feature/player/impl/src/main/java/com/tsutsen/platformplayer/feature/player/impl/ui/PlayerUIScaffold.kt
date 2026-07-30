@@ -98,9 +98,6 @@ fun PlayerUIScaffold(
             CircularProgressIndicator(color = Color.White)
         }
 
-        // ==================== Double-tap seek indicators ====================
-        SeekIndicators(showSeekBack = false, showSeekForward = false)
-
         // ==================== Top gradient + bar ====================
         if (showTopBar && gradientAlpha > 0.01f) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
