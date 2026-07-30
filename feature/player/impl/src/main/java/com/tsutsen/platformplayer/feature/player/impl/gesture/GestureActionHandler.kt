@@ -58,7 +58,7 @@ class PlayerGestureActionHandler(
 
     // --- volume state ---
     private var audioManager: AudioManager? = null
-    private var startVolume = 1f
+    private var currentVolume = 1f
     private var maxVolume = 15
 
     // --- speed state ---
@@ -80,7 +80,7 @@ class PlayerGestureActionHandler(
 
     fun snapshotVolume() {
         val current = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
-        startVolume = current.toFloat() / maxVolume
+        currentVolume = current.toFloat() / maxVolume
     }
 
     fun snapshotSpeed() {
@@ -144,13 +144,13 @@ class PlayerGestureActionHandler(
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (louder), positive = down (quieter)
                 val delta = -frame.instantDelta.y / screenHeight
-                val newVolume = (startVolume + delta).coerceIn(0f, 1f)
-                val index = (newVolume * maxVolume).toInt().coerceIn(0, maxVolume)
+                currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
+                val index = (currentVolume * maxVolume).toInt().coerceIn(0, maxVolume)
                 audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
-                onVolumeChanged(newVolume)
+                onVolumeChanged(currentVolume)
             }
             GesturePhase.END -> {
-                onVolumeChanged(startVolume) // reset indicator
+                onVolumeChanged(currentVolume)
             }
         }
     }
