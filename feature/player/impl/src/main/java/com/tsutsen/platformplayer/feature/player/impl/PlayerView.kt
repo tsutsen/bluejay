@@ -495,12 +495,22 @@ fun PlayerView(
                 ) {
                     // Skip scrim during loading — it would intercept all touches and block gestures.
                     // The fade animation (playerFadeInProgress) already handles the visual transition.
+                    // Fade scrim out earlier during morph to prevent visual overlap with floating mini player.
+                    val scrimFadeAlpha = if (morph.progress <= 0.1f) {
+                        1f
+                    } else if (morph.progress >= 0.3f) {
+                        0f
+                    } else {
+                        (0.3f - morph.progress) / (0.3f - 0.1f)
+                    }.coerceAtLeast(0f)
+
                     val scrimAlpha = (1f - morph.progress) * (1f - fullscreenP) + fullscreenP
-                    if (scrimAlpha > 0.01f && !state.isLoading) {
+                    val combinedScrimAlpha = scrimAlpha * scrimFadeAlpha
+                    if (combinedScrimAlpha > 0.01f && !state.isLoading) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = scrimAlpha))
+                                .background(Color.Black.copy(alpha = combinedScrimAlpha))
                         )
                     }
 
