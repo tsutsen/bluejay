@@ -58,6 +58,9 @@ class PlayerGestureActionHandler(
     // --- morph drag state ---
     private var morphStartDelta = 0f
 
+    // --- speed hold state ---
+    private var lastSpeedHoldReported = 0f
+
     // --- consecutive double-tap seek accumulation ---
     private var lastSeekAction: GestureAction? = null
     private var lastSeekTimeMs: Long = 0L
@@ -66,12 +69,6 @@ class PlayerGestureActionHandler(
     init {
         audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
-    }
-
-    companion object {
-        private const val SEEK_STEP_MS = 5000L
-        /** Window in which same-direction double-taps accumulate into one running total. */
-        private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
     }
 
     fun snapshotBrightness() {
@@ -194,23 +191,37 @@ class PlayerGestureActionHandler(
         }
     }
 
-    // ---- Speed hold with optional swipe modulation ----
-    private fun handleSpeedHold(frame: GestureFrame, baseMultiplier: Float) {
-        val sensitivity = 150f // px per 1x speed change
+    companion object {
+        private const val SEEK_STEP_MS = 5000L
+        /** Window in which same-direction double-taps accumulate into one running total. */
+        private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
 
+        /** Horizontal px to travel for one ±0.1x speed step. */
+        private const val SPEED_SWIPE_STEP_PX = 200f
+        private const val SPEED_STEP = 0.1f
+    }
+
+    // ---- Speed hold with optional swipe modulation ----
+    //    Horizontal swipe changes speed in 0.1x steps.
+    private fun handleSpeedHold(frame: GestureFrame, baseMultiplier: Float) {
         when (frame.phase) {
             GesturePhase.START -> {
                 snapshotSpeed()
-                // Apply base multiplier on hold activation
+                lastSpeedHoldReported = 0f
                 viewModel.setPlaybackSpeed(baseMultiplier)
                 onIndicator(GestureAction.SPEEDUP.defaultIndicator(baseMultiplier))
             }
             GesturePhase.ACTIVE -> {
                 // totalDelta.x: positive = swipe right (faster), negative = left (slower)
-                val modulation = frame.totalDelta.x / sensitivity
-                val speed = (baseMultiplier + modulation).coerceIn(0.25f, 4f)
-                viewModel.setPlaybackSpeed(speed)
-                onIndicator(GestureAction.SPEEDUP.defaultIndicator(speed))
+                val steps = (frame.totalDelta.x / SPEED_SWIPE_STEP_PX).toInt()
+                val speed = (baseMultiplier + steps * SPEED_STEP).coerceIn(0.25f, 4f)
+                // Round to nearest 0.1 to avoid floating-point drift
+                val snapped = (speed * 10).toInt() / 10f
+                if (snapped != lastSpeedHoldReported) {
+                    lastSpeedHoldReported = snapped
+                    viewModel.setPlaybackSpeed(snapped)
+                    onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
+                }
             }
             GesturePhase.END -> {
                 viewModel.setPlaybackSpeed(originalSpeed)
