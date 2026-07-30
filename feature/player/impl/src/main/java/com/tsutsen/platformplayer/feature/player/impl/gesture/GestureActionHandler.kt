@@ -47,6 +47,8 @@ class PlayerGestureActionHandler(
     private val onBrightnessChanged: (Float) -> Unit = {},
     private val onVolumeChanged: (Float) -> Unit = {},
     private val onSpeedChanged: (Float) -> Unit = {},
+    private val onBrightnessEnd: () -> Unit = {},
+    private val onVolumeEnd: () -> Unit = {},
     private val onMorphDragStart: () -> Unit = {},
     private val onMorphDrag: (dragY: Float) -> Unit = {},
     private val onMorphDragEnd: (dragY: Float) -> Unit = {},
@@ -131,6 +133,7 @@ class PlayerGestureActionHandler(
             }
             GesturePhase.END -> {
                 onBrightnessChanged(currentBrightness)
+                onBrightnessEnd()
             }
         }
     }
@@ -151,6 +154,7 @@ class PlayerGestureActionHandler(
             }
             GesturePhase.END -> {
                 onVolumeChanged(currentVolume)
+                onVolumeEnd()
             }
         }
     }

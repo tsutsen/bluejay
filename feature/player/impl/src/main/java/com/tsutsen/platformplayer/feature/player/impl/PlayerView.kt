@@ -397,11 +397,15 @@ fun PlayerView(
                     onBrightnessChanged = { bv ->
                         brightnessValue = bv
                         showBrightnessIndicator = true
-                        coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
                     },
                     onVolumeChanged = { vv ->
                         volumeValue = vv
                         showVolumeIndicator = true
+                    },
+                    onBrightnessEnd = {
+                        coroutineScope.launch { delay(1500); showBrightnessIndicator = false }
+                    },
+                    onVolumeEnd = {
                         coroutineScope.launch { delay(1500); showVolumeIndicator = false }
                     },
                     onSpeedChanged = { /* TODO: drive speed badge UI */ }
