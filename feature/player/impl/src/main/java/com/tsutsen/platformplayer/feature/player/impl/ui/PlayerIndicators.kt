@@ -1,6 +1,8 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -23,50 +25,94 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.delay
 
-private const val INDICATOR_ANIM_MS = GestureAnimationConstants.INDICATOR_ANIM_MS
-private const val INDICATOR_HIDE_DELAY_MS = GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS
-
 /**
  * State for the centre text badge (seek, speed, etc).
- * [showAt] is a monotonically increasing token; changing it triggers a fresh fade cycle.
  */
 data class GestureBadgeState(
+    val key: String = "",
     val label: String = "",
     val icon: ImageVector = Icons.Default.Replay10,
-    val showAt: Long = 0L,
+    val visible: Boolean = false,
 )
 
 /**
  * Unified gesture indicator overlay.
  *
- * - Progress indicators (brightness/volume sliders) rendered from [activeProgressIndicator].
- * - Centre text badge rendered from [badgeState] — always composed, alpha-animated.
+ * Session-based: the container animates in/out once per badge session.
+ * Content (label/icon) updates without animation during the session.
+ * The hide timer resets on every emission, so hold badges stay visible.
  */
 @Composable
 internal fun GestureIndicatorOverlay(
     activeProgressIndicator: GestureIndicator.Progress?,
     badgeState: GestureBadgeState,
 ) {
-    val badgeAlpha = remember { Animatable(0f) }
+    // Session tracks the current badge and whether it's visible.
+    // Key changes → new session (fade in). Same key + visible → just update content + reset timer.
+    data class Session(
+        val key: String,
+        val label: String,
+        val icon: ImageVector,
+        val visible: Boolean,
+        val hideAt: Long,
+    )
 
-    // Each new showAt token triggers a fresh fade-in → delay → fade-out cycle.
-    LaunchedEffect(badgeState.showAt) {
-        if (badgeState.showAt > 0L) {
-            badgeAlpha.snapTo(0f)
-            badgeAlpha.animateTo(1f, animationSpec = tween(INDICATOR_ANIM_MS))
-            delay(INDICATOR_HIDE_DELAY_MS)
-            badgeAlpha.animateTo(0f, animationSpec = tween(INDICATOR_ANIM_MS))
+    var session by remember { mutableStateOf<Session?>(null) }
+
+    // Process incoming badge state
+    LaunchedEffect(badgeState) {
+        when {
+            !badgeState.visible -> {
+                // Hide request (from onIndicatorEnd)
+                if (session?.visible == true) {
+                    session = session?.copy(visible = false)
+                }
+            }
+            session == null || session!!.key != badgeState.key || !session!!.visible -> {
+                // New session: new key or was hidden
+                session = Session(
+                    key = badgeState.key,
+                    label = badgeState.label,
+                    icon = badgeState.icon,
+                    visible = true,
+                    hideAt = System.currentTimeMillis() + GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS,
+                )
+            }
+            else -> {
+                // Same session, already visible: update content + reset hide timer
+                session = session!!.copy(
+                    label = badgeState.label,
+                    icon = badgeState.icon,
+                    hideAt = System.currentTimeMillis() + GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS,
+                )
+            }
+        }
+    }
+
+    // Auto-hide: when hideAt arrives and the session is still the same one, fade out
+    LaunchedEffect(session?.hideAt) {
+        val s = session ?: return@LaunchedEffect
+        if (!s.visible) return@LaunchedEffect
+
+        val waitMs = s.hideAt - System.currentTimeMillis()
+        if (waitMs > 0) delay(waitMs)
+
+        // Only fade out if this session is still current (no new emission intervened)
+        if (session == s) {
+            session = s.copy(visible = false)
         }
     }
 
@@ -85,13 +131,13 @@ internal fun GestureIndicatorOverlay(
         }
     }
 
-    // Centre text badge — always composed, alpha-driven
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer { alpha = badgeAlpha.value },
-        contentAlignment = Alignment.Center
+    // Centre text badge — AnimatedVisibility owns enter/exit, content recomposes freely
+    AnimatedVisibility(
+        visible = session?.visible == true,
+        enter = fadeIn(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
+        exit = fadeOut(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
     ) {
+        val s = session!!
         Surface(
             color = Color.Black.copy(alpha = 0.7f),
             shape = RoundedCornerShape(8.dp),
@@ -102,14 +148,14 @@ internal fun GestureIndicatorOverlay(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = badgeState.icon,
+                    imageVector = s.icon,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = badgeState.label,
+                    text = s.label,
                     color = Color.White,
                     style = MaterialTheme.typography.bodyLarge
                 )

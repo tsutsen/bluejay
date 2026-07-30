@@ -7,7 +7,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Replay10
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
-import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 
 /**
  * Frame-based handler that dispatches gesture frames to the appropriate action.
@@ -55,9 +54,6 @@ class PlayerGestureActionHandler(
 
     // --- speed state ---
     private var originalSpeed = 1f
-
-    // --- badge refresh tracking ---
-    private var lastBadgeRefreshTime = 0L
 
     // --- morph drag state ---
     private var morphStartDelta = 0f
@@ -204,10 +200,7 @@ class PlayerGestureActionHandler(
         private const val SPEED_SWIPE_STEP_PX = 200f
         private const val SPEED_STEP = 0.1f
 
-        /** Badge refresh interval — derived from the overlay's hide delay minus fade durations.
-         *  Overlay: fade-in(200ms) → hide delay(1500ms) → fade-out(200ms) = 1900ms total.
-         *  Refresh at 1700ms so the badge reappears just before fade-out would start. */
-        private const val BADGE_REFRESH_MS = GestureAnimationConstants.BADGE_REFRESH_MS
+
     }
 
     // ---- Speed hold with optional swipe modulation ----
@@ -229,18 +222,14 @@ class PlayerGestureActionHandler(
                 if (snapped != lastSpeedHoldReported) {
                     lastSpeedHoldReported = snapped
                     viewModel.setPlaybackSpeed(snapped)
-                    onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
-                    lastBadgeRefreshTime = System.currentTimeMillis()
-                } else if (System.currentTimeMillis() - lastBadgeRefreshTime >= BADGE_REFRESH_MS) {
-                    // Periodically refresh badge to keep it visible during long holds
-                    onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
-                    lastBadgeRefreshTime = System.currentTimeMillis()
                 }
+                // Emit every frame — overlay resets its hide timer on each emission
+                onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
             }
             GesturePhase.END -> {
                 viewModel.setPlaybackSpeed(originalSpeed)
                 onIndicator(GestureAction.SPEEDUP.defaultIndicator(originalSpeed))
-                // Skip onIndicatorEnd — badge auto-hides via overlay
+                onIndicatorEnd()
             }
         }
     }
