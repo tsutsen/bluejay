@@ -106,12 +106,6 @@ fun PlayerView(
 
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableStateOf(0L) }
-    
-    // Extracted gesture state management
-    val gestureState = rememberGestureState()
-
-    // Effective morph progress: dragMorphProgress during drag, morph.progress otherwise
-    fun effectiveMorphProgress() = gestureState.dragMorphProgress ?: morph.progress
 
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
@@ -160,11 +154,11 @@ fun PlayerView(
     val uiMode = (uiState as? PlayerUiState.Loaded)?.mode
 
     // Single LaunchedEffect handles both drag cancellation and mode sync.
-    // When isDraggingMorph changes, the effect is cancelled/re-fired.
+    // When morph.isDragging changes, the effect is cancelled/re-fired.
     // When uiMode changes, the effect re-fires with the new mode.
     // This prevents the animation from fighting the user's drag.
-    LaunchedEffect(uiMode, gestureState.isDraggingMorph) {
-        if (gestureState.isDraggingMorph) {
+    LaunchedEffect(uiMode, morph.isDragging) {
+        if (morph.isDragging) {
             morph.cancelAnimation()
             fullscreen.cancelAnimation()
             return@LaunchedEffect
@@ -172,7 +166,7 @@ fun PlayerView(
 
         val mode = uiMode ?: return@LaunchedEffect
         val morphTarget = if (mode == PlayerMode.FLOATING) 1f else 0f
-        val currentProgress = effectiveMorphProgress()
+        val currentProgress = morph.progress
         if (kotlin.math.abs(currentProgress - morphTarget) > 0.01f) {
             morph.animateTo(morphTarget)
         }
@@ -225,7 +219,7 @@ fun PlayerView(
 
             val mode = state.mode
 
-            val p = effectiveMorphProgress()
+            val p = morph.progress
             val cornerRadius = (12f * p).coerceAtLeast(0f).dp
             val fullscreenP = fullscreen.progress
 
@@ -281,16 +275,16 @@ fun PlayerView(
             // Only schedule the auto-hide timer when settled and playing.
             // Do NOT force-hide here — other LaunchedEffects handle
             // show/hide for pause, morph transitions, and fullscreen.
-            // Note: effectiveMorphProgress() is NOT a key — it changes every drag event
+            // Note: morph.progress is NOT a key — it changes every drag event
             // and would cause unnecessary re-runs that fight the drag.
             LaunchedEffect(state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value) {
                 // During morph transition: hide controls (they'll be replaced by mini controls)
-                if (effectiveMorphProgress() > config.miniSettledThreshold && effectiveMorphProgress() < (1f - config.miniSettledThreshold)) {
+                if (morph.progress > config.miniSettledThreshold && morph.progress < (1f - config.miniSettledThreshold)) {
                     autoHide.hide()
                     return@LaunchedEffect
                 }
                 // When morph is mostly done (mini-player settled): hide normal controls
-                if (effectiveMorphProgress() > config.controlsHideAtProgress) {
+                if (morph.progress > config.controlsHideAtProgress) {
                     autoHide.hide()
                     return@LaunchedEffect
                 }
@@ -376,7 +370,7 @@ fun PlayerView(
             val layoutDragY = if (isDraggingMiniPlayer) miniPlayerOffsetY else animatedMiniOffsetY
 
             val videoLayout = computeVideoLayout(
-                miniProgress = effectiveMorphProgress(),
+                miniProgress = morph.progress,
                 fullscreenProgress = fullscreenP,
                 containerWidth = containerSize.width,
                 containerHeight = containerSize.height,
@@ -393,7 +387,7 @@ fun PlayerView(
 
             val playerHeightRatio = if (containerSize.height > 0f) playerHeightPx / containerSize.height else 1f
             val visibility = computeControlsVisibility(
-                miniProgress = effectiveMorphProgress(),
+                miniProgress = morph.progress,
                 fullscreenProgress = fullscreenP,
                 playerHeightRatio = playerHeightRatio,
                 controlsVisible = autoHide.isVisible,
@@ -409,13 +403,13 @@ fun PlayerView(
 
             // ==================== Gesture bindings ====================
             // Lock gesture mode on drag start so bindings don't change mid-gesture.
-            // Without this, effectiveMorphProgress() crosses thresholds → mode flips to FLOATING →
+            // Without this, morph.progress crosses thresholds → mode flips to FLOATING →
             // gestures become "none" → drag dies mid-swipe.
-            val gestureMode = if (gestureState.isDraggingMorph) {
-                gestureState.lockedGestureMode
+            val gestureMode = if (morph.isDragging) {
+                morph.lockedGestureMode
             } else {
                 computePlayerMode(
-                    miniProgress = effectiveMorphProgress(),
+                    miniProgress = morph.progress,
                     fullscreenProgress = fullscreenP,
                     playerHeightRatio = playerHeightRatio,
                     config = config,
@@ -431,18 +425,17 @@ fun PlayerView(
                     actions = createGestureActions(
                         GestureCallbacks(
                             onMorphDragStart = {
-                                gestureState.onDragStart(
-                                    onModeComputed = { mode -> gestureState.lockedGestureMode = mode },
-                                    onStartProgress = { effectiveMorphProgress() }
+                                morph.onDragStart(
+                                    onModeComputed = { mode -> morph.lockedGestureMode = mode },
+                                    onStartProgress = { morph.progress }
                                 )
                             },
                             onMorphDrag = { deltaY ->
-                                gestureState.onDrag(deltaY, dragTravelPx)
+                                morph.onDrag(deltaY, dragTravelPx)
                             },
                             onMorphDragEnd = {
-                                val progress = effectiveMorphProgress()
-                                gestureState.onDragEnd(
-                                    currentProgress = progress,
+                                val progress = morph.progress
+                                morph.onDragEnd(
                                     onSnapTo = { morph.snapTo(it) },
                                     onMinimize = { viewModel.minimize() }
                                 )
@@ -466,7 +459,7 @@ fun PlayerView(
                             onDoubleTapSeekLeft = { onSeek(-5000) },
                             onDoubleTapSeekRight = { onSeek(5000) },
                             onTap = {
-                                if (effectiveMorphProgress() > 0.01f && effectiveMorphProgress() < 0.99f) return@GestureCallbacks
+                                if (morph.progress > 0.01f && morph.progress < 0.99f) return@GestureCallbacks
                                 autoHide.notifyInteraction()
                             },
                             onLongPressStart = {
@@ -499,7 +492,7 @@ fun PlayerView(
                 ) {
                     // Skip scrim during loading — it would intercept all touches and block gestures.
                     // The fade animation (playerFadeInProgress) already handles the visual transition.
-                    val scrimAlpha = (1f - effectiveMorphProgress()) * (1f - fullscreenP) + fullscreenP
+                    val scrimAlpha = (1f - morph.progress) * (1f - fullscreenP) + fullscreenP
                     if (scrimAlpha > 0.01f && !state.isLoading) {
                         Box(
                             modifier = Modifier
@@ -512,7 +505,7 @@ fun PlayerView(
                         player = player,
                         state = state,
                         videoLayout = videoLayout,
-                        miniProgress = effectiveMorphProgress(),
+                        miniProgress = morph.progress,
                         fullscreenProgress = fullscreenP,
                         containerWidth = containerSize.width,
                         containerHeight = containerSize.height,
