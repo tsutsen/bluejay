@@ -48,7 +48,6 @@ class MorphStateTest {
         )
         state.onDrag(deltaY = 250f, dragTravelPx = 500f) // 0.5 progress
         state.onDragEnd(
-            onSnapTo = {},
             onMinimize = { minimized = true }
         )
         assertFalse(state.isDragging)
@@ -66,7 +65,6 @@ class MorphStateTest {
         )
         state.onDrag(deltaY = 100f, dragTravelPx = 500f) // 0.2 progress
         state.onDragEnd(
-            onSnapTo = {},
             onMinimize = { minimized = true }
         )
         assertFalse(minimized)
@@ -77,7 +75,6 @@ class MorphStateTest {
         val state = MorphState(testScope, onMinimize = {})
         var minimized = false
         val result = state.onDragEnd(
-            onSnapTo = {},
             onMinimize = { minimized = true }
         )
         assertFalse(result)
@@ -116,7 +113,7 @@ class MorphStateTest {
         state.onDragStart(onModeComputed = {}, onStartProgress = { 0f })
         assertTrue(state.isDragging)
 
-        state.onDragEnd(onSnapTo = {}, onMinimize = {})
+        state.onDragEnd(onMinimize = {})
         assertFalse(state.isDragging)
     }
 
@@ -175,7 +172,7 @@ class MorphStateTest {
         )
         assertEquals(PlayerMode.FLOATING, state.lockedGestureMode)
 
-        state.onDragEnd(onSnapTo = {}, onMinimize = {})
+        state.onDragEnd(onMinimize = {})
         assertEquals(PlayerMode.NORMAL, state.lockedGestureMode)
     }
 

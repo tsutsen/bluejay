@@ -439,9 +439,7 @@ fun PlayerView(
                             },
                             onMorphDragEnd = {
                                 isMorphDragging = false
-                                val progress = morph.progress
                                 morph.onDragEnd(
-                                    onSnapTo = { morph.snapTo(it) },
                                     onMinimize = { viewModel.minimize() }
                                 )
                             },

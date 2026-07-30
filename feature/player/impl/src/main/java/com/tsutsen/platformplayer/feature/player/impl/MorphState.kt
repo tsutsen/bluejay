@@ -146,18 +146,20 @@ class MorphState(
 
     /**
      * Called when morph drag ends.
-     * @param onSnapTo Callback to sync Animatable to progress
      * @param onMinimize Callback to minimize if progress exceeds threshold
      * @return True if drag was active (prevents spurious animations)
      */
     fun onDragEnd(
-        onSnapTo: (Float) -> Unit,
         onMinimize: () -> Unit,
     ): Boolean {
         val p = phase as? MorphPhase.Dragging ?: return false
 
         val progressAtRelease = (p.startProgress + p.accumulatedDragY / p.dragTravelPx).coerceIn(0f, 1f)
-        onSnapTo(progressAtRelease)
+        // Set morphProgress to current progress so animation continues from here
+        // instead of starting from 0
+        scope.launch {
+            morphProgress.snapTo(progressAtRelease)
+        }
 
         if (progressAtRelease >= config.morphSettleThreshold) {
             // No animation follows on this path — make sure nothing stale is left running
