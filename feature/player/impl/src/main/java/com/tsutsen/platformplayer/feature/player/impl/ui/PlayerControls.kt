@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
+import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
 import com.tsutsen.platformplayer.feature.player.impl.GestureIndicatorOverlay
 
 private const val TAG = "PlayerControls"
@@ -54,7 +55,8 @@ fun PlayerControls(
     resolvedShowTopBar: Boolean,
     resolvedShowBottomBar: Boolean,
     isLoading: Boolean,
-    activeIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator?,
+    activeProgressIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator.Progress?,
+    badgeState: GestureBadgeState,
     state: PlayerUiState.Loaded,
     player: ExoPlayer?,
     isLooping: Boolean,
@@ -259,7 +261,10 @@ fun PlayerControls(
                             height = with(density) { videoLayout.heightPx.toDp() }
                         )
                 ) {
-                    GestureIndicatorOverlay(targetIndicator = activeIndicator)
+                    GestureIndicatorOverlay(
+                        activeProgressIndicator = activeProgressIndicator,
+                        badgeState = badgeState,
+                    )
                 }
             }
         }

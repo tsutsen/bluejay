@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -76,7 +77,8 @@ fun PlayerView(
     // ==================== State ====================
     var showOptionsModal by remember { mutableStateOf(false) }
     var showChapters by remember { mutableStateOf(false) }
-    var activeIndicator by remember { mutableStateOf<GestureIndicator?>(null) }
+    var activeProgressIndicator by remember { mutableStateOf<GestureIndicator.Progress?>(null) }
+    var badgeState by remember { mutableStateOf(GestureBadgeState()) }
     var selectedSpeed by remember { mutableStateOf(1.0f) }
     var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
@@ -391,10 +393,26 @@ fun PlayerView(
                     context = context,
                     activity = context as? android.app.Activity,
                     onIndicator = { indicator ->
-                        activeIndicator = indicator
+                        when (indicator) {
+                            is GestureIndicator.Progress -> activeProgressIndicator = indicator
+                            is GestureIndicator.TextBadge -> badgeState = GestureBadgeState(
+                                label = indicator.label,
+                                icon = indicator.icon,
+                                visible = true,
+                            )
+                            is GestureIndicator.Badge -> badgeState = GestureBadgeState(
+                                label = indicator.format(indicator.value),
+                                icon = indicator.icon,
+                                visible = true,
+                            )
+                            else -> Unit
+                        }
                     },
                     onIndicatorEnd = {
-                        activeIndicator = null // overlay owns the fade-out delay
+                        when {
+                            activeProgressIndicator != null -> activeProgressIndicator = null
+                            badgeState.visible -> badgeState = badgeState.copy(visible = false)
+                        }
                     },
                 )
             }
@@ -473,7 +491,8 @@ fun PlayerView(
                         onTabSelected = { selectedTab = it },
                         onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
                         isLoading = state.isLoading,
-                        activeIndicator = activeIndicator,
+                        activeProgressIndicator = activeProgressIndicator,
+                        badgeState = badgeState,
                         scrubPositionMs = scrubPositionMs,
                         isLooping = isLooping,
                         onLoopToggle = {

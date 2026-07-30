@@ -1,16 +1,8 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,12 +27,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun BrightnessIndicator(
@@ -123,67 +122,70 @@ private const val INDICATOR_ANIM_MS = 200
 private const val INDICATOR_HIDE_DELAY_MS = 1500L
 
 /**
- * Unified gesture indicator overlay with fade-in / fade-out animations.
+ * Simple state for the centre text badge (seek, speed, etc).
+ * The badge composable is always present — visibility is driven by alpha animation.
+ */
+data class GestureBadgeState(
+    val label: String = "",
+    val icon: ImageVector = Icons.Default.Replay10,
+    val visible: Boolean = false,
+)
+
+/**
+ * Unified gesture indicator overlay.
  *
- * [displayedIndicator] mirrors [targetIndicator] on appearance. On disappearance
- * (target becomes null/None), it stays alive during the fadeOut so the content
- * lambda never sees null. A [LaunchedEffect] clears it after the hide delay,
- * triggering the exit animation.
+ * - Progress indicators (brightness/volume sliders) rendered from [activeProgressIndicator].
+ * - Centre text badge rendered from [badgeState] — always composed, alpha-animated.
  */
 @Composable
 internal fun GestureIndicatorOverlay(
-    targetIndicator: GestureIndicator?,
+    activeProgressIndicator: GestureIndicator.Progress?,
+    badgeState: GestureBadgeState,
 ) {
     val scope = rememberCoroutineScope()
-    var displayedIndicator by remember { mutableStateOf<GestureIndicator?>(null) }
+    val badgeAlpha = remember { Animatable(0f) }
 
-    // When target appears (or changes to a real indicator), update immediately.
-    // When target disappears, schedule fade-out.
-    LaunchedEffect(targetIndicator) {
-        val effective = if (targetIndicator == GestureIndicator.None) null else targetIndicator
-        if (effective != null) {
-            displayedIndicator = effective
-        } else {
-            // Keep displayedIndicator alive for fadeOut, then clear
-            kotlinx.coroutines.delay(INDICATOR_HIDE_DELAY_MS)
-            displayedIndicator = null
+    // Drive badge alpha from visibility state
+    LaunchedEffect(badgeState.visible) {
+        if (badgeState.visible) {
+            badgeAlpha.snapTo(0f)
+            badgeAlpha.animateTo(
+                1f,
+                animationSpec = tween(INDICATOR_ANIM_MS)
+            )
+            delay(INDICATOR_HIDE_DELAY_MS)
+            badgeAlpha.animateTo(
+                0f,
+                animationSpec = tween(INDICATOR_ANIM_MS)
+            )
+        } else if (badgeAlpha.value > 0f) {
+            // Force fade-out if state is set to invisible while still visible
+            badgeAlpha.animateTo(0f, animationSpec = tween(INDICATOR_ANIM_MS))
         }
     }
 
-    AnimatedVisibility(
-        visible = displayedIndicator != null,
-        enter = fadeIn(animationSpec = tween(INDICATOR_ANIM_MS)),
-        exit = fadeOut(animationSpec = tween(INDICATOR_ANIM_MS)),
+    // Progress indicator (brightness/volume — side bars)
+    activeProgressIndicator?.let { indicator ->
+        val alignment = if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
+            Box(modifier = Modifier.fillMaxHeight().width(120.dp)) {
+                ProgressIndicator(
+                    value = indicator.value,
+                    icon = indicator.icon,
+                    format = indicator.format,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+        }
+    }
+
+    // Centre text badge — always composed, alpha-driven
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = badgeAlpha.value },
+        contentAlignment = Alignment.Center
     ) {
-        val indicator = displayedIndicator!! // safe: visible guards non-null
-        when (indicator) {
-            is GestureIndicator.Progress -> {
-                val alignment = if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
-                    Box(modifier = Modifier.fillMaxHeight().width(120.dp)) {
-                        ProgressIndicator(
-                            value = indicator.value,
-                            icon = indicator.icon,
-                            format = indicator.format,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-                }
-            }
-            is GestureIndicator.Badge -> {
-                BadgeIndicatorOverlay(label = indicator.format(indicator.value), icon = indicator.icon)
-            }
-            is GestureIndicator.TextBadge -> {
-                BadgeIndicatorOverlay(label = indicator.label, icon = indicator.icon)
-            }
-            else -> Unit
-        }
-    }
-}
-
-@Composable
-private fun BadgeIndicatorOverlay(label: String, icon: ImageVector) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Surface(
             color = Color.Black.copy(alpha = 0.7f),
             shape = RoundedCornerShape(8.dp),
@@ -194,14 +196,14 @@ private fun BadgeIndicatorOverlay(label: String, icon: ImageVector) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = icon,
+                    imageVector = badgeState.icon,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = label,
+                    text = badgeState.label,
                     color = Color.White,
                     style = MaterialTheme.typography.bodyLarge
                 )
