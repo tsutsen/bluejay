@@ -178,6 +178,7 @@ fun PlayerGestureSystem(
                             var gestureType: GestureType? = null
                             var holdTriggered = false
                             var startFrameSent = false
+                            var startJustSent = false
                             var isSwipeDownward = false
 
                             // Check for double-tap first (compare with previous tap)
@@ -209,6 +210,7 @@ fun PlayerGestureSystem(
                                 lastTapPos = downPos
 
                                 while (true) {
+                                    startJustSent = false
                                     val event = awaitPointerEvent()
 
                                     // ---- Pointer up — check first before anything else ----
@@ -308,6 +310,7 @@ fun PlayerGestureSystem(
                                             )
                                         }
                                         startFrameSent = true
+                                        startJustSent = true
                                         change.consume()
                                     }
 
@@ -334,11 +337,12 @@ fun PlayerGestureSystem(
                                             )
                                         }
                                         startFrameSent = true
+                                        startJustSent = true
                                     }
 
                                     // ---- Continuous frames for recognised gestures ----
-                                    // Skip ACTIVE on the same iteration as START to avoid duplicate delta
-                                    if (gestureRecognized && gestureType != GestureType.DOUBLE_TAP && startFrameSent) {
+                                    // Skip ACTIVE on the same iteration as START so START indicator renders first
+                                    if (gestureRecognized && gestureType != GestureType.DOUBLE_TAP && startFrameSent && !startJustSent) {
                                         val instantDx = pos.x - lastPos.x
                                         val instantDy = pos.y - lastPos.y
                                         val newElapsed = System.currentTimeMillis() - downTime
