@@ -262,7 +262,7 @@ class StateSync {
                         val json = String(dataBody, Charsets.UTF_8);
                         val obj = Json.decodeFromString<SendToDevicePackage>(json);
                         UIDialogs.appToast("Received url from device [${session.remotePublicKey}]:\n{${obj.url}");
-                        context.handleUrl(obj.url, obj.position.toLong());
+                        StateApp.instance.navigator?.navigateToWeb(obj.url) ?: UIDialogs.appToast("Cannot open URL from remote device");
                     }
                 };
             }

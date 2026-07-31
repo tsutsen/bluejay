@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -119,8 +120,7 @@ class StateNotifications {
             .setContentText("${content.name}")
             .setSubText(content.datetime?.toHumanNowDiffStringMinDay())
             .setSilent(true)
-            .setContentIntent(PendingIntent.getActivity(context, content.hashCode(), MainActivity.getVideoIntent(context, content.url),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            .setContentIntent(PendingIntent.getActivity(context, content.hashCode(), Intent(context, MainActivity::class.java).apply { putExtra("video_url", content.url); flags = Intent.FLAG_ACTIVITY_NEW_TASK }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             .setChannelId(notificationChannel.id);
         if(thumbnail != null) {
             //notifBuilder.setLargeIcon(thumbnail);

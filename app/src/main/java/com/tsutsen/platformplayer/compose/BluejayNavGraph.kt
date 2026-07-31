@@ -4,10 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.navigation3.runtime.NavKey
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
-import com.tsutsen.platformplayer.compose.navigation.Login
 import com.tsutsen.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator

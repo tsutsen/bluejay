@@ -1,7 +1,5 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,11 +10,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.datastore.model.*
-import com.tsutsen.platformplayer.core.navigation.NavDestination
+import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
+import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsButtonCard
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsData
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsTextCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 
 /**
@@ -58,14 +60,7 @@ fun SettingsScreen(
                 } else {
                     CategoryScreen(
                         category = selectedCategory!!,
-                        appearance = state.appearance,
-                        playback = state.playback,
-                        language = state.language,
-                        enableNotifications = state.enableNotifications,
-                        enableBackgroundPlayback = state.enableBackgroundPlayback,
-                        enablePictureInPicture = state.enablePictureInPicture,
-                        confirmExit = state.confirmExit,
-                        enableDeveloperOptions = state.enableDeveloperOptions,
+                        data = state.toSettingsData(),
                         onAppearanceChanged = { viewModel.updateAppearance(it) },
                         onPlaybackChanged = { viewModel.updatePlayback(it) },
                         onGeneralChanged = { key, value -> viewModel.updateGeneral(key, value) },
@@ -81,6 +76,17 @@ fun SettingsScreen(
         }
     }
 }
+
+private fun SettingsUiState.Loaded.toSettingsData(): SettingsData = SettingsData(
+    appearance = appearance,
+    playback = playback,
+    language = language,
+    enableNotifications = enableNotifications,
+    enableBackgroundPlayback = enableBackgroundPlayback,
+    enablePictureInPicture = enablePictureInPicture,
+    confirmExit = confirmExit,
+    enableDeveloperOptions = enableDeveloperOptions
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,14 +123,7 @@ private fun SettingsHubContent(
 @Composable
 private fun CategoryScreen(
     category: String,
-    appearance: AppearancePreferences,
-    playback: PlaybackPreferences,
-    language: String,
-    enableNotifications: Boolean,
-    enableBackgroundPlayback: Boolean,
-    enablePictureInPicture: Boolean,
-    confirmExit: Boolean,
-    enableDeveloperOptions: Boolean,
+    data: SettingsData,
     onAppearanceChanged: (AppearancePreferences) -> Unit,
     onPlaybackChanged: (PlaybackPreferences) -> Unit,
     onGeneralChanged: (String, Any) -> Unit,
@@ -273,185 +272,4 @@ private fun categoryItems(category: String): List<CategoryItem> = when (category
         CategoryItem(ItemType.OPTION, Icons.Default.MonetizationOn, "Payment", "Support Bluejay")
     )
     else -> emptyList()
-}
-
-@Composable
-private fun SettingsOptionCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 2.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsSwitchCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsTextCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsButtonCard(
-    title: String,
-    onClick: () -> Unit
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
-        Text(title)
-    }
 }
