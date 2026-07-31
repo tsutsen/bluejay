@@ -118,3 +118,4 @@ fun GrayjayNavGraph(
         is NavDestination.PluginBrowser -> PluginBrowserScene(onBack = { navigator.goBack() })
         else -> Unit
 }
+}
