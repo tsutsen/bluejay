@@ -128,7 +128,9 @@ fun VideoContainer(
         }
         is ContainerLayout.PaginatedVertical -> {
             val state = rememberLazyGridState()
-            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 3, onEndReached = onLoadMore)
+            // Threshold = page size (columns × rowsPerPage) so load triggers one page before end
+            val pageSize = layout.columns * layout.rowsPerPage
+            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = pageSize, onEndReached = onLoadMore)
             LazyVerticalGrid(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
@@ -144,7 +146,9 @@ fun VideoContainer(
         }
         is ContainerLayout.PaginatedHorizontal -> {
             val state = rememberLazyGridState()
-            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 3, onEndReached = onLoadMore)
+            // Threshold = page size (columns × rowsPerPage) so load triggers one page before end
+            val pageSize = layout.columns * layout.rowsPerPage
+            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = pageSize, onEndReached = onLoadMore)
             LazyHorizontalGrid(
                 modifier = modifier.fillMaxHeight(),
                 state = state,
