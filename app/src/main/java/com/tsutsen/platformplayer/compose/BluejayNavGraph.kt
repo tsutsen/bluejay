@@ -116,6 +116,5 @@ fun GrayjayNavGraph(
         is NavDestination.Suggestions -> PlaceholderScreen("Suggestions", "Coming soon")
         is NavDestination.SettingsFragment -> PlaceholderScreen("Settings", "Coming soon")
         is NavDestination.PluginBrowser -> PluginBrowserScene(onBack = { navigator.goBack() })
-        is NavDestination.TestCompose -> PlaceholderScreen("Test Compose", "Coming soon")
-    }
+        else -> Unit
 }
