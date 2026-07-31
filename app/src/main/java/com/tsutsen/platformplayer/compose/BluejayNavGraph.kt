@@ -49,7 +49,6 @@ fun GrayjayNavGraph(
 
     // Render the current destination
     when (val destination = currentRoute) {
-        null -> PlaceholderScreen("Bluejay", "Welcome")
         is NavDestination.Home -> HomeScreen(navigator = navigator)
         is NavDestination.Search -> PlaceholderScreen("Search", "Coming soon")
         is NavDestination.Subscriptions -> SubscriptionsScreen(navigator = navigator)
