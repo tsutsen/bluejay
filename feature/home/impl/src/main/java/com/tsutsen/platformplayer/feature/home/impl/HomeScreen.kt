@@ -17,9 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.window.core.layout.WindowWidthSizeClass
+import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
-import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
@@ -104,8 +104,6 @@ private fun HomeFeedContent(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val layoutMode = if (isWide) LayoutMode.Grid else LayoutMode.List
-    val columns = if (isWide) 3 else 1
     var isRefreshing by remember { mutableStateOf(false) }
     val refreshingState = rememberPullToRefreshState()
 
@@ -127,14 +125,11 @@ private fun HomeFeedContent(
             content = {
                 VideoContainer(
                     items = cards,
-                    layoutMode = layoutMode,
-                    columns = columns,
+                    layout = if (isWide) ContainerLayout.Grid(3) else ContainerLayout.List,
+                    isLoading = isLoading,
+                    hasMorePages = hasMorePages,
                     onCardClick = onCardClick,
-                    onEndReached = {
-                        if (!isLoading && hasMorePages) {
-                            onLoadMore()
-                        }
-                    },
+                    onLoadMore = onLoadMore,
                     modifier = Modifier.fillMaxSize()
                 ) { card ->
                     VideoCard(

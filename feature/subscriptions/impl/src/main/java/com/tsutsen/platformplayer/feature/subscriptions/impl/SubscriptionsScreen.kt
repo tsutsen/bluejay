@@ -49,8 +49,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
-import com.tsutsen.platformplayer.core.designsystem.component.LayoutMode
 import com.tsutsen.platformplayer.core.designsystem.component.LoadingContent
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
@@ -193,20 +193,17 @@ private fun SubscriptionsContent(
                     content = {
                         VideoContainer(
                             items = state.items,
-                            layoutMode = LayoutMode.Grid,
-                            columns = 3,
-                            onCardClick = { card ->
-                                if (card is ModelVideoCard) onItemClicked(card.url)
-                            },
-                            onEndReached = onLoadMore,
+                            layout = ContainerLayout.Grid(3),
+                            isLoading = false,
+                            hasMorePages = true,
+                            onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
+                            onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
                             contentPadding = PaddingValues(8.dp)
                         ) { card ->
                             VideoCard(
                                 card = card as ModelVideoCard,
-                                onClick = {
-                                    if (card is ModelVideoCard) onItemClicked(card.url)
-                                },
+                                onClick = { onItemClicked((card as ModelVideoCard).url) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -287,19 +284,17 @@ private fun SubscriptionsContent(
                 content = {
                     VideoContainer(
                         items = state.items,
-                        layoutMode = LayoutMode.List,
-                        onCardClick = { card ->
-                            if (card is ModelVideoCard) onItemClicked(card.url)
-                        },
-                        onEndReached = onLoadMore,
+                        layout = ContainerLayout.List,
+                        isLoading = false,
+                        hasMorePages = true,
+                        onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
+                        onLoadMore = onLoadMore,
                         modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(8.dp)
                     ) { card ->
                         VideoCard(
                             card = card as ModelVideoCard,
-                            onClick = {
-                                if (card is ModelVideoCard) onItemClicked(card.url)
-                            },
+                            onClick = { onItemClicked((card as ModelVideoCard).url) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

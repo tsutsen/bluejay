@@ -1,0 +1,4 @@
+# Exclude JS source scripts (obfuscated, dominated graph)
+app/src/stable/assets/sources/
+app/src/unstable/assets/sources/
+app/src/main/assets/scripts/

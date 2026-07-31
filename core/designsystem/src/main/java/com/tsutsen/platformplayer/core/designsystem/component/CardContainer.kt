@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -14,144 +17,127 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.model.Card
-import com.tsutsen.platformplayer.core.model.VideoCard
 
 /**
  * Layout mode for the video container.
  */
-enum class LayoutMode {
+sealed interface ContainerLayout {
     /** Single-column vertical scroll (portrait). */
-    List,
+    object List : ContainerLayout
+
     /** Horizontal scrollable row (for sections). */
-    HorizontalStrip,
+    object HorizontalStrip : ContainerLayout
+
     /** Multi-column grid (landscape). */
-    Grid
+    data class Grid(val columns: Int) : ContainerLayout
 }
 
 /**
  * Type-agnostic video container composable.
  * Supports List, HorizontalStrip, and Grid layout modes.
- * Handles infinite scroll pagination via onEndReached callback.
+ * Handles infinite scroll pagination internally.
+ *
+ * @param items List of cards to display
+ * @param layout Layout mode (List, HorizontalStrip, or Grid with column count)
+ * @param isLoading Whether data is currently being loaded (prevents duplicate requests)
+ * @param hasMorePages Whether there are more pages to load
+ * @param onCardClick Called when a card is tapped
+ * @param onLoadMore Called when the user scrolls to the end (if !isLoading && hasMorePages)
+ * @param modifier Modifier for the container
+ * @param contentPadding Padding around the content
+ * @param cardContent Composable that renders a single card
  */
 @Composable
 fun VideoContainer(
-    items: kotlin.collections.List<Card>,
-    layoutMode: LayoutMode = LayoutMode.List,
-    columns: Int = 3,
+    items: List<Card>,
+    layout: ContainerLayout = ContainerLayout.List,
+    isLoading: Boolean,
+    hasMorePages: Boolean,
     onCardClick: (Card) -> Unit,
-    onEndReached: () -> Unit,
+    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     cardContent: @Composable (Card) -> Unit
 ) {
-    when (layoutMode) {
-        LayoutMode.List -> {
-            val listState = rememberLazyListState()
-            var isLoading by remember { mutableStateOf(false) }
-
-            LaunchedEffect(listState.isScrollInProgress, items.size) {
-                if (listState.isScrollInProgress) {
-                    val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                    val totalItems = listState.layoutInfo.totalItemsCount
-                    if (lastVisibleIndex == totalItems - 1 && totalItems > 0 && !isLoading) {
-                        isLoading = true
-                        onEndReached()
-                        isLoading = false
-                    }
-                }
-            }
-
+    when (layout) {
+        is ContainerLayout.List -> {
+            val state = rememberLazyListState()
+            ScrollEndReached(state.isScrollInProgress, items.size, isLoading, hasMorePages, onLoadMore)
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
-                state = listState,
+                state = state,
                 contentPadding = contentPadding,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(items, key = { it.id }) { card ->
-                    cardContent(card)
-                }
+                renderCards(items, cardContent)
             }
         }
-        LayoutMode.HorizontalStrip -> {
-            val listState = rememberLazyListState()
-
+        is ContainerLayout.HorizontalStrip -> {
+            val state = rememberLazyListState()
+            ScrollEndReached(state.isScrollInProgress, items.size, isLoading, hasMorePages, onLoadMore)
             LazyRow(
                 modifier = modifier.fillMaxWidth(),
-                state = listState,
+                state = state,
                 contentPadding = contentPadding,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(items, key = { it.id }) { card ->
-                    cardContent(card)
-                }
+                renderCards(items, cardContent)
             }
         }
-        LayoutMode.Grid -> {
-            val gridState = rememberLazyGridState()
-            var isLoading by remember { mutableStateOf(false) }
-
-            LaunchedEffect(gridState.isScrollInProgress, items.size) {
-                if (gridState.isScrollInProgress) {
-                    val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                    val totalItems = gridState.layoutInfo.totalItemsCount
-                    if (lastVisibleIndex == totalItems - 1 && totalItems > 0 && !isLoading) {
-                        isLoading = true
-                        onEndReached()
-                        isLoading = false
-                    }
-                }
-            }
-
+        is ContainerLayout.Grid -> {
+            val state = rememberLazyGridState()
+            ScrollEndReached(state.isScrollInProgress, items.size, isLoading, hasMorePages, onLoadMore)
             LazyVerticalGrid(
                 modifier = modifier.fillMaxSize(),
-                state = gridState,
-                columns = GridCells.Fixed(columns),
+                state = state,
+                columns = GridCells.Fixed(layout.columns),
                 contentPadding = contentPadding,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(items, key = { it.id }) { card ->
-                    cardContent(card)
-                }
+                renderCards(items, cardContent)
             }
         }
     }
 }
 
 /**
- * Convenience composable for rendering a list of VideoCards.
+ * Detects when the user scrolls to the end of a lazy list/grid and triggers onLoadMore.
  */
 @Composable
-fun VideoCardList(
-    cards: kotlin.collections.List<VideoCard>,
-    layoutMode: LayoutMode = LayoutMode.List,
-    columns: Int = 3,
-    onCardClick: (VideoCard) -> Unit,
-    onEndReached: () -> Unit,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp)
+private fun ScrollEndReached(
+    isScrolling: Boolean,
+    itemCount: Int,
+    isLoading: Boolean,
+    hasMorePages: Boolean,
+    onEndReached: () -> Unit
 ) {
-    VideoContainer(
-        items = cards,
-        layoutMode = layoutMode,
-        columns = columns,
-        onCardClick = { card ->
-            if (card is VideoCard) onCardClick(card)
-        },
-        onEndReached = onEndReached,
-        modifier = modifier,
-        contentPadding = contentPadding
-    ) { card ->
-        VideoCard(
-            card = card as VideoCard,
-            onClick = { onCardClick(card as VideoCard) }
-        )
+    LaunchedEffect(isScrolling, itemCount) {
+        if (isScrolling && !isLoading && hasMorePages && itemCount > 0) {
+            onEndReached()
+        }
     }
+}
+
+/**
+ * Renders a list of cards in a lazy list scope.
+ */
+private fun LazyListScope.renderCards(
+    items: List<Card>,
+    cardContent: @Composable (Card) -> Unit
+) {
+    items(items, key = { it.id }) { card -> cardContent(card) }
+}
+
+/**
+ * Renders a list of cards in a lazy grid scope.
+ */
+private fun LazyGridScope.renderCards(
+    items: List<Card>,
+    cardContent: @Composable (Card) -> Unit
+) {
+    items(items, key = { it.id }) { card -> cardContent(card) }
 }
