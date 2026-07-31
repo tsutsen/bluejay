@@ -90,7 +90,7 @@ fun VideoContainer(
     when (layout) {
         is ContainerLayout.List -> {
             val state = rememberLazyListState()
-            ScrollEndReached(listState = state, gridState = null, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, onEndReached = onLoadMore)
+            ScrollEndReached(listState = state, gridState = null, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 2, onEndReached = onLoadMore)
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 state = state,
@@ -102,7 +102,7 @@ fun VideoContainer(
         }
         is ContainerLayout.HorizontalStrip -> {
             val state = rememberLazyListState()
-            ScrollEndReached(listState = state, gridState = null, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, onEndReached = onLoadMore)
+            ScrollEndReached(listState = state, gridState = null, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 2, onEndReached = onLoadMore)
             LazyRow(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
@@ -114,7 +114,7 @@ fun VideoContainer(
         }
         is ContainerLayout.Grid -> {
             val state = rememberLazyGridState()
-            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, onEndReached = onLoadMore)
+            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 2, onEndReached = onLoadMore)
             LazyVerticalGrid(
                 modifier = modifier.fillMaxSize(),
                 state = state,
@@ -128,7 +128,7 @@ fun VideoContainer(
         }
         is ContainerLayout.PaginatedVertical -> {
             val state = rememberLazyGridState()
-            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, onEndReached = onLoadMore)
+            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 2, onEndReached = onLoadMore)
             LazyVerticalGrid(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
@@ -144,7 +144,7 @@ fun VideoContainer(
         }
         is ContainerLayout.PaginatedHorizontal -> {
             val state = rememberLazyGridState()
-            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, onEndReached = onLoadMore)
+            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 2, onEndReached = onLoadMore)
             LazyHorizontalGrid(
                 modifier = modifier.fillMaxHeight(),
                 state = state,
@@ -162,10 +162,11 @@ fun VideoContainer(
 }
 
 /**
- * Detects when the user scrolls to the end of a lazy list/grid and triggers onLoadMore.
- * Only fires when the last visible item is the actual last item in the list.
+ * Detects when the user scrolls near the end of a lazy list/grid and triggers onLoadMore.
+ * Fires when the last visible item is within `threshold` items of the end.
  *
  * @param itemCount Number of items (used as LaunchedEffect key to re-evaluate when items are added)
+ * @param threshold Number of items before the end to trigger loading (default: 1)
  */
 @Composable
 private fun ScrollEndReached(
@@ -174,6 +175,7 @@ private fun ScrollEndReached(
     itemCount: Int,
     isLoading: Boolean,
     hasMorePages: Boolean,
+    threshold: Int = 1,
     onEndReached: () -> Unit
 ) {
     // Handle lazy list (List, HorizontalStrip)
@@ -182,7 +184,7 @@ private fun ScrollEndReached(
             if (listState.isScrollInProgress && !isLoading && hasMorePages) {
                 val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
                 val totalItems = listState.layoutInfo.totalItemsCount
-                if (lastVisibleIndex == totalItems - 1 && totalItems > 0) {
+                if (lastVisibleIndex >= totalItems - threshold && totalItems > 0) {
                     onEndReached()
                 }
             }
@@ -195,7 +197,7 @@ private fun ScrollEndReached(
             if (gridState.isScrollInProgress && !isLoading && hasMorePages) {
                 val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
                 val totalItems = gridState.layoutInfo.totalItemsCount
-                if (lastVisibleIndex == totalItems - 1 && totalItems > 0) {
+                if (lastVisibleIndex >= totalItems - threshold && totalItems > 0) {
                     onEndReached()
                 }
             }
