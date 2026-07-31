@@ -42,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -54,6 +53,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.LoadingContent
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
+import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.model.VideoCard as ModelVideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
@@ -71,8 +71,7 @@ fun SubscriptionsScreen(
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isWide = rememberIsWide()
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
@@ -96,7 +95,7 @@ fun SubscriptionsScreen(
                 } else {
                     SubscriptionsContent(
                         state = state,
-                        isLandscape = isLandscape,
+                        isWide = isWide,
                         onCreatorSelected = viewModel::selectCreator,
                         onWatchedToggle = viewModel::toggleWatched,
                         onContinueToggle = viewModel::toggleContinue,
@@ -147,7 +146,7 @@ fun SubscriptionsScreen(
 @Composable
 private fun SubscriptionsContent(
     state: SubscriptionsUiState.Success,
-    isLandscape: Boolean,
+    isWide: Boolean,
     onCreatorSelected: (String?) -> Unit,
     onWatchedToggle: () -> Unit,
     onContinueToggle: () -> Unit,
@@ -162,8 +161,8 @@ private fun SubscriptionsContent(
     var isRefreshing = false
     val pullToRefreshState = rememberPullToRefreshState()
 
-    if (isLandscape) {
-        // Landscape: Filters + videos in center, creators on right side
+    if (isWide) {
+        // Wide: Filters + videos in center, creators on right side
         Row(modifier = modifier.fillMaxSize()) {
             Column(modifier = Modifier.weight(1f).fillMaxSize()) {
                 // Filter badges
