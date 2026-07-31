@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListScope
@@ -11,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -34,6 +38,26 @@ sealed interface ContainerLayout {
 
     /** Multi-column grid (landscape). */
     data class Grid(val columns: Int) : ContainerLayout
+
+    /**
+     * Fixed-height vertical paginated grid.
+     * Shows columns × rowsPerPage items in a grid.
+     * Container has fixed height, not fillMaxSize.
+     */
+    data class PaginatedVertical(
+        val columns: Int,
+        val rowsPerPage: Int,
+    ) : ContainerLayout
+
+    /**
+     * Fixed-width horizontal paginated grid.
+     * Shows columns × rowsPerPage items in a grid.
+     * Container has fixed width, not fillMaxSize.
+     */
+    data class PaginatedHorizontal(
+        val columns: Int,
+        val rowsPerPage: Int,
+    ) : ContainerLayout
 }
 
 /**
@@ -100,6 +124,38 @@ fun VideoContainer(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 renderCards(items, cardContent)
+            }
+        }
+        is ContainerLayout.PaginatedVertical -> {
+            val state = rememberLazyGridState()
+            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, onEndReached = onLoadMore)
+            LazyVerticalGrid(
+                modifier = modifier.fillMaxWidth(),
+                state = state,
+                columns = GridCells.Fixed(layout.columns),
+                contentPadding = contentPadding,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(items, key = { it.id }) { card ->
+                    cardContent(card)
+                }
+            }
+        }
+        is ContainerLayout.PaginatedHorizontal -> {
+            val state = rememberLazyGridState()
+            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, onEndReached = onLoadMore)
+            LazyHorizontalGrid(
+                modifier = modifier.fillMaxHeight(),
+                state = state,
+                rows = GridCells.Fixed(layout.rowsPerPage),
+                contentPadding = contentPadding,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(items, key = { it.id }) { card ->
+                    cardContent(card)
+                }
             }
         }
     }
