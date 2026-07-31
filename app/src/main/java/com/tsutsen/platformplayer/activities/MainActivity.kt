@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity(), IWithResultLauncher {
         super.onCreate(savedInstanceState)
 
         // Initialize StateApp and FragmentedStorage before setting content
+        supportActionBar?.hide()
         StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")
         StateApp.instance.mainAppStarting(this)
 
