@@ -94,4 +94,13 @@ class SearchViewModel @Inject constructor(
     fun clearHistory() {
         _searchHistory.value = emptyList()
     }
+
+    /**
+     * Delete a single query from search history.
+     */
+    fun deleteFromHistory(query: String) {
+        val current = _searchHistory.value.toMutableList()
+        current.remove(query)
+        _searchHistory.value = current
+    }
 }

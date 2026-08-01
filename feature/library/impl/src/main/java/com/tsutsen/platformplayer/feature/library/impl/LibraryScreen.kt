@@ -86,16 +86,40 @@ fun LibraryScreen(
                         LibrarySectionSkeleton(title = "Playlists")
                     }
                 } else {
-                    // Render sections
+                    // Render sections - always show all three
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        sections.forEach { section ->
-                            LibrarySectionCard(section = section)
-                        }
+                        // Always show History section
+                        LibrarySectionCard(
+                            section = LibrarySection(
+                                id = "history",
+                                title = "History",
+                                items = sections.find { it.id == "history" }?.items ?: emptyList(),
+                                isLoading = sections.find { it.id == "history" }?.isLoading ?: false
+                            )
+                        )
+                        // Always show Watch Later section
+                        LibrarySectionCard(
+                            section = LibrarySection(
+                                id = "watch_later",
+                                title = "Watch Later",
+                                items = sections.find { it.id == "watch_later" }?.items ?: emptyList(),
+                                isLoading = sections.find { it.id == "watch_later" }?.isLoading ?: false
+                            )
+                        )
+                        // Always show Playlists section
+                        LibrarySectionCard(
+                            section = LibrarySection(
+                                id = "playlists",
+                                title = "Playlists",
+                                items = sections.find { it.id == "playlists" }?.items ?: emptyList(),
+                                isLoading = sections.find { it.id == "playlists" }?.isLoading ?: false
+                            )
+                        )
                     }
                 }
             }
@@ -143,9 +167,19 @@ private fun LibrarySectionCard(
                 }
             }
         } else if (section.items.isEmpty()) {
-            EmptyState(
-                message = "No ${section.title.lowercase()} yet"
-            )
+            // Show "nothing yet!" message
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Nothing yet!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         } else {
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -160,7 +194,7 @@ private fun LibrarySectionCard(
 }
 
 /**
- * Card for library section (simplified version for horizontal strip).
+ * Card for library section (uses same VideoCard as Home/Subscription tabs).
  */
 @Composable
 private fun LibraryCard(
@@ -169,10 +203,15 @@ private fun LibraryCard(
 ) {
     when (card) {
         is CoreVideoCard -> {
-            VideoCard(
-                card = card,
-                onClick = { /* Navigate to video */ }
-            )
+            Box(
+                modifier = modifier
+                    .size(width = 200.dp, height = 120.dp)
+            ) {
+                VideoCard(
+                    card = card,
+                    onClick = { /* Navigate to video */ }
+                )
+            }
         }
         is PlaylistCard -> {
             Box(

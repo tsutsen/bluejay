@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,7 +62,6 @@ fun SearchScreen(
 ) {
     val isWide = rememberIsWide()
     var searchQuery by remember { mutableStateOf("") }
-    var isSearchBarFocused by remember { mutableStateOf(false) }
     val refreshingState = rememberPullToRefreshState()
     var isRefreshing by remember { mutableStateOf(false) }
 
@@ -89,17 +89,18 @@ fun SearchScreen(
             // Search bar
             SearchBar(
                 query = searchQuery,
-                isFocused = isSearchBarFocused,
+                isFocused = false,
                 onQueryChange = { searchQuery = it },
                 onSearch = { query ->
                     viewModel.search(query)
-                    isSearchBarFocused = false
                 },
-                onFocusedChange = { isSearchBarFocused = it },
+                onFocusedChange = {},
                 onHistoryItemClick = { query ->
                     searchQuery = query
                     viewModel.search(query)
-                    isSearchBarFocused = false
+                },
+                onDeleteItem = { query ->
+                    viewModel.deleteFromHistory(query)
                 },
                 onClearHistory = { viewModel.clearHistory() },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -148,12 +149,15 @@ fun SearchScreen(
                 }
                 else -> {
                     // Show empty state or history suggestions
-                    if (uiState.searchHistory.isNotEmpty() && searchQuery.isBlank() && !isSearchBarFocused) {
+                    if (uiState.searchHistory.isNotEmpty() && searchQuery.isBlank()) {
                         RecentSearches(
                             history = uiState.searchHistory.take(5),
                             onItemClick = { query ->
                                 searchQuery = query
                                 viewModel.search(query)
+                            },
+                            onDeleteItem = { query ->
+                                viewModel.deleteFromHistory(query)
                             },
                             onClearHistory = { viewModel.clearHistory() },
                             modifier = Modifier.fillMaxSize()
@@ -183,6 +187,7 @@ private fun SearchBar(
     onSearch: (String) -> Unit,
     onFocusedChange: (Boolean) -> Unit,
     onHistoryItemClick: (String) -> Unit,
+    onDeleteItem: (String) -> Unit,
     onClearHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -203,15 +208,28 @@ private fun SearchBar(
             )
         },
         trailingIcon = {
-            if (query.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (query.isNotEmpty()) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear",
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(24.dp)
+                            .clickable {
+                                onQueryChange("")
+                                onFocusedChange(false)
+                            }
+                    )
+                }
                 Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Clear",
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
                     modifier = Modifier
                         .padding(end = 8.dp)
+                        .size(24.dp)
                         .clickable {
-                            onQueryChange("")
-                            onFocusedChange(false)
+                            onSearch(query)
                         }
                 )
             }
@@ -249,6 +267,7 @@ private fun SearchBar(
 private fun RecentSearches(
     history: List<String>,
     onItemClick: (String) -> Unit,
+    onDeleteItem: (String) -> Unit,
     onClearHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -296,7 +315,15 @@ private fun RecentSearches(
                     text = query,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 16.dp)
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { onDeleteItem(query) },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
