@@ -10,6 +10,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.LibraryScreen
+import com.tsutsen.platformplayer.feature.library.impl.LibrarySectionDetailScreen
 import com.tsutsen.platformplayer.feature.search.impl.SearchScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
 import com.tsutsen.platformplayer.feature.home.impl.HomeScreen
@@ -54,7 +55,7 @@ fun GrayjayNavGraph(
         is NavDestination.Home -> HomeScreen(navigator = navigator)
         is NavDestination.Search -> SearchScreen(navigator = navigator)
         is NavDestination.Subscriptions -> SubscriptionsScreen(navigator = navigator)
-        is NavDestination.Library -> LibraryScreen()
+        is NavDestination.Library -> LibraryScreen(navigator = navigator)
         is NavDestination.Settings -> SettingsScreen(navigator = navigator)
         is NavDestination.ChannelDetail -> PlaceholderScreen("Channel Detail", "Coming soon")
         is NavDestination.PlaylistDetail -> PlaceholderScreen("Playlist Detail", "Coming soon")
@@ -76,6 +77,10 @@ fun GrayjayNavGraph(
         is NavDestination.LibraryVideos -> PlaceholderScreen("Library Videos", "Coming soon")
         is NavDestination.LibraryFiles -> PlaceholderScreen("Library Files", "Coming soon")
         is NavDestination.LibrarySearch -> PlaceholderScreen("Library Search", "Coming soon")
+        is NavDestination.LibrarySectionDetail -> LibrarySectionDetailScreen(
+            sectionId = destination.sectionId,
+            onBack = { navigator.goBack() }
+        )
         is NavDestination.Login -> {
             val config = Json.decodeFromString<SourcePluginConfig>(destination.configJson)
             LoginScreen(

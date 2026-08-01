@@ -1,14 +1,18 @@
 package com.tsutsen.platformplayer.feature.search.impl
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -51,8 +56,10 @@ import kotlinx.coroutines.flow.combine
 
 /**
  * Search screen composable.
- * Shows a search bar at the top with recent search history suggestions.
- * When a search is executed, displays results in a video grid (same layout as Home).
+ * Layout:
+ *  1. Search field + search button (top row)
+ *  2. Search history list with background (shown on first open or when field is focused)
+ *  3. Search result grid (shown after search is executed)
  */
 @Composable
 fun SearchScreen(
@@ -63,6 +70,7 @@ fun SearchScreen(
     val isWide = rememberIsWide()
     var searchQuery by remember { mutableStateOf("") }
     var isSearchBarFocused by remember { mutableStateOf(false) }
+    var hasSearched by remember { mutableStateOf(false) }
     val refreshingState = rememberPullToRefreshState()
     var isRefreshing by remember { mutableStateOf(false) }
 
@@ -87,48 +95,102 @@ fun SearchScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search bar
-            SearchBar(
-                query = searchQuery,
-                isFocused = isSearchBarFocused,
-                onQueryChange = { searchQuery = it },
-                onSearch = { query ->
-                    viewModel.search(query)
-                    isSearchBarFocused = false
-                },
-                onFocusedChange = { isSearchBarFocused = it },
-                onHistoryItemClick = { query ->
-                    searchQuery = query
-                    viewModel.search(query)
-                    isSearchBarFocused = false
-                },
-                onDeleteItem = { query ->
-                    viewModel.deleteFromHistory(query)
-                },
-                onClearHistory = { viewModel.clearHistory() },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            // Show history popup when focused and query is empty
-            if (isSearchBarFocused && searchQuery.isBlank() && uiState.searchHistory.isNotEmpty()) {
-                RecentSearches(
-                    history = uiState.searchHistory.take(5),
-                    onItemClick = { query ->
-                        searchQuery = query
-                        viewModel.search(query)
-                        isSearchBarFocused = false
+            // 1. Search field + search button (top row)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Search") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search"
+                        )
                     },
-                    onDeleteItem = { query ->
-                        viewModel.deleteFromHistory(query)
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(24.dp)
+                                    .clickable {
+                                        searchQuery = ""
+                                        isSearchBarFocused = false
+                                    }
+                            )
+                        }
                     },
-                    onClearHistory = { viewModel.clearHistory() },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = {
+                            if (searchQuery.isNotBlank()) {
+                                viewModel.search(searchQuery)
+                                hasSearched = true
+                                isSearchBarFocused = false
+                            }
+                        }
+                    ),
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                // Search button
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .size(40.dp)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable {
+                            if (searchQuery.isNotBlank()) {
+                                viewModel.search(searchQuery)
+                                hasSearched = true
+                                isSearchBarFocused = false
+                            }
+                        },
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
 
-            // Content area
+            // 2. Search history list with background (shown on first open or when field is focused)
+            if ((!hasSearched || searchQuery.isBlank()) && uiState.searchHistory.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(12.dp)
+                ) {
+                    RecentSearches(
+                        history = uiState.searchHistory.take(5),
+                        onItemClick = { query ->
+                            searchQuery = query
+                            viewModel.search(query)
+                            hasSearched = true
+                            isSearchBarFocused = false
+                        },
+                        onDeleteItem = { query ->
+                            viewModel.deleteFromHistory(query)
+                        },
+                        onClearHistory = { viewModel.clearHistory() }
+                    )
+                }
+            }
+
+            // 3. Search result grid (shown after search is executed)
             when {
                 uiState.isLoading && uiState.items.isEmpty() -> {
                     VideoCardSkeleton(count = 6)
@@ -170,21 +232,8 @@ fun SearchScreen(
                     )
                 }
                 else -> {
-                    // Show empty state or history suggestions
-                    if (uiState.searchHistory.isNotEmpty() && searchQuery.isBlank() && !isSearchBarFocused) {
-                        RecentSearches(
-                            history = uiState.searchHistory.take(5),
-                            onItemClick = { query ->
-                                searchQuery = query
-                                viewModel.search(query)
-                            },
-                            onDeleteItem = { query ->
-                                viewModel.deleteFromHistory(query)
-                            },
-                            onClearHistory = { viewModel.clearHistory() },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else if (uiState.items.isEmpty() && !uiState.isLoading && searchQuery.isNotBlank()) {
+                    // Show empty state only after a search was executed and returned no results
+                    if (hasSearched && uiState.items.isEmpty() && !uiState.isLoading && searchQuery.isNotBlank()) {
                         EmptyState(
                             message = "No results for \"$searchQuery\"",
                             actionLabel = "Try a different search",
@@ -195,70 +244,6 @@ fun SearchScreen(
             }
         }
     }
-}
-
-/**
- * Search bar with history suggestions dropdown.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SearchBar(
-    query: String,
-    isFocused: Boolean,
-    onQueryChange: (String) -> Unit,
-    onSearch: (String) -> Unit,
-    onFocusedChange: (Boolean) -> Unit,
-    onHistoryItemClick: (String) -> Unit,
-    onDeleteItem: (String) -> Unit,
-    onClearHistory: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = modifier.fillMaxWidth(),
-        placeholder = { Text("Search") },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Search"
-            )
-        },
-        trailingIcon = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (query.isNotEmpty()) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Clear",
-                        modifier = Modifier
-                            .padding(end = 4.dp)
-                            .size(24.dp)
-                            .clickable {
-                                onQueryChange("")
-                                onFocusedChange(false)
-                            }
-                    )
-                }
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(24.dp)
-                        .clickable {
-                            onSearch(query)
-                        }
-                )
-            }
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(24.dp),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(
-            onSearch = { onSearch(query) }
-        ),
-        textStyle = MaterialTheme.typography.bodyMedium
-    )
 }
 
 /**
@@ -273,14 +258,14 @@ private fun RecentSearches(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -302,7 +287,7 @@ private fun RecentSearches(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(vertical = 4.dp)
                     .clickable { onItemClick(query) },
                 verticalAlignment = Alignment.CenterVertically
             ) {

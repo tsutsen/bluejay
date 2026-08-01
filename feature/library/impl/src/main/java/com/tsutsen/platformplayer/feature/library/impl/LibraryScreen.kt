@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,22 +34,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
-import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
+import com.tsutsen.platformplayer.core.navigation.Navigator
 
 /**
  * Library screen composable.
- * Shows three horizontal-scroll strips: History, Watch Later, Playlists.
+ * Shows three vertical-scroll sections: History, Watch Later, Playlists.
+ * Each section has a clickable header that opens the detail page.
  */
 @Composable
 fun LibraryScreen(
+    navigator: Navigator,
     viewModel: LibraryViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -75,24 +76,27 @@ fun LibraryScreen(
             content = {
                 if (sections.isEmpty()) {
                     // Show skeletons while loading
-                    Column(
+                    LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        LibrarySectionSkeleton(title = "History")
-                        LibrarySectionSkeleton(title = "Watch Later")
-                        LibrarySectionSkeleton(title = "Playlists")
+                        item { LibrarySectionSkeleton(title = "History") }
+                        item { LibrarySectionSkeleton(title = "Watch Later") }
+                        item { LibrarySectionSkeleton(title = "Playlists") }
                     }
                 } else {
-                    // Render sections from repository (always show all three)
-                    Column(
+                    // Render sections vertically
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        sections.forEach { section ->
-                            LibrarySectionCard(section = section)
+                        items(sections, key = { it.id }) { section ->
+                            LibrarySectionCard(
+                                section = section,
+                                onClick = { navigator.navigateToLibrarySectionDetail(section.id) }
+                            )
                         }
                     }
                 }
@@ -102,20 +106,22 @@ fun LibraryScreen(
 }
 
 /**
- * Library section card with horizontal scroll strip.
- * Uses VideoContainer + VideoCard for consistent styling with Home/Subscription tabs.
+ * Library section card with vertical scroll.
+ * Header is clickable to open detail page.
  */
 @Composable
 private fun LibrarySectionCard(
     section: LibrarySection,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        // Section header
+        // Section header - clickable
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp),
+                .padding(bottom = 8.dp)
+                .clickable(onClick = onClick),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -131,18 +137,14 @@ private fun LibrarySectionCard(
             )
         }
 
-        // Section items
+        // Section items - vertical scroll
         if (section.isLoading) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 repeat(4) {
                     VideoCardSkeleton()
                 }
             }
         } else if (section.items.isEmpty()) {
-            // Show "nothing yet!" message
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -156,19 +158,10 @@ private fun LibrarySectionCard(
                 )
             }
         } else {
-            // Use VideoContainer with horizontal layout for consistent card styling
-            VideoContainer(
-                items = section.items,
-                layout = ContainerLayout.List,
-                isLoading = false,
-                hasMorePages = false,
-                onCardClick = { /* Navigate to video */ },
-                onLoadMore = { /* Not needed for library */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            ) { card ->
-                LibraryCard(card = card)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                section.items.forEach { card ->
+                    LibraryCard(card = card)
+                }
             }
         }
     }
@@ -192,7 +185,7 @@ private fun LibraryCard(
         is PlaylistCard -> {
             Box(
                 modifier = modifier
-                    .size(width = 200.dp, height = 120.dp)
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer)
                     .clickable { /* Navigate to playlist */ }
@@ -222,7 +215,8 @@ private fun LibraryCard(
             // Fallback for other card types
             Box(
                 modifier = modifier
-                    .size(width = 200.dp, height = 120.dp)
+                    .fillMaxWidth()
+                    .height(120.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
@@ -248,16 +242,9 @@ private fun LibrarySectionSkeleton(
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
             )
         }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             repeat(4) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 200.dp, height = 120.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                )
+                VideoCardSkeleton()
             }
         }
     }

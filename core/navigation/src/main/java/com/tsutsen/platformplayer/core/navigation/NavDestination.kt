@@ -40,6 +40,7 @@ sealed class NavDestination {
     data object LibraryVideos : NavDestination()
     data object LibraryFiles : NavDestination()
     data object LibrarySearch : NavDestination()
+    data class LibrarySectionDetail(val sectionId: String) : NavDestination()
 
     // Auth & other
     data class Login(val configJson: String) : NavDestination()
