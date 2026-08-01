@@ -6,9 +6,11 @@ import com.tsutsen.platformplayer.core.data.repository.SearchRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelCard
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import com.tsutsen.platformplayer.core.model.SearchResult
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
@@ -36,16 +38,19 @@ class EngineSearchRepositoryImpl @Inject constructor() : SearchRepository {
         _results.update { it.copy(query = query, isLoading = true, error = null, items = emptyList()) }
 
         try {
-            val pager = StatePlatform.instance.search(query)
-            _lastPager = pager
-            val items = convertToCards(pager.getResults())
-            _results.update {
-                it.copy(
-                    isLoading = false,
-                    items = items,
-                    hasMorePages = pager.hasMorePages(),
-                    error = null
-                )
+            // Run engine call on IO dispatcher to avoid main thread blocking
+            withContext(Dispatchers.IO) {
+                val pager = StatePlatform.instance.search(query)
+                _lastPager = pager
+                val items = convertToCards(pager.getResults())
+                _results.update {
+                    it.copy(
+                        isLoading = false,
+                        items = items,
+                        hasMorePages = pager.hasMorePages(),
+                        error = null
+                    )
+                }
             }
         } catch (e: Exception) {
             Logger.e("EngineSearchRepository", "search failed", e)

@@ -9,13 +9,13 @@ import com.tsutsen.platformplayer.core.database.entity.PlaylistVideoEntity
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.VideoCard
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,6 +30,8 @@ class LibraryRepositoryImpl @Inject constructor(
     private val playlistDao: PlaylistDao
 ) : LibraryRepository {
 
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    
     private val _sections = MutableStateFlow<List<LibrarySection>>(emptyList())
     override val sections: StateFlow<List<LibrarySection>> = _sections.asStateFlow()
 
@@ -41,8 +43,8 @@ class LibraryRepositoryImpl @Inject constructor(
         ) { history, playlists ->
             buildSections(history, playlists)
         }
-        // Collect in background scope (singleton lives for app lifetime)
-        GlobalScope.launch(Dispatchers.IO) {
+        // Collect in repository scope (singleton lives for app lifetime)
+        repositoryScope.launch {
             combinedFlow.collect { sections ->
                 _sections.value = sections
             }

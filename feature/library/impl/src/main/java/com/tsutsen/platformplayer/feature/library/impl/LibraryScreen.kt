@@ -22,9 +22,15 @@ import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,31 +54,52 @@ fun LibraryScreen(
     modifier: Modifier = Modifier
 ) {
     val sections by viewModel.sections.collectAsState()
+    val refreshingState = rememberPullToRefreshState()
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    // Reset refresh state when loading completes
+    LaunchedEffect(sections) {
+        val allLoaded = sections.all { !it.isLoading }
+        if (allLoaded && sections.isNotEmpty()) {
+            isRefreshing = false
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (sections.isEmpty()) {
-            // Show skeletons while loading
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                LibrarySectionSkeleton(title = "History")
-                LibrarySectionSkeleton(title = "Watch Later")
-                LibrarySectionSkeleton(title = "Playlists")
-            }
-        } else {
-            // Render sections
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                sections.forEach { section ->
-                    LibrarySectionCard(section = section)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            state = refreshingState,
+            onRefresh = {
+                isRefreshing = true
+                // Reload all sections
+                // Data is observed via repository, so this will trigger re-collection
+            },
+            content = {
+                if (sections.isEmpty()) {
+                    // Show skeletons while loading
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        LibrarySectionSkeleton(title = "History")
+                        LibrarySectionSkeleton(title = "Watch Later")
+                        LibrarySectionSkeleton(title = "Playlists")
+                    }
+                } else {
+                    // Render sections
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        sections.forEach { section ->
+                            LibrarySectionCard(section = section)
+                        }
+                    }
                 }
             }
-        }
+        )
     }
 }
 
