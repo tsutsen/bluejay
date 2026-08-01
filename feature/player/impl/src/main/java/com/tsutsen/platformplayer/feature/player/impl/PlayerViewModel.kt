@@ -48,9 +48,9 @@ sealed interface PlayerUiState {
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val playerRepository: PlayerRepository,
-    private val commentRepository: CommentRepository
+    private val commentRepository: CommentRepository,
+    private val historyTracker: HistoryTracker
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
     
@@ -80,6 +80,17 @@ class PlayerViewModel @Inject constructor(
                         isCompleted = playerState.isCompleted,
                         comments = cachedComments
                     )
+                    
+                    // Track playback history
+                    val video = playerState.currentVideo
+                    if (video != null) {
+                        historyTracker.trackPlayback(
+                            contentUrl = video.url,
+                            title = video.title,
+                            author = video.author?.name,
+                            thumbnailUrl = video.thumbnailUrl,
+                        )
+                    }
                 }
         }
     }
@@ -89,6 +100,13 @@ class PlayerViewModel @Inject constructor(
             // Reset comments for new video
             cachedComments = emptyList()
             playerRepository.play(videoId)
+            // Track in history
+            historyTracker.trackPlayback(
+                contentUrl = videoId,
+                title = videoId,
+                author = null,
+                thumbnailUrl = null
+            )
             // Fetch comments after video starts playing
             fetchComments(videoId)
         }
