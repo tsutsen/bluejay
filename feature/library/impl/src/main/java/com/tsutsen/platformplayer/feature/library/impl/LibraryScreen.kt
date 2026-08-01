@@ -16,9 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,9 +34,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
+import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
@@ -71,8 +71,6 @@ fun LibraryScreen(
             state = refreshingState,
             onRefresh = {
                 isRefreshing = true
-                // Reload all sections
-                // Data is observed via repository, so this will trigger re-collection
             },
             content = {
                 if (sections.isEmpty()) {
@@ -86,40 +84,16 @@ fun LibraryScreen(
                         LibrarySectionSkeleton(title = "Playlists")
                     }
                 } else {
-                    // Render sections - always show all three
+                    // Render sections from repository (always show all three)
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        // Always show History section
-                        LibrarySectionCard(
-                            section = LibrarySection(
-                                id = "history",
-                                title = "History",
-                                items = sections.find { it.id == "history" }?.items ?: emptyList(),
-                                isLoading = sections.find { it.id == "history" }?.isLoading ?: false
-                            )
-                        )
-                        // Always show Watch Later section
-                        LibrarySectionCard(
-                            section = LibrarySection(
-                                id = "watch_later",
-                                title = "Watch Later",
-                                items = sections.find { it.id == "watch_later" }?.items ?: emptyList(),
-                                isLoading = sections.find { it.id == "watch_later" }?.isLoading ?: false
-                            )
-                        )
-                        // Always show Playlists section
-                        LibrarySectionCard(
-                            section = LibrarySection(
-                                id = "playlists",
-                                title = "Playlists",
-                                items = sections.find { it.id == "playlists" }?.items ?: emptyList(),
-                                isLoading = sections.find { it.id == "playlists" }?.isLoading ?: false
-                            )
-                        )
+                        sections.forEach { section ->
+                            LibrarySectionCard(section = section)
+                        }
                     }
                 }
             }
@@ -129,6 +103,7 @@ fun LibraryScreen(
 
 /**
  * Library section card with horizontal scroll strip.
+ * Uses VideoContainer + VideoCard for consistent styling with Home/Subscription tabs.
  */
 @Composable
 private fun LibrarySectionCard(
@@ -181,13 +156,19 @@ private fun LibrarySectionCard(
                 )
             }
         } else {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(section.items, key = { it.id }) { card ->
-                    LibraryCard(card = card)
-                }
+            // Use VideoContainer with horizontal layout for consistent card styling
+            VideoContainer(
+                items = section.items,
+                layout = ContainerLayout.List,
+                isLoading = false,
+                hasMorePages = false,
+                onCardClick = { /* Navigate to video */ },
+                onLoadMore = { /* Not needed for library */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            ) { card ->
+                LibraryCard(card = card)
             }
         }
     }
@@ -203,15 +184,10 @@ private fun LibraryCard(
 ) {
     when (card) {
         is CoreVideoCard -> {
-            Box(
-                modifier = modifier
-                    .size(width = 200.dp, height = 120.dp)
-            ) {
-                VideoCard(
-                    card = card,
-                    onClick = { /* Navigate to video */ }
-                )
-            }
+            VideoCard(
+                card = card,
+                onClick = { /* Navigate to video */ }
+            )
         }
         is PlaylistCard -> {
             Box(

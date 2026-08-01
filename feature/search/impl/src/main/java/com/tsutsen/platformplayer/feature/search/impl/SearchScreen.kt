@@ -62,6 +62,7 @@ fun SearchScreen(
 ) {
     val isWide = rememberIsWide()
     var searchQuery by remember { mutableStateOf("") }
+    var isSearchBarFocused by remember { mutableStateOf(false) }
     val refreshingState = rememberPullToRefreshState()
     var isRefreshing by remember { mutableStateOf(false) }
 
@@ -89,15 +90,17 @@ fun SearchScreen(
             // Search bar
             SearchBar(
                 query = searchQuery,
-                isFocused = false,
+                isFocused = isSearchBarFocused,
                 onQueryChange = { searchQuery = it },
                 onSearch = { query ->
                     viewModel.search(query)
+                    isSearchBarFocused = false
                 },
-                onFocusedChange = {},
+                onFocusedChange = { isSearchBarFocused = it },
                 onHistoryItemClick = { query ->
                     searchQuery = query
                     viewModel.search(query)
+                    isSearchBarFocused = false
                 },
                 onDeleteItem = { query ->
                     viewModel.deleteFromHistory(query)
@@ -105,6 +108,25 @@ fun SearchScreen(
                 onClearHistory = { viewModel.clearHistory() },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
+
+            // Show history popup when focused and query is empty
+            if (isSearchBarFocused && searchQuery.isBlank() && uiState.searchHistory.isNotEmpty()) {
+                RecentSearches(
+                    history = uiState.searchHistory.take(5),
+                    onItemClick = { query ->
+                        searchQuery = query
+                        viewModel.search(query)
+                        isSearchBarFocused = false
+                    },
+                    onDeleteItem = { query ->
+                        viewModel.deleteFromHistory(query)
+                    },
+                    onClearHistory = { viewModel.clearHistory() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+            }
 
             // Content area
             when {
@@ -149,7 +171,7 @@ fun SearchScreen(
                 }
                 else -> {
                     // Show empty state or history suggestions
-                    if (uiState.searchHistory.isNotEmpty() && searchQuery.isBlank()) {
+                    if (uiState.searchHistory.isNotEmpty() && searchQuery.isBlank() && !isSearchBarFocused) {
                         RecentSearches(
                             history = uiState.searchHistory.take(5),
                             onItemClick = { query ->
@@ -191,14 +213,9 @@ private fun SearchBar(
     onClearHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showHistory by remember { mutableStateOf(false) }
-
     OutlinedTextField(
         value = query,
-        onValueChange = {
-            onQueryChange(it)
-            showHistory = it.isBlank()
-        },
+        onValueChange = onQueryChange,
         modifier = modifier.fillMaxWidth(),
         placeholder = { Text("Search") },
         leadingIcon = {
@@ -242,22 +259,6 @@ private fun SearchBar(
         ),
         textStyle = MaterialTheme.typography.bodyMedium
     )
-
-    // Show history suggestions when focused and query is empty
-    if (showHistory || (isFocused && query.isBlank())) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp)
-        ) {
-            Text(
-                text = "Recent searches",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, bottom = 4.dp)
-            )
-        }
-    }
 }
 
 /**
