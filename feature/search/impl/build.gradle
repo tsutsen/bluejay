@@ -2,6 +2,8 @@ plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android' version '2.2.21'
     id 'org.jetbrains.kotlin.plugin.compose' version '2.2.21'
+    id 'com.google.dagger.hilt.android' version '2.58'
+    id 'com.google.devtools.ksp'
 }
 
 android {
@@ -44,4 +46,9 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose'
     implementation 'androidx.activity:activity-compose'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+
+    //Hilt Dependency Injection
+    implementation 'com.google.dagger:hilt-android:2.58'
+    ksp 'com.google.dagger:hilt-android-compiler:2.58'
+    implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
 }

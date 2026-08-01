@@ -9,8 +9,9 @@ import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
-import com.tsutsen.platformplayer.feature.home.impl.HomeScreen
+import com.tsutsen.platformplayer.feature.search.impl.SearchScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
+import com.tsutsen.platformplayer.feature.home.impl.HomeScreen
 import com.tsutsen.platformplayer.feature.subscriptions.impl.SubscriptionsScreen
 import com.tsutsen.platformplayer.feature.settings.impl.SettingsScreen
 import com.tsutsen.platformplayer.logging.Logger
@@ -53,7 +54,7 @@ fun GrayjayNavGraph(
         is NavDestination.Search -> PlaceholderScreen("Search", "Coming soon")
         is NavDestination.Subscriptions -> SubscriptionsScreen(navigator = navigator)
         is NavDestination.Library -> PlaceholderScreen("Library", "Coming soon")
-        is NavDestination.Notifications -> PlaceholderScreen("Notifications", "Coming soon")
+        is NavDestination.Search -> SearchScreen(navigator = navigator)
         is NavDestination.Settings -> SettingsScreen(navigator = navigator)
         is NavDestination.ChannelDetail -> PlaceholderScreen("Channel Detail", "Coming soon")
         is NavDestination.PlaylistDetail -> PlaceholderScreen("Playlist Detail", "Coming soon")
