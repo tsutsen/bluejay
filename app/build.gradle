@@ -178,6 +178,7 @@ dependencies {
     implementation project(':feature:subscriptions:impl')
     implementation project(':feature:settings:impl')
     implementation project(':feature:search:impl')
+    implementation project(':feature:library:impl')
     implementation project(':feature:player:impl')
 
     //Core

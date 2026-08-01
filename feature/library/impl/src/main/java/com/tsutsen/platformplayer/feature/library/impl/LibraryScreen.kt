@@ -1,1 +1,222 @@
 package com.tsutsen.platformplayer.feature.library.impl
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
+import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
+import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
+import com.tsutsen.platformplayer.core.model.Card
+import com.tsutsen.platformplayer.core.model.LibrarySection
+import com.tsutsen.platformplayer.core.model.PlaylistCard
+import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
+
+/**
+ * Library screen composable.
+ * Shows three horizontal-scroll strips: History, Watch Later, Playlists.
+ */
+@Composable
+fun LibraryScreen(
+    viewModel: LibraryViewModel = hiltViewModel(),
+    modifier: Modifier = Modifier
+) {
+    val sections by viewModel.sections.collectAsState()
+
+    Box(modifier = modifier.fillMaxSize()) {
+        if (sections.isEmpty()) {
+            // Show skeletons while loading
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                LibrarySectionSkeleton(title = "History")
+                LibrarySectionSkeleton(title = "Watch Later")
+                LibrarySectionSkeleton(title = "Playlists")
+            }
+        } else {
+            // Render sections
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                sections.forEach { section ->
+                    LibrarySectionCard(section = section)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Library section card with horizontal scroll strip.
+ */
+@Composable
+private fun LibrarySectionCard(
+    section: LibrarySection,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Section header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = section.title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "View all",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Section items
+        if (section.isLoading) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                repeat(4) {
+                    VideoCardSkeleton()
+                }
+            }
+        } else if (section.items.isEmpty()) {
+            EmptyState(
+                message = "No ${section.title.lowercase()} yet"
+            )
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(section.items, key = { it.id }) { card ->
+                    LibraryCard(card = card)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Card for library section (simplified version for horizontal strip).
+ */
+@Composable
+private fun LibraryCard(
+    card: Card,
+    modifier: Modifier = Modifier
+) {
+    when (card) {
+        is CoreVideoCard -> {
+            VideoCard(
+                card = card,
+                onClick = { /* Navigate to video */ }
+            )
+        }
+        is PlaylistCard -> {
+            Box(
+                modifier = modifier
+                    .size(width = 200.dp, height = 120.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .clickable { /* Navigate to playlist */ }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlaylistPlay,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = card.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 2
+                    )
+                }
+            }
+        }
+        else -> {
+            // Fallback for other card types
+            Box(
+                modifier = modifier
+                    .size(width = 200.dp, height = 120.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+        }
+    }
+}
+
+/**
+ * Skeleton for library section (shimmer effect).
+ */
+@Composable
+private fun LibrarySectionSkeleton(
+    title: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        if (title != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .height(20.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            repeat(4) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 200.dp, height = 120.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                )
+            }
+        }
+    }
+}
