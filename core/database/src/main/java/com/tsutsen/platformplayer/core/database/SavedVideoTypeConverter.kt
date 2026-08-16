@@ -1,7 +1,7 @@
 package com.tsutsen.platformplayer.core.database
 
 import androidx.room.TypeConverter
-import com.tsutsen.platformplayer.core.database.entity.SavedVideoType
+import com.tsutsen.platformplayer.core.model.SavedVideoType
 
 class SavedVideoTypeConverter {
     @TypeConverter

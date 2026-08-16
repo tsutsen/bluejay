@@ -33,6 +33,7 @@ dependencies {
     implementation project(':core:data')
     implementation project(':core:navigation')
     implementation project(':core:model')
+    implementation project(':feature:player:impl')
     implementation project(':core:ui')
     implementation 'com.google.dagger:hilt-android:2.58'
     ksp 'com.google.dagger:hilt-android-compiler:2.58'

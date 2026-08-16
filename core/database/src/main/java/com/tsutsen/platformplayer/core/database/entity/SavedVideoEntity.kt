@@ -1,16 +1,7 @@
 package com.tsutsen.platformplayer.core.database.entity
 
 import androidx.room.Entity
-
-/**
- * Save destinations for the "Save" sheet actions. A video can hold several
- * types at once (e.g. Watch Later + Favourite), hence the composite PK.
- */
-enum class SavedVideoType {
-    WATCH_LATER,
-    LIKED,
-    FAVOURITE,
-}
+import com.tsutsen.platformplayer.core.model.SavedVideoType
 
 @Entity(
     tableName = "saved_video",

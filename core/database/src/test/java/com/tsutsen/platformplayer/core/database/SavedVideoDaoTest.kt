@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.tsutsen.platformplayer.core.database.dao.SavedVideoDao
 import com.tsutsen.platformplayer.core.database.entity.SavedVideoEntity
-import com.tsutsen.platformplayer.core.database.entity.SavedVideoType
+import com.tsutsen.platformplayer.core.model.SavedVideoType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject

@@ -6,7 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.tsutsen.platformplayer.core.database.entity.SavedVideoEntity
-import com.tsutsen.platformplayer.core.database.entity.SavedVideoType
+import com.tsutsen.platformplayer.core.model.SavedVideoType
 import kotlinx.coroutines.flow.Flow
 
 @Dao

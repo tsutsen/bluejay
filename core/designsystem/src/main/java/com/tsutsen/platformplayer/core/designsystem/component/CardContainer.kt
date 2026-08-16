@@ -2,15 +2,15 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -37,7 +37,9 @@ sealed interface ContainerLayout {
     object HorizontalStrip : ContainerLayout
 
     /** Multi-column grid (landscape). */
-    data class Grid(val columns: Int) : ContainerLayout
+    data class Grid(
+        val columns: Int,
+    ) : ContainerLayout
 
     /**
      * Fixed-height vertical paginated grid.
@@ -74,6 +76,7 @@ sealed interface ContainerLayout {
  * @param modifier Modifier for the container
  * @param contentPadding Padding around the content
  * @param cardContent Composable that renders a single card
+ * @param trailingContent Optional extra item rendered after all cards (e.g. an "All (n)" card)
  */
 @Composable
 fun VideoContainer(
@@ -85,77 +88,122 @@ fun VideoContainer(
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(16.dp),
-    cardContent: @Composable (Card) -> Unit
+    trailingContent: (@Composable () -> Unit)? = null,
+    cardContent: @Composable (Card) -> Unit,
 ) {
     when (layout) {
         is ContainerLayout.List -> {
             val state = rememberLazyListState()
-            ScrollEndReached(listState = state, gridState = null, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 3, onEndReached = onLoadMore)
+            ScrollEndReached(
+                listState = state,
+                gridState = null,
+                itemCount = items.size,
+                isLoading = isLoading,
+                hasMorePages = hasMorePages,
+                threshold = 3,
+                onEndReached = onLoadMore,
+            )
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 state = state,
                 contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                renderCards(items, cardContent)
+                renderCards(items, cardContent, trailingContent)
             }
         }
+
         is ContainerLayout.HorizontalStrip -> {
             val state = rememberLazyListState()
-            ScrollEndReached(listState = state, gridState = null, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 3, onEndReached = onLoadMore)
+            ScrollEndReached(
+                listState = state,
+                gridState = null,
+                itemCount = items.size,
+                isLoading = isLoading,
+                hasMorePages = hasMorePages,
+                threshold = 3,
+                onEndReached = onLoadMore,
+            )
             LazyRow(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
                 contentPadding = contentPadding,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                renderCards(items, cardContent)
+                renderCards(items, cardContent, trailingContent)
             }
         }
+
         is ContainerLayout.Grid -> {
             val state = rememberLazyGridState()
-            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = 3, onEndReached = onLoadMore)
+            ScrollEndReached(
+                listState = null,
+                gridState = state,
+                itemCount = items.size,
+                isLoading = isLoading,
+                hasMorePages = hasMorePages,
+                threshold = 3,
+                onEndReached = onLoadMore,
+            )
             LazyVerticalGrid(
                 modifier = modifier.fillMaxSize(),
                 state = state,
                 columns = GridCells.Fixed(layout.columns),
                 contentPadding = contentPadding,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                renderCards(items, cardContent)
+                renderCards(items, cardContent, trailingContent)
             }
         }
+
         is ContainerLayout.PaginatedVertical -> {
             val state = rememberLazyGridState()
             // Threshold = page size (columns × rowsPerPage) so load triggers one page before end
             val pageSize = layout.columns * layout.rowsPerPage
-            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = pageSize, onEndReached = onLoadMore)
+            ScrollEndReached(
+                listState = null,
+                gridState = state,
+                itemCount = items.size,
+                isLoading = isLoading,
+                hasMorePages = hasMorePages,
+                threshold = pageSize,
+                onEndReached = onLoadMore,
+            )
             LazyVerticalGrid(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
                 columns = GridCells.Fixed(layout.columns),
                 contentPadding = contentPadding,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(items, key = { it.id }) { card ->
                     cardContent(card)
                 }
             }
         }
+
         is ContainerLayout.PaginatedHorizontal -> {
             val state = rememberLazyGridState()
             // Threshold = page size (columns × rowsPerPage) so load triggers one page before end
             val pageSize = layout.columns * layout.rowsPerPage
-            ScrollEndReached(listState = null, gridState = state, itemCount = items.size, isLoading = isLoading, hasMorePages = hasMorePages, threshold = pageSize, onEndReached = onLoadMore)
+            ScrollEndReached(
+                listState = null,
+                gridState = state,
+                itemCount = items.size,
+                isLoading = isLoading,
+                hasMorePages = hasMorePages,
+                threshold = pageSize,
+                onEndReached = onLoadMore,
+            )
             LazyHorizontalGrid(
                 modifier = modifier.fillMaxHeight(),
                 state = state,
                 rows = GridCells.Fixed(layout.rowsPerPage),
                 contentPadding = contentPadding,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(items, key = { it.id }) { card ->
                     cardContent(card)
@@ -180,13 +228,16 @@ private fun ScrollEndReached(
     isLoading: Boolean,
     hasMorePages: Boolean,
     threshold: Int = 1,
-    onEndReached: () -> Unit
+    onEndReached: () -> Unit,
 ) {
     // Handle lazy list (List, HorizontalStrip)
     if (listState != null) {
         LaunchedEffect(listState.isScrollInProgress, itemCount) {
             if (listState.isScrollInProgress && !isLoading && hasMorePages) {
-                val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                val lastVisibleIndex =
+                    listState.layoutInfo.visibleItemsInfo
+                        .lastOrNull()
+                        ?.index ?: -1
                 val totalItems = listState.layoutInfo.totalItemsCount
                 if (lastVisibleIndex >= totalItems - threshold && totalItems > 0) {
                     onEndReached()
@@ -199,7 +250,10 @@ private fun ScrollEndReached(
     if (gridState != null) {
         LaunchedEffect(gridState.isScrollInProgress, itemCount) {
             if (gridState.isScrollInProgress && !isLoading && hasMorePages) {
-                val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                val lastVisibleIndex =
+                    gridState.layoutInfo.visibleItemsInfo
+                        .lastOrNull()
+                        ?.index ?: -1
                 val totalItems = gridState.layoutInfo.totalItemsCount
                 if (lastVisibleIndex >= totalItems - threshold && totalItems > 0) {
                     onEndReached()
@@ -214,9 +268,13 @@ private fun ScrollEndReached(
  */
 private fun LazyListScope.renderCards(
     items: List<Card>,
-    cardContent: @Composable (Card) -> Unit
+    cardContent: @Composable (Card) -> Unit,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     items(items, key = { it.id }) { card -> cardContent(card) }
+    if (trailingContent != null) {
+        item(key = "__trailing__") { trailingContent() }
+    }
 }
 
 /**
@@ -224,7 +282,11 @@ private fun LazyListScope.renderCards(
  */
 private fun LazyGridScope.renderCards(
     items: List<Card>,
-    cardContent: @Composable (Card) -> Unit
+    cardContent: @Composable (Card) -> Unit,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     items(items, key = { it.id }) { card -> cardContent(card) }
+    if (trailingContent != null) {
+        item(key = "__trailing__") { trailingContent() }
+    }
 }
