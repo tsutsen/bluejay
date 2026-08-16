@@ -28,6 +28,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
+import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 
 /**
@@ -45,6 +46,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isWide = rememberIsWide()
+    var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
 
     when (val state = uiState) {
         is HomeUiState.Initial -> {
@@ -80,6 +82,7 @@ fun HomeScreen(
                             else -> Unit
                         }
                     },
+                    onVideoLongClick = { optionsCard = it },
                     onLoadMore = { viewModel.loadNextPage() },
                     onRefresh = { viewModel.refresh() },
                 )
@@ -92,6 +95,15 @@ fun HomeScreen(
                 onRetry = { viewModel.retry() },
             )
         }
+    }
+
+    optionsCard?.let { card ->
+        VideoOptionsSheetHost(
+            video = card,
+            onDismiss = { optionsCard = null },
+            onPlay = { playerViewModel.play(card.url) },
+            onGoToChannel = { navigator.navigateToChannel(it) },
+        )
     }
 }
 
@@ -106,6 +118,7 @@ private fun HomeFeedContent(
     hasMorePages: Boolean,
     isWide: Boolean,
     onCardClick: (Card) -> Unit,
+    onVideoLongClick: (VideoCard) -> Unit,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
@@ -143,6 +156,7 @@ private fun HomeFeedContent(
                             VideoCard(
                                 card = card,
                                 onClick = { onCardClick(card) },
+                                onLongClick = { onVideoLongClick(card) },
                             )
                         }
 

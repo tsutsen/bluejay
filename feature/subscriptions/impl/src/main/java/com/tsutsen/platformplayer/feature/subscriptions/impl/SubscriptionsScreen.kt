@@ -33,10 +33,10 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,9 +55,11 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.SubscriptionCreator
-import com.tsutsen.platformplayer.core.model.VideoCard as ModelVideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
+import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
+import kotlinx.coroutines.launch
+import com.tsutsen.platformplayer.core.model.VideoCard as ModelVideoCard
 
 /**
  * Subscriptions screen composable.
@@ -68,14 +70,15 @@ fun SubscriptionsScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
     viewModel: SubscriptionsViewModel = hiltViewModel(),
-    playerViewModel: PlayerViewModel = hiltViewModel()
+    playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isWide = rememberIsWide()
     val coroutineScope = rememberCoroutineScope()
+    var optionsCard by remember { mutableStateOf<ModelVideoCard?>(null) }
 
     Scaffold(
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
     ) { paddingValues ->
         when (val state = uiState) {
             is SubscriptionsUiState.Loading -> {
@@ -83,14 +86,15 @@ fun SubscriptionsScreen(
                     loading = true,
                     empty = false,
                     emptyContent = {},
-                    modifier = Modifier.padding(paddingValues)
+                    modifier = Modifier.padding(paddingValues),
                 ) {}
             }
+
             is SubscriptionsUiState.Success -> {
                 if (state.creators.isEmpty() && state.items.isEmpty()) {
                     EmptyState(
                         message = "No subscriptions yet.\nSubscribe to channels to see their content here.",
-                        modifier = Modifier.padding(paddingValues)
+                        modifier = Modifier.padding(paddingValues),
                     )
                 } else {
                     SubscriptionsContent(
@@ -104,32 +108,35 @@ fun SubscriptionsScreen(
                         onSourceToggle = viewModel::toggleSourceFilter,
                         onRefresh = viewModel::refresh,
                         onLoadMore = viewModel::loadMore,
+                        onVideoLongClick = { optionsCard = it },
                         onItemClicked = { url ->
                             android.util.Log.i("SubscriptionsScreen", "Video clicked, URL: $url")
                             playerViewModel.play(url)
                         },
-                        modifier = Modifier.padding(paddingValues)
+                        modifier = Modifier.padding(paddingValues),
                     )
                 }
             }
+
             is SubscriptionsUiState.Error -> {
                 Box(
-                    modifier = Modifier
-                        .padding(paddingValues)
-                        .fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .padding(paddingValues)
+                            .fillMaxSize(),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
                             text = "Error: ${state.message}",
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         androidx.compose.material3.Button(
-                            onClick = { /* retry */ }
+                            onClick = { /* retry */ },
                         ) {
                             Text("Retry")
                         }
@@ -137,6 +144,15 @@ fun SubscriptionsScreen(
                 }
             }
         }
+    }
+
+    optionsCard?.let { card ->
+        VideoOptionsSheetHost(
+            video = card,
+            onDismiss = { optionsCard = null },
+            onPlay = { playerViewModel.play(card.url) },
+            onGoToChannel = { navigator.navigateToChannel(it) },
+        )
     }
 }
 
@@ -156,7 +172,8 @@ private fun SubscriptionsContent(
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onItemClicked: (String) -> Unit,
-    modifier: Modifier = Modifier
+    onVideoLongClick: (ModelVideoCard) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var isRefreshing = false
     val pullToRefreshState = rememberPullToRefreshState()
@@ -177,7 +194,7 @@ private fun SubscriptionsContent(
                     onVideoToggle = onVideoToggle,
                     onStreamsToggle = onStreamsToggle,
                     onSourceToggle = onSourceToggle,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 // Videos in grid
@@ -198,15 +215,16 @@ private fun SubscriptionsContent(
                             onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(8.dp)
+                            contentPadding = PaddingValues(8.dp),
                         ) { card ->
                             VideoCard(
                                 card = card as ModelVideoCard,
                                 onClick = { onItemClicked((card as ModelVideoCard).url) },
-                                modifier = Modifier.fillMaxWidth()
+                                onLongClick = { onVideoLongClick(card as ModelVideoCard) },
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
-                    }
+                    },
                 )
             }
 
@@ -214,13 +232,13 @@ private fun SubscriptionsContent(
             LazyColumn(
                 modifier = Modifier.width(80.dp).fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(state.creators) { creator ->
                     CreatorAvatar(
                         creator = creator,
                         isSelected = creator.id == state.activeCreatorId,
-                        onClick = { onCreatorSelected(creator.id) }
+                        onClick = { onCreatorSelected(creator.id) },
                     )
                 }
             }
@@ -232,26 +250,27 @@ private fun SubscriptionsContent(
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 item {
                     CreatorAvatar(
-                        creator = SubscriptionCreator(
-                            id = "",
-                            name = "All",
-                            thumbnailUrl = null,
-                            subscriberCount = null,
-                            url = ""
-                        ),
+                        creator =
+                            SubscriptionCreator(
+                                id = "",
+                                name = "All",
+                                thumbnailUrl = null,
+                                subscriberCount = null,
+                                url = "",
+                            ),
                         isSelected = state.activeCreatorId == null,
-                        onClick = { onCreatorSelected(null) }
+                        onClick = { onCreatorSelected(null) },
                     )
                 }
                 items(state.creators) { creator ->
                     CreatorAvatar(
                         creator = creator,
                         isSelected = creator.id == state.activeCreatorId,
-                        onClick = { onCreatorSelected(creator.id) }
+                        onClick = { onCreatorSelected(creator.id) },
                     )
                 }
             }
@@ -268,7 +287,7 @@ private fun SubscriptionsContent(
                 onVideoToggle = onVideoToggle,
                 onStreamsToggle = onStreamsToggle,
                 onSourceToggle = onSourceToggle,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
 
             // Videos in list
@@ -289,15 +308,16 @@ private fun SubscriptionsContent(
                         onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                         onLoadMore = onLoadMore,
                         modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(8.dp)
+                        contentPadding = PaddingValues(8.dp),
                     ) { card ->
                         VideoCard(
                             card = card as ModelVideoCard,
                             onClick = { onItemClicked((card as ModelVideoCard).url) },
-                            modifier = Modifier.fillMaxWidth()
+                            onLongClick = { onVideoLongClick(card as ModelVideoCard) },
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                }
+                },
             )
         }
     }
@@ -311,48 +331,55 @@ private fun CreatorAvatar(
     creator: SubscriptionCreator,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier
-            .size(if (isSelected) 52.dp else 48.dp)
-            .clip(CircleShape)
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-            .clickable(onClick = onClick)
+        modifier =
+            modifier
+                .size(if (isSelected) 52.dp else 48.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isSelected) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+                ).clickable(onClick = onClick),
     ) {
         if (creator.thumbnailUrl != null) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(creator.thumbnailUrl)
-                    .crossfade(true)
-                    .build(),
+                model =
+                    ImageRequest
+                        .Builder(LocalContext.current)
+                        .data(creator.thumbnailUrl)
+                        .crossfade(true)
+                        .build(),
                 contentDescription = creator.name,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
         } else {
             Icon(
                 imageVector = Icons.Default.Subscriptions,
                 contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         if (isSelected) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape)
-                    .background(Color.Transparent)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(Color.Transparent),
             ) {
                 androidx.compose.foundation.BorderStroke(
                     width = 2.dp,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -374,46 +401,46 @@ private fun SubscriptionFilterBadges(
     onVideoToggle: () -> Unit,
     onStreamsToggle: () -> Unit,
     onSourceToggle: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     ) {
         item {
             FilterChip(
                 selected = filterWatched,
                 onClick = onWatchedToggle,
-                label = { Text("Watched") }
+                label = { Text("Watched") },
             )
         }
         item {
             FilterChip(
                 selected = filterContinue,
                 onClick = onContinueToggle,
-                label = { Text("Continue") }
+                label = { Text("Continue") },
             )
         }
         item {
             FilterChip(
                 selected = filterVideo,
                 onClick = onVideoToggle,
-                label = { Text("Video") }
+                label = { Text("Video") },
             )
         }
         item {
             FilterChip(
                 selected = filterStreams,
                 onClick = onStreamsToggle,
-                label = { Text("Streams") }
+                label = { Text("Streams") },
             )
         }
         items(sourceFilters.keys.toList()) { sourceId ->
             FilterChip(
                 selected = sourceFilters[sourceId] ?: true,
                 onClick = { onSourceToggle(sourceId) },
-                label = { Text(sourceId) }
+                label = { Text(sourceId) },
             )
         }
     }

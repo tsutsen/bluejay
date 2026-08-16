@@ -31,4 +31,7 @@ interface SavedVideoDao {
         url: String,
         type: SavedVideoType,
     ): Boolean
+
+    @Query("SELECT type FROM saved_video WHERE contentUrl = :url")
+    fun observeTypes(url: String): Flow<List<SavedVideoType>>
 }

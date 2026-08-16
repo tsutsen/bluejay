@@ -16,6 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -28,6 +31,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
+import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 
@@ -48,6 +52,7 @@ fun LibrarySectionDetailScreen(
     val section by viewModel.section.collectAsState()
     val items by viewModel.items.collectAsState()
     val isWide = rememberIsWide()
+    var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
 
     LaunchedEffect(sectionId) {
         viewModel.loadSection(sectionId)
@@ -111,11 +116,21 @@ fun LibrarySectionDetailScreen(
                                     else -> Unit
                                 }
                             },
+                            onVideoLongClick = { optionsCard = it },
                         )
                     }
                 }
             }
         }
+    }
+
+    optionsCard?.let { card ->
+        VideoOptionsSheetHost(
+            video = card,
+            onDismiss = { optionsCard = null },
+            onPlay = { playerViewModel.play(card.url) },
+            onGoToChannel = { navigator.navigateToChannel(it) },
+        )
     }
 }
 
@@ -126,10 +141,15 @@ fun LibrarySectionDetailScreen(
 private fun LibraryCard(
     card: Card,
     onClick: (Card) -> Unit,
+    onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
     when (card) {
         is CoreVideoCard -> {
-            VideoCard(card = card, onClick = { onClick(card) })
+            VideoCard(
+                card = card,
+                onClick = { onClick(card) },
+                onLongClick = { onVideoLongClick(card) },
+            )
         }
 
         is PlaylistCard -> {

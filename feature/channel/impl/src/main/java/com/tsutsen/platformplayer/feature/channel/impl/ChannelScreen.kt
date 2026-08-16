@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,6 +47,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
+import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import java.text.NumberFormat
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
@@ -66,6 +68,7 @@ fun ChannelScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isWide = rememberIsWide()
     var selectedTab by remember { mutableIntStateOf(TAB_VIDEOS) }
+    var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
 
     LaunchedEffect(channelUrl) {
         viewModel.load(channelUrl)
@@ -130,6 +133,7 @@ fun ChannelScreen(
                                 onCardClick = onCardClick,
                                 onLoadMore = { viewModel.loadNextPage() },
                                 onRetryContent = { viewModel.loadInitialContents() },
+                                onVideoLongClick = { optionsCard = it },
                             )
                         } else {
                             TabRow(selectedTabIndex = selectedTab) {
@@ -153,6 +157,7 @@ fun ChannelScreen(
                                 onCardClick = onCardClick,
                                 onLoadMore = { viewModel.loadNextPage() },
                                 onRetryContent = { viewModel.loadInitialContents() },
+                                onVideoLongClick = { optionsCard = it },
                             )
                         }
                     }
@@ -168,6 +173,15 @@ fun ChannelScreen(
                 }
             }
         }
+    }
+
+    optionsCard?.let { card ->
+        VideoOptionsSheetHost(
+            video = card,
+            onDismiss = { optionsCard = null },
+            onPlay = { playerViewModel.play(card.url) },
+            onGoToChannel = { navigator.navigateToChannel(it) },
+        )
     }
 }
 
@@ -195,6 +209,7 @@ private fun ChannelContent(
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     onRetryContent: () -> Unit,
+    onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
     when (selectedTab) {
         TAB_ABOUT -> {
@@ -287,6 +302,7 @@ private fun ChannelContent(
                         VideoCard(
                             card = card,
                             onClick = { onCardClick(card) },
+                            onLongClick = { onVideoLongClick(card) },
                         )
                     } else {
                         Box(Modifier.height(1.dp))

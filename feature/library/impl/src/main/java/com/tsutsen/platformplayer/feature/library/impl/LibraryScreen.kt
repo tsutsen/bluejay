@@ -27,6 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +45,7 @@ import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.core.ui.AsyncImage
+import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 
@@ -58,6 +62,7 @@ fun LibraryScreen(
     modifier: Modifier = Modifier,
 ) {
     val sections by viewModel.sections.collectAsState()
+    var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (sections.isEmpty()) {
@@ -79,10 +84,20 @@ fun LibraryScreen(
                                 else -> Unit
                             }
                         },
+                        onVideoLongClick = { optionsCard = it },
                     )
                 }
             }
         }
+    }
+
+    optionsCard?.let { card ->
+        VideoOptionsSheetHost(
+            video = card,
+            onDismiss = { optionsCard = null },
+            onPlay = { playerViewModel.play(card.url) },
+            onGoToChannel = { navigator.navigateToChannel(it) },
+        )
     }
 }
 
@@ -91,6 +106,7 @@ private fun LibrarySectionRow(
     section: LibrarySection,
     onSectionClick: () -> Unit,
     onCardClick: (Card) -> Unit,
+    onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -140,6 +156,7 @@ private fun LibrarySectionRow(
                         LibraryCard(
                             card = card,
                             onClick = { onCardClick(card) },
+                            onVideoLongClick = onVideoLongClick,
                         )
                     }
                 },
@@ -158,10 +175,15 @@ private fun LibrarySectionRow(
 private fun LibraryCard(
     card: Card,
     onClick: () -> Unit,
+    onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
     when (card) {
         is CoreVideoCard -> {
-            VideoCard(card = card, onClick = onClick)
+            VideoCard(
+                card = card,
+                onClick = onClick,
+                onLongClick = { onVideoLongClick(card) },
+            )
         }
 
         is PlaylistCard -> {

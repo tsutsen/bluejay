@@ -9,6 +9,7 @@ import com.tsutsen.platformplayer.core.database.entity.SavedVideoEntity
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
+import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +41,9 @@ class LibraryRepositoryImpl
         private val _sections = MutableStateFlow<List<LibrarySection>>(emptyList())
         override val sections: StateFlow<List<LibrarySection>> = _sections.asStateFlow()
 
+        private val _playlists = MutableStateFlow<List<PlaylistOption>>(emptyList())
+        override val playlists: StateFlow<List<PlaylistOption>> = _playlists.asStateFlow()
+
         init {
             val combinedFlow =
                 combine(
@@ -56,9 +60,26 @@ class LibraryRepositoryImpl
                     )
                 }
             repositoryScope.launch {
-                combinedFlow.collect { _sections.value = it }
+                combinedFlow.collect {
+                    _sections.value = it
+                    _playlists.value =
+                        it
+                            .firstOrNull { section -> section.id == PLAYLISTS_ID }
+                            ?.items
+                            ?.filterIsInstance<PlaylistCard>()
+                            ?.map { card ->
+                                PlaylistOption(
+                                    id = card.id.toLongOrNull() ?: return@map null,
+                                    name = card.title,
+                                )
+                            }?.filterNotNull()
+                            ?: emptyList()
+                }
             }
         }
+
+        override fun observeSavedTypes(url: String): Flow<Set<SavedVideoType>> =
+            savedVideoDao.observeTypes(url).map { types -> types.toSet() }
 
         override fun observeSectionItems(sectionId: String): Flow<List<Card>> =
             when (sectionId) {

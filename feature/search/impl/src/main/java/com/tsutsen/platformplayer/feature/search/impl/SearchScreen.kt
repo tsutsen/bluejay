@@ -52,6 +52,8 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
+import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
+import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import kotlinx.coroutines.flow.combine
 
 /**
@@ -64,10 +66,12 @@ import kotlinx.coroutines.flow.combine
 @Composable
 fun SearchScreen(
     navigator: Navigator,
+    playerViewModel: PlayerViewModel = hiltViewModel(),
     viewModel: SearchViewModel = hiltViewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isWide = rememberIsWide()
+    var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchBarFocused by remember { mutableStateOf(false) }
     var hasSearched by remember { mutableStateOf(false) }
@@ -82,7 +86,7 @@ fun SearchScreen(
             isLoading = results.isLoading,
             hasMorePages = results.hasMorePages,
             error = results.error,
-            searchHistory = history
+            searchHistory = history,
         )
     }.collectAsState(initial = SearchUiState())
 
@@ -97,10 +101,11 @@ fun SearchScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // 1. Search field + search button (top row)
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -110,7 +115,7 @@ fun SearchScreen(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search"
+                            contentDescription = "Search",
                         )
                     },
                     trailingIcon = {
@@ -118,61 +123,64 @@ fun SearchScreen(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Clear",
-                                modifier = Modifier
-                                    .padding(end = 4.dp)
-                                    .size(24.dp)
-                                    .clickable {
-                                        searchQuery = ""
-                                        isSearchBarFocused = false
-                                    }
+                                modifier =
+                                    Modifier
+                                        .padding(end = 4.dp)
+                                        .size(24.dp)
+                                        .clickable {
+                                            searchQuery = ""
+                                            isSearchBarFocused = false
+                                        },
                             )
                         }
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(24.dp),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = {
-                            if (searchQuery.isNotBlank()) {
-                                viewModel.search(searchQuery)
-                                hasSearched = true
-                                isSearchBarFocused = false
-                            }
-                        }
-                    ),
-                    textStyle = MaterialTheme.typography.bodyMedium
+                    keyboardActions =
+                        KeyboardActions(
+                            onSearch = {
+                                if (searchQuery.isNotBlank()) {
+                                    viewModel.search(searchQuery)
+                                    hasSearched = true
+                                    isSearchBarFocused = false
+                                }
+                            },
+                        ),
+                    textStyle = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 // Search button
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable {
-                            if (searchQuery.isNotBlank()) {
-                                viewModel.search(searchQuery)
-                                hasSearched = true
-                                isSearchBarFocused = false
-                            }
-                        },
-                    tint = MaterialTheme.colorScheme.primary
+                    modifier =
+                        Modifier
+                            .size(40.dp)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .clickable {
+                                if (searchQuery.isNotBlank()) {
+                                    viewModel.search(searchQuery)
+                                    hasSearched = true
+                                    isSearchBarFocused = false
+                                }
+                            },
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
 
             // 2. Search history list with background (shown on first open or when field is focused)
             if ((!hasSearched || searchQuery.isBlank()) && uiState.searchHistory.isNotEmpty()) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            RoundedCornerShape(12.dp)
-                        )
-                        .padding(12.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                RoundedCornerShape(12.dp),
+                            ).padding(12.dp),
                 ) {
                     RecentSearches(
                         history = uiState.searchHistory.take(5),
@@ -185,7 +193,7 @@ fun SearchScreen(
                         onDeleteItem = { query ->
                             viewModel.deleteFromHistory(query)
                         },
-                        onClearHistory = { viewModel.clearHistory() }
+                        onClearHistory = { viewModel.clearHistory() },
                     )
                 }
             }
@@ -195,12 +203,14 @@ fun SearchScreen(
                 uiState.isLoading && uiState.items.isEmpty() -> {
                     VideoCardSkeleton(count = 6)
                 }
+
                 uiState.error != null && uiState.items.isEmpty() -> {
                     ErrorState(
                         message = uiState.error ?: "Search failed",
-                        onRetry = { viewModel.search(searchQuery) }
+                        onRetry = { viewModel.search(searchQuery) },
                     )
                 }
+
                 uiState.items.isNotEmpty() -> {
                     PullToRefreshBox(
                         isRefreshing = isRefreshing,
@@ -219,28 +229,39 @@ fun SearchScreen(
                                     android.util.Log.i("SearchScreen", "Video clicked: ${card.title}")
                                 },
                                 onLoadMore = { viewModel.nextPage() },
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
                             ) { card ->
                                 if (card is VideoCard) {
                                     VideoCard(
                                         card = card,
-                                        onClick = {}
+                                        onClick = {},
+                                        onLongClick = { optionsCard = card },
                                     )
                                 }
                             }
-                        }
+                        },
                     )
                 }
+
                 else -> {
                     // Show empty state only after a search was executed and returned no results
                     if (hasSearched && uiState.items.isEmpty() && !uiState.isLoading && searchQuery.isNotBlank()) {
                         EmptyState(
                             message = "No results for \"$searchQuery\"",
                             actionLabel = "Try a different search",
-                            onAction = {}
+                            onAction = {},
                         )
                     }
                 }
+            }
+
+            optionsCard?.let { card ->
+                VideoOptionsSheetHost(
+                    video = card,
+                    onDismiss = { optionsCard = null },
+                    onPlay = { playerViewModel.play(card.url) },
+                    onGoToChannel = { navigator.navigateToChannel(it) },
+                )
             }
         }
     }
@@ -255,61 +276,64 @@ private fun RecentSearches(
     onItemClick: (String) -> Unit,
     onDeleteItem: (String) -> Unit,
     onClearHistory: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = "Recent searches",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = "Clear all",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { onClearHistory() }
+                    modifier = Modifier.clickable { onClearHistory() },
                 )
             }
         }
 
         items(history) { query ->
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clickable { onItemClick(query) },
-                verticalAlignment = Alignment.CenterVertically
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable { onItemClick(query) },
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     imageVector = Icons.Default.History,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = query,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Delete",
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable { onDeleteItem(query) },
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier =
+                        Modifier
+                            .size(20.dp)
+                            .clickable { onDeleteItem(query) },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
