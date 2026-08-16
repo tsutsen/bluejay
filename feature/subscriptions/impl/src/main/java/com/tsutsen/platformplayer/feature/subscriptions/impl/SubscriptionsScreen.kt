@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.subscriptions.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,6 +96,8 @@ fun SubscriptionsScreen(
                 if (state.creators.isEmpty() && state.items.isEmpty()) {
                     EmptyState(
                         message = "No subscriptions yet.\nSubscribe to channels to see their content here.",
+                        actionLabel = "Find channels",
+                        onAction = { navigator.navigateSearch() },
                         modifier = Modifier.padding(paddingValues),
                     )
                 } else {
@@ -103,6 +106,7 @@ fun SubscriptionsScreen(
                         isWide = isWide,
                         gridColumns = gridColumns,
                         onCreatorSelected = viewModel::selectCreator,
+                        onGoToChannel = { navigator.navigateToChannel(it) },
                         onWatchedToggle = viewModel::toggleWatched,
                         onContinueToggle = viewModel::toggleContinue,
                         onVideoToggle = viewModel::toggleVideo,
@@ -138,7 +142,7 @@ fun SubscriptionsScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         androidx.compose.material3.Button(
-                            onClick = { /* retry */ },
+                            onClick = { viewModel.refresh() },
                         ) {
                             Text("Retry")
                         }
@@ -167,6 +171,7 @@ private fun SubscriptionsContent(
     isWide: Boolean,
     gridColumns: Int,
     onCreatorSelected: (String?) -> Unit,
+    onGoToChannel: (String) -> Unit,
     onWatchedToggle: () -> Unit,
     onContinueToggle: () -> Unit,
     onVideoToggle: () -> Unit,
@@ -214,7 +219,7 @@ private fun SubscriptionsContent(
                             items = state.items,
                             layout = ContainerLayout.Grid(gridColumns),
                             isLoading = false,
-                            hasMorePages = true,
+                            hasMorePages = state.hasMorePages,
                             onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
@@ -242,6 +247,7 @@ private fun SubscriptionsContent(
                         creator = creator,
                         isSelected = creator.id == state.activeCreatorId,
                         onClick = { onCreatorSelected(creator.id) },
+                        onLongClick = { onGoToChannel(creator.url) },
                     )
                 }
             }
@@ -274,6 +280,7 @@ private fun SubscriptionsContent(
                         creator = creator,
                         isSelected = creator.id == state.activeCreatorId,
                         onClick = { onCreatorSelected(creator.id) },
+                        onLongClick = { onGoToChannel(creator.url) },
                     )
                 }
             }
@@ -307,7 +314,7 @@ private fun SubscriptionsContent(
                         items = state.items,
                         layout = ContainerLayout.List,
                         isLoading = false,
-                        hasMorePages = true,
+                        hasMorePages = state.hasMorePages,
                         onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                         onLoadMore = onLoadMore,
                         modifier = Modifier.fillMaxWidth(),
@@ -334,6 +341,7 @@ private fun CreatorAvatar(
     creator: SubscriptionCreator,
     isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -347,7 +355,7 @@ private fun CreatorAvatar(
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
                     },
-                ).clickable(onClick = onClick),
+                ).combinedClickable(onClick = onClick, onLongClick = onLongClick ?: {}),
     ) {
         if (creator.thumbnailUrl != null) {
             AsyncImage(
