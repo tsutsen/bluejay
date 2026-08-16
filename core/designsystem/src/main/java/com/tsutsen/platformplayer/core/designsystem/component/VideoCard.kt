@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -31,7 +32,8 @@ import com.tsutsen.platformplayer.core.ui.RelativeTime
 fun VideoCard(
     card: VideoCard,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val title = card.title
     val author = card.author
@@ -41,48 +43,53 @@ fun VideoCard(
     val thumbnailUrl = card.thumbnailUrl
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             // Thumbnail area (60% of height)
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f),
             ) {
                 AsyncImage(
                     url = thumbnailUrl,
                     contentDescription = title,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
                 )
 
                 // Duration pill (bottom-left)
                 if (durationMs != null && durationMs > 0) {
                     Surface(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(8.dp),
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp),
                         color = Color.Black.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(4.dp)
+                        shape = RoundedCornerShape(4.dp),
                     ) {
                         Text(
                             text = formatDuration(durationMs),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
@@ -90,9 +97,10 @@ fun VideoCard(
 
             // Text area (40% of height)
             Column(
-                modifier = Modifier
-                    .padding(12.dp)
-                    .fillMaxWidth()
+                modifier =
+                    Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
             ) {
                 // Title (2 lines max)
                 Text(
@@ -101,7 +109,7 @@ fun VideoCard(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -109,7 +117,7 @@ fun VideoCard(
                 // Meta line: Author • Views • Time
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (author != null) {
                         Text(
@@ -117,13 +125,13 @@ fun VideoCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "•",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                     }
@@ -134,14 +142,14 @@ fun VideoCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                         if (publishedAt != null) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "•",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                         }
@@ -153,7 +161,7 @@ fun VideoCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -169,38 +177,41 @@ fun VideoCard(
 fun CompactVideoCard(
     card: VideoCard,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val title = card.title
     val author = card.author
     val thumbnailUrl = card.thumbnailUrl
 
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         AsyncImage(
             url = thumbnailUrl,
             contentDescription = title,
-            modifier = Modifier
-                .size(128.dp, 72.dp)
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop
+            modifier =
+                Modifier
+                    .size(128.dp, 72.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop,
         )
         Column(
-            modifier = Modifier
-                .padding(start = 12.dp)
-                .weight(1f)
+            modifier =
+                Modifier
+                    .padding(start = 12.dp)
+                    .weight(1f),
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             if (author != null) {
                 Text(
@@ -208,24 +219,23 @@ fun CompactVideoCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
     }
 }
 
-private fun formatViewCount(count: Long): String {
-    return when {
+private fun formatViewCount(count: Long): String =
+    when {
         count >= 1_000_000 -> "${String.format("%.1f", count / 1_000_000.0)}M"
         count >= 1_000 -> "${String.format("%.1f", count / 1_000.0)}K"
         else -> count.toString()
     }
-}
 
 private fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return "${minutes}:${seconds.toString().padStart(2, '0')}"
+    return "$minutes:${seconds.toString().padStart(2, '0')}"
 }

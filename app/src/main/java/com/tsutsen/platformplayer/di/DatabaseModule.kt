@@ -13,18 +13,21 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-
     @Provides
     @Singleton
-    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder(
-            context,
-            AppDatabase::class.java,
-            "grayjay_database"
-        )
+    fun provideAppDatabase(
+        @ApplicationContext context: Context,
+    ): AppDatabase =
+        Room
+            .databaseBuilder(
+                context,
+                AppDatabase::class.java,
+                "grayjay_database",
+            ).addMigrations(AppDatabase.MIGRATION_1_2)
+            // Safety net only: MIGRATION_1_2 is registered above, so this
+            // triggers just for an unregistered future version (same as before).
             .fallbackToDestructiveMigration()
             .build()
-    }
 
     @Provides
     fun provideQueueDao(database: AppDatabase) = database.queueDao()
@@ -40,4 +43,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSubscriptionDao(database: AppDatabase) = database.subscriptionDao()
+
+    @Provides
+    fun provideSavedVideoDao(database: AppDatabase) = database.savedVideoDao()
 }
