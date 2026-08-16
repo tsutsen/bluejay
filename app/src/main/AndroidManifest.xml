@@ -163,42 +163,11 @@
             android:exported="false"
             android:excludeFromRecents="true" />
         <activity
-            android:name=".activities.SettingsActivity"
-            />
-        <activity
-            android:name=".activities.DeveloperActivity"
-            android:screenOrientation="sensorPortrait"
-            />
-        <activity
-            android:name=".activities.ExceptionActivity"
-            android:screenOrientation="sensorPortrait"
-            />
-        <activity
             android:name=".activities.CaptchaActivity"
             android:screenOrientation="sensorPortrait"
             />
         <activity
-            android:name=".activities.LoginActivity"
-            android:screenOrientation="sensorPortrait"
-            />
-        <activity
             android:name=".activities.QRCaptureActivity"
-            android:screenOrientation="sensorPortrait"
-            />
-        <activity
-            android:name=".activities.SyncPairActivity"
-            android:screenOrientation="sensorPortrait"
-            />
-        <activity
-            android:name=".activities.SyncShowPairingCodeActivity"
-            android:screenOrientation="sensorPortrait"
-            />
-        <activity
-            android:name=".activities.PolycentricModerationActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".activities.QRCodeFullscreenActivity"
             android:screenOrientation="sensorPortrait"
             />
         <service

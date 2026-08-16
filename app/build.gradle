@@ -184,7 +184,6 @@ dependencies {
     //Core
     implementation 'androidx.core:core-ktx:1.17.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.documentfile:documentfile:1.1.0'
 
     //Preferences (DataStore for appearance settings)
@@ -218,25 +217,18 @@ dependencies {
     implementation 'androidx.media3:media3-exoplayer-hls:1.9.0'
     implementation 'androidx.media3:media3-exoplayer-rtsp:1.9.0'
     implementation 'androidx.media3:media3-exoplayer-smoothstreaming:1.9.0'
-    implementation 'androidx.media3:media3-transformer:1.9.0'
     implementation 'androidx.media3:media3-datasource:1.9.0'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.9.6'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.9.6'
     implementation 'androidx.media:media:1.7.1'
 
     //Other
     implementation 'org.jsoup:jsoup:1.21.2'
-    implementation 'com.google.android.flexbox:flexbox:3.0.0'
-    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
     implementation fileTree(dir: 'aar', include: ['*.aar'])
     implementation 'com.arthenica:smart-exception-java:0.2.1'
     implementation 'org.jetbrains.kotlin:kotlin-reflect:2.2.0'
-    implementation 'com.github.dhaval2404:imagepicker:2.1'
     implementation 'com.google.zxing:core:3.5.3'
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
-    implementation 'com.caverock:androidsvg-aar:1.4'
     implementation 'androidx.webkit:webkit:1.15.0'
 
     //Protobuf
@@ -277,9 +269,6 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
     // material3-android provides PlatformTheme for reading host Activity XML themes
     implementation 'androidx.compose.material3:material3-android'
-
-    //Payment
-    implementation 'com.stripe:stripe-android:22.0.0'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'

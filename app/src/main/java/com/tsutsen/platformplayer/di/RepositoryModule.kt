@@ -9,24 +9,21 @@ import com.tsutsen.platformplayer.core.data.repository.SearchRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
-import com.tsutsen.platformplayer.core.data.repository.impl.HomeRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.PlayerRepositoryImpl
-import com.tsutsen.platformplayer.core.data.repository.impl.SearchRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.di.EngineSubscriptionsRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
-
     @Binds
     @Singleton
     abstract fun bindVideoUrlResolver(impl: EngineVideoUrlResolver): VideoUrlResolver
@@ -57,12 +54,11 @@ abstract class RepositoryModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object PlayerRepositoryModule {
-
     @Provides
     @Singleton
     fun providePlayerRepository(
         @ApplicationContext context: Context,
-        urlResolver: VideoUrlResolver
+        urlResolver: VideoUrlResolver,
     ): PlayerRepository {
         val impl = PlayerRepositoryImpl(context)
         impl.setUrlResolver(urlResolver)
