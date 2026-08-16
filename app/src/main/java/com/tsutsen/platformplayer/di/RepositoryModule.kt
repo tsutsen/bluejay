@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.di
 
 import android.content.Context
+import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
@@ -27,6 +28,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindVideoUrlResolver(impl: EngineVideoUrlResolver): VideoUrlResolver
+
+    @Binds
+    @Singleton
+    abstract fun bindChannelRepository(impl: EngineChannelRepositoryImpl): ChannelRepository
 
     @Binds
     @Singleton

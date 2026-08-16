@@ -10,6 +10,7 @@ import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
 import com.tsutsen.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
+import com.tsutsen.platformplayer.feature.channel.impl.ChannelScreen
 import com.tsutsen.platformplayer.feature.home.impl.HomeScreen
 import com.tsutsen.platformplayer.feature.library.impl.LibraryScreen
 import com.tsutsen.platformplayer.feature.library.impl.LibrarySectionDetailScreen
@@ -73,7 +74,11 @@ fun GrayjayNavGraph(
         }
 
         is NavDestination.ChannelDetail -> {
-            PlaceholderScreen("Channel Detail", "Coming soon")
+            ChannelScreen(
+                channelUrl = destination.url,
+                onBack = { navigator.goBack() },
+                navigator = navigator,
+            )
         }
 
         is NavDestination.PlaylistDetail -> {

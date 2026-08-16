@@ -23,56 +23,61 @@ fun ChannelHero(
     avatarUrl: String?,
     channelName: String,
     subscriberCount: String?,
+    isSubscribed: Boolean = false,
     onSubscribe: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         // Banner
         AsyncImage(
             model = bannerUrl,
             contentDescription = "$channelName banner",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp),
-            contentScale = ContentScale.Crop
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+            contentScale = ContentScale.Crop,
         )
 
         // Avatar + Info
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(
                 model = avatarUrl,
                 contentDescription = "$channelName avatar",
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
+                modifier =
+                    Modifier
+                        .size(64.dp)
+                        .clip(CircleShape),
+                contentScale = ContentScale.Crop,
             )
             Column(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .weight(1f)
+                modifier =
+                    Modifier
+                        .padding(start = 12.dp)
+                        .weight(1f),
             ) {
                 Text(
                     text = channelName,
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 if (subscriberCount != null) {
                     Text(
                         text = subscriberCount,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             Button(onClick = onSubscribe) {
-                Text("Subscribe")
+                Text(if (isSubscribed) "Subscribed" else "Subscribe")
             }
         }
     }
