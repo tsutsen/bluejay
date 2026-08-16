@@ -7,3 +7,16 @@ plugins {
     id 'com.google.devtools.ksp' version '2.2.21-2.0.4' apply false
     id 'com.google.dagger.hilt.android' version '2.58' apply false
 }
+
+// Pin kotlin-stdlib to the project's Kotlin version. kotlinx-serialization's BOM
+// pulls kotlin-stdlib 2.3.0 via conflict resolution, which the Kotlin 2.1-based
+// language server cannot read (metadata ceiling 2.2.0) and floods diagnostics
+// with false "unresolved reference" errors. Keep stdlib aligned with the compiler.
+subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force 'org.jetbrains.kotlin:kotlin-stdlib:2.2.21'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.21'
+        }
+    }
+}
