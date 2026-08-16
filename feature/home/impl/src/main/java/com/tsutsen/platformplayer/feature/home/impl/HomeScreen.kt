@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.home.impl
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -15,14 +16,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
-import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
+import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
+import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
+import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
@@ -36,7 +39,9 @@ import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 fun HomeScreen(
     navigator: Navigator,
     viewModel: HomeViewModel = hiltViewModel(),
-    playerViewModel: PlayerViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    playerViewModel: PlayerViewModel =
+        androidx.hilt.navigation.compose
+            .hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isWide = rememberIsWide()
@@ -45,20 +50,22 @@ fun HomeScreen(
         is HomeUiState.Initial -> {
             VideoCardSkeleton(count = 6)
         }
+
         is HomeUiState.Loading -> {
             VideoCardSkeleton(count = 6)
         }
+
         is HomeUiState.Loaded -> {
             if (state.items.isEmpty() && !state.isLoading && state.error == null) {
                 EmptyState(
                     message = "No content yet",
                     actionLabel = "Tap to refresh",
-                    onAction = { viewModel.refresh() }
+                    onAction = { viewModel.refresh() },
                 )
             } else if (state.error != null) {
                 ErrorState(
                     message = state.error,
-                    onRetry = { viewModel.retry() }
+                    onRetry = { viewModel.retry() },
                 )
             } else {
                 HomeFeedContent(
@@ -67,20 +74,22 @@ fun HomeScreen(
                     hasMorePages = state.hasMorePages,
                     isWide = isWide,
                     onCardClick = { card ->
-                        if (card is VideoCard) {
-                            android.util.Log.i("HomeScreen", "Video clicked: ${card.title}, URL: ${card.url}")
-                            playerViewModel.play(card.url)
+                        when (card) {
+                            is VideoCard -> playerViewModel.play(card.url)
+                            is ChannelCard -> navigator.navigateToChannel(card.url)
+                            else -> Unit
                         }
                     },
                     onLoadMore = { viewModel.loadNextPage() },
-                    onRefresh = { viewModel.refresh() }
+                    onRefresh = { viewModel.refresh() },
                 )
             }
         }
+
         is HomeUiState.Error -> {
             ErrorState(
                 message = state.message,
-                onRetry = { viewModel.retry() }
+                onRetry = { viewModel.retry() },
             )
         }
     }
@@ -99,7 +108,7 @@ private fun HomeFeedContent(
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var isRefreshing by remember { mutableStateOf(false) }
     val refreshingState = rememberPullToRefreshState()
@@ -127,25 +136,41 @@ private fun HomeFeedContent(
                     hasMorePages = hasMorePages,
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 ) { card ->
-                    VideoCard(
-                        card = card as VideoCard,
-                        onClick = { onCardClick(card) }
-                    )
+                    when (card) {
+                        is VideoCard -> {
+                            VideoCard(
+                                card = card,
+                                onClick = { onCardClick(card) },
+                            )
+                        }
+
+                        is ChannelCard -> {
+                            ChannelCardView(
+                                card = card,
+                                onClick = { onCardClick(card) },
+                            )
+                        }
+
+                        else -> {
+                            Box(Modifier.height(1.dp))
+                        }
+                    }
                 }
 
                 // Show loading indicator at bottom when loading more pages
                 if (isLoading && hasMorePages && cards.isNotEmpty()) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
                     ) {
                         // Could add a circular progress indicator here
                     }
                 }
-            }
+            },
         )
     }
 }
