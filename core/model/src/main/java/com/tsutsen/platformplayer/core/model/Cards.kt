@@ -19,10 +19,11 @@ data class VideoCard(
     override val title: String,
     override val thumbnailUrl: String?,
     val author: String?,
+    val authorUrl: String? = null,
     val durationMs: Long? = null,
     val viewCount: Long? = null,
     val publishedAt: Long? = null,
-    val url: String
+    val url: String,
 ) : Card
 
 @Parcelize
@@ -32,7 +33,7 @@ data class ShortCard(
     override val thumbnailUrl: String?,
     val author: String?,
     val viewCount: Long? = null,
-    val url: String
+    val url: String,
 ) : Card
 
 @Parcelize
@@ -42,7 +43,7 @@ data class PlaylistCard(
     override val thumbnailUrl: String?,
     val videoCount: Int? = null,
     val author: String? = null,
-    val url: String
+    val url: String,
 ) : Card
 
 @Parcelize
@@ -51,7 +52,7 @@ data class ChannelCard(
     override val title: String,
     override val thumbnailUrl: String?,
     val subscriberCount: Long? = null,
-    val url: String
+    val url: String,
 ) : Card
 
 @Parcelize
@@ -61,7 +62,7 @@ data class PostCard(
     override val thumbnailUrl: String?,
     val author: String?,
     val publishedAt: Long? = null,
-    val url: String
+    val url: String,
 ) : Card
 
 @Parcelize
@@ -71,5 +72,5 @@ data class ArticleCard(
     override val thumbnailUrl: String?,
     val author: String?,
     val publishedAt: Long? = null,
-    val url: String
+    val url: String,
 ) : Card
