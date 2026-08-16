@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
@@ -51,6 +52,9 @@ fun GrayjayNavGraph(
         }
     }
 
+    // Grid columns come from the single config (legacy Settings singleton).
+    val gridColumns = Settings.instance.feed.gridColumns
+
     // Render the current destination
     when (val destination = currentRoute) {
         is NavDestination.Home -> {
@@ -62,7 +66,7 @@ fun GrayjayNavGraph(
         }
 
         is NavDestination.Subscriptions -> {
-            SubscriptionsScreen(navigator = navigator)
+            SubscriptionsScreen(navigator = navigator, gridColumns = gridColumns)
         }
 
         is NavDestination.Library -> {
@@ -70,7 +74,7 @@ fun GrayjayNavGraph(
         }
 
         is NavDestination.Settings -> {
-            SettingsScreen(navigator = navigator)
+            SettingsScreen()
         }
 
         is NavDestination.ChannelDetail -> {
@@ -162,6 +166,7 @@ fun GrayjayNavGraph(
                 sectionId = destination.sectionId,
                 onBack = { navigator.goBack() },
                 navigator = navigator,
+                gridColumns = gridColumns,
             )
         }
 

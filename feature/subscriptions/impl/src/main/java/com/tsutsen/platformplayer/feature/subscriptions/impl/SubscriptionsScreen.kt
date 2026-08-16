@@ -69,6 +69,7 @@ import com.tsutsen.platformplayer.core.model.VideoCard as ModelVideoCard
 fun SubscriptionsScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
+    gridColumns: Int = 3,
     viewModel: SubscriptionsViewModel = hiltViewModel(),
     playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
@@ -100,6 +101,7 @@ fun SubscriptionsScreen(
                     SubscriptionsContent(
                         state = state,
                         isWide = isWide,
+                        gridColumns = gridColumns,
                         onCreatorSelected = viewModel::selectCreator,
                         onWatchedToggle = viewModel::toggleWatched,
                         onContinueToggle = viewModel::toggleContinue,
@@ -163,6 +165,7 @@ fun SubscriptionsScreen(
 private fun SubscriptionsContent(
     state: SubscriptionsUiState.Success,
     isWide: Boolean,
+    gridColumns: Int,
     onCreatorSelected: (String?) -> Unit,
     onWatchedToggle: () -> Unit,
     onContinueToggle: () -> Unit,
@@ -209,7 +212,7 @@ private fun SubscriptionsContent(
                     content = {
                         VideoContainer(
                             items = state.items,
-                            layout = ContainerLayout.Grid(3),
+                            layout = ContainerLayout.Grid(gridColumns),
                             isLoading = false,
                             hasMorePages = true,
                             onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },

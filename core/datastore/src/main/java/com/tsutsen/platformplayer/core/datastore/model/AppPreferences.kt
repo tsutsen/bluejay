@@ -8,5 +8,6 @@ data class AppPreferences(
     val enableBackgroundPlayback: Boolean = true,
     val enablePictureInPicture: Boolean = true,
     val confirmExit: Boolean = false,
-    val enableDeveloperOptions: Boolean = false
+    val enableDeveloperOptions: Boolean = false,
+    val gridColumns: Int = 3,
 )

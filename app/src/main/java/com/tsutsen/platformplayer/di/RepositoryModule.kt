@@ -12,7 +12,6 @@ import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.PlayerRepositoryImpl
-import com.tsutsen.platformplayer.core.data.repository.impl.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.di.EngineSubscriptionsRepositoryImpl
 import dagger.Binds
 import dagger.Module

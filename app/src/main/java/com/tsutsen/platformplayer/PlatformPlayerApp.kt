@@ -19,43 +19,16 @@ private const val TAG = "GrayjayTheme"
  */
 @HiltAndroidApp
 class PlatformPlayerApp : Application() {
-
     companion object {
-        private const val THEME_MODE_AUTO = "AUTO"
-        private const val THEME_MODE_LIGHT = "LIGHT"
-        private const val THEME_MODE_DARK = "DARK"
-        private const val PREFS_NAME = "com.tsutsen.platformplayer.Settings"
-        private const val KEY_THEME_MODE = "themeMode"
-
-        fun applyThemeMode(context: android.content.Context) {
-            Log.d(TAG, "applyThemeMode: starting")
-
-            val themeMode = try {
-                val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
-                val themeModeInt = prefs.getInt(KEY_THEME_MODE, 0)
-
-                when (themeModeInt) {
-                    0 -> THEME_MODE_AUTO
-                    1 -> THEME_MODE_LIGHT
-                    2 -> THEME_MODE_DARK
-                    else -> THEME_MODE_AUTO
+        /** Apply theme mode from the single config ([Settings] singleton). */
+        fun applyThemeMode() {
+            val nightMode =
+                when (Settings.instance.appearance.themeMode) {
+                    "LIGHT" -> AppCompatDelegate.MODE_NIGHT_NO
+                    "DARK" -> AppCompatDelegate.MODE_NIGHT_YES
+                    else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error reading settings: ${e.message}")
-                THEME_MODE_AUTO
-            }
-
-            Log.d(TAG, "resolved theme mode: $themeMode")
-
-            val modeName = when (themeMode) {
-                THEME_MODE_AUTO -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                THEME_MODE_LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
-                THEME_MODE_DARK -> AppCompatDelegate.MODE_NIGHT_YES
-                else -> AppCompatDelegate.MODE_NIGHT_NO
-            }
-
-            AppCompatDelegate.setDefaultNightMode(modeName)
-            Log.d(TAG, "setDefaultNightMode called with: $modeName")
+            AppCompatDelegate.setDefaultNightMode(nightMode)
         }
     }
 
@@ -63,10 +36,12 @@ class PlatformPlayerApp : Application() {
         Log.d(TAG, "PlatformPlayerApp.onCreate() starting")
         super.onCreate()
 
-        applyThemeMode(this)
+        applyThemeMode()
 
-        Log.d(TAG, "DynamicColors.applyToActivitiesIfAvailable(this)")
-        DynamicColors.applyToActivitiesIfAvailable(this)
+        if (Settings.instance.appearance.dynamicColor) {
+            Log.d(TAG, "DynamicColors.applyToActivitiesIfAvailable(this)")
+            DynamicColors.applyToActivitiesIfAvailable(this)
+        }
 
         Log.d(TAG, "PlatformPlayerApp.onCreate() complete")
     }

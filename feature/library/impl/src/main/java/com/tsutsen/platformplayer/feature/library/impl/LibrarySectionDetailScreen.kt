@@ -46,6 +46,7 @@ fun LibrarySectionDetailScreen(
     sectionId: String,
     onBack: () -> Unit,
     navigator: Navigator,
+    gridColumns: Int = 3,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     viewModel: LibrarySectionDetailViewModel = hiltViewModel(),
 ) {
@@ -95,7 +96,7 @@ fun LibrarySectionDetailScreen(
                 else -> {
                     VideoContainer(
                         items = items,
-                        layout = if (isWide) ContainerLayout.Grid(3) else ContainerLayout.List,
+                        layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                         isLoading = false,
                         hasMorePages = false,
                         onCardClick = { card ->
