@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -54,6 +55,13 @@ fun PlayerView(
     onChannelClick: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // While the player is fullscreen, back exits fullscreen instead of
+    // falling through to the app-level handler (home / exit).
+    // This BackHandler is registered after the app-level one (PlayerView is
+    // composed later), so it wins while enabled.
+    BackHandler(enabled = (uiState as? PlayerUiState.Loaded)?.isFullscreen == true) {
+        viewModel.exitFullscreen()
+    }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val configuration = LocalConfiguration.current

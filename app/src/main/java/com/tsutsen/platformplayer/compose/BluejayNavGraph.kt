@@ -1,10 +1,12 @@
 package com.tsutsen.platformplayer.compose
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
@@ -37,11 +39,21 @@ fun GrayjayNavGraph(
     // Collect current route from navigator state
     val currentRoute by navigator.currentRoute.collectAsState(initial = startDestination)
 
-    // System back: pop the navigator's back stack while it has entries;
-    // on top-level tabs it's disabled so the default (exit app) applies.
+    // System back: pop the navigator's back stack while it has entries.
     val backStack by navigator.backStack.collectAsState()
     BackHandler(enabled = backStack.isNotEmpty()) {
         navigator.goBack()
+    }
+
+    // At a tab root (empty back stack) the first back press goes to Home;
+    // only a second one (while already on Home) closes the app.
+    val context = LocalContext.current
+    BackHandler(enabled = backStack.isEmpty()) {
+        if (currentRoute is NavDestination.Home) {
+            (context as? Activity)?.finish()
+        } else {
+            navigator.navigateHome()
+        }
     }
 
     // Set up navigator callbacks
@@ -91,7 +103,11 @@ fun GrayjayNavGraph(
         }
 
         is NavDestination.PlaylistDetail -> {
-            PlaceholderScreen("Playlist Detail", "Coming soon")
+            PlaylistDetailScreen(
+                playlistUrl = destination.url,
+                onBack = { navigator.goBack() },
+                navigator = navigator,
+            )
         }
 
         is NavDestination.SourceDetail -> {

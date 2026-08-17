@@ -9,6 +9,7 @@ import com.tsutsen.platformplayer.core.database.entity.SavedVideoEntity
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
+import com.tsutsen.platformplayer.core.model.PlaylistInfo
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -89,6 +91,37 @@ class LibraryRepositoryImpl
                 PLAYLISTS_ID -> playlistDao.observeAll().map { list -> list.map { it.toPlaylistCard() } }
                 else -> MutableStateFlow<List<Card>>(emptyList())
             }
+
+        override suspend fun getLocalPlaylist(playlistId: Long): PlaylistInfo? =
+            withContext(Dispatchers.IO) {
+                playlistDao.getById(playlistId)?.let {
+                    PlaylistInfo(
+                        url = "playlist:$playlistId",
+                        name = it.name,
+                        thumbnail = it.thumbnailUrl,
+                        videoCount = it.videoCount,
+                    )
+                }
+            }
+
+        override suspend fun getLocalPlaylistVideos(playlistId: Long): List<Card> =
+            withContext(Dispatchers.IO) {
+                playlistDao
+                    .getVideosPaginated(playlistId, Int.MAX_VALUE, 0)
+                    .map { it.toVideoCard() }
+            }
+
+        private fun PlaylistVideoEntity.toVideoCard(): VideoCard =
+            VideoCard(
+                id = contentUrl,
+                title = title,
+                thumbnailUrl = thumbnailUrl,
+                author = author,
+                durationMs = null,
+                viewCount = null,
+                publishedAt = addedAt,
+                url = contentUrl,
+            )
 
         override suspend fun saveVideo(
             type: SavedVideoType,

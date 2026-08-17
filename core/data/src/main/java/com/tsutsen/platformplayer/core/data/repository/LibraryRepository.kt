@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.core.data.repository
 
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
+import com.tsutsen.platformplayer.core.model.PlaylistInfo
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
@@ -18,6 +19,12 @@ interface LibraryRepository {
 
     /** All items for a section, newest first (used by the detail screen). */
     fun observeSectionItems(sectionId: String): Flow<List<Card>>
+
+    /** Resolves a user-created local playlist (id from "playlist:<id>" urls). */
+    suspend fun getLocalPlaylist(playlistId: Long): PlaylistInfo?
+
+    /** All videos of a local playlist, ordered by videoOrder. */
+    suspend fun getLocalPlaylistVideos(playlistId: Long): List<Card>
 
     /** User playlists, for the "Add to playlist" sheet action. */
     val playlists: StateFlow<List<PlaylistOption>>

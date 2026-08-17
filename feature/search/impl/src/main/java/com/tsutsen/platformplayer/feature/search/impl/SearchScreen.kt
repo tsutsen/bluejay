@@ -2,7 +2,6 @@ package com.tsutsen.platformplayer.feature.search.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +41,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -82,6 +87,10 @@ fun SearchScreen(
     var hasSearched by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     var isSearchFocused by remember { mutableStateOf(false) }
+    // Screen-space bounds of the search field: gestures that START inside it
+    // must not clear its focus.
+    val fieldBounds =
+        remember { mutableStateOf(Rect.Zero) }
 
     val refreshingState = rememberPullToRefreshState()
     var isRefreshing by remember { mutableStateOf(false) }
@@ -105,7 +114,82 @@ fun SearchScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .pointerInput(focusManager, fieldBounds) {
+                    // Initial pass: see every touch BEFORE children
+                    // consume it, so both "tap a result card" and
+                    // "scroll the results" release the search
+                    // field's focus (and with it the keyboard).
+                    // Gestures that start inside the field itself
+                    // are left alone.
+                    val slop = 8.dp.toPx()
+                    awaitPointerEventScope {
+                        var downPos: Offset? = null
+                        var startedInField = false
+                        var cleared = false
+                        while (true) {
+                            val event =
+                                awaitPointerEvent(PointerEventPass.Initial)
+                            when (event.type) {
+                                PointerEventType.Press -> {
+                                    // Overwrite any stale state left by a
+                                    // cancelled gesture (no cancel event is
+                                    // delivered in this API).
+                                    val pos =
+                                        event.changes
+                                            .firstOrNull { it.pressed }
+                                            ?.position
+                                    downPos = pos
+                                    startedInField =
+                                        pos != null &&
+                                        fieldBounds.value.contains(pos)
+                                }
+
+                                PointerEventType.Move -> {
+                                    val pos =
+                                        event.changes
+                                            .firstOrNull()
+                                            ?.position
+                                            ?: continue
+                                    val down = downPos ?: continue
+                                    if (!startedInField && !cleared &&
+                                        (pos - down).getDistance() > slop
+                                    ) {
+                                        focusManager.clearFocus()
+                                        cleared = true
+                                    }
+                                }
+
+                                PointerEventType.Release -> {
+                                    val pos =
+                                        event.changes
+                                            .firstOrNull()
+                                            ?.position
+                                    val down = downPos
+                                    if (!startedInField && !cleared &&
+                                        pos != null && down != null &&
+                                        (pos - down).getDistance() <= slop
+                                    ) {
+                                        // A plain tap outside the
+                                        // field.
+                                        focusManager.clearFocus()
+                                    }
+                                    downPos = null
+                                    cleared = false
+                                }
+
+                                else -> {
+                                    downPos = null
+                                    cleared = false
+                                }
+                            }
+                        }
+                    }
+                },
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 1. Search field + search button (top row)
             Row(
@@ -121,7 +205,10 @@ fun SearchScreen(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .onFocusChanged { isSearchFocused = it.isFocused },
+                            .onFocusChanged { isSearchFocused = it.isFocused }
+                            .onGloballyPositioned {
+                                fieldBounds.value = it.boundsInWindow()
+                            },
                     placeholder = { Text("Search") },
                     leadingIcon = {
                         Icon(
@@ -178,16 +265,8 @@ fun SearchScreen(
                 )
             }
 
-            // 2+3. Tapping anywhere below the search row clears the field's
-            // focus (hides the recent list + IME).
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { focusManager.clearFocus() })
-                        },
-            ) {
+            // 2+3. Results area (focus handling lives on the outer Box).
+            Box(modifier = Modifier.fillMaxSize()) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Recent searches — only while the search field is focused.
                     if (isSearchFocused && uiState.searchHistory.isNotEmpty()) {

@@ -228,7 +228,7 @@ fun VideoContainer(
  * @param threshold Number of items before the end to trigger loading (default: 1)
  */
 @Composable
-private fun ScrollEndReached(
+fun ScrollEndReached(
     listState: LazyListState?,
     gridState: LazyGridState?,
     itemCount: Int,

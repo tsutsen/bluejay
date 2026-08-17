@@ -156,6 +156,16 @@ private fun grayjayMainActivityContent(
         }
     }
 
+    // Navigating away while a video is active (tab switch, go-to-channel, ...)
+    // collapses the player to the mini player instead of leaving it covering
+    // the new screen.
+    val currentRoute by navigator.currentRoute.collectAsState(initial = null)
+    LaunchedEffect(currentRoute) {
+        if (playerState.currentVideo != null && !playerState.isMinimized) {
+            playerRepository.minimize()
+        }
+    }
+
     val showNavChrome = !playerState.isFullscreen
 
     AppLayout(

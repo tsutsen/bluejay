@@ -1,8 +1,10 @@
 package com.tsutsen.platformplayer.feature.channel.impl
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
+import com.tsutsen.platformplayer.core.designsystem.component.ScrollEndReached
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
@@ -166,13 +172,6 @@ fun ChannelScreen(
                                 .weight(1f)
                                 .fillMaxSize(),
                     ) {
-                        // Wide keeps the banner pinned: a grid item cannot span
-                        // both columns, so the scrollable banner (topContent)
-                        // is list-only.
-                        if (isWide) {
-                            ChannelBanner(bannerUrl = state.channel.banner)
-                        }
-
                         if (isWide) {
                             ChannelContent(
                                 state = state,
@@ -234,16 +233,6 @@ fun ChannelScreen(
 }
 
 @Composable
-private fun optionalBanner(
-    bannerUrl: String?,
-    isWide: Boolean,
-): (@Composable () -> Unit)? {
-    // Named helper: an if-expression lambda is not inferred as composable.
-    if (isWide) return null
-    return { ChannelBanner(bannerUrl = bannerUrl) }
-}
-
-@Composable
 private fun ChannelBanner(bannerUrl: String?) {
     Box(
         modifier =
@@ -297,10 +286,8 @@ private fun ChannelContent(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
             ) {
-                if (!isWide) {
-                    ChannelBanner(bannerUrl = state.channel.banner)
-                    Spacer(Modifier.height(16.dp))
-                }
+                ChannelBanner(bannerUrl = state.channel.banner)
+                Spacer(Modifier.height(16.dp))
                 state.channel.description?.let { description ->
                     Text(
                         text = description,
@@ -347,7 +334,7 @@ private fun ChannelContent(
                     hasMorePages = false,
                     onCardClick = onCardClick,
                     onLoadMore = {},
-                    topContent = optionalBanner(state.channel.banner, isWide),
+                    topContent = { ChannelBanner(bannerUrl = state.channel.banner) },
                 ) { card ->
                     if (card is PlaylistCard) {
                         PlaylistRow(
@@ -372,20 +359,22 @@ private fun ChannelContent(
                 } else {
                     VideoCardSkeleton(count = 4)
                 }
+            } else if (isWide) {
+                WideVideoGrid(
+                    state = state,
+                    onCardClick = onCardClick,
+                    onLoadMore = onLoadMore,
+                    onVideoLongClick = onVideoLongClick,
+                )
             } else {
                 VideoContainer(
                     items = state.cards,
-                    layout =
-                        if (isWide) {
-                            ContainerLayout.Grid(2)
-                        } else {
-                            ContainerLayout.List
-                        },
+                    layout = ContainerLayout.List,
                     isLoading = false,
                     hasMorePages = state.hasMore,
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
-                    topContent = optionalBanner(state.channel.banner, isWide),
+                    topContent = { ChannelBanner(bannerUrl = state.channel.banner) },
                 ) { card ->
                     if (card is CoreVideoCard) {
                         VideoCard(
@@ -398,6 +387,85 @@ private fun ChannelContent(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Wide-mode videos: scrollable banner followed by 2-column card rows.
+ * A single LazyColumn (not a LazyVerticalGrid) so the banner scrolls with
+ * the content — grid items cannot span columns.
+ */
+@Composable
+private fun WideVideoGrid(
+    state: ChannelViewModel.ChannelUiState.Loaded,
+    onCardClick: (Card) -> Unit,
+    onLoadMore: () -> Unit,
+    onVideoLongClick: (CoreVideoCard) -> Unit,
+) {
+    val listState = rememberLazyListState()
+    val rows = remember(state.cards) { state.cards.chunked(2) }
+    ScrollEndReached(
+        listState = listState,
+        gridState = null,
+        itemCount = state.cards.size,
+        isLoading = false,
+        hasMorePages = state.hasMore,
+        threshold = 3,
+        onEndReached = onLoadMore,
+    )
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        state = listState,
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item(key = "__top__") {
+            ChannelBanner(bannerUrl = state.channel.banner)
+        }
+        items(
+            rows,
+            key = { row -> row.joinToString("|") { it.id } },
+        ) { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                WideVideoCell(
+                    card = row[0],
+                    modifier = Modifier.weight(1f),
+                    onCardClick = onCardClick,
+                    onVideoLongClick = onVideoLongClick,
+                )
+                if (row.size > 1) {
+                    WideVideoCell(
+                        card = row[1],
+                        modifier = Modifier.weight(1f),
+                        onCardClick = onCardClick,
+                        onVideoLongClick = onVideoLongClick,
+                    )
+                } else {
+                    Box(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WideVideoCell(
+    card: Card,
+    modifier: Modifier = Modifier,
+    onCardClick: (Card) -> Unit,
+    onVideoLongClick: (CoreVideoCard) -> Unit,
+) {
+    Box(modifier) {
+        if (card is CoreVideoCard) {
+            VideoCard(
+                card = card,
+                onClick = { onCardClick(card) },
+                onLongClick = { onVideoLongClick(card) },
+            )
         }
     }
 }

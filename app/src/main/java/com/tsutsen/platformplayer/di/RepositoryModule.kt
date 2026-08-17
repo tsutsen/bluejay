@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
+import com.tsutsen.platformplayer.core.data.repository.PlaylistRepository
 import com.tsutsen.platformplayer.core.data.repository.SearchRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
@@ -31,6 +32,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindChannelRepository(impl: EngineChannelRepositoryImpl): ChannelRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaylistRepository(impl: EnginePlaylistRepositoryImpl): PlaylistRepository
 
     @Binds
     @Singleton
