@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.search.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,9 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -79,14 +80,9 @@ fun SearchScreen(
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var hasSearched by remember { mutableStateOf(false) }
-    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    var isSearchFocused by remember { mutableStateOf(false) }
 
-    // Autofocus the search field + raise the IME when the tab opens.
-    val keyboardController = LocalSoftwareKeyboardController.current
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboardController?.show()
-    }
     val refreshingState = rememberPullToRefreshState()
     var isRefreshing by remember { mutableStateOf(false) }
 
@@ -125,7 +121,7 @@ fun SearchScreen(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .focusRequester(focusRequester),
+                            .onFocusChanged { isSearchFocused = it.isFocused },
                     placeholder = { Text("Search") },
                     leadingIcon = {
                         Icon(
@@ -182,113 +178,126 @@ fun SearchScreen(
                 )
             }
 
-            // 2. Search history list with background (shown on first open or when field is focused)
-            if ((!hasSearched || searchQuery.isBlank()) && uiState.searchHistory.isNotEmpty()) {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                RoundedCornerShape(12.dp),
-                            ).padding(12.dp),
-                ) {
-                    RecentSearches(
-                        history = uiState.searchHistory.take(5),
-                        onItemClick = { query ->
-                            searchQuery = query
-                            viewModel.search(query)
-                            hasSearched = true
+            // 2+3. Tapping anywhere below the search row clears the field's
+            // focus (hides the recent list + IME).
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { focusManager.clearFocus() })
                         },
-                        onDeleteItem = { query ->
-                            viewModel.deleteFromHistory(query)
-                        },
-                        onClearHistory = { viewModel.clearHistory() },
-                    )
-                }
-            }
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Recent searches — only while the search field is focused.
+                    if (isSearchFocused && uiState.searchHistory.isNotEmpty()) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        RoundedCornerShape(12.dp),
+                                    ).padding(12.dp),
+                        ) {
+                            RecentSearches(
+                                history = uiState.searchHistory.take(5),
+                                onItemClick = { query ->
+                                    searchQuery = query
+                                    viewModel.search(query)
+                                    hasSearched = true
+                                },
+                                onDeleteItem = { query ->
+                                    viewModel.deleteFromHistory(query)
+                                },
+                                onClearHistory = { viewModel.clearHistory() },
+                            )
+                        }
+                    }
 
-            // 3. Search result grid (shown after search is executed)
-            when {
-                uiState.isLoading && uiState.items.isEmpty() -> {
-                    VideoCardSkeleton(count = 6)
-                }
+                    // 3. Search result grid (shown after search is executed)
+                    when {
+                        uiState.isLoading && uiState.items.isEmpty() -> {
+                            VideoCardSkeleton(count = 6)
+                        }
 
-                uiState.error != null && uiState.items.isEmpty() -> {
-                    ErrorState(
-                        message = uiState.error ?: "Search failed",
-                        onRetry = { viewModel.search(searchQuery) },
-                    )
-                }
+                        uiState.error != null && uiState.items.isEmpty() -> {
+                            ErrorState(
+                                message = uiState.error ?: "Search failed",
+                                onRetry = { viewModel.search(searchQuery) },
+                            )
+                        }
 
-                uiState.items.isNotEmpty() -> {
-                    val channelResults = uiState.items.filterIsInstance<ChannelCard>()
-                    val videoResults = uiState.items.filterIsInstance<VideoCard>()
-                    PullToRefreshBox(
-                        isRefreshing = isRefreshing,
-                        state = refreshingState,
-                        onRefresh = {
-                            isRefreshing = true
-                            viewModel.search(searchQuery)
-                        },
-                        content = {
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                if (channelResults.isNotEmpty()) {
-                                    Column(
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    ) {
-                                        Text(
-                                            text = "Channels",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            modifier = Modifier.padding(bottom = 8.dp),
-                                        )
-                                        channelResults.forEach { channel ->
-                                            ChannelCardView(
-                                                card = channel,
-                                                onClick = {
-                                                    navigator.navigateToChannel(channel.url)
-                                                },
-                                            )
+                        uiState.items.isNotEmpty() -> {
+                            val channelResults = uiState.items.filterIsInstance<ChannelCard>()
+                            val videoResults = uiState.items.filterIsInstance<VideoCard>()
+                            PullToRefreshBox(
+                                isRefreshing = isRefreshing,
+                                state = refreshingState,
+                                onRefresh = {
+                                    isRefreshing = true
+                                    viewModel.search(searchQuery)
+                                },
+                                content = {
+                                    Column(modifier = Modifier.fillMaxSize()) {
+                                        if (channelResults.isNotEmpty()) {
+                                            Column(
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                            ) {
+                                                Text(
+                                                    text = "Channels",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    modifier = Modifier.padding(bottom = 8.dp),
+                                                )
+                                                channelResults.forEach { channel ->
+                                                    ChannelCardView(
+                                                        card = channel,
+                                                        onClick = {
+                                                            navigator.navigateToChannel(channel.url)
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        VideoContainer(
+                                            items = videoResults,
+                                            layout =
+                                                if (isWide) ContainerLayout.Grid(3) else ContainerLayout.List,
+                                            isLoading = uiState.isLoading && videoResults.size > 6,
+                                            hasMorePages = uiState.hasMorePages,
+                                            onCardClick = { card ->
+                                                if (card is VideoCard) playerViewModel.play(card.url)
+                                            },
+                                            onLoadMore = { viewModel.nextPage() },
+                                            modifier = Modifier.fillMaxSize(),
+                                        ) { card ->
+                                            if (card is VideoCard) {
+                                                VideoCard(
+                                                    card = card,
+                                                    onClick = { playerViewModel.play(card.url) },
+                                                    onLongClick = { optionsCard = card },
+                                                )
+                                            }
                                         }
                                     }
-                                }
-                                VideoContainer(
-                                    items = videoResults,
-                                    layout =
-                                        if (isWide) ContainerLayout.Grid(3) else ContainerLayout.List,
-                                    isLoading = uiState.isLoading && videoResults.size > 6,
-                                    hasMorePages = uiState.hasMorePages,
-                                    onCardClick = { card ->
-                                        if (card is VideoCard) playerViewModel.play(card.url)
-                                    },
-                                    onLoadMore = { viewModel.nextPage() },
-                                    modifier = Modifier.fillMaxSize(),
-                                ) { card ->
-                                    if (card is VideoCard) {
-                                        VideoCard(
-                                            card = card,
-                                            onClick = { playerViewModel.play(card.url) },
-                                            onLongClick = { optionsCard = card },
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                    )
-                }
+                                },
+                            )
+                        }
 
-                else -> {
-                    // Show empty state only after a search was executed and returned no results
-                    if (hasSearched && uiState.items.isEmpty() && !uiState.isLoading && searchQuery.isNotBlank()) {
-                        EmptyState(
-                            message = "No results for \"$searchQuery\"",
-                            actionLabel = "Try a different search",
-                            onAction = {},
-                        )
+                        else -> {
+                            // Show empty state only after a search was executed and returned no results
+                            if (hasSearched && uiState.items.isEmpty() && !uiState.isLoading && searchQuery.isNotBlank()) {
+                                EmptyState(
+                                    message = "No results for \"$searchQuery\"",
+                                    actionLabel = "Try a different search",
+                                    onAction = {},
+                                )
+                            }
+                        }
                     }
                 }
             }

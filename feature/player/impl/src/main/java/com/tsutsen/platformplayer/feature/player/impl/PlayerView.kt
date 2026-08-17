@@ -27,21 +27,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
-import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.Player
+import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
+import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -50,7 +50,8 @@ private const val TAG = "PlayerScreen"
 
 @Composable
 fun PlayerView(
-    viewModel: PlayerViewModel = hiltViewModel()
+    viewModel: PlayerViewModel = hiltViewModel(),
+    onChannelClick: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -93,10 +94,18 @@ fun PlayerView(
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
     var isDraggingMiniPlayer by remember { mutableStateOf(false) }
 
-    val morphProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+    val morphProgress =
+        remember {
+            androidx.compose.animation.core
+                .Animatable(0f)
+        }
     var isDraggingMorph by remember { mutableStateOf(false) }
 
-    val fullscreenProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+    val fullscreenProgress =
+        remember {
+            androidx.compose.animation.core
+                .Animatable(0f)
+        }
 
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableStateOf(0L) }
@@ -104,32 +113,39 @@ fun PlayerView(
     val animatedMiniOffsetX by animateFloatAsState(
         targetValue = miniPlayerOffsetX,
         animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
-        label = "animatedMiniOffsetX"
+        label = "animatedMiniOffsetX",
     )
     val animatedMiniOffsetY by animateFloatAsState(
         targetValue = miniPlayerOffsetY,
         animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
-        label = "animatedMiniOffsetY"
+        label = "animatedMiniOffsetY",
     )
 
-    val transitionSpringSpec = tween<Float>(
-        durationMillis = 300,
-        easing = FastOutSlowInEasing
-    )
-    val transitionDpSpec = spring<androidx.compose.ui.unit.Dp>(
-        stiffness = Spring.StiffnessMediumLow,
-        dampingRatio = Spring.DampingRatioNoBouncy
-    )
+    val transitionSpringSpec =
+        tween<Float>(
+            durationMillis = 300,
+            easing = FastOutSlowInEasing,
+        )
+    val transitionDpSpec =
+        spring<androidx.compose.ui.unit.Dp>(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioNoBouncy,
+        )
 
     val isMinimizedAnim = remember { mutableStateOf(false) }
     val isFullscreenAnim = remember { mutableStateOf(false) }
-    val playerFadeInProgress = remember { androidx.compose.animation.core.Animatable(0f) }
+    val playerFadeInProgress =
+        remember {
+            androidx.compose.animation.core
+                .Animatable(0f)
+        }
 
     var containerSize by remember { mutableStateOf(Size.Zero) }
 
-    val player = remember(uiState) {
-        (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
-    }
+    val player =
+        remember(uiState) {
+            (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
+        }
 
     // Initialize from state on first load only (for indicator defaults).
     // Gesture handler owns indicator state during interaction.
@@ -179,8 +195,8 @@ fun PlayerView(
         is PlayerUiState.Initial -> {
             // No player active — don't show anything
         }
-        is PlayerUiState.Loaded -> {
 
+        is PlayerUiState.Loaded -> {
             LaunchedEffect(state.currentVideo?.url) {
                 isScrubbing = false
                 scrubPositionMs = 0L
@@ -198,9 +214,10 @@ fun PlayerView(
             val fullscreenP = fullscreenProgress.value
 
             val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-            val isSmallWindow = with(context.resources.displayMetrics) {
-                kotlin.math.min(widthPixels, heightPixels) < 600
-            }
+            val isSmallWindow =
+                with(context.resources.displayMetrics) {
+                    kotlin.math.min(widthPixels, heightPixels) < 600
+                }
 
             // ==================== Orientation & system UI ====================
             LaunchedEffect(isLandscape, isSmallWindow, isFullscreen) {
@@ -214,7 +231,8 @@ fun PlayerView(
             LaunchedEffect(Unit) {
                 val activity = context as? Activity
                 if (activity != null) {
-                    androidx.core.view.WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+                    androidx.core.view.WindowCompat
+                        .setDecorFitsSystemWindows(activity.window, false)
                 }
             }
 
@@ -224,14 +242,20 @@ fun PlayerView(
                     val insetsController = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
                     if (isFullscreen) {
                         kotlinx.coroutines.delay(300)
-                        insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                        insetsController.hide(
+                            androidx.core.view.WindowInsetsCompat.Type
+                                .systemBars(),
+                        )
                         insetsController.systemBarsBehavior =
                             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                         if (isSmallWindow) {
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                         }
                     } else {
-                        insetsController.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                        insetsController.show(
+                            androidx.core.view.WindowInsetsCompat.Type
+                                .systemBars(),
+                        )
                         insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                         if (isSmallWindow) {
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -250,10 +274,11 @@ fun PlayerView(
                 val canAutoHide = settled && state.isPlaying && controlsVisible
                 if (canAutoHide) {
                     hideControlsJob?.cancel()
-                    hideControlsJob = launch {
-                        delay(3000)
-                        controlsVisible = false
-                    }
+                    hideControlsJob =
+                        launch {
+                            delay(3000)
+                            controlsVisible = false
+                        }
                 } else {
                     hideControlsJob?.cancel()
                 }
@@ -282,42 +307,53 @@ fun PlayerView(
             }
 
             LaunchedEffect(maxPlayerHeightPx, minPlayerHeightPx) {
-                playerHeightPx = if (playerHeightPx == 0f) {
-                    maxPlayerHeightPx
-                } else {
-                    playerHeightPx.coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
-                }
+                playerHeightPx =
+                    if (playerHeightPx == 0f) {
+                        maxPlayerHeightPx
+                    } else {
+                        playerHeightPx.coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+                    }
             }
 
-            val nestedScrollConnection = remember(minPlayerHeightPx, maxPlayerHeightPx) {
-                object : NestedScrollConnection {
-                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                        val delta = available.y
-                        val previousHeight = playerHeightPx
-                        val consumed = when {
-                            delta < 0f -> {
-                                val newHeight = (previousHeight + delta).coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
-                                newHeight - previousHeight
+            val nestedScrollConnection =
+                remember(minPlayerHeightPx, maxPlayerHeightPx) {
+                    object : NestedScrollConnection {
+                        override fun onPreScroll(
+                            available: Offset,
+                            source: NestedScrollSource,
+                        ): Offset {
+                            val delta = available.y
+                            val previousHeight = playerHeightPx
+                            val consumed =
+                                when {
+                                    delta < 0f -> {
+                                        val newHeight = (previousHeight + delta).coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+                                        newHeight - previousHeight
+                                    }
+
+                                    delta > 0f &&
+                                        scrollState.firstVisibleItemIndex == 0 &&
+                                        scrollState.firstVisibleItemScrollOffset == 0 -> {
+                                        val newHeight = (previousHeight + delta).coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+                                        newHeight - previousHeight
+                                    }
+
+                                    else -> {
+                                        0f
+                                    }
+                                }
+                            if (consumed != 0f) {
+                                playerHeightPx += consumed
                             }
-                            delta > 0f &&
-                                scrollState.firstVisibleItemIndex == 0 &&
-                                scrollState.firstVisibleItemScrollOffset == 0 -> {
-                                val newHeight = (previousHeight + delta).coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
-                                newHeight - previousHeight
-                            }
-                            else -> 0f
+                            return Offset(0f, consumed)
                         }
-                        if (consumed != 0f) {
-                            playerHeightPx += consumed
-                        }
-                        return Offset(0f, consumed)
                     }
                 }
-            }
 
-            val isCollapsedControls = !isFullscreenAnim.value &&
-                containerSize.height > 0f &&
-                (playerHeightPx / containerSize.height) <= 0.45f
+            val isCollapsedControls =
+                !isFullscreenAnim.value &&
+                    containerSize.height > 0f &&
+                    (playerHeightPx / containerSize.height) <= 0.45f
 
             // ==================== Geometry ====================
             val density = LocalDensity.current
@@ -343,74 +379,88 @@ fun PlayerView(
             val layoutDragX = if (isDraggingMiniPlayer) miniPlayerOffsetX else animatedMiniOffsetX
             val layoutDragY = if (isDraggingMiniPlayer) miniPlayerOffsetY else animatedMiniOffsetY
 
-            val videoLayout = computeVideoLayout(
-                miniProgress = morphProgress.value,
-                fullscreenProgress = fullscreenP,
-                containerWidth = containerSize.width,
-                containerHeight = containerSize.height,
-                playerHeightPx = playerHeightPx,
-                miniWidthPx = miniWidthPx,
-                miniHeightPx = miniHeightPx,
-                floatingRestX = floatingRestX,
-                floatingRestY = floatingRestY,
-                dragOffsetX = layoutDragX,
-                dragOffsetY = layoutDragY,
-                fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else containerSize.width,
-                fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else containerSize.height
-            )
+            val videoLayout =
+                computeVideoLayout(
+                    miniProgress = morphProgress.value,
+                    fullscreenProgress = fullscreenP,
+                    containerWidth = containerSize.width,
+                    containerHeight = containerSize.height,
+                    playerHeightPx = playerHeightPx,
+                    miniWidthPx = miniWidthPx,
+                    miniHeightPx = miniHeightPx,
+                    floatingRestX = floatingRestX,
+                    floatingRestY = floatingRestY,
+                    dragOffsetX = layoutDragX,
+                    dragOffsetY = layoutDragY,
+                    fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else containerSize.width,
+                    fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else containerSize.height,
+                )
 
             // ==================== Overlay mode ====================
-            val overlayMode = when {
-                isMinimized && !isFullscreen -> PlayerOverlayMode.FLOATING
-                isFullscreen -> PlayerOverlayMode.FULLSCREEN
-                isCollapsedControls -> PlayerOverlayMode.COMPACT
-                else -> PlayerOverlayMode.NORMAL
-            }
+            val overlayMode =
+                when {
+                    isMinimized && !isFullscreen -> PlayerOverlayMode.FLOATING
+                    isFullscreen -> PlayerOverlayMode.FULLSCREEN
+                    isCollapsedControls -> PlayerOverlayMode.COMPACT
+                    else -> PlayerOverlayMode.NORMAL
+                }
 
             // ==================== Gesture configs (defaults, user overrides later) ====================
-            val gestureConfigs = remember {
-                com.tsutsen.platformplayer.feature.player.impl.gesture.buildDefaultGestureConfigs()
-            }
+            val gestureConfigs =
+                remember {
+                    com.tsutsen.platformplayer.feature.player.impl.gesture
+                        .buildDefaultGestureConfigs()
+                }
 
             // ==================== Gesture action handler ====================
-            val gestureHandler = remember {
-                com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureActionHandler(
-                    viewModel = viewModel,
-                    screenHeight = { containerSize.height },
-                    context = context,
-                    activity = context as? android.app.Activity,
-                    onIndicator = { indicator ->
-                        when (indicator) {
-                            is GestureIndicator.Progress -> activeProgressIndicator = indicator
-                            is GestureIndicator.TextBadge -> {
-                                badgeKeepAliveCounter++
-                                badgeState = GestureBadgeState(
-                                    key = indicator.key,
-                                    label = indicator.label,
-                                    icon = indicator.icon,
-                                    visible = true,
-                                    keepAlive = badgeKeepAliveCounter,
-                                )
+            val gestureHandler =
+                remember {
+                    com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureActionHandler(
+                        viewModel = viewModel,
+                        screenHeight = { containerSize.height },
+                        context = context,
+                        activity = context as? android.app.Activity,
+                        onIndicator = { indicator ->
+                            when (indicator) {
+                                is GestureIndicator.Progress -> {
+                                    activeProgressIndicator = indicator
+                                }
+
+                                is GestureIndicator.TextBadge -> {
+                                    badgeKeepAliveCounter++
+                                    badgeState =
+                                        GestureBadgeState(
+                                            key = indicator.key,
+                                            label = indicator.label,
+                                            icon = indicator.icon,
+                                            visible = true,
+                                            keepAlive = badgeKeepAliveCounter,
+                                        )
+                                }
+
+                                is GestureIndicator.Badge -> {
+                                    badgeKeepAliveCounter++
+                                    badgeState =
+                                        GestureBadgeState(
+                                            key = indicator.key,
+                                            label = indicator.format(indicator.value),
+                                            icon = indicator.icon,
+                                            visible = true,
+                                            keepAlive = badgeKeepAliveCounter,
+                                        )
+                                }
+
+                                else -> {
+                                    Unit
+                                }
                             }
-                            is GestureIndicator.Badge -> {
-                                badgeKeepAliveCounter++
-                                badgeState = GestureBadgeState(
-                                    key = indicator.key,
-                                    label = indicator.format(indicator.value),
-                                    icon = indicator.icon,
-                                    visible = true,
-                                    keepAlive = badgeKeepAliveCounter,
-                                )
-                            }
-                            else -> Unit
-                        }
-                    },
-                    onIndicatorEnd = {
-                        activeProgressIndicator = null
-                        // Badges auto-hide via their own fade animation — don't touch badgeState here
-                    },
-                )
-            }
+                        },
+                        onIndicatorEnd = {
+                            activeProgressIndicator = null
+                            // Badges auto-hide via their own fade animation — don't touch badgeState here
+                        },
+                    )
+                }
 
             // ==================== Tap handler (toggle controls) ====================
             val onTap: () -> Unit = {
@@ -418,33 +468,37 @@ fun PlayerView(
                     controlsVisible = !controlsVisible
                     hideControlsJob?.cancel()
                     if (controlsVisible && state.isPlaying) {
-                        hideControlsJob = coroutineScope.launch {
-                            delay(3000)
-                            controlsVisible = false
-                        }
+                        hideControlsJob =
+                            coroutineScope.launch {
+                                delay(3000)
+                                controlsVisible = false
+                            }
                     }
                 }
             }
 
             // ==================== Compose ====================
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .onGloballyPositioned { coordinates ->
-                        containerSize = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
-                    }
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .onGloballyPositioned { coordinates ->
+                            containerSize = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
+                        },
             ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = playerFadeInProgress.value }
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = playerFadeInProgress.value },
                 ) {
                     val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) + fullscreenP
                     if (scrimAlpha > 0.01f) {
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = scrimAlpha))
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = scrimAlpha)),
                         )
                     }
 
@@ -475,7 +529,10 @@ fun PlayerView(
                         onTap = onTap,
                         isDraggingMiniPlayer = isDraggingMiniPlayer,
                         onDragStateChanged = { isDraggingMiniPlayer = it },
-                        onOffsetChanged = { x, y -> miniPlayerOffsetX = x; miniPlayerOffsetY = y },
+                        onOffsetChanged = { x, y ->
+                            miniPlayerOffsetX = x
+                            miniPlayerOffsetY = y
+                        },
                         currentOffsetX = miniPlayerOffsetX,
                         currentOffsetY = miniPlayerOffsetY,
                         onOptions = { showOptionsModal = true },
@@ -483,6 +540,7 @@ fun PlayerView(
                         expandedDescription = expandedDescription,
                         onToggleDescription = { expandedDescription = !expandedDescription },
                         selectedTab = selectedTab,
+                        onChannelClick = onChannelClick,
                         onTabSelected = { selectedTab = it },
                         onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
                         isLoading = state.isLoading,
@@ -531,7 +589,7 @@ fun PlayerView(
                             viewModel.seekTo(positionMs)
                         },
                         onMoreOptions = { showMiniPlayerOptions = true },
-                        onFullscreenToggle = { viewModel.toggleFullscreen() }
+                        onFullscreenToggle = { viewModel.toggleFullscreen() },
                     )
                 }
 
@@ -548,7 +606,7 @@ fun PlayerView(
                             selectedQuality = quality
                             viewModel.setVideoQuality(quality)
                         },
-                        onDismiss = { showOptionsModal = false }
+                        onDismiss = { showOptionsModal = false },
                     )
                 }
 
@@ -560,20 +618,21 @@ fun PlayerView(
                             viewModel.seekTo(positionMs)
                             showChapters = false
                         },
-                        onDismiss = { showChapters = false }
+                        onDismiss = { showChapters = false },
                     )
                 }
             }
         }
+
         is PlayerUiState.Error -> {
             Box(
                 modifier = Modifier.fillMaxSize().background(Color.Black),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = state.message,
                     color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
             }
         }

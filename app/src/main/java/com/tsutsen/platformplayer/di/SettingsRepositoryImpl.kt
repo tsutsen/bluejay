@@ -1,6 +1,5 @@
 package com.tsutsen.platformplayer.di
 
-import androidx.appcompat.app.AppCompatDelegate
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
@@ -61,7 +60,6 @@ class SettingsRepositoryImpl
             s.appearance.dynamicColor = prefs.dynamicColor
             s.save()
             emit()
-            applyThemeMode(prefs.themeMode)
         }
 
         override suspend fun updatePlayback(prefs: PlaybackPreferences) {
@@ -105,16 +103,5 @@ class SettingsRepositoryImpl
             s.feed.gridColumns = 3
             s.save()
             emit()
-            applyThemeMode(ThemeMode.AUTO)
-        }
-
-        private fun applyThemeMode(mode: ThemeMode) {
-            val nightMode =
-                when (mode) {
-                    ThemeMode.AUTO -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                    ThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
-                    ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
-                }
-            AppCompatDelegate.setDefaultNightMode(nightMode)
         }
     }

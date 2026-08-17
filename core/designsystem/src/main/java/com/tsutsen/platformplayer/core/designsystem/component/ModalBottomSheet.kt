@@ -19,22 +19,25 @@ import androidx.compose.ui.unit.dp
 fun GrayjayModalBottomSheet(
     onDismiss: () -> Unit,
     title: String? = null,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    // Sheets with several rows open in the partial state and clip their
+    // bottom rows until the user drags — skip the partial state so the
+    // sheet opens fully expanded (M3 1.4.0 bottom-sheet API).
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState
+        sheetState = sheetState,
     ) {
         Column(
-            modifier = Modifier.padding(bottom = 32.dp)
+            modifier = Modifier.padding(bottom = 32.dp),
         ) {
             if (title != null) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
                 )
             }
             content()

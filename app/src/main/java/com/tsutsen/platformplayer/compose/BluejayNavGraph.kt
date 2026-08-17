@@ -1,10 +1,10 @@
 package com.tsutsen.platformplayer.compose
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
@@ -32,9 +32,17 @@ import kotlinx.serialization.json.Json
 fun GrayjayNavGraph(
     navigator: Navigator,
     startDestination: NavDestination = NavDestination.Home,
+    gridColumns: Int = 3,
 ) {
     // Collect current route from navigator state
     val currentRoute by navigator.currentRoute.collectAsState(initial = startDestination)
+
+    // System back: pop the navigator's back stack while it has entries;
+    // on top-level tabs it's disabled so the default (exit app) applies.
+    val backStack by navigator.backStack.collectAsState()
+    BackHandler(enabled = backStack.isNotEmpty()) {
+        navigator.goBack()
+    }
 
     // Set up navigator callbacks
     LaunchedEffect(Unit) {
@@ -51,9 +59,6 @@ fun GrayjayNavGraph(
             }
         }
     }
-
-    // Grid columns come from the single config (legacy Settings singleton).
-    val gridColumns = Settings.instance.feed.gridColumns
 
     // Render the current destination
     when (val destination = currentRoute) {

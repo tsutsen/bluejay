@@ -30,6 +30,7 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.17.0'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
     implementation 'androidx.media3:media3-exoplayer:1.9.0'
+    implementation 'androidx.media3:media3-session:1.9.0'
     implementation 'androidx.media3:media3-exoplayer-dash:1.9.0'
     implementation 'androidx.media3:media3-exoplayer-hls:1.9.0'
     implementation 'androidx.media3:media3-exoplayer-rtsp:1.9.0'

@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -23,36 +24,50 @@ internal fun ChannelRow(
     onSubscribe: () -> Unit,
     onWatchLater: () -> Unit,
     onShare: () -> Unit,
-    onMore: () -> Unit
+    onMore: () -> Unit,
+    onChannelClick: ((String) -> Unit)? = null,
 ) {
+    // Tapping the avatar or name opens the channel page.
+    val channelUrl = author?.url
+    val channelClick: Modifier =
+        if (channelUrl != null && onChannelClick != null) {
+            Modifier.clickable { onChannelClick(channelUrl) }
+        } else {
+            Modifier
+        }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // Avatar
         if (author?.thumbnailUrl != null) {
             AsyncImage(
                 model = author.thumbnailUrl,
                 contentDescription = author.name,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .then(channelClick),
+                contentScale = ContentScale.Crop,
             )
         } else {
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .then(channelClick),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = (author?.name?.firstOrNull()?.toString() ?: "?").uppercase(),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
@@ -62,9 +77,11 @@ internal fun ChannelRow(
         // Channel Info + Subscribe Button
         Row(
             modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f).then(channelClick),
+            ) {
                 Text(
                     text = author?.name ?: "Unknown Channel",
                     style = MaterialTheme.typography.titleMedium,
@@ -72,13 +89,13 @@ internal fun ChannelRow(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
                     text = "125K subscribers",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
@@ -87,11 +104,11 @@ internal fun ChannelRow(
             Button(
                 onClick = onSubscribe,
                 modifier = Modifier.height(36.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp),
             ) {
                 Text(
                     text = "Subscribe",
-                    style = MaterialTheme.typography.labelMedium
+                    style = MaterialTheme.typography.labelMedium,
                 )
             }
         }
@@ -101,7 +118,7 @@ internal fun ChannelRow(
             Icon(
                 imageVector = Icons.Default.Schedule,
                 contentDescription = "Watch Later",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
@@ -110,7 +127,7 @@ internal fun ChannelRow(
             Icon(
                 imageVector = Icons.Default.Share,
                 contentDescription = "Share",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
@@ -119,7 +136,7 @@ internal fun ChannelRow(
             Icon(
                 imageVector = Icons.Default.MoreVert,
                 contentDescription = "More options",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

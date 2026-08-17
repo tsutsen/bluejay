@@ -1,27 +1,31 @@
 package com.tsutsen.platformplayer.activities
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import android.content.Intent
-import androidx.activity.result.ActivityResult
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResult
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
+import com.tsutsen.platformplayer.compose.GrayjayNavGraph
+import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
 import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
 import com.tsutsen.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
 import com.tsutsen.platformplayer.core.designsystem.theme.GrayjayTheme
-import com.tsutsen.platformplayer.compose.GrayjayNavGraph
 import com.tsutsen.platformplayer.core.navigation.NavDestination
-import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.dualscreen.CompanionWindowManager
-import com.tsutsen.platformplayer.feature.player.impl.PlayerView
 import com.tsutsen.platformplayer.feature.dualscreen.ScreenCoordinator
+import com.tsutsen.platformplayer.feature.player.impl.PlayerView
 import com.tsutsen.platformplayer.states.StateApp
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -33,8 +37,9 @@ import javax.inject.Inject
  * when a secondary display is available.
  */
 @AndroidEntryPoint
-class MainActivity : ComponentActivity(), IWithResultLauncher {
-
+class MainActivity :
+    ComponentActivity(),
+    IWithResultLauncher {
     @Inject
     lateinit var screenCoordinator: ScreenCoordinator
 
@@ -46,14 +51,23 @@ class MainActivity : ComponentActivity(), IWithResultLauncher {
 
     @Inject
     lateinit var playerRepository: PlayerRepository
-    private val resultLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) { result: ActivityResult ->
-        _pendingResultHandler?.invoke(result)
-        _pendingResultHandler = null
-    }
 
-    override fun launchForResult(intent: Intent, code: Int, handler: (ActivityResult) -> Unit) {
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+    private val resultLauncher =
+        registerForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts
+                .StartActivityForResult(),
+        ) { result: ActivityResult ->
+            _pendingResultHandler?.invoke(result)
+            _pendingResultHandler = null
+        }
+
+    override fun launchForResult(
+        intent: Intent,
+        code: Int,
+        handler: (ActivityResult) -> Unit,
+    ) {
         // Store handler for the result callback
         _pendingResultHandler = handler
         resultLauncher.launch(intent)
@@ -74,9 +88,14 @@ class MainActivity : ComponentActivity(), IWithResultLauncher {
         enableEdgeToEdge()
 
         setContent {
-            GrayjayTheme {
-                GrayjayMainActivity(this, screenCoordinator, companionWindowManager, navigator, playerRepository)
-            }
+            GrayjayMainActivity(
+                this,
+                screenCoordinator,
+                companionWindowManager,
+                navigator,
+                playerRepository,
+                settingsRepository,
+            )
         }
     }
 
@@ -93,7 +112,38 @@ private fun GrayjayMainActivity(
     screenCoordinator: ScreenCoordinator,
     companionWindowManager: CompanionWindowManager,
     navigator: Navigator,
-    playerRepository: PlayerRepository
+    playerRepository: PlayerRepository,
+    settingsRepository: SettingsRepository,
+) {
+    // Settings are live: changing theme/grid columns re-composes this tree.
+    val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
+    val darkTheme =
+        when (prefs.appearance.themeMode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.AUTO -> isSystemInDarkTheme()
+        }
+
+    GrayjayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
+        grayjayMainActivityContent(
+            activity,
+            screenCoordinator,
+            companionWindowManager,
+            navigator,
+            playerRepository,
+            gridColumns = prefs.gridColumns,
+        )
+    }
+}
+
+@Composable
+private fun grayjayMainActivityContent(
+    activity: MainActivity,
+    screenCoordinator: ScreenCoordinator,
+    companionWindowManager: CompanionWindowManager,
+    navigator: Navigator,
+    playerRepository: PlayerRepository,
+    gridColumns: Int,
 ) {
     val companionVisible by screenCoordinator.companionVisible.collectAsState()
     val config = rememberAppLayoutConfig()
@@ -112,24 +162,25 @@ private fun GrayjayMainActivity(
         config = config.copy(showNavigation = showNavChrome),
         navigationContent = {
             AppNavigationChrome(
-                currentDestination = navigator.currentRoute.collectAsState().value?.let { dest ->
-                    when (dest) {
-                        is NavDestination.Home -> "home"
-                        is NavDestination.Search -> "search"
-                        is NavDestination.Subscriptions -> "subscriptions"
-                        is NavDestination.Library -> "library"
-                        is NavDestination.Notifications -> "notifications"
-                        is NavDestination.Settings -> "settings"
-                        is NavDestination.ChannelDetail -> "channel:${dest.url}"
-                        is NavDestination.PlaylistDetail -> "playlist:${dest.url}"
-                        is NavDestination.SourceDetail -> "source:${dest.url}"
-                        is NavDestination.PostDetail -> "post:${dest.url}"
-                        is NavDestination.ArticleDetail -> "article:${dest.url}"
-                        is NavDestination.WebDetail -> "web:${dest.url}"
-                        is NavDestination.ContentSearchResults -> "search:${dest.query}"
-                        else -> null
-                    }
-                },
+                currentDestination =
+                    navigator.currentRoute.collectAsState().value?.let { dest ->
+                        when (dest) {
+                            is NavDestination.Home -> "home"
+                            is NavDestination.Search -> "search"
+                            is NavDestination.Subscriptions -> "subscriptions"
+                            is NavDestination.Library -> "library"
+                            is NavDestination.Notifications -> "notifications"
+                            is NavDestination.Settings -> "settings"
+                            is NavDestination.ChannelDetail -> "channel:${dest.url}"
+                            is NavDestination.PlaylistDetail -> "playlist:${dest.url}"
+                            is NavDestination.SourceDetail -> "source:${dest.url}"
+                            is NavDestination.PostDetail -> "post:${dest.url}"
+                            is NavDestination.ArticleDetail -> "article:${dest.url}"
+                            is NavDestination.WebDetail -> "web:${dest.url}"
+                            is NavDestination.ContentSearchResults -> "search:${dest.query}"
+                            else -> null
+                        }
+                    },
                 onTabSelected = { tabId ->
                     when (tabId) {
                         "home" -> navigator.navigateHome()
@@ -141,18 +192,19 @@ private fun GrayjayMainActivity(
                         "plugins" -> navigator.navigateToPluginBrowser()
                     }
                 },
-                isWide = config.isWide
+                isWide = config.isWide,
             )
         },
         content = {
             GrayjayNavGraph(
                 navigator = navigator,
-                startDestination = NavDestination.Home
+                startDestination = NavDestination.Home,
+                gridColumns = gridColumns,
             )
             // Player overlay — only rendered when there's a video to play
             if (playerState.currentVideo != null) {
-                PlayerView()
+                PlayerView(onChannelClick = { navigator.navigateToChannel(it) })
             }
-        }
+        },
     )
 }

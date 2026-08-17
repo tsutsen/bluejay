@@ -18,12 +18,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -63,6 +67,8 @@ fun LibraryScreen(
 ) {
     val sections by viewModel.sections.collectAsState()
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
+    var showNewPlaylistDialog by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf("") }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (sections.isEmpty()) {
@@ -85,6 +91,9 @@ fun LibraryScreen(
                             }
                         },
                         onVideoLongClick = { optionsCard = it },
+                        // "playlists" is the LibraryRepositoryImpl.PLAYLISTS_ID
+                        // section constant.
+                        onNewPlaylist = { showNewPlaylistDialog = true },
                     )
                 }
             }
@@ -99,6 +108,51 @@ fun LibraryScreen(
             onGoToChannel = { navigator.navigateToChannel(it) },
         )
     }
+
+    if (showNewPlaylistDialog) {
+        NewPlaylistDialog(
+            name = newPlaylistName,
+            onNameChange = { newPlaylistName = it },
+            onCreate = {
+                viewModel.createPlaylist(newPlaylistName.trim())
+                newPlaylistName = ""
+                showNewPlaylistDialog = false
+            },
+            onDismiss = { showNewPlaylistDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun NewPlaylistDialog(
+    name: String,
+    onNameChange: (String) -> Unit,
+    onCreate: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New playlist") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = onNameChange,
+                label = { Text("Name") },
+                singleLine = true,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                enabled = name.isNotBlank(),
+                onClick = onCreate,
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable
@@ -107,6 +161,7 @@ private fun LibrarySectionRow(
     onSectionClick: () -> Unit,
     onCardClick: (Card) -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
+    onNewPlaylist: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -119,6 +174,7 @@ private fun LibrarySectionRow(
             Text(
                 text = section.title,
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.weight(1f))
             if (section.totalCount > 0) {
@@ -128,6 +184,16 @@ private fun LibrarySectionRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.width(8.dp))
+            }
+            if (section.id == "playlists") {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "New playlist",
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 8.dp)
+                            .clickable(onClick = onNewPlaylist),
+                )
             }
             Icon(
                 imageVector = Icons.Filled.ChevronRight,

@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.session.MediaSession
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
@@ -39,9 +40,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class PlayerRepositoryImpl(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
 ) : PlayerRepository {
-
     private var urlResolver: VideoUrlResolver? = null
 
     fun setUrlResolver(resolver: VideoUrlResolver?) {
@@ -56,60 +56,74 @@ class PlayerRepositoryImpl(
     override val exoPlayer: ExoPlayer? get() = _exoPlayer
     private var _exoPlayer: ExoPlayer? = null
 
-    private val playerListener = object : Player.Listener {
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            Log.i(TAG, "Playback state changed: $playbackState")
-            val duration = _exoPlayer?.duration ?: 0L
-            _playerState.update { it.copy(
-                isLoading = playbackState == Player.STATE_BUFFERING,
-                isCompleted = playbackState == Player.STATE_ENDED,
-                durationMs = duration
-            ) }
-        }
+    // Registers playback with the system (media notification, media buttons,
+    // lock-screen controls). A bare session observes the ExoPlayer directly —
+    // no MediaSessionService needed for the notification itself.
+    private var mediaSession: MediaSession? = null
 
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            Log.i(TAG, "isPlaying changed: $isPlaying")
-            _playerState.update { it.copy(isPlaying = isPlaying) }
-        }
+    private val playerListener =
+        object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                Log.i(TAG, "Playback state changed: $playbackState")
+                val duration = _exoPlayer?.duration ?: 0L
+                _playerState.update {
+                    it.copy(
+                        isLoading = playbackState == Player.STATE_BUFFERING,
+                        isCompleted = playbackState == Player.STATE_ENDED,
+                        durationMs = duration,
+                    )
+                }
+            }
 
-        override fun onPositionDiscontinuity(
-            oldPosition: Player.PositionInfo,
-            newPosition: Player.PositionInfo,
-            reason: Int
-        ) {
-            // Don't update position here - let the position ticker handle it
-            // This avoids race conditions with seekTo() and scrubbing
-        }
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                Log.i(TAG, "isPlaying changed: $isPlaying")
+                _playerState.update { it.copy(isPlaying = isPlaying) }
+            }
 
-        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
-            _playerState.update { it.copy(playbackSpeed = playbackParameters.speed) }
-        }
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                // Don't update position here - let the position ticker handle it
+                // This avoids race conditions with seekTo() and scrubbing
+            }
 
-        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            Log.e(TAG, "Player error: ${error.errorCodeName}, message: ${error.message}", error)
-            _playerState.update { it.copy(error = error.message ?: "Unknown error") }
-        }
+            override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+                _playerState.update { it.copy(playbackSpeed = playbackParameters.speed) }
+            }
 
-        override fun onLoadingChanged(isLoading: Boolean) {
-            Log.i(TAG, "Loading changed: $isLoading")
-        }
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                Log.e(TAG, "Player error: ${error.errorCodeName}, message: ${error.message}", error)
+                _playerState.update { it.copy(error = error.message ?: "Unknown error") }
+            }
 
-        override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
-            Log.i(TAG, "Playback suppression reason changed: $playbackSuppressionReason")
-        }
+            override fun onLoadingChanged(isLoading: Boolean) {
+                Log.i(TAG, "Loading changed: $isLoading")
+            }
 
-        override fun onIsLoadingChanged(isLoading: Boolean) {
-            Log.i(TAG, "isLoading changed: $isLoading")
-        }
+            override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
+                Log.i(TAG, "Playback suppression reason changed: $playbackSuppressionReason")
+            }
 
-        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            Log.i(TAG, "MediaItem transitioned: ${mediaItem?.mediaId}, reason: $reason")
-        }
+            override fun onIsLoadingChanged(isLoading: Boolean) {
+                Log.i(TAG, "isLoading changed: $isLoading")
+            }
 
-        override fun onEvents(player: Player, events: Player.Events) {
-            Log.i(TAG, "Player events: $events")
+            override fun onMediaItemTransition(
+                mediaItem: MediaItem?,
+                reason: Int,
+            ) {
+                Log.i(TAG, "MediaItem transitioned: ${mediaItem?.mediaId}, reason: $reason")
+            }
+
+            override fun onEvents(
+                player: Player,
+                events: Player.Events,
+            ) {
+                Log.i(TAG, "Player events: $events")
+            }
         }
-    }
 
     // Position ticker: single source of truth for currentPositionMs
     private val positionScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + Job())
@@ -117,49 +131,56 @@ class PlayerRepositoryImpl(
 
     private fun startPositionTicker() {
         positionTickerJob?.cancel()
-        positionTickerJob = positionScope.launch {
-            while (true) {
-                val player = _exoPlayer
-                if (player != null) {
-                    val position = player.currentPosition
-                    _playerState.update { it.copy(currentPositionMs = position) }
+        positionTickerJob =
+            positionScope.launch {
+                while (true) {
+                    val player = _exoPlayer
+                    if (player != null) {
+                        val position = player.currentPosition
+                        _playerState.update { it.copy(currentPositionMs = position) }
+                    }
+                    kotlinx.coroutines.delay(100) // 10fps for smooth UI
                 }
-                kotlinx.coroutines.delay(100) // 10fps for smooth UI
             }
-        }
     }
 
-    private val analyticsListener = object : AnalyticsListener {
-        override fun onLoadError(
-            eventTime: AnalyticsListener.EventTime,
-            loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
-            mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData,
-            error: java.io.IOException,
-            wasCanceled: Boolean
-        ) {
-            val trackType = when (mediaLoadData.trackType) {
-                C.TRACK_TYPE_VIDEO -> "VIDEO"
-                C.TRACK_TYPE_AUDIO -> "AUDIO"
-                C.TRACK_TYPE_TEXT -> "TEXT"
-                C.TRACK_TYPE_METADATA -> "METADATA"
-                C.TRACK_TYPE_UNKNOWN -> "UNKNOWN"
-                else -> "OTHER"
+    private val analyticsListener =
+        object : AnalyticsListener {
+            override fun onLoadError(
+                eventTime: AnalyticsListener.EventTime,
+                loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
+                mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData,
+                error: java.io.IOException,
+                wasCanceled: Boolean,
+            ) {
+                val trackType =
+                    when (mediaLoadData.trackType) {
+                        C.TRACK_TYPE_VIDEO -> "VIDEO"
+                        C.TRACK_TYPE_AUDIO -> "AUDIO"
+                        C.TRACK_TYPE_TEXT -> "TEXT"
+                        C.TRACK_TYPE_METADATA -> "METADATA"
+                        C.TRACK_TYPE_UNKNOWN -> "UNKNOWN"
+                        else -> "OTHER"
+                    }
+                Log.e(TAG, "LoadError track=$trackType uri=${loadEventInfo.uri} wasCanceled=$wasCanceled", error)
             }
-            Log.e(TAG, "LoadError track=$trackType uri=${loadEventInfo.uri} wasCanceled=$wasCanceled", error)
-        }
 
-        override fun onLoadCompleted(
-            eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
-            loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
-            mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData
-        ) {
-            Log.i(TAG, "LoadCompleted track=${mediaLoadData.trackType} bytes=${loadEventInfo.bytesLoaded}")
-        }
+            override fun onLoadCompleted(
+                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
+                mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData,
+            ) {
+                Log.i(TAG, "LoadCompleted track=${mediaLoadData.trackType} bytes=${loadEventInfo.bytesLoaded}")
+            }
 
-        override fun onDroppedVideoFrames(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
-            Log.w(TAG, "Dropped $droppedFrames video frames")
+            override fun onDroppedVideoFrames(
+                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                droppedFrames: Int,
+                elapsedMs: Long,
+            ) {
+                Log.w(TAG, "Dropped $droppedFrames video frames")
+            }
         }
-    }
 
     override suspend fun play(videoId: String) {
         // Publish loading state IMMEDIATELY, before any network/resolve/ExoPlayer work.
@@ -169,14 +190,15 @@ class PlayerRepositoryImpl(
             it.copy(
                 isLoading = true,
                 error = null,
-                currentVideo = ContentItem(
-                    id = videoId,
-                    url = videoId,
-                    title = "Loading...",
-                    author = null,
-                    thumbnailUrl = null,
-                    contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO
-                )
+                currentVideo =
+                    ContentItem(
+                        id = videoId,
+                        url = videoId,
+                        title = "Loading...",
+                        author = null,
+                        thumbnailUrl = null,
+                        contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+                    ),
             )
         }
 
@@ -193,15 +215,16 @@ class PlayerRepositoryImpl(
             // network I/O — running that under Dispatchers.Main would freeze the whole
             // UI thread (no frames, no spinner) for the entire resolve, which is exactly
             // what was causing the "tap -> nothing -> screen already loaded" gap.
-            val resolution = withContext(Dispatchers.IO) {
-                if (!isStreamingUrl(videoId)) {
-                    Log.i(TAG, "Content URL detected, resolving to MediaSource + details...")
-                    resolveWithDetails(videoId)
-                } else {
-                    Log.i(TAG, "Streaming URL detected, creating MediaSource from URL...")
-                    ResolutionResult(createMediaSourceFromUrl(videoId), null)
+            val resolution =
+                withContext(Dispatchers.IO) {
+                    if (!isStreamingUrl(videoId)) {
+                        Log.i(TAG, "Content URL detected, resolving to MediaSource + details...")
+                        resolveWithDetails(videoId)
+                    } else {
+                        Log.i(TAG, "Streaming URL detected, creating MediaSource from URL...")
+                        ResolutionResult(createMediaSourceFromUrl(videoId), null)
+                    }
                 }
-            }
 
             Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
 
@@ -209,12 +232,16 @@ class PlayerRepositoryImpl(
             withContext(Dispatchers.Main) {
                 if (_exoPlayer == null) {
                     Log.i(TAG, "Creating new ExoPlayer instance")
-                    _exoPlayer = ExoPlayer.Builder(context)
-                        .setHandleAudioBecomingNoisy(true)
-                        .build()
+                    _exoPlayer =
+                        ExoPlayer
+                            .Builder(context)
+                            .setHandleAudioBecomingNoisy(true)
+                            .build()
                     _exoPlayer?.addListener(playerListener)
                     _exoPlayer?.addAnalyticsListener(analyticsListener)
                     startPositionTicker()
+                    mediaSession?.release()
+                    mediaSession = MediaSession.Builder(context, _exoPlayer!!).build()
                 } else {
                     Log.i(TAG, "Using existing ExoPlayer instance")
                 }
@@ -235,22 +262,26 @@ class PlayerRepositoryImpl(
                 Log.i(TAG, "Updating player state with video details...")
                 Log.i(TAG, "Resolution has videoDetails: ${resolution.videoDetails != null}")
                 if (resolution.videoDetails != null) {
-                    Log.i(TAG, "VideoDetails from resolver: title=${resolution.videoDetails.title}, author=${resolution.videoDetails.authorName}")
-                }
-                val currentVideo = resolution.videoDetails?.let { details ->
-                    Log.i(TAG, "Mapping video details to ContentItem...")
-                    mapVideoDetailsToContentItem(details)
-                } ?: run {
-                    Log.w(TAG, "No video details, using stub ContentItem")
-                    ContentItem(
-                        id = videoId,
-                        url = videoId,
-                        title = "Loading...",
-                        author = null,
-                        thumbnailUrl = null,
-                        contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO
+                    Log.i(
+                        TAG,
+                        "VideoDetails from resolver: title=${resolution.videoDetails.title}, author=${resolution.videoDetails.authorName}",
                     )
                 }
+                val currentVideo =
+                    resolution.videoDetails?.let { details ->
+                        Log.i(TAG, "Mapping video details to ContentItem...")
+                        mapVideoDetailsToContentItem(details)
+                    } ?: run {
+                        Log.w(TAG, "No video details, using stub ContentItem")
+                        ContentItem(
+                            id = videoId,
+                            url = videoId,
+                            title = "Loading...",
+                            author = null,
+                            thumbnailUrl = null,
+                            contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+                        )
+                    }
 
                 Log.i(TAG, "Current video title: ${currentVideo.title}")
                 Log.i(TAG, "Current video author: ${currentVideo.author?.name}")
@@ -259,10 +290,13 @@ class PlayerRepositoryImpl(
                 _playerState.update {
                     it.copy(
                         isPlaying = true,
-                        currentVideo = currentVideo
+                        currentVideo = currentVideo,
                     )
                 }
 
+                // ponytail: notification shows app name + controls; track title/artwork
+                // need metadata on the player's MediaItem (resolver change) — add when
+                // the notification needs video title.
                 Log.i(TAG, "========================================")
                 Log.i(TAG, "play() completed successfully")
                 Log.i(TAG, "========================================")
@@ -275,8 +309,8 @@ class PlayerRepositoryImpl(
         }
     }
 
-    private suspend fun resolveWithDetails(contentUrl: String): ResolutionResult {
-        return try {
+    private suspend fun resolveWithDetails(contentUrl: String): ResolutionResult =
+        try {
             Log.i(TAG, "Resolving MediaSource + details for content URL: $contentUrl")
             Log.i(TAG, "urlResolver is null: ${urlResolver == null}")
             val resolver = urlResolver
@@ -297,28 +331,27 @@ class PlayerRepositoryImpl(
             Log.e(TAG, "Failed to resolve, creating from URL: $contentUrl", e)
             ResolutionResult(createMediaSourceFromUrl(contentUrl), null)
         }
-    }
 
-    private fun isStreamingUrl(url: String): Boolean {
-        return url.contains(".mpd") || url.contains(".m3u8") || url.contains("dash") || url.contains("hls")
-    }
+    private fun isStreamingUrl(url: String): Boolean =
+        url.contains(".mpd") || url.contains(".m3u8") || url.contains("dash") || url.contains("hls")
 
     /**
      * Map VideoDetails to ContentItem for display in the player UI.
      */
-    private fun mapVideoDetailsToContentItem(details: VideoDetails): ContentItem {
-        return ContentItem(
+    private fun mapVideoDetailsToContentItem(details: VideoDetails): ContentItem =
+        ContentItem(
             id = details.id,
             url = details.url,
             title = details.title,
-            author = details.authorName?.let {
-                Author(
-                    id = details.id,
-                    name = it,
-                    url = details.authorUrl,
-                    thumbnailUrl = details.authorThumbnailUrl
-                )
-            },
+            author =
+                details.authorName?.let {
+                    Author(
+                        id = details.id,
+                        name = it,
+                        url = details.authorUrl,
+                        thumbnailUrl = details.authorThumbnailUrl,
+                    )
+                },
             thumbnailUrl = details.thumbnailUrl,
             contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
             publishedAt = details.publishedAtMs,
@@ -326,9 +359,8 @@ class PlayerRepositoryImpl(
             viewCount = details.viewCount,
             description = details.description,
             likeCount = details.likeCount,
-            dislikeCount = details.dislikeCount
+            dislikeCount = details.dislikeCount,
         )
-    }
 
     private fun createMediaSourceFromUrl(url: String): MediaSource {
         Log.i(TAG, "createMediaSourceFromUrl() called with URL: $url")
@@ -337,27 +369,34 @@ class PlayerRepositoryImpl(
         Log.i(TAG, "URL contains 'dash': ${url.contains("dash")}")
         Log.i(TAG, "URL contains 'hls': ${url.contains("hls")}")
 
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("Bluejay/1.0")
-            .setAllowCrossProtocolRedirects(true)
+        val httpDataSourceFactory =
+            DefaultHttpDataSource
+                .Factory()
+                .setUserAgent("Bluejay/1.0")
+                .setAllowCrossProtocolRedirects(true)
 
         return when {
             url.contains(".mpd") || url.contains("dash") -> {
                 Log.i(TAG, "Creating DASH MediaSource for URL: $url")
-                DashMediaSource.Factory(httpDataSourceFactory)
+                DashMediaSource
+                    .Factory(httpDataSourceFactory)
                     .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
             }
+
             url.contains(".m3u8") || url.contains("hls") -> {
                 Log.i(TAG, "Creating HLS MediaSource for URL: $url")
-                HlsMediaSource.Factory(httpDataSourceFactory)
+                HlsMediaSource
+                    .Factory(httpDataSourceFactory)
                     .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
             }
+
             else -> {
                 // Check if this is a progressive streaming URL that needs DASH conversion
                 Log.i(TAG, "Checking if URL is progressive streaming...")
                 // For now, try progressive media source
                 Log.i(TAG, "Creating Progressive MediaSource for URL: $url")
-                ProgressiveMediaSource.Factory(httpDataSourceFactory)
+                ProgressiveMediaSource
+                    .Factory(httpDataSourceFactory)
                     .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
             }
         }
@@ -436,6 +475,8 @@ class PlayerRepositoryImpl(
     override suspend fun close() {
         positionTickerJob?.cancel()
         positionTickerJob = null
+        mediaSession?.release()
+        mediaSession = null
         _exoPlayer?.release()
         _exoPlayer = null
         _playerState.update {
@@ -448,7 +489,7 @@ class PlayerRepositoryImpl(
                 durationMs = 0L,
                 volume = 1f,
                 brightness = 1f,
-                playbackSpeed = 1f
+                playbackSpeed = 1f,
             )
         }
     }

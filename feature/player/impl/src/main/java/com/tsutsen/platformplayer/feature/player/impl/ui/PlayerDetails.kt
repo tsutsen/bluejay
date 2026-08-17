@@ -30,14 +30,16 @@ internal fun PlayerDetails(
     onToggleDescription: () -> Unit,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
-    onLoadMoreComments: () -> Unit
+    onLoadMoreComments: () -> Unit,
+    onChannelClick: (String) -> Unit,
 ) {
     LazyColumn(
         state = scrollState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface),
     ) {
         item {
             Text(
@@ -45,7 +47,7 @@ internal fun PlayerDetails(
                 style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                 fontSize = 18.sp,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
         item {
@@ -54,7 +56,8 @@ internal fun PlayerDetails(
                 onSubscribe = { /* TODO */ },
                 onWatchLater = { /* TODO */ },
                 onShare = { /* TODO */ },
-                onMore = { /* TODO */ }
+                onMore = { /* TODO */ },
+                onChannelClick = onChannelClick,
             )
         }
         item {
@@ -62,14 +65,14 @@ internal fun PlayerDetails(
                 viewCount = state.currentVideo?.viewCount ?: 0,
                 publishedAt = state.currentVideo?.publishedAt,
                 likeCount = state.currentVideo?.likeCount,
-                dislikeCount = state.currentVideo?.dislikeCount
+                dislikeCount = state.currentVideo?.dislikeCount,
             )
         }
         item {
             DescriptionSection(
                 description = state.currentVideo?.description ?: "",
                 isExpanded = expandedDescription,
-                onToggle = onToggleDescription
+                onToggle = onToggleDescription,
             )
         }
         item {
@@ -82,7 +85,7 @@ internal fun PlayerDetails(
                         username = comment.author,
                         timeAgo = formatRelativeTime(comment.publishedAtMs),
                         text = comment.text,
-                        likeCount = comment.likeCount.toInt()
+                        likeCount = comment.likeCount.toInt(),
                     )
                     if (index < state.comments.lastIndex) {
                         Spacer(modifier = Modifier.height(12.dp))
@@ -91,7 +94,7 @@ internal fun PlayerDetails(
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         TextButton(onClick = onLoadMoreComments) {
                             Text("Load more comments")
@@ -99,6 +102,7 @@ internal fun PlayerDetails(
                     }
                 }
             }
+
             1 -> {
                 item { RecommendedSection() }
             }

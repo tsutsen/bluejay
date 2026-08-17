@@ -8,6 +8,8 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelInfo
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,23 +51,29 @@ class EngineChannelRepositoryImpl
             return StateSubscriptions.instance.isSubscribed(url)
         }
 
-        override suspend fun loadInitialContents(url: String): ChannelContentPage {
-            val flow = contentFlowFor(url)
-            val cards = flow.loadInitial()
-            return ChannelContentPage(cards, flow.hasMore, flow.error)
-        }
+        // Pager construction and page loads execute source-plugin JS, which
+        // the V8 engine refuses to run on the main thread — so every engine
+        // call here is dispatched to IO ("Cannot run on main thread").
+        override suspend fun loadInitialContents(url: String): ChannelContentPage =
+            withContext(Dispatchers.IO) {
+                val flow = contentFlowFor(url)
+                val cards = flow.loadInitial()
+                ChannelContentPage(cards, flow.hasMore, flow.error)
+            }
 
-        override suspend fun loadNextPage(url: String): ChannelContentPage {
-            val flow = contentFlowFor(url)
-            flow.loadNextPage()
-            return ChannelContentPage(flow.items, flow.hasMore, flow.error)
-        }
+        override suspend fun loadNextPage(url: String): ChannelContentPage =
+            withContext(Dispatchers.IO) {
+                val flow = contentFlowFor(url)
+                flow.loadNextPage()
+                ChannelContentPage(flow.items, flow.hasMore, flow.error)
+            }
 
-        override suspend fun loadPlaylists(url: String): List<Card> {
-            val flow = playlistFlowFor(url)
-            flow.loadInitial()
-            return flow.items
-        }
+        override suspend fun loadPlaylists(url: String): List<Card> =
+            withContext(Dispatchers.IO) {
+                val flow = playlistFlowFor(url)
+                flow.loadInitial()
+                flow.items
+            }
 
         private fun contentFlowFor(url: String): PagerFlow<IPlatformContent, Card> =
             contentFlows.getOrPut(url) {

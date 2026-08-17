@@ -71,6 +71,7 @@ fun VideoOptionsSheetHost(
             onCreate = { name ->
                 viewModel.createPlaylistAndAdd(name, video)
                 showNewPlaylistDialog = false
+                onDismiss()
             },
         )
     }

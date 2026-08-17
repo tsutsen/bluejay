@@ -142,10 +142,9 @@ fun VideoOptionsSheet(
         }
         IndentedRow(
             label = "New playlist",
-            onClick = {
-                onAddToPlaylist(null)
-                onDismiss()
-            },
+            // No onDismiss here: the host shows a create dialog on top of
+            // this sheet. Dismissing first would unmount the dialog.
+            onClick = { onAddToPlaylist(null) },
         )
 
         OptionRow(

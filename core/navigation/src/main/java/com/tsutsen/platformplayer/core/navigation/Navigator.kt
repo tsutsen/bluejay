@@ -13,99 +13,162 @@ import javax.inject.Singleton
  */
 @Singleton
 @Stable
-class Navigator @Inject constructor() {
+class Navigator
+    @Inject
+    constructor() {
+        private val _currentRoute = MutableStateFlow<NavDestination?>(NavDestination.Home)
+        val currentRoute: StateFlow<NavDestination?> = _currentRoute.asStateFlow()
 
-    private val _currentRoute = MutableStateFlow<NavDestination?>(NavDestination.Home)
-    val currentRoute: StateFlow<NavDestination?> = _currentRoute.asStateFlow()
+        // Back stack of previous routes. Top-level tabs clear it (switching tabs
+        // abandons the previous context); detail screens push the current route.
+        private val _backStack = MutableStateFlow<List<NavDestination>>(emptyList())
+        val backStack: StateFlow<List<NavDestination>> = _backStack.asStateFlow()
 
-    private var onNavigate: ((NavDestination) -> Unit)? = null
-    private var onBack: (() -> Boolean)? = null
+        private var onNavigate: ((NavDestination) -> Unit)? = null
+        private var onBack: (() -> Boolean)? = null
 
-    fun setOnNavigate(action: (NavDestination) -> Unit) {
-        onNavigate = action
-    }
-
-    fun setOnBack(action: () -> Boolean) {
-        onBack = action
-    }
-
-    /**
-     * Update the current route from external sources.
-     */
-    fun updateCurrentRoute(route: String) {
-        _currentRoute.value = when {
-            route == "home" -> NavDestination.Home
-            route == "search" -> NavDestination.Search
-            route == "subscriptions" -> NavDestination.Subscriptions
-            route == "library" -> NavDestination.Library
-            route == "notifications" -> NavDestination.Notifications
-            route == "settings" -> NavDestination.Settings
-            else -> null
+        fun setOnNavigate(action: (NavDestination) -> Unit) {
+            onNavigate = action
         }
+
+        fun setOnBack(action: () -> Boolean) {
+            onBack = action
+        }
+
+        /**
+         * Update the current route from external sources.
+         */
+        fun updateCurrentRoute(route: String) {
+            _backStack.value = emptyList()
+            _currentRoute.value =
+                when {
+                    route == "home" -> NavDestination.Home
+                    route == "search" -> NavDestination.Search
+                    route == "subscriptions" -> NavDestination.Subscriptions
+                    route == "library" -> NavDestination.Library
+                    route == "notifications" -> NavDestination.Notifications
+                    route == "settings" -> NavDestination.Settings
+                    else -> null
+                }
+        }
+
+        // Top-level navigation
+        fun navigateHome() = navigate(NavDestination.Home)
+
+        fun navigateSearch() = navigate(NavDestination.Search)
+
+        fun navigateSubscriptions() = navigate(NavDestination.Subscriptions)
+
+        fun navigateLibrary() = navigate(NavDestination.Library)
+
+        fun navigateNotifications() = navigate(NavDestination.Notifications)
+
+        fun navigateSettings() = navigate(NavDestination.Settings)
+
+        // Detail navigation
+        fun navigateToChannel(url: String) = navigate(NavDestination.ChannelDetail(url))
+
+        fun navigateToPlaylist(url: String) = navigate(NavDestination.PlaylistDetail(url))
+
+        fun navigateToSource(url: String) = navigate(NavDestination.SourceDetail(url))
+
+        fun navigateToPost(url: String) = navigate(NavDestination.PostDetail(url))
+
+        fun navigateToArticle(url: String) = navigate(NavDestination.ArticleDetail(url))
+
+        fun navigateToWeb(url: String) = navigate(NavDestination.WebDetail(url))
+
+        // Search results
+        fun navigateToContentSearch(query: String) = navigate(NavDestination.ContentSearchResults(query))
+
+        fun navigateToCreatorSearch(query: String) = navigate(NavDestination.CreatorSearchResults(query))
+
+        fun navigateToPlaylistSearch(query: String) = navigate(NavDestination.PlaylistSearchResults(query))
+
+        // Library sub-screens
+        fun navigateToWatchLater() = navigate(NavDestination.WatchLater)
+
+        fun navigateToShorts() = navigate(NavDestination.Shorts)
+
+        fun navigateToSubscriptionGroup(id: String) = navigate(NavDestination.SubscriptionGroupDetail(id))
+
+        fun navigateToSubscriptionGroups() = navigate(NavDestination.SubscriptionGroupList)
+
+        fun navigateToLibraryAlbums() = navigate(NavDestination.LibraryAlbums)
+
+        fun navigateToLibraryAlbum(id: String) = navigate(NavDestination.LibraryAlbumDetail(id))
+
+        fun navigateToLibraryArtists() = navigate(NavDestination.LibraryArtists)
+
+        fun navigateToLibraryArtist(id: String) = navigate(NavDestination.LibraryArtistDetail(id))
+
+        fun navigateToLibraryVideos() = navigate(NavDestination.LibraryVideos)
+
+        fun navigateToLibraryFiles() = navigate(NavDestination.LibraryFiles)
+
+        fun navigateToLibrarySearch() = navigate(NavDestination.LibrarySearch)
+
+        fun navigateToLibrarySectionDetail(sectionId: String) = navigate(NavDestination.LibrarySectionDetail(sectionId))
+
+        // Auth & other
+        fun navigateToLogin(configJson: String) = navigate(NavDestination.Login(configJson))
+
+        fun navigateToDeveloper() = navigate(NavDestination.Developer)
+
+        fun navigateToTutorial() = navigate(NavDestination.Tutorial)
+
+        fun navigateToBuy() = navigate(NavDestination.Buy)
+
+        fun navigateToImportSubscriptions() = navigate(NavDestination.ImportSubscriptions)
+
+        fun navigateToImportPlaylists() = navigate(NavDestination.ImportPlaylists)
+
+        fun navigateToBrowser(url: String) = navigate(NavDestination.Browser(url))
+
+        fun navigateToComments(url: String) = navigate(NavDestination.Comments(url))
+
+        fun navigateToSuggestions() = navigate(NavDestination.Suggestions)
+
+        fun navigateToSettingsFragment(category: String) = navigate(NavDestination.SettingsFragment(category))
+
+        fun navigateToPluginBrowser() = navigate(NavDestination.PluginBrowser)
+
+        fun navigateToTestCompose() = navigate(NavDestination.TestCompose)
+
+        // Generic navigation
+        fun navigate(destination: NavDestination) {
+            if (isTopLevelTab(destination)) {
+                _backStack.value = emptyList()
+            } else {
+                _currentRoute.value?.let { _backStack.value = _backStack.value + it }
+            }
+            _currentRoute.value = destination
+            onNavigate?.invoke(destination)
+        }
+
+        fun goBack(): Boolean {
+            val stack = _backStack.value
+            if (stack.isEmpty()) return onBack?.invoke() ?: false
+            _backStack.value = stack.dropLast(1)
+            _currentRoute.value = stack.last()
+            return true
+        }
+
+        fun popToRoot() {
+            // Pop to root by navigating to home
+            navigateHome()
+        }
+
+        /** Top-level destinations shown in the nav chrome — switching to one
+         *  replaces the context, so back never returns to the previous tab. */
+        private fun isTopLevelTab(destination: NavDestination): Boolean =
+            when (destination) {
+                is NavDestination.Home -> true
+                is NavDestination.Search -> true
+                is NavDestination.Subscriptions -> true
+                is NavDestination.Library -> true
+                is NavDestination.Notifications -> true
+                is NavDestination.Settings -> true
+                else -> false
+            }
     }
-
-    // Top-level navigation
-    fun navigateHome() = navigate(NavDestination.Home)
-    fun navigateSearch() = navigate(NavDestination.Search)
-    fun navigateSubscriptions() = navigate(NavDestination.Subscriptions)
-    fun navigateLibrary() = navigate(NavDestination.Library)
-    fun navigateNotifications() = navigate(NavDestination.Notifications)
-    fun navigateSettings() = navigate(NavDestination.Settings)
-
-    // Detail navigation
-    fun navigateToChannel(url: String) = navigate(NavDestination.ChannelDetail(url))
-    fun navigateToPlaylist(url: String) = navigate(NavDestination.PlaylistDetail(url))
-    fun navigateToSource(url: String) = navigate(NavDestination.SourceDetail(url))
-    fun navigateToPost(url: String) = navigate(NavDestination.PostDetail(url))
-    fun navigateToArticle(url: String) = navigate(NavDestination.ArticleDetail(url))
-    fun navigateToWeb(url: String) = navigate(NavDestination.WebDetail(url))
-
-
-    // Search results
-    fun navigateToContentSearch(query: String) = navigate(NavDestination.ContentSearchResults(query))
-    fun navigateToCreatorSearch(query: String) = navigate(NavDestination.CreatorSearchResults(query))
-    fun navigateToPlaylistSearch(query: String) = navigate(NavDestination.PlaylistSearchResults(query))
-
-    // Library sub-screens
-    fun navigateToWatchLater() = navigate(NavDestination.WatchLater)
-    fun navigateToShorts() = navigate(NavDestination.Shorts)
-    fun navigateToSubscriptionGroup(id: String) = navigate(NavDestination.SubscriptionGroupDetail(id))
-    fun navigateToSubscriptionGroups() = navigate(NavDestination.SubscriptionGroupList)
-    fun navigateToLibraryAlbums() = navigate(NavDestination.LibraryAlbums)
-    fun navigateToLibraryAlbum(id: String) = navigate(NavDestination.LibraryAlbumDetail(id))
-    fun navigateToLibraryArtists() = navigate(NavDestination.LibraryArtists)
-    fun navigateToLibraryArtist(id: String) = navigate(NavDestination.LibraryArtistDetail(id))
-    fun navigateToLibraryVideos() = navigate(NavDestination.LibraryVideos)
-    fun navigateToLibraryFiles() = navigate(NavDestination.LibraryFiles)
-    fun navigateToLibrarySearch() = navigate(NavDestination.LibrarySearch)
-    fun navigateToLibrarySectionDetail(sectionId: String) = navigate(NavDestination.LibrarySectionDetail(sectionId))
-
-    // Auth & other
-    fun navigateToLogin(configJson: String) = navigate(NavDestination.Login(configJson))
-    fun navigateToDeveloper() = navigate(NavDestination.Developer)
-    fun navigateToTutorial() = navigate(NavDestination.Tutorial)
-    fun navigateToBuy() = navigate(NavDestination.Buy)
-    fun navigateToImportSubscriptions() = navigate(NavDestination.ImportSubscriptions)
-    fun navigateToImportPlaylists() = navigate(NavDestination.ImportPlaylists)
-    fun navigateToBrowser(url: String) = navigate(NavDestination.Browser(url))
-    fun navigateToComments(url: String) = navigate(NavDestination.Comments(url))
-    fun navigateToSuggestions() = navigate(NavDestination.Suggestions)
-    fun navigateToSettingsFragment(category: String) = navigate(NavDestination.SettingsFragment(category))
-    fun navigateToPluginBrowser() = navigate(NavDestination.PluginBrowser)
-    fun navigateToTestCompose() = navigate(NavDestination.TestCompose)
-
-    // Generic navigation
-    fun navigate(destination: NavDestination) {
-        _currentRoute.value = destination
-        onNavigate?.invoke(destination)
-    }
-
-    fun goBack(): Boolean {
-        return onBack?.invoke() ?: false
-    }
-
-    fun popToRoot() {
-        // Pop to root by navigating to home
-        navigateHome()
-    }
-}
