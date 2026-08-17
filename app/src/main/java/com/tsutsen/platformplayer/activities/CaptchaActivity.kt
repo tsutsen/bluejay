@@ -1,14 +1,12 @@
 package com.tsutsen.platformplayer.activities
 
-import android.app.AlertDialog
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.widget.Button
-import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.R
 import com.tsutsen.platformplayer.api.media.platforms.js.SourceCaptchaData
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginCaptchaConfig
@@ -16,8 +14,6 @@ import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.others.CaptchaWebViewClient
 import com.tsutsen.platformplayer.states.StateApp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.lang.Exception
@@ -26,10 +22,9 @@ import java.lang.Exception
  * Captcha solving activity using WebView.
  * Shows a captcha page and extracts cookies/headers when the captcha is solved.
  */
-class CaptchaActivity : AppCompatActivity() {
+class CaptchaActivity : Activity() {
     private lateinit var _webView: WebView;
     private lateinit var _buttonClose: Button;
-    private var _callback: ((SourceCaptchaData?) -> Unit)? = null;
     private var _pluginConfig: SourcePluginConfig? = null;
     private var _captchaConfig: SourcePluginCaptchaConfig? = null;
     private var _extraUrl: String? = null;
@@ -54,13 +49,11 @@ class CaptchaActivity : AppCompatActivity() {
                 putExtra("body", body)
             }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            _callback = callback
             context.startActivity(intent)
-
-            // Store callback for later use - in a real implementation this would use a proper IPC mechanism
-            _pendingCallback = callback
         }
 
-        private var _pendingCallback: ((SourceCaptchaData?) -> Unit)? = null
+        private var _callback: ((SourceCaptchaData?) -> Unit)? = null
     }
 
     override fun attachBaseContext(newBase: Context?) {
@@ -99,7 +92,7 @@ class CaptchaActivity : AppCompatActivity() {
         webViewClient.onCaptchaFinished.subscribe { captcha ->
             _callback?.let {
                 _callback = null;
-                it.invoke(captcha);
+                it(captcha);
             }
             finish();
         };
@@ -117,12 +110,11 @@ class CaptchaActivity : AppCompatActivity() {
     }
 
     override fun finish() {
-        lifecycleScope.launch(Dispatchers.Main) {
-            _callback?.invoke(null);
+        _webView.loadUrl("about:blank");
+        _callback?.let {
             _callback = null;
-            _pendingCallback?.invoke(SourceCaptchaData());
-            _pendingCallback = null;
-        };
+            it(null);
+        }
         super.finish();
     }
 

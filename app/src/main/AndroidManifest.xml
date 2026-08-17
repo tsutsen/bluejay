@@ -184,6 +184,7 @@
         <activity
             android:name=".activities.CaptchaActivity"
             android:screenOrientation="sensorPortrait"
+            android:theme="@style/Theme.App.NoActionBar"
             />
         <activity
             android:name=".activities.QRCaptureActivity"
