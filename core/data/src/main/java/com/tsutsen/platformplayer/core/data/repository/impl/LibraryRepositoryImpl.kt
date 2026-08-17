@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.core.data.repository.impl
 
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.database.dao.PlaylistDao
+import com.tsutsen.platformplayer.core.database.dao.PlaylistStatsEntity
 import com.tsutsen.platformplayer.core.database.dao.SavedVideoDao
 import com.tsutsen.platformplayer.core.database.entity.PlaylistEntity
 import com.tsutsen.platformplayer.core.database.entity.PlaylistVideoEntity
@@ -11,6 +12,7 @@ import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PlaylistInfo
 import com.tsutsen.platformplayer.core.model.PlaylistOption
+import com.tsutsen.platformplayer.core.model.PlaylistStats
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import kotlinx.coroutines.CoroutineScope
@@ -162,6 +164,10 @@ class LibraryRepositoryImpl
             playlistId: Long,
             video: VideoCard,
         ) {
+            // Already in the playlist: no-op. Duplicate rows used to crash
+            // the playlist grid (duplicate lazy keys); the unique index +
+            // IGNORE conflict strategy are the backstop for this guard.
+            if (playlistDao.getVideoInPlaylist(playlistId, video.url) != null) return
             playlistDao.insertVideo(
                 PlaylistVideoEntity(
                     playlistId = playlistId,
@@ -170,13 +176,39 @@ class LibraryRepositoryImpl
                     title = video.title,
                     author = video.author,
                     thumbnailUrl = video.thumbnailUrl,
+                    durationMs = video.durationMs ?: 0L,
                 ),
             )
             val playlist = playlistDao.getById(playlistId)
             if (playlist != null) {
-                playlistDao.update(playlist.copy(videoCount = playlist.videoCount + 1))
+                playlistDao.update(
+                    playlist.copy(
+                        videoCount = playlist.videoCount + 1,
+                        updatedAt = System.currentTimeMillis(),
+                    ),
+                )
             }
         }
+
+        override fun observePlaylistStats(playlistId: Long): Flow<PlaylistStats> =
+            playlistDao.observePlaylistStats(playlistId).map { it.toStats() }
+
+        override suspend fun getFirstVideoUrl(playlistId: Long): String? =
+            withContext(Dispatchers.IO) {
+                playlistDao.firstVideoUrl(playlistId)
+            }
+
+        override suspend fun deletePlaylist(playlistId: Long) {
+            withContext(Dispatchers.IO) {
+                playlistDao.deleteById(playlistId)
+            }
+        }
+
+        private fun PlaylistStatsEntity.toStats() =
+            PlaylistStats(
+                videoCount = videoCount,
+                totalDurationMs = totalDurationMs,
+            )
 
         override suspend fun removeVideoFromPlaylist(
             playlistId: Long,

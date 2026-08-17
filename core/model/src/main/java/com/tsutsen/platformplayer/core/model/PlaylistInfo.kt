@@ -10,3 +10,9 @@ data class PlaylistInfo(
     val videoCount: Int? = null,
     val author: String? = null,
 )
+
+/** Video count + total duration of a local playlist (options sheet). */
+data class PlaylistStats(
+    val videoCount: Int,
+    val totalDurationMs: Long,
+)

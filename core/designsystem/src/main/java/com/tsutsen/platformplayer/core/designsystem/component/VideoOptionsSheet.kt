@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -257,9 +258,13 @@ private fun optionTileRow(
 }
 
 @Composable
-private fun OptionTileView(
+// internal (not private): PlaylistOptionsSheet reuses the same tile.
+internal fun OptionTileView(
     tile: OptionTile,
     modifier: Modifier = Modifier,
+    // Null = default tint (selected-aware). Non-null overrides the icon
+    // tint only (e.g. error color for a destructive action).
+    iconTint: Color? = null,
 ) {
     Column(
         modifier =
@@ -286,11 +291,12 @@ private fun OptionTileView(
             contentDescription = null,
             modifier = Modifier.size(22.dp),
             tint =
-                if (tile.selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                iconTint
+                    ?: if (tile.selected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
@@ -330,7 +336,8 @@ private fun playlistPickRow(
     }
 }
 
-private data class OptionTile(
+// internal (not private): PlaylistOptionsSheet reuses the same tile.
+internal data class OptionTile(
     val label: String,
     val icon: ImageVector,
     val selected: Boolean = false,

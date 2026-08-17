@@ -4,6 +4,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistInfo
 import com.tsutsen.platformplayer.core.model.PlaylistOption
+import com.tsutsen.platformplayer.core.model.PlaylistStats
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import kotlinx.coroutines.flow.Flow
@@ -56,6 +57,15 @@ interface LibraryRepository {
         playlistId: Long,
         url: String,
     )
+
+    /** Reactive stats for a local playlist (count + total duration). */
+    fun observePlaylistStats(playlistId: Long): Flow<PlaylistStats>
+
+    /** First video url in a local playlist (play target), null if empty. */
+    suspend fun getFirstVideoUrl(playlistId: Long): String?
+
+    /** Deletes a playlist and its videos (FK cascade). */
+    suspend fun deletePlaylist(playlistId: Long)
 
     companion object {
         const val SECTION_ITEM_LIMIT = 20

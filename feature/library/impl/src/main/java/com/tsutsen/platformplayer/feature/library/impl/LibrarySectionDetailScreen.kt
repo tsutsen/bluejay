@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
+import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
@@ -54,6 +55,7 @@ fun LibrarySectionDetailScreen(
     val items by viewModel.items.collectAsState()
     val isWide = rememberIsWide()
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
+    var optionsPlaylist by remember { mutableStateOf<PlaylistCard?>(null) }
 
     LaunchedEffect(sectionId) {
         viewModel.loadSection(sectionId)
@@ -118,6 +120,7 @@ fun LibrarySectionDetailScreen(
                                 }
                             },
                             onVideoLongClick = { optionsCard = it },
+                            onPlaylistLongClick = { optionsPlaylist = it },
                         )
                     }
                 }
@@ -133,6 +136,13 @@ fun LibrarySectionDetailScreen(
             onGoToChannel = { navigator.navigateToChannel(it) },
         )
     }
+
+    optionsPlaylist?.let { playlist ->
+        PlaylistOptionsSheetHost(
+            playlist = playlist,
+            onDismiss = { optionsPlaylist = null },
+        )
+    }
 }
 
 /**
@@ -143,6 +153,7 @@ private fun LibraryCard(
     card: Card,
     onClick: (Card) -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistLongClick: (PlaylistCard) -> Unit,
 ) {
     when (card) {
         is CoreVideoCard -> {
@@ -154,7 +165,11 @@ private fun LibraryCard(
         }
 
         is PlaylistCard -> {
-            PlaylistCardView(card = card, onClick = { onClick(card) })
+            PlaylistCardView(
+                card = card,
+                onClick = { onClick(card) },
+                onLongClick = { onPlaylistLongClick(card) },
+            )
         }
 
         else -> {

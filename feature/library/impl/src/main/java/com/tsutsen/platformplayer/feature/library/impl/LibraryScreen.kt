@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.library.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,16 +47,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
+import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
+import com.tsutsen.platformplayer.core.model.PlaylistStats
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
+import kotlinx.coroutines.launch
 
 /**
  * Library screen: Watch Later, Liked, Favourites, Playlists.
@@ -70,6 +75,7 @@ fun LibraryScreen(
 ) {
     val sections by viewModel.sections.collectAsState()
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
+    var optionsPlaylist by remember { mutableStateOf<PlaylistCard?>(null) }
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
 
@@ -94,6 +100,7 @@ fun LibraryScreen(
                             }
                         },
                         onVideoLongClick = { optionsCard = it },
+                        onPlaylistLongClick = { optionsPlaylist = it },
                         // "playlists" is the LibraryRepositoryImpl.PLAYLISTS_ID
                         // section constant.
                         onNewPlaylist = { showNewPlaylistDialog = true },
@@ -109,6 +116,13 @@ fun LibraryScreen(
             onDismiss = { optionsCard = null },
             onPlay = { playerViewModel.play(card.url) },
             onGoToChannel = { navigator.navigateToChannel(it) },
+        )
+    }
+
+    optionsPlaylist?.let { playlist ->
+        PlaylistOptionsSheetHost(
+            playlist = playlist,
+            onDismiss = { optionsPlaylist = null },
         )
     }
 
@@ -164,6 +178,7 @@ private fun LibrarySectionRow(
     onSectionClick: () -> Unit,
     onCardClick: (Card) -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistLongClick: (PlaylistCard) -> Unit,
     onNewPlaylist: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -226,6 +241,7 @@ private fun LibrarySectionRow(
                             card = card,
                             onClick = { onCardClick(card) },
                             onVideoLongClick = onVideoLongClick,
+                            onPlaylistLongClick = onPlaylistLongClick,
                         )
                     }
                 },
@@ -245,6 +261,7 @@ private fun LibraryCard(
     card: Card,
     onClick: () -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistLongClick: (PlaylistCard) -> Unit,
 ) {
     when (card) {
         is CoreVideoCard -> {
@@ -256,7 +273,11 @@ private fun LibraryCard(
         }
 
         is PlaylistCard -> {
-            PlaylistCardView(card = card, onClick = onClick)
+            PlaylistCardView(
+                card = card,
+                onClick = onClick,
+                onLongClick = { onPlaylistLongClick(card) },
+            )
         }
 
         else -> {
@@ -279,6 +300,7 @@ private fun LibraryCard(
 fun PlaylistCardView(
     card: PlaylistCard,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
 ) {
     // Video-card shape: 16:9 cover on top, title + count below. A missing
     // cover shows a placeholder icon (AsyncImage would spin forever on a
@@ -287,7 +309,10 @@ fun PlaylistCardView(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick),
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                ),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
@@ -408,3 +433,35 @@ private fun LibrarySkeleton() {
 }
 
 private val STRIP_CARD_WIDTH = 180.dp
+
+/**
+ * Long-press sheet for a local playlist card: stats (count + total
+ * duration), Play (first video), Delete playlist.
+ */
+@Composable
+internal fun PlaylistOptionsSheetHost(
+    playlist: PlaylistCard,
+    onDismiss: () -> Unit,
+    playerViewModel: PlayerViewModel = hiltViewModel(),
+    viewModel: LibraryViewModel = hiltViewModel(),
+) {
+    val scope = rememberCoroutineScope()
+    // PlaylistCard.url is "playlist:<id>" for local playlists (built by
+    // LibraryRepositoryImpl). Not a local id -> no sheet.
+    val playlistId = playlist.url.substringAfter(":").toLongOrNull() ?: return
+    val stats by viewModel.playlistStats(playlistId).collectAsState(
+        initial = PlaylistStats(videoCount = 0, totalDurationMs = 0),
+    )
+    PlaylistOptionsSheet(
+        title = playlist.title,
+        videoCount = stats.videoCount,
+        totalDurationMs = stats.totalDurationMs,
+        onDismiss = onDismiss,
+        onPlay = {
+            scope.launch {
+                viewModel.getFirstVideoUrl(playlistId)?.let { playerViewModel.play(it) }
+            }
+        },
+        onDelete = { viewModel.deletePlaylist(playlistId) },
+    )
+}

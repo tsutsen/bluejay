@@ -40,7 +40,10 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlist_videos WHERE playlistId = :playlistId AND contentUrl = :contentUrl")
     suspend fun getVideoInPlaylist(playlistId: Long, contentUrl: String): PlaylistVideoEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // IGNORE (not REPLACE): a duplicate (playlistId, contentUrl) is a
+    // no-op, so re-adding a video that's already in the playlist can
+    // neither create a duplicate row nor reset its position.
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertVideo(video: PlaylistVideoEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -57,4 +60,19 @@ interface PlaylistDao {
 
     @Query("SELECT COUNT(*) FROM playlist_videos WHERE playlistId = :playlistId")
     suspend fun countVideos(playlistId: Long): Int
+
+    @Query(
+        "SELECT (SELECT COUNT(*) FROM playlist_videos WHERE playlistId = :playlistId) AS videoCount, " +
+            "(SELECT COALESCE(SUM(durationMs), 0) FROM playlist_videos WHERE playlistId = :playlistId) AS totalDurationMs",
+    )
+    fun observePlaylistStats(playlistId: Long): Flow<PlaylistStatsEntity>
+
+    @Query("SELECT contentUrl FROM playlist_videos WHERE playlistId = :playlistId ORDER BY videoOrder ASC LIMIT 1")
+    suspend fun firstVideoUrl(playlistId: Long): String?
 }
+
+/** Row mapping for [PlaylistDao.observePlaylistStats]. */
+data class PlaylistStatsEntity(
+    val videoCount: Int,
+    val totalDurationMs: Long,
+)
