@@ -55,6 +55,7 @@ fun PlayerView(
     onChannelClick: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val gridColumns by viewModel.gridColumns.collectAsState()
     // While the player is fullscreen, back exits fullscreen instead of
     // falling through to the app-level handler (home / exit).
     // This BackHandler is registered after the app-level one (PlayerView is
@@ -87,7 +88,6 @@ fun PlayerView(
     var activeProgressIndicator by remember { mutableStateOf<GestureIndicator.Progress?>(null) }
     var badgeState by remember { mutableStateOf(GestureBadgeState()) }
     var badgeKeepAliveCounter by remember { mutableStateOf(0) }
-    var selectedSpeed by remember { mutableStateOf(1.0f) }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
 
     var controlsVisible by remember { mutableStateOf(true) }
@@ -549,6 +549,8 @@ fun PlayerView(
                         selectedTab = selectedTab,
                         onChannelClick = onChannelClick,
                         onTabSelected = { selectedTab = it },
+                        onRecommendedClick = { video -> viewModel.play(video.url) },
+                        gridColumns = gridColumns,
                         onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
                         isLoading = state.isLoading,
                         activeProgressIndicator = activeProgressIndicator,
@@ -603,13 +605,12 @@ fun PlayerView(
                 // ==================== Modals ====================
                 if (showOptionsModal) {
                     OptionsModal(
-                        playbackSpeed = selectedSpeed,
+                        playbackSpeed = state.playbackSpeed,
                         quality = state.selectedQuality,
                         qualities = state.videoQualities,
                         subtitle = state.selectedSubtitle,
                         subtitles = state.subtitleLanguages,
                         onSpeedChange = { speed ->
-                            selectedSpeed = speed
                             viewModel.setPlaybackSpeed(speed)
                         },
                         onQualityChange = { quality ->
@@ -624,7 +625,7 @@ fun PlayerView(
 
                 if (showChapters) {
                     ChaptersPanel(
-                        chapters = emptyList(),
+                        chapters = state.chapters,
                         currentPositionMs = state.currentPositionMs,
                         onChapterClick = { positionMs ->
                             viewModel.seekTo(positionMs)

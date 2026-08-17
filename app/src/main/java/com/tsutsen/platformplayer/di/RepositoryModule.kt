@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.di
 import android.content.Context
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
+import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
@@ -40,6 +41,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindCommentRepository(impl: EngineCommentRepository): CommentRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindContentExtrasRepository(impl: EngineContentExtrasRepository): ContentExtrasRepository
 
     // HomeRepository is now bound by HomeEngineModule (EngineHomeRepositoryImpl)
 

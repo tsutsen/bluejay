@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -17,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tsutsen.platformplayer.core.model.VideoCard
 
 /**
  * Scrollable details panel below the video. Contains title, channel row,
@@ -30,6 +33,8 @@ internal fun PlayerDetails(
     onToggleDescription: () -> Unit,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
+    gridColumns: Int,
+    onRecommendedClick: (VideoCard) -> Unit,
     onLoadMoreComments: () -> Unit,
     onChannelClick: (String) -> Unit,
 ) {
@@ -86,6 +91,7 @@ internal fun PlayerDetails(
                         timeAgo = formatRelativeTime(comment.publishedAtMs),
                         text = comment.text,
                         likeCount = comment.likeCount.toInt(),
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
                     if (index < state.comments.lastIndex) {
                         Spacer(modifier = Modifier.height(12.dp))
@@ -104,7 +110,35 @@ internal fun PlayerDetails(
             }
 
             1 -> {
-                item { RecommendedSection() }
+                val recommendations = state.recommendations.filterIsInstance<VideoCard>()
+                if (recommendations.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else {
+                    item {
+                        Text(
+                            text = "Recommended",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                    items(
+                        recommendations.chunked(gridColumns),
+                        key = { row -> row.first().id },
+                    ) { rowCards ->
+                        RecommendedGridRow(
+                            cards = rowCards,
+                            onClick = onRecommendedClick,
+                        )
+                    }
+                }
             }
         }
     }

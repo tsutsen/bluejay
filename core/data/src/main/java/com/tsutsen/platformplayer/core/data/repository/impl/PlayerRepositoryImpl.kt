@@ -11,22 +11,28 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
-import androidx.media3.common.Tracks
 import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.Tracks
+import androidx.media3.common.text.CueGroup
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.source.SingleSampleMediaSource
+import androidx.media3.exoplayer.text.TextRenderer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
-import com.tsutsen.platformplayer.core.data.service.PlayerService
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
+import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
+import com.tsutsen.platformplayer.core.data.service.PlayerService
 import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
@@ -74,6 +80,12 @@ class PlayerRepositoryImpl(
     private var selectedQuality: String = "Auto"
     private var selectedSubtitle: String = "Auto"
 
+    // The primary source + engine-provided subtitle tracks for the video
+    // currently loaded. Subtitles are applied as an extra media source
+    // (SAB streams carry no text tracks of their own).
+    private var currentPrimarySource: MediaSource? = null
+    private var currentSubtitles: List<SubtitleSource> = emptyList()
+
     private val playerListener =
         object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -91,6 +103,18 @@ class PlayerRepositoryImpl(
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 Log.i(TAG, "isPlaying changed: $isPlaying")
                 _playerState.update { it.copy(isPlaying = isPlaying) }
+            }
+
+            // media3 1.x routes decoded cues here (the player's internal
+            // TextOutput forwards to listeners) - no TextOutput plumbing needed.
+            override fun onCues(cueGroup: CueGroup) {
+                val text =
+                    cueGroup.cues
+                        .mapNotNull { cue -> cue.text?.toString() }
+                        .joinToString("\n")
+                _playerState.update {
+                    if (it.subtitleText == text) it else it.copy(subtitleText = text)
+                }
             }
 
             override fun onPositionDiscontinuity(
@@ -117,6 +141,7 @@ class PlayerRepositoryImpl(
                                 if (height > 0) heights.add(height)
                             }
                         }
+
                         C.TRACK_TYPE_TEXT -> {
                             for (i in 0 until group.length) {
                                 val language = group.getTrackFormat(i).language
@@ -126,10 +151,15 @@ class PlayerRepositoryImpl(
                     }
                 }
                 val qualities = heights.distinct().sortedDescending()
-                val subtitles = languages.distinct()
+                // Engine-provided subtitle tracks first (SAB streams carry
+                // no text tracks), then player-reported text tracks (DASH).
+                val subtitles = (currentSubtitles.map { it.name } + languages).distinct()
                 _playerState.update {
-                    if (it.videoQualities == qualities && it.subtitleLanguages == subtitles) it
-                    else it.copy(videoQualities = qualities, subtitleLanguages = subtitles)
+                    if (it.videoQualities == qualities && it.subtitleLanguages == subtitles) {
+                        it
+                    } else {
+                        it.copy(videoQualities = qualities, subtitleLanguages = subtitles)
+                    }
                 }
             }
 
@@ -279,6 +309,17 @@ class PlayerRepositoryImpl(
                             .build()
                     _exoPlayer?.addListener(playerListener)
                     _exoPlayer?.addAnalyticsListener(analyticsListener)
+                    // media3 1.x disables legacy text decoding by default, so
+                    // the raw VTT subtitle sources we attach can't be decoded
+                    // without opting back in.
+                    _exoPlayer?.let { player ->
+                        for (i in 0 until player.rendererCount) {
+                            if (player.getRendererType(i) == C.TRACK_TYPE_TEXT) {
+                                (player.getRenderer(i) as? TextRenderer)
+                                    ?.experimentalSetLegacyDecodingEnabled(true)
+                            }
+                        }
+                    }
                     startPositionTicker()
                 } else {
                     Log.i(TAG, "Using existing ExoPlayer instance")
@@ -309,8 +350,25 @@ class PlayerRepositoryImpl(
                     resolution.mediaSource.updateMediaItem(updated)
                 }
 
-                Log.i(TAG, "Setting MediaSource on ExoPlayer...")
-                _exoPlayer?.setMediaSource(resolution.mediaSource)
+                currentPrimarySource = resolution.mediaSource
+                currentSubtitles = resolution.videoDetails?.subtitles ?: emptyList()
+                _playerState.update {
+                    it.copy(
+                        subtitleLanguages = currentSubtitles.map { subtitle -> subtitle.name },
+                        subtitleText = "",
+                    )
+                }
+
+                val subtitleSource = buildSubtitleMediaSource()
+                val mediaSource =
+                    if (subtitleSource != null) {
+                        MergingMediaSource(true, resolution.mediaSource, subtitleSource)
+                    } else {
+                        resolution.mediaSource
+                    }
+
+                Log.i(TAG, "Setting MediaSource on ExoPlayer (subtitle=$selectedSubtitle)...")
+                _exoPlayer?.setMediaSource(mediaSource)
                 Log.i(TAG, "Preparing ExoPlayer...")
                 _exoPlayer?.prepare()
                 Log.i(TAG, "Setting playWhenReady to true...")
@@ -334,8 +392,7 @@ class PlayerRepositoryImpl(
                                     context,
                                     ComponentName(context, PlayerService::class.java),
                                 ),
-                            )
-                            .buildAsync()
+                            ).buildAsync()
                     future.addListener(
                         {
                             try {
@@ -448,6 +505,12 @@ class PlayerRepositoryImpl(
             dislikeCount = details.dislikeCount,
         )
 
+    private fun createHttpDataSourceFactory(): DefaultHttpDataSource.Factory =
+        DefaultHttpDataSource
+            .Factory()
+            .setUserAgent("Bluejay/1.0")
+            .setAllowCrossProtocolRedirects(true)
+
     private fun createMediaSourceFromUrl(url: String): MediaSource {
         Log.i(TAG, "createMediaSourceFromUrl() called with URL: $url")
         Log.i(TAG, "URL contains .mpd: ${url.contains(".mpd")}")
@@ -455,11 +518,7 @@ class PlayerRepositoryImpl(
         Log.i(TAG, "URL contains 'dash': ${url.contains("dash")}")
         Log.i(TAG, "URL contains 'hls': ${url.contains("hls")}")
 
-        val httpDataSourceFactory =
-            DefaultHttpDataSource
-                .Factory()
-                .setUserAgent("Bluejay/1.0")
-                .setAllowCrossProtocolRedirects(true)
+        val httpDataSourceFactory = createHttpDataSourceFactory()
 
         return when {
             url.contains(".mpd") || url.contains("dash") -> {
@@ -540,6 +599,50 @@ class PlayerRepositoryImpl(
         selectedSubtitle = selection
         applyTrackSelectionParameters()
         _playerState.update { it.copy(selectedSubtitle = selection) }
+        applySubtitleSource()
+    }
+
+    /**
+     * Rebuilds the player's media source with (or without) the subtitle
+     * source matching [selectedSubtitle], keeping the current position.
+     */
+    private suspend fun applySubtitleSource() {
+        withContext(Dispatchers.Main) {
+            val player = _exoPlayer ?: return@withContext
+            val primary = currentPrimarySource ?: return@withContext
+            val positionBefore = player.currentPosition
+            val wasReady = player.playWhenReady
+            val subtitleSource = buildSubtitleMediaSource()
+            player.setMediaSource(
+                if (subtitleSource != null) MergingMediaSource(true, primary, subtitleSource) else primary,
+            )
+            player.prepare()
+            player.playWhenReady = wasReady
+            if (positionBefore > 0) player.seekTo(positionBefore)
+        }
+    }
+
+    /**
+     * Builds a [SingleSampleMediaSource] for the currently selected
+     * subtitle, or null when no subtitle is selected ("Auto"/"Off"),
+     * the selection doesn't match a track of the current video, the
+     * format is unsupported, or resolving the content fails.
+     */
+    private suspend fun buildSubtitleMediaSource(): MediaSource? {
+        val subtitle = currentSubtitles.firstOrNull { it.name == selectedSubtitle } ?: return null
+        val format = subtitle.format?.lowercase() ?: return null
+        if (format !in SUPPORTED_SUBTITLE_FORMATS) return null
+        val uri = runCatching { subtitle.contentUri() }.getOrNull() ?: return null
+        return SingleSampleMediaSource
+            .Factory(DefaultDataSource.Factory(context, createHttpDataSourceFactory()))
+            .createMediaSource(
+                MediaItem.SubtitleConfiguration
+                    .Builder(uri)
+                    .setMimeType(subtitle.format)
+                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                    .build(),
+                C.TIME_UNSET,
+            )
     }
 
     /**
@@ -559,12 +662,19 @@ class PlayerRepositoryImpl(
             builder.setMaxVideoSize(-1, height)
         }
         when (selectedSubtitle) {
-            "Off" ->
+            "Off" -> {
                 builder.setIgnoredTextSelectionFlags(
                     C.SELECTION_FLAG_AUTOSELECT or C.SELECTION_FLAG_FORCED or C.SELECTION_FLAG_DEFAULT,
                 )
-            "Auto" -> Unit
-            else -> builder.setPreferredTextLanguages(selectedSubtitle)
+            }
+
+            "Auto" -> {
+                Unit
+            }
+
+            else -> {
+                builder.setPreferredTextLanguages(selectedSubtitle)
+            }
         }
         player.setTrackSelectionParameters(builder.build())
     }
@@ -601,6 +711,8 @@ class PlayerRepositoryImpl(
         context.stopService(Intent(context, PlayerService::class.java))
         _exoPlayer?.release()
         _exoPlayer = null
+        currentPrimarySource = null
+        currentSubtitles = emptyList()
         _playerState.update {
             PlayerState(
                 isPlaying = false,
@@ -614,5 +726,10 @@ class PlayerRepositoryImpl(
                 playbackSpeed = 1f,
             )
         }
+    }
+
+    private companion object {
+        // Formats ExoPlayer's text renderer can display (mirrors Grayjay).
+        val SUPPORTED_SUBTITLE_FORMATS = setOf("text/vtt", "application/x-subrip")
     }
 }

@@ -23,5 +23,7 @@ data class PlayerState(
     /** UI label of the selected quality ("Auto" or "NNNp"). */
     val selectedQuality: String = "Auto",
     /** UI label of the selected subtitle ("Auto", "Off" or a language code). */
-    val selectedSubtitle: String = "Auto"
+    val selectedSubtitle: String = "Auto",
+    /** Text of the currently active subtitle cues (empty when none). */
+    val subtitleText: String = "",
 )

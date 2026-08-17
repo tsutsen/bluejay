@@ -26,6 +26,7 @@ import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSUnMuxV
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoSourceDescriptor
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlSource
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
+import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.sabr.media3.SabrMediaSource
@@ -120,7 +121,14 @@ class EngineVideoUrlResolver @Inject constructor() : VideoUrlResolver {
             viewCount = if (details.viewCount > 0) details.viewCount else null,
             publishedAtMs = details.datetime?.toInstant()?.toEpochMilli(),
             likeCount = likeCount,
-            dislikeCount = dislikeCount
+            dislikeCount = dislikeCount,
+            subtitles = details.subtitles.map { source ->
+                SubtitleSource(
+                    name = source.name,
+                    format = source.format,
+                    contentUri = { source.getSubtitlesURI() }
+                )
+            }
         )
     }
 

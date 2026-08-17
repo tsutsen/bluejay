@@ -1,18 +1,14 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerCompactOverlay
-import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerFloatingOverlay
-import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalBottomOverlay
-import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalTopOverlay
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -27,6 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
 import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
 import com.tsutsen.platformplayer.feature.player.impl.GestureIndicatorOverlay
+import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerCompactOverlay
+import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerFloatingOverlay
+import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalBottomOverlay
+import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalTopOverlay
 
 private const val TAG = "PlayerControls"
 private const val CONTROLS_SLIDE_DISTANCE_DP = 24
@@ -35,7 +35,7 @@ private const val CONTROLS_SLIDE_DISTANCE_DP = 24
  * Handles all controls for the current mode.
  * - NORMAL/COMPACT/FULLSCREEN: PlayerUIScaffold with top/bottom bars
  * - FLOATING: mini controls with eased fade-in
- * 
+ *
  * During morph transition, both control sets are composited with alpha blending
  * for a smooth animated transition.
  */
@@ -83,7 +83,7 @@ fun PlayerControls(
     isMorphDragging: Boolean,
     onMorphDragStart: () -> Unit,
     onMorphDrag: (dragY: Float) -> Unit,
-    onMorphDragEnd: (dragY: Float) -> Unit
+    onMorphDragEnd: (dragY: Float) -> Unit,
 ) {
     val density = LocalDensity.current
 
@@ -93,20 +93,21 @@ fun PlayerControls(
     val controlsVisibleAlpha by animateFloatAsState(
         targetValue = if (controlsVisible && !isMorphDragging) 1f else 0f,
         animationSpec = tween(durationMillis = 200),
-        label = "controlsVisibility"
+        label = "controlsVisibility",
     )
 
     Box(modifier = modifier) {
         // ==================== Normal controls (fade out during morph) ====================
         if (miniProgress <= MINI_DRAG_THRESHOLD) {
             // Fade out normal controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
-            val normalAlpha = if (miniProgress <= MORPH_TRANSITION_START) {
-                1f
-            } else if (miniProgress >= MORPH_TRANSITION_END) {
-                0f
-            } else {
-                (MORPH_TRANSITION_END - miniProgress) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
-            }.coerceAtLeast(0f)
+            val normalAlpha =
+                if (miniProgress <= MORPH_TRANSITION_START) {
+                    1f
+                } else if (miniProgress >= MORPH_TRANSITION_END) {
+                    0f
+                } else {
+                    (MORPH_TRANSITION_END - miniProgress) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
+                }.coerceAtLeast(0f)
             // Combine with the restored controls hide/show animation - this drives the VISUAL
             // fade of the bars only. Composition below is still gated on normalAlpha (morph
             // position) alone: if it were gated on effectiveNormalAlpha instead, the gesture
@@ -122,40 +123,42 @@ fun PlayerControls(
                     // Fade out gradient backgrounds along with controls
                     val gradientAlpha = effectiveNormalAlpha
                     PlayerUIScaffold(
-                        modifier = Modifier
-                            .offset {
-                                IntOffset(
-                                    x = videoLayout.offsetX.toInt(),
-                                    y = videoLayout.offsetY.toInt()
-                                )
-                            }
-                            .size(
-                                width = with(density) { videoLayout.widthPx.toDp() },
-                                height = with(density) { videoLayout.heightPx.toDp() }
-                            ),
+                        modifier =
+                            Modifier
+                                .offset {
+                                    IntOffset(
+                                        x = videoLayout.offsetX.toInt(),
+                                        y = videoLayout.offsetY.toInt(),
+                                    )
+                                }.size(
+                                    width = with(density) { videoLayout.widthPx.toDp() },
+                                    height = with(density) { videoLayout.heightPx.toDp() },
+                                ),
                         isLoading = isLoading,
                         showTopBar = resolvedShowTopBar,
                         showBottomBar = resolvedShowBottomBar,
                         gradientAlpha = gradientAlpha,
-                        callbacks = PlayerGestureCallbacks(
-                            onTap = { /* handled by gesture layer */ },
-                            onDoubleTap = { /* handled by gesture layer */ },
-                            onVerticalDragStart = { /* handled by gesture layer */ },
-                            onVerticalDrag = { _, _, _ -> /* handled by gesture layer */ }
-                        ),
+                        callbacks =
+                            PlayerGestureCallbacks(
+                                onTap = { /* handled by gesture layer */ },
+                                onDoubleTap = { /* handled by gesture layer */ },
+                                onVerticalDragStart = { /* handled by gesture layer */ },
+                                onVerticalDrag = { _, _, _ -> /* handled by gesture layer */ },
+                            ),
                         disableVerticalDragGestures = true,
                         disableTapGestures = true,
                         topBar = {
                             val topAlpha = maxOf(normalBarAlpha, fullscreenBarAlpha) * (1f - miniProgress).coerceIn(0f, 1f)
                             if (topAlpha > 0.01f) {
                                 Box(
-                                    modifier = Modifier.graphicsLayer {
-                                        alpha = topAlpha
-                                        // Slide up and out on hide, slide down and in on show -
-                                        // driven by the same controlsVisibleAlpha as the fade,
-                                        // so both directions are symmetric by construction.
-                                        translationY = (1f - controlsVisibleAlpha) * -CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
-                                    }
+                                    modifier =
+                                        Modifier.graphicsLayer {
+                                            alpha = topAlpha
+                                            // Slide up and out on hide, slide down and in on show -
+                                            // driven by the same controlsVisibleAlpha as the fade,
+                                            // so both directions are symmetric by construction.
+                                            translationY = (1f - controlsVisibleAlpha) * -CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
+                                        },
                                 ) {
                                     PlayerNormalTopOverlay(
                                         title = state.currentVideo?.title ?: "Unknown",
@@ -163,7 +166,7 @@ fun PlayerControls(
                                         onMinimize = onMinimize,
                                         onReplayToggle = onReplayToggle,
                                         onWatchLater = onWatchLater,
-                                        onOptions = onOptions
+                                        onOptions = onOptions,
                                     )
                                 }
                             }
@@ -172,19 +175,19 @@ fun PlayerControls(
                             val bottomAlpha = (1f - miniProgress).coerceIn(0f, 1f)
                             if (bottomAlpha > 0.01f) {
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .graphicsLayer {
-                                            // Slide down and out on hide, slide up and in on
-                                            // show - mirrors the top bar's upward slide.
-                                            translationY = (1f - controlsVisibleAlpha) * CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
-                                        }
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .graphicsLayer {
+                                                // Slide down and out on hide, slide up and in on
+                                                // show - mirrors the top bar's upward slide.
+                                                translationY = (1f - controlsVisibleAlpha) * CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
+                                            },
                                 ) {
                                     // FULLSCREEN bottom overlay
                                     if (fullscreenBarAlpha > 0.99f) {
                                         Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
                                             PlayerNormalBottomOverlay(
-                                                player = player,
                                                 currentPositionMs = state.currentPositionMs,
                                                 durationMs = state.durationMs,
                                                 isPlaying = state.isPlaying,
@@ -195,7 +198,8 @@ fun PlayerControls(
                                                 onFullscreen = onFullscreenToggle,
                                                 onSeek = onSeek,
                                                 isScrubbing = isScrubbing,
-                                                scrubPositionMs = scrubPositionMs
+                                                scrubPositionMs = scrubPositionMs,
+                                                chapters = state.chapters,
                                             )
                                         }
                                     }
@@ -207,7 +211,7 @@ fun PlayerControls(
                                             transitionSpec = {
                                                 androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut()
                                             },
-                                            label = "normalCompactControls"
+                                            label = "normalCompactControls",
                                         ) { collapsed ->
                                             if (collapsed) {
                                                 PlayerCompactOverlay(
@@ -219,11 +223,10 @@ fun PlayerControls(
                                                     onLoopToggle = onLoopToggle,
                                                     onWatchLater = onWatchLater,
                                                     onOptions = onOptions,
-                                                    onFullscreen = onFullscreenToggle
+                                                    onFullscreen = onFullscreenToggle,
                                                 )
                                             } else {
                                                 PlayerNormalBottomOverlay(
-                                                    player = player,
                                                     currentPositionMs = state.currentPositionMs,
                                                     durationMs = state.durationMs,
                                                     isPlaying = state.isPlaying,
@@ -234,14 +237,15 @@ fun PlayerControls(
                                                     onFullscreen = onFullscreenToggle,
                                                     onSeek = onSeek,
                                                     isScrubbing = isScrubbing,
-                                                    scrubPositionMs = scrubPositionMs
+                                                    scrubPositionMs = scrubPositionMs,
+                                                    chapters = state.chapters,
                                                 )
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
+                        },
                     )
                 }
             }
@@ -249,17 +253,17 @@ fun PlayerControls(
             // ==================== Gesture Indicator (always on top, independent of controls) ====================
             if (normalAlpha > 0.01f) {
                 Box(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                x = videoLayout.offsetX.toInt(),
-                                y = videoLayout.offsetY.toInt()
-                            )
-                        }
-                        .size(
-                            width = with(density) { videoLayout.widthPx.toDp() },
-                            height = with(density) { videoLayout.heightPx.toDp() }
-                        )
+                    modifier =
+                        Modifier
+                            .offset {
+                                IntOffset(
+                                    x = videoLayout.offsetX.toInt(),
+                                    y = videoLayout.offsetY.toInt(),
+                                )
+                            }.size(
+                                width = with(density) { videoLayout.widthPx.toDp() },
+                                height = with(density) { videoLayout.heightPx.toDp() },
+                            ),
                 ) {
                     GestureIndicatorOverlay(
                         activeProgressIndicator = activeProgressIndicator,
@@ -268,7 +272,7 @@ fun PlayerControls(
                 }
             }
         }
-        
+
         // ==================== Floating controls (fade in during morph) ====================
         // NOTE: this subtree is ALWAYS composed (no outer `if` gate on miniProgress).
         // Gating composition on a miniProgress threshold caused the whole Box - including
@@ -279,27 +283,27 @@ fun PlayerControls(
         // floatingAlpha keeps layout continuous; only the expensive inner content is gated.
         run {
             // Fade in floating controls from MORPH_TRANSITION_START to MORPH_TRANSITION_END
-            val floatingAlpha = if (miniProgress <= MORPH_TRANSITION_START) {
-                0f
-            } else if (miniProgress >= MORPH_TRANSITION_END) {
-                1f
-            } else {
-                (miniProgress - MORPH_TRANSITION_START) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
-            }.coerceIn(0f, 1f)
+            val floatingAlpha =
+                if (miniProgress <= MORPH_TRANSITION_START) {
+                    0f
+                } else if (miniProgress >= MORPH_TRANSITION_END) {
+                    1f
+                } else {
+                    (miniProgress - MORPH_TRANSITION_START) / (MORPH_TRANSITION_END - MORPH_TRANSITION_START)
+                }.coerceIn(0f, 1f)
 
             Box(
-                modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            x = videoLayout.offsetX.toInt(),
-                            y = videoLayout.offsetY.toInt()
-                        )
-                    }
-                    .size(
-                        width = with(density) { videoLayout.widthPx.toDp() },
-                        height = with(density) { videoLayout.heightPx.toDp() }
-                    )
-                    .graphicsLayer { alpha = floatingAlpha }
+                modifier =
+                    Modifier
+                        .offset {
+                            IntOffset(
+                                x = videoLayout.offsetX.toInt(),
+                                y = videoLayout.offsetY.toInt(),
+                            )
+                        }.size(
+                            width = with(density) { videoLayout.widthPx.toDp() },
+                            height = with(density) { videoLayout.heightPx.toDp() },
+                        ).graphicsLayer { alpha = floatingAlpha },
             ) {
                 // Skip composing the (relatively heavy) content entirely while invisible.
                 // This still avoids the pop-in bug because the outer Box above - which owns
@@ -308,31 +312,38 @@ fun PlayerControls(
                     // Shadow (hidden during morph transition)
                     if (floatingAlpha > 0.5f) {
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .offset(y = 4.dp * floatingAlpha)
-                                .graphicsLayer { alpha = 0.15f * floatingAlpha }
-                                .background(androidx.compose.ui.graphics.Color.Black,
-                                    androidx.compose.foundation.shape.RoundedCornerShape(videoLayout.cornerRadius))
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .offset(y = 4.dp * floatingAlpha)
+                                    .graphicsLayer { alpha = 0.15f * floatingAlpha }
+                                    .background(
+                                        androidx.compose.ui.graphics.Color.Black,
+                                        androidx.compose.foundation.shape
+                                            .RoundedCornerShape(videoLayout.cornerRadius),
+                                    ),
                         )
                     }
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                alpha = floatingAlpha
-                                val scale = 0.92f + 0.08f * floatingAlpha
-                                scaleX = scale
-                                scaleY = scale
-                                translationY = (1f - floatingAlpha) * 12.dp.toPx()
-                            }
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(videoLayout.cornerRadius))
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    alpha = floatingAlpha
+                                    val scale = 0.92f + 0.08f * floatingAlpha
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationY = (1f - floatingAlpha) * 12.dp.toPx()
+                                }.clip(
+                                    androidx.compose.foundation.shape
+                                        .RoundedCornerShape(videoLayout.cornerRadius),
+                                ),
                     ) {
                         PlayerFloatingOverlay(
                             state = state,
                             onPlayPause = onPlayPause,
                             onClose = onClose,
-                            onFullscreen = onFullscreenToggle
+                            onFullscreen = onFullscreenToggle,
                         )
                     }
                 }

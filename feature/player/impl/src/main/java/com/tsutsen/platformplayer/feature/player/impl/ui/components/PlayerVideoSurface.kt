@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -19,20 +20,25 @@ import androidx.media3.ui.PlayerView
 @Composable
 fun PlayerVideoSurface(
     player: ExoPlayer?,
-    modifier: Modifier = Modifier.fillMaxSize()
+    modifier: Modifier = Modifier.fillMaxSize(),
 ) {
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
                 useController = false
                 setControllerAutoShow(false)
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
+                // Captions are rendered by the Compose overlay (constant
+                // font size, styleable) instead of the built-in view, whose
+                // font size scales with the surface.
+                subtitleView?.visibility = View.GONE
+                layoutParams =
+                    ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
             }
         },
         update = { view -> view.player = player },
-        modifier = modifier
+        modifier = modifier,
     )
 }

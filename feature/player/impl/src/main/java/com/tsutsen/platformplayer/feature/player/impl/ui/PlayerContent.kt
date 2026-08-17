@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -21,9 +23,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.exoplayer.ExoPlayer
+import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureActionHandler
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs
 import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureSystem
@@ -82,6 +87,8 @@ fun PlayerContent(
     onToggleDescription: () -> Unit,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
+    onRecommendedClick: (VideoCard) -> Unit,
+    gridColumns: Int,
     onLoadMoreComments: () -> Unit,
     onChannelClick: (String) -> Unit,
     isLoading: Boolean,
@@ -220,6 +227,77 @@ fun PlayerContent(
         // ==================== 1. Persistent video surface ====================
         PlayerVideoSurface(player = player, modifier = Modifier.then(videoModifier))
 
+        // ==================== 1b. Subtitle overlay ====================
+        // Rendered inside the video's offset/size space (clipped with it) so
+        // captions follow the surface across morph/fullscreen transitions.
+        // Constant font size regardless of surface size - see SubtitleStyle.
+        if (state.subtitleText.isNotBlank()) {
+            val subtitleTextStyle =
+                MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = SubtitleStyle.fontFamily,
+                    fontWeight = SubtitleStyle.fontWeight,
+                    fontStyle = SubtitleStyle.fontStyle,
+                    fontSize = SubtitleStyle.fontSize.sp,
+                    lineHeight = SubtitleStyle.lineHeight.sp,
+                    textAlign = TextAlign.Center,
+                )
+            // Crisp glyph outline: a 3x3 ring of offset copies (no spread
+            // radius in compose 1.10's Shadow, so fake it the classic way).
+            val halfOutlinePx =
+                with(density) { (SubtitleStyle.outlineWidth / 2f).dp.roundToPx() }
+            val outlineOffsets =
+                if (halfOutlinePx > 0) {
+                    buildList {
+                        for (dx in intArrayOf(-halfOutlinePx, 0, halfOutlinePx)) {
+                            for (dy in intArrayOf(-halfOutlinePx, 0, halfOutlinePx)) {
+                                if (dx != 0 || dy != 0) add(IntOffset(dx, dy))
+                            }
+                        }
+                    }
+                } else {
+                    emptyList()
+                }
+            Box(
+                modifier = videoModifier,
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 8.dp)
+                            .then(
+                                if (SubtitleStyle.backdropEnabled) {
+                                    Modifier
+                                        .background(
+                                            SubtitleStyle.backdropColor,
+                                            MaterialTheme.shapes.medium,
+                                        ).padding(horizontal = 8.dp)
+                                        .padding(vertical = 2.dp)
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                ) {
+                    outlineOffsets.forEach { offset ->
+                        Text(
+                            text = state.subtitleText,
+                            style = subtitleTextStyle,
+                            color = SubtitleStyle.outlineColor,
+                            maxLines = 4,
+                            modifier = Modifier.offset { offset },
+                        )
+                    }
+                    Text(
+                        text = state.subtitleText,
+                        style = subtitleTextStyle,
+                        color = SubtitleStyle.textColor,
+                        maxLines = 4,
+                    )
+                }
+            }
+        }
+
         // ==================== 2. GestureLayer ====================
         PlayerGestureSystem(
             modifier = Modifier.fillMaxSize(),
@@ -285,6 +363,8 @@ fun PlayerContent(
                     onToggleDescription = onToggleDescription,
                     selectedTab = selectedTab,
                     onTabSelected = onTabSelected,
+                    onRecommendedClick = onRecommendedClick,
+                    gridColumns = gridColumns,
                     onLoadMoreComments = onLoadMoreComments,
                     onChannelClick = onChannelClick,
                 )
