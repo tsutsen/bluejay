@@ -33,6 +33,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,10 +71,10 @@ import com.tsutsen.platformplayer.core.model.VideoCard as ModelVideoCard
 fun SubscriptionsScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    gridColumns: Int = 3,
     viewModel: SubscriptionsViewModel = hiltViewModel(),
     playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
+    val gridColumns by viewModel.gridColumns.collectAsState()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isWide = rememberIsWide()
     val coroutineScope = rememberCoroutineScope()

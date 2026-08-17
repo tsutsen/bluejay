@@ -3,12 +3,16 @@ package com.tsutsen.platformplayer.feature.channel.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,7 +28,14 @@ class ChannelViewModel
     @Inject
     constructor(
         private val channelRepository: ChannelRepository,
+        private val settingsRepository: SettingsRepository,
     ) : ViewModel() {
+        /** Live grid columns from the single config — grids reflow when it changes. */
+        val gridColumns: StateFlow<Int> =
+            settingsRepository.preferences
+                .map { it.gridColumns }
+                .stateIn(viewModelScope, SharingStarted.Lazily, settingsRepository.preferences.value.gridColumns)
+
         sealed interface ChannelUiState {
             data object Loading : ChannelUiState
 

@@ -35,6 +35,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaylistRepository
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
@@ -49,8 +50,11 @@ import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -66,10 +70,10 @@ fun PlaylistDetailScreen(
     playlistUrl: String,
     onBack: () -> Unit,
     navigator: Navigator,
-    gridColumns: Int = 3,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     viewModel: PlaylistDetailViewModel = hiltViewModel(),
 ) {
+    val gridColumns by viewModel.gridColumns.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val isWide = rememberIsWide()
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
@@ -208,7 +212,14 @@ class PlaylistDetailViewModel
     constructor(
         private val playlistRepository: PlaylistRepository,
         private val libraryRepository: LibraryRepository,
+        private val settingsRepository: SettingsRepository,
     ) : ViewModel() {
+        /** Live grid columns from the single config — grids reflow when it changes. */
+        val gridColumns: StateFlow<Int> =
+            settingsRepository.preferences
+                .map { it.gridColumns }
+                .stateIn(viewModelScope, SharingStarted.Lazily, settingsRepository.preferences.value.gridColumns)
+
         sealed interface UiState {
             data object Loading : UiState
 

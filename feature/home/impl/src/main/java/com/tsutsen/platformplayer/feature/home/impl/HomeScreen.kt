@@ -45,6 +45,7 @@ fun HomeScreen(
             .hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val gridColumns by viewModel.gridColumns.collectAsState()
     val isWide = rememberIsWide()
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
 
@@ -75,6 +76,7 @@ fun HomeScreen(
                     isLoading = state.isLoading,
                     hasMorePages = state.hasMorePages,
                     isWide = isWide,
+                    gridColumns = gridColumns,
                     onCardClick = { card ->
                         when (card) {
                             is VideoCard -> playerViewModel.play(card.url)
@@ -117,6 +119,7 @@ private fun HomeFeedContent(
     isLoading: Boolean,
     hasMorePages: Boolean,
     isWide: Boolean,
+    gridColumns: Int,
     onCardClick: (Card) -> Unit,
     onVideoLongClick: (VideoCard) -> Unit,
     onLoadMore: () -> Unit,
@@ -144,7 +147,7 @@ private fun HomeFeedContent(
             content = {
                 VideoContainer(
                     items = cards,
-                    layout = if (isWide) ContainerLayout.Grid(3) else ContainerLayout.List,
+                    layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                     isLoading = isLoading,
                     hasMorePages = hasMorePages,
                     onCardClick = onCardClick,

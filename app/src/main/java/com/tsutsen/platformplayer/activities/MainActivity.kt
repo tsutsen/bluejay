@@ -131,7 +131,6 @@ private fun GrayjayMainActivity(
             companionWindowManager,
             navigator,
             playerRepository,
-            gridColumns = prefs.gridColumns,
         )
     }
 }
@@ -143,7 +142,6 @@ private fun grayjayMainActivityContent(
     companionWindowManager: CompanionWindowManager,
     navigator: Navigator,
     playerRepository: PlayerRepository,
-    gridColumns: Int,
 ) {
     val companionVisible by screenCoordinator.companionVisible.collectAsState()
     val config = rememberAppLayoutConfig()
@@ -209,7 +207,6 @@ private fun grayjayMainActivityContent(
             GrayjayNavGraph(
                 navigator = navigator,
                 startDestination = NavDestination.Home,
-                gridColumns = gridColumns,
             )
             // Player overlay — only rendered when there's a video to play
             if (playerState.currentVideo != null) {

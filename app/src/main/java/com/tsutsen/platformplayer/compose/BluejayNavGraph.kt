@@ -34,7 +34,6 @@ import kotlinx.serialization.json.Json
 fun GrayjayNavGraph(
     navigator: Navigator,
     startDestination: NavDestination = NavDestination.Home,
-    gridColumns: Int = 3,
 ) {
     // Collect current route from navigator state
     val currentRoute by navigator.currentRoute.collectAsState(initial = startDestination)
@@ -83,7 +82,7 @@ fun GrayjayNavGraph(
         }
 
         is NavDestination.Subscriptions -> {
-            SubscriptionsScreen(navigator = navigator, gridColumns = gridColumns)
+            SubscriptionsScreen(navigator = navigator)
         }
 
         is NavDestination.Library -> {
@@ -99,7 +98,6 @@ fun GrayjayNavGraph(
                 channelUrl = destination.url,
                 onBack = { navigator.goBack() },
                 navigator = navigator,
-                gridColumns = gridColumns,
             )
         }
 
@@ -108,7 +106,6 @@ fun GrayjayNavGraph(
                 playlistUrl = destination.url,
                 onBack = { navigator.goBack() },
                 navigator = navigator,
-                gridColumns = gridColumns,
             )
         }
 
@@ -189,7 +186,6 @@ fun GrayjayNavGraph(
                 sectionId = destination.sectionId,
                 onBack = { navigator.goBack() },
                 navigator = navigator,
-                gridColumns = gridColumns,
             )
         }
 

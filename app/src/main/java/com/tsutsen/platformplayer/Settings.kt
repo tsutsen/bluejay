@@ -1,6 +1,15 @@
 package com.tsutsen.platformplayer
 
+import android.content.Context
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
 import java.time.OffsetDateTime
 
 /**
@@ -9,6 +18,7 @@ import java.time.OffsetDateTime
  * components that have been deleted during the Compose migration.
  * This stub provides the minimal API needed for the app to compile.
  */
+@Serializable
 class Settings {
     var didFirstStart: Boolean = false
 
@@ -201,32 +211,75 @@ class Settings {
         var discoverThroughRelay: Boolean = false
     }
 
-    // Member function save() - used by StateApp.kt
+    // Persist the whole config as JSON so settings survive app restarts.
     fun save() {
-        // No-op stub
+        val context = PlatformPlayerApp.context ?: return
+        runCatching { settingsJson.encodeToString(Settings.serializer(), this) }
+            .onSuccess { json ->
+                context
+                    .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(KEY_SETTINGS, json)
+                    .apply()
+            }
     }
 
     // encode() - used by StateBackup.kt to serialize settings to JSON string
-    fun encode(): String = "{}"
+    fun encode(): String = runCatching { settingsJson.encodeToString(Settings.serializer(), this) }.getOrDefault("{}")
 
     companion object {
         @Volatile
         private var _instance: Settings? = null
 
+        private const val PREFS_NAME = "bluejay_settings"
+        private const val KEY_SETTINGS = "settings_json"
+
+        private val offsetDateTimeSerializer =
+            object : KSerializer<OffsetDateTime> {
+                override val descriptor =
+                    PrimitiveSerialDescriptor("OffsetDateTime", PrimitiveKind.STRING)
+
+                override fun serialize(
+                    encoder: Encoder,
+                    value: OffsetDateTime,
+                ) = encoder.encodeString(value.toString())
+
+                override fun deserialize(decoder: Decoder): OffsetDateTime = OffsetDateTime.parse(decoder.decodeString())
+            }
+
+        private val settingsJson =
+            Json {
+                ignoreUnknownKeys = true
+                serializersModule =
+                    SerializersModule {
+                        contextual(OffsetDateTime::class, offsetDateTimeSerializer)
+                    }
+            }
+
         val instance: Settings
             get() =
                 _instance ?: synchronized(this) {
-                    _instance ?: Settings().also { _instance = it }
+                    _instance ?: load()?.also { _instance = it } ?: Settings().also { _instance = it }
                 }
 
         // replace() - used by StateBackup.kt to deserialize settings from JSON string
         fun replace(jsonString: String) {
-            val newSettings =
-                kotlinx.serialization.json.Json.Default
-                    .decodeFromString<Settings>(jsonString)
-            synchronized(this) {
-                _instance = newSettings
-            }
+            runCatching { settingsJson.decodeFromString(Settings.serializer(), jsonString) }
+                .onSuccess { newSettings ->
+                    synchronized(this) {
+                        _instance = newSettings
+                    }
+                }
+        }
+
+        private fun load(): Settings? {
+            val context = PlatformPlayerApp.context ?: return null
+            val json =
+                context
+                    .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .getString(KEY_SETTINGS, null)
+                    ?: return null
+            return runCatching { settingsJson.decodeFromString(Settings.serializer(), json) }.getOrNull()
         }
     }
 

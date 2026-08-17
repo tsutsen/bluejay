@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -20,6 +21,10 @@ private const val TAG = "GrayjayTheme"
 @HiltAndroidApp
 class PlatformPlayerApp : Application() {
     companion object {
+        /** Process-wide context, set in [onCreate]; used by [Settings] persistence. */
+        var context: Context? = null
+            private set
+
         /** Apply theme mode from the single config ([Settings] singleton). */
         fun applyThemeMode() {
             val nightMode =
@@ -35,6 +40,7 @@ class PlatformPlayerApp : Application() {
     override fun onCreate() {
         Log.d(TAG, "PlatformPlayerApp.onCreate() starting")
         super.onCreate()
+        context = applicationContext
 
         applyThemeMode()
 

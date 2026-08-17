@@ -76,10 +76,10 @@ fun ChannelScreen(
     channelUrl: String,
     onBack: () -> Unit,
     navigator: Navigator,
-    gridColumns: Int = 3,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     viewModel: ChannelViewModel = hiltViewModel(),
 ) {
+    val gridColumns by viewModel.gridColumns.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val isWide = rememberIsWide()
     var selectedTab by remember { mutableIntStateOf(TAB_VIDEOS) }

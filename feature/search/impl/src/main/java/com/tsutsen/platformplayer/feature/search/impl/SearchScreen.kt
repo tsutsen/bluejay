@@ -82,6 +82,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
 ) {
     val isWide = rememberIsWide()
+    val gridColumns by viewModel.gridColumns.collectAsState()
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var hasSearched by remember { mutableStateOf(false) }
@@ -345,7 +346,7 @@ fun SearchScreen(
                                         VideoContainer(
                                             items = videoResults,
                                             layout =
-                                                if (isWide) ContainerLayout.Grid(3) else ContainerLayout.List,
+                                                if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                                             isLoading = uiState.isLoading && videoResults.size > 6,
                                             hasMorePages = uiState.hasMorePages,
                                             onCardClick = { card ->

@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.subscriptions.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
 import com.tsutsen.platformplayer.core.model.SubscriptionFeed
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,7 +40,14 @@ class SubscriptionsViewModel
     @Inject
     constructor(
         private val subscriptionRepository: SubscriptionRepository,
+        private val settingsRepository: SettingsRepository,
     ) : ViewModel() {
+        /** Live grid columns from the single config — grids reflow when it changes. */
+        val gridColumns: StateFlow<Int> =
+            settingsRepository.preferences
+                .map { it.gridColumns }
+                .stateIn(viewModelScope, SharingStarted.Lazily, settingsRepository.preferences.value.gridColumns)
+
         private val _uiState = MutableStateFlow<SubscriptionsUiState>(SubscriptionsUiState.Loading)
         val uiState: StateFlow<SubscriptionsUiState> = _uiState.asStateFlow()
 

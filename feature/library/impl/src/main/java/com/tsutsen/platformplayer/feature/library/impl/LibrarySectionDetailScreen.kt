@@ -46,10 +46,10 @@ fun LibrarySectionDetailScreen(
     sectionId: String,
     onBack: () -> Unit,
     navigator: Navigator,
-    gridColumns: Int = 3,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     viewModel: LibrarySectionDetailViewModel = hiltViewModel(),
 ) {
+    val gridColumns by viewModel.gridColumns.collectAsState()
     val section by viewModel.section.collectAsState()
     val items by viewModel.items.collectAsState()
     val isWide = rememberIsWide()
