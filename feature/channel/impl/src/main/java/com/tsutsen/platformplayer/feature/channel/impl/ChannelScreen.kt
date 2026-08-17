@@ -76,6 +76,7 @@ fun ChannelScreen(
     channelUrl: String,
     onBack: () -> Unit,
     navigator: Navigator,
+    gridColumns: Int = 3,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     viewModel: ChannelViewModel = hiltViewModel(),
 ) {
@@ -178,6 +179,7 @@ fun ChannelScreen(
                                 state = state,
                                 selectedTab = selectedTab,
                                 isWide = true,
+                                gridColumns = gridColumns,
                                 onCardClick = onCardClick,
                                 onLoadMore = { viewModel.loadNextPage() },
                                 onRetryContent = { viewModel.loadInitialContents() },
@@ -202,6 +204,7 @@ fun ChannelScreen(
                                 state = state,
                                 selectedTab = selectedTab,
                                 isWide = false,
+                                gridColumns = gridColumns,
                                 onCardClick = onCardClick,
                                 onLoadMore = { viewModel.loadNextPage() },
                                 onRetryContent = { viewModel.loadInitialContents() },
@@ -273,6 +276,7 @@ private fun ChannelContent(
     state: ChannelViewModel.ChannelUiState.Loaded,
     selectedTab: Int,
     isWide: Boolean,
+    gridColumns: Int,
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     onRetryContent: () -> Unit,
@@ -330,7 +334,7 @@ private fun ChannelContent(
             } else {
                 VideoContainer(
                     items = state.playlists,
-                    layout = if (isWide) ContainerLayout.Grid(2) else ContainerLayout.List,
+                    layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                     isLoading = false,
                     hasMorePages = false,
                     onCardClick = onCardClick,
@@ -363,6 +367,7 @@ private fun ChannelContent(
             } else if (isWide) {
                 WideVideoGrid(
                     state = state,
+                    columns = gridColumns,
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
                     onVideoLongClick = onVideoLongClick,
@@ -400,12 +405,13 @@ private fun ChannelContent(
 @Composable
 private fun WideVideoGrid(
     state: ChannelViewModel.ChannelUiState.Loaded,
+    columns: Int,
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val rows = remember(state.cards) { state.cards.chunked(2) }
+    val rows = remember(state.cards, columns) { state.cards.chunked(columns) }
     ScrollEndReached(
         listState = listState,
         gridState = null,
@@ -445,7 +451,26 @@ private fun WideVideoGrid(
                         onCardClick = onCardClick,
                         onVideoLongClick = onVideoLongClick,
                     )
-                } else {
+                }
+                // ponytail: unrolled for the 2-4 setting values; composable calls
+                // can't run in a loop lambda, so no per-column helper
+                if (row.size > 2) {
+                    WideVideoCell(
+                        card = row[2],
+                        modifier = Modifier.weight(1f),
+                        onCardClick = onCardClick,
+                        onVideoLongClick = onVideoLongClick,
+                    )
+                }
+                if (row.size > 3) {
+                    WideVideoCell(
+                        card = row[3],
+                        modifier = Modifier.weight(1f),
+                        onCardClick = onCardClick,
+                        onVideoLongClick = onVideoLongClick,
+                    )
+                }
+                if (row.size == 1) {
                     Box(Modifier.weight(1f))
                 }
             }

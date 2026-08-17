@@ -66,6 +66,7 @@ fun PlaylistDetailScreen(
     playlistUrl: String,
     onBack: () -> Unit,
     navigator: Navigator,
+    gridColumns: Int = 3,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     viewModel: PlaylistDetailViewModel = hiltViewModel(),
 ) {
@@ -161,7 +162,7 @@ fun PlaylistDetailScreen(
                 } else {
                     VideoContainer(
                         items = state.cards,
-                        layout = if (isWide) ContainerLayout.Grid(2) else ContainerLayout.List,
+                        layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                         isLoading = false,
                         hasMorePages = state.hasMore,
                         onCardClick = { card ->

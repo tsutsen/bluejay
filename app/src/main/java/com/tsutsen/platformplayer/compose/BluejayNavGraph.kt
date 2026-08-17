@@ -99,6 +99,7 @@ fun GrayjayNavGraph(
                 channelUrl = destination.url,
                 onBack = { navigator.goBack() },
                 navigator = navigator,
+                gridColumns = gridColumns,
             )
         }
 
@@ -107,6 +108,7 @@ fun GrayjayNavGraph(
                 playlistUrl = destination.url,
                 onBack = { navigator.goBack() },
                 navigator = navigator,
+                gridColumns = gridColumns,
             )
         }
 
