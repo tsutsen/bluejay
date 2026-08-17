@@ -41,7 +41,7 @@ class EngineSearchRepositoryImpl
                 // Run engine call on IO dispatcher to avoid main thread blocking
                 withContext(Dispatchers.IO) {
                     val pager = StatePlatform.instance.search(query)
-                    val flow = PagerFlow(pager, EngineCardMapper::toCard)
+                    val flow = PagerFlow(pager, EngineCardMapper::toCard, { it.id })
                     _pagerFlow = flow
                     val items = flow.loadInitial()
                     _results.update {

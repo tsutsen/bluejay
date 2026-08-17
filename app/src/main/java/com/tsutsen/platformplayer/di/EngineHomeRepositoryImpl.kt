@@ -60,7 +60,7 @@ class EngineHomeRepositoryImpl
 
             try {
                 val pager = StatePlatform.instance.getHomeRefresh(CoroutineScope(Dispatchers.IO))
-                val flow = PagerFlow(pager, EngineCardMapper::toCard)
+                val flow = PagerFlow(pager, EngineCardMapper::toCard, { it.id })
                 _pagerFlow = flow
                 val items = flow.loadInitial()
                 Logger.i("EngineHomeRepository", "Converted to ${items.size} cards, hasMore=${flow.hasMore}")

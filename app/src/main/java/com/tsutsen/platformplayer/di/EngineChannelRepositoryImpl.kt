@@ -56,7 +56,10 @@ class EngineChannelRepositoryImpl
         // call here is dispatched to IO ("Cannot run on main thread").
         override suspend fun loadInitialContents(url: String): ChannelContentPage =
             withContext(Dispatchers.IO) {
-                val flow = contentFlowFor(url)
+                // Fresh flow per open: a cached flow keeps the previous
+                // visit's pager position and would start mid-window.
+                val flow = newContentFlow(url)
+                contentFlows[url] = flow
                 val cards = flow.loadInitial()
                 ChannelContentPage(cards, flow.hasMore, flow.error)
             }
@@ -70,25 +73,31 @@ class EngineChannelRepositoryImpl
 
         override suspend fun loadPlaylists(url: String): List<Card> =
             withContext(Dispatchers.IO) {
-                val flow = playlistFlowFor(url)
+                val flow = newPlaylistFlow(url)
+                playlistFlows[url] = flow
                 flow.loadInitial()
                 flow.items
             }
 
-        private fun contentFlowFor(url: String): PagerFlow<IPlatformContent, Card> =
-            contentFlows.getOrPut(url) {
-                val client =
-                    StatePlatform.instance.getClientOrNullByUrl(url)
-                        ?: throw IllegalStateException("No client found for channel url: $url")
-                PagerFlow(
-                    StatePlatform.instance.getChannelContent(client, url),
-                ) { content -> EngineCardMapper.toCard(content) }
-            }
+        private fun contentFlowFor(url: String): PagerFlow<IPlatformContent, Card> = contentFlows.getOrPut(url) { newContentFlow(url) }
 
-        private fun playlistFlowFor(url: String): PagerFlow<IPlatformPlaylist, Card> =
-            playlistFlows.getOrPut(url) {
-                PagerFlow(
-                    StatePlatform.instance.getChannelPlaylists(url),
-                ) { content -> EngineCardMapper.toCard(content) }
-            }
+        private fun newContentFlow(url: String): PagerFlow<IPlatformContent, Card> {
+            val client =
+                StatePlatform.instance.getClientOrNullByUrl(url)
+                    ?: throw IllegalStateException("No client found for channel url: $url")
+            return PagerFlow(
+                StatePlatform.instance.getChannelContent(client, url),
+                { content -> EngineCardMapper.toCard(content) },
+                { it.id },
+            )
+        }
+
+        private fun playlistFlowFor(url: String): PagerFlow<IPlatformPlaylist, Card> = playlistFlows.getOrPut(url) { newPlaylistFlow(url) }
+
+        private fun newPlaylistFlow(url: String): PagerFlow<IPlatformPlaylist, Card> =
+            PagerFlow(
+                StatePlatform.instance.getChannelPlaylists(url),
+                { content -> EngineCardMapper.toCard(content) },
+                { it.id },
+            )
     }

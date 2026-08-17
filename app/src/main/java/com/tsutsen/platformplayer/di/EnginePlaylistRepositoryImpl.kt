@@ -39,7 +39,10 @@ class EnginePlaylistRepositoryImpl
         // call here is dispatched to IO ("Cannot run on main thread").
         override suspend fun loadInitialVideos(url: String): ChannelContentPage =
             withContext(Dispatchers.IO) {
-                val flow = videoFlowFor(url)
+                // Fresh flow per open: a cached flow keeps the previous
+                // visit's pager position and would start mid-window.
+                val flow = newVideoFlow(url)
+                videoFlows[url] = flow
                 flow.loadInitial()
                 ChannelContentPage(flow.items, flow.hasMore, flow.error)
             }
@@ -51,12 +54,14 @@ class EnginePlaylistRepositoryImpl
                 ChannelContentPage(flow.items, flow.hasMore, flow.error)
             }
 
-        private fun videoFlowFor(url: String): PagerFlow<IPlatformVideo, Card> =
-            videoFlows.getOrPut(url) {
-                PagerFlow(clientFor(url).getPlaylist(url).contents) { video ->
-                    EngineCardMapper.toCard(video)
-                }
-            }
+        private fun videoFlowFor(url: String): PagerFlow<IPlatformVideo, Card> = videoFlows.getOrPut(url) { newVideoFlow(url) }
+
+        private fun newVideoFlow(url: String): PagerFlow<IPlatformVideo, Card> =
+            PagerFlow(
+                clientFor(url).getPlaylist(url).contents,
+                { video -> EngineCardMapper.toCard(video) },
+                { it.id },
+            )
 
         private fun clientFor(url: String) =
             StatePlatform.instance.getClientOrNullByUrl(url)

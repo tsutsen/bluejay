@@ -65,7 +65,7 @@ class EngineSubscriptionsRepositoryImpl
                         CoroutineScope(Dispatchers.IO),
                         updated = false,
                     )
-                val flow = PagerFlow(pager) { it }
+                val flow = PagerFlow(pager, { it }, { it.id })
                 pagerFlow = flow
                 flow.loadInitial()
                 Logger.i("EngineSubscriptionsRepository", "Loaded ${flow.items.size} subscription items")
@@ -83,7 +83,7 @@ class EngineSubscriptionsRepositoryImpl
                         CoroutineScope(Dispatchers.IO),
                         updated = true,
                     )
-                val flow = PagerFlow(pager) { it }
+                val flow = PagerFlow(pager, { it }, { it.id })
                 pagerFlow = flow
                 flow.loadInitial()
                 Logger.i("EngineSubscriptionsRepository", "Refreshed: ${flow.items.size} items")
