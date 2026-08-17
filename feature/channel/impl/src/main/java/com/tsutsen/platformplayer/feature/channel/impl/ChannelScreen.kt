@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.channel.impl
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,8 +96,43 @@ fun ChannelScreen(
     val loaded = uiState as? ChannelViewModel.ChannelUiState.Loaded
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            loaded?.channel?.banner?.let { bannerUrl ->
+                // Cover as the top-bar background: height-fitted (Crop, never
+                // stretched), centered between the avatar badge and the
+                // subscribe button. Edge gradients fade the cover into the
+                // page background.
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        url = bannerUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                    val edge = MaterialTheme.colorScheme.surface
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.horizontalGradient(
+                                        0f to edge,
+                                        0.25f to edge.copy(alpha = 0f),
+                                        0.75f to edge.copy(alpha = 0f),
+                                        1f to edge,
+                                    ),
+                                ),
+                    )
+                }
+            }
+            TopAppBar(
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                title = {
                 loaded?.let { state ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -130,22 +169,23 @@ fun ChannelScreen(
                     }
                 } ?: Text("Channel")
             },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                    )
-                }
-            },
-            actions = {
-                loaded?.let { state ->
-                    Button(onClick = { viewModel.toggleSubscription() }) {
-                        Text(if (state.isSubscribed) "Subscribed" else "Subscribe")
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                        )
                     }
-                }
-            },
-        )
+                },
+                actions = {
+                    loaded?.let { state ->
+                        Button(onClick = { viewModel.toggleSubscription() }) {
+                            Text(if (state.isSubscribed) "Subscribed" else "Subscribe")
+                        }
+                    }
+                },
+            )
+        }
 
         when (val state = uiState) {
             is ChannelViewModel.ChannelUiState.Loading -> {
@@ -236,25 +276,6 @@ fun ChannelScreen(
     }
 }
 
-@Composable
-private fun ChannelBanner(bannerUrl: String?) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(160.dp),
-    ) {
-        if (bannerUrl != null) {
-            AsyncImage(
-                url = bannerUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        }
-    }
-}
-
 private data class ChannelTab(
     val label: String,
     val icon: ImageVector,
@@ -291,8 +312,6 @@ private fun ChannelContent(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
             ) {
-                ChannelBanner(bannerUrl = state.channel.banner)
-                Spacer(Modifier.height(16.dp))
                 state.channel.description?.let { description ->
                     Text(
                         text = description,
@@ -339,7 +358,6 @@ private fun ChannelContent(
                     hasMorePages = false,
                     onCardClick = onCardClick,
                     onLoadMore = {},
-                    topContent = if (isWide) null else channelBannerContent(state.channel.banner),
                 ) { card ->
                     if (card is PlaylistCard) {
                         PlaylistCardView(
@@ -380,7 +398,6 @@ private fun ChannelContent(
                     hasMorePages = state.hasMore,
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
-                    topContent = { ChannelBanner(bannerUrl = state.channel.banner) },
                 ) { card ->
                     if (card is CoreVideoCard) {
                         VideoCard(
@@ -397,11 +414,7 @@ private fun ChannelContent(
     }
 }
 
-/**
- * Wide-mode videos: scrollable banner followed by 2-column card rows.
- * A single LazyColumn (not a LazyVerticalGrid) so the banner scrolls with
- * the content — grid items cannot span columns.
- */
+/** Wide-mode videos: card rows in a single LazyColumn. */
 @Composable
 private fun WideVideoGrid(
     state: ChannelViewModel.ChannelUiState.Loaded,
@@ -427,9 +440,6 @@ private fun WideVideoGrid(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "__top__") {
-            ChannelBanner(bannerUrl = state.channel.banner)
-        }
         items(
             rows,
             key = { row -> row.joinToString("|") { it.id } },
@@ -494,12 +504,6 @@ private fun WideVideoCell(
             )
         }
     }
-}
-
-@Composable
-private fun channelBannerContent(bannerUrl: String?): (@Composable () -> Unit)? {
-    if (bannerUrl == null) return null
-    return { ChannelBanner(bannerUrl = bannerUrl) }
 }
 
 @Composable
