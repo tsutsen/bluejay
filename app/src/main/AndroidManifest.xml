@@ -53,8 +53,13 @@
             android:foregroundServiceType="mediaPlayback" />
         <service android:name="com.tsutsen.platformplayer.core.data.service.PlayerService"
             android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <!-- Required: SessionToken resolves media3 services by this action. -->
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
         <service android:name=".services.DownloadService"
             android:enabled="true"
             android:foregroundServiceType="dataSync" />

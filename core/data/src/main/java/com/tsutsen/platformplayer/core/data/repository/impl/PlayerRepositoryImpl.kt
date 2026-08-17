@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.data.repository.impl
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -17,6 +18,8 @@ import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.service.PlayerService
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
@@ -58,6 +61,11 @@ class PlayerRepositoryImpl(
 
     override val exoPlayer: ExoPlayer? get() = _exoPlayer
     private var _exoPlayer: ExoPlayer? = null
+
+    // Holds the connection to PlayerService open while playback is active.
+    // The bind is what makes the service create its MediaSession — a bare
+    // start never does (onGetSession is only called on connect).
+    private var mediaController: MediaController? = null
 
     private val playerListener =
         object : Player.Listener {
@@ -280,6 +288,28 @@ class PlayerRepositoryImpl(
                     context,
                     Intent(context, PlayerService::class.java),
                 )
+                if (mediaController == null) {
+                    val future =
+                        MediaController
+                            .Builder(
+                                context,
+                                SessionToken(
+                                    context,
+                                    ComponentName(context, PlayerService::class.java),
+                                ),
+                            )
+                            .buildAsync()
+                    future.addListener(
+                        {
+                            try {
+                                mediaController = future.get()
+                            } catch (t: Throwable) {
+                                Log.w(TAG, "MediaController connection failed", t)
+                            }
+                        },
+                        ContextCompat.getMainExecutor(context),
+                    )
+                }
 
                 Log.i(TAG, "Updating player state with video details...")
                 Log.i(TAG, "Resolution has videoDetails: ${resolution.videoDetails != null}")
@@ -494,6 +524,8 @@ class PlayerRepositoryImpl(
     override suspend fun close() {
         positionTickerJob?.cancel()
         positionTickerJob = null
+        mediaController?.release()
+        mediaController = null
         context.stopService(Intent(context, PlayerService::class.java))
         _exoPlayer?.release()
         _exoPlayer = null

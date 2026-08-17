@@ -27,7 +27,7 @@ import com.tsutsen.platformplayer.sabr.proto.LiveMetadata
 
 @UnstableApi
 class SabrMediaSource(
-    private val mediaItem: MediaItem,
+    @Volatile private var mediaItem: MediaItem,
     private val spec: SabrStreamSpec,
     private val loadErrorHandlingPolicy: LoadErrorHandlingPolicy = DefaultLoadErrorHandlingPolicy(),
     private val onBackoff: ((delayMs: Long?) -> Unit)? = null,
@@ -89,6 +89,19 @@ class SabrMediaSource(
     @Volatile private var bootstrapped = false
 
     override fun getMediaItem(): MediaItem = mediaItem
+
+    // Metadata-only updates (e.g. title/artist/artwork for the media
+    // notification) — without these the interface default is a no-op and
+    // the update is silently dropped.
+    override fun canUpdateMediaItem(mediaItem: MediaItem): Boolean =
+        this.mediaItem.requestMetadata.mediaUri == mediaItem.requestMetadata.mediaUri &&
+            this.mediaItem.mediaId == mediaItem.mediaId
+
+    override fun updateMediaItem(mediaItem: MediaItem) {
+        if (canUpdateMediaItem(mediaItem)) {
+            this.mediaItem = mediaItem
+        }
+    }
 
     override fun prepareSourceInternal(mediaTransferListener: TransferListener?) = synchronized(sessionLock) {
         this.transferListener = mediaTransferListener
