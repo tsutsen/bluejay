@@ -1,10 +1,13 @@
 package com.tsutsen.platformplayer.core.data.repository.impl
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -14,8 +17,8 @@ import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import androidx.media3.session.MediaSession
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
+import com.tsutsen.platformplayer.core.data.service.PlayerService
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
@@ -55,11 +58,6 @@ class PlayerRepositoryImpl(
 
     override val exoPlayer: ExoPlayer? get() = _exoPlayer
     private var _exoPlayer: ExoPlayer? = null
-
-    // Registers playback with the system (media notification, media buttons,
-    // lock-screen controls). A bare session observes the ExoPlayer directly —
-    // no MediaSessionService needed for the notification itself.
-    private var mediaSession: MediaSession? = null
 
     private val playerListener =
         object : Player.Listener {
@@ -240,8 +238,6 @@ class PlayerRepositoryImpl(
                     _exoPlayer?.addListener(playerListener)
                     _exoPlayer?.addAnalyticsListener(analyticsListener)
                     startPositionTicker()
-                    mediaSession?.release()
-                    mediaSession = MediaSession.Builder(context, _exoPlayer!!).build()
                 } else {
                     Log.i(TAG, "Using existing ExoPlayer instance")
                 }
@@ -252,12 +248,38 @@ class PlayerRepositoryImpl(
                     return@withContext
                 }
 
+                // Attach title/artist/artwork so the system media notification
+                // can show them (media3 builds the notification from the
+                // player's MediaItem metadata).
+                resolution.videoDetails?.let { details ->
+                    val metadata =
+                        MediaMetadata
+                            .Builder()
+                            .setTitle(details.title)
+                            .apply { details.authorName?.let { setArtist(it) } }
+                            .apply { details.thumbnailUrl?.let { setArtworkUri(Uri.parse(it)) } }
+                            .build()
+                    val updated =
+                        resolution.mediaSource.mediaItem
+                            .buildUpon()
+                            .setMediaMetadata(metadata)
+                            .build()
+                    resolution.mediaSource.updateMediaItem(updated)
+                }
+
                 Log.i(TAG, "Setting MediaSource on ExoPlayer...")
                 _exoPlayer?.setMediaSource(resolution.mediaSource)
                 Log.i(TAG, "Preparing ExoPlayer...")
                 _exoPlayer?.prepare()
                 Log.i(TAG, "Setting playWhenReady to true...")
                 _exoPlayer?.playWhenReady = true
+
+                // Register playback with the system: media notification,
+                // lock-screen controls, media buttons (media3 session service).
+                ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, PlayerService::class.java),
+                )
 
                 Log.i(TAG, "Updating player state with video details...")
                 Log.i(TAG, "Resolution has videoDetails: ${resolution.videoDetails != null}")
@@ -294,9 +316,6 @@ class PlayerRepositoryImpl(
                     )
                 }
 
-                // ponytail: notification shows app name + controls; track title/artwork
-                // need metadata on the player's MediaItem (resolver change) — add when
-                // the notification needs video title.
                 Log.i(TAG, "========================================")
                 Log.i(TAG, "play() completed successfully")
                 Log.i(TAG, "========================================")
@@ -475,8 +494,7 @@ class PlayerRepositoryImpl(
     override suspend fun close() {
         positionTickerJob?.cancel()
         positionTickerJob = null
-        mediaSession?.release()
-        mediaSession = null
+        context.stopService(Intent(context, PlayerService::class.java))
         _exoPlayer?.release()
         _exoPlayer = null
         _playerState.update {

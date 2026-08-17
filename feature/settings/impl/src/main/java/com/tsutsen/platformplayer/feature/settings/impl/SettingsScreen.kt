@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Contrast
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Headphones
@@ -45,6 +46,7 @@ import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsButtonCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
+import com.tsutsen.platformplayer.core.navigation.Navigator
 
 /**
  * Settings — every row is backed by a real setter on the Settings-backed
@@ -52,7 +54,10 @@ import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    navigator: Navigator,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val uiState by viewModel.uiState.collectAsState()
     val state = uiState as? SettingsUiState.Loaded
     var selectedChoice by remember { mutableStateOf<Choice?>(null) }
@@ -78,6 +83,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 state = current,
                 viewModel = viewModel,
                 onChoiceSelected = { selectedChoice = it },
+                onPluginsClick = { navigator.navigateToPluginBrowser() },
             )
         }
     }
@@ -162,6 +168,7 @@ private fun SettingsContent(
     state: SettingsUiState.Loaded,
     viewModel: SettingsViewModel,
     onChoiceSelected: (Choice) -> Unit,
+    onPluginsClick: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -253,6 +260,14 @@ private fun SettingsContent(
                     title = "Grid columns",
                     subtitle = "${state.gridColumns} columns",
                     onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Extension,
+                    title = "Plugins",
+                    subtitle = "Manage installed source plugins",
+                    onClick = onPluginsClick,
                 )
             }
             item {

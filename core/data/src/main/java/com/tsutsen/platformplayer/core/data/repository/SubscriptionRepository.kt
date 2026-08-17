@@ -40,27 +40,18 @@ interface SubscriptionRepository {
     suspend fun selectCreator(creatorId: String?)
 
     /**
-     * Toggle "Watched" filter (videos watched ≥95%).
-     */
-    suspend fun toggleWatched()
-
-    /**
-     * Toggle "Continue" filter (videos with 1s < watchtime < 95%).
+     * Toggle "Continue" filter: only partially watched videos
+     * (0 < playbackTime < 95% of duration).
      */
     suspend fun toggleContinue()
 
     /**
-     * Toggle "Video" filter (regular videos).
+     * Toggle "Videos" filter: only regular (non-live) videos.
      */
     suspend fun toggleVideo()
 
     /**
-     * Toggle "Streams" filter (live/recent streams).
+     * Toggle "Live" filter: only live streams.
      */
     suspend fun toggleStreams()
-
-    /**
-     * Toggle a source filter (e.g., YouTube, SoundCloud).
-     */
-    suspend fun toggleSourceFilter(sourceId: String)
 }

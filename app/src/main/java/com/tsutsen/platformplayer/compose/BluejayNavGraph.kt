@@ -90,7 +90,7 @@ fun GrayjayNavGraph(
         }
 
         is NavDestination.Settings -> {
-            SettingsScreen()
+            SettingsScreen(navigator = navigator)
         }
 
         is NavDestination.ChannelDetail -> {

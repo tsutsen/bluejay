@@ -51,6 +51,10 @@
         <service android:name=".services.MediaPlaybackService"
             android:enabled="true"
             android:foregroundServiceType="mediaPlayback" />
+        <service android:name="com.tsutsen.platformplayer.core.data.service.PlayerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
         <service android:name=".services.DownloadService"
             android:enabled="true"
             android:foregroundServiceType="dataSync" />

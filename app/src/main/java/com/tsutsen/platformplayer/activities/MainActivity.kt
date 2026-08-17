@@ -197,7 +197,6 @@ private fun grayjayMainActivityContent(
                         "library" -> navigator.navigateLibrary()
                         "notifications" -> navigator.navigateNotifications()
                         "settings" -> navigator.navigateSettings()
-                        "plugins" -> navigator.navigateToPluginBrowser()
                     }
                 },
                 isWide = config.isWide,

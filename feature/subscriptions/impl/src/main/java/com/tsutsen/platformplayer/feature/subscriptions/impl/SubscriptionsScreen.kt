@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -108,11 +107,9 @@ fun SubscriptionsScreen(
                         gridColumns = gridColumns,
                         onCreatorSelected = viewModel::selectCreator,
                         onGoToChannel = { navigator.navigateToChannel(it) },
-                        onWatchedToggle = viewModel::toggleWatched,
                         onContinueToggle = viewModel::toggleContinue,
                         onVideoToggle = viewModel::toggleVideo,
                         onStreamsToggle = viewModel::toggleStreams,
-                        onSourceToggle = viewModel::toggleSourceFilter,
                         onRefresh = viewModel::refresh,
                         onLoadMore = viewModel::loadMore,
                         onVideoLongClick = { optionsCard = it },
@@ -173,48 +170,38 @@ private fun SubscriptionsContent(
     gridColumns: Int,
     onCreatorSelected: (String?) -> Unit,
     onGoToChannel: (String) -> Unit,
-    onWatchedToggle: () -> Unit,
     onContinueToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onStreamsToggle: () -> Unit,
-    onSourceToggle: (String) -> Unit,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onItemClicked: (String) -> Unit,
     onVideoLongClick: (ModelVideoCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var isRefreshing = false
     val pullToRefreshState = rememberPullToRefreshState()
 
     if (isWide) {
         // Wide: Filters + videos in center, creators on right side
         Row(modifier = modifier.fillMaxSize()) {
             Column(modifier = Modifier.weight(1f).fillMaxSize()) {
-                // Filter badges
+                // Filter chips: independent toggles, no cross-coupling
                 SubscriptionFilterBadges(
-                    filterWatched = state.filterWatched,
                     filterContinue = state.filterContinue,
                     filterVideo = state.filterVideo,
                     filterStreams = state.filterStreams,
-                    sourceFilters = state.sourceFilters,
-                    onWatchedToggle = onWatchedToggle,
                     onContinueToggle = onContinueToggle,
                     onVideoToggle = onVideoToggle,
                     onStreamsToggle = onStreamsToggle,
-                    onSourceToggle = onSourceToggle,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
                 // Videos in grid
                 PullToRefreshBox(
-                    isRefreshing = isRefreshing,
+                    // Reuse the pull-to-refresh spinner as the loading indicator.
+                    isRefreshing = state.isLoading,
                     state = pullToRefreshState,
-                    onRefresh = {
-                        isRefreshing = true
-                        onRefresh()
-                        isRefreshing = false
-                    },
+                    onRefresh = onRefresh,
                     content = {
                         VideoContainer(
                             items = state.items,
@@ -286,30 +273,23 @@ private fun SubscriptionsContent(
                 }
             }
 
-            // Filter badges
+            // Filter chips: independent toggles, no cross-coupling
             SubscriptionFilterBadges(
-                filterWatched = state.filterWatched,
                 filterContinue = state.filterContinue,
                 filterVideo = state.filterVideo,
                 filterStreams = state.filterStreams,
-                sourceFilters = state.sourceFilters,
-                onWatchedToggle = onWatchedToggle,
                 onContinueToggle = onContinueToggle,
                 onVideoToggle = onVideoToggle,
                 onStreamsToggle = onStreamsToggle,
-                onSourceToggle = onSourceToggle,
                 modifier = Modifier.fillMaxWidth(),
             )
 
             // Videos in list
             PullToRefreshBox(
-                isRefreshing = isRefreshing,
+                // Reuse the pull-to-refresh spinner as the loading indicator.
+                isRefreshing = state.isLoading,
                 state = pullToRefreshState,
-                onRefresh = {
-                    isRefreshing = true
-                    onRefresh()
-                    isRefreshing = false
-                },
+                onRefresh = onRefresh,
                 content = {
                     VideoContainer(
                         items = state.items,
@@ -399,20 +379,18 @@ private fun CreatorAvatar(
 }
 
 /**
- * Filter badges component.
+ * Filter chips. Each chip is an independent toggle:
+ *  - Videos / Live are OR within the type category
+ *  - Continue narrows to partially watched videos (AND with the type)
  */
 @Composable
 private fun SubscriptionFilterBadges(
-    filterWatched: Boolean,
     filterContinue: Boolean,
     filterVideo: Boolean,
     filterStreams: Boolean,
-    sourceFilters: Map<String, Boolean>,
-    onWatchedToggle: () -> Unit,
     onContinueToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onStreamsToggle: () -> Unit,
-    onSourceToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -422,9 +400,16 @@ private fun SubscriptionFilterBadges(
     ) {
         item {
             FilterChip(
-                selected = filterWatched,
-                onClick = onWatchedToggle,
-                label = { Text("Watched") },
+                selected = filterVideo,
+                onClick = onVideoToggle,
+                label = { Text("Videos") },
+            )
+        }
+        item {
+            FilterChip(
+                selected = filterStreams,
+                onClick = onStreamsToggle,
+                label = { Text("Live") },
             )
         }
         item {
@@ -432,27 +417,6 @@ private fun SubscriptionFilterBadges(
                 selected = filterContinue,
                 onClick = onContinueToggle,
                 label = { Text("Continue") },
-            )
-        }
-        item {
-            FilterChip(
-                selected = filterVideo,
-                onClick = onVideoToggle,
-                label = { Text("Video") },
-            )
-        }
-        item {
-            FilterChip(
-                selected = filterStreams,
-                onClick = onStreamsToggle,
-                label = { Text("Streams") },
-            )
-        }
-        items(sourceFilters.keys.toList()) { sourceId ->
-            FilterChip(
-                selected = sourceFilters[sourceId] ?: true,
-                onClick = { onSourceToggle(sourceId) },
-                label = { Text(sourceId) },
             )
         }
     }

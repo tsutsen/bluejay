@@ -112,69 +112,19 @@ class EngineSubscriptionsRepositoryImpl
             applyFilters()
         }
 
-        override suspend fun toggleWatched() {
-            _feed.update { state ->
-                if (state.filterWatched) {
-                    state.copy(
-                        filterWatched = false,
-                        filterContinue = !state.filterContinue,
-                    )
-                } else {
-                    state.copy(filterWatched = true)
-                }
-            }
-            applyFilters()
-        }
-
+        // Each chip toggles exactly its own flag — no cross-coupling.
         override suspend fun toggleContinue() {
-            _feed.update { state ->
-                if (state.filterContinue) {
-                    state.copy(
-                        filterContinue = false,
-                        filterWatched = !state.filterWatched,
-                    )
-                } else {
-                    state.copy(filterContinue = true, filterWatched = false)
-                }
-            }
+            _feed.update { it.copy(filterContinue = !it.filterContinue) }
             applyFilters()
         }
 
         override suspend fun toggleVideo() {
-            _feed.update { state ->
-                if (state.filterVideo) {
-                    state.copy(
-                        filterVideo = false,
-                        filterStreams = !state.filterStreams,
-                    )
-                } else {
-                    state.copy(filterVideo = true)
-                }
-            }
+            _feed.update { it.copy(filterVideo = !it.filterVideo) }
             applyFilters()
         }
 
         override suspend fun toggleStreams() {
-            _feed.update { state ->
-                if (state.filterStreams) {
-                    state.copy(
-                        filterStreams = false,
-                        filterVideo = !state.filterVideo,
-                    )
-                } else {
-                    state.copy(filterStreams = true, filterVideo = false)
-                }
-            }
-            applyFilters()
-        }
-
-        override suspend fun toggleSourceFilter(sourceId: String) {
-            _feed.update { state ->
-                val currentSources = state.sourceFilters.toMutableMap()
-                val newValue = !(currentSources[sourceId] ?: true)
-                currentSources[sourceId] = newValue
-                state.copy(sourceFilters = currentSources)
-            }
+            _feed.update { it.copy(filterStreams = !it.filterStreams) }
             applyFilters()
         }
 
@@ -209,16 +159,26 @@ class EngineSubscriptionsRepositoryImpl
                 }
             }
 
-            // Filter by type (video vs streams)
-            if (state.filterVideo && !state.filterStreams) {
-                filtered = filtered.filter { it is IPlatformVideo && !it.isLive }
-            } else if (state.filterStreams && !state.filterVideo) {
-                filtered =
-                    filtered.filter {
-                        (it as? IPlatformVideo)?.isLive == true ||
-                            (it as? IPlatformVideo)?.isShort == true
+            // Type filter: "Videos"/"Live" are OR within the category;
+            // "Continue" narrows to partially watched videos (AND).
+            val showVideos = state.filterVideo
+            val showLive = state.filterStreams
+            val onlyContinue = state.filterContinue
+            filtered =
+                filtered.filter { content ->
+                    val video = content as? IPlatformVideo ?: return@filter true
+                    if (video.isLive) {
+                        if (!showLive) return@filter false
+                    } else if (!showVideos) {
+                        return@filter false
                     }
-            }
+                    if (onlyContinue) {
+                        val d = video.duration
+                        val t = video.playbackTime
+                        if (d <= 0 || t <= 0 || t >= 0.95 * d) return@filter false
+                    }
+                    true
+                }
 
             // Convert to Cards
             val cards = EngineCardMapper.toCards(filtered)

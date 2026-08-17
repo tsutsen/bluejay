@@ -51,6 +51,7 @@ class ChannelViewModel
                 val contentError: String? = null,
                 val playlists: List<Card> = emptyList(),
                 val isSubscribed: Boolean = false,
+                val isRefreshing: Boolean = false,
             ) : ChannelUiState
         }
 
@@ -128,15 +129,51 @@ class ChannelViewModel
             }
         }
 
-        fun loadPlaylists() {
+        fun loadPlaylists(force: Boolean = false) {
             val state = uiState.value as? ChannelUiState.Loaded ?: return
-            if (state.playlists.isNotEmpty()) return
+            if (state.playlists.isNotEmpty() && !force) return
             val url = state.channel.url
             viewModelScope.launch {
                 val playlists = channelRepository.loadPlaylists(url)
                 _uiState.update {
                     if (it is ChannelUiState.Loaded) it.copy(playlists = playlists) else it
                 }
+            }
+        }
+
+        /** Pull-to-refresh: re-fetch channel info, video feed and playlists. */
+        fun refresh() {
+            val state = uiState.value as? ChannelUiState.Loaded ?: return
+            if (state.isRefreshing) return
+            val url = state.channel.url
+            viewModelScope.launch {
+                _uiState.update {
+                    if (it is ChannelUiState.Loaded) it.copy(isRefreshing = true) else it
+                }
+                runCatching { channelRepository.getChannel(url) }
+                    .onSuccess { info ->
+                        _uiState.update {
+                            if (it is ChannelUiState.Loaded) {
+                                it.copy(channel = info, isSubscribed = info.isSubscribed)
+                            } else {
+                                it
+                            }
+                        }
+                    }
+                val page = channelRepository.loadInitialContents(url)
+                _uiState.update {
+                    if (it is ChannelUiState.Loaded) {
+                        it.copy(
+                            cards = page.cards,
+                            hasMore = page.hasMore,
+                            contentError = page.error,
+                            isRefreshing = false,
+                        )
+                    } else {
+                        it
+                    }
+                }
+                loadPlaylists(force = true)
             }
         }
 

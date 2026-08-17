@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -126,24 +125,15 @@ private fun HomeFeedContent(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var isRefreshing by remember { mutableStateOf(false) }
     val refreshingState = rememberPullToRefreshState()
-
-    // Reset refresh state when loading completes
-    LaunchedEffect(isLoading) {
-        if (!isLoading) {
-            isRefreshing = false
-        }
-    }
 
     Box(modifier = modifier.fillMaxSize()) {
         PullToRefreshBox(
-            isRefreshing = isRefreshing,
+            // Reuse the pull-to-refresh spinner as the general loading indicator:
+            // true while the feed is loading (initial refresh or pull-to-refresh).
+            isRefreshing = isLoading,
             state = refreshingState,
-            onRefresh = {
-                isRefreshing = true
-                onRefresh()
-            },
+            onRefresh = onRefresh,
             content = {
                 VideoContainer(
                     items = cards,

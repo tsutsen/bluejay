@@ -35,6 +35,8 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -215,43 +217,54 @@ fun ChannelScreen(
                                 .weight(1f)
                                 .fillMaxSize(),
                     ) {
-                        if (isWide) {
-                            ChannelContent(
-                                state = state,
-                                selectedTab = selectedTab,
-                                isWide = true,
-                                gridColumns = gridColumns,
-                                onCardClick = onCardClick,
-                                onLoadMore = { viewModel.loadNextPage() },
-                                onRetryContent = { viewModel.loadInitialContents() },
-                                onVideoLongClick = { optionsCard = it },
-                            )
-                        } else {
-                            TabRow(selectedTabIndex = selectedTab) {
-                                TABS.forEachIndexed { index, tab ->
-                                    Tab(
-                                        selected = selectedTab == index,
-                                        onClick = {
-                                            selectedTab = index
-                                            if (index == TAB_PLAYLISTS) {
-                                                viewModel.loadPlaylists()
+                        PullToRefreshBox(
+                            // Reuse the pull-to-refresh spinner as the loading indicator.
+                            isRefreshing = state.isRefreshing,
+                            state = rememberPullToRefreshState(),
+                            onRefresh = { viewModel.refresh() },
+                            modifier = Modifier.fillMaxSize(),
+                            content = {
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    if (isWide) {
+                                        ChannelContent(
+                                            state = state,
+                                            selectedTab = selectedTab,
+                                            isWide = true,
+                                            gridColumns = gridColumns,
+                                            onCardClick = onCardClick,
+                                            onLoadMore = { viewModel.loadNextPage() },
+                                            onRetryContent = { viewModel.loadInitialContents() },
+                                            onVideoLongClick = { optionsCard = it },
+                                        )
+                                    } else {
+                                        TabRow(selectedTabIndex = selectedTab) {
+                                            TABS.forEachIndexed { index, tab ->
+                                                Tab(
+                                                    selected = selectedTab == index,
+                                                    onClick = {
+                                                        selectedTab = index
+                                                        if (index == TAB_PLAYLISTS) {
+                                                            viewModel.loadPlaylists()
+                                                        }
+                                                    },
+                                                    text = { Text(tab.label) },
+                                                )
                                             }
-                                        },
-                                        text = { Text(tab.label) },
-                                    )
+                                        }
+                                        ChannelContent(
+                                            state = state,
+                                            selectedTab = selectedTab,
+                                            isWide = false,
+                                            gridColumns = gridColumns,
+                                            onCardClick = onCardClick,
+                                            onLoadMore = { viewModel.loadNextPage() },
+                                            onRetryContent = { viewModel.loadInitialContents() },
+                                            onVideoLongClick = { optionsCard = it },
+                                        )
+                                    }
                                 }
-                            }
-                            ChannelContent(
-                                state = state,
-                                selectedTab = selectedTab,
-                                isWide = false,
-                                gridColumns = gridColumns,
-                                onCardClick = onCardClick,
-                                onLoadMore = { viewModel.loadNextPage() },
-                                onRetryContent = { viewModel.loadInitialContents() },
-                                onVideoLongClick = { optionsCard = it },
-                            )
-                        }
+                            },
+                        )
                     }
 
                     if (isWide) {

@@ -64,8 +64,7 @@ val grayjayNavItems = listOf(
     NavItemDef("subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subscriptions"),
     NavItemDef("library", Icons.Outlined.LibraryBooks, Icons.Filled.LibraryBooks, "Library"),
     NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
-    NavItemDef("settings", Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
-    NavItemDef("plugins", Icons.Outlined.Extension, Icons.Filled.Extension, "Plugins")
+    NavItemDef("settings", Icons.Outlined.Settings, Icons.Filled.Settings, "Settings")
 )
 
 /**

@@ -31,7 +31,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,7 +93,6 @@ fun SearchScreen(
         remember { mutableStateOf(Rect.Zero) }
 
     val refreshingState = rememberPullToRefreshState()
-    var isRefreshing by remember { mutableStateOf(false) }
 
     // Combine repository results with local search history
     val uiState by combine(viewModel.repositoryResults, viewModel.searchHistoryFlow) { results, history ->
@@ -107,13 +105,6 @@ fun SearchScreen(
             searchHistory = history,
         )
     }.collectAsState(initial = SearchUiState())
-
-    // Reset refresh state when loading completes
-    LaunchedEffect(uiState.isLoading) {
-        if (!uiState.isLoading) {
-            isRefreshing = false
-        }
-    }
 
     Box(
         modifier =
@@ -313,10 +304,10 @@ fun SearchScreen(
                             val channelResults = uiState.items.filterIsInstance<ChannelCard>()
                             val videoResults = uiState.items.filterIsInstance<VideoCard>()
                             PullToRefreshBox(
-                                isRefreshing = isRefreshing,
+                                // Reuse the pull-to-refresh spinner as the loading indicator.
+                                isRefreshing = uiState.isLoading,
                                 state = refreshingState,
                                 onRefresh = {
-                                    isRefreshing = true
                                     viewModel.search(searchQuery)
                                 },
                                 content = {

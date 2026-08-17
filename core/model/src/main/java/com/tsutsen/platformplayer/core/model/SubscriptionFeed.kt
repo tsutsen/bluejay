@@ -17,9 +17,7 @@ data class SubscriptionFeed(
     val error: String? = null,
     val currentPage: Int = 0,
     val activeCreatorId: String? = null,
-    val filterWatched: Boolean = true,
     val filterContinue: Boolean = false,
     val filterVideo: Boolean = true,
-    val filterStreams: Boolean = false,
-    val sourceFilters: Map<String, Boolean> = emptyMap()
+    val filterStreams: Boolean = false
 )
