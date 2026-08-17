@@ -24,6 +24,7 @@ interface PlayerRepository {
     suspend fun setBrightness(brightness: Float)
     suspend fun setPlaybackSpeed(speed: Float)
     suspend fun setVideoQuality(quality: String)
+    suspend fun setSubtitle(selection: String)
     suspend fun toggleFullscreen()
     suspend fun minimize()
     suspend fun exitFullscreen()

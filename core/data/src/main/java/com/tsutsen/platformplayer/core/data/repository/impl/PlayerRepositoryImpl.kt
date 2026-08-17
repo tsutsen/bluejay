@@ -11,6 +11,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
+import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -67,6 +69,11 @@ class PlayerRepositoryImpl(
     // start never does (onGetSession is only called on connect).
     private var mediaController: MediaController? = null
 
+    // User-selected track preferences (UI labels). Applied to the ExoPlayer
+    // via [applyTrackSelectionParameters] and re-applied to each new player.
+    private var selectedQuality: String = "Auto"
+    private var selectedSubtitle: String = "Auto"
+
     private val playerListener =
         object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -97,6 +104,33 @@ class PlayerRepositoryImpl(
 
             override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
                 _playerState.update { it.copy(playbackSpeed = playbackParameters.speed) }
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                val heights = mutableListOf<Int>()
+                val languages = mutableListOf<String>()
+                for (group in tracks.groups) {
+                    when (group.mediaTrackGroup.type) {
+                        C.TRACK_TYPE_VIDEO -> {
+                            for (i in 0 until group.length) {
+                                val height = group.getTrackFormat(i).height
+                                if (height > 0) heights.add(height)
+                            }
+                        }
+                        C.TRACK_TYPE_TEXT -> {
+                            for (i in 0 until group.length) {
+                                val language = group.getTrackFormat(i).language
+                                if (!language.isNullOrBlank()) languages.add(language)
+                            }
+                        }
+                    }
+                }
+                val qualities = heights.distinct().sortedDescending()
+                val subtitles = languages.distinct()
+                _playerState.update {
+                    if (it.videoQualities == qualities && it.subtitleLanguages == subtitles) it
+                    else it.copy(videoQualities = qualities, subtitleLanguages = subtitles)
+                }
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
@@ -281,6 +315,9 @@ class PlayerRepositoryImpl(
                 _exoPlayer?.prepare()
                 Log.i(TAG, "Setting playWhenReady to true...")
                 _exoPlayer?.playWhenReady = true
+                // Re-apply the user's track preferences to a (possibly new)
+                // player so quality/subtitle choices persist across videos.
+                applyTrackSelectionParameters()
 
                 // Register playback with the system: media notification,
                 // lock-screen controls, media buttons (media3 session service).
@@ -494,7 +531,42 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun setVideoQuality(quality: String) {
-        // TODO: Implement quality selection based on available tracks
+        selectedQuality = quality
+        applyTrackSelectionParameters()
+        _playerState.update { it.copy(selectedQuality = quality) }
+    }
+
+    override suspend fun setSubtitle(selection: String) {
+        selectedSubtitle = selection
+        applyTrackSelectionParameters()
+        _playerState.update { it.copy(selectedSubtitle = selection) }
+    }
+
+    /**
+     * Rebuilds the player's track selection parameters from the user's
+     * quality/subtitle preferences.
+     *
+     * Quality: "NNNp" caps the maximum video height (media3 picks the
+     * highest track at or below it); "Auto" clears the cap.
+     * Subtitles: "Off" ignores all text tracks, a language code prefers
+     * that language, "Auto" leaves selection to the default heuristics.
+     */
+    private fun applyTrackSelectionParameters() {
+        val player = _exoPlayer ?: return
+        val builder = TrackSelectionParameters.Builder()
+        val height = selectedQuality.removeSuffix("p").toIntOrNull()
+        if (height != null && height > 0) {
+            builder.setMaxVideoSize(-1, height)
+        }
+        when (selectedSubtitle) {
+            "Off" ->
+                builder.setIgnoredTextSelectionFlags(
+                    C.SELECTION_FLAG_AUTOSELECT or C.SELECTION_FLAG_FORCED or C.SELECTION_FLAG_DEFAULT,
+                )
+            "Auto" -> Unit
+            else -> builder.setPreferredTextLanguages(selectedSubtitle)
+        }
+        player.setTrackSelectionParameters(builder.build())
     }
 
     override suspend fun toggleFullscreen() {

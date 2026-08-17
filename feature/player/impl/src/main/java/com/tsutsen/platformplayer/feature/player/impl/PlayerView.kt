@@ -88,7 +88,6 @@ fun PlayerView(
     var badgeState by remember { mutableStateOf(GestureBadgeState()) }
     var badgeKeepAliveCounter by remember { mutableStateOf(0) }
     var selectedSpeed by remember { mutableStateOf(1.0f) }
-    var selectedQuality by remember { mutableStateOf("Auto") }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
 
     var controlsVisible by remember { mutableStateOf(true) }
@@ -605,14 +604,19 @@ fun PlayerView(
                 if (showOptionsModal) {
                     OptionsModal(
                         playbackSpeed = selectedSpeed,
-                        quality = selectedQuality,
+                        quality = state.selectedQuality,
+                        qualities = state.videoQualities,
+                        subtitle = state.selectedSubtitle,
+                        subtitles = state.subtitleLanguages,
                         onSpeedChange = { speed ->
                             selectedSpeed = speed
                             viewModel.setPlaybackSpeed(speed)
                         },
                         onQualityChange = { quality ->
-                            selectedQuality = quality
                             viewModel.setVideoQuality(quality)
+                        },
+                        onSubtitleChange = { subtitle ->
+                            viewModel.setSubtitle(subtitle)
                         },
                         onDismiss = { showOptionsModal = false },
                     )

@@ -15,5 +15,13 @@ data class PlayerState(
     val error: String? = null,
     val isLoading: Boolean = false,
     val isCompleted: Boolean = false,
-    val comments: List<CommentItem> = emptyList()
+    val comments: List<CommentItem> = emptyList(),
+    /** Available video track heights in pixels, descending (e.g. [2160, 1080, 720]). */
+    val videoQualities: List<Int> = emptyList(),
+    /** Available subtitle track language codes, in manifest order. */
+    val subtitleLanguages: List<String> = emptyList(),
+    /** UI label of the selected quality ("Auto" or "NNNp"). */
+    val selectedQuality: String = "Auto",
+    /** UI label of the selected subtitle ("Auto", "Off" or a language code). */
+    val selectedSubtitle: String = "Auto"
 )

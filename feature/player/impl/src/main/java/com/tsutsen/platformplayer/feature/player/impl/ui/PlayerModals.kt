@@ -1,8 +1,10 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -21,8 +23,12 @@ data class Chapter(
 internal fun OptionsModal(
     playbackSpeed: Float,
     quality: String,
+    qualities: List<Int>,
+    subtitle: String,
+    subtitles: List<String>,
     onSpeedChange: (Float) -> Unit,
     onQualityChange: (String) -> Unit,
+    onSubtitleChange: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -33,7 +39,11 @@ internal fun OptionsModal(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(16.dp)
         )
-        Row(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
             listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
                 FilterChip(
                     selected = playbackSpeed == speed,
@@ -49,12 +59,36 @@ internal fun OptionsModal(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(16.dp)
         )
-        Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-            listOf("Auto", "1080p", "720p", "480p", "360p").forEach { q ->
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            (listOf("Auto") + qualities.map { "${it}p" }).forEach { q ->
                 FilterChip(
                     selected = quality == q,
                     onClick = { onQualityChange(q) },
                     label = { Text(q) }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Subtitles",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(16.dp)
+        )
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            (listOf("Auto", "Off") + subtitles).forEach { s ->
+                FilterChip(
+                    selected = subtitle == s,
+                    onClick = { onSubtitleChange(s) },
+                    label = { Text(s) }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }

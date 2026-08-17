@@ -34,7 +34,11 @@ sealed interface PlayerUiState {
         val error: String?,
         val isLoading: Boolean = false,
         val isCompleted: Boolean = false,
-        val comments: List<CommentItem> = emptyList()
+        val comments: List<CommentItem> = emptyList(),
+        val videoQualities: List<Int> = emptyList(),
+        val subtitleLanguages: List<String> = emptyList(),
+        val selectedQuality: String = "Auto",
+        val selectedSubtitle: String = "Auto"
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
@@ -78,7 +82,11 @@ class PlayerViewModel @Inject constructor(
                         error = playerState.error,
                         isLoading = playerState.isLoading,
                         isCompleted = playerState.isCompleted,
-                        comments = cachedComments
+                        comments = cachedComments,
+                        videoQualities = playerState.videoQualities,
+                        subtitleLanguages = playerState.subtitleLanguages,
+                        selectedQuality = playerState.selectedQuality,
+                        selectedSubtitle = playerState.selectedSubtitle
                     )
                     
                     // Track playback history
@@ -200,6 +208,12 @@ class PlayerViewModel @Inject constructor(
     fun setVideoQuality(quality: String) {
         viewModelScope.launch {
             playerRepository.setVideoQuality(quality)
+        }
+    }
+
+    fun setSubtitle(selection: String) {
+        viewModelScope.launch {
+            playerRepository.setSubtitle(selection)
         }
     }
 
