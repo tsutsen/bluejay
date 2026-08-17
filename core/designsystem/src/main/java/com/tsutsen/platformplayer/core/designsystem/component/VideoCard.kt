@@ -226,14 +226,14 @@ fun CompactVideoCard(
     }
 }
 
-private fun formatViewCount(count: Long): String =
+fun formatViewCount(count: Long): String =
     when {
         count >= 1_000_000 -> "${String.format("%.1f", count / 1_000_000.0)}M"
         count >= 1_000 -> "${String.format("%.1f", count / 1_000.0)}K"
         else -> count.toString()
     }
 
-private fun formatDuration(ms: Long): String {
+fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60

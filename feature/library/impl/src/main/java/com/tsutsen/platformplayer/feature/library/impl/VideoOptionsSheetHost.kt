@@ -63,6 +63,9 @@ fun VideoOptionsSheetHost(
         playlists = playlists,
         authorUrl = video.authorUrl,
         title = video.title,
+        durationMs = video.durationMs,
+        viewCount = video.viewCount,
+        publishedAt = video.publishedAt,
     )
 
     if (showNewPlaylistDialog) {

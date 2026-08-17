@@ -1,13 +1,16 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -22,20 +25,33 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tsutsen.platformplayer.core.model.PlaylistOption
+import com.tsutsen.platformplayer.core.ui.RelativeTime
 
 /**
  * Long-press options for a video card.
  *
- * Leaf component: receives state (saved flags, playlists, authorUrl) and
- * action lambdas; the screen wires them to PlayerViewModel / DAOs / Navigator.
- * "Play next" / "Add to queue" intentionally absent until the player queue
- * exists (PlayerViewModel still has TODOs for queue navigation).
+ * Leaf component: receives state (saved flags, playlists, video metadata)
+ * and action lambdas; the screen wires them to PlayerViewModel / DAOs /
+ * Navigator. "Play next" / "Add to queue" intentionally absent until the
+ * player queue exists (PlayerViewModel still has TODOs for queue
+ * navigation).
+ *
+ * Layout: title + metadata row (views • duration • posted), then a grid of
+ * action tiles (3 columns) so all actions fit without scrolling. The
+ * "Add to playlist" tile toggles the playlist picker section.
  *
  * Share (Intent.ACTION_SEND) is handled internally so every call site gets
  * identical behaviour.
@@ -56,153 +72,245 @@ fun VideoOptionsSheet(
     playlists: List<PlaylistOption> = emptyList(),
     authorUrl: String? = null,
     title: String? = null,
+    durationMs: Long? = null,
+    viewCount: Long? = null,
+    publishedAt: Long? = null,
 ) {
     val context = LocalContext.current
+    var showPlaylists by remember { mutableStateOf(false) }
 
-    GrayjayModalBottomSheet(
-        onDismiss = onDismiss,
-        title = title,
-    ) {
-        OptionRow(
-            icon = { Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(24.dp)) },
-            label = "Play",
-            onClick = {
-                onPlay()
-                onDismiss()
-            },
-        )
-
-        OptionRow(
-            icon = {
-                Icon(
-                    Icons.Filled.History,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint =
-                        if (isWatchLaterSaved) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                )
-            },
-            label = "Watch later",
-            onClick = onToggleWatchLater,
-        )
-
-        OptionRow(
-            icon = {
-                Icon(
-                    if (isLikedSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint =
-                        if (isLikedSaved) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                )
-            },
-            label = "Like",
-            onClick = onToggleLiked,
-        )
-
-        OptionRow(
-            icon = {
-                Icon(
-                    if (isFavouriteSaved) Icons.Filled.Star else Icons.Filled.StarBorder,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint =
-                        if (isFavouriteSaved) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                )
-            },
-            label = "Favourite",
-            onClick = onToggleFavourite,
-        )
-
-        OptionRow(
-            icon = { Icon(Icons.Filled.HistoryEdu, contentDescription = null, modifier = Modifier.size(24.dp)) },
-            label = "Add to playlist",
-            onClick = null,
-        )
-        playlists.forEach { playlist ->
-            IndentedRow(
-                label = playlist.name,
-                onClick = {
-                    onAddToPlaylist(playlist.id)
-                    onDismiss()
-                },
-            )
+    GrayjayModalBottomSheet(onDismiss = onDismiss) {
+        // Header: title, then the metadata row underneath (title and stats
+        // never fit on one line at phone widths).
+        val stats =
+            buildList {
+                viewCount?.takeIf { it > 0 }?.let { add("${formatViewCount(it)} views") }
+                durationMs?.takeIf { it > 0 }?.let { add(formatDuration(it)) }
+                publishedAt?.let { add(RelativeTime.format(it)) }
+            }
+        if (title != null || stats.isNotEmpty()) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                if (title != null) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (stats.isNotEmpty()) {
+                    Text(
+                        text = stats.joinToString(" • "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
         }
-        IndentedRow(
-            label = "New playlist",
-            // No onDismiss here: the host shows a create dialog on top of
-            // this sheet. Dismissing first would unmount the dialog.
-            onClick = { onAddToPlaylist(null) },
-        )
 
-        OptionRow(
-            icon = { Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(24.dp)) },
-            label = "Share",
-            onClick = {
-                val intent =
-                    Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, url)
+        // Action tiles: 3 columns, unrolled rows (max 7 tiles = 3 rows).
+        val tiles =
+            buildList {
+                add(
+                    OptionTile(
+                        label = "Play",
+                        icon = Icons.Filled.PlayArrow,
+                        onClick = {
+                            onPlay()
+                            onDismiss()
+                        },
+                    ),
+                )
+                add(
+                    OptionTile(
+                        label = "Watch later",
+                        icon = Icons.Filled.History,
+                        selected = isWatchLaterSaved,
+                        onClick = onToggleWatchLater,
+                    ),
+                )
+                add(
+                    OptionTile(
+                        label = "Like",
+                        icon = if (isLikedSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        selected = isLikedSaved,
+                        onClick = onToggleLiked,
+                    ),
+                )
+                add(
+                    OptionTile(
+                        label = "Favourite",
+                        icon = if (isFavouriteSaved) Icons.Filled.Star else Icons.Filled.StarBorder,
+                        selected = isFavouriteSaved,
+                        onClick = onToggleFavourite,
+                    ),
+                )
+                add(
+                    OptionTile(
+                        label = "Add to playlist",
+                        icon = Icons.Filled.HistoryEdu,
+                        selected = showPlaylists,
+                        onClick = { showPlaylists = !showPlaylists },
+                    ),
+                )
+                add(
+                    OptionTile(
+                        label = "Share",
+                        icon = Icons.Filled.Share,
+                        onClick = {
+                            val intent =
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, url)
+                                }
+                            context.startActivity(
+                                Intent.createChooser(intent, "Share video"),
+                            )
+                            onDismiss()
+                        },
+                    ),
+                )
+                authorUrl?.let {
+                    add(
+                        OptionTile(
+                            label = "Go to channel",
+                            icon = Icons.Filled.Public,
+                            onClick = {
+                                onGoToChannel(it)
+                                onDismiss()
+                            },
+                        ),
+                    )
+                }
+            }
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+        ) {
+            optionTileRow(tiles, 0)
+            optionTileRow(tiles, 3)
+            optionTileRow(tiles, 6)
+            // ponytail: 3 unrolled rows cap the grid at 9 tiles; add a row
+            // here if a 10th action is ever added.
+        }
+
+        // Playlist picker: revealed by the "Add to playlist" tile.
+        if (showPlaylists) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+            ) {
+                playlists.forEach { playlist ->
+                    playlistPickRow(playlist.name) {
+                        onAddToPlaylist(playlist.id)
+                        onDismiss()
                     }
-                context.startActivity(
-                    Intent.createChooser(intent, "Share video"),
-                )
-                onDismiss()
-            },
-        )
+                }
+                playlistPickRow("New playlist") {
+                    // No onDismiss here: the host shows a create dialog on
+                    // top of this sheet. Dismissing first would unmount the
+                    // dialog.
+                    onAddToPlaylist(null)
+                }
+            }
+        }
+    }
+}
 
-        if (authorUrl != null) {
-            OptionRow(
-                icon = { Icon(Icons.Filled.Public, contentDescription = null, modifier = Modifier.size(24.dp)) },
-                label = "Go to channel",
-                onClick = {
-                    onGoToChannel(authorUrl)
-                    onDismiss()
-                },
+@Composable
+private fun optionTileRow(
+    tiles: List<OptionTile>,
+    start: Int,
+) {
+    if (start >= tiles.size) return
+    Row(modifier = Modifier.fillMaxWidth()) {
+        OptionTileView(
+            tile = tiles[start],
+            modifier = Modifier.weight(1f),
+        )
+        if (start + 1 < tiles.size) {
+            OptionTileView(
+                tile = tiles[start + 1],
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (start + 2 < tiles.size) {
+            OptionTileView(
+                tile = tiles[start + 2],
+                modifier = Modifier.weight(1f),
             )
         }
     }
 }
 
 @Composable
-private fun OptionRow(
-    icon: @Composable () -> Unit,
-    label: String,
-    onClick: (() -> Unit)?,
+private fun OptionTileView(
+    tile: OptionTile,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
+    Column(
         modifier =
-            Modifier
-                .fillMaxWidth()
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            modifier
+                .padding(4.dp)
+                .clip(
+                    RoundedCornerShape(
+                        12.dp,
+                    ),
+                )
+                .background(
+                    if (tile.selected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+                )
+                .clickable(onClick = tile.onClick)
+                .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        icon()
-        Spacer(modifier = Modifier.width(20.dp))
+        Icon(
+            imageVector = tile.icon,
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint =
+                if (tile.selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+        )
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 16.sp,
+            text = tile.label,
+            style = MaterialTheme.typography.labelSmall,
+            color =
+                if (tile.selected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
         )
     }
 }
 
 @Composable
-private fun IndentedRow(
+private fun playlistPickRow(
     label: String,
     onClick: () -> Unit,
 ) {
@@ -211,7 +319,7 @@ private fun IndentedRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(start = 60.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                .padding(horizontal = 4.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -221,3 +329,11 @@ private fun IndentedRow(
         )
     }
 }
+
+private data class OptionTile(
+    val label: String,
+    val icon: ImageVector,
+    val selected: Boolean = false,
+    val onClick: () -> Unit,
+)
+
