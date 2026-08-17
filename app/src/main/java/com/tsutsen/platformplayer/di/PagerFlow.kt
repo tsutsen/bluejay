@@ -39,7 +39,10 @@ class PagerFlow<T, R>(
         return try {
             pager.nextPage()
             val delta = pager.getResults().mapNotNull(map)
-            _items += delta
+            // Engine window pagers can re-return items from the previous page
+            // (small playlists running out of content). Drop duplicates so
+            // lazy grid keys (Card.id) stay unique.
+            _items += delta.filter { it !in _items }
             error = null
             delta
         } catch (e: Exception) {

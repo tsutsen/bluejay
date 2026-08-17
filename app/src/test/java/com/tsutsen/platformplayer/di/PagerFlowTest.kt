@@ -59,6 +59,19 @@ class PagerFlowTest {
     }
 
     @Test
+    fun loadNextPage_whenEngineReReturnsPreviousItems_deduplicates() {
+        // Small playlists: once content runs out, the engine window re-returns
+        // existing items. They must not reach [items] (duplicate lazy keys crash).
+        val flow =
+            PagerFlow(
+                DeltaPager(listOf(listOf("a", "b"), listOf("b", "c"))),
+            ) { it }
+        flow.loadInitial()
+        flow.loadNextPage()
+        assertEquals(listOf("a", "b", "c"), flow.items)
+    }
+
+    @Test
     fun loadNextPage_whenExhausted_returnsEmpty() {
         val flow = PagerFlow(DeltaPager(listOf(listOf("a")))) { it }
         flow.loadInitial()
