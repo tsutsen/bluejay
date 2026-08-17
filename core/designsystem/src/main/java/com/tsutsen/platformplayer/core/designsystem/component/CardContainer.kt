@@ -89,6 +89,7 @@ fun VideoContainer(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     trailingContent: (@Composable () -> Unit)? = null,
+    topContent: (@Composable () -> Unit)? = null,
     cardContent: @Composable (Card) -> Unit,
 ) {
     when (layout) {
@@ -109,6 +110,9 @@ fun VideoContainer(
                 contentPadding = contentPadding,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                if (topContent != null) {
+                    item(key = "__top__") { topContent() }
+                }
                 renderCards(items, cardContent, trailingContent)
             }
         }
@@ -153,6 +157,9 @@ fun VideoContainer(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (topContent != null) {
+                    item(key = "__top__") { topContent() }
+                }
                 renderCards(items, cardContent, trailingContent)
             }
         }

@@ -55,7 +55,7 @@ object EngineCardMapper {
 
             is IPlatformPlaylist -> {
                 PlaylistCard(
-                    id = contentId(content.id),
+                    id = playlistId(content),
                     title = content.name,
                     thumbnailUrl = content.thumbnail,
                     videoCount = content.videoCount.takeIf { it > 0 },
@@ -94,6 +94,17 @@ object EngineCardMapper {
         }
 
     fun contentId(id: PlatformID): String = "${id.platform}:${id.value ?: ""}"
+
+    /**
+     * Engine playlists often arrive without an id ("YouTube:"), and
+     * VideoContainer keys items by card id — colliding ids crash the
+     * LazyColumn. Fall back to url, then name, which are unique.
+     */
+    private fun playlistId(playlist: IPlatformPlaylist): String =
+        playlist.id.value
+            ?.takeIf { it.isNotBlank() }
+            ?.let { contentId(playlist.id) }
+            ?: playlist.url.ifBlank { playlist.name }
 
     private fun videoCard(video: IPlatformVideo): VideoCard =
         VideoCard(

@@ -2,6 +2,8 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -30,8 +32,13 @@ fun GrayjayModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
+        // Scrollable so long sheets (e.g. many playlists) never clip their
+        // bottom rows ("Go to channel" was cut off below the fold).
         Column(
-            modifier = Modifier.padding(bottom = 32.dp),
+            modifier =
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 32.dp),
         ) {
             if (title != null) {
                 Text(

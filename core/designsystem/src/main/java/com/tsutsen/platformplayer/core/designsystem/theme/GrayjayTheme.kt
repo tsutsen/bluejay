@@ -1,9 +1,7 @@
 package com.tsutsen.platformplayer.core.designsystem.theme
 
 import android.app.Activity
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,14 +18,18 @@ private val DarkColorSchemeCustom = darkColorScheme()
 fun GrayjayTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
-    colorScheme: ColorScheme = if (dynamicColor) {
-        if (darkTheme) dynamicDarkColorScheme(LocalView.current.context)
-        else dynamicLightColorScheme(LocalView.current.context)
-    } else {
-        if (darkTheme) DarkColorSchemeCustom else DefaultColorScheme
-    },
+    colorScheme: ColorScheme =
+        if (dynamicColor) {
+            if (darkTheme) {
+                dynamicDarkColorScheme(LocalView.current.context)
+            } else {
+                dynamicLightColorScheme(LocalView.current.context)
+            }
+        } else {
+            if (darkTheme) DarkColorSchemeCustom else DefaultColorScheme
+        },
     typography: Typography = GrayjayTypography,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -42,13 +44,15 @@ fun GrayjayTheme(
         colorScheme = colorScheme,
         typography = typography,
         content = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(colorScheme.surface)
+            // Surface (not Box) so LocalContentColor resolves to onSurface —
+            // bare Text/Icons would otherwise default to hardcoded Color.Black.
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = colorScheme.surface,
+                contentColor = colorScheme.onSurface,
             ) {
                 content()
             }
-        }
+        },
     )
 }

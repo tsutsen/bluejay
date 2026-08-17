@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,7 +39,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
@@ -277,12 +280,13 @@ fun PlaylistCardView(
     card: PlaylistCard,
     onClick: () -> Unit,
 ) {
+    // Video-card shape: 16:9 cover on top, title + count below. A missing
+    // cover shows a placeholder icon (AsyncImage would spin forever on a
+    // null url).
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp))
                 .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -291,29 +295,48 @@ fun PlaylistCardView(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+        Column(
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(
-                modifier = Modifier.padding(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
             ) {
-                AsyncImage(
-                    url = card.thumbnailUrl,
-                    contentDescription = card.title,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(4.dp)),
-                )
+                if (card.thumbnailUrl != null) {
+                    AsyncImage(
+                        url = card.thumbnailUrl,
+                        contentDescription = card.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.PlaylistPlay,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Column(
+                modifier =
+                    Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+            ) {
                 Text(
                     text = card.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 if (card.videoCount != null) {
+                    Spacer(Modifier.height(6.dp))
                     Text(
                         text = "${card.videoCount} videos",
                         style = MaterialTheme.typography.bodySmall,

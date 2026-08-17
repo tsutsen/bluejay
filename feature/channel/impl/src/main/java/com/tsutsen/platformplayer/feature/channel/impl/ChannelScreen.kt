@@ -9,12 +9,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,11 +38,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.designsystem.component.ChannelHero
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
@@ -47,6 +53,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
+import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import java.text.NumberFormat
@@ -78,13 +85,56 @@ fun ChannelScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(loaded?.channel?.name ?: "Channel") },
+            title = {
+                loaded?.let { state ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AsyncImage(
+                            url = state.channel.thumbnail,
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                        )
+                        Column(
+                            modifier =
+                                Modifier
+                                    .padding(start = 12.dp)
+                                    .weight(1f),
+                        ) {
+                            Text(
+                                text = state.channel.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = formatSubscribers(state.channel.subscribers),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                } ?: Text("Channel")
+            },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                     )
+                }
+            },
+            actions = {
+                loaded?.let { state ->
+                    Button(onClick = { viewModel.toggleSubscription() }) {
+                        Text(if (state.isSubscribed) "Subscribed" else "Subscribe")
+                    }
                 }
             },
         )
@@ -116,14 +166,12 @@ fun ChannelScreen(
                                 .weight(1f)
                                 .fillMaxSize(),
                     ) {
-                        ChannelHero(
-                            bannerUrl = state.channel.banner,
-                            avatarUrl = state.channel.thumbnail,
-                            channelName = state.channel.name,
-                            subscriberCount = formatSubscribers(state.channel.subscribers),
-                            isSubscribed = state.isSubscribed,
-                            onSubscribe = { viewModel.toggleSubscription() },
-                        )
+                        // Wide keeps the banner pinned: a grid item cannot span
+                        // both columns, so the scrollable banner (topContent)
+                        // is list-only.
+                        if (isWide) {
+                            ChannelBanner(bannerUrl = state.channel.banner)
+                        }
 
                         if (isWide) {
                             ChannelContent(
@@ -185,6 +233,35 @@ fun ChannelScreen(
     }
 }
 
+@Composable
+private fun optionalBanner(
+    bannerUrl: String?,
+    isWide: Boolean,
+): (@Composable () -> Unit)? {
+    // Named helper: an if-expression lambda is not inferred as composable.
+    if (isWide) return null
+    return { ChannelBanner(bannerUrl = bannerUrl) }
+}
+
+@Composable
+private fun ChannelBanner(bannerUrl: String?) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(160.dp),
+    ) {
+        if (bannerUrl != null) {
+            AsyncImage(
+                url = bannerUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+    }
+}
+
 private data class ChannelTab(
     val label: String,
     val icon: ImageVector,
@@ -213,7 +290,17 @@ private fun ChannelContent(
 ) {
     when (selectedTab) {
         TAB_ABOUT -> {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+            ) {
+                if (!isWide) {
+                    ChannelBanner(bannerUrl = state.channel.banner)
+                    Spacer(Modifier.height(16.dp))
+                }
                 state.channel.description?.let { description ->
                     Text(
                         text = description,
@@ -260,6 +347,7 @@ private fun ChannelContent(
                     hasMorePages = false,
                     onCardClick = onCardClick,
                     onLoadMore = {},
+                    topContent = optionalBanner(state.channel.banner, isWide),
                 ) { card ->
                     if (card is PlaylistCard) {
                         PlaylistRow(
@@ -297,6 +385,7 @@ private fun ChannelContent(
                     hasMorePages = state.hasMore,
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
+                    topContent = optionalBanner(state.channel.banner, isWide),
                 ) { card ->
                     if (card is CoreVideoCard) {
                         VideoCard(
