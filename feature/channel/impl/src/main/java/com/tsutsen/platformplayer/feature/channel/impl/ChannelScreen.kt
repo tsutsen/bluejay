@@ -98,11 +98,12 @@ fun ChannelScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxWidth()) {
             loaded?.channel?.banner?.let { bannerUrl ->
-                // Cover as the top-bar background: height-fitted (Crop, never
-                // stretched), centered between the avatar badge and the
-                // subscribe button. Edge gradients fade the cover into the
-                // page background.
-                Box(modifier = Modifier.fillMaxSize()) {
+                // Cover as the top-bar background: sized to the bar itself
+                // (matchParentSize), height-fitted (Crop, never stretched),
+                // centered between the avatar badge and the subscribe
+                // button. Edge gradients fade the cover into the page
+                // background.
+                Box(modifier = Modifier.matchParentSize()) {
                     AsyncImage(
                         url = bannerUrl,
                         contentDescription = null,
