@@ -40,6 +40,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
+import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistInfo
 import com.tsutsen.platformplayer.core.navigation.Navigator
@@ -69,6 +70,7 @@ fun PlaylistDetailScreen(
     viewModel: PlaylistDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isWide = rememberIsWide()
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
 
     LaunchedEffect(playlistUrl) {
@@ -159,7 +161,7 @@ fun PlaylistDetailScreen(
                 } else {
                     VideoContainer(
                         items = state.cards,
-                        layout = ContainerLayout.List,
+                        layout = if (isWide) ContainerLayout.Grid(2) else ContainerLayout.List,
                         isLoading = false,
                         hasMorePages = state.hasMore,
                         onCardClick = { card ->

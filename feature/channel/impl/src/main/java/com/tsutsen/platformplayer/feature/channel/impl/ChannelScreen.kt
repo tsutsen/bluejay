@@ -60,6 +60,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.core.ui.AsyncImage
+import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import java.text.NumberFormat
@@ -329,15 +330,15 @@ private fun ChannelContent(
             } else {
                 VideoContainer(
                     items = state.playlists,
-                    layout = ContainerLayout.List,
+                    layout = if (isWide) ContainerLayout.Grid(2) else ContainerLayout.List,
                     isLoading = false,
                     hasMorePages = false,
                     onCardClick = onCardClick,
                     onLoadMore = {},
-                    topContent = { ChannelBanner(bannerUrl = state.channel.banner) },
+                    topContent = if (isWide) null else channelBannerContent(state.channel.banner),
                 ) { card ->
                     if (card is PlaylistCard) {
-                        PlaylistRow(
+                        PlaylistCardView(
                             card = card,
                             onClick = { onCardClick(card) },
                         )
@@ -471,31 +472,9 @@ private fun WideVideoCell(
 }
 
 @Composable
-private fun PlaylistRow(
-    card: PlaylistCard,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.PlaylistPlay,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = "${card.title} (${card.videoCount ?: 0})",
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
+private fun channelBannerContent(bannerUrl: String?): (@Composable () -> Unit)? {
+    if (bannerUrl == null) return null
+    return { ChannelBanner(bannerUrl = bannerUrl) }
 }
 
 @Composable
