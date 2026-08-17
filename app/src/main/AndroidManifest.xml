@@ -64,6 +64,16 @@
             android:enabled="true"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Debug-only: close the player via `am broadcast` for adb testing. -->
+        <receiver
+            android:name=".debug.DebugPlayerControlReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.tsutsen.platformplayer.d.DEBUG_PLAYER_CLOSE" />
+            </intent-filter>
+        </receiver>
+
         <receiver android:name=".receivers.MediaControlReceiver" />
         <receiver android:name=".receivers.AudioNoisyReceiver" />
         <receiver android:name=".receivers.PlannedNotificationReceiver" />

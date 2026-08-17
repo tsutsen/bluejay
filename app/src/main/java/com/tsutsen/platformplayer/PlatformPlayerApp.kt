@@ -8,7 +8,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.core.content.edit
 import com.google.android.material.color.DynamicColors
+import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 import java.io.File
 
 private const val TAG = "GrayjayTheme"
@@ -20,6 +22,13 @@ private const val TAG = "GrayjayTheme"
  */
 @HiltAndroidApp
 class PlatformPlayerApp : Application() {
+
+    @Inject
+    lateinit var playerRepository: PlayerRepository
+
+    /** Accessor for components that cannot use Hilt (e.g. plain broadcast receivers). */
+    fun playerRepository(): PlayerRepository = playerRepository
+
     companion object {
         /** Process-wide context, set in [onCreate]; used by [Settings] persistence. */
         var context: Context? = null
