@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.library.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
@@ -24,8 +25,26 @@ class VideoOptionsViewModel
     @Inject
     constructor(
         private val libraryRepository: LibraryRepository,
+        private val downloadsRepository: DownloadsRepository,
     ) : ViewModel() {
         private val savedTypesCache = mutableMapOf<String, StateFlow<Set<SavedVideoType>>>()
+
+        private val _downloadMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
+        /** One-shot feedback for download actions (shown as a toast). */
+        val downloadMessage: StateFlow<String?> = _downloadMessage
+
+        fun consumeDownloadMessage() {
+            _downloadMessage.value = null
+        }
+
+        fun download(video: VideoCard) {
+            viewModelScope.launch {
+                val error = downloadsRepository.startDownload(video.url)
+                _downloadMessage.value =
+                    if (error == null) "Download started" else error
+            }
+        }
 
         val playlists: StateFlow<List<PlaylistOption>>
             get() = libraryRepository.playlists

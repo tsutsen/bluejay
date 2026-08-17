@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -31,7 +32,7 @@ import androidx.window.core.layout.WindowWidthSizeClass
  */
 data class AppLayoutConfig(
     val isWide: Boolean = false,
-    val showNavigation: Boolean = true
+    val showNavigation: Boolean = true,
 )
 
 /**
@@ -40,8 +41,9 @@ data class AppLayoutConfig(
 @Composable
 fun rememberAppLayoutConfig(): AppLayoutConfig {
     val adaptiveInfo = currentWindowAdaptiveInfo()
-    val isWide = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
-                  adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    val isWide =
+        adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
+            adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
     return AppLayoutConfig(isWide = isWide)
 }
 
@@ -52,20 +54,21 @@ data class NavItemDef(
     val key: String,
     val icon: ImageVector,
     val selectedIcon: ImageVector,
-    val label: String
+    val label: String,
 )
 
 /**
  * Standard navigation items for the app chrome.
  */
-val grayjayNavItems = listOf(
-    NavItemDef("home", Icons.Outlined.Home, Icons.Filled.Home, "Home"),
-    NavItemDef("search", Icons.Outlined.Search, Icons.Filled.Search, "Search"),
-    NavItemDef("subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subscriptions"),
-    NavItemDef("library", Icons.Outlined.LibraryBooks, Icons.Filled.LibraryBooks, "Library"),
-    NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
-    NavItemDef("settings", Icons.Outlined.Settings, Icons.Filled.Settings, "Settings")
-)
+val grayjayNavItems =
+    listOf(
+        NavItemDef("home", Icons.Outlined.Home, Icons.Filled.Home, "Home"),
+        NavItemDef("search", Icons.Outlined.Search, Icons.Filled.Search, "Search"),
+        NavItemDef("subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subscriptions"),
+        NavItemDef("library", Icons.Outlined.LibraryBooks, Icons.Filled.LibraryBooks, "Library"),
+        NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
+        NavItemDef("settings", Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
+    )
 
 /**
  * Navigation rail chrome for landscape/wide layouts.
@@ -74,10 +77,13 @@ val grayjayNavItems = listOf(
 fun AppNavigationRail(
     items: List<NavItemDef>,
     currentDestination: String?,
-    onTabSelected: (String) -> Unit
+    onTabSelected: (String) -> Unit,
 ) {
     NavigationRail(
-        modifier = Modifier.width(80.dp)
+        modifier =
+            Modifier
+                .width(80.dp)
+                .statusBarsPadding(),
     ) {
         items.forEach { item ->
             NavigationRailItem(
@@ -86,10 +92,10 @@ fun AppNavigationRail(
                 icon = {
                     Icon(
                         imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
-                        contentDescription = item.label
+                        contentDescription = item.label,
                     )
                 },
-                label = { Text(item.label) }
+                label = { Text(item.label) },
             )
         }
     }
@@ -102,7 +108,7 @@ fun AppNavigationRail(
 fun AppNavigationBar(
     items: List<NavItemDef>,
     currentDestination: String?,
-    onTabSelected: (String) -> Unit
+    onTabSelected: (String) -> Unit,
 ) {
     NavigationBar {
         items.forEach { item ->
@@ -112,10 +118,10 @@ fun AppNavigationBar(
                 icon = {
                     Icon(
                         imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
-                        contentDescription = item.label
+                        contentDescription = item.label,
                     )
                 },
-                label = { Text(item.label) }
+                label = { Text(item.label) },
             )
         }
     }
@@ -128,20 +134,21 @@ fun AppNavigationBar(
 fun AppNavigationChrome(
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
-    isWide: Boolean = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
-                  currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    isWide: Boolean =
+        currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
+            currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED,
 ) {
     if (isWide) {
         AppNavigationRail(
             items = grayjayNavItems,
             currentDestination = currentDestination,
-            onTabSelected = onTabSelected
+            onTabSelected = onTabSelected,
         )
     } else {
         AppNavigationBar(
             items = grayjayNavItems,
             currentDestination = currentDestination,
-            onTabSelected = onTabSelected
+            onTabSelected = onTabSelected,
         )
     }
 }
@@ -156,7 +163,7 @@ fun AppLayout(
     config: AppLayoutConfig = rememberAppLayoutConfig(),
     navigationContent: @Composable () -> Unit,
     content: @Composable () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     if (config.isWide) {
         // Landscape: NavigationRail on left + content
@@ -164,24 +171,26 @@ fun AppLayout(
             AnimatedVisibility(
                 visible = config.showNavigation,
                 enter = fadeIn(animationSpec = tween(300)),
-                exit = fadeOut(animationSpec = tween(300))
+                exit = fadeOut(animationSpec = tween(300)),
             ) {
                 navigationContent()
             }
-            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+            // Status-bar inset: MainActivity is edge-to-edge, so the content
+            // area must start below the status bar (all screens rely on this).
+            Box(modifier = Modifier.weight(1f).fillMaxSize().statusBarsPadding()) {
                 content()
             }
         }
     } else {
         // Portrait: Content + NavigationBar at bottom
         Column(modifier = modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+            Box(modifier = Modifier.weight(1f).fillMaxSize().statusBarsPadding()) {
                 content()
             }
             AnimatedVisibility(
                 visible = config.showNavigation,
                 enter = fadeIn(animationSpec = tween(300)),
-                exit = fadeOut(animationSpec = tween(300))
+                exit = fadeOut(animationSpec = tween(300)),
             ) {
                 navigationContent()
             }

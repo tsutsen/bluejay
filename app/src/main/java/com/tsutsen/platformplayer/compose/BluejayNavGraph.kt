@@ -137,6 +137,12 @@ fun GrayjayNavGraph(
             PlaceholderScreen("Playlist Search", "Coming soon")
         }
 
+        is NavDestination.Notifications -> {
+            NotificationsScreen(
+                onBack = { navigator.goBack() },
+            )
+        }
+
         is NavDestination.WatchLater -> {
             PlaceholderScreen("Watch Later", "Coming soon")
         }

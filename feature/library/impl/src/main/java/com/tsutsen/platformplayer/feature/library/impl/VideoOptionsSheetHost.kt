@@ -1,15 +1,18 @@
 package com.tsutsen.platformplayer.feature.library.impl
 
+import android.widget.Toast
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.model.SavedVideoType
@@ -34,7 +37,17 @@ fun VideoOptionsSheetHost(
     val viewModel: VideoOptionsViewModel = hiltViewModel()
     val savedTypes by viewModel.savedTypes(video.url).collectAsState(initial = emptySet())
     val playlists by viewModel.playlists.collectAsState(initial = emptyList())
+    val downloadMessage by viewModel.downloadMessage.collectAsState()
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
+
+    // One-shot feedback ("Download started" / error) as a system toast.
+    val context = LocalContext.current
+    LaunchedEffect(downloadMessage) {
+        downloadMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.consumeDownloadMessage()
+        }
+    }
 
     VideoOptionsSheet(
         url = video.url,
@@ -49,6 +62,9 @@ fun VideoOptionsSheetHost(
         },
         onToggleFavourite = {
             viewModel.toggle(SavedVideoType.FAVOURITE, video)
+        },
+        onDownload = {
+            viewModel.download(video)
         },
         onAddToPlaylist = { playlistId ->
             if (playlistId == null) {

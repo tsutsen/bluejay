@@ -23,8 +23,7 @@ object DatabaseModule {
                 context,
                 AppDatabase::class.java,
                 "grayjay_database",
-            )
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            ).addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
             // Safety net only: MIGRATION_1_2 is registered above, so this
             // triggers just for an unregistered future version (same as before).
             .fallbackToDestructiveMigration()
@@ -47,4 +46,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSavedVideoDao(database: AppDatabase) = database.savedVideoDao()
+
+    @Provides
+    fun provideNotificationDao(database: AppDatabase) = database.notificationDao()
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.History
@@ -66,6 +67,7 @@ fun VideoOptionsSheet(
     onToggleWatchLater: () -> Unit,
     onToggleLiked: () -> Unit,
     onToggleFavourite: () -> Unit,
+    onDownload: () -> Unit,
     onAddToPlaylist: (Long?) -> Unit,
     isWatchLaterSaved: Boolean = false,
     isLikedSaved: Boolean = false,
@@ -153,6 +155,13 @@ fun VideoOptionsSheet(
                         icon = if (isFavouriteSaved) Icons.Filled.Star else Icons.Filled.StarBorder,
                         selected = isFavouriteSaved,
                         onClick = onToggleFavourite,
+                    ),
+                )
+                add(
+                    OptionTile(
+                        label = "Download",
+                        icon = Icons.Filled.Download,
+                        onClick = onDownload,
                     ),
                 )
                 add(
@@ -274,15 +283,13 @@ internal fun OptionTileView(
                     RoundedCornerShape(
                         12.dp,
                     ),
-                )
-                .background(
+                ).background(
                     if (tile.selected) {
                         MaterialTheme.colorScheme.primaryContainer
                     } else {
                         MaterialTheme.colorScheme.surfaceContainer
                     },
-                )
-                .clickable(onClick = tile.onClick)
+                ).clickable(onClick = tile.onClick)
                 .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -343,4 +350,3 @@ internal data class OptionTile(
     val selected: Boolean = false,
     val onClick: () -> Unit,
 )
-

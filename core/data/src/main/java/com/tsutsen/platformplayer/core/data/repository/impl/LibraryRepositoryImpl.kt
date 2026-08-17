@@ -1,13 +1,17 @@
 package com.tsutsen.platformplayer.core.data.repository.impl
 
+import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.database.dao.HistoryDao
 import com.tsutsen.platformplayer.core.database.dao.PlaylistDao
 import com.tsutsen.platformplayer.core.database.dao.PlaylistStatsEntity
 import com.tsutsen.platformplayer.core.database.dao.SavedVideoDao
+import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
 import com.tsutsen.platformplayer.core.database.entity.PlaylistEntity
 import com.tsutsen.platformplayer.core.database.entity.PlaylistVideoEntity
 import com.tsutsen.platformplayer.core.database.entity.SavedVideoEntity
 import com.tsutsen.platformplayer.core.model.Card
+import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PlaylistInfo
@@ -39,6 +43,8 @@ class LibraryRepositoryImpl
     constructor(
         private val savedVideoDao: SavedVideoDao,
         private val playlistDao: PlaylistDao,
+        private val historyDao: HistoryDao,
+        private val downloadsRepository: DownloadsRepository,
     ) : LibraryRepository {
         private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -49,17 +55,33 @@ class LibraryRepositoryImpl
         override val playlists: StateFlow<List<PlaylistOption>> = _playlists.asStateFlow()
 
         init {
-            val combinedFlow =
+            // combine() tops out at 5 flows — nest two 3-way combines.
+            val savedFlow =
                 combine(
                     savedVideoDao.observeByType(SavedVideoType.WATCH_LATER),
                     savedVideoDao.observeByType(SavedVideoType.LIKED),
                     savedVideoDao.observeByType(SavedVideoType.FAVOURITE),
+                ) { watchLater, liked, favourite ->
+                    Triple(watchLater, liked, favourite)
+                }
+            val restFlow =
+                combine(
+                    historyDao.observeAll(),
+                    downloadsRepository.downloads,
                     playlistDao.observeAll(),
-                ) { watchLater, liked, favourite, playlists ->
+                ) { history, downloads, playlists ->
+                    Triple(history, downloads, playlists)
+                }
+            val combinedFlow =
+                combine(savedFlow, restFlow) { saved, rest ->
+                    val (watchLater, liked, favourite) = saved
+                    val (history, downloads, playlists) = rest
                     listOf(
                         buildSection(WATCH_LATER_ID, "Watch Later", watchLater.map { it.toVideoCard() }),
                         buildSection(LIKED_ID, "Liked", liked.map { it.toVideoCard() }),
                         buildSection(FAVOURITE_ID, "Favourites", favourite.map { it.toVideoCard() }),
+                        buildSection(HISTORY_ID, "History", history.map { it.toVideoCard() }),
+                        buildSection(DOWNLOADS_ID, "Downloads", downloads.filter { it.done }.map { it.toVideoCard() }),
                         buildSection(PLAYLISTS_ID, "Playlists", playlists.map { it.toPlaylistCard() }),
                     )
                 }
@@ -90,6 +112,8 @@ class LibraryRepositoryImpl
                 WATCH_LATER_ID -> savedVideoDao.observeByType(SavedVideoType.WATCH_LATER).map { list -> list.map { it.toVideoCard() } }
                 LIKED_ID -> savedVideoDao.observeByType(SavedVideoType.LIKED).map { list -> list.map { it.toVideoCard() } }
                 FAVOURITE_ID -> savedVideoDao.observeByType(SavedVideoType.FAVOURITE).map { list -> list.map { it.toVideoCard() } }
+                HISTORY_ID -> historyDao.observeAll().map { list -> list.map { it.toVideoCard() } }
+                DOWNLOADS_ID -> downloadsRepository.downloads.map { list -> list.filter { it.done }.map { it.toVideoCard() } }
                 PLAYLISTS_ID -> playlistDao.observeAll().map { list -> list.map { it.toPlaylistCard() } }
                 else -> MutableStateFlow<List<Card>>(emptyList())
             }
@@ -249,6 +273,30 @@ class LibraryRepositoryImpl
                 url = contentUrl,
             )
 
+        private fun HistoryEntity.toVideoCard(): VideoCard =
+            VideoCard(
+                id = contentUrl,
+                title = title,
+                thumbnailUrl = thumbnailUrl,
+                author = author,
+                durationMs = totalDurationMs.takeIf { it > 0 },
+                viewCount = null,
+                publishedAt = watchedAt,
+                url = contentUrl,
+            )
+
+        private fun DownloadInfo.toVideoCard(): VideoCard =
+            VideoCard(
+                id = url,
+                title = title,
+                thumbnailUrl = thumbnailUrl,
+                author = author,
+                durationMs = durationMs,
+                viewCount = null,
+                publishedAt = null,
+                url = url,
+            )
+
         private fun PlaylistEntity.toPlaylistCard(): PlaylistCard =
             PlaylistCard(
                 id = id.toString(),
@@ -263,6 +311,8 @@ class LibraryRepositoryImpl
             const val WATCH_LATER_ID = "watch_later"
             const val LIKED_ID = "liked"
             const val FAVOURITE_ID = "favourite"
+            const val HISTORY_ID = "history"
+            const val DOWNLOADS_ID = "downloads"
             const val PLAYLISTS_ID = "playlists"
         }
     }

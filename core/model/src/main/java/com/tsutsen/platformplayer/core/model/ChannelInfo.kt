@@ -12,4 +12,5 @@ data class ChannelInfo(
     val description: String?,
     val links: Map<String, String>,
     val isSubscribed: Boolean,
+    val notifyEnabled: Boolean = false,
 )

@@ -51,6 +51,7 @@ class ChannelViewModel
                 val contentError: String? = null,
                 val playlists: List<Card> = emptyList(),
                 val isSubscribed: Boolean = false,
+                val notifyEnabled: Boolean = false,
                 val isRefreshing: Boolean = false,
             ) : ChannelUiState
         }
@@ -71,6 +72,7 @@ class ChannelViewModel
                             ChannelUiState.Loaded(
                                 channel = info,
                                 isSubscribed = info.isSubscribed,
+                                notifyEnabled = info.notifyEnabled,
                             )
                         loadInitialContents()
                     }.onFailure { e ->
@@ -154,7 +156,11 @@ class ChannelViewModel
                     .onSuccess { info ->
                         _uiState.update {
                             if (it is ChannelUiState.Loaded) {
-                                it.copy(channel = info, isSubscribed = info.isSubscribed)
+                                it.copy(
+                                    channel = info,
+                                    isSubscribed = info.isSubscribed,
+                                    notifyEnabled = info.notifyEnabled,
+                                )
                             } else {
                                 it
                             }
@@ -184,6 +190,17 @@ class ChannelViewModel
                 val subscribed = channelRepository.toggleSubscription(url)
                 _uiState.update {
                     if (it is ChannelUiState.Loaded) it.copy(isSubscribed = subscribed) else it
+                }
+            }
+        }
+
+        fun toggleNotify() {
+            val state = uiState.value as? ChannelUiState.Loaded ?: return
+            val url = state.channel.url
+            viewModelScope.launch {
+                val enabled = channelRepository.toggleNotifications(url)
+                _uiState.update {
+                    if (it is ChannelUiState.Loaded) it.copy(notifyEnabled = enabled) else it
                 }
             }
         }

@@ -23,6 +23,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.Button
@@ -136,42 +138,42 @@ fun ChannelScreen(
                         titleContentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                 title = {
-                loaded?.let { state ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AsyncImage(
-                            url = state.channel.thumbnail,
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape),
-                            contentScale = ContentScale.Crop,
-                        )
-                        Column(
-                            modifier =
-                                Modifier
-                                    .padding(start = 12.dp)
-                                    .weight(1f),
+                    loaded?.let { state ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                text = state.channel.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                            AsyncImage(
+                                url = state.channel.thumbnail,
+                                contentDescription = null,
+                                modifier =
+                                    Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape),
+                                contentScale = ContentScale.Crop,
                             )
-                            Text(
-                                text = formatSubscribers(state.channel.subscribers),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                            )
+                            Column(
+                                modifier =
+                                    Modifier
+                                        .padding(start = 12.dp)
+                                        .weight(1f),
+                            ) {
+                                Text(
+                                    text = state.channel.name,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = formatSubscribers(state.channel.subscribers),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
                         }
-                    }
-                } ?: Text("Channel")
-            },
+                    } ?: Text("Channel")
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -182,6 +184,25 @@ fun ChannelScreen(
                 },
                 actions = {
                     loaded?.let { state ->
+                        // Bell only makes sense on a subscribed channel.
+                        if (state.isSubscribed) {
+                            IconButton(onClick = { viewModel.toggleNotify() }) {
+                                Icon(
+                                    imageVector =
+                                        if (state.notifyEnabled) {
+                                            Icons.Filled.Notifications
+                                        } else {
+                                            Icons.Filled.NotificationsOff
+                                        },
+                                    contentDescription =
+                                        if (state.notifyEnabled) {
+                                            "Notifications on"
+                                        } else {
+                                            "Notifications off"
+                                        },
+                                )
+                            }
+                        }
                         Button(onClick = { viewModel.toggleSubscription() }) {
                             Text(if (state.isSubscribed) "Subscribed" else "Subscribe")
                         }

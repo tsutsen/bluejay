@@ -26,6 +26,12 @@ interface ChannelRepository {
     /** Subscribes or unsubscribes. Returns the new state. */
     suspend fun toggleSubscription(url: String): Boolean
 
+    /** Whether new-video notifications are enabled for this channel. */
+    fun isNotificationsEnabled(url: String): Boolean
+
+    /** Toggles new-video notifications. Returns the new state. */
+    suspend fun toggleNotifications(url: String): Boolean
+
     /** Loads the first page of the channel's contents (newest first). */
     suspend fun loadInitialContents(url: String): ChannelContentPage
 

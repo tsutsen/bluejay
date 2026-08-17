@@ -36,10 +36,22 @@ class EngineChannelRepositoryImpl
                 description = channel.description,
                 links = channel.links,
                 isSubscribed = StateSubscriptions.instance.isSubscribed(channel.url),
+                notifyEnabled = StateSubscriptions.instance.getSubscription(channel.url)?.doNotifications == true,
             )
         }
 
         override fun isSubscribed(url: String): Boolean = StateSubscriptions.instance.isSubscribed(url)
+
+        override fun isNotificationsEnabled(url: String): Boolean =
+            StateSubscriptions.instance.getSubscription(url)?.doNotifications == true
+
+        override suspend fun toggleNotifications(url: String): Boolean {
+            val sub = StateSubscriptions.instance.getSubscription(url)
+            if (sub == null) return false
+            sub.doNotifications = !sub.doNotifications
+            sub.saveAsync()
+            return sub.doNotifications
+        }
 
         override suspend fun toggleSubscription(url: String): Boolean {
             if (StateSubscriptions.instance.isSubscribed(url)) {

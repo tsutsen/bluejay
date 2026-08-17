@@ -17,8 +17,9 @@ import com.tsutsen.platformplayer.core.database.entity.*
         HomeFeedCacheEntity::class,
         SubscriptionEntity::class,
         SavedVideoEntity::class,
+        NotificationEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -35,7 +36,36 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun savedVideoDao(): SavedVideoDao
 
+    abstract fun notificationDao(): NotificationDao
+
     companion object {
+        /** v3 -> v4: adds the in-app notifications table. */
+        val MIGRATION_3_4 =
+            object : Migration(3, 4) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `notifications` (
+                            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            `subscriptionUrl` TEXT NOT NULL,
+                            `subscriptionName` TEXT NOT NULL,
+                            `contentUrl` TEXT NOT NULL,
+                            `title` TEXT NOT NULL,
+                            `thumbnailUrl` TEXT,
+                            `timestamp` INTEGER NOT NULL,
+                            `isRead` INTEGER NOT NULL DEFAULT 0
+                        )
+                        """.trimIndent(),
+                    )
+                    db.execSQL(
+                        """
+                        CREATE UNIQUE INDEX IF NOT EXISTS `index_notifications_subscriptionUrl_contentUrl`
+                        ON `notifications` (`subscriptionUrl`, `contentUrl`)
+                        """.trimIndent(),
+                    )
+                }
+            }
+
         /**
          * v2 -> v3: cleans up duplicate playlist videos (a video could be
          * added twice, which crashed the playlist grid with duplicate
