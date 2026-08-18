@@ -72,6 +72,14 @@ class VideoOptionsViewModel
             }
         }
 
+        fun deleteDownload(video: VideoCard) {
+            viewModelScope.launch {
+                val error = downloadsRepository.deleteDownload(video.url)
+                _downloadMessage.value =
+                    if (error == null) "Download deleted" else error
+            }
+        }
+
         private val downloadStateCache = mutableMapOf<String, StateFlow<DownloadButtonState>>()
 
         /** Live download state for [url] — drives the options sheet button. */

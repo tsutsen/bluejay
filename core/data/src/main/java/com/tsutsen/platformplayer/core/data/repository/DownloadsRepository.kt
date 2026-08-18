@@ -24,4 +24,10 @@ interface DownloadsRepository {
      * @return an error message, or null if the download was cancelled.
      */
     suspend fun cancelDownload(videoUrl: String): String?
+
+    /**
+     * Delete the downloaded copy of [videoUrl] (record + media files).
+     * @return an error message, or null if the deletion succeeded.
+     */
+    suspend fun deleteDownload(videoUrl: String): String?
 }

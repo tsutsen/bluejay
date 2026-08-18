@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -167,19 +167,18 @@ fun VideoOptionsSheet(
                         label =
                             when (downloadState) {
                                 is DownloadButtonState.Downloading -> "Stop download"
-                                is DownloadButtonState.Downloaded -> "Downloaded"
+                                is DownloadButtonState.Downloaded -> "Delete"
                                 is DownloadButtonState.Starting -> "Starting..."
                                 is DownloadButtonState.Idle -> "Download"
                             },
                         icon =
                             when (downloadState) {
                                 is DownloadButtonState.Downloading -> Icons.Filled.Stop
-                                is DownloadButtonState.Downloaded -> Icons.Filled.Check
+                                is DownloadButtonState.Downloaded -> Icons.Filled.Delete
                                 else -> Icons.Filled.Download
                             },
                         progress = (downloadState as? DownloadButtonState.Downloading)?.progress,
                         indeterminate = downloadState is DownloadButtonState.Starting,
-                        disabled = downloadState is DownloadButtonState.Downloaded,
                         onClick = onDownload,
                     ),
                 )

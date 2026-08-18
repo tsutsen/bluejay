@@ -74,8 +74,10 @@ fun VideoOptionsSheetHost(
 
                 is DownloadButtonState.Downloading -> viewModel.stopDownload(video)
 
-                // Starting / Downloaded: no-op, the button shows it.
-                else -> Unit
+                is DownloadButtonState.Downloaded -> viewModel.deleteDownload(video)
+
+                // Starting: no-op, the button shows it.
+                is DownloadButtonState.Starting -> Unit
             }
         },
         downloadState = downloadState,

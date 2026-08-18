@@ -94,6 +94,21 @@ class EngineDownloadsRepository
                 }
             }
 
+        override suspend fun deleteDownload(videoUrl: String): String? =
+            withContext(Dispatchers.IO) {
+                val video =
+                    StateDownloads.instance.getDownloadedVideos().firstOrNull { it.url == videoUrl }
+                if (video == null) {
+                    "Not downloaded"
+                } else {
+                    // deleteCachedVideo -> store delete -> VideoLocal.onDelete(),
+                    // which removes the actual video/audio/subtitle files.
+                    StateDownloads.instance.deleteCachedVideo(video.id)
+                    refresh()
+                    null
+                }
+            }
+
         override suspend fun cancelDownload(videoUrl: String): String? =
             withContext(Dispatchers.IO) {
                 val download =
