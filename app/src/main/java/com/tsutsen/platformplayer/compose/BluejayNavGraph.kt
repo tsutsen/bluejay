@@ -138,9 +138,7 @@ fun GrayjayNavGraph(
         }
 
         is NavDestination.Notifications -> {
-            NotificationsScreen(
-                onBack = { navigator.goBack() },
-            )
+            NotificationsScreen()
         }
 
         is NavDestination.WatchLater -> {

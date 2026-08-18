@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -76,23 +75,15 @@ class NotificationsViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
-    onBack: () -> Unit,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     viewModel: NotificationsViewModel = hiltViewModel(),
 ) {
     val notifications by viewModel.notifications.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // A bottom-bar tab, like Home/Library — no back arrow.
         TopAppBar(
             title = { Text("Notifications") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                    )
-                }
-            },
             actions = {
                 TextButton(onClick = { viewModel.markAllRead() }) {
                     Icon(
