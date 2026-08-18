@@ -52,10 +52,21 @@ class Navigator
                 }
         }
 
+        /**
+         * Whether the search field should auto-focus (keyboard up) on the
+         * next entry to the search tab. Set by [navigateSearch]; defaults
+         * to true so tab-bar entries focus.
+         */
+        private val _searchAutoFocus = MutableStateFlow(true)
+        val searchAutoFocus: StateFlow<Boolean> = _searchAutoFocus.asStateFlow()
+
         // Top-level navigation
         fun navigateHome() = navigate(NavDestination.Home)
 
-        fun navigateSearch() = navigate(NavDestination.Search)
+        fun navigateSearch(autoFocus: Boolean = true) {
+            _searchAutoFocus.value = autoFocus
+            navigate(NavDestination.Search)
+        }
 
         fun navigateSubscriptions() = navigate(NavDestination.Subscriptions)
 

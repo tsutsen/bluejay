@@ -4,6 +4,8 @@ import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.core.data.repository.SearchRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.SearchResult
+import com.tsutsen.platformplayer.core.model.SearchSort
+import com.tsutsen.platformplayer.core.model.SearchType
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
@@ -31,19 +33,35 @@ class EngineSearchRepositoryImpl
 
         override suspend fun search(
             query: String,
+            type: SearchType,
+            sort: SearchSort,
             sources: Set<String>,
         ) {
-            Logger.i("EngineSearchRepository", "search: $query, sources: $sources")
+            Logger.i("EngineSearchRepository", "search: $query ($type), sources: $sources")
             _lastQuery = query
             _results.update { it.copy(query = query, isLoading = true, error = null, items = emptyList()) }
 
             try {
                 // Run engine call on IO dispatcher to avoid main thread blocking
                 withContext(Dispatchers.IO) {
-                    val pager = StatePlatform.instance.search(query)
+                    val pager =
+                        when (type) {
+                            SearchType.MEDIA -> {
+                                StatePlatform.instance.search(query, sort = sort.jsOrder)
+                            }
+
+                            SearchType.CREATORS -> {
+                                StatePlatform.instance.searchChannelsAsContent(query)
+                            }
+
+                            SearchType.PLAYLISTS -> {
+                                StatePlatform.instance.searchPlaylist(query)
+                            }
+                        }
                     val flow = PagerFlow(pager, EngineCardMapper::toCard, { it.id })
                     _pagerFlow = flow
                     val items = flow.loadInitial()
+                    Logger.i("EngineSearchRepository", "search: ${items.size} items, hasMore=${flow.hasMore}")
                     _results.update {
                         it.copy(
                             isLoading = false,
@@ -84,7 +102,7 @@ class EngineSearchRepositoryImpl
                     return
                 }
 
-                val newItems = flow.loadNextPage()
+                val newItems = withContext(Dispatchers.IO) { flow.loadNextPage() }
                 Logger.i("EngineSearchRepository", "Got ${newItems.size} new items, ${flow.items.size} total")
                 _results.update {
                     it.copy(

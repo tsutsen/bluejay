@@ -87,7 +87,7 @@ fun SubscriptionsScreen(
                     EmptyState(
                         message = "No subscriptions yet.\nSubscribe to channels to see their content here.",
                         actionLabel = "Find channels",
-                        onAction = { navigator.navigateSearch() },
+                        onAction = { navigator.navigateSearch(autoFocus = false) },
                         modifier = Modifier.padding(paddingValues),
                     )
                 } else {

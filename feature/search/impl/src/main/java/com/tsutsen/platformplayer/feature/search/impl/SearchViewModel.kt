@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.SearchRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.SearchResult
+import com.tsutsen.platformplayer.core.model.SearchSort
+import com.tsutsen.platformplayer.core.model.SearchType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -61,13 +63,51 @@ class SearchViewModel
                 .map { it.searchHistory }
                 .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+        // Which kind of content to search for (media / creators / playlists).
+        private val _searchType = MutableStateFlow(SearchType.MEDIA)
+        val searchType: StateFlow<SearchType> = _searchType.asStateFlow()
+
+        /** Text currently in the search field — survives tab navigation. */
+        private val _query = MutableStateFlow("")
+        val query: StateFlow<String> = _query.asStateFlow()
+
+        fun setQuery(value: String) {
+            _query.value = value
+        }
+
+        private var lastQuery: String = ""
+
+        /** Result sorting (views / date / rating); media search only. */
+        private val _sort = MutableStateFlow(SearchSort.RELEVANCE)
+        val sort: StateFlow<SearchSort> = _sort.asStateFlow()
+
+        /** Re-runs the last search against a different content type. */
+        fun setSearchType(type: SearchType) {
+            if (type == _searchType.value) return
+            _searchType.value = type
+            if (lastQuery.isNotBlank()) {
+                viewModelScope.launch { searchRepository.search(lastQuery, type, _sort.value) }
+            }
+        }
+
+        /** Re-runs the last search with a different sort order. */
+        fun setSort(newSort: SearchSort) {
+            if (newSort == _sort.value) return
+            _sort.value = newSort
+            if (lastQuery.isNotBlank()) {
+                viewModelScope.launch { searchRepository.search(lastQuery, _searchType.value, _sort.value) }
+            }
+        }
+
         /**
          * Perform a search with the given query.
          */
         fun search(query: String) {
             if (query.isBlank()) return
+            lastQuery = query
+            _query.value = query
             viewModelScope.launch {
-                searchRepository.search(query)
+                searchRepository.search(query, _searchType.value, _sort.value)
                 addToHistory(query)
             }
         }

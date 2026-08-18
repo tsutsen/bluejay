@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -98,7 +99,7 @@ class EngineHomeRepositoryImpl
                     return
                 }
 
-                val newItems = flow.loadNextPage()
+                val newItems = withContext(Dispatchers.IO) { flow.loadNextPage() }
                 Logger.i("EngineHomeRepository", "Got ${newItems.size} new items, ${flow.items.size} total, hasMore=${flow.hasMore}")
                 _feed.update {
                     it.copy(

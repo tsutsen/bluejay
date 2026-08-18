@@ -1,9 +1,9 @@
 package com.tsutsen.platformplayer.di
 
 import com.tsutsen.platformplayer.api.media.PlatformID
+import com.tsutsen.platformplayer.api.media.models.IPlatformChannelContent
 import com.tsutsen.platformplayer.api.media.models.Thumbnail
 import com.tsutsen.platformplayer.api.media.models.Thumbnails
-import com.tsutsen.platformplayer.api.media.models.channels.IPlatformChannel
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.locked.IPlatformLockedContent
 import com.tsutsen.platformplayer.api.media.models.nested.IPlatformNestedContent
@@ -43,12 +43,12 @@ object EngineCardMapper {
                 videoCard(content)
             }
 
-            is IPlatformChannel -> {
+            is IPlatformChannelContent -> {
                 ChannelCard(
                     id = contentId(content.id),
                     title = content.name,
                     thumbnailUrl = content.thumbnail,
-                    subscriberCount = content.subscribers.takeIf { it > 0 },
+                    subscriberCount = content.subscribers?.takeIf { it > 0 },
                     url = content.url,
                 )
             }

@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.tsutsen.platformplayer.UIDialogs
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.api.media.IPlatformClient
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
@@ -292,6 +293,7 @@ fun PluginDetailScene(
             )
         },
         content = {
+            val context = LocalContext.current
             when {
                 isLoading -> {
                     Box(
@@ -344,8 +346,33 @@ fun PluginDetailScene(
                         // Update button
                         Button(
                             onClick = {
-                                Logger.i(TAG, "Update button clicked")
-                                // TODO: Implement update functionality
+                                val c = config ?: return@Button
+                                Logger.i(TAG, "Update button clicked for ${c.name}")
+                                coroutineScope.launch {
+                                    try {
+                                        val newConfig = StatePlugins.instance.checkForUpdates(c)
+                                        if (newConfig == null) {
+                                            UIDialogs.toast(context, "${c.name} is up to date (v${c.version})")
+                                        } else {
+                                            UIDialogs.toast(
+                                                context,
+                                                "Update available: ${c.name} v${c.version} -> v${newConfig.version}. Installing...",
+                                            )
+                                            StatePlugins.instance.installPlugin(
+                                                context,
+                                                coroutineScope,
+                                                c.sourceUrl!!,
+                                            ) { success ->
+                                                if (success) {
+                                                    config = newConfig
+                                                }
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Logger.e(TAG, "Update check failed", e)
+                                        UIDialogs.toast(context, "Update check failed: ${e.message}")
+                                    }
+                                }
                             },
                             modifier =
                                 Modifier
