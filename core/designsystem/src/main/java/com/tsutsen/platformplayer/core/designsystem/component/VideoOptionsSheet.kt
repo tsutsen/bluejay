@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.LocalSemanticColors
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.ui.RelativeTime
@@ -177,6 +178,13 @@ fun VideoOptionsSheet(
                                 is DownloadButtonState.Downloaded -> Icons.Filled.Delete
                                 else -> Icons.Filled.Download
                             },
+                        tone =
+                            when (downloadState) {
+                                is DownloadButtonState.Downloading -> TileTone.Warning
+                                is DownloadButtonState.Downloaded -> TileTone.Danger
+                                is DownloadButtonState.Starting -> TileTone.Highlight
+                                is DownloadButtonState.Idle -> TileTone.Default
+                            },
                         progress = (downloadState as? DownloadButtonState.Downloading)?.progress,
                         indeterminate = downloadState is DownloadButtonState.Starting,
                         onClick = onDownload,
@@ -293,21 +301,38 @@ internal fun OptionTileView(
     // tint only (e.g. error color for a destructive action).
     iconTint: Color? = null,
 ) {
-    val downloading = tile.progress != null
-    val active = downloading || tile.indeterminate
-    val tint =
+    val scheme = MaterialTheme.colorScheme
+    val semantic = LocalSemanticColors.current
+    val active = tile.progress != null || tile.indeterminate
+    // `selected` (saved toggles) shares the highlight tone. Tone drives
+    // the background/content: danger = M3 error*, warning = semantic
+    // yellow, highlight = M3 primaryContainer.
+    val highlighted = tile.selected || tile.tone == TileTone.Highlight
+    val (bg, content, iconColor) =
         when {
-            tile.disabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            tile.selected -> MaterialTheme.colorScheme.onPrimaryContainer
-            active -> MaterialTheme.colorScheme.onErrorContainer
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
-        }
-    val text =
-        when {
-            tile.disabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-            tile.selected -> MaterialTheme.colorScheme.onPrimaryContainer
-            active -> MaterialTheme.colorScheme.onErrorContainer
-            else -> MaterialTheme.colorScheme.onSurface
+            tile.disabled -> {
+                Triple(
+                    scheme.surfaceContainer,
+                    scheme.onSurface.copy(alpha = 0.4f),
+                    scheme.onSurfaceVariant.copy(alpha = 0.4f),
+                )
+            }
+
+            highlighted -> {
+                Triple(scheme.primaryContainer, scheme.onPrimaryContainer, scheme.onPrimaryContainer)
+            }
+
+            tile.tone == TileTone.Danger -> {
+                Triple(scheme.errorContainer, scheme.onErrorContainer, scheme.onErrorContainer)
+            }
+
+            tile.tone == TileTone.Warning -> {
+                Triple(semantic.warning, semantic.onWarning, semantic.onWarning)
+            }
+
+            else -> {
+                Triple(scheme.surfaceContainer, scheme.onSurface, scheme.onSurfaceVariant)
+            }
         }
     Column(
         modifier =
@@ -318,11 +343,7 @@ internal fun OptionTileView(
                         12.dp,
                     ),
                 ).background(
-                    when {
-                        tile.selected -> MaterialTheme.colorScheme.primaryContainer
-                        active -> MaterialTheme.colorScheme.errorContainer
-                        else -> MaterialTheme.colorScheme.surfaceContainer
-                    },
+                    bg,
                 ).clickable(enabled = !tile.disabled, onClick = tile.onClick)
                 .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -331,13 +352,13 @@ internal fun OptionTileView(
             imageVector = tile.icon,
             contentDescription = null,
             modifier = Modifier.size(22.dp),
-            tint = iconTint ?: tint,
+            tint = iconTint ?: iconColor,
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = tile.label,
             style = MaterialTheme.typography.labelSmall,
-            color = text,
+            color = content,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -350,10 +371,14 @@ internal fun OptionTileView(
                     .height(3.dp)
             val progress = tile.progress
             if (progress != null) {
-                LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = barModifier)
+                LinearProgressIndicator(
+                    progress = { progress.coerceIn(0f, 1f) },
+                    color = content,
+                    modifier = barModifier,
+                )
             } else {
                 // no progress lambda = indeterminate bar ("Starting...")
-                LinearProgressIndicator(modifier = barModifier)
+                LinearProgressIndicator(color = content, modifier = barModifier)
             }
         }
     }
@@ -386,10 +411,23 @@ internal data class OptionTile(
     val icon: ImageVector,
     val selected: Boolean = false,
     val onClick: () -> Unit,
+    val tone: TileTone = TileTone.Default,
     /** Determinate progress 0..1; null = no bar (or indeterminate). */
     val progress: Float? = null,
     /** Show an indeterminate bar (e.g. "Starting..."). */
     val indeterminate: Boolean = false,
-    /** Dimmed, clicks ignored (e.g. "Downloaded"). */
+    /** Dimmed, clicks ignored. */
     val disabled: Boolean = false,
 )
+
+/**
+ * Semantic emphasis for a tile. Danger maps to the M3 error* roles,
+ * highlight to primaryContainer, warning to [LocalSemanticColors]
+ * (the only semantic role M3 does not provide).
+ */
+internal enum class TileTone {
+    Default,
+    Highlight,
+    Warning,
+    Danger,
+}

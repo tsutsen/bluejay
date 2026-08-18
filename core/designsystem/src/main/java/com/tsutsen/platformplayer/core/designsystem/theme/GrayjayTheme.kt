@@ -5,7 +5,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
@@ -13,6 +15,13 @@ import androidx.core.view.WindowCompat
 
 private val DefaultColorScheme = lightColorScheme()
 private val DarkColorSchemeCustom = darkColorScheme()
+
+/**
+ * Semantic colors (warning etc.) for the current effective theme.
+ * Danger and highlight use the M3 colorScheme roles directly; this
+ * Local only carries what M3 has no role for.
+ */
+val LocalSemanticColors = compositionLocalOf<SemanticColors> { SemanticColorsLight }
 
 @Composable
 fun GrayjayTheme(
@@ -44,14 +53,19 @@ fun GrayjayTheme(
         colorScheme = colorScheme,
         typography = typography,
         content = {
-            // Surface (not Box) so LocalContentColor resolves to onSurface —
-            // bare Text/Icons would otherwise default to hardcoded Color.Black.
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = colorScheme.surface,
-                contentColor = colorScheme.onSurface,
+            CompositionLocalProvider(
+                LocalSemanticColors provides
+                    if (darkTheme) SemanticColorsDark else SemanticColorsLight,
             ) {
-                content()
+                // Surface (not Box) so LocalContentColor resolves to onSurface —
+                // bare Text/Icons would otherwise default to hardcoded Color.Black.
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = colorScheme.surface,
+                    contentColor = colorScheme.onSurface,
+                ) {
+                    content()
+                }
             }
         },
     )
