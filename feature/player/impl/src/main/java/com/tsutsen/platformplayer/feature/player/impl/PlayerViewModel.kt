@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
+import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.Card
@@ -70,6 +71,7 @@ class PlayerViewModel
         private val contentExtrasRepository: ContentExtrasRepository,
         private val settingsRepository: SettingsRepository,
         private val historyTracker: HistoryTracker,
+        private val libraryRepository: LibraryRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
         val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -125,7 +127,9 @@ class PlayerViewModel
                                         .showRecommendedVideos,
                             )
 
-                        // Track playback history
+                        // Track playback history. The player's real duration
+                        // backfills history + library rows that stored none,
+                        // so library cards show a duration after one play.
                         val video = playerState.currentVideo
                         if (video != null) {
                             historyTracker.trackPlayback(
@@ -134,7 +138,11 @@ class PlayerViewModel
                                 author = video.author?.name,
                                 authorUrl = video.author?.url?.takeIf { it.isNotEmpty() },
                                 thumbnailUrl = video.thumbnailUrl,
+                                totalDurationMs = playerState.durationMs,
                             )
+                            if (playerState.durationMs > 0) {
+                                libraryRepository.backfillDuration(video.url, playerState.durationMs)
+                            }
                         }
                     }
             }

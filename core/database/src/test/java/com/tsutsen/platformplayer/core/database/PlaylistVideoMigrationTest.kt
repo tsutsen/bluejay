@@ -22,7 +22,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class PlaylistVideoMigrationTest {
-
     /** Builds an in-memory DB frozen at v2 with the old playlist_videos schema. */
     private fun v2DatabaseWithDuplicates(): AppDatabase {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -60,11 +59,18 @@ class PlaylistVideoMigrationTest {
         return db
     }
 
-    /** Applies MIGRATION_2_3 directly (the migration manager needs the real DB file lifecycle). */
+    /**
+     * Applies MIGRATION_2_3 directly (the migration manager needs the real
+     * DB file lifecycle), then the playlist_videos part of MIGRATION_4_5
+     * (authorUrl) — without it, DAO queries against the current entity fail
+     * on the v3-frozen table. The other 4_5 tables already carry the column
+     * because the in-memory builder created the full current schema.
+     */
     private fun migrate(db: AppDatabase) {
         val writable = db.openHelper.writableDatabase
         AppDatabase.MIGRATION_2_3.migrate(writable)
-        writable.execSQL("PRAGMA user_version = 3")
+        writable.execSQL("ALTER TABLE `playlist_videos` ADD COLUMN `authorUrl` TEXT")
+        writable.execSQL("PRAGMA user_version = 5")
     }
 
     private fun AppDatabase.dao(): PlaylistDao = playlistDao()
@@ -115,7 +121,14 @@ class PlaylistVideoMigrationTest {
             // Duplicate is a no-op: row count unchanged, original row kept
             // (title not overwritten, no second row).
             assertEquals(2, dao.countVideos(1L))
-            assertEquals("A", dao.observeVideos(1L).first().first { it.contentUrl == "u1" }.title)
+            assertEquals(
+                "A",
+                dao
+                    .observeVideos(1L)
+                    .first()
+                    .first { it.contentUrl == "u1" }
+                    .title,
+            )
         }
 
     @Test

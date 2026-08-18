@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PlaylistDao {
-
     // Playlist operations
     @Query("SELECT * FROM playlists ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<PlaylistEntity>>
@@ -16,7 +15,10 @@ interface PlaylistDao {
     suspend fun getById(id: Long): PlaylistEntity?
 
     @Query("SELECT * FROM playlists ORDER BY updatedAt DESC LIMIT :limit OFFSET :offset")
-    suspend fun getPaginated(limit: Int, offset: Int): List<PlaylistEntity>
+    suspend fun getPaginated(
+        limit: Int,
+        offset: Int,
+    ): List<PlaylistEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(playlist: PlaylistEntity): Long
@@ -35,10 +37,17 @@ interface PlaylistDao {
     fun observeVideos(playlistId: Long): Flow<List<PlaylistVideoEntity>>
 
     @Query("SELECT * FROM playlist_videos WHERE playlistId = :playlistId ORDER BY videoOrder ASC LIMIT :limit OFFSET :offset")
-    suspend fun getVideosPaginated(playlistId: Long, limit: Int, offset: Int): List<PlaylistVideoEntity>
+    suspend fun getVideosPaginated(
+        playlistId: Long,
+        limit: Int,
+        offset: Int,
+    ): List<PlaylistVideoEntity>
 
     @Query("SELECT * FROM playlist_videos WHERE playlistId = :playlistId AND contentUrl = :contentUrl")
-    suspend fun getVideoInPlaylist(playlistId: Long, contentUrl: String): PlaylistVideoEntity?
+    suspend fun getVideoInPlaylist(
+        playlistId: Long,
+        contentUrl: String,
+    ): PlaylistVideoEntity?
 
     // IGNORE (not REPLACE): a duplicate (playlistId, contentUrl) is a
     // no-op, so re-adding a video that's already in the playlist can
@@ -53,10 +62,17 @@ interface PlaylistDao {
     suspend fun deleteVideo(video: PlaylistVideoEntity)
 
     @Query("DELETE FROM playlist_videos WHERE playlistId = :playlistId AND contentUrl = :contentUrl")
-    suspend fun deleteVideoFromPlaylist(playlistId: Long, contentUrl: String)
+    suspend fun deleteVideoFromPlaylist(
+        playlistId: Long,
+        contentUrl: String,
+    )
 
     @Query("UPDATE playlist_videos SET videoOrder = :newOrder WHERE playlistId = :playlistId AND videoOrder = :oldOrder")
-    suspend fun reorderVideo(playlistId: Long, oldOrder: Int, newOrder: Int)
+    suspend fun reorderVideo(
+        playlistId: Long,
+        oldOrder: Int,
+        newOrder: Int,
+    )
 
     @Query("SELECT COUNT(*) FROM playlist_videos WHERE playlistId = :playlistId")
     suspend fun countVideos(playlistId: Long): Int
@@ -69,6 +85,13 @@ interface PlaylistDao {
 
     @Query("SELECT contentUrl FROM playlist_videos WHERE playlistId = :playlistId ORDER BY videoOrder ASC LIMIT 1")
     suspend fun firstVideoUrl(playlistId: Long): String?
+
+    /** Fills in the duration on rows that stored none (played-video backfill). */
+    @Query("UPDATE playlist_videos SET durationMs = :durationMs WHERE contentUrl = :url AND durationMs = 0")
+    suspend fun backfillDuration(
+        url: String,
+        durationMs: Long,
+    )
 }
 
 /** Row mapping for [PlaylistDao.observePlaylistStats]. */

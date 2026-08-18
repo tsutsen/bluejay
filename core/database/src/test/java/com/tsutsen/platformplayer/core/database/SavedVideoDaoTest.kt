@@ -35,21 +35,32 @@ class SavedVideoDaoTest {
     fun upsertAndObserveByType() =
         runBlocking {
             val saved = dao()
-            saved.upsert(SavedVideoEntity("u1", SavedVideoType.WATCH_LATER, "T1", null, null))
-            saved.upsert(SavedVideoEntity("u2", SavedVideoType.LIKED, "T2", null, null))
+            saved.upsert(SavedVideoEntity("u1", SavedVideoType.WATCH_LATER, "T1", null, null, null))
+            saved.upsert(
+                SavedVideoEntity(
+                    "u2",
+                    SavedVideoType.LIKED,
+                    "T2",
+                    null,
+                    null,
+                    null,
+                    durationMs = 1234L,
+                ),
+            )
 
             val watchLater = saved.observeByType(SavedVideoType.WATCH_LATER).first()
             val liked = saved.observeByType(SavedVideoType.LIKED).first()
             assertEquals(listOf("u1"), watchLater.map { it.contentUrl })
             assertEquals(listOf("u2"), liked.map { it.contentUrl })
+            assertEquals(1234L, liked.single().durationMs)
         }
 
     @Test
     fun sameUrlCanHoldMultipleTypes() =
         runBlocking {
             val saved = dao()
-            saved.upsert(SavedVideoEntity("u1", SavedVideoType.WATCH_LATER, "T", null, null))
-            saved.upsert(SavedVideoEntity("u1", SavedVideoType.FAVOURITE, "T", null, null))
+            saved.upsert(SavedVideoEntity("u1", SavedVideoType.WATCH_LATER, "T", null, null, null))
+            saved.upsert(SavedVideoEntity("u1", SavedVideoType.FAVOURITE, "T", null, null, null))
 
             assertTrue(saved.containsUrl("u1", SavedVideoType.WATCH_LATER))
             assertTrue(saved.containsUrl("u1", SavedVideoType.FAVOURITE))
@@ -64,8 +75,8 @@ class SavedVideoDaoTest {
     fun upsertReplacesExistingRow() =
         runBlocking {
             val saved = dao()
-            saved.upsert(SavedVideoEntity("u1", SavedVideoType.LIKED, "old", null, null))
-            saved.upsert(SavedVideoEntity("u1", SavedVideoType.LIKED, "new", null, null))
+            saved.upsert(SavedVideoEntity("u1", SavedVideoType.LIKED, "old", null, null, null))
+            saved.upsert(SavedVideoEntity("u1", SavedVideoType.LIKED, "new", null, null, null))
 
             val rows = saved.observeByType(SavedVideoType.LIKED).first()
             assertEquals(1, rows.size)
@@ -76,7 +87,7 @@ class SavedVideoDaoTest {
     fun deleteRemovesRow() =
         runBlocking {
             val saved = dao()
-            val entity = SavedVideoEntity("u1", SavedVideoType.LIKED, "T", "a", "t")
+            val entity = SavedVideoEntity("u1", SavedVideoType.LIKED, "T", "a", "t", null)
             saved.upsert(entity)
             saved.delete(entity)
             assertFalse(saved.containsUrl("u1", SavedVideoType.LIKED))
@@ -103,8 +114,13 @@ class SavedVideoDaoTest {
         val database =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
-                .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
-                .allowMainThreadQueries()
+                .addMigrations(
+                    AppDatabase.MIGRATION_1_2,
+                    AppDatabase.MIGRATION_2_3,
+                    AppDatabase.MIGRATION_3_4,
+                    AppDatabase.MIGRATION_4_5,
+                    AppDatabase.MIGRATION_5_6,
+                ).allowMainThreadQueries()
                 .build()
 
         val watchLater =

@@ -67,10 +67,7 @@ data class PlaylistImportItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PluginBrowserScene(
-    onPluginClick: (String) -> Unit = {},
-    onBack: (() -> Unit)? = null,
-) {
+fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
     val coroutineScope = rememberCoroutineScope()
     val enabledClientIds = remember { mutableStateOf(setOf<String>()) }
     val installedPlugins = remember { mutableStateOf<List<SourcePluginConfig>>(emptyList()) }
@@ -224,10 +221,14 @@ fun PluginDetailScene(
     onBack: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var config by remember { mutableStateOf<SourcePluginConfig?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var isEnabled by remember { mutableStateOf(false) }
+    var isPluginInstalled by remember { mutableStateOf(false) }
+    var pluginSettings by remember { mutableStateOf<MutableMap<String, String?>?>(null) }
+    var pluginSettingsChanged by remember { mutableStateOf(false) }
 
     LaunchedEffect(configUrl) {
         try {
@@ -238,6 +239,9 @@ fun PluginDetailScene(
                 // Plugin is already installed - use local config directly
                 Logger.i(TAG, "Plugin ${installedConfig.name} is already installed, using local config")
                 config = installedConfig
+                isPluginInstalled = true
+                pluginSettings =
+                    HashMap(StatePlugins.instance.getPlugin(installedConfig.id)?.settings ?: emptyMap())
 
                 // Check if this plugin is enabled
                 val enabledClients = StatePlatform.instance.getEnabledClients()
@@ -258,6 +262,7 @@ fun PluginDetailScene(
                     val configJson = response.body.string()
                     val loadedConfig = SourcePluginConfig.fromJson(configJson)
                     config = loadedConfig
+                    isPluginInstalled = false
                     Logger.i(TAG, "Loaded config: ${loadedConfig.name}")
 
                     // Check if this plugin is enabled
@@ -278,6 +283,26 @@ fun PluginDetailScene(
             error = e.message
             Logger.e(TAG, "Error loading config", e)
             isLoading = false
+        }
+    }
+
+    // Save pending settings when leaving this screen (save-on-exit, like the legacy app),
+    // then reload the plugin client so the new settings take effect.
+    DisposableEffect(configUrl) {
+        onDispose {
+            val id = config?.id ?: return@onDispose
+            val pending = pluginSettings ?: return@onDispose
+            if (pluginSettingsChanged) {
+                StatePlugins.instance.setPluginSettings(id, HashMap(pending))
+                UIDialogs.toast(context, "Plugin settings saved")
+                StateApp.instance.scope.launch(Dispatchers.IO) {
+                    try {
+                        StatePlatform.instance.reloadClient(context, id)
+                    } catch (e: Exception) {
+                        Logger.e(TAG, "Failed to reload plugin after saving settings", e)
+                    }
+                }
+            }
         }
     }
 
@@ -380,6 +405,18 @@ fun PluginDetailScene(
                                     .padding(vertical = 4.dp),
                         ) {
                             Text("Check for Updates")
+                        }
+
+                        // Plugin settings
+                        if (isPluginInstalled && pluginSettings != null) {
+                            PluginSettingsSection(
+                                config = config!!,
+                                settings = pluginSettings!!,
+                                onSettingChanged = { variable, value ->
+                                    pluginSettings?.set(variable, value)
+                                    pluginSettingsChanged = true
+                                },
+                            )
                         }
 
                         // Authentication buttons
@@ -718,4 +755,159 @@ fun PluginDetailScene(
             }
         },
     )
+}
+
+/**
+ * Renders a plugin's own settings schema (Boolean switches, Dropdown pickers, Header sections).
+ * Values are applied to [settings] via [onSettingChanged]; persistence + client reload happen
+ * in the caller when the screen is disposed.
+ */
+@Composable
+private fun PluginSettingsSection(
+    config: SourcePluginConfig,
+    settings: MutableMap<String, String?>,
+    onSettingChanged: (String, String) -> Unit,
+) {
+    var showAdvanced by remember { mutableStateOf(false) }
+    var warningConfirm by remember { mutableStateOf<SourcePluginConfig.Setting?>(null) }
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+    ) {
+        Text("Settings", style = MaterialTheme.typography.headlineSmall)
+
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Show advanced settings",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(checked = showAdvanced, onCheckedChange = { showAdvanced = it })
+        }
+
+        config.settings.forEach { setting ->
+            if (setting.isAdvanced == true && !showAdvanced) return@forEach
+            when (setting.type) {
+                "Header" -> {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Text(setting.name, style = MaterialTheme.typography.titleMedium)
+                }
+
+                "Boolean" -> {
+                    val variable = setting.variableOrName
+                    val current = (settings[variable] ?: setting.default) == "true"
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(setting.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                setting.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Switch(
+                            checked = current,
+                            onCheckedChange = { newValue ->
+                                // ponytail: no dependency handling; dependent settings can be toggled freely
+                                if (newValue && setting.warningDialog != null) {
+                                    warningConfirm = setting
+                                } else {
+                                    onSettingChanged(variable, newValue.toString())
+                                }
+                            },
+                        )
+                    }
+                }
+
+                "Dropdown" -> {
+                    // Values are 0-based indexes into [options] (plugin convention, e.g.
+                    // SponsorBlock "0"="No skip", "1"="Manual", "2"="Automatic").
+                    val variable = setting.variableOrName
+                    val options = setting.options ?: emptyList()
+                    val rawValue = settings[variable] ?: setting.default ?: "0"
+                    val rawIndex = rawValue.toIntOrNull()
+                    val current =
+                        if (rawIndex != null && rawIndex in options.indices) {
+                            options[rawIndex]
+                        } else {
+                            rawValue
+                        }
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(setting.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                setting.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        var menuExpanded by remember { mutableStateOf(false) }
+                        OutlinedButton(onClick = { menuExpanded = true }) {
+                            Text(current)
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                        ) {
+                            options.forEachIndexed { index, option ->
+                                DropdownMenuItem(
+                                    text = { Text(option) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onSettingChanged(variable, index.toString())
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    warningConfirm?.let { setting ->
+        AlertDialog(
+            onDismissRequest = { warningConfirm = null },
+            title = { Text("Enable ${setting.name}?") },
+            text = { Text(setting.warningDialog ?: "") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onSettingChanged(setting.variableOrName, "true")
+                        warningConfirm = null
+                    },
+                ) {
+                    Text("Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { warningConfirm = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 }

@@ -8,7 +8,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 class ExtensionsFormattingTests {
-
     @Test
     fun testToHumanNumber() {
         assertEquals("1K", 1000L.toHumanNumber())
@@ -72,14 +71,17 @@ class ExtensionsFormattingTests {
         assertFalse("yahoo.com".matchesDomain("google.com"))
         assertTrue("mail.google.com".matchesDomain(".google.com"))
     }
+
     @Test
     fun testPrimaryDomain() {
-        assertEquals(".google.com", "google.com".getSubdomainWildcardQuery());
-        assertEquals(".google.com", "test.google.com".getSubdomainWildcardQuery());
-        assertEquals(".google.com", "test1.test2.google.com".getSubdomainWildcardQuery());
-        assertEquals(".google.co.uk", "google.co.uk".getSubdomainWildcardQuery());
-        assertEquals(".google.co.uk", "test.google.co.uk".getSubdomainWildcardQuery());
-        assertEquals(".google.co.uk", "test1.test2.google.co.uk".getSubdomainWildcardQuery());
+        // Legacy contract (shared with Grayjay): drop the first label only;
+        // multi-level subdomains keep their inner levels.
+        assertEquals(".google.com", "google.com".getSubdomainWildcardQuery())
+        assertEquals(".google.com", "test.google.com".getSubdomainWildcardQuery())
+        assertEquals(".test2.google.com", "test1.test2.google.com".getSubdomainWildcardQuery())
+        assertEquals(".co.uk", "google.co.uk".getSubdomainWildcardQuery())
+        assertEquals(".google.co.uk", "test.google.co.uk".getSubdomainWildcardQuery())
+        assertEquals(".test2.google.co.uk", "test1.test2.google.co.uk".getSubdomainWildcardQuery())
     }
 
     @Test

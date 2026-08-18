@@ -144,7 +144,7 @@ class LibraryRepositoryImpl
                 thumbnailUrl = thumbnailUrl,
                 author = author,
                 authorUrl = authorUrl,
-                durationMs = null,
+                durationMs = durationMs.takeIf { it > 0 },
                 viewCount = null,
                 publishedAt = addedAt,
                 url = contentUrl,
@@ -162,8 +162,17 @@ class LibraryRepositoryImpl
                     author = video.author,
                     authorUrl = video.authorUrl,
                     thumbnailUrl = video.thumbnailUrl,
+                    durationMs = video.durationMs ?: 0L,
                 ),
             )
+        }
+
+        override suspend fun backfillDuration(
+            contentUrl: String,
+            durationMs: Long,
+        ) {
+            savedVideoDao.backfillDuration(contentUrl, durationMs)
+            playlistDao.backfillDuration(contentUrl, durationMs)
         }
 
         override suspend fun removeSavedVideo(
@@ -271,7 +280,7 @@ class LibraryRepositoryImpl
                 thumbnailUrl = thumbnailUrl,
                 author = author,
                 authorUrl = authorUrl,
-                durationMs = null,
+                durationMs = durationMs.takeIf { it > 0 },
                 viewCount = null,
                 publishedAt = addedAt,
                 url = contentUrl,

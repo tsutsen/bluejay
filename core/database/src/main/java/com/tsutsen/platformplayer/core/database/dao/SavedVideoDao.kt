@@ -34,4 +34,11 @@ interface SavedVideoDao {
 
     @Query("SELECT type FROM saved_video WHERE contentUrl = :url")
     fun observeTypes(url: String): Flow<List<SavedVideoType>>
+
+    /** Fills in the duration on rows that stored none (played-video backfill). */
+    @Query("UPDATE saved_video SET durationMs = :durationMs WHERE contentUrl = :url AND durationMs = 0")
+    suspend fun backfillDuration(
+        url: String,
+        durationMs: Long,
+    )
 }

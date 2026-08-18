@@ -38,6 +38,15 @@ interface LibraryRepository {
         video: VideoCard,
     )
 
+    /**
+     * Backfills the real duration into saved-video and playlist rows that
+     * stored none, called from the player once a video's duration is known.
+     */
+    suspend fun backfillDuration(
+        contentUrl: String,
+        durationMs: Long,
+    )
+
     suspend fun removeSavedVideo(
         type: SavedVideoType,
         url: String,

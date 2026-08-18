@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.core.database.entity.*
         SavedVideoEntity::class,
         NotificationEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -46,6 +46,21 @@ abstract class AppDatabase : RoomDatabase() {
          * carry it; local cards used to lose it on the way to the DB.
          * Existing rows keep NULL (tile hidden) until re-saved/re-watched.
          */
+        /**
+         * v5 -> v6: stores the video duration in saved videos so
+         * Watch Later/Liked/Favourite cards can show a duration tile
+         * like the live-feed cards do. Existing rows keep 0 (tile
+         * hidden) until re-saved.
+         */
+        val MIGRATION_5_6 =
+            object : Migration(5, 6) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE `saved_video` ADD COLUMN `durationMs` INTEGER NOT NULL DEFAULT 0",
+                    )
+                }
+            }
+
         val MIGRATION_4_5 =
             object : Migration(4, 5) {
                 override fun migrate(db: SupportSQLiteDatabase) {
