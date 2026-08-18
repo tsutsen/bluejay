@@ -23,6 +23,11 @@ sealed interface SettingsUiState {
         val confirmExit: Boolean,
         val enableDeveloperOptions: Boolean,
         val gridColumns: Int,
+        val showRecommendedVideos: Boolean,
+        val showComments: Boolean,
+        val defaultResolution: String,
+        val rememberSubtitleState: Boolean,
+        val preferredSubtitleLanguage: String,
     ) : SettingsUiState
 
     data object Loading : SettingsUiState
@@ -60,6 +65,11 @@ class SettingsViewModel
                                 confirmExit = prefs.confirmExit,
                                 enableDeveloperOptions = prefs.enableDeveloperOptions,
                                 gridColumns = prefs.gridColumns,
+                                showRecommendedVideos = prefs.showRecommendedVideos,
+                                showComments = prefs.showComments,
+                                defaultResolution = prefs.defaultResolution,
+                                rememberSubtitleState = prefs.rememberSubtitleState,
+                                preferredSubtitleLanguage = prefs.preferredSubtitleLanguage,
                             )
                     }
             }

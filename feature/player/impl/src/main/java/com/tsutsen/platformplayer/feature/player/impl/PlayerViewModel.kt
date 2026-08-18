@@ -46,6 +46,8 @@ sealed interface PlayerUiState {
         val subtitleText: String = "",
         val chapters: List<VideoChapter> = emptyList(),
         val recommendations: List<Card> = emptyList(),
+        val showComments: Boolean = true,
+        val showRecommended: Boolean = true,
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
@@ -117,6 +119,10 @@ class PlayerViewModel
                                 subtitleText = playerState.subtitleText,
                                 chapters = cachedChapters,
                                 recommendations = cachedRecommendations,
+                                showComments = settingsRepository.preferences.value.showComments,
+                                showRecommended =
+                                    settingsRepository.preferences.value
+                                        .showRecommendedVideos,
                             )
 
                         // Track playback history
@@ -148,10 +154,11 @@ class PlayerViewModel
                     author = null,
                     thumbnailUrl = null,
                 )
-                // Fetch extras after video starts playing
-                fetchComments(videoId)
+                // Fetch extras after video starts playing (gated by content settings)
+                val prefs = settingsRepository.preferences.value
+                if (prefs.showComments) fetchComments(videoId)
                 fetchChapters(videoId)
-                fetchRecommendations(videoId)
+                if (prefs.showRecommendedVideos) fetchRecommendations(videoId)
             }
         }
 

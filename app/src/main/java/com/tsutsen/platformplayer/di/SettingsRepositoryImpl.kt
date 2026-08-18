@@ -47,6 +47,11 @@ class SettingsRepositoryImpl
                 enableDeveloperOptions = s.advancedSettings,
                 gridColumns = s.feed.gridColumns,
                 searchHistory = s.search.history,
+                showRecommendedVideos = s.content.showRecommendedVideos,
+                showComments = s.content.showComments,
+                defaultResolution = s.playback.defaultResolution,
+                rememberSubtitleState = s.playback.rememberSubtitleState,
+                preferredSubtitleLanguage = s.playback.preferredSubtitleLanguage,
             )
         }
 
@@ -85,6 +90,11 @@ class SettingsRepositoryImpl
                 "dynamicColor" -> s.appearance.dynamicColor = value as Boolean
                 "gridColumns" -> s.feed.gridColumns = value as Int
                 "searchHistory" -> s.search.history = value as List<String>
+                "showRecommendedVideos" -> s.content.showRecommendedVideos = value as Boolean
+                "showComments" -> s.content.showComments = value as Boolean
+                "defaultResolution" -> s.playback.defaultResolution = value as String
+                "rememberSubtitleState" -> s.playback.rememberSubtitleState = value as Boolean
+                "preferredSubtitleLanguage" -> s.playback.preferredSubtitleLanguage = value as String
                 else -> return
             }
             s.save()
@@ -103,6 +113,11 @@ class SettingsRepositoryImpl
             s.advancedSettings = false
             s.language = "en"
             s.feed.gridColumns = 3
+            s.content.showRecommendedVideos = true
+            s.content.showComments = true
+            s.playback.defaultResolution = "auto"
+            s.playback.rememberSubtitleState = false
+            s.playback.preferredSubtitleLanguage = "auto"
             s.save()
             emit()
         }

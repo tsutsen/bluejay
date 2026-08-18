@@ -37,6 +37,9 @@ class Settings {
     // Playback settings (used by VideoHelper.kt)
     val playback = PlaybackSettings()
 
+    // Content settings (what the video page shows)
+    val content = ContentSettings()
+
     // Downloads settings (used by DownloadService.kt, VideoDownload.kt)
     val downloads = DownloadsSettings()
 
@@ -106,6 +109,22 @@ class Settings {
         var autoplay: Boolean = true
         var enableBackgroundPlayback: Boolean = true
         var enablePictureInPicture: Boolean = true
+
+        // Preferred resolution for new playback sessions ("auto" = let ExoPlayer pick).
+        var defaultResolution: String = "auto"
+
+        // When true, the player restores the subtitle on/off state from the
+        // last session instead of always starting with the default.
+        var rememberSubtitleState: Boolean = false
+
+        // Preferred subtitle track language ("auto" = player default).
+        var preferredSubtitleLanguage: String = "auto"
+    }
+
+    @Serializable
+    class ContentSettings {
+        var showRecommendedVideos: Boolean = true
+        var showComments: Boolean = true
     }
 
     @Serializable

@@ -80,10 +80,25 @@ internal fun PlayerDetails(
                 onToggle = onToggleDescription,
             )
         }
-        item {
-            TabsSection(selectedTab = selectedTab, onTabSelected = onTabSelected)
+        val visibleTabs =
+            listOfNotNull(
+                0.takeIf { state.showComments },
+                1.takeIf { state.showRecommended },
+            )
+        if (visibleTabs.isEmpty()) {
+            return@LazyColumn
         }
-        when (selectedTab) {
+        val effectiveTab =
+            if (selectedTab in visibleTabs) selectedTab else visibleTabs.first()
+        item {
+            TabsSection(
+                showComments = state.showComments,
+                showRecommended = state.showRecommended,
+                selectedTab = effectiveTab,
+                onTabSelected = onTabSelected,
+            )
+        }
+        when (effectiveTab) {
             0 -> {
                 itemsIndexed(state.comments) { index, comment ->
                     CommentCard(
