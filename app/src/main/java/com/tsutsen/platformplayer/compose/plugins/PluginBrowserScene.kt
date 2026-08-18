@@ -7,8 +7,6 @@
 
 package com.tsutsen.platformplayer.compose.plugins
 
-import com.tsutsen.platformplayer.logging.Logger
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,27 +14,28 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.tsutsen.platformplayer.auth.LoginDialog
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.api.media.IPlatformClient
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
+import com.tsutsen.platformplayer.auth.LoginDialog
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchOptionCard
+import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Playlist
 import com.tsutsen.platformplayer.states.StateApp
-import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlaylists
+import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,23 +50,26 @@ data class PluginInfo(
     val configUrl: String,
     val isInstalled: Boolean,
     val isEnabled: Boolean,
-    val isAuthenticated: Boolean = false
+    val isAuthenticated: Boolean = false,
 )
 
 data class ChannelImportItem(
     val url: String,
     val name: String,
-    val thumbnail: String?
+    val thumbnail: String?,
 )
 
 data class PlaylistImportItem(
     val url: String,
-    val name: String
+    val name: String,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
+fun PluginBrowserScene(
+    onPluginClick: (String) -> Unit = {},
+    onBack: (() -> Unit)? = null,
+) {
     val coroutineScope = rememberCoroutineScope()
     val enabledClientIds = remember { mutableStateOf(setOf<String>()) }
     val installedPlugins = remember { mutableStateOf<List<SourcePluginConfig>>(emptyList()) }
@@ -80,14 +82,18 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
         PluginDetailScene(
             configUrl = selectedPluginUrl!!,
             installedPlugins = installedPlugins.value,
-            onBack = { selectedPluginUrl = null }
+            onBack = { selectedPluginUrl = null },
         )
         return
     }
 
     fun loadPluginsAndEnabledState() {
         val clients = StatePlatform.instance.getAvailableClients()
-        val enabledIds = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+        val enabledIds =
+            StatePlatform.instance
+                .getEnabledClients()
+                .map { it.id }
+                .toSet()
         val installed = clients.filterIsInstance<JSClient>().map { it.config }
         installedPlugins.value = installed
         enabledClientIds.value = enabledIds
@@ -110,26 +116,31 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
         loadPluginsAndEnabledState()
     }
 
-    val plugins = remember(installedPlugins.value, enabledClientIds.value) {
-        val result = installedPlugins.value.map { config ->
-            // Check if plugin has auth configured
-            val descriptor = StatePlugins.instance.getPlugin(config.id)
-            val isAuthenticated = descriptor?.getAuth() != null
-            Logger.i(TAG, "Plugin ${config.name} (${config.id}): descriptor=${descriptor != null}, auth=${descriptor?.getAuth() != null}")
-            
-            PluginInfo(
-                id = config.id,
-                name = config.name,
-                description = config.description ?: "",
-                configUrl = config.sourceUrl ?: "",
-                isInstalled = true,
-                isEnabled = enabledClientIds.value.contains(config.id),
-                isAuthenticated = isAuthenticated
-            )
+    val plugins =
+        remember(installedPlugins.value, enabledClientIds.value) {
+            val result =
+                installedPlugins.value.map { config ->
+                    // Check if plugin has auth configured
+                    val descriptor = StatePlugins.instance.getPlugin(config.id)
+                    val isAuthenticated = descriptor?.getAuth() != null
+                    Logger.i(
+                        TAG,
+                        "Plugin ${config.name} (${config.id}): descriptor=${descriptor != null}, auth=${descriptor?.getAuth() != null}",
+                    )
+
+                    PluginInfo(
+                        id = config.id,
+                        name = config.name,
+                        description = config.description ?: "",
+                        configUrl = config.sourceUrl ?: "",
+                        isInstalled = true,
+                        isEnabled = enabledClientIds.value.contains(config.id),
+                        isAuthenticated = isAuthenticated,
+                    )
+                }
+            Logger.i(TAG, "Plugins list created with ${result.size} items")
+            result
         }
-        Logger.i(TAG, "Plugins list created with ${result.size} items")
-        result
-    }
 
     Scaffold(
         topBar = {
@@ -141,24 +152,33 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
-                }
+                },
             )
-        }
+        },
     ) { paddingValues ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
         ) {
             Text("Found ${plugins.size} plugins")
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp)
+                contentPadding = PaddingValues(16.dp),
             ) {
                 items(plugins, key = { it.id }) { plugin ->
-                    PluginCard(
-                        plugin = plugin,
-                        onToggle = { isEnabled ->
+                    SettingsSwitchOptionCard(
+                        icon = Icons.Default.Extension,
+                        title = plugin.name,
+                        subtitle =
+                            if (plugin.isAuthenticated) {
+                                "${plugin.description} • Logged in"
+                            } else {
+                                plugin.description
+                            },
+                        checked = plugin.isEnabled,
+                        onCheckedChange = { isEnabled ->
                             Logger.i(TAG, "Toggle ${plugin.name}: $isEnabled")
                             coroutineScope.launch {
                                 try {
@@ -171,7 +191,11 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
                                         val newEnabled = currentEnabled.map { it.id }.filter { it != plugin.id }
                                         StatePlatform.instance.selectClients(*newEnabled.toTypedArray())
                                     }
-                                    val updatedEnabled = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+                                    val updatedEnabled =
+                                        StatePlatform.instance
+                                            .getEnabledClients()
+                                            .map { it.id }
+                                            .toSet()
                                     Logger.i(TAG, "Updated enabled: $updatedEnabled")
                                     enabledClientIds.value = updatedEnabled
                                     refreshKey++
@@ -183,63 +207,11 @@ fun PluginBrowserScene(onPluginClick: (String) -> Unit = {}, onBack: (() -> Unit
                         onClick = {
                             Logger.i(TAG, "Clicked plugin: ${plugin.name}, URL: ${plugin.configUrl}")
                             selectedPluginUrl = plugin.configUrl
-                        }
+                        },
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun PluginCard(
-    plugin: PluginInfo,
-    onToggle: (Boolean) -> Unit,
-    onClick: () -> Unit = {}
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable {
-                Logger.i(TAG, "PluginCard clickable triggered: ${plugin.name}")
-                onClick()
-            },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = plugin.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                if (plugin.isAuthenticated) {
-                    Text(
-                        text = "✓ Logged In",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = plugin.description,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Switch(
-            checked = plugin.isEnabled,
-            onCheckedChange = onToggle,
-            enabled = true
-        )
     }
 }
 
@@ -248,7 +220,7 @@ fun PluginCard(
 fun PluginDetailScene(
     configUrl: String,
     installedPlugins: List<SourcePluginConfig>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     var config by remember { mutableStateOf<SourcePluginConfig?>(null) }
@@ -260,16 +232,16 @@ fun PluginDetailScene(
         try {
             // Check if plugin is already installed locally
             val installedConfig = installedPlugins.find { it.sourceUrl == configUrl }
-            
+
             if (installedConfig != null) {
                 // Plugin is already installed - use local config directly
                 Logger.i(TAG, "Plugin ${installedConfig.name} is already installed, using local config")
                 config = installedConfig
-                
+
                 // Check if this plugin is enabled
                 val enabledClients = StatePlatform.instance.getEnabledClients()
                 isEnabled = enabledClients.any { it.id == installedConfig.id }
-                
+
                 // Check if plugin has auth
                 val descriptor = StatePlugins.instance.getPlugin(installedConfig.id)
                 val hasAuth = descriptor?.getAuth() != null
@@ -277,19 +249,20 @@ fun PluginDetailScene(
             } else {
                 // Plugin not installed locally - fetch from network
                 Logger.i(TAG, "Fetching plugin config from: $configUrl")
-                val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    ManagedHttpClient().get(configUrl)
-                }
+                val response =
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        ManagedHttpClient().get(configUrl)
+                    }
                 if (response.isOk && response.body != null) {
                     val configJson = response.body.string()
                     val loadedConfig = SourcePluginConfig.fromJson(configJson)
                     config = loadedConfig
                     Logger.i(TAG, "Loaded config: ${loadedConfig.name}")
-                    
+
                     // Check if this plugin is enabled
                     val enabledClients = StatePlatform.instance.getEnabledClients()
                     isEnabled = enabledClients.any { it.id == loadedConfig.id }
-                    
+
                     // Check if plugin has auth
                     val descriptor = StatePlugins.instance.getPlugin(loadedConfig.id)
                     val hasAuth = descriptor?.getAuth() != null
@@ -315,7 +288,7 @@ fun PluginDetailScene(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
             )
         },
         content = {
@@ -323,46 +296,49 @@ fun PluginDetailScene(
                 isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
                     }
                 }
+
                 error != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text("Error: $error")
                     }
                 }
+
                 config != null -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                                .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
                             text = config!!.name,
-                            style = MaterialTheme.typography.headlineMedium
+                            style = MaterialTheme.typography.headlineMedium,
                         )
                         Text(
                             text = config!!.description ?: "No description",
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
                             text = "Version: ${config!!.version}",
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
                             text = "Author: ${config!!.author ?: "Unknown"}",
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = "URL: ${configUrl}",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "URL: $configUrl",
+                            style = MaterialTheme.typography.bodySmall,
                         )
 
                         // Update button
@@ -371,9 +347,10 @@ fun PluginDetailScene(
                                 Logger.i(TAG, "Update button clicked")
                                 // TODO: Implement update functionality
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
                         ) {
                             Text("Check for Updates")
                         }
@@ -381,7 +358,7 @@ fun PluginDetailScene(
                         // Authentication buttons
                         if (config!!.authentication != null) {
                             val context = LocalContext.current
-                            
+
                             Button(
                                 onClick = {
                                     Logger.i(TAG, "Opening login activity for: ${config!!.name} (id: ${config!!.id})")
@@ -389,7 +366,10 @@ fun PluginDetailScene(
                                         LoginDialog.showLogin(config!!) { auth ->
                                             if (auth != null) {
                                                 Logger.i(TAG, "Login successful, saving auth for ${config!!.name}")
-                                                Logger.i(TAG, "Auth cookieMap size: ${auth.cookieMap?.size}, headers size: ${auth.headers?.size}")
+                                                Logger.i(
+                                                    TAG,
+                                                    "Auth cookieMap size: ${auth.cookieMap?.size}, headers size: ${auth.headers?.size}",
+                                                )
                                                 try {
                                                     StatePlugins.instance.setPluginAuth(config!!.id, auth)
                                                     Logger.i(TAG, "Auth saved successfully")
@@ -418,31 +398,33 @@ fun PluginDetailScene(
                                         Logger.e(TAG, "Failed to open login activity", e)
                                     }
                                 },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                )
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                colors =
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                    ),
                             ) {
                                 Text("Login")
                             }
-                            
+
                             // Show login warning if present
                             config!!.authentication!!.loginWarning?.let { warning ->
                                 Text(
                                     text = warning,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
+                                    color = MaterialTheme.colorScheme.error,
                                 )
                             }
-                            
+
                             // Show additional warnings
                             config!!.authentication!!.loginWarnings?.forEach { warning ->
                                 Text(
                                     text = warning.text ?: warning.url,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
+                                    color = MaterialTheme.colorScheme.error,
                                 )
                             }
                         }
@@ -468,15 +450,17 @@ fun PluginDetailScene(
                                             Logger.i(TAG, "Getting subscriptions for plugin: ${config!!.name}")
                                             val client = StatePlatform.instance.getClient(config!!.id)
                                             Logger.i(TAG, "Client type: ${client::class.simpleName}")
-                                            val subs = withContext(Dispatchers.IO) {
-                                                client.getUserSubscriptions()
-                                            }
+                                            val subs =
+                                                withContext(Dispatchers.IO) {
+                                                    client.getUserSubscriptions()
+                                                }
                                             Logger.i(TAG, "Got ${subs?.size ?: 0} subscriptions")
                                             if (subs != null) {
                                                 // Store URLs directly, resolve channels on demand
-                                                items = subs.map { url ->
-                                                    ChannelImportItem(url = url, name = url, thumbnail = null)
-                                                }
+                                                items =
+                                                    subs.map { url ->
+                                                        ChannelImportItem(url = url, name = url, thumbnail = null)
+                                                    }
                                             } else {
                                                 items = emptyList()
                                             }
@@ -487,12 +471,14 @@ fun PluginDetailScene(
                                         }
                                     }
                                 },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                colors =
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary,
+                                    ),
                             ) {
                                 Text("Import Subscriptions")
                             }
@@ -506,9 +492,10 @@ fun PluginDetailScene(
                                     coroutineScope.launch {
                                         try {
                                             val client = StatePlatform.instance.getClient(config!!.id)
-                                            val playlists = withContext(Dispatchers.IO) {
-                                                client.getUserPlaylists()
-                                            }
+                                            val playlists =
+                                                withContext(Dispatchers.IO) {
+                                                    client.getUserPlaylists()
+                                                }
                                             items = playlists?.map { PlaylistImportItem(url = it, name = it) } ?: emptyList()
                                             isLoading = false
                                         } catch (e: Exception) {
@@ -517,12 +504,14 @@ fun PluginDetailScene(
                                         }
                                     }
                                 },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                colors =
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary,
+                                    ),
                             ) {
                                 Text("Import Playlists")
                             }
@@ -537,20 +526,22 @@ fun PluginDetailScene(
                                             CircularProgressIndicator()
                                         } else {
                                             Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(300.dp)
-                                                    .verticalScroll(rememberScrollState())
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .height(300.dp)
+                                                        .verticalScroll(rememberScrollState()),
                                             ) {
                                                 Text("Select items to import:")
                                                 items.forEach { item ->
                                                     when (item) {
                                                         is ChannelImportItem -> {
                                                             Row(
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .padding(vertical = 4.dp),
-                                                                verticalAlignment = Alignment.CenterVertically
+                                                                modifier =
+                                                                    Modifier
+                                                                        .fillMaxWidth()
+                                                                        .padding(vertical = 4.dp),
+                                                                verticalAlignment = Alignment.CenterVertically,
                                                             ) {
                                                                 Checkbox(
                                                                     checked = selectedItems.contains(item),
@@ -560,29 +551,32 @@ fun PluginDetailScene(
                                                                         } else {
                                                                             selectedItems = selectedItems - item
                                                                         }
-                                                                    }
+                                                                    },
                                                                 )
                                                                 if (item.thumbnail != null) {
                                                                     AsyncImage(
                                                                         model = item.thumbnail,
                                                                         contentDescription = null,
-                                                                        modifier = Modifier
-                                                                            .size(40.dp)
-                                                                            .padding(start = 8.dp)
+                                                                        modifier =
+                                                                            Modifier
+                                                                                .size(40.dp)
+                                                                                .padding(start = 8.dp),
                                                                     )
                                                                 }
                                                                 Text(
                                                                     text = item.name,
-                                                                    modifier = Modifier.padding(start = 8.dp)
+                                                                    modifier = Modifier.padding(start = 8.dp),
                                                                 )
                                                             }
                                                         }
+
                                                         is PlaylistImportItem -> {
                                                             Row(
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .padding(vertical = 4.dp),
-                                                                verticalAlignment = Alignment.CenterVertically
+                                                                modifier =
+                                                                    Modifier
+                                                                        .fillMaxWidth()
+                                                                        .padding(vertical = 4.dp),
+                                                                verticalAlignment = Alignment.CenterVertically,
                                                             ) {
                                                                 Checkbox(
                                                                     checked = selectedItems.contains(item),
@@ -592,11 +586,11 @@ fun PluginDetailScene(
                                                                         } else {
                                                                             selectedItems = selectedItems - item
                                                                         }
-                                                                    }
+                                                                    },
                                                                 )
                                                                 Text(
                                                                     text = item.name,
-                                                                    modifier = Modifier.padding(start = 8.dp)
+                                                                    modifier = Modifier.padding(start = 8.dp),
                                                                 )
                                                             }
                                                         }
@@ -617,9 +611,10 @@ fun PluginDetailScene(
                                                                 for (item in selectedItems) {
                                                                     if (item is ChannelImportItem) {
                                                                         try {
-                                                                            val channel = withContext(Dispatchers.IO) {
-                                                                                StatePlatform.instance.getChannelLive(item.url, false)
-                                                                            }
+                                                                            val channel =
+                                                                                withContext(Dispatchers.IO) {
+                                                                                    StatePlatform.instance.getChannelLive(item.url, false)
+                                                                                }
                                                                             StateSubscriptions.instance.addSubscription(channel)
                                                                             successCount++
                                                                             Logger.i(TAG, "Added subscription: ${channel.name}")
@@ -630,6 +625,7 @@ fun PluginDetailScene(
                                                                 }
                                                                 Logger.i(TAG, "Import completed: $successCount/${selectedItems.size} items")
                                                             }
+
                                                             "playlists" -> {
                                                                 var successCount = 0
                                                                 for (item in selectedItems) {
@@ -647,7 +643,10 @@ fun PluginDetailScene(
                                                                         }
                                                                     }
                                                                 }
-                                                                Logger.i(TAG, "Playlist import completed: $successCount/${selectedItems.size} items")
+                                                                Logger.i(
+                                                                    TAG,
+                                                                    "Playlist import completed: $successCount/${selectedItems.size} items",
+                                                                )
                                                             }
                                                         }
                                                         showImportDialog = false
@@ -656,7 +655,7 @@ fun PluginDetailScene(
                                                     }
                                                 }
                                             },
-                                            enabled = selectedItems.isNotEmpty()
+                                            enabled = selectedItems.isNotEmpty(),
                                         ) {
                                             Text("Import (${selectedItems.size})")
                                         }
@@ -665,7 +664,7 @@ fun PluginDetailScene(
                                         TextButton(onClick = { showImportDialog = false }) {
                                             Text("Cancel")
                                         }
-                                    }
+                                    },
                                 )
                             }
                         }
@@ -676,18 +675,20 @@ fun PluginDetailScene(
                                 Logger.i(TAG, "Uninstall button clicked")
                                 // TODO: Implement uninstall functionality
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
-                            )
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                            colors =
+                                ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error,
+                                ),
                         ) {
                             Text("Uninstall")
                         }
                     }
                 }
             }
-        }
+        },
     )
 }
