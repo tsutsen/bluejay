@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.StateFlow
  * Abstracts away engine-specific types so the feature module stays engine-agnostic.
  */
 interface SubscriptionRepository {
-
     /**
      * Observable subscription feed with filter state.
      */
@@ -40,10 +39,18 @@ interface SubscriptionRepository {
     suspend fun selectCreator(creatorId: String?)
 
     /**
-     * Toggle "Continue" filter: only partially watched videos
-     * (0 < playbackTime < 95% of duration).
+     * Toggle "Started" filter: only partially watched videos
+     * (0 < playbackTime < 95% of duration). Mutually exclusive with
+     * "Watched".
      */
-    suspend fun toggleContinue()
+    suspend fun toggleStarted()
+
+    /**
+     * Toggle "Watched" filter: only fully watched videos
+     * (playbackTime >= 95% of duration). Mutually exclusive with
+     * "Started".
+     */
+    suspend fun toggleWatched()
 
     /**
      * Toggle "Videos" filter: only regular (non-live) videos.

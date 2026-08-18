@@ -51,7 +51,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
-import com.tsutsen.platformplayer.core.designsystem.component.LoadingContent
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
@@ -83,24 +82,8 @@ fun SubscriptionsScreen(
         modifier = modifier.fillMaxSize(),
     ) { paddingValues ->
         when (val state = uiState) {
-            is SubscriptionsUiState.Loading -> {
-                LoadingContent(
-                    loading = true,
-                    empty = false,
-                    emptyContent = {},
-                    modifier = Modifier.padding(paddingValues),
-                ) {}
-            }
-
             is SubscriptionsUiState.Success -> {
-                if (state.items.isEmpty() && state.isLoading) {
-                    LoadingContent(
-                        loading = true,
-                        empty = false,
-                        emptyContent = {},
-                        modifier = Modifier.padding(paddingValues),
-                    ) {}
-                } else if (state.creators.isEmpty() && state.items.isEmpty()) {
+                if (state.creators.isEmpty() && state.items.isEmpty() && !state.isLoading) {
                     EmptyState(
                         message = "No subscriptions yet.\nSubscribe to channels to see their content here.",
                         actionLabel = "Find channels",
@@ -114,16 +97,14 @@ fun SubscriptionsScreen(
                         gridColumns = gridColumns,
                         onCreatorSelected = viewModel::selectCreator,
                         onGoToChannel = { navigator.navigateToChannel(it) },
-                        onContinueToggle = viewModel::toggleContinue,
+                        onStartedToggle = viewModel::toggleStarted,
+                        onWatchedToggle = viewModel::toggleWatched,
                         onVideoToggle = viewModel::toggleVideo,
                         onStreamsToggle = viewModel::toggleStreams,
                         onRefresh = viewModel::refresh,
                         onLoadMore = viewModel::loadMore,
                         onVideoLongClick = { optionsCard = it },
-                        onItemClicked = { url ->
-                            android.util.Log.i("SubscriptionsScreen", "Video clicked, URL: $url")
-                            playerViewModel.play(url)
-                        },
+                        onItemClicked = { url -> playerViewModel.play(url) },
                         modifier = Modifier.padding(paddingValues),
                     )
                 }
@@ -177,7 +158,8 @@ private fun SubscriptionsContent(
     gridColumns: Int,
     onCreatorSelected: (String?) -> Unit,
     onGoToChannel: (String) -> Unit,
-    onContinueToggle: () -> Unit,
+    onStartedToggle: () -> Unit,
+    onWatchedToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onStreamsToggle: () -> Unit,
     onRefresh: () -> Unit,
@@ -194,10 +176,12 @@ private fun SubscriptionsContent(
             Column(modifier = Modifier.weight(1f).fillMaxSize()) {
                 // Filter chips: independent toggles, no cross-coupling
                 SubscriptionFilterBadges(
-                    filterContinue = state.filterContinue,
+                    filterStarted = state.filterStarted,
+                    filterWatched = state.filterWatched,
                     filterVideo = state.filterVideo,
                     filterStreams = state.filterStreams,
-                    onContinueToggle = onContinueToggle,
+                    onStartedToggle = onStartedToggle,
+                    onWatchedToggle = onWatchedToggle,
                     onVideoToggle = onVideoToggle,
                     onStreamsToggle = onStreamsToggle,
                     modifier = Modifier.fillMaxWidth(),
@@ -231,12 +215,27 @@ private fun SubscriptionsContent(
                 )
             }
 
-            // Creators on right side
+            // Creators on right side ("All" first — the same escape hatch
+            // the portrait strip has)
             LazyColumn(
                 modifier = Modifier.width(80.dp).fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                item {
+                    CreatorAvatar(
+                        creator =
+                            SubscriptionCreator(
+                                id = "",
+                                name = "All",
+                                thumbnailUrl = null,
+                                subscriberCount = null,
+                                url = "",
+                            ),
+                        isSelected = state.activeCreatorId == null,
+                        onClick = { onCreatorSelected(null) },
+                    )
+                }
                 items(state.creators) { creator ->
                     CreatorAvatar(
                         creator = creator,
@@ -282,10 +281,12 @@ private fun SubscriptionsContent(
 
             // Filter chips: independent toggles, no cross-coupling
             SubscriptionFilterBadges(
-                filterContinue = state.filterContinue,
+                filterStarted = state.filterStarted,
+                filterWatched = state.filterWatched,
                 filterVideo = state.filterVideo,
                 filterStreams = state.filterStreams,
-                onContinueToggle = onContinueToggle,
+                onStartedToggle = onStartedToggle,
+                onWatchedToggle = onWatchedToggle,
                 onVideoToggle = onVideoToggle,
                 onStreamsToggle = onStreamsToggle,
                 modifier = Modifier.fillMaxWidth(),
@@ -388,14 +389,16 @@ private fun CreatorAvatar(
 /**
  * Filter chips. Each chip is an independent toggle:
  *  - Videos / Live are OR within the type category
- *  - Continue narrows to partially watched videos (AND with the type)
+ *  - Started / Watched narrow the watch state (exclusive, AND with type)
  */
 @Composable
 private fun SubscriptionFilterBadges(
-    filterContinue: Boolean,
+    filterStarted: Boolean,
+    filterWatched: Boolean,
     filterVideo: Boolean,
     filterStreams: Boolean,
-    onContinueToggle: () -> Unit,
+    onStartedToggle: () -> Unit,
+    onWatchedToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onStreamsToggle: () -> Unit,
     modifier: Modifier = Modifier,
@@ -421,9 +424,16 @@ private fun SubscriptionFilterBadges(
         }
         item {
             FilterChip(
-                selected = filterContinue,
-                onClick = onContinueToggle,
-                label = { Text("Continue") },
+                selected = filterStarted,
+                onClick = onStartedToggle,
+                label = { Text("Started") },
+            )
+        }
+        item {
+            FilterChip(
+                selected = filterWatched,
+                onClick = onWatchedToggle,
+                label = { Text("Watched") },
             )
         }
     }

@@ -6,7 +6,7 @@ data class SubscriptionCreator(
     val thumbnailUrl: String?,
     val subscriberCount: Long?,
     val url: String,
-    val hasNewContent: Boolean = false
+    val hasNewContent: Boolean = false,
 )
 
 data class SubscriptionFeed(
@@ -17,7 +17,8 @@ data class SubscriptionFeed(
     val error: String? = null,
     val currentPage: Int = 0,
     val activeCreatorId: String? = null,
-    val filterContinue: Boolean = false,
+    val filterStarted: Boolean = false,
+    val filterWatched: Boolean = false,
     val filterVideo: Boolean = true,
-    val filterStreams: Boolean = false
+    val filterStreams: Boolean = false,
 )

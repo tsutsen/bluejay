@@ -14,13 +14,12 @@ import javax.inject.Inject
  * UI state for the Subscriptions screen.
  */
 sealed interface SubscriptionsUiState {
-    object Loading : SubscriptionsUiState
-
     data class Success(
         val items: List<com.tsutsen.platformplayer.core.model.Card> = emptyList(),
         val creators: List<com.tsutsen.platformplayer.core.model.SubscriptionCreator> = emptyList(),
         val activeCreatorId: String? = null,
-        val filterContinue: Boolean = false,
+        val filterStarted: Boolean = false,
+        val filterWatched: Boolean = false,
         val filterVideo: Boolean = true,
         val filterStreams: Boolean = false,
         val isLoading: Boolean = false,
@@ -46,7 +45,13 @@ class SubscriptionsViewModel
                 .map { it.gridColumns }
                 .stateIn(viewModelScope, SharingStarted.Lazily, settingsRepository.preferences.value.gridColumns)
 
-        private val _uiState = MutableStateFlow<SubscriptionsUiState>(SubscriptionsUiState.Loading)
+        // First frame: the feed flow is already loading, so show the
+        // content layout (with its pull-to-refresh spinner) from the start
+        // instead of a blank screen.
+        private val _uiState =
+            MutableStateFlow<SubscriptionsUiState>(
+                SubscriptionsUiState.Success(isLoading = true),
+            )
         val uiState: StateFlow<SubscriptionsUiState> = _uiState.asStateFlow()
 
         init {
@@ -57,7 +62,8 @@ class SubscriptionsViewModel
                             items = feed.items,
                             creators = feed.creators,
                             activeCreatorId = feed.activeCreatorId,
-                            filterContinue = feed.filterContinue,
+                            filterStarted = feed.filterStarted,
+                            filterWatched = feed.filterWatched,
                             filterVideo = feed.filterVideo,
                             filterStreams = feed.filterStreams,
                             isLoading = feed.isLoading,
@@ -83,8 +89,12 @@ class SubscriptionsViewModel
             viewModelScope.launch { subscriptionRepository.selectCreator(creatorId) }
         }
 
-        fun toggleContinue() {
-            viewModelScope.launch { subscriptionRepository.toggleContinue() }
+        fun toggleStarted() {
+            viewModelScope.launch { subscriptionRepository.toggleStarted() }
+        }
+
+        fun toggleWatched() {
+            viewModelScope.launch { subscriptionRepository.toggleWatched() }
         }
 
         fun toggleVideo() {
