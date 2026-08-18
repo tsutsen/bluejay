@@ -28,7 +28,9 @@ import javax.inject.Singleton
 class EngineSubscriptionsRepositoryImpl
     @Inject
     constructor() : SubscriptionRepository {
-        private val _feed = MutableStateFlow(SubscriptionFeed())
+        // Starts "loading" so the screen shows a spinner from the first
+        // frame instead of a momentary empty state.
+        private val _feed = MutableStateFlow(SubscriptionFeed(isLoading = true))
         override val feed: StateFlow<SubscriptionFeed> = _feed.asStateFlow()
 
         private var pagerFlow: PagerFlow<IPlatformContent, IPlatformContent>? = null
@@ -59,6 +61,7 @@ class EngineSubscriptionsRepositoryImpl
 
         override suspend fun loadFeed() {
             Logger.i("EngineSubscriptionsRepository", "Loading subscription feed...")
+            _feed.update { it.copy(isLoading = true) }
             try {
                 val pager =
                     StateSubscriptions.instance.getGlobalSubscriptionFeed(
@@ -77,6 +80,7 @@ class EngineSubscriptionsRepositoryImpl
 
         override suspend fun refresh() {
             Logger.i("EngineSubscriptionsRepository", "Refreshing subscription feed...")
+            _feed.update { it.copy(isLoading = true) }
             try {
                 val pager =
                     StateSubscriptions.instance.getGlobalSubscriptionFeed(

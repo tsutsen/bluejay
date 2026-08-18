@@ -93,7 +93,14 @@ fun SubscriptionsScreen(
             }
 
             is SubscriptionsUiState.Success -> {
-                if (state.creators.isEmpty() && state.items.isEmpty()) {
+                if (state.items.isEmpty() && state.isLoading) {
+                    LoadingContent(
+                        loading = true,
+                        empty = false,
+                        emptyContent = {},
+                        modifier = Modifier.padding(paddingValues),
+                    ) {}
+                } else if (state.creators.isEmpty() && state.items.isEmpty()) {
                     EmptyState(
                         message = "No subscriptions yet.\nSubscribe to channels to see their content here.",
                         actionLabel = "Find channels",
