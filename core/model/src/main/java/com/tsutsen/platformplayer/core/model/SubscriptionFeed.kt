@@ -17,8 +17,10 @@ data class SubscriptionFeed(
     val error: String? = null,
     val currentPage: Int = 0,
     val activeCreatorId: String? = null,
-    val filterStarted: Boolean = false,
-    val filterWatched: Boolean = false,
+    // Both default ON = no filtering: every video shows, whether
+    // watched, started, or fresh.
+    val filterStarted: Boolean = true,
+    val filterWatched: Boolean = true,
     val filterVideo: Boolean = true,
     val filterStreams: Boolean = false,
 )

@@ -389,7 +389,8 @@ private fun CreatorAvatar(
 /**
  * Filter chips. Each chip is an independent toggle:
  *  - Videos / Live are OR within the type category
- *  - Started / Watched narrow the watch state (exclusive, AND with type)
+ *  - Started / Watched gate the watch state (both on by default = all
+ *    videos; fresh videos always show, AND with the type)
  */
 @Composable
 private fun SubscriptionFilterBadges(

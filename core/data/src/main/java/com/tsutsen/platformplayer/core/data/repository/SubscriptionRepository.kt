@@ -39,16 +39,16 @@ interface SubscriptionRepository {
     suspend fun selectCreator(creatorId: String?)
 
     /**
-     * Toggle "Started" filter: only partially watched videos
-     * (0 < playbackTime < 95% of duration). Mutually exclusive with
-     * "Watched".
+     * Toggle "Started" filter. The chips are independent, both ON by
+     * default (no filtering). "Started" shows started-but-not-finished
+     * videos (0 < playbackTime < 95% of duration); off hides them.
+     * Fresh (never played) videos are always shown.
      */
     suspend fun toggleStarted()
 
     /**
-     * Toggle "Watched" filter: only fully watched videos
-     * (playbackTime >= 95% of duration). Mutually exclusive with
-     * "Started".
+     * Toggle "Watched" filter. "Watched" shows fully watched videos
+     * (playbackTime >= 95% of duration); off hides them.
      */
     suspend fun toggleWatched()
 

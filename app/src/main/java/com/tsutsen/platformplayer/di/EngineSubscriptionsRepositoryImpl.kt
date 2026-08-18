@@ -107,22 +107,14 @@ class EngineSubscriptionsRepositoryImpl
             }
         }
 
-        // Started and Watched are disjoint watch states; enabling one
-        // clears the other so the chips can't combine into a permanently
-        // empty result.
+        // Independent toggles, both ON by default (no filtering).
         override suspend fun toggleStarted() {
-            _feed.update {
-                val started = !it.filterStarted
-                it.copy(filterStarted = started, filterWatched = if (started) false else it.filterWatched)
-            }
+            _feed.update { it.copy(filterStarted = !it.filterStarted) }
             applyFilters()
         }
 
         override suspend fun toggleWatched() {
-            _feed.update {
-                val watched = !it.filterWatched
-                it.copy(filterWatched = watched, filterStarted = if (watched) false else it.filterStarted)
-            }
+            _feed.update { it.copy(filterWatched = !it.filterWatched) }
             applyFilters()
         }
 
@@ -247,13 +239,14 @@ class EngineSubscriptionsRepositoryImpl
                     }
             }
 
-            // Type filter: "Videos"/"Live" are OR within the category;
-            // "Started"/"Watched" narrow the watch state (AND with the
-            // type, exclusive with each other).
+            // Type filter: "Videos"/"Live" are OR within the category.
+            // Watch filter: fresh (never played) videos always show;
+            // the chips gate the started and watched categories
+            // (both on by default = no filtering).
             val showVideos = state.filterVideo
             val showLive = state.filterStreams
-            val onlyStarted = state.filterStarted
-            val onlyWatched = state.filterWatched
+            val showStarted = state.filterStarted
+            val showWatched = state.filterWatched
             filtered =
                 filtered.filter { content ->
                     val video = content as? IPlatformVideo ?: return@filter true
@@ -264,8 +257,19 @@ class EngineSubscriptionsRepositoryImpl
                     }
                     val d = video.duration
                     val t = video.playbackTime
-                    if (onlyStarted && !(d > 0 && t > 0 && t < 0.95 * d)) return@filter false
-                    if (onlyWatched && !(d > 0 && t >= 0.95 * d)) return@filter false
+                    when {
+                        d > 0 && t >= 0.95 * d -> {
+                            if (!showWatched) return@filter false
+                        }
+
+                        t > 0 -> {
+                            if (!showStarted) return@filter false
+                        }
+
+                        else -> {
+                            Unit
+                        } // never played: always shown
+                    }
                     true
                 }
 
