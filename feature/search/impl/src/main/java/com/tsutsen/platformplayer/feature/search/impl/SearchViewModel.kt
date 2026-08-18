@@ -45,8 +45,6 @@ class SearchViewModel
                 .map { it.gridColumns }
                 .stateIn(viewModelScope, SharingStarted.Lazily, settingsRepository.preferences.value.gridColumns)
 
-        private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
-
         val repositoryResults: StateFlow<SearchResult> =
             searchRepository.results.stateIn(
                 scope = viewModelScope,
@@ -56,7 +54,12 @@ class SearchViewModel
                 initialValue = SearchResult(),
             )
 
-        val searchHistoryFlow: StateFlow<List<String>> = _searchHistory.asStateFlow()
+        // History lives in persisted settings (survives tab switches and app
+        // restarts); this is the live view over it.
+        val searchHistoryFlow: StateFlow<List<String>> =
+            settingsRepository.preferences
+                .map { it.searchHistory }
+                .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
         /**
          * Perform a search with the given query.
@@ -88,33 +91,41 @@ class SearchViewModel
         }
 
         /**
-         * Add a query to search history (deduplicated, max 10).
+         * Add a query to search history (deduplicated, max 10, persisted).
          */
-        private fun addToHistory(query: String) {
+        private suspend fun addToHistory(query: String) {
             val trimmed = query.trim()
             if (trimmed.isEmpty()) return
-            val current = _searchHistory.value.toMutableList()
+            val current =
+                settingsRepository.preferences.value.searchHistory
+                    .toMutableList()
             current.remove(trimmed)
             current.add(0, trimmed)
-            if (current.size > 10) {
+            while (current.size > 10) {
                 current.removeAt(current.size - 1)
             }
-            _searchHistory.value = current
+            settingsRepository.updateGeneral("searchHistory", current)
         }
 
         /**
          * Clear all search history.
          */
         fun clearHistory() {
-            _searchHistory.value = emptyList()
+            viewModelScope.launch {
+                settingsRepository.updateGeneral("searchHistory", emptyList<String>())
+            }
         }
 
         /**
          * Delete a single query from search history.
          */
         fun deleteFromHistory(query: String) {
-            val current = _searchHistory.value.toMutableList()
-            current.remove(query)
-            _searchHistory.value = current
+            viewModelScope.launch {
+                val current =
+                    settingsRepository.preferences.value.searchHistory
+                        .toMutableList()
+                        .apply { remove(query) }
+                settingsRepository.updateGeneral("searchHistory", current)
+            }
         }
     }

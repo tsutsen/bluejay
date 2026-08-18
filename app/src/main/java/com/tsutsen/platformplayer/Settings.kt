@@ -52,6 +52,9 @@ class Settings {
     // Feed settings (grid columns for content lists)
     val feed = FeedSettings()
 
+    // Search settings (recent search queries)
+    val search = SearchSettings()
+
     // Plugin settings (used by StateApp.kt)
     val plugins = PluginSettings()
 
@@ -154,6 +157,12 @@ class Settings {
     @Serializable
     class FeedSettings {
         var gridColumns: Int = 3
+    }
+
+    @Serializable
+    class SearchSettings {
+        // Most recent first, capped at 10 by the writer (SearchViewModel).
+        var history: List<String> = emptyList()
     }
 
     @Serializable

@@ -10,4 +10,5 @@ data class AppPreferences(
     val confirmExit: Boolean = false,
     val enableDeveloperOptions: Boolean = false,
     val gridColumns: Int = 3,
+    val searchHistory: List<String> = emptyList(),
 )

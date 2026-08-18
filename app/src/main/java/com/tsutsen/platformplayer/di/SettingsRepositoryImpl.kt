@@ -46,6 +46,7 @@ class SettingsRepositoryImpl
                 confirmExit = s.confirmExit,
                 enableDeveloperOptions = s.advancedSettings,
                 gridColumns = s.feed.gridColumns,
+                searchHistory = s.search.history,
             )
         }
 
@@ -83,6 +84,7 @@ class SettingsRepositoryImpl
                 "enableDeveloperOptions" -> s.advancedSettings = value as Boolean
                 "dynamicColor" -> s.appearance.dynamicColor = value as Boolean
                 "gridColumns" -> s.feed.gridColumns = value as Int
+                "searchHistory" -> s.search.history = value as List<String>
                 else -> return
             }
             s.save()

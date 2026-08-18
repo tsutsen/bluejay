@@ -6,15 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,12 +24,15 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +41,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -86,6 +90,7 @@ fun SearchScreen(
     var searchQuery by remember { mutableStateOf("") }
     var hasSearched by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
     var isSearchFocused by remember { mutableStateOf(false) }
     // Screen-space bounds of the search field: gestures that START inside it
     // must not clear its focus.
@@ -93,6 +98,18 @@ fun SearchScreen(
         remember { mutableStateOf(Rect.Zero) }
 
     val refreshingState = rememberPullToRefreshState()
+
+    // The search tab opens with the keyboard up: focus the field on entry.
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    val performSearch = {
+        if (searchQuery.isNotBlank()) {
+            viewModel.search(searchQuery)
+            hasSearched = true
+        }
+    }
 
     // Combine repository results with local search history
     val uiState by combine(viewModel.repositoryResults, viewModel.searchHistoryFlow) { results, history ->
@@ -183,79 +200,63 @@ fun SearchScreen(
                 },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. Search field + search button (top row)
-            Row(
+            // 1. Search field: one pill with the search button embedded in
+            // the field (no leading icon, no button next to it).
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .onFocusChanged { isSearchFocused = it.isFocused }
-                            .onGloballyPositioned {
-                                fieldBounds.value = it.boundsInWindow()
-                            },
-                    placeholder = { Text("Search") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { isSearchFocused = it.isFocused }
+                        .onGloballyPositioned {
+                            fieldBounds.value = it.boundsInWindow()
+                        },
+                placeholder = { Text("Search") },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Clear",
-                                modifier =
-                                    Modifier
-                                        .padding(end = 4.dp)
-                                        .size(24.dp)
-                                        .clickable {
-                                            searchQuery = ""
-                                        },
+                                modifier = Modifier.size(22.dp),
                             )
                         }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(24.dp),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions =
-                        KeyboardActions(
-                            onSearch = {
-                                if (searchQuery.isNotBlank()) {
-                                    viewModel.search(searchQuery)
-                                    hasSearched = true
-                                }
-                            },
-                        ),
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                // Search button
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    modifier =
-                        Modifier
-                            .size(40.dp)
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .clickable {
-                                if (searchQuery.isNotBlank()) {
-                                    viewModel.search(searchQuery)
-                                    hasSearched = true
-                                }
-                            },
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
+                    }
+                    IconButton(onClick = { performSearch() }) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            modifier =
+                                Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedTrailingIconColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
+                    ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions =
+                    KeyboardActions(
+                        onSearch = { performSearch() },
+                    ),
+                textStyle = MaterialTheme.typography.bodyMedium,
+            )
 
             // 2+3. Results area (focus handling lives on the outer Box).
             Box(modifier = Modifier.fillMaxSize()) {
