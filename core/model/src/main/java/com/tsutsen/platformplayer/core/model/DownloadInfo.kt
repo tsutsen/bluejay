@@ -15,3 +15,17 @@ data class DownloadInfo(
     val progress: Float = 0f,
     val done: Boolean = false,
 )
+
+/** Download state of one video, as seen by the UI (options sheet button). */
+sealed interface DownloadButtonState {
+    data object Idle : DownloadButtonState
+
+    /** Requested, engine not yet queued (resolving video details). */
+    data object Starting : DownloadButtonState
+
+    data class Downloading(
+        val progress: Float,
+    ) : DownloadButtonState
+
+    data object Downloaded : DownloadButtonState
+}

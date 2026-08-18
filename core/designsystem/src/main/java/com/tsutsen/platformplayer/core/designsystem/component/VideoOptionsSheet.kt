@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -22,7 +23,9 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.ui.RelativeTime
 
@@ -69,6 +73,7 @@ fun VideoOptionsSheet(
     onToggleFavourite: () -> Unit,
     onDownload: () -> Unit,
     onAddToPlaylist: (Long?) -> Unit,
+    downloadState: DownloadButtonState = DownloadButtonState.Idle,
     isWatchLaterSaved: Boolean = false,
     isLikedSaved: Boolean = false,
     isFavouriteSaved: Boolean = false,
@@ -159,8 +164,22 @@ fun VideoOptionsSheet(
                 )
                 add(
                     OptionTile(
-                        label = "Download",
-                        icon = Icons.Filled.Download,
+                        label =
+                            when (downloadState) {
+                                is DownloadButtonState.Downloading -> "Stop download"
+                                is DownloadButtonState.Downloaded -> "Downloaded"
+                                is DownloadButtonState.Starting -> "Starting..."
+                                is DownloadButtonState.Idle -> "Download"
+                            },
+                        icon =
+                            when (downloadState) {
+                                is DownloadButtonState.Downloading -> Icons.Filled.Stop
+                                is DownloadButtonState.Downloaded -> Icons.Filled.Check
+                                else -> Icons.Filled.Download
+                            },
+                        progress = (downloadState as? DownloadButtonState.Downloading)?.progress,
+                        indeterminate = downloadState is DownloadButtonState.Starting,
+                        disabled = downloadState is DownloadButtonState.Downloaded,
                         onClick = onDownload,
                     ),
                 )
@@ -275,6 +294,22 @@ internal fun OptionTileView(
     // tint only (e.g. error color for a destructive action).
     iconTint: Color? = null,
 ) {
+    val downloading = tile.progress != null
+    val active = downloading || tile.indeterminate
+    val tint =
+        when {
+            tile.disabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            tile.selected -> MaterialTheme.colorScheme.onPrimaryContainer
+            active -> MaterialTheme.colorScheme.onErrorContainer
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    val text =
+        when {
+            tile.disabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            tile.selected -> MaterialTheme.colorScheme.onPrimaryContainer
+            active -> MaterialTheme.colorScheme.onErrorContainer
+            else -> MaterialTheme.colorScheme.onSurface
+        }
     Column(
         modifier =
             modifier
@@ -284,12 +319,12 @@ internal fun OptionTileView(
                         12.dp,
                     ),
                 ).background(
-                    if (tile.selected) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
+                    when {
+                        tile.selected -> MaterialTheme.colorScheme.primaryContainer
+                        active -> MaterialTheme.colorScheme.errorContainer
+                        else -> MaterialTheme.colorScheme.surfaceContainer
                     },
-                ).clickable(onClick = tile.onClick)
+                ).clickable(enabled = !tile.disabled, onClick = tile.onClick)
                 .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -297,28 +332,31 @@ internal fun OptionTileView(
             imageVector = tile.icon,
             contentDescription = null,
             modifier = Modifier.size(22.dp),
-            tint =
-                iconTint
-                    ?: if (tile.selected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+            tint = iconTint ?: tint,
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = tile.label,
             style = MaterialTheme.typography.labelSmall,
-            color =
-                if (tile.selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+            color = text,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
+        if (active) {
+            val barModifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 10.dp, top = 8.dp)
+                    .height(3.dp)
+            val progress = tile.progress
+            if (progress != null) {
+                LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = barModifier)
+            } else {
+                // no progress lambda = indeterminate bar ("Starting...")
+                LinearProgressIndicator(modifier = barModifier)
+            }
+        }
     }
 }
 
@@ -349,4 +387,10 @@ internal data class OptionTile(
     val icon: ImageVector,
     val selected: Boolean = false,
     val onClick: () -> Unit,
+    /** Determinate progress 0..1; null = no bar (or indeterminate). */
+    val progress: Float? = null,
+    /** Show an indeterminate bar (e.g. "Starting..."). */
+    val indeterminate: Boolean = false,
+    /** Dimmed, clicks ignored (e.g. "Downloaded"). */
+    val disabled: Boolean = false,
 )

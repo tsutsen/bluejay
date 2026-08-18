@@ -24,6 +24,8 @@ data class VideoCard(
     val viewCount: Long? = null,
     val publishedAt: Long? = null,
     val url: String,
+    /** In-progress download (0..1); null when not downloading. */
+    val downloadProgress: Float? = null,
 ) : Card
 
 @Parcelize

@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
+import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 
@@ -37,10 +38,14 @@ fun VideoOptionsSheetHost(
     val viewModel: VideoOptionsViewModel = hiltViewModel()
     val savedTypes by viewModel.savedTypes(video.url).collectAsState(initial = emptySet())
     val playlists by viewModel.playlists.collectAsState(initial = emptyList())
+    val downloadState by viewModel
+        .downloadState(video.url)
+        .collectAsState(initial = DownloadButtonState.Idle)
     val downloadMessage by viewModel.downloadMessage.collectAsState()
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
 
-    // One-shot feedback ("Download started" / error) as a system toast.
+    // One-shot feedback for download failures as a system toast (success
+    // and stop are visible on the button itself).
     val context = LocalContext.current
     LaunchedEffect(downloadMessage) {
         downloadMessage?.let {
@@ -64,8 +69,16 @@ fun VideoOptionsSheetHost(
             viewModel.toggle(SavedVideoType.FAVOURITE, video)
         },
         onDownload = {
-            viewModel.download(video)
+            when (downloadState) {
+                is DownloadButtonState.Idle -> viewModel.download(video)
+
+                is DownloadButtonState.Downloading -> viewModel.stopDownload(video)
+
+                // Starting / Downloaded: no-op, the button shows it.
+                else -> Unit
+            }
         },
+        downloadState = downloadState,
         onAddToPlaylist = { playlistId ->
             if (playlistId == null) {
                 showNewPlaylistDialog = true

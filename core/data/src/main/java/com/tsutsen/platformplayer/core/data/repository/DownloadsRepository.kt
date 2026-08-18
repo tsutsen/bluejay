@@ -17,4 +17,11 @@ interface DownloadsRepository {
      * @return an error message, or null if the download was started.
      */
     suspend fun startDownload(videoUrl: String): String?
+
+    /**
+     * Cancel a queued/in-progress download for [videoUrl] and stop the
+     * download service if the queue becomes empty.
+     * @return an error message, or null if the download was cancelled.
+     */
+    suspend fun cancelDownload(videoUrl: String): String?
 }

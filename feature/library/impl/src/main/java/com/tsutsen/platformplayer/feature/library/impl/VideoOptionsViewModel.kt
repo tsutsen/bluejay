@@ -4,13 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,22 +33,70 @@ class VideoOptionsViewModel
     ) : ViewModel() {
         private val savedTypesCache = mutableMapOf<String, StateFlow<Set<SavedVideoType>>>()
 
-        private val _downloadMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+        private val _downloadMessage = MutableStateFlow<String?>(null)
 
-        /** One-shot feedback for download actions (shown as a toast). */
+        /** One-shot feedback for download failures (shown as a toast). */
         val downloadMessage: StateFlow<String?> = _downloadMessage
 
         fun consumeDownloadMessage() {
             _downloadMessage.value = null
         }
 
+        /**
+         * URLs with a download request in flight. Resolving the video
+         * details takes seconds on slow connections — without this the
+         * button looks dead and users double-tap (which double-queues).
+         */
+        private val _startingUrls = MutableStateFlow<Set<String>>(emptySet())
+
         fun download(video: VideoCard) {
+            // Check + add on the main thread with no suspension between
+            // them, so rapid double/triple taps can't both slip through
+            // (each would otherwise queue a separate full download).
+            if (video.url in _startingUrls.value) return
+            _startingUrls.value += video.url
             viewModelScope.launch {
-                val error = downloadsRepository.startDownload(video.url)
-                _downloadMessage.value =
-                    if (error == null) "Download started" else error
+                try {
+                    // The engine toasts on success and dialogs on its own
+                    // failures; only surface pre-resolution errors here.
+                    downloadsRepository.startDownload(video.url)?.let { _downloadMessage.value = it }
+                } finally {
+                    _startingUrls.value -= video.url
+                }
             }
         }
+
+        fun stopDownload(video: VideoCard) {
+            viewModelScope.launch {
+                downloadsRepository.cancelDownload(video.url)?.let { _downloadMessage.value = it }
+            }
+        }
+
+        private val downloadStateCache = mutableMapOf<String, StateFlow<DownloadButtonState>>()
+
+        /** Live download state for [url] — drives the options sheet button. */
+        fun downloadState(url: String): StateFlow<DownloadButtonState> =
+            downloadStateCache.getOrPut(url) {
+                downloadsRepository.downloads
+                    .map { list ->
+                        val d = list.firstOrNull { it.url == url }
+                        when {
+                            d == null -> DownloadButtonState.Idle
+                            d.done -> DownloadButtonState.Downloaded
+                            else -> DownloadButtonState.Downloading(d.progress)
+                        }
+                    }.combine(_startingUrls) { state, starting ->
+                        if (state == DownloadButtonState.Idle && url in starting) {
+                            DownloadButtonState.Starting
+                        } else {
+                            state
+                        }
+                    }.stateIn(
+                        viewModelScope,
+                        SharingStarted.WhileSubscribed(5_000),
+                        DownloadButtonState.Idle,
+                    )
+            }
 
         val playlists: StateFlow<List<PlaylistOption>>
             get() = libraryRepository.playlists

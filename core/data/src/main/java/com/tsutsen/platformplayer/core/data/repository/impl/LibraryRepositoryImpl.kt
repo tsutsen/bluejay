@@ -81,7 +81,7 @@ class LibraryRepositoryImpl
                         buildSection(LIKED_ID, "Liked", liked.map { it.toVideoCard() }),
                         buildSection(FAVOURITE_ID, "Favourites", favourite.map { it.toVideoCard() }),
                         buildSection(HISTORY_ID, "History", history.map { it.toVideoCard() }),
-                        buildSection(DOWNLOADS_ID, "Downloads", downloads.filter { it.done }.map { it.toVideoCard() }),
+                        buildSection(DOWNLOADS_ID, "Downloads", downloads.map { it.toVideoCard() }),
                         buildSection(PLAYLISTS_ID, "Playlists", playlists.map { it.toPlaylistCard() }),
                     )
                 }
@@ -113,7 +113,7 @@ class LibraryRepositoryImpl
                 LIKED_ID -> savedVideoDao.observeByType(SavedVideoType.LIKED).map { list -> list.map { it.toVideoCard() } }
                 FAVOURITE_ID -> savedVideoDao.observeByType(SavedVideoType.FAVOURITE).map { list -> list.map { it.toVideoCard() } }
                 HISTORY_ID -> historyDao.observeAll().map { list -> list.map { it.toVideoCard() } }
-                DOWNLOADS_ID -> downloadsRepository.downloads.map { list -> list.filter { it.done }.map { it.toVideoCard() } }
+                DOWNLOADS_ID -> downloadsRepository.downloads.map { list -> list.map { it.toVideoCard() } }
                 PLAYLISTS_ID -> playlistDao.observeAll().map { list -> list.map { it.toPlaylistCard() } }
                 else -> MutableStateFlow<List<Card>>(emptyList())
             }
@@ -295,6 +295,8 @@ class LibraryRepositoryImpl
                 viewCount = null,
                 publishedAt = null,
                 url = url,
+                // In-progress downloads show a live progress bar on the card.
+                downloadProgress = if (done) null else progress,
             )
 
         private fun PlaylistEntity.toPlaylistCard(): PlaylistCard =

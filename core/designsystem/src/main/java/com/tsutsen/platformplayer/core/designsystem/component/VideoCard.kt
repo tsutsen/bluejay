@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +42,7 @@ fun VideoCard(
     val durationMs = card.durationMs
     val publishedAt = card.publishedAt
     val thumbnailUrl = card.thumbnailUrl
+    val downloadProgress = card.downloadProgress
 
     Card(
         modifier =
@@ -73,6 +75,32 @@ fun VideoCard(
                             .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop,
                 )
+
+                // In-progress download: percentage + bar across the bottom
+                if (downloadProgress != null) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.BottomCenter)
+                                .background(Color.Black.copy(alpha = 0.55f)),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = "Downloading ${(downloadProgress * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(vertical = 2.dp),
+                        )
+                        LinearProgressIndicator(
+                            progress = { downloadProgress.coerceIn(0f, 1f) },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp),
+                        )
+                    }
+                }
 
                 // Duration pill (bottom-left)
                 if (durationMs != null && durationMs > 0) {

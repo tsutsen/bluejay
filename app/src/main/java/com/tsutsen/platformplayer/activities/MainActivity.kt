@@ -1,6 +1,9 @@
 package com.tsutsen.platformplayer.activities
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -63,6 +66,13 @@ class MainActivity :
             _pendingResultHandler = null
         }
 
+    /** One-shot: system notifications (downloads, media) are invisible without it on API 33+. */
+    private val notificationPermissionLauncher =
+        registerForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts
+                .RequestPermission(),
+        ) { /* Denied: user can enable it later in system settings. */ }
+
     override fun launchForResult(
         intent: Intent,
         code: Int,
@@ -81,6 +91,14 @@ class MainActivity :
         // Initialize StateApp and FragmentedStorage before setting content
         StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")
         StateApp.instance.mainAppStarting(this)
+
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         // Set navigator for non-Compose code access
         StateApp.instance.navigator = navigator
