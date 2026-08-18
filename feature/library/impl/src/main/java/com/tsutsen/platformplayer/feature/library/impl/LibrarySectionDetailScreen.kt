@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
@@ -65,9 +66,14 @@ fun LibrarySectionDetailScreen(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-            TopAppBar(
-                title = { Text(section?.title ?: "Library") },
-                navigationIcon = {
+            AppHeader(
+                title = {
+                    Text(
+                        text = section?.title ?: "Library",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
+                leading = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,

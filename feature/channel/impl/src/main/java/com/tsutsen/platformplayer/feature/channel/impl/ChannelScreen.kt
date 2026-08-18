@@ -57,6 +57,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.ScrollEndReached
@@ -130,13 +131,7 @@ fun ChannelScreen(
                     )
                 }
             }
-            TopAppBar(
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
+            AppHeader(
                 title = {
                     loaded?.let { state ->
                         Row(
@@ -174,7 +169,7 @@ fun ChannelScreen(
                         }
                     } ?: Text("Channel")
                 },
-                navigationIcon = {
+                leading = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,

@@ -72,6 +72,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.SearchSort
@@ -223,7 +224,8 @@ fun SearchScreen(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        // First element of the tab: on the shared 42dp content line.
+                        .padding(start = 16.dp, top = TabContentTopPadding, end = 16.dp)
                         .focusRequester(focusRequester)
                         .onFocusChanged { isSearchFocused = it.isFocused },
                 placeholder = { Text("Search") },

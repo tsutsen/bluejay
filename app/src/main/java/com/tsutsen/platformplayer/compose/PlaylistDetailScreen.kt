@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaylistRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
@@ -85,7 +86,7 @@ fun PlaylistDetailScreen(
     val loaded = uiState as? PlaylistDetailViewModel.UiState.Loaded
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
+        AppHeader(
             title = {
                 loaded?.info?.let { info ->
                     Row(
@@ -130,7 +131,7 @@ fun PlaylistDetailScreen(
                     }
                 } ?: Text("Playlist")
             },
-            navigationIcon = {
+            leading = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,

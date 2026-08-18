@@ -50,6 +50,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
+import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
@@ -85,7 +86,14 @@ fun LibraryScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                // First element of the tab: on the shared 42dp content line.
+                contentPadding =
+                    PaddingValues(
+                        start = 16.dp,
+                        top = TabContentTopPadding,
+                        end = 16.dp,
+                        bottom = 16.dp,
+                    ),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 items(sections, key = { it.id }) { section ->

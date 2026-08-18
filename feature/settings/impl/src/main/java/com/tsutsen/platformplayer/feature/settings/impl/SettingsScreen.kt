@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -56,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.datastore.model.ContrastLevel
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsButtonCard
@@ -93,17 +95,11 @@ fun SettingsScreen(
         }
 
         is SettingsUiState.Loaded -> {
-            Scaffold(
-                topBar = {
-                    TopAppBar(title = { Text("Settings") })
-                },
-            ) { padding ->
+            Column(modifier = Modifier.fillMaxSize()) {
+                AppHeader(title = { Text("Settings", style = MaterialTheme.typography.titleLarge) })
                 LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     item {
@@ -168,22 +164,16 @@ fun SettingsSectionScreen(
     var selectedChoice by remember { mutableStateOf<Choice?>(null) }
     val state = uiState as? SettingsUiState.Loaded
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(sectionTitle(category)) },
-                navigationIcon = { BackIconButton(onBack) },
-            )
-        },
-    ) { padding ->
+    Column(modifier = Modifier.fillMaxSize()) {
+        AppHeader(
+            title = { Text(sectionTitle(category), style = MaterialTheme.typography.titleLarge) },
+            leading = { BackIconButton(onBack) },
+        )
         val loaded = state
         if (loaded != null) {
             LazyColumn(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                contentPadding = PaddingValues(16.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SectionItems(

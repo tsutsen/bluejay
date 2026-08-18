@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.UIDialogs
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.api.media.IPlatformClient
@@ -140,26 +141,17 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
             result
         }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Browse Plugins") },
-                navigationIcon = {
-                    if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+    Column(modifier = Modifier.fillMaxSize()) {
+        AppHeader(
+            title = { Text("Browse Plugins", style = MaterialTheme.typography.titleLarge) },
+            leading = {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-            )
-        },
-    ) { paddingValues ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-        ) {
+                }
+            },
+        )
             Text("Found ${plugins.size} plugins")
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -211,11 +203,11 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
             }
         }
     }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginDetailScene(
+
     configUrl: String,
     installedPlugins: List<SourcePluginConfig>,
     onBack: () -> Unit,
@@ -306,20 +298,17 @@ fun PluginDetailScene(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Plugin Details") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-        content = {
-            val context = LocalContext.current
-            when {
+    Column(modifier = Modifier.fillMaxSize()) {
+        AppHeader(
+            title = { Text("Plugin Details", style = MaterialTheme.typography.titleLarge) },
+            leading = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            },
+        )
+        val context = LocalContext.current
+        when {
                 isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -753,8 +742,7 @@ fun PluginDetailScene(
                     }
                 }
             }
-        },
-    )
+        }
 }
 
 /**

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.api.media.platforms.js.SourceAuth
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.logging.Logger
@@ -79,27 +80,20 @@ fun LoginScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Login to ${config.name}") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        Logger.i(TAG, "Login cancelled by user")
-                        onLogin(null)
-                        onBack()
-                    }) {
-                        Text("✕")
-                    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        AppHeader(
+            title = { Text("Login to ${config.name}", style = MaterialTheme.typography.titleLarge) },
+            leading = {
+                IconButton(onClick = {
+                    Logger.i(TAG, "Login cancelled by user")
+                    onLogin(null)
+                    onBack()
+                }) {
+                    Text("✕")
                 }
-            )
-        },
-        content = { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
+            },
+        )
+        Column(modifier = Modifier.fillMaxSize()) {
                 // Show warning if present
                 config.authentication?.loginWarning?.let { warning ->
                     Card(
@@ -168,5 +162,4 @@ fun LoginScreen(
                 }
             }
         }
-    )
 }

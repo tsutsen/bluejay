@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.subscriptions.impl
 
+import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -78,9 +79,10 @@ fun SubscriptionsScreen(
     val coroutineScope = rememberCoroutineScope()
     var optionsCard by remember { mutableStateOf<ModelVideoCard?>(null) }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-    ) { paddingValues ->
+    // No Scaffold: M3 Scaffold pads its content with the system-bar insets
+    // (~58dp on this device), which pushed the first element far below the
+    // other tabs'. AppLayout owns the top offset.
+    Box(modifier = modifier.fillMaxSize()) {
         when (val state = uiState) {
             is SubscriptionsUiState.Success -> {
                 if (state.creators.isEmpty() && state.items.isEmpty() && !state.isLoading) {
@@ -88,7 +90,7 @@ fun SubscriptionsScreen(
                         message = "No subscriptions yet.\nSubscribe to channels to see their content here.",
                         actionLabel = "Find channels",
                         onAction = { navigator.navigateSearch(autoFocus = false) },
-                        modifier = Modifier.padding(paddingValues),
+                        modifier = Modifier.fillMaxSize(),
                     )
                 } else {
                     SubscriptionsContent(
@@ -105,17 +107,14 @@ fun SubscriptionsScreen(
                         onLoadMore = viewModel::loadMore,
                         onVideoLongClick = { optionsCard = it },
                         onItemClicked = { url -> playerViewModel.play(url) },
-                        modifier = Modifier.padding(paddingValues),
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
 
             is SubscriptionsUiState.Error -> {
                 Box(
-                    modifier =
-                        Modifier
-                            .padding(paddingValues)
-                            .fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(
@@ -173,7 +172,14 @@ private fun SubscriptionsContent(
     if (isWide) {
         // Wide: Filters + videos in center, creators on right side
         Row(modifier = modifier.fillMaxSize()) {
-            Column(modifier = Modifier.weight(1f).fillMaxSize()) {
+            Column(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        // First element of the tab: on the shared 42dp content line.
+                        .padding(top = TabContentTopPadding),
+            ) {
                 // Filter chips: independent toggles, no cross-coupling
                 SubscriptionFilterBadges(
                     filterStarted = state.filterStarted,
@@ -221,6 +227,7 @@ private fun SubscriptionsContent(
                 modifier = Modifier.width(80.dp).fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(top = TabContentTopPadding),
             ) {
                 item {
                     CreatorAvatar(
@@ -248,12 +255,18 @@ private fun SubscriptionsContent(
         }
     } else {
         // Portrait: Creators on top, videos below
-        Column(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    // First element of the tab: on the shared 42dp content line.
+                    .padding(top = TabContentTopPadding),
+        ) {
             // Creator avatar strip
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
             ) {
                 item {
                     CreatorAvatar(
@@ -407,7 +420,7 @@ private fun SubscriptionFilterBadges(
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
         item {
             FilterChip(
