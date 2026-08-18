@@ -1,6 +1,9 @@
 package com.tsutsen.platformplayer.core.designsystem.layout
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -8,8 +11,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -22,7 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
@@ -71,6 +79,12 @@ val grayjayNavItems =
     )
 
 /**
+ * Width of the navigation rail. Shared with [AppLayout]'s inset animation so the
+ * fullscreen player morph can ease against the same value.
+ */
+val AppNavigationRailWidth = 80.dp
+
+/**
  * Navigation rail chrome for landscape/wide layouts.
  */
 @Composable
@@ -82,7 +96,7 @@ fun AppNavigationRail(
     NavigationRail(
         modifier =
             Modifier
-                .width(80.dp)
+                .width(AppNavigationRailWidth)
                 .statusBarsPadding(),
     ) {
         items.forEach { item ->
@@ -165,34 +179,63 @@ fun AppLayout(
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (config.isWide) {
-        // Landscape: NavigationRail on left + content
-        Row(modifier = modifier.fillMaxSize()) {
-            AnimatedVisibility(
-                visible = config.showNavigation,
-                enter = fadeIn(animationSpec = tween(300)),
-                exit = fadeOut(animationSpec = tween(300)),
-            ) {
-                navigationContent()
+    // Status-bar offset for the content area (edge-to-edge window): ease the
+    // content down 24dp when the app chrome is visible, and to 0 when the
+    // player goes fullscreen, in step with the rail/300ms morph.
+    val topInset by
+        animateDpAsState(
+            targetValue = if (config.showNavigation) 24.dp else 0.dp,
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "appContentTopInset",
+        )
+
+    Box(modifier = modifier.fillMaxSize()) {
+        if (config.isWide) {
+            // Landscape: NavigationRail on left + content.
+            // The rail's width/alpha ease (instead of AnimatedVisibility) so the
+            // content edge — and the player morphing to fullscreen — moves with
+            // the same 300ms tween rather than jumping when the rail is removed.
+            val railWidth by
+                animateDpAsState(
+                    targetValue = if (config.showNavigation) AppNavigationRailWidth else 0.dp,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                    label = "navRailWidth",
+                )
+            val railAlpha by
+                animateFloatAsState(
+                    targetValue = if (config.showNavigation) 1f else 0f,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                    label = "navRailAlpha",
+                )
+            Row(modifier = Modifier.fillMaxSize()) {
+                if (config.showNavigation || railWidth > 0.dp) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .width(railWidth)
+                                .graphicsLayer { alpha = railAlpha }
+                                .clip(RoundedCornerShape(0.dp)),
+                    ) {
+                        navigationContent()
+                    }
+                }
+                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset)) {
+                    content()
+                }
             }
-            // Status-bar inset: MainActivity is edge-to-edge, so the content
-            // area must start below the status bar (all screens rely on this).
-            Box(modifier = Modifier.weight(1f).fillMaxSize().statusBarsPadding()) {
-                content()
-            }
-        }
-    } else {
-        // Portrait: Content + NavigationBar at bottom
-        Column(modifier = modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(1f).fillMaxSize().statusBarsPadding()) {
-                content()
-            }
-            AnimatedVisibility(
-                visible = config.showNavigation,
-                enter = fadeIn(animationSpec = tween(300)),
-                exit = fadeOut(animationSpec = tween(300)),
-            ) {
-                navigationContent()
+        } else {
+            // Portrait: Content + NavigationBar at bottom
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset)) {
+                    content()
+                }
+                AnimatedVisibility(
+                    visible = config.showNavigation,
+                    enter = fadeIn(animationSpec = tween(300)),
+                    exit = fadeOut(animationSpec = tween(300)),
+                ) {
+                    navigationContent()
+                }
             }
         }
     }
