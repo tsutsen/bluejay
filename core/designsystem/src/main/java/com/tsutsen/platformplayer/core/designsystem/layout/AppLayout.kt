@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.layout
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -7,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,7 +25,6 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -128,7 +129,7 @@ fun AppHeader(
             modifier
                 .fillMaxWidth()
                 .height(AppHeaderHeight)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = Tokens.SpaceLg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         leading?.invoke()
@@ -148,8 +149,12 @@ fun AppNavigationRail(
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
 ) {
-    NavigationRail(
-        modifier = Modifier.width(AppNavigationRailWidth),
+    // Plain Column (not M3 NavigationRail) so the item group centers
+    // vertically in the full-height rail instead of stacking from the top.
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         items.forEach { item ->
             NavigationRailItem(
@@ -265,8 +270,7 @@ fun AppLayout(
                         modifier =
                             Modifier
                                 .width(railWidth)
-                                .graphicsLayer { alpha = railAlpha }
-                                .clip(RoundedCornerShape(0.dp)),
+                                .graphicsLayer { alpha = railAlpha },
                     ) {
                         navigationContent()
                     }

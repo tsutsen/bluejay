@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.compose
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -146,7 +147,7 @@ private fun NotificationRow(
         modifier =
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm)
                 .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -161,7 +162,7 @@ private fun NotificationRow(
             modifier =
                 Modifier
                     .weight(1f)
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = Tokens.SpaceMd),
         ) {
             Text(
                 text = notification.title,

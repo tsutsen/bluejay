@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -38,7 +39,7 @@ fun ChannelCardView(
             modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceMd),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AsyncImage(
@@ -46,12 +47,12 @@ fun ChannelCardView(
             contentDescription = card.title,
             modifier =
                 Modifier
-                    .size(48.dp)
+                    .size(Tokens.AvatarLg)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant),
             contentScale = ContentScale.Crop,
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Tokens.SpaceMd))
         Column(Modifier.weight(1f)) {
             Text(
                 text = card.title,

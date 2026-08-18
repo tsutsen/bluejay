@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -31,17 +32,17 @@ fun SettingsRow(
     Row(
         modifier = clickableModifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceMd),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(Tokens.IconMd),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(Tokens.SpaceLg))
         }
         Column(
             modifier = Modifier

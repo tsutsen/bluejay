@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -44,7 +45,7 @@ fun GrayjayModalBottomSheet(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(start = Tokens.SpaceLg, end = Tokens.SpaceLg, top = Tokens.SpaceSm, bottom = Tokens.SpaceSm),
                 )
             }
             content()

@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -87,7 +88,7 @@ fun VideoContainer(
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    contentPadding: PaddingValues = PaddingValues(Tokens.SpaceLg),
     trailingContent: (@Composable () -> Unit)? = null,
     topContent: (@Composable () -> Unit)? = null,
     cardContent: @Composable (Card) -> Unit,
@@ -108,7 +109,7 @@ fun VideoContainer(
                 modifier = modifier.fillMaxSize(),
                 state = state,
                 contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg),
             ) {
                 if (topContent != null) {
                     item(key = "__top__") { topContent() }
@@ -132,7 +133,7 @@ fun VideoContainer(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
                 contentPadding = contentPadding,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
                 renderCards(items, cardContent, trailingContent)
             }
@@ -154,8 +155,8 @@ fun VideoContainer(
                 state = state,
                 columns = GridCells.Fixed(layout.columns),
                 contentPadding = contentPadding,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
                 if (topContent != null) {
                     item(key = "__top__") { topContent() }
@@ -182,8 +183,8 @@ fun VideoContainer(
                 state = state,
                 columns = GridCells.Fixed(layout.columns),
                 contentPadding = contentPadding,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
             ) {
                 items(items, key = { it.id }) { card ->
                     cardContent(card)
@@ -209,8 +210,8 @@ fun VideoContainer(
                 state = state,
                 rows = GridCells.Fixed(layout.rowsPerPage),
                 contentPadding = contentPadding,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
             ) {
                 items(items, key = { it.id }) { card ->
                     cardContent(card)

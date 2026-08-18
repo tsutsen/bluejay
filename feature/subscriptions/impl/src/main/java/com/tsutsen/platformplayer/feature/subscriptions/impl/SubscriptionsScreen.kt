@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.subscriptions.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -125,7 +126,7 @@ fun SubscriptionsScreen(
                             text = "Error: ${state.message}",
                             color = MaterialTheme.colorScheme.error,
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(Tokens.SpaceLg))
                         androidx.compose.material3.Button(
                             onClick = { viewModel.refresh() },
                         ) {
@@ -208,7 +209,7 @@ private fun SubscriptionsContent(
                             onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(8.dp),
+                            contentPadding = PaddingValues(Tokens.SpaceSm),
                         ) { card ->
                             VideoCard(
                                 card = card as ModelVideoCard,
@@ -226,7 +227,7 @@ private fun SubscriptionsContent(
             LazyColumn(
                 modifier = Modifier.width(80.dp).fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 contentPadding = PaddingValues(top = TabContentTopPadding),
             ) {
                 item {
@@ -265,8 +266,8 @@ private fun SubscriptionsContent(
             // Creator avatar strip
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
             ) {
                 item {
                     CreatorAvatar(
@@ -320,7 +321,7 @@ private fun SubscriptionsContent(
                         onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                         onLoadMore = onLoadMore,
                         modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(8.dp),
+                        contentPadding = PaddingValues(Tokens.SpaceSm),
                     ) { card ->
                         VideoCard(
                             card = card as ModelVideoCard,
@@ -378,7 +379,7 @@ private fun CreatorAvatar(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(8.dp),
+                        .padding(Tokens.SpaceSm),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -419,8 +420,8 @@ private fun SubscriptionFilterBadges(
 ) {
     LazyRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+        contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
     ) {
         item {
             FilterChip(

@@ -7,6 +7,7 @@
 
 package com.tsutsen.platformplayer.compose.plugins
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -853,21 +856,38 @@ private fun PluginSettingsSection(
                         }
                         Spacer(Modifier.width(12.dp))
                         var menuExpanded by remember { mutableStateOf(false) }
-                        OutlinedButton(onClick = { menuExpanded = true }) {
-                            Text(current)
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false },
-                        ) {
-                            options.forEachIndexed { index, option ->
-                                DropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onSettingChanged(variable, index.toString())
-                                    },
-                                )
+                        Box {
+                            // Same trigger style as the search tab's sort pill.
+                            FilterChip(
+                                selected = false,
+                                onClick = { menuExpanded = true },
+                                label = { Text(current) },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(Tokens.IconSm),
+                                    )
+                                },
+                            )
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false },
+                            ) {
+                                options.forEachIndexed { index, option ->
+                                    DropdownMenuItem(
+                                        leadingIcon = {
+                                            if (option == current) {
+                                                Icon(Icons.Default.Check, contentDescription = null)
+                                            }
+                                        },
+                                        text = { Text(option) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onSettingChanged(variable, index.toString())
+                                        },
+                                    )
+                                }
                             }
                         }
                     }

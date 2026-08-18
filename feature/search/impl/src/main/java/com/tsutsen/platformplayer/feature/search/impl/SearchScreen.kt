@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.search.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -69,7 +70,6 @@ import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
-import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
@@ -235,7 +235,7 @@ fun SearchScreen(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Clear",
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(Tokens.IconMd),
                             )
                         }
                     }
@@ -243,17 +243,11 @@ fun SearchScreen(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
-                            modifier =
-                                Modifier
-                                    .size(34.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.primary),
-                            tint = MaterialTheme.colorScheme.onPrimary,
                         )
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Tokens.RadiusMd),
                 colors =
                     TextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -277,8 +271,8 @@ fun SearchScreen(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
             ) {
                 SearchType.entries.forEach { type ->
                     FilterChip(
@@ -307,7 +301,7 @@ fun SearchScreen(
                                     Icon(
                                         imageVector = Icons.Filled.ArrowDropDown,
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(Tokens.IconSm),
                                     )
                                 },
                             )
@@ -345,11 +339,11 @@ fun SearchScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = Tokens.SpaceLg)
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                RoundedCornerShape(12.dp),
-                            ).padding(12.dp),
+                                RoundedCornerShape(Tokens.RadiusMd),
+                            ).padding(Tokens.SpaceMd),
                 ) {
                     RecentSearches(
                         history = uiState.searchHistory.take(5),
@@ -373,7 +367,7 @@ fun SearchScreen(
                     // Search result grid (shown after search is executed)
                     when {
                         uiState.isLoading && uiState.items.isEmpty() -> {
-                            VideoCardSkeleton(count = 6)
+                            Box(modifier = Modifier.fillMaxSize())
                         }
 
                         uiState.error != null && uiState.items.isEmpty() -> {
@@ -401,12 +395,12 @@ fun SearchScreen(
                                                 modifier =
                                                     Modifier
                                                         .fillMaxWidth()
-                                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                                        .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm),
                                             ) {
                                                 Text(
                                                     text = "Channels",
                                                     style = MaterialTheme.typography.titleMedium,
-                                                    modifier = Modifier.padding(bottom = 8.dp),
+                                                    modifier = Modifier.padding(bottom = Tokens.SpaceSm),
                                                 )
                                                 VideoContainer(
                                                     items = channelResults,
@@ -530,7 +524,7 @@ private fun RecentSearches(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
         item {
             Row(

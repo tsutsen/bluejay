@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.compose
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,7 +41,6 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
-import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
@@ -105,7 +105,7 @@ fun PlaylistDetailScreen(
                         Column(
                             modifier =
                                 Modifier
-                                    .padding(start = 12.dp)
+                                    .padding(start = Tokens.SpaceMd)
                                     .weight(1f),
                         ) {
                             Text(
@@ -143,7 +143,7 @@ fun PlaylistDetailScreen(
 
         when (val state = uiState) {
             is PlaylistDetailViewModel.UiState.Loading -> {
-                VideoCardSkeleton(count = 6)
+                Box(modifier = Modifier.fillMaxSize())
             }
 
             is PlaylistDetailViewModel.UiState.Error -> {
@@ -162,7 +162,7 @@ fun PlaylistDetailScreen(
                             onRetry = { viewModel.loadInitialVideos() },
                         )
                     } else {
-                        VideoCardSkeleton(count = 4)
+                        Box(modifier = Modifier.fillMaxSize())
                     }
                 } else {
                     VideoContainer(

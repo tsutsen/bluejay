@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,7 +36,7 @@ fun PlaylistOptionsSheet(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm),
         ) {
             Text(
                 text = title,
@@ -65,7 +66,7 @@ fun PlaylistOptionsSheet(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    .padding(horizontal = Tokens.SpaceMd, vertical = Tokens.SpaceXs),
         ) {
             OptionTileView(
                 tile =

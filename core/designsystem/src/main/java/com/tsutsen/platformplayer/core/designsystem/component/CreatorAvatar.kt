@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -33,7 +34,7 @@ fun CreatorAvatar(
             model = thumbnailUrl,
             contentDescription = name,
             modifier = Modifier
-                .size(56.dp)
+                .size(Tokens.AvatarXl)
                 .clip(CircleShape),
             contentScale = ContentScale.Crop
         )
@@ -51,7 +52,7 @@ fun CreatorAvatar(
             style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = Tokens.SpaceXs)
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,7 +55,7 @@ fun SettingsOptionCard(
             Box(
                 modifier =
                     Modifier
-                        .size(40.dp)
+                        .size(Tokens.AvatarMd)
                         .background(
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = MaterialTheme.shapes.small,
@@ -65,7 +66,7 @@ fun SettingsOptionCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(Tokens.IconMd),
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -118,7 +119,7 @@ fun SettingsSwitchCard(
             Box(
                 modifier =
                     Modifier
-                        .size(40.dp)
+                        .size(Tokens.AvatarMd)
                         .background(
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = MaterialTheme.shapes.small,
@@ -129,7 +130,7 @@ fun SettingsSwitchCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(Tokens.IconMd),
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -184,7 +185,7 @@ fun SettingsSwitchOptionCard(
             Box(
                 modifier =
                     Modifier
-                        .size(40.dp)
+                        .size(Tokens.AvatarMd)
                         .background(
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = MaterialTheme.shapes.small,
@@ -195,7 +196,7 @@ fun SettingsSwitchOptionCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(Tokens.IconMd),
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -250,7 +251,7 @@ fun SettingsTextCard(
             Box(
                 modifier =
                     Modifier
-                        .size(40.dp)
+                        .size(Tokens.AvatarMd)
                         .background(
                             color = MaterialTheme.colorScheme.primaryContainer,
                             shape = MaterialTheme.shapes.small,
@@ -261,7 +262,7 @@ fun SettingsTextCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(Tokens.IconMd),
                 )
             }
             Column(modifier = Modifier.weight(1f)) {

@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.channel.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,7 +63,6 @@ import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.ScrollEndReached
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
-import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
@@ -104,16 +104,16 @@ fun ChannelScreen(
         Box(modifier = Modifier.fillMaxWidth()) {
             loaded?.channel?.banner?.let { bannerUrl ->
                 // Cover as the top-bar background: sized to the bar itself
-                // (matchParentSize), height-fitted (Crop, never stretched),
-                // centered between the avatar badge and the subscribe
-                // button. Edge gradients fade the cover into the page
-                // background.
+                // (matchParentSize). Fit (not Crop): the image scales to the
+                // bar's height keeping its aspect ratio, centered
+                // horizontally, and the edge gradients fade the leftover
+                // space into the page background.
                 Box(modifier = Modifier.matchParentSize()) {
                     AsyncImage(
                         url = bannerUrl,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.Fit,
                     )
                     val edge = MaterialTheme.colorScheme.surface
                     Box(
@@ -150,7 +150,7 @@ fun ChannelScreen(
                             Column(
                                 modifier =
                                     Modifier
-                                        .padding(start = 12.dp)
+                                        .padding(start = Tokens.SpaceMd)
                                         .weight(1f),
                             ) {
                                 Text(
@@ -208,7 +208,7 @@ fun ChannelScreen(
 
         when (val state = uiState) {
             is ChannelViewModel.ChannelUiState.Loading -> {
-                VideoCardSkeleton(count = 6)
+                Box(modifier = Modifier.fillMaxSize())
             }
 
             is ChannelViewModel.ChannelUiState.Error -> {
@@ -340,14 +340,14 @@ private fun ChannelContent(
                     Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
+                        .padding(Tokens.SpaceLg),
             ) {
                 state.channel.description?.let { description ->
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodyLarge,
                     )
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(Tokens.SpaceLg))
                 }
                 state.channel.links.forEach { (label, link) ->
                     Text(
@@ -363,7 +363,7 @@ private fun ChannelContent(
                                     // ponytail: display-only links; no in-app browser seam
                                 },
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Tokens.SpaceSm))
                 }
             }
         }
@@ -410,7 +410,7 @@ private fun ChannelContent(
                         onRetry = { onRetryContent() },
                     )
                 } else {
-                    VideoCardSkeleton(count = 4)
+                    Box(modifier = Modifier.fillMaxSize())
                 }
             } else if (isWide) {
                 WideVideoGrid(
@@ -467,8 +467,8 @@ private fun WideVideoGrid(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(Tokens.SpaceLg),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
     ) {
         items(
             rows,
@@ -476,7 +476,7 @@ private fun WideVideoGrid(
         ) { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
                 WideVideoCell(
                     card = row[0],
@@ -546,7 +546,7 @@ private fun ChannelIconRail(
             Modifier
                 .width(80.dp)
                 .fillMaxSize()
-                .padding(vertical = 12.dp),
+                .padding(vertical = Tokens.SpaceMd),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         TABS.forEachIndexed { index, tab ->

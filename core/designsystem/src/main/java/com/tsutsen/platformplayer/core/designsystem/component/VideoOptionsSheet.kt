@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -337,21 +338,19 @@ internal fun OptionTileView(
     Column(
         modifier =
             modifier
-                .padding(4.dp)
+                .padding(Tokens.SpaceXs)
                 .clip(
-                    RoundedCornerShape(
-                        12.dp,
-                    ),
+                    RoundedCornerShape(Tokens.RadiusMd),
                 ).background(
                     bg,
                 ).clickable(enabled = !tile.disabled, onClick = tile.onClick)
-                .padding(vertical = 12.dp),
+                .padding(vertical = Tokens.SpaceMd),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
             imageVector = tile.icon,
             contentDescription = null,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(Tokens.IconMd),
             tint = iconTint ?: iconColor,
         )
         Spacer(modifier = Modifier.height(6.dp))

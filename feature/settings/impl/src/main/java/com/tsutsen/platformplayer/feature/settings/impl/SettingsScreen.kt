@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,7 +90,7 @@ fun SettingsScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 Text(
                     text = "Error loading settings: ${current.message}",
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                    modifier = Modifier.align(Alignment.Center).padding(Tokens.SpaceLg),
                 )
             }
         }
@@ -99,8 +100,8 @@ fun SettingsScreen(
                 AppHeader(title = { Text("Settings", style = MaterialTheme.typography.titleLarge) })
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(start = Tokens.SpaceLg, end = Tokens.SpaceLg, bottom = Tokens.SpaceLg),
+                    verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 ) {
                     item {
                         SettingsOptionCard(
@@ -173,8 +174,8 @@ fun SettingsSectionScreen(
         if (loaded != null) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(start = Tokens.SpaceLg, end = Tokens.SpaceLg, bottom = Tokens.SpaceLg),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
             ) {
                 SectionItems(
                     category = category,
@@ -565,14 +566,14 @@ private fun ChoiceDialog(
                             Modifier
                                 .fillMaxWidth()
                                 .clickable { onSelected(value) }
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = Tokens.SpaceXs),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(
                             selected = value == selected,
                             onClick = { onSelected(value) },
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(Tokens.SpaceSm))
                         Text(
                             text = label,
                             style = MaterialTheme.typography.bodyLarge,

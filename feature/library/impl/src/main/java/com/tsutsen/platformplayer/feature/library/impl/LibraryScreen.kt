@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.library.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -82,19 +83,19 @@ fun LibraryScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         if (sections.isEmpty()) {
-            LibrarySkeleton()
+            Box(modifier = Modifier.fillMaxSize())
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 // First element of the tab: on the shared 42dp content line.
                 contentPadding =
                     PaddingValues(
-                        start = 16.dp,
+                        start = Tokens.SpaceLg,
                         top = TabContentTopPadding,
-                        end = 16.dp,
-                        bottom = 16.dp,
+                        end = Tokens.SpaceLg,
+                        bottom = Tokens.SpaceLg,
                     ),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXl),
             ) {
                 items(sections, key = { it.id }) { section ->
                     LibrarySectionRow(
@@ -189,7 +190,7 @@ private fun LibrarySectionRow(
     onPlaylistLongClick: (PlaylistCard) -> Unit,
     onNewPlaylist: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd)) {
         Row(
             modifier =
                 Modifier
@@ -209,7 +210,7 @@ private fun LibrarySectionRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Tokens.SpaceSm))
             }
             if (section.id == "playlists") {
                 Icon(
@@ -217,7 +218,7 @@ private fun LibrarySectionRow(
                     contentDescription = "New playlist",
                     modifier =
                         Modifier
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = Tokens.SpaceSm)
                             .clickable(onClick = onNewPlaylist),
                 )
             }
@@ -232,7 +233,7 @@ private fun LibrarySectionRow(
                 text = "Nothing yet",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 8.dp),
+                modifier = Modifier.padding(vertical = Tokens.SpaceSm),
             )
         } else {
             VideoContainer(
@@ -244,7 +245,7 @@ private fun LibrarySectionRow(
                 onLoadMore = {},
                 contentPadding = PaddingValues(0.dp),
                 cardContent = { card ->
-                    Box(modifier = Modifier.width(STRIP_CARD_WIDTH).padding(end = 12.dp)) {
+                    Box(modifier = Modifier.width(STRIP_CARD_WIDTH).padding(end = Tokens.SpaceMd)) {
                         LibraryCard(
                             card = card,
                             onClick = { onCardClick(card) },
@@ -294,7 +295,7 @@ private fun LibraryCard(
                     Modifier
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(Tokens.RadiusSm))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
             )
         }
@@ -321,7 +322,7 @@ fun PlaylistCardView(
                     onClick = onClick,
                     onLongClick = onLongClick,
                 ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(Tokens.RadiusSm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -394,7 +395,7 @@ private fun AllCard(
             Modifier
                 .width(STRIP_CARD_WIDTH)
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(Tokens.RadiusSm))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -404,39 +405,6 @@ private fun AllCard(
             fontWeight = FontWeight.SemiBold,
             style = MaterialTheme.typography.titleMedium,
         )
-    }
-}
-
-@Composable
-private fun LibrarySkeleton() {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        repeat(4) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth(0.4f)
-                            .height(24.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    repeat(4) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .width(STRIP_CARD_WIDTH)
-                                    .aspectRatio(16f / 9f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 

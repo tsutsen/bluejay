@@ -250,18 +250,6 @@ fun String.fixHtmlWhitespace(): Spanned {
     return Html.fromHtml(replace("\n", "<br />"), HtmlCompat.FROM_HTML_MODE_LEGACY);
 }
 
-fun Long.formatDuration(): String {
-    val hours = this / 3600000
-    val minutes = (this % 3600000) / 60000
-    val seconds = (this % 60000) / 1000
-
-    return if (hours > 0) {
-        String.format("%02d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format("%02d:%02d", minutes, seconds)
-    }
-}
-
 fun String.fixHtmlLinks(): Spanned {
     //TODO: Properly fix whitespace handling.
     val doc = Jsoup.parse(replace("\n", "<br />"));

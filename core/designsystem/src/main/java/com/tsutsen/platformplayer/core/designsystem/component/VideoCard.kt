@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -49,7 +50,7 @@ fun VideoCard(
             modifier
                 .fillMaxWidth()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(Tokens.RadiusSm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -72,7 +73,7 @@ fun VideoCard(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(RoundedCornerShape(Tokens.RadiusSm)),
                     contentScale = ContentScale.Crop,
                 )
 
@@ -108,9 +109,9 @@ fun VideoCard(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(8.dp),
+                                .padding(Tokens.SpaceSm),
                         color = Color.Black.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(4.dp),
+                        shape = RoundedCornerShape(Tokens.RadiusXs),
                     ) {
                         Text(
                             text = formatDuration(durationMs),
@@ -127,7 +128,7 @@ fun VideoCard(
             Column(
                 modifier =
                     Modifier
-                        .padding(12.dp)
+                        .padding(Tokens.SpaceMd)
                         .fillMaxWidth(),
             ) {
                 // Title (2 lines max)
@@ -155,13 +156,13 @@ fun VideoCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Tokens.SpaceXs))
                         Text(
                             text = "•",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Tokens.SpaceXs))
                     }
 
                     if (viewCount != null) {
@@ -173,13 +174,13 @@ fun VideoCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                         if (publishedAt != null) {
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(Tokens.SpaceXs))
                             Text(
                                 text = "•",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(Tokens.SpaceXs))
                         }
                     }
 
@@ -217,7 +218,7 @@ fun CompactVideoCard(
                 .fillMaxWidth()
                 .height(72.dp)
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AsyncImage(
@@ -226,13 +227,13 @@ fun CompactVideoCard(
             modifier =
                 Modifier
                     .size(128.dp, 72.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(Tokens.RadiusSm)),
             contentScale = ContentScale.Crop,
         )
         Column(
             modifier =
                 Modifier
-                    .padding(start = 12.dp)
+                    .padding(start = Tokens.SpaceMd)
                     .weight(1f),
         ) {
             Text(
@@ -261,9 +262,15 @@ fun formatViewCount(count: Long): String =
         else -> count.toString()
     }
 
+/** "M:SS" under an hour, "H:MM:SS" from an hour up (e.g. 1:06:00). */
 fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-    return "$minutes:${seconds.toString().padStart(2, '0')}"
+    return if (hours > 0) {
+        "$hours:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+    } else {
+        "$minutes:${seconds.toString().padStart(2, '0')}"
+    }
 }

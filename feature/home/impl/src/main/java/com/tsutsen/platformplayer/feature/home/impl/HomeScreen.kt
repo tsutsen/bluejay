@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.home.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +22,6 @@ import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
-import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
@@ -51,12 +51,9 @@ fun HomeScreen(
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
 
     when (val state = uiState) {
-        is HomeUiState.Initial -> {
-            VideoCardSkeleton(count = 6)
-        }
-
+        is HomeUiState.Initial,
         is HomeUiState.Loading -> {
-            VideoCardSkeleton(count = 6)
+            Box(modifier = Modifier.fillMaxSize())
         }
 
         is HomeUiState.Loaded -> {
@@ -148,10 +145,10 @@ private fun HomeFeedContent(
                     // First element of the tab: on the shared 42dp content line.
                     contentPadding =
                         PaddingValues(
-                            start = 16.dp,
+                            start = Tokens.SpaceLg,
                             top = TabContentTopPadding,
-                            end = 16.dp,
-                            bottom = 16.dp,
+                            end = Tokens.SpaceLg,
+                            bottom = Tokens.SpaceLg,
                         ),
                 ) { card ->
                     when (card) {
@@ -182,7 +179,7 @@ private fun HomeFeedContent(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .padding(16.dp),
+                                .padding(Tokens.SpaceLg),
                     ) {
                         // Could add a circular progress indicator here
                     }

@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.library.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +28,6 @@ import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
-import com.tsutsen.platformplayer.core.designsystem.component.VideoCardSkeleton
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
@@ -85,7 +85,7 @@ fun LibrarySectionDetailScreen(
 
             when {
                 section == null -> {
-                    VideoCardSkeleton(count = 6)
+                    Box(modifier = Modifier.fillMaxSize())
                 }
 
                 items.isEmpty() -> {
@@ -183,7 +183,7 @@ private fun LibraryCard(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(Tokens.SpaceLg),
             )
         }
     }
