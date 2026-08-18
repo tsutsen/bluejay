@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.core.database.entity.*
         SavedVideoEntity::class,
         NotificationEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -39,6 +39,22 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
 
     companion object {
+        /**
+         * v4 -> v5: stores the channel URL alongside the author name in
+         * saved videos, history, and playlist videos — the long-press
+         * "Go to channel" action needs it and the live-feed cards already
+         * carry it; local cards used to lose it on the way to the DB.
+         * Existing rows keep NULL (tile hidden) until re-saved/re-watched.
+         */
+        val MIGRATION_4_5 =
+            object : Migration(4, 5) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `saved_video` ADD COLUMN `authorUrl` TEXT")
+                    db.execSQL("ALTER TABLE `history` ADD COLUMN `authorUrl` TEXT")
+                    db.execSQL("ALTER TABLE `playlist_videos` ADD COLUMN `authorUrl` TEXT")
+                }
+            }
+
         /** v3 -> v4: adds the in-app notifications table. */
         val MIGRATION_3_4 =
             object : Migration(3, 4) {

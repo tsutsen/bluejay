@@ -12,6 +12,7 @@ data class SavedVideoEntity(
     val type: SavedVideoType,
     val title: String,
     val author: String?,
+    val authorUrl: String? = null,
     val thumbnailUrl: String?,
     val addedAt: Long = System.currentTimeMillis(),
 )

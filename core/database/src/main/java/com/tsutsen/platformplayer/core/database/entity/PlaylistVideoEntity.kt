@@ -12,8 +12,8 @@ import androidx.room.Index
             entity = PlaylistEntity::class,
             parentColumns = ["id"],
             childColumns = ["playlistId"],
-            onDelete = ForeignKey.CASCADE
-        )
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
     indices =
         [
@@ -23,7 +23,7 @@ import androidx.room.Index
             // the same video twice, and duplicate rows crashed the
             // playlist grid (duplicate lazy keys).
             Index(value = ["playlistId", "contentUrl"], unique = true),
-        ]
+        ],
 )
 data class PlaylistVideoEntity(
     val playlistId: Long,
@@ -34,4 +34,5 @@ data class PlaylistVideoEntity(
     val thumbnailUrl: String?,
     val addedAt: Long = System.currentTimeMillis(),
     val durationMs: Long = 0,
+    val authorUrl: String? = null,
 )

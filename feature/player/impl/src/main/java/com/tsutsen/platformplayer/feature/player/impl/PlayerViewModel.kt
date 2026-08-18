@@ -126,6 +126,7 @@ class PlayerViewModel
                                 contentUrl = video.url,
                                 title = video.title,
                                 author = video.author?.name,
+                                authorUrl = video.author?.url?.takeIf { it.isNotEmpty() },
                                 thumbnailUrl = video.thumbnailUrl,
                             )
                         }

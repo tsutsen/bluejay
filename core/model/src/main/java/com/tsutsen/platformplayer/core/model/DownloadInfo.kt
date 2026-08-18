@@ -10,6 +10,7 @@ data class DownloadInfo(
     val url: String,
     val title: String,
     val author: String? = null,
+    val authorUrl: String? = null,
     val thumbnailUrl: String? = null,
     val durationMs: Long? = null,
     val progress: Float = 0f,

@@ -133,6 +133,11 @@ class EngineDownloadsRepository
                         url = d.video?.url.orEmpty(),
                         title = d.name,
                         author = null,
+                        authorUrl =
+                            d.video
+                                ?.author
+                                ?.url
+                                ?.takeIf { it.isNotEmpty() },
                         thumbnailUrl = d.thumbnail,
                         durationMs = null,
                         progress = d.progress.toFloat(),
@@ -145,6 +150,7 @@ class EngineDownloadsRepository
                         url = v.url,
                         title = v.name,
                         author = v.author?.name,
+                        authorUrl = v.author?.url?.takeIf { it.isNotEmpty() },
                         thumbnailUrl = v.thumbnails?.getHQThumbnail(),
                         durationMs = if (v.duration > 0) v.duration * 1000L else null,
                         progress = 1f,
