@@ -7,8 +7,8 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
  *   FULLSCREEN — top rows swipe-V → MORPH_TO_FLOATING;
  *                middle/bottom left swipe-V → BRIGHTNESS;
  *                middle/bottom right swipe-V → VOLUME.
- *   NORMAL     — same as fullscreen but swipe-V → MORPH_TO_FLOATING everywhere
- *                (no brightness / volume).
+ *   NORMAL     — swipe-V → MORPH_VERTICAL everywhere (up = FULLSCREEN,
+ *                down = FLOATING; no brightness / volume).
  *   COMPACT    — identical to NORMAL.
  *   FLOATING   — all NONE.
  */
@@ -20,6 +20,7 @@ fun buildDefaultGestureConfigs(): GestureConfigs {
     val brightness = GestureAction.BRIGHTNESS
     val volume = GestureAction.VOLUME
     val morphFloating = GestureAction.MORPH_TO_FLOATING
+    val morphVertical = GestureAction.MORPH_VERTICAL
 
     // --- reusable slot configs ---
     val none = GestureSlotConfig()
@@ -45,19 +46,19 @@ fun buildDefaultGestureConfigs(): GestureConfigs {
         GestureSector.BOTTOM_RIGHT to rightHoldRewindFwd.copy(swipeVertical = volume),
     ))
 
-    // --- NORMAL (same as fullscreen, but swipe-V → MORPH_TO_FLOATING instead of brightness/volume) ---
+    // --- NORMAL (swipe-V → MORPH_VERTICAL: up = fullscreen, down = floating) ---
     val normal = GestureConfig().withSectors(mapOf(
-        GestureSector.TOP_LEFT to leftHoldRewindBack.copy(swipeVertical = morphFloating),
-        GestureSector.TOP_CENTER to none.copy(swipeVertical = morphFloating),
-        GestureSector.TOP_RIGHT to rightHoldRewindFwd.copy(swipeVertical = morphFloating),
+        GestureSector.TOP_LEFT to leftHoldRewindBack.copy(swipeVertical = morphVertical),
+        GestureSector.TOP_CENTER to none.copy(swipeVertical = morphVertical),
+        GestureSector.TOP_RIGHT to rightHoldRewindFwd.copy(swipeVertical = morphVertical),
 
-        GestureSector.MIDDLE_LEFT to leftHoldRewindBack.copy(swipeVertical = morphFloating),
-        GestureSector.MIDDLE_CENTER to none,
-        GestureSector.MIDDLE_RIGHT to rightHoldRewindFwd.copy(swipeVertical = morphFloating),
+        GestureSector.MIDDLE_LEFT to leftHoldRewindBack.copy(swipeVertical = morphVertical),
+        GestureSector.MIDDLE_CENTER to none.copy(swipeVertical = morphVertical),
+        GestureSector.MIDDLE_RIGHT to rightHoldRewindFwd.copy(swipeVertical = morphVertical),
 
-        GestureSector.BOTTOM_LEFT to leftHoldRewindBack.copy(swipeVertical = morphFloating),
-        GestureSector.BOTTOM_CENTER to none,
-        GestureSector.BOTTOM_RIGHT to rightHoldRewindFwd.copy(swipeVertical = morphFloating),
+        GestureSector.BOTTOM_LEFT to leftHoldRewindBack.copy(swipeVertical = morphVertical),
+        GestureSector.BOTTOM_CENTER to none.copy(swipeVertical = morphVertical),
+        GestureSector.BOTTOM_RIGHT to rightHoldRewindFwd.copy(swipeVertical = morphVertical),
     ))
 
     // --- COMPACT — same as NORMAL ---

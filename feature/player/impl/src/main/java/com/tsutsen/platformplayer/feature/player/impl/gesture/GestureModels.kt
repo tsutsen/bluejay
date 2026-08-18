@@ -62,7 +62,11 @@ enum class GestureAction {
 
     // Morph transitions (swipe or instant depending on config)
     MORPH_TO_FLOATING,
-    MORPH_TO_FULLSCREEN
+    MORPH_TO_FULLSCREEN,
+
+    // Direction-aware vertical morph: swipe up → FULLSCREEN, swipe down → FLOATING.
+    // Direction is resolved from the sign of GestureFrame.totalDelta.y in the handler.
+    MORPH_VERTICAL
 }
 
 /**

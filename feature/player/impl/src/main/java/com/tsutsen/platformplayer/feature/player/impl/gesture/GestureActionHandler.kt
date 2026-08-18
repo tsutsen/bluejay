@@ -35,6 +35,9 @@ interface GestureActionHandler {
  * @property onMorphDragStart  called when a morph-to-floating swipe begins
  * @property onMorphDrag       called with cumulative downward drag px during morph swipe
  * @property onMorphDragEnd    called when morph swipe ends (decides commit or cancel)
+ * @property onFullscreenDragStart  called when a morph-to-fullscreen (swipe up) begins
+ * @property onFullscreenDrag       called with cumulative upward drag px during fullscreen morph
+ * @property onFullscreenDragEnd    called when the fullscreen morph swipe ends (commit or cancel)
  */
 class PlayerGestureActionHandler(
     private val viewModel: PlayerViewModel,
@@ -46,6 +49,9 @@ class PlayerGestureActionHandler(
     private val onMorphDragStart: () -> Unit = {},
     private val onMorphDrag: (dragY: Float) -> Unit = {},
     private val onMorphDragEnd: (dragY: Float) -> Unit = {},
+    private val onFullscreenDragStart: () -> Unit = {},
+    private val onFullscreenDrag: (dragY: Float) -> Unit = {},
+    private val onFullscreenDragEnd: (dragY: Float) -> Unit = {},
 ) : GestureActionHandler {
 
     // --- brightness state ---
@@ -62,6 +68,12 @@ class PlayerGestureActionHandler(
 
     // --- morph drag state ---
     private var morphStartDelta = 0f
+
+    // --- vertical morph state (MORPH_VERTICAL) ---
+    // -1 = swipe up (fullscreen), +1 = swipe down (floating);
+    // null until the first frame that decisively leaves the axis.
+    private var morphVerticalDir: Int? = null
+    private var morphVerticalDrag = 0f
 
     // --- speed hold keep-alive ---
     private var speedHoldJob: Job? = null
@@ -105,6 +117,7 @@ class PlayerGestureActionHandler(
             GestureAction.SPEEDDOWN -> handleSpeedHold(frame, baseMultiplier = 0.5f)
             GestureAction.MORPH_TO_FLOATING -> handleMorphToFloating(frame)
             GestureAction.MORPH_TO_FULLSCREEN -> handleMorphToFullscreen(frame)
+            GestureAction.MORPH_VERTICAL -> handleMorphVertical(frame)
             // Instant actions handled via handleInstantAction
             else -> {}
         }
@@ -281,5 +294,37 @@ class PlayerGestureActionHandler(
     private fun handleMorphToFullscreen(frame: GestureFrame) {
         // Currently handled as instant on double-tap via handleInstantAction
         // Swipe-up variant is a stub for now
+    }
+
+    // ---- Morph vertical (swipe up → fullscreen, swipe down → floating) ----
+    //    Direction is locked on the first decisive frame and drives which
+    //    drag callback set receives the frames.
+    private fun handleMorphVertical(frame: GestureFrame) {
+        when (frame.phase) {
+            GesturePhase.START -> {
+                morphVerticalDir = null
+                morphVerticalDrag = 0f
+            }
+
+            GesturePhase.ACTIVE -> {
+                val y = frame.totalDelta.y
+                if (y == 0f) return
+                if (morphVerticalDir == null) {
+                    morphVerticalDir = if (y < 0f) -1 else 1
+                    if (morphVerticalDir == -1) onFullscreenDragStart() else onMorphDragStart()
+                }
+                morphVerticalDrag = if (morphVerticalDir == -1) -y else y
+                if (morphVerticalDir == -1) onFullscreenDrag(morphVerticalDrag) else onMorphDrag(morphVerticalDrag)
+            }
+
+            GesturePhase.END -> {
+                when (morphVerticalDir) {
+                    -1 -> onFullscreenDragEnd(morphVerticalDrag)
+                    1 -> onMorphDragEnd(morphVerticalDrag)
+                    else -> {}
+                }
+                morphVerticalDir = null
+            }
+        }
     }
 }

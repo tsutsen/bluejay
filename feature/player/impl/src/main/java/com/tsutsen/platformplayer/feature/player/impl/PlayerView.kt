@@ -107,6 +107,7 @@ fun PlayerView(
                 .Animatable(0f)
         }
     var isDraggingMorph by remember { mutableStateOf(false) }
+    var isDraggingFullscreen by remember { mutableStateOf(false) }
 
     val fullscreenProgress =
         remember {
@@ -178,7 +179,11 @@ fun PlayerView(
         if (!minimized) controlsVisible = true
     }
 
-    LaunchedEffect(isFullscreenState) {
+    LaunchedEffect(isFullscreenState, isDraggingFullscreen) {
+        // Don't fight the finger mid-drag: the drag callbacks own
+        // fullscreenProgress until END; the commit (or cancel) that follows
+        // re-enters this effect and finishes the move.
+        if (isDraggingFullscreen) return@LaunchedEffect
         val fullscreen = isFullscreenState ?: return@LaunchedEffect
         val target = if (fullscreen) 1f else 0f
         if (fullscreen && morphProgress.value < 0.5f) {
@@ -307,8 +312,12 @@ fun PlayerView(
             val minPlayerHeightPx = containerSize.height * 0.2f
             var playerHeightPx by remember { mutableStateOf(0f) }
 
-            LaunchedEffect(isMinimizedAnim.value, isFullscreenAnim.value) {
-                if (!isMinimizedAnim.value && !isFullscreenAnim.value) {
+            // Reset the collapsed height the moment the state leaves the
+            // floating mini (isMinimized flips false immediately), not only
+            // after the 300ms morph settles (isMinimizedAnim) — otherwise the
+            // player lands in COMPACT for a beat before expanding to NORMAL.
+            LaunchedEffect(isMinimized, isFullscreenAnim.value) {
+                if (!isMinimized && !isFullscreenAnim.value) {
                     playerHeightPx = maxPlayerHeightPx
                 }
             }
@@ -465,6 +474,26 @@ fun PlayerView(
                         onIndicatorEnd = {
                             activeProgressIndicator = null
                             // Badges auto-hide via their own fade animation — don't touch badgeState here
+                        },
+                        onFullscreenDragStart = { isDraggingFullscreen = true },
+                        onFullscreenDrag = { dragY ->
+                            // Read containerSize at call time — this block is
+                            // remembered once, so no locals may be captured.
+                            val travel = containerSize.height * 0.45f
+                            val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
+                            coroutineScope.launch { fullscreenProgress.snapTo(progress) }
+                        },
+                        onFullscreenDragEnd = { dragY ->
+                            isDraggingFullscreen = false
+                            val travel = containerSize.height * 0.45f
+                            val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
+                            if (progress > 0.4f) {
+                                viewModel.toggleFullscreen()
+                            } else {
+                                coroutineScope.launch {
+                                    fullscreenProgress.animateTo(0f, transitionSpringSpec)
+                                }
+                            }
                         },
                     )
                 }
