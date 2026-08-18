@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Code
@@ -24,7 +26,10 @@ import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Swipe
 import androidx.compose.material.icons.filled.SwipeLeft
 import androidx.compose.material.icons.filled.SwipeRight
 import androidx.compose.material.icons.filled.SwipeVertical
@@ -33,6 +38,8 @@ import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -57,10 +64,9 @@ import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 
 /**
- * Settings — grouped by section (Appearance, Gestures, Content, Playback,
- * General). Every live row is backed by a real setter on the Settings-backed
- * SettingsRepository; gesture slots are placeholders until their actions are
- * defined.
+ * Settings master page: one row per section (Appearance, Gestures, Content,
+ * Playback, General). Tapping a row opens the section detail page
+ * ([SettingsSectionScreen]) via NavDestination.SettingsFragment(category).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,8 +75,6 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val state = uiState as? SettingsUiState.Loaded
-    var selectedChoice by remember { mutableStateOf<Choice?>(null) }
 
     when (val current = uiState) {
         is SettingsUiState.Loading -> {
@@ -89,17 +93,112 @@ fun SettingsScreen(
         }
 
         is SettingsUiState.Loaded -> {
-            SettingsContent(
-                state = current,
-                viewModel = viewModel,
-                onChoiceSelected = { selectedChoice = it },
-                onPluginsClick = { navigator.navigateToPluginBrowser() },
+            Scaffold(
+                topBar = {
+                    TopAppBar(title = { Text("Settings") })
+                },
+            ) { padding ->
+                LazyColumn(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    item {
+                        SettingsOptionCard(
+                            icon = Icons.Filled.BrightnessAuto,
+                            title = "Appearance",
+                            subtitle = "Theme, dynamic color, contrast",
+                            onClick = { navigator.navigateToSettingsFragment("appearance") },
+                        )
+                    }
+                    item {
+                        SettingsOptionCard(
+                            icon = Icons.Filled.Swipe,
+                            title = "Gestures",
+                            subtitle = "Screen swipe actions",
+                            onClick = { navigator.navigateToSettingsFragment("gestures") },
+                        )
+                    }
+                    item {
+                        SettingsOptionCard(
+                            icon = Icons.Filled.Extension,
+                            title = "Content",
+                            subtitle = "Plugins, video page sections",
+                            onClick = { navigator.navigateToSettingsFragment("content") },
+                        )
+                    }
+                    item {
+                        SettingsOptionCard(
+                            icon = Icons.Filled.PlayArrow,
+                            title = "Playback",
+                            subtitle = "Quality, subtitles, background playback",
+                            onClick = { navigator.navigateToSettingsFragment("playback") },
+                        )
+                    }
+                    item {
+                        SettingsOptionCard(
+                            icon = Icons.Filled.Settings,
+                            title = "General",
+                            subtitle = "App behavior, reset to defaults",
+                            onClick = { navigator.navigateToSettingsFragment("general") },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Detail page for one settings section, reached from the master page.
+ * [category] is the SettingsFragment destination argument.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsSectionScreen(
+    category: String,
+    onBack: () -> Unit,
+    onPluginsClick: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var selectedChoice by remember { mutableStateOf<Choice?>(null) }
+    val state = uiState as? SettingsUiState.Loaded
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(sectionTitle(category)) },
+                navigationIcon = { BackIconButton(onBack) },
             )
+        },
+    ) { padding ->
+        val loaded = state
+        if (loaded != null) {
+            LazyColumn(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SectionItems(
+                    category = category,
+                    state = loaded,
+                    viewModel = viewModel,
+                    onChoiceSelected = { selectedChoice = it },
+                    onPluginsClick = onPluginsClick,
+                )
+            }
         }
     }
 
     val loaded = state
-    when (val choice = selectedChoice) {
+    when (selectedChoice) {
         null -> {
             Unit
         }
@@ -222,37 +321,26 @@ fun SettingsScreen(
     }
 }
 
-private enum class Choice {
-    THEME,
-    CONTRAST,
-    GRID_COLUMNS,
-    DEFAULT_RESOLUTION,
-    SUBTITLE_LANGUAGE,
+@Composable
+private fun BackIconButton(onBack: () -> Unit) {
+    IconButton(onClick = onBack) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Back",
+        )
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SettingsContent(
+/** The cards belonging to one section. */
+private fun LazyListScope.SectionItems(
+    category: String,
     state: SettingsUiState.Loaded,
     viewModel: SettingsViewModel,
     onChoiceSelected: (Choice) -> Unit,
     onPluginsClick: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Settings") })
-        },
-    ) { padding ->
-        LazyColumn(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // ==================== Appearance ====================
-            item { SectionHeader("Appearance") }
+    when (category) {
+        "appearance" -> {
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.BrightnessAuto,
@@ -288,10 +376,10 @@ private fun SettingsContent(
                     onClick = { onChoiceSelected(Choice.CONTRAST) },
                 )
             }
+        }
 
-            // ==================== Gestures ====================
+        "gestures" -> {
             // Placeholder slots — actions to be defined.
-            item { SectionHeader("Gestures") }
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.SwipeLeft,
@@ -316,9 +404,9 @@ private fun SettingsContent(
                     onClick = {},
                 )
             }
+        }
 
-            // ==================== Content ====================
-            item { SectionHeader("Content") }
+        "content" -> {
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.Extension,
@@ -353,14 +441,19 @@ private fun SettingsContent(
                     onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
                 )
             }
+        }
 
-            // ==================== Playback ====================
-            item { SectionHeader("Playback") }
+        "playback" -> {
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.HighQuality,
                     title = "Default resolution",
-                    subtitle = if (state.defaultResolution == "auto") "Auto" else "${state.defaultResolution}p",
+                    subtitle =
+                        if (state.defaultResolution == "auto") {
+                            "Auto"
+                        } else {
+                            "${state.defaultResolution}p"
+                        },
                     onClick = { onChoiceSelected(Choice.DEFAULT_RESOLUTION) },
                 )
             }
@@ -399,9 +492,9 @@ private fun SettingsContent(
                     onClick = { onChoiceSelected(Choice.SUBTITLE_LANGUAGE) },
                 )
             }
+        }
 
-            // ==================== General ====================
-            item { SectionHeader("General") }
+        "general" -> {
             item {
                 SettingsSwitchCard(
                     icon = Icons.Filled.ExitToApp,
@@ -430,6 +523,16 @@ private fun SettingsContent(
     }
 }
 
+private fun sectionTitle(category: String): String =
+    when (category) {
+        "appearance" -> "Appearance"
+        "gestures" -> "Gestures"
+        "content" -> "Content"
+        "playback" -> "Playback"
+        "general" -> "General"
+        else -> "Settings"
+    }
+
 private fun subtitleLanguageLabel(code: String): String =
     when (code) {
         "auto" -> "Auto"
@@ -445,14 +548,12 @@ private fun subtitleLanguageLabel(code: String): String =
         else -> code
     }
 
-@Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 12.dp, bottom = 2.dp),
-    )
+private enum class Choice {
+    THEME,
+    CONTRAST,
+    GRID_COLUMNS,
+    DEFAULT_RESOLUTION,
+    SUBTITLE_LANGUAGE,
 }
 
 @Composable

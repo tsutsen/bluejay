@@ -19,6 +19,7 @@ import com.tsutsen.platformplayer.feature.library.impl.LibraryScreen
 import com.tsutsen.platformplayer.feature.library.impl.LibrarySectionDetailScreen
 import com.tsutsen.platformplayer.feature.search.impl.SearchScreen
 import com.tsutsen.platformplayer.feature.settings.impl.SettingsScreen
+import com.tsutsen.platformplayer.feature.settings.impl.SettingsSectionScreen
 import com.tsutsen.platformplayer.feature.subscriptions.impl.SubscriptionsScreen
 import com.tsutsen.platformplayer.logging.Logger
 import kotlinx.coroutines.Dispatchers
@@ -260,7 +261,11 @@ fun GrayjayNavGraph(
         }
 
         is NavDestination.SettingsFragment -> {
-            PlaceholderScreen("Settings", "Coming soon")
+            SettingsSectionScreen(
+                category = destination.category,
+                onBack = { navigator.goBack() },
+                onPluginsClick = { navigator.navigateToPluginBrowser() },
+            )
         }
 
         is NavDestination.PluginBrowser -> {
