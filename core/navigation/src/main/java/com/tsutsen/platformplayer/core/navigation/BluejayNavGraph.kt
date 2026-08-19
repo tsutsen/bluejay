@@ -11,7 +11,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.PlaceholderScreen
  * Uses a state-based navigation approach with the Navigator's StateFlow.
  */
 @Composable
-fun GrayjayNavGraph(
+fun BluejayNavGraph(
     navigator: Navigator,
     startDestination: NavDestination = NavDestination.Home,
     modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier

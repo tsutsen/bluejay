@@ -81,10 +81,12 @@ object PlayerRepositoryModule {
         commentRepository: CommentRepository,
         contentExtrasRepository: ContentExtrasRepository,
         settingsRepository: SettingsRepository,
+        historyDao: com.tsutsen.platformplayer.core.database.dao.HistoryDao,
     ): PlayerRepository {
         val impl = PlayerRepositoryImpl(context)
         impl.setUrlResolver(urlResolver)
         impl.setExtrasRepositories(commentRepository, contentExtrasRepository, settingsRepository)
+        impl.setHistoryDao(historyDao)
         return impl
     }
 }

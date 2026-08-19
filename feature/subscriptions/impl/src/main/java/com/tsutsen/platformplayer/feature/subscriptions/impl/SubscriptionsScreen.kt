@@ -142,7 +142,7 @@ fun SubscriptionsScreen(
         VideoOptionsSheetHost(
             video = card,
             onDismiss = { optionsCard = null },
-            onPlay = { playerViewModel.play(card.url) },
+            onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
         )
     }
@@ -379,7 +379,7 @@ private fun CreatorAvatar(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(Tokens.SpaceSm),
+                        .padding(Tokens.SpaceMd),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

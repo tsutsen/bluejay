@@ -82,15 +82,19 @@ import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
+import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
+import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.formatDuration
-import com.tsutsen.platformplayer.core.designsystem.theme.GrayjayTheme
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
+import com.tsutsen.platformplayer.core.model.DownloadButtonState
+import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
@@ -121,6 +125,7 @@ class CompanionPresentation(
     private val libraryRepository: LibraryRepository,
     private val homeRepository: HomeRepository,
     private val settingsRepository: SettingsRepository,
+    private val downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
 ) : Presentation(context, display) {
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -161,11 +166,12 @@ class CompanionPresentation(
                     ThemeMode.DARK -> true
                     ThemeMode.AUTO -> isSystemInDarkTheme()
                 }
-            GrayjayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
+            BluejayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
                 CompanionContent(
                     playerRepository = playerRepository,
                     libraryRepository = libraryRepository,
                     homeRepository = homeRepository,
+                    downloadsRepository = downloadsRepository,
                 )
             }
         }
@@ -245,6 +251,7 @@ private fun CompanionContent(
     playerRepository: PlayerRepository,
     libraryRepository: LibraryRepository,
     homeRepository: HomeRepository,
+    downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
     val scope = rememberCoroutineScope()
@@ -268,8 +275,10 @@ private fun CompanionContent(
     // deadlocks the V8 busy lock (see PackageHttp.autoParallelPool).
 
     var selectedTab by remember { mutableIntStateOf(0) }
+    var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
 
     val onPlay: (String) -> Unit = { url -> scope.launch { playerRepository.play(url) } }
+    val onLongClick: (CoreVideoCard) -> Unit = { card -> optionsCard = card }
 
     val pagerState = rememberPagerState(pageCount = { 3 })
     VerticalPager(
@@ -309,17 +318,30 @@ private fun CompanionContent(
                 },
                 onSeekTo = { ms -> scope.launch { playerRepository.seekTo(ms) } },
                 onPlay = onPlay,
+                onLongClick = onLongClick,
             )
 
-            1 -> CompanionLibraryPage(sections = sections, onPlay = onPlay)
+            1 -> CompanionLibraryPage(sections = sections, onPlay = onPlay, onLongClick = onLongClick)
 
             2 ->
                 CompanionHomePage(
                     items = home.items,
                     onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
                     onPlay = onPlay,
+                    onLongClick = onLongClick,
                 )
         }
+    }
+
+    if (optionsCard != null) {
+        CompanionVideoOptionsSheet(
+            card = optionsCard!!,
+            onDismiss = { optionsCard = null },
+            onPlay = onPlay,
+            libraryRepository = libraryRepository,
+            downloadsRepository = downloadsRepository,
+            scope = scope,
+        )
     }
 }
 
@@ -341,6 +363,7 @@ private fun CompanionVideoPage(
     onNext: () -> Unit,
     onSeekTo: (Long) -> Unit,
     onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -374,11 +397,11 @@ private fun CompanionVideoPage(
                     tabStates[1].animateScrollToItem(currentChapterIndex)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                CompanionTab("Comments", selected = selectedTab == 0) { onTabSelected(0) }
-                CompanionTab("Chapters", selected = selectedTab == 1) { onTabSelected(1) }
-                CompanionTab("Recommended", selected = selectedTab == 2) { onTabSelected(2) }
-            }
+            PillTabs(
+                labels = listOf("Comments", "Chapters", "Recommended"),
+                selected = selectedTab,
+                onSelect = onTabSelected,
+            )
             Box(
                 modifier =
                     Modifier
@@ -490,6 +513,7 @@ private fun CompanionVideoPage(
                         VideoCardFull(
                             card = card,
                             onClick = { onPlay(card.url) },
+                            onLongClick = { onLongClick(card) },
                             modifier = Modifier
                                 .width(240.dp)
                                 .padding(horizontal = 2.dp),
@@ -519,6 +543,7 @@ private fun CompanionVideoPage(
 private fun CompanionLibraryPage(
     sections: List<LibrarySection>,
     onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -544,11 +569,13 @@ private fun CompanionLibraryPage(
             LibrarySlotPager(
                 section = slots.getOrNull(0),
                 onPlay = onPlay,
+                onLongClick = onLongClick,
                 modifier = Modifier.weight(1f),
             )
             LibrarySlotPager(
                 section = slots.getOrNull(1),
                 onPlay = onPlay,
+                onLongClick = onLongClick,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -556,11 +583,13 @@ private fun CompanionLibraryPage(
             LibrarySlotPager(
                 section = slots.getOrNull(2),
                 onPlay = onPlay,
+                onLongClick = onLongClick,
                 modifier = Modifier.weight(1f),
             )
             LibrarySlotPager(
                 section = slots.getOrNull(3),
                 onPlay = onPlay,
+                onLongClick = onLongClick,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -575,6 +604,7 @@ private fun CompanionLibraryPage(
 private fun LibrarySlotPager(
     section: LibrarySection?,
     onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -627,7 +657,7 @@ private fun LibrarySlotPager(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     pageSpacing = 8.dp,
                 ) { index ->
-                    PagerCard(card = cards[index], onClick = onPlay)
+                    PagerCard(card = cards[index], onClick = onPlay, onLongClick = onLongClick)
                 }
             }
         }
@@ -644,6 +674,7 @@ private fun CompanionHomePage(
     items: List<com.tsutsen.platformplayer.core.model.Card>,
     onLoadNextPage: () -> Unit,
     onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -695,6 +726,7 @@ private fun CompanionHomePage(
                     HomeGridPage(
                         pageItems = feedItems.value.chunked(4).getOrNull(pageIndex).orEmpty(),
                         onPlay = onPlay,
+                        onLongClick = onLongClick,
                     )
                 }
             }
@@ -707,18 +739,19 @@ private fun CompanionHomePage(
 private fun HomeGridPage(
     pageItems: List<com.tsutsen.platformplayer.core.model.Card>,
     onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            HomeGridCell(pageItems.getOrNull(0), onPlay = onPlay, modifier = Modifier.weight(1f))
-            HomeGridCell(pageItems.getOrNull(1), onPlay = onPlay, modifier = Modifier.weight(1f))
+            HomeGridCell(pageItems.getOrNull(0), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            HomeGridCell(pageItems.getOrNull(1), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
         }
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            HomeGridCell(pageItems.getOrNull(2), onPlay = onPlay, modifier = Modifier.weight(1f))
-            HomeGridCell(pageItems.getOrNull(3), onPlay = onPlay, modifier = Modifier.weight(1f))
+            HomeGridCell(pageItems.getOrNull(2), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            HomeGridCell(pageItems.getOrNull(3), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -727,12 +760,97 @@ private fun HomeGridPage(
 private fun HomeGridCell(
     card: com.tsutsen.platformplayer.core.model.Card?,
     onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
     modifier: Modifier,
 ) {
     Box(modifier = modifier.padding(4.dp), contentAlignment = Alignment.Center) {
         if (card != null) {
-            PagerCard(card = card, onClick = onPlay)
+            PagerCard(card = card, onClick = onPlay, onLongClick = onLongClick)
         }
+    }
+}
+
+/**
+ * Long-press video options for the second screen. Mirrors the main app's
+ * VideoOptionsSheet but is wired directly against the shared repositories —
+ * no Hilt ViewModel, since a Presentation has no ViewModelStoreOwner.
+ */
+@Composable
+private fun CompanionVideoOptionsSheet(
+    card: CoreVideoCard,
+    onDismiss: () -> Unit,
+    onPlay: (String) -> Unit,
+    libraryRepository: LibraryRepository,
+    downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    val savedTypes by libraryRepository.observeSavedTypes(card.url).collectAsState(initial = emptySet())
+    val playlists by libraryRepository.playlists.collectAsState(initial = emptyList())
+    var downloading by remember { mutableStateOf(false) }
+
+    VideoOptionsSheet(
+        url = card.url,
+        onDismiss = onDismiss,
+        onPlay = {
+            onPlay(card.url)
+            onDismiss()
+        },
+        // No navigation on the second screen.
+        onGoToChannel = { onDismiss() },
+        onToggleWatchLater = {
+            scope.launch { toggleSaveType(libraryRepository, savedTypes, card, SavedVideoType.WATCH_LATER) }
+        },
+        onToggleLiked = {
+            scope.launch { toggleSaveType(libraryRepository, savedTypes, card, SavedVideoType.LIKED) }
+        },
+        onToggleFavourite = {
+            scope.launch { toggleSaveType(libraryRepository, savedTypes, card, SavedVideoType.FAVOURITE) }
+        },
+        onDownload = {
+            scope.launch {
+                if (downloading) {
+                    downloading = false
+                    downloadsRepository.cancelDownload(card.url)
+                } else {
+                    downloading = true
+                    downloadsRepository.startDownload(card.url)
+                }
+            }
+        },
+        onAddToPlaylist = { playlistId ->
+            scope.launch {
+                if (playlistId != null) {
+                    libraryRepository.addVideoToPlaylist(playlistId, card)
+                } else {
+                    val id = libraryRepository.createPlaylist("New playlist")
+                    libraryRepository.addVideoToPlaylist(id, card)
+                }
+            }
+        },
+        downloadState = if (downloading) DownloadButtonState.Downloading(0f) else DownloadButtonState.Idle,
+        isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
+        isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),
+        isFavouriteSaved = savedTypes.contains(SavedVideoType.FAVOURITE),
+        playlists = playlists,
+        authorUrl = card.authorUrl?.takeIf { it.isNotEmpty() },
+        title = card.title,
+        durationMs = card.durationMs,
+        viewCount = card.viewCount,
+        publishedAt = card.publishedAt,
+        modal = false,
+    )
+}
+
+private suspend fun toggleSaveType(
+    libraryRepository: LibraryRepository,
+    savedTypes: Set<SavedVideoType>,
+    card: CoreVideoCard,
+    type: SavedVideoType,
+) {
+    if (savedTypes.contains(type)) {
+        libraryRepository.removeSavedVideo(type, card.url)
+    } else {
+        libraryRepository.saveVideo(type, card)
     }
 }
 
@@ -741,6 +859,7 @@ private fun HomeGridCell(
 private fun PagerCard(
     card: com.tsutsen.platformplayer.core.model.Card,
     onClick: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         // Thumbnails always keep their fixed 16:9 ratio. In short slots the
@@ -761,6 +880,7 @@ private fun PagerCard(
                     VideoCardPills(
                         card = card,
                         onClick = { onClick(card.url) },
+                        onLongClick = { onLongClick(card) },
                         modifier = Modifier.width(cardWidth),
                     )
 
@@ -874,23 +994,3 @@ private fun CompanionVideoHeader(
     }
 }
 
-@Composable
-private fun CompanionTab(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    TextButton(onClick = onClick) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            color =
-                if (selected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-        )
-    }
-}

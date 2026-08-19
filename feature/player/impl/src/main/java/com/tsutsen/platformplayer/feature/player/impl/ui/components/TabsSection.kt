@@ -1,13 +1,11 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 
 @Composable
 internal fun TabsSection(
@@ -16,47 +14,20 @@ internal fun TabsSection(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
 ) {
-    Row(
+    val tabs =
+        buildList {
+            if (showComments) add(0 to "Comments")
+            if (showRecommended) add(1 to "Recommended")
+        }
+    if (tabs.isEmpty()) return
+    val selectedPill = tabs.indexOfFirst { it.first == selectedTab }.coerceAtLeast(0)
+    PillTabs(
+        labels = tabs.map { it.second },
+        selected = selectedPill,
+        onSelect = { pillIndex -> onTabSelected(tabs[pillIndex].first) },
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        if (showComments) {
-            TabItem(
-                text = "Comments",
-                isSelected = selectedTab == 0,
-                onClick = { onTabSelected(0) },
-            )
-        }
-        if (showRecommended) {
-            TabItem(
-                text = "Recommended",
-                isSelected = selectedTab == 1,
-                onClick = { onTabSelected(1) },
-            )
-        }
-    }
-}
-
-@Composable
-internal fun TabItem(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-) {
-    TextButton(onClick = onClick) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            color =
-                if (isSelected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-        )
-    }
+    )
 }

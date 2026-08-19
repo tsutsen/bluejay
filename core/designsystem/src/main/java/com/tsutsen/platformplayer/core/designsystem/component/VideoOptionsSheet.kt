@@ -86,11 +86,15 @@ fun VideoOptionsSheet(
     durationMs: Long? = null,
     viewCount: Long? = null,
     publishedAt: Long? = null,
+    // Modal (material3 ModalBottomSheet) for activities; a plain non-modal
+    // panel for surfaces without a SavedState/Lifecycle owner chain (e.g. a
+    // Presentation).
+    modal: Boolean = true,
 ) {
     val context = LocalContext.current
     var showPlaylists by remember { mutableStateOf(false) }
 
-    GrayjayModalBottomSheet(onDismiss = onDismiss) {
+    val body: @Composable () -> Unit = {
         // Header: title, then the metadata row underneath (title and stats
         // never fit on one line at phone widths).
         val stats =
@@ -265,6 +269,11 @@ fun VideoOptionsSheet(
                 }
             }
         }
+    }
+    if (modal) {
+        BluejayModalBottomSheet(onDismiss = onDismiss, content = body)
+    } else {
+        BluejayBottomSheetPanel(onDismiss = onDismiss, content = body)
     }
 }
 

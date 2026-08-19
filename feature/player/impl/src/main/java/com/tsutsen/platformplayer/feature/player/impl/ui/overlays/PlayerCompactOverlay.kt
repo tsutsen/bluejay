@@ -18,11 +18,11 @@ import androidx.media3.common.Player
 @Composable
 internal fun PlayerCompactOverlay(
     isPlaying: Boolean,
-    isLooping: Boolean,
+    subtitlesOn: Boolean,
     onMinimize: () -> Unit,
     onPlayPause: () -> Unit,
     onChapters: () -> Unit,
-    onLoopToggle: () -> Unit,
+    onSubtitleToggle: () -> Unit,
     onWatchLater: () -> Unit,
     onOptions: () -> Unit,
     onFullscreen: () -> Unit,
@@ -70,11 +70,11 @@ internal fun PlayerCompactOverlay(
                     tint = Color.White
                 )
             }
-            IconButton(onClick = onLoopToggle) {
+            IconButton(onClick = onSubtitleToggle) {
                 Icon(
-                    imageVector = Icons.Default.Repeat,
-                    contentDescription = "Loop",
-                    tint = if (isLooping) MaterialTheme.colorScheme.primary else Color.White
+                    imageVector = Icons.Default.ClosedCaption,
+                    contentDescription = "Subtitles",
+                    tint = if (subtitlesOn) MaterialTheme.colorScheme.primary else Color.White
                 )
             }
             IconButton(onClick = onWatchLater) {

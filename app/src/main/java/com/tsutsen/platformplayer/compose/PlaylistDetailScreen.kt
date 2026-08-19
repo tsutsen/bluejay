@@ -172,7 +172,7 @@ fun PlaylistDetailScreen(
                         hasMorePages = state.hasMore,
                         onCardClick = { card ->
                             if (card is CoreVideoCard) {
-                                playerViewModel.play(card.url)
+                                playerViewModel.play(card)
                             }
                         },
                         onLoadMore = { viewModel.loadNextPage() },
@@ -180,7 +180,7 @@ fun PlaylistDetailScreen(
                         if (card is CoreVideoCard) {
                             VideoCard(
                                 card = card,
-                                onClick = { playerViewModel.play(card.url) },
+                                onClick = { playerViewModel.play(card) },
                                 onLongClick = { optionsCard = card },
                             )
                         } else {
@@ -196,7 +196,7 @@ fun PlaylistDetailScreen(
         VideoOptionsSheetHost(
             video = card,
             onDismiss = { optionsCard = null },
-            onPlay = { playerViewModel.play(card.url) },
+            onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
         )
     }

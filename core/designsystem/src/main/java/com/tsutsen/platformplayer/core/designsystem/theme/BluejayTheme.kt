@@ -24,7 +24,7 @@ private val DarkColorSchemeCustom = darkColorScheme()
 val LocalSemanticColors = compositionLocalOf<SemanticColors> { SemanticColorsLight }
 
 @Composable
-fun GrayjayTheme(
+fun BluejayTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     colorScheme: ColorScheme =
@@ -37,7 +37,7 @@ fun GrayjayTheme(
         } else {
             if (darkTheme) DarkColorSchemeCustom else DefaultColorScheme
         },
-    typography: Typography = GrayjayTypography,
+    typography: Typography = BluejayTypography,
     content: @Composable () -> Unit,
 ) {
     val view = LocalView.current

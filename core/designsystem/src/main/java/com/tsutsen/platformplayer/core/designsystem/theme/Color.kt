@@ -3,12 +3,12 @@ package com.tsutsen.platformplayer.core.designsystem.theme
 import androidx.compose.ui.graphics.Color
 
 // Bluejay brand colors
-val GrayjayBlue = Color(0xFF1A73E8)
-val GrayjayBlueDark = Color(0xFF1557B0)
-val GrayjayBlueLight = Color(0xFF4A90E2)
-val GrayjayDark = Color(0xFF1A1A2E)
-val GrayjayDarker = Color(0xFF16213E)
-val GrayjayLight = Color(0xFFE8EAF6)
+val BluejayBlue = Color(0xFF1A73E8)
+val BluejayBlueDark = Color(0xFF1557B0)
+val BluejayBlueLight = Color(0xFF4A90E2)
+val BluejayDark = Color(0xFF1A1A2E)
+val BluejayDarker = Color(0xFF16213E)
+val BluejayLight = Color(0xFFE8EAF6)
 
 // Semantic roles M3 does not define. M3 already covers danger
 // (error / errorContainer) and highlight (primaryContainer); warning
@@ -33,9 +33,9 @@ val SemanticColorsDark =
 // Contrast level color schemes
 val LightColorScheme =
     androidx.compose.material3.lightColorScheme(
-        primary = GrayjayBlue,
+        primary = BluejayBlue,
         onPrimary = Color.White,
-        primaryContainer = GrayjayBlueLight,
+        primaryContainer = BluejayBlueLight,
         onPrimaryContainer = Color.Black,
         secondary = Color(0xFF546E7A),
         onSecondary = Color.White,
@@ -54,18 +54,18 @@ val LightColorScheme =
 
 val DarkColorScheme =
     androidx.compose.material3.darkColorScheme(
-        primary = GrayjayBlueLight,
+        primary = BluejayBlueLight,
         onPrimary = Color.Black,
-        primaryContainer = GrayjayBlueDark,
+        primaryContainer = BluejayBlueDark,
         onPrimaryContainer = Color.White,
         secondary = Color(0xFF90A4AE),
         onSecondary = Color.Black,
         secondaryContainer = Color(0xFF37474F),
         onSecondaryContainer = Color.White,
-        background = GrayjayDark,
-        onBackground = GrayjayLight,
-        surface = GrayjayDarker,
-        onSurface = GrayjayLight,
+        background = BluejayDark,
+        onBackground = BluejayLight,
+        surface = BluejayDarker,
+        onSurface = BluejayLight,
         surfaceVariant = Color(0xFF2D2D44),
         onSurfaceVariant = Color(0xFFCAC4D0),
         error = Color(0xFFF28B82),

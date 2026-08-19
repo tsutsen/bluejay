@@ -5,6 +5,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MediaSource
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
+import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
 import kotlinx.coroutines.flow.StateFlow
 
@@ -18,7 +19,12 @@ interface PlayerRepository {
      */
     val exoPlayer: ExoPlayer?
 
-    suspend fun play(videoId: String)
+    /**
+     * Play [videoId]. Pass [initial] (known details from the tapped card) so
+     * the UI can show title/author/thumbnail instantly instead of a
+     * "Loading..." placeholder while the media resolves.
+     */
+    suspend fun play(videoId: String, initial: ContentItem? = null)
     suspend fun pause()
     suspend fun resume()
     suspend fun seekTo(positionMs: Long)

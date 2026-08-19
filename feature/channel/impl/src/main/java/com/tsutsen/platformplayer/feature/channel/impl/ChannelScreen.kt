@@ -51,6 +51,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -103,34 +106,22 @@ fun ChannelScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxWidth()) {
             loaded?.channel?.banner?.let { bannerUrl ->
-                // Cover as the top-bar background: sized to the bar itself
-                // (matchParentSize). Fit (not Crop): the image scales to the
-                // bar's height keeping its aspect ratio, centered
-                // horizontally, and the edge gradients fade the leftover
-                // space into the page background.
-                Box(modifier = Modifier.matchParentSize()) {
-                    AsyncImage(
-                        url = bannerUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                    )
-                    val edge = MaterialTheme.colorScheme.surface
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.horizontalGradient(
-                                        0f to edge,
-                                        0.25f to edge.copy(alpha = 0f),
-                                        0.75f to edge.copy(alpha = 0f),
-                                        1f to edge,
-                                    ),
-                                ),
-                    )
-                }
+                ChannelBannerCover(bannerUrl, modifier = Modifier.matchParentSize())
             }
+            // Badge-row readability: opaque surface on the left, fading to
+            // transparent toward the right (fade starts ~70%).
+            Box(
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                0f to MaterialTheme.colorScheme.surface,
+                                0.7f to MaterialTheme.colorScheme.surface,
+                                1f to MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+                            ),
+                        ),
+            )
             AppHeader(
                 title = {
                     loaded?.let { state ->
@@ -221,7 +212,7 @@ fun ChannelScreen(
             is ChannelViewModel.ChannelUiState.Loaded -> {
                 val onCardClick: (Card) -> Unit = { card ->
                     when (card) {
-                        is CoreVideoCard -> playerViewModel.play(card.url)
+                        is CoreVideoCard -> playerViewModel.play(card)
                         is PlaylistCard -> navigator.navigateToPlaylist(card.url)
                         else -> Unit
                     }
@@ -300,7 +291,7 @@ fun ChannelScreen(
         VideoOptionsSheetHost(
             video = card,
             onDismiss = { optionsCard = null },
-            onPlay = { playerViewModel.play(card.url) },
+            onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
         )
     }
@@ -566,6 +557,70 @@ private fun ChannelIconRail(
                 )
             }
         }
+    }
+}
+
+/**
+ * The channel cover shown as the top-bar background. The image is fit (never
+ * cropped) and centered; left/right gradients fade the image's real edges into
+ * the page background. The fitted bounds are computed from the image's
+ * intrinsic size (Coil reports it on success) so the gradients sit on the
+ * image's edges, not the box's.
+ */
+@Composable
+private fun ChannelBannerCover(bannerUrl: String, modifier: Modifier = Modifier) {
+    val edge = MaterialTheme.colorScheme.surface
+    var imgW by remember { mutableStateOf(0) }
+    var imgH by remember { mutableStateOf(0) }
+    val iw = imgW
+    val ih = imgH
+
+    Box(
+        modifier =
+            modifier.drawWithContent {
+                drawContent()
+                if (iw > 0 && ih > 0) {
+                    val scale = minOf(size.width / iw.toFloat(), size.height / ih.toFloat())
+                    val rw = (iw * scale).toInt()
+                    val rh = (ih * scale).toInt()
+                    val rx = (size.width - rw) / 2
+                    val ry = (size.height - rh) / 2
+                    val fadeW = (rw * 0.18f).toInt().coerceAtLeast(2)
+                    if (rw > fadeW * 2) {
+                        drawRect(
+                            brush =
+                                Brush.horizontalGradient(
+                                    listOf(edge, edge.copy(alpha = 0f)),
+                                    startX = rx.toFloat(),
+                                    endX = (rx + fadeW).toFloat(),
+                                ),
+                            topLeft = Offset(rx.toFloat(), ry.toFloat()),
+                            size = Size(fadeW.toFloat(), rh.toFloat()),
+                        )
+                        drawRect(
+                            brush =
+                                Brush.horizontalGradient(
+                                    listOf(edge.copy(alpha = 0f), edge),
+                                    startX = (rx + rw - fadeW).toFloat(),
+                                    endX = (rx + rw).toFloat(),
+                                ),
+                            topLeft = Offset((rx + rw - fadeW).toFloat(), ry.toFloat()),
+                            size = Size(fadeW.toFloat(), rh.toFloat()),
+                        )
+                    }
+                }
+            },
+    ) {
+        AsyncImage(
+            url = bannerUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit,
+            onIntrinsicSize = { w, h ->
+                imgW = w
+                imgH = h
+            },
+        )
     }
 }
 

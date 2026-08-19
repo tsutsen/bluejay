@@ -80,8 +80,8 @@ class StateBackup {
                 return Pair(null, null);
             val uri = Settings.instance.storage.getStorageGeneralUri() ?: return Pair(null, null);
             val dir = DocumentFile.fromTreeUri(context, uri) ?: return Pair(null, null);
-            val mainBackupFile = dir.findFile("GrayjayBackup.ezip") ?: if(create) dir.createFile("bluejay/ezip", "GrayjayBackup.ezip") else null;
-            val secondaryBackupFile = dir.findFile("GrayjayBackup.ezip.old") ?: if(create) dir.createFile("bluejay/ezip", "GrayjayBackup.ezip.old") else null;
+            val mainBackupFile = dir.findFile("BluejayBackup.ezip") ?: if(create) dir.createFile("bluejay/ezip", "BluejayBackup.ezip") else null;
+            val secondaryBackupFile = dir.findFile("BluejayBackup.ezip.old") ?: if(create) dir.createFile("bluejay/ezip", "BluejayBackup.ezip.old") else null;
             return Pair(mainBackupFile, secondaryBackupFile);
         }
         fun getAllMigrationStores(): List<ManagedStore<*>> = listOf(

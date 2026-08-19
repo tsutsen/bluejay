@@ -32,6 +32,7 @@ import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.database.dao.HistoryDao
 import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
@@ -72,6 +73,11 @@ class PlayerRepositoryImpl(
     private var commentRepository: CommentRepository? = null
     private var contentExtrasRepository: ContentExtrasRepository? = null
     private var settingsRepository: SettingsRepository? = null
+    private var historyDao: HistoryDao? = null
+
+    fun setHistoryDao(dao: HistoryDao?) {
+        this.historyDao = dao
+    }
 
     fun setExtrasRepositories(
         commentRepository: CommentRepository,
@@ -107,6 +113,7 @@ class PlayerRepositoryImpl(
     // via [applyTrackSelectionParameters] and re-applied to each new player.
     private var selectedQuality: String = "Auto"
     private var selectedSubtitle: String = "Auto"
+    private var pendingResumePosition: Long = 0
 
     // The primary source + engine-provided subtitle tracks for the video
     // currently loaded. Subtitles are applied as an extra media source
@@ -125,6 +132,15 @@ class PlayerRepositoryImpl(
                         isCompleted = playbackState == Player.STATE_ENDED,
                         durationMs = duration,
                     )
+                }
+                // Apply a pending resume position once playback is ready, unless
+                // it would land in the last 5% (i.e. the video was finished).
+                if (playbackState == Player.STATE_READY && pendingResumePosition > 0) {
+                    val pos = pendingResumePosition
+                    pendingResumePosition = 0
+                    if (duration <= 0 || pos < duration * 0.95) {
+                        _exoPlayer?.seekTo(pos)
+                    }
                 }
             }
 
@@ -280,7 +296,14 @@ class PlayerRepositoryImpl(
             }
         }
 
-    override suspend fun play(videoId: String) {
+    override suspend fun play(videoId: String, initial: com.tsutsen.platformplayer.core.model.ContentItem?) {
+        // Resume: look up where this video was last watched (applied once the
+        // player is READY, see onPlaybackStateChanged).
+        pendingResumePosition =
+            withContext(Dispatchers.IO) {
+                historyDao?.getByUrl(videoId)?.lastPositionMs ?: 0L
+            }
+
         // Publish loading state IMMEDIATELY, before any network/resolve/ExoPlayer work.
         // This is what lets the UI show a spinner right away instead of a blank gap.
         // Also set currentVideo to a placeholder so PlayerScreen gets composed immediately.
@@ -293,14 +316,15 @@ class PlayerRepositoryImpl(
                 recommendations = emptyList(),
                 chapters = emptyList(),
                 currentVideo =
-                    ContentItem(
-                        id = videoId,
-                        url = videoId,
-                        title = "Loading...",
-                        author = null,
-                        thumbnailUrl = null,
-                        contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
-                    ),
+                    initial
+                        ?: ContentItem(
+                            id = videoId,
+                            url = videoId,
+                            title = "Loading...",
+                            author = null,
+                            thumbnailUrl = null,
+                            contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+                        ),
             )
         }
 

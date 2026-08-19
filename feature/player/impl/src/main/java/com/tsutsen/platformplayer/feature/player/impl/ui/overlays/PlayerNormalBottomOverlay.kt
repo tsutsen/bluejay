@@ -35,6 +35,8 @@ internal fun PlayerNormalBottomOverlay(
     onNext: () -> Unit,
     onChapters: () -> Unit,
     onFullscreen: () -> Unit,
+    subtitlesOn: Boolean,
+    onSubtitleToggle: () -> Unit,
     onSeek: (Long) -> Unit = {},
     isScrubbing: Boolean = false,
     scrubPositionMs: Long = currentPositionMs,
@@ -90,6 +92,13 @@ internal fun PlayerNormalBottomOverlay(
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = onSubtitleToggle) {
+                Icon(
+                    imageVector = Icons.Default.ClosedCaption,
+                    contentDescription = "Subtitles",
+                    tint = if (subtitlesOn) MaterialTheme.colorScheme.primary else Color.White,
+                )
+            }
             IconButton(onClick = onChapters) {
                 Icon(
                     imageVector = Icons.Default.MenuBook,

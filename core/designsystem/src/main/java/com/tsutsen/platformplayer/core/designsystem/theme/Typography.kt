@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.sp
 
 val InterFontFamily = FontFamily.Default // Will be replaced with Inter font asset
 
-val GrayjayTypography = Typography(
+val BluejayTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = InterFontFamily,
         fontWeight = FontWeight.Light,

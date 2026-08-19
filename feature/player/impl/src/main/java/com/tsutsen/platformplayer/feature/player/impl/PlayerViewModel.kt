@@ -136,6 +136,7 @@ class PlayerViewModel
                                 author = video.author?.name,
                                 authorUrl = video.author?.url?.takeIf { it.isNotEmpty() },
                                 thumbnailUrl = video.thumbnailUrl,
+                                currentPositionMs = playerState.currentPositionMs,
                                 totalDurationMs = playerState.durationMs,
                                 viewCount = video.viewCount,
                             )
@@ -147,20 +148,45 @@ class PlayerViewModel
             }
         }
 
-        fun play(videoId: String) {
+        fun play(videoId: String, initial: com.tsutsen.platformplayer.core.model.ContentItem? = null) {
             viewModelScope.launch {
                 // PlayerRepository.play() clears the previous video's extras and
                 // fetches the new one's (comments/recs/chapters) — the single
                 // orchestration point shared with the companion screen.
-                playerRepository.play(videoId)
+                playerRepository.play(videoId, initial)
                 // Track in history
                 historyTracker.trackPlayback(
                     contentUrl = videoId,
-                    title = videoId,
-                    author = null,
-                    thumbnailUrl = null,
+                    title = initial?.title ?: videoId,
+                    author = initial?.author?.name,
+                    thumbnailUrl = initial?.thumbnailUrl,
                 )
             }
+        }
+
+        /** Play a card whose details are already known (instant title/thumb). */
+        fun play(card: com.tsutsen.platformplayer.core.model.VideoCard) {
+            play(
+                card.url,
+                com.tsutsen.platformplayer.core.model.ContentItem(
+                    id = card.id,
+                    url = card.url,
+                    title = card.title,
+                    author = card.author?.let {
+                        com.tsutsen.platformplayer.core.model.Author(
+                            id = card.authorUrl.orEmpty(),
+                            name = it,
+                            url = card.authorUrl,
+                            thumbnailUrl = null,
+                        )
+                    },
+                    thumbnailUrl = card.thumbnailUrl,
+                    contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+                    publishedAt = card.publishedAt,
+                    durationMs = card.durationMs,
+                    viewCount = card.viewCount,
+                ),
+            )
         }
 
         fun loadMoreComments(contentUrl: String) {

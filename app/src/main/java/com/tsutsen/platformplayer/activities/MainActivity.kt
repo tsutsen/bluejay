@@ -20,7 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.tsutsen.platformplayer.compose.GrayjayNavGraph
+import com.tsutsen.platformplayer.compose.BluejayNavGraph
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
@@ -30,7 +30,7 @@ import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
 import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
 import com.tsutsen.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
-import com.tsutsen.platformplayer.core.designsystem.theme.GrayjayTheme
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PlayerView
@@ -40,7 +40,7 @@ import javax.inject.Inject
 
 /**
  * Compose-based MainActivity for Bluejay.
- * Hosts AppLayout with GrayjayNavGraph, and drives the second-screen
+ * Hosts AppLayout with BluejayNavGraph, and drives the second-screen
  * CompanionPresentation on the rear display from the "dual screen" setting.
  */
 @AndroidEntryPoint
@@ -61,6 +61,9 @@ class MainActivity :
 
     @Inject
     lateinit var homeRepository: HomeRepository
+
+    @Inject
+    lateinit var downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 
     private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
@@ -127,6 +130,7 @@ class MainActivity :
                 libraryRepository = libraryRepository,
                 homeRepository = homeRepository,
                 settingsRepository = settingsRepository,
+                downloadsRepository = downloadsRepository,
             ).also { it.show() }
     }
 
@@ -173,7 +177,7 @@ class MainActivity :
         enableEdgeToEdge()
 
         setContent {
-            GrayjayMainActivity(
+            BluejayMainActivity(
                 this,
                 navigator,
                 playerRepository,
@@ -184,7 +188,7 @@ class MainActivity :
 }
 
 @Composable
-private fun GrayjayMainActivity(
+private fun BluejayMainActivity(
     activity: MainActivity,
     navigator: Navigator,
     playerRepository: PlayerRepository,
@@ -206,8 +210,8 @@ private fun GrayjayMainActivity(
         activity.ensureCompanion()
     }
 
-    GrayjayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
-        grayjayMainActivityContent(
+    BluejayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
+        bluejayMainActivityContent(
             activity,
             navigator,
             playerRepository,
@@ -216,7 +220,7 @@ private fun GrayjayMainActivity(
 }
 
 @Composable
-private fun grayjayMainActivityContent(
+private fun bluejayMainActivityContent(
     activity: MainActivity,
     navigator: Navigator,
     playerRepository: PlayerRepository,
@@ -273,7 +277,7 @@ private fun grayjayMainActivityContent(
             )
         },
         content = {
-            GrayjayNavGraph(
+            BluejayNavGraph(
                 navigator = navigator,
                 startDestination = NavDestination.Home,
             )

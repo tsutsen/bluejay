@@ -15,7 +15,7 @@ import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import javax.inject.Inject
 
-private const val TAG = "GrayjayTheme"
+private const val TAG = "BluejayTheme"
 
 /**
  * Hilt-enabled Application class for Bluejay.

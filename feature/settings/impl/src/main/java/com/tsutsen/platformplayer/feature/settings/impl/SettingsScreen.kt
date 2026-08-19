@@ -505,14 +505,16 @@ private fun LazyListScope.SectionItems(
                     onCheckedChange = { viewModel.updateGeneral("enableDeveloperOptions", it) },
                 )
             }
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.DisplaySettings,
-                    title = "Dual screen",
-                    subtitle = "Show video controls on the second screen",
-                    checked = state.dualScreen,
-                    onCheckedChange = { viewModel.updateGeneral("dualScreen", it) },
-                )
+            if (state.enableDeveloperOptions) {
+                item {
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.DisplaySettings,
+                        title = "Dual screen",
+                        subtitle = "Show video controls on the second screen",
+                        checked = state.dualScreen,
+                        onCheckedChange = { viewModel.updateGeneral("dualScreen", it) },
+                    )
+                }
             }
             item {
                 SettingsButtonCard(

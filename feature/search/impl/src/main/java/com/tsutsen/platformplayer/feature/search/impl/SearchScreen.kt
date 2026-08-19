@@ -466,7 +466,7 @@ fun SearchScreen(
                                                 isLoading = uiState.isLoading && videoResults.size < 6,
                                                 hasMorePages = uiState.hasMorePages,
                                                 onCardClick = { card ->
-                                                    if (card is VideoCard) playerViewModel.play(card.url)
+                                                    if (card is VideoCard) playerViewModel.play(card)
                                                 },
                                                 onLoadMore = { viewModel.nextPage() },
                                                 modifier = Modifier.fillMaxSize(),
@@ -474,7 +474,7 @@ fun SearchScreen(
                                                 if (card is VideoCard) {
                                                     VideoCard(
                                                         card = card,
-                                                        onClick = { playerViewModel.play(card.url) },
+                                                        onClick = { playerViewModel.play(card) },
                                                         onLongClick = { optionsCard = card },
                                                     )
                                                 }
@@ -503,7 +503,7 @@ fun SearchScreen(
                 VideoOptionsSheetHost(
                     video = card,
                     onDismiss = { optionsCard = null },
-                    onPlay = { playerViewModel.play(card.url) },
+                    onPlay = { playerViewModel.play(card) },
                     onGoToChannel = { navigator.navigateToChannel(it) },
                 )
             }

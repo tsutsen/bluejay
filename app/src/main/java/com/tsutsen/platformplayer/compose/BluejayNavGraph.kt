@@ -32,7 +32,7 @@ import kotlinx.serialization.json.Json
  * Lives in the app module to avoid core module depending on feature modules.
  */
 @Composable
-fun GrayjayNavGraph(
+fun BluejayNavGraph(
     navigator: Navigator,
     startDestination: NavDestination = NavDestination.Home,
 ) {

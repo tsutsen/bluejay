@@ -15,6 +15,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage as CoilAsyncImage
 import coil.request.ImageRequest
+import coil.request.SuccessResult
 
 /**
  * Wrapper around Coil's AsyncImage with built-in placeholder and error handling.
@@ -26,7 +27,8 @@ fun AsyncImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     placeholder: Painter? = null,
-    error: Painter? = null
+    error: Painter? = null,
+    onIntrinsicSize: ((Int, Int) -> Unit)? = null
 ) {
     if (url.isNullOrEmpty()) {
         Box(
@@ -48,11 +50,28 @@ fun AsyncImage(
         return
     }
 
-    CoilAsyncImage(
-        model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+    val request =
+        ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
             .data(url)
             .crossfade(true)
-            .build(),
+            .apply {
+                if (onIntrinsicSize != null) {
+                    listener(
+                        object : ImageRequest.Listener {
+                            override fun onSuccess(request: ImageRequest, result: SuccessResult) {
+                                onIntrinsicSize(
+                                    result.drawable.intrinsicWidth,
+                                    result.drawable.intrinsicHeight,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+            .build()
+
+    CoilAsyncImage(
+        model = request,
         contentDescription = contentDescription,
         modifier = modifier,
         contentScale = contentScale,

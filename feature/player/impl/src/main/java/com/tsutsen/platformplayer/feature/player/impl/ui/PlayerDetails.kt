@@ -106,6 +106,7 @@ internal fun PlayerDetails(
                         timeAgo = formatRelativeTime(comment.publishedAtMs),
                         text = comment.text,
                         likeCount = comment.likeCount.toInt(),
+                        authorThumbnailUrl = comment.authorThumbnailUrl,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                     if (index < state.comments.lastIndex) {

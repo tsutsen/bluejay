@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  * Reusable filter chip component.
  */
 @Composable
-fun GrayjayFilterChip(
+fun BluejayFilterChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,

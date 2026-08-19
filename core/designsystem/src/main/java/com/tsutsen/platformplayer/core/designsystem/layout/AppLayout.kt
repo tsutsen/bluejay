@@ -72,13 +72,13 @@ data class NavItemDef(
 /**
  * Standard navigation items for the app chrome.
  */
-val grayjayNavItems =
+val bluejayNavItems =
     listOf(
         NavItemDef("home", Icons.Outlined.Home, Icons.Filled.Home, "Home"),
         NavItemDef("search", Icons.Outlined.Search, Icons.Filled.Search, "Search"),
-        NavItemDef("subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subscriptions"),
+        NavItemDef("subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subs"),
         NavItemDef("library", Icons.Outlined.LibraryBooks, Icons.Filled.LibraryBooks, "Library"),
-        NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Notifications"),
+        NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "News"),
         NavItemDef("settings", Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
     )
 
@@ -211,13 +211,13 @@ fun AppNavigationChrome(
 ) {
     if (isWide) {
         AppNavigationRail(
-            items = grayjayNavItems,
+            items = bluejayNavItems,
             currentDestination = currentDestination,
             onTabSelected = onTabSelected,
         )
     } else {
         AppNavigationBar(
-            items = grayjayNavItems,
+            items = bluejayNavItems,
             currentDestination = currentDestination,
             onTabSelected = onTabSelected,
         )

@@ -59,14 +59,14 @@ fun PlayerControls(
     badgeState: GestureBadgeState,
     state: PlayerUiState.Loaded,
     player: ExoPlayer?,
-    isLooping: Boolean,
+    subtitlesOn: Boolean,
     isScrubbing: Boolean,
     scrubPositionMs: Long,
     expandedDescription: Boolean,
     selectedTab: Int,
     onToggleDescription: () -> Unit,
     onTabSelected: (Int) -> Unit,
-    onLoopToggle: () -> Unit,
+    onSubtitleToggle: () -> Unit,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -199,6 +199,8 @@ fun PlayerControls(
                                                 onSeek = onSeek,
                                                 isScrubbing = isScrubbing,
                                                 scrubPositionMs = scrubPositionMs,
+                                                subtitlesOn = subtitlesOn,
+                                                onSubtitleToggle = onSubtitleToggle,
                                                 chapters = state.chapters,
                                             )
                                         }
@@ -216,11 +218,11 @@ fun PlayerControls(
                                             if (collapsed) {
                                                 PlayerCompactOverlay(
                                                     isPlaying = state.isPlaying,
-                                                    isLooping = isLooping,
+                                                    subtitlesOn = subtitlesOn,
                                                     onMinimize = onMinimize,
                                                     onPlayPause = onPlayPause,
                                                     onChapters = onChapters,
-                                                    onLoopToggle = onLoopToggle,
+                                                    onSubtitleToggle = onSubtitleToggle,
                                                     onWatchLater = onWatchLater,
                                                     onOptions = onOptions,
                                                     onFullscreen = onFullscreenToggle,
@@ -238,6 +240,8 @@ fun PlayerControls(
                                                     onSeek = onSeek,
                                                     isScrubbing = isScrubbing,
                                                     scrubPositionMs = scrubPositionMs,
+                                                    subtitlesOn = subtitlesOn,
+                                                    onSubtitleToggle = onSubtitleToggle,
                                                     chapters = state.chapters,
                                                 )
                                             }

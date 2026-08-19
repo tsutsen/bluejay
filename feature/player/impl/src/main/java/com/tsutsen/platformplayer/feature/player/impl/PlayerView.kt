@@ -95,7 +95,6 @@ fun PlayerView(
 
     var expandedDescription by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
-    var isLooping by remember { mutableStateOf(false) }
 
     var miniPlayerOffsetX by remember { mutableStateOf(0f) }
     var miniPlayerOffsetY by remember { mutableStateOf(0f) }
@@ -578,17 +577,16 @@ fun PlayerView(
                         selectedTab = selectedTab,
                         onChannelClick = onChannelClick,
                         onTabSelected = { selectedTab = it },
-                        onRecommendedClick = { video -> viewModel.play(video.url) },
+                        onRecommendedClick = { video -> viewModel.play(video) },
                         gridColumns = gridColumns,
                         onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
                         isLoading = state.isLoading,
                         activeProgressIndicator = activeProgressIndicator,
                         badgeState = badgeState,
                         scrubPositionMs = scrubPositionMs,
-                        isLooping = isLooping,
-                        onLoopToggle = {
-                            isLooping = !isLooping
-                            player?.repeatMode = if (isLooping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                        subtitlesOn = state.selectedSubtitle != "Off",
+                        onSubtitleToggle = {
+                            viewModel.setSubtitle(if (state.selectedSubtitle != "Off") "Off" else "Auto")
                         },
                         onMinimize = {
                             viewModel.minimize()

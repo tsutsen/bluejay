@@ -31,7 +31,7 @@ fun PlaylistOptionsSheet(
     onPlay: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    GrayjayModalBottomSheet(onDismiss = onDismiss) {
+    BluejayModalBottomSheet(onDismiss = onDismiss) {
         Column(
             modifier =
                 Modifier

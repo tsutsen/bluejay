@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
  * Underlined indicator tab row with horizontal scrolling.
  */
 @Composable
-fun GrayjayTabRow(
+fun BluejayTabRow(
     tabs: List<String>,
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,

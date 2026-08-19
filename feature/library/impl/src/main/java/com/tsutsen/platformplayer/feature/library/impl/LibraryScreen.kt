@@ -103,7 +103,7 @@ fun LibraryScreen(
                         onSectionClick = { navigator.navigateToLibrarySectionDetail(section.id) },
                         onCardClick = { card ->
                             when (card) {
-                                is CoreVideoCard -> playerViewModel.play(card.url)
+                                is CoreVideoCard -> playerViewModel.play(card)
                                 is PlaylistCard -> navigator.navigateToPlaylist(card.url)
                                 else -> Unit
                             }
@@ -123,7 +123,7 @@ fun LibraryScreen(
         VideoOptionsSheetHost(
             video = card,
             onDismiss = { optionsCard = null },
-            onPlay = { playerViewModel.play(card.url) },
+            onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
         )
     }

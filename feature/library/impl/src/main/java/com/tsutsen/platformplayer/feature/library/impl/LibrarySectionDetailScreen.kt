@@ -109,7 +109,7 @@ fun LibrarySectionDetailScreen(
                         hasMorePages = false,
                         onCardClick = { card ->
                             when (card) {
-                                is CoreVideoCard -> playerViewModel.play(card.url)
+                                is CoreVideoCard -> playerViewModel.play(card)
                                 is PlaylistCard -> navigator.navigateToPlaylist(card.url)
                                 else -> Unit
                             }
@@ -120,7 +120,7 @@ fun LibrarySectionDetailScreen(
                             card = card,
                             onClick = { card ->
                                 when (card) {
-                                    is CoreVideoCard -> playerViewModel.play(card.url)
+                                    is CoreVideoCard -> playerViewModel.play(card)
                                     is PlaylistCard -> navigator.navigateToPlaylist(card.url)
                                     else -> Unit
                                 }
@@ -138,7 +138,7 @@ fun LibrarySectionDetailScreen(
         VideoOptionsSheetHost(
             video = card,
             onDismiss = { optionsCard = null },
-            onPlay = { playerViewModel.play(card.url) },
+            onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
         )
     }

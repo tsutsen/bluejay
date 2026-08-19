@@ -77,7 +77,7 @@ fun HomeScreen(
                     gridColumns = gridColumns,
                     onCardClick = { card ->
                         when (card) {
-                            is VideoCard -> playerViewModel.play(card.url)
+                            is VideoCard -> playerViewModel.play(card)
                             is ChannelCard -> navigator.navigateToChannel(card.url)
                             else -> Unit
                         }
@@ -101,7 +101,7 @@ fun HomeScreen(
         VideoOptionsSheetHost(
             video = card,
             onDismiss = { optionsCard = null },
-            onPlay = { playerViewModel.play(card.url) },
+            onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
         )
     }
