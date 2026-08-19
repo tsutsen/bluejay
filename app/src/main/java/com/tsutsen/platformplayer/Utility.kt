@@ -15,7 +15,10 @@ import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.graphics.scale
 import androidx.documentfile.provider.DocumentFile
+import com.bumptech.glide.RequestBuilder
+import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.api.media.IPlatformClient
 import com.tsutsen.platformplayer.api.media.PlatformMultiClientPool
@@ -24,7 +27,6 @@ import com.tsutsen.platformplayer.engine.V8Plugin
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.PlatformVideoWithTime
 import com.tsutsen.platformplayer.others.PlatformLinkMovementMethod
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -40,48 +42,57 @@ import java.security.SecureRandom
 import java.time.OffsetDateTime
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
-import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
-import androidx.core.graphics.scale
-import com.bumptech.glide.RequestBuilder
-import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 
-private val _allowedCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ";
+private val _allowedCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz "
+
 fun getRandomString(sizeOfRandomString: Int): String {
-    val random = Random();
-    val sb = StringBuilder(sizeOfRandomString);
-    for (i in 0 until sizeOfRandomString)
-        sb.append(_allowedCharacters[random.nextInt(_allowedCharacters.length)]);
+    val random = Random()
+    val sb = StringBuilder(sizeOfRandomString)
+    for (i in 0 until sizeOfRandomString) {
+        sb.append(_allowedCharacters[random.nextInt(_allowedCharacters.length)])
+    }
     return sb.toString()
 }
 
-fun getRandomStringRandomLength(minLength: Int, maxLength: Int): String {
-    if (maxLength == minLength)
-        return getRandomString(minLength);
-    return getRandomString(ThreadLocalRandom.current().nextInt(minLength, maxLength));
+fun getRandomStringRandomLength(
+    minLength: Int,
+    maxLength: Int,
+): String {
+    if (maxLength == minLength) {
+        return getRandomString(minLength)
+    }
+    return getRandomString(ThreadLocalRandom.current().nextInt(minLength, maxLength))
 }
 
 fun findNonRuntimeException(ex: Throwable?): Throwable? {
-    if(ex == null)
-        return null;
-    if(ex is java.lang.RuntimeException)
+    if (ex == null) {
+        return null
+    }
+    if (ex is java.lang.RuntimeException) {
         return findNonRuntimeException(ex.cause)
-    else
-        return ex;
+    } else {
+        return ex
+    }
 }
 
 fun warnIfMainThread(context: String) {
-    if(BuildConfig.DEBUG && Looper.myLooper() == Looper.getMainLooper())
-        Logger.w(V8Plugin.TAG, "JAVASCRIPT ON MAIN THREAD\nAt: ${context}\n" + Thread.currentThread().stackTrace.joinToString { it.toString() });
+    if (BuildConfig.DEBUG && Looper.myLooper() == Looper.getMainLooper()) {
+        Logger.w(
+            V8Plugin.TAG,
+            "JAVASCRIPT ON MAIN THREAD\nAt: ${context}\n" + Thread.currentThread().stackTrace.joinToString { it.toString() },
+        )
+    }
 }
 
 fun ensureNotMainThread() {
-    val isMainLooper = try {
-        Looper.myLooper() == Looper.getMainLooper()
-    } catch (e: Throwable) {
-        //Ignore, for unit tests where its not mocked
-        false
-    }
+    val isMainLooper =
+        try {
+            Looper.myLooper() == Looper.getMainLooper()
+        } catch (e: Throwable) {
+            // Ignore, for unit tests where its not mocked
+            false
+        }
 
     if (isMainLooper) {
         Logger.e("Utility", "Throwing exception because a function that should not be called on main thread, is called on main thread")
@@ -89,97 +100,110 @@ fun ensureNotMainThread() {
     }
 }
 
-private val _regexUrl = Regex("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/\\/=]*)");
-fun String.isHttpUrl(): Boolean {
-    return _regexUrl.matchEntire(this) != null;
-}
+private val _regexUrl =
+    Regex("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&\\/\\/=]*)")
 
+fun String.isHttpUrl(): Boolean = _regexUrl.matchEntire(this) != null
 
-private val _regexHexColor = Regex("(#[a-fA-F0-9]{8})|(#[a-fA-F0-9]{6})|(#[a-fA-F0-9]{3})");
-fun String.isHexColor(): Boolean {
-    return _regexHexColor.matches(this);
-}
+private val _regexHexColor = Regex("(#[a-fA-F0-9]{8})|(#[a-fA-F0-9]{6})|(#[a-fA-F0-9]{3})")
 
-fun IPlatformClient.fromPool(pool: PlatformMultiClientPool) = pool.getClientPooled(this);
+fun String.isHexColor(): Boolean = _regexHexColor.matches(this)
 
-fun IPlatformVideo.withTimestamp(sec: Long) = PlatformVideoWithTime(this, sec);
+fun IPlatformClient.fromPool(pool: PlatformMultiClientPool) = pool.getClientPooled(this)
 
-fun DocumentFile.getInputStream(context: Context) = context.contentResolver.openInputStream(this.uri);
-fun DocumentFile.getOutputStream(context: Context) = context.contentResolver.openOutputStream(this.uri);
-fun DocumentFile.copyTo(context: Context, file: DocumentFile) = this.getInputStream(context).use { input ->
+fun IPlatformVideo.withTimestamp(sec: Long) = PlatformVideoWithTime(this, sec)
+
+fun DocumentFile.getInputStream(context: Context) = context.contentResolver.openInputStream(this.uri)
+
+fun DocumentFile.getOutputStream(context: Context) = context.contentResolver.openOutputStream(this.uri)
+
+fun DocumentFile.copyTo(
+    context: Context,
+    file: DocumentFile,
+) = this.getInputStream(context).use { input ->
     file.getOutputStream(context)?.use { output -> input?.copyTo(output) }
-};
-fun DocumentFile.readBytes(context: Context) = this.getInputStream(context).use { input -> input?.readBytes() };
-fun DocumentFile.writeBytes(context: Context, byteArray: ByteArray) = context.contentResolver.openOutputStream(this.uri)?.use {
-    it.write(byteArray);
-    it.flush();
-};
+}
+
+fun DocumentFile.readBytes(context: Context) = this.getInputStream(context).use { input -> input?.readBytes() }
+
+fun DocumentFile.writeBytes(
+    context: Context,
+    byteArray: ByteArray,
+) = context.contentResolver.openOutputStream(this.uri)?.use {
+    it.write(byteArray)
+    it.flush()
+}
 
 fun TextView.setPlatformPlayerLinkMovementMethod(context: Context) {
-    this.movementMethod = PlatformLinkMovementMethod(context);
+    this.movementMethod = PlatformLinkMovementMethod(context)
 }
 
-fun InputStream.copyToOutputStream(outputStream: OutputStream, isCancelled: (() -> Boolean)? = null) {
-    val buffer = ByteArray(16384);
-    var n: Int;
-    var total = 0;
+fun InputStream.copyToOutputStream(
+    outputStream: OutputStream,
+    isCancelled: (() -> Boolean)? = null,
+) {
+    val buffer = ByteArray(16384)
+    var n: Int
+    var total = 0
 
     while (read(buffer).also { n = it } >= 0) {
         if (isCancelled != null && isCancelled()) {
-            throw OperationCanceledException("Copy stream was cancelled.");
+            throw OperationCanceledException("Copy stream was cancelled.")
         }
 
-        total += n;
-        outputStream.write(buffer, 0, n);
+        total += n
+        outputStream.write(buffer, 0, n)
     }
 }
 
-fun InputStream.copyToOutputStream(inputStreamLength: Long, outputStream: OutputStream, onProgress: (Float) -> Unit) {
-    val buffer = ByteArray(16384);
-    var n: Int;
-    var total = 0;
-    val inputStreamLengthFloat = inputStreamLength.toFloat();
+fun InputStream.copyToOutputStream(
+    inputStreamLength: Long,
+    outputStream: OutputStream,
+    onProgress: (Float) -> Unit,
+) {
+    val buffer = ByteArray(16384)
+    var n: Int
+    var total = 0
+    val inputStreamLengthFloat = inputStreamLength.toFloat()
 
     while (read(buffer).also { n = it } >= 0) {
-        total += n;
-        outputStream.write(buffer, 0, n);
-        onProgress.invoke(total.toFloat() / inputStreamLengthFloat);
+        total += n
+        outputStream.write(buffer, 0, n)
+        onProgress.invoke(total.toFloat() / inputStreamLengthFloat)
     }
 }
 
 @Suppress("DEPRECATION")
 fun Activity.setNavigationBarColorAndIcons() {
-    window.navigationBarColor = ContextCompat.getColor(this, android.R.color.black);
+    window.navigationBarColor = ContextCompat.getColor(this, android.R.color.black)
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        window.insetsController?.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+        window.insetsController?.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS)
     } else {
-        val decorView = window.decorView;
-        var systemUiVisibility = decorView.systemUiVisibility;
-        systemUiVisibility = systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv();
-        decorView.systemUiVisibility = systemUiVisibility;
+        val decorView = window.decorView
+        var systemUiVisibility = decorView.systemUiVisibility
+        systemUiVisibility = systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+        decorView.systemUiVisibility = systemUiVisibility
     }
 }
 
-fun Int.dp(resources: Resources): Int {
-    return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this.toFloat(), resources.displayMetrics).toInt()
-}
+fun Int.dp(resources: Resources): Int =
+    TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this.toFloat(), resources.displayMetrics).toInt()
 
-fun Int.sp(resources: Resources): Int {
-    return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, this.toFloat(), resources.displayMetrics).toInt()
-}
+fun Int.sp(resources: Resources): Int =
+    TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, this.toFloat(), resources.displayMetrics).toInt()
 
 fun DocumentFile.share(context: Context) {
-    val shareIntent = Intent();
-    shareIntent.action = Intent.ACTION_SEND;
-    shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-    shareIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
-    shareIntent.setDataAndType(uri, context.contentResolver.getType(uri));
-    shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+    val shareIntent = Intent()
+    shareIntent.action = Intent.ACTION_SEND
+    shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    shareIntent.addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+    shareIntent.setDataAndType(uri, context.contentResolver.getType(uri))
+    shareIntent.putExtra(Intent.EXTRA_STREAM, uri)
 
-    val chooserIntent = Intent.createChooser(shareIntent, "Share");
-    chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-    context.startActivity(chooserIntent);
+    val chooserIntent = Intent.createChooser(shareIntent, "Share")
+    chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(chooserIntent)
 }
 
 fun String.decodeUnicode(): String {
@@ -193,14 +217,38 @@ fun String.decodeUnicode(): String {
             i++
             ch = this[i]
             when (ch) {
-                '\\' -> sb.append('\\')
-                't' -> sb.append('\t')
-                'n' -> sb.append('\n')
-                'r' -> sb.append('\r')
-                'f' -> sb.append('\u000C')
-                'b' -> sb.append('\b')
-                '"' -> sb.append('"')
-                '\'' -> sb.append('\'')
+                '\\' -> {
+                    sb.append('\\')
+                }
+
+                't' -> {
+                    sb.append('\t')
+                }
+
+                'n' -> {
+                    sb.append('\n')
+                }
+
+                'r' -> {
+                    sb.append('\r')
+                }
+
+                'f' -> {
+                    sb.append('\u000C')
+                }
+
+                'b' -> {
+                    sb.append('\b')
+                }
+
+                '"' -> {
+                    sb.append('"')
+                }
+
+                '\'' -> {
+                    sb.append('\'')
+                }
+
                 'u' -> {
                     if (i + 4 < this.length) {
                         val unicode = this.substring(i + 1, i + 5)
@@ -214,6 +262,7 @@ fun String.decodeUnicode(): String {
                         throw IOException("Incomplete Unicode sequence")
                     }
                 }
+
                 in '0'..'7' -> {
                     val end = (i + 3).coerceAtMost(this.length)
                     val octal = this.substring(i, end).takeWhile { it in '0'..'7' }
@@ -224,7 +273,10 @@ fun String.decodeUnicode(): String {
                         throw IOException("Invalid Octal sequence: $octal")
                     }
                 }
-                else -> sb.append(ch)
+
+                else -> {
+                    sb.append(ch)
+                }
             }
         } else {
             sb.append(ch)
@@ -235,43 +287,52 @@ fun String.decodeUnicode(): String {
     return sb.toString()
 }
 
-fun <T> smartMerge(targetArr: List<T>, toMerge: List<T>) : List<T>{
-    val missingToMerge = toMerge.filter { !targetArr.contains(it) }.toList();
-    val newArrResult = targetArr.toMutableList();
+fun <T> smartMerge(
+    targetArr: List<T>,
+    toMerge: List<T>,
+): List<T> {
+    val missingToMerge = toMerge.filter { !targetArr.contains(it) }.toList()
+    val newArrResult = targetArr.toMutableList()
 
-    for(missing in missingToMerge) {
-        val newIndex = findNewIndex(toMerge, newArrResult, missing);
-        newArrResult.add(newIndex, missing);
+    for (missing in missingToMerge) {
+        val newIndex = findNewIndex(toMerge, newArrResult, missing)
+        newArrResult.add(newIndex, missing)
     }
 
-    return newArrResult;
+    return newArrResult
 }
-fun <T> findNewIndex(originalArr: List<T>, newArr: List<T>, item: T): Int{
-    var originalIndex = originalArr.indexOf(item);
-    var newIndex = -1;
 
-    for(i in originalIndex-1 downTo 0) {
-        val previousItem = originalArr[i];
-        val indexInNewArr = newArr.indexOfFirst { it == previousItem };
-        if(indexInNewArr >= 0) {
-            newIndex = indexInNewArr + 1;
-            break;
+fun <T> findNewIndex(
+    originalArr: List<T>,
+    newArr: List<T>,
+    item: T,
+): Int {
+    var originalIndex = originalArr.indexOf(item)
+    var newIndex = -1
+
+    for (i in originalIndex - 1 downTo 0) {
+        val previousItem = originalArr[i]
+        val indexInNewArr = newArr.indexOfFirst { it == previousItem }
+        if (indexInNewArr >= 0) {
+            newIndex = indexInNewArr + 1
+            break
         }
     }
-    if(newIndex < 0) {
-        for(i in originalIndex+1 until originalArr.size) {
-            val previousItem = originalArr[i];
-            val indexInNewArr = newArr.indexOfFirst { it == previousItem };
-            if(indexInNewArr >= 0) {
-                newIndex = indexInNewArr - 1;
-                break;
+    if (newIndex < 0) {
+        for (i in originalIndex + 1 until originalArr.size) {
+            val previousItem = originalArr[i]
+            val indexInNewArr = newArr.indexOfFirst { it == previousItem }
+            if (indexInNewArr >= 0) {
+                newIndex = indexInNewArr - 1
+                break
             }
         }
     }
-    if(newIndex < 0)
-        return newArr.size;
-    else
-        return newIndex;
+    if (newIndex < 0) {
+        return newArr.size
+    } else {
+        return newIndex
+    }
 }
 
 fun ByteBuffer.toUtf8String(): String {
@@ -296,48 +357,33 @@ fun generateReadablePassword(length: Int): String {
 fun ByteArray.toGzip(): ByteArray {
     if (this == null || this.isEmpty()) return ByteArray(0)
 
-    val gzipTimeStart = OffsetDateTime.now();
+    val gzipTimeStart = OffsetDateTime.now()
 
     val outputStream = ByteArrayOutputStream()
     GZIPOutputStream(outputStream).use { gzip ->
         gzip.write(this)
     }
-    val result = outputStream.toByteArray();
-    Logger.i("Utility", "Gzip compression time: ${gzipTimeStart.getNowDiffMiliseconds()}ms");
-    return result;
-}
-
-fun ByteArray.fromGzip(): ByteArray {
-    if (this == null || this.isEmpty()) return ByteArray(0)
-
-    val inputStream = ByteArrayInputStream(this)
-    val outputStream = ByteArrayOutputStream()
-
-    GZIPInputStream(inputStream).use { gzip ->
-        val buffer = ByteArray(1024)
-        var bytesRead: Int
-        while (gzip.read(buffer).also { bytesRead = it } != -1) {
-            outputStream.write(buffer, 0, bytesRead)
-        }
-    }
-    return outputStream.toByteArray()
+    val result = outputStream.toByteArray()
+    Logger.i("Utility", "Gzip compression time: ${gzipTimeStart.getNowDiffMiliseconds()}ms")
+    return result
 }
 
 fun findCandidateAddresses(): List<InetAddress> {
-    val candidates = NetworkInterface.getNetworkInterfaces()
-        .toList()
-        .asSequence()
-        .filter(::isUsableInterface)
-        .flatMap { nif ->
-            nif.interfaceAddresses
-                .asSequence()
-                .mapNotNull { ia ->
-                    ia.address.takeIf(::isUsableAddress)?.let { addr ->
-                        nif to ia
+    val candidates =
+        NetworkInterface
+            .getNetworkInterfaces()
+            .toList()
+            .asSequence()
+            .filter(::isUsableInterface)
+            .flatMap { nif ->
+                nif.interfaceAddresses
+                    .asSequence()
+                    .mapNotNull { ia ->
+                        ia.address.takeIf(::isUsableAddress)?.let { addr ->
+                            nif to ia
+                        }
                     }
-                }
-        }
-        .toList()
+            }.toList()
 
     return candidates
         .sortedWith(
@@ -345,26 +391,27 @@ fun findCandidateAddresses(): List<InetAddress> {
                 { addressScore(it.second.address) },
                 { interfaceScore(it.first) },
                 { -it.second.networkPrefixLength.toInt() },
-                { -it.first.mtu }
-            )
+                { -it.first.mtu },
+            ),
         ).map { it.second.address }
 }
 
 fun findPreferredAddress(): InetAddress? {
-    val candidates = NetworkInterface.getNetworkInterfaces()
-        .toList()
-        .asSequence()
-        .filter(::isUsableInterface)
-        .flatMap { nif ->
-            nif.interfaceAddresses
-                .asSequence()
-                .mapNotNull { ia ->
-                    ia.address.takeIf(::isUsableAddress)?.let { addr ->
-                        nif to ia
+    val candidates =
+        NetworkInterface
+            .getNetworkInterfaces()
+            .toList()
+            .asSequence()
+            .filter(::isUsableInterface)
+            .flatMap { nif ->
+                nif.interfaceAddresses
+                    .asSequence()
+                    .mapNotNull { ia ->
+                        ia.address.takeIf(::isUsableAddress)?.let { addr ->
+                            nif to ia
+                        }
                     }
-                }
-        }
-        .toList()
+            }.toList()
 
     return candidates
         .minWithOrNull(
@@ -372,40 +419,46 @@ fun findPreferredAddress(): InetAddress? {
                 { addressScore(it.second.address) },
                 { interfaceScore(it.first) },
                 { -it.second.networkPrefixLength.toInt() },
-                { -it.first.mtu }
-            )
-        )?.second?.address
+                { -it.first.mtu },
+            ),
+        )?.second
+        ?.address
 }
 
 private fun isUsableInterface(nif: NetworkInterface): Boolean {
     val name = nif.name.lowercase()
     return try {
         // must be up, not loopback/virtual/PtP, have a MAC, not Docker/tun/etc.
-        nif.isUp
-            && !nif.isLoopback
-            && !nif.isPointToPoint
-            && !nif.isVirtual
-            && !name.startsWith("docker")
-            && !name.startsWith("veth")
-            && !name.startsWith("br-")
-            && !name.startsWith("virbr")
-            && !name.startsWith("vmnet")
-            && !name.startsWith("tun")
-            && !name.startsWith("tap")
+        nif.isUp &&
+            !nif.isLoopback &&
+            !nif.isPointToPoint &&
+            !nif.isVirtual &&
+            !name.startsWith("docker") &&
+            !name.startsWith("veth") &&
+            !name.startsWith("br-") &&
+            !name.startsWith("virbr") &&
+            !name.startsWith("vmnet") &&
+            !name.startsWith("tun") &&
+            !name.startsWith("tap")
     } catch (e: SocketException) {
         false
     }
 }
 
-private fun isUsableAddress(addr: InetAddress): Boolean {
-    return when {
-        addr.isAnyLocalAddress -> false // 0.0.0.0 / ::
+private fun isUsableAddress(addr: InetAddress): Boolean =
+    when {
+        addr.isAnyLocalAddress -> false
+
+        // 0.0.0.0 / ::
         addr.isLoopbackAddress -> false
-        addr.isLinkLocalAddress -> false // 169.254.x.x or fe80::/10
+
+        addr.isLinkLocalAddress -> false
+
+        // 169.254.x.x or fe80::/10
         addr.isMulticastAddress -> false
+
         else -> true
     }
-}
 
 private fun interfaceScore(nif: NetworkInterface): Int {
     val name = nif.name.lowercase()
@@ -418,35 +471,48 @@ private fun interfaceScore(nif: NetworkInterface): Int {
     }
 }
 
-fun addressScore(addr: InetAddress): Int {
-    return when (addr) {
+fun addressScore(addr: InetAddress): Int =
+    when (addr) {
         is Inet4Address -> {
             val octets = addr.address.map { it.toInt() and 0xFF }
             when {
-                octets[0] == 10 -> 0  // 10/8
-                octets[0] == 192 && octets[1] == 168 -> 0  // 192.168/16
-                octets[0] == 172 && octets[1] in 16..31 -> 0  // 172.16–31/12
-                else -> 1  // public IPv4
+                octets[0] == 10 -> 0
+
+                // 10/8
+                octets[0] == 192 && octets[1] == 168 -> 0
+
+                // 192.168/16
+                octets[0] == 172 && octets[1] in 16..31 -> 0
+
+                // 172.16–31/12
+                else -> 1 // public IPv4
             }
         }
+
         is Inet6Address -> {
             // ULA (fc00::/7) vs global vs others
             val b0 = addr.address[0].toInt() and 0xFF
             when {
-                (b0 and 0xFE) == 0xFC -> 2  // ULA
-                (b0 and 0xE0) == 0x20 -> 3  // global
+                (b0 and 0xFE) == 0xFC -> 2
+
+                // ULA
+                (b0 and 0xE0) == 0x20 -> 3
+
+                // global
                 else -> 4
             }
         }
-        else -> Int.MAX_VALUE
+
+        else -> {
+            Int.MAX_VALUE
+        }
     }
-}
 
 fun <T> Enumeration<T>.toList(): List<T> = Collections.list(this)
 
 fun <T> RequestBuilder<T>.withMaxSizePx(maxSizePx: Int = 1920): RequestBuilder<T> {
-    return this;
-        //.downsample(DownsampleStrategy.AT_MOST)
-        //.override(maxSizePx, maxSizePx)
-        //.centerInside()
+    return this
+    // .downsample(DownsampleStrategy.AT_MOST)
+    // .override(maxSizePx, maxSizePx)
+    // .centerInside()
 }
