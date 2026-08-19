@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -30,23 +32,30 @@ import coil.request.ImageRequest
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.UIDialogs
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
-import com.tsutsen.platformplayer.api.media.IPlatformClient
+import com.tsutsen.platformplayer.api.media.models.channels.IPlatformChannel
+import com.tsutsen.platformplayer.api.media.models.playlists.IPlatformPlaylistDetails
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginDialog
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchOptionCard
 import com.tsutsen.platformplayer.logging.Logger
-import com.tsutsen.platformplayer.models.Playlist
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlaylists
 import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val TAG = "PluginBrowserScene"
+
+// Slow the one-by-one import resolution down (same rule as the legacy app) so
+// large channel lists don't trip the platform's rate limit.
+private const val IMPORT_SLOWDOWN_INDEX = 100
+private const val IMPORT_SLOWDOWN_EVERY = 10
+private const val IMPORT_SLOWDOWN_DELAY_MS = 1000L
 
 data class PluginInfo(
     val id: String,
@@ -58,16 +67,28 @@ data class PluginInfo(
     val isAuthenticated: Boolean = false,
 )
 
-data class ChannelImportItem(
-    val url: String,
-    val name: String,
-    val thumbnail: String?,
-)
+// Import item — a raw URL resolved into real details (name, thumbnail, and for
+// playlists the video count) one at a time while the import sheet loads.
+sealed class ImportItem {
+    abstract val url: String
+    abstract val name: String
+    abstract val thumbnail: String?
+}
 
-data class PlaylistImportItem(
-    val url: String,
-    val name: String,
-)
+data class ImportChannel(
+    override val url: String,
+    override val name: String,
+    override val thumbnail: String?,
+    val channel: IPlatformChannel,
+) : ImportItem()
+
+data class ImportPlaylist(
+    override val url: String,
+    override val name: String,
+    override val thumbnail: String?,
+    val videoCount: Int,
+    val details: IPlatformPlaylistDetails,
+) : ImportItem()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -489,43 +510,28 @@ fun PluginDetailScene(
                         val descriptor = StatePlugins.instance.getPlugin(config!!.id)
                         val hasAuth = descriptor?.getAuth() != null
                         if (hasAuth) {
-                            var showImportDialog by remember { mutableStateOf(false) }
+                            var showImportSheet by remember { mutableStateOf(false) }
                             var importType by remember { mutableStateOf<String?>(null) }
-                            var isLoading by remember { mutableStateOf(false) }
-                            var items by remember { mutableStateOf<List<Any>>(emptyList()) }
-                            var selectedItems by remember { mutableStateOf<Set<Any>>(emptySet()) }
+                            var importGeneration by remember { mutableIntStateOf(0) }
+                            var importTotal by remember { mutableIntStateOf(-1) }
+                            var importItems by remember { mutableStateOf<List<ImportItem>>(emptyList()) }
+                            var importSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
+                            var importResolving by remember { mutableStateOf(false) }
+                            var importError by remember { mutableStateOf<String?>(null) }
+                            var isImporting by remember { mutableStateOf(false) }
+                            var importedCount by remember { mutableIntStateOf(0) }
 
                             Button(
                                 onClick = {
                                     importType = "subscriptions"
-                                    showImportDialog = true
-                                    isLoading = true
-                                    selectedItems = emptySet()
-                                    coroutineScope.launch {
-                                        try {
-                                            Logger.i(TAG, "Getting subscriptions for plugin: ${config!!.name}")
-                                            val client = StatePlatform.instance.getClient(config!!.id)
-                                            Logger.i(TAG, "Client type: ${client::class.simpleName}")
-                                            val subs =
-                                                withContext(Dispatchers.IO) {
-                                                    client.getUserSubscriptions()
-                                                }
-                                            Logger.i(TAG, "Got ${subs?.size ?: 0} subscriptions")
-                                            if (subs != null) {
-                                                // Store URLs directly, resolve channels on demand
-                                                items =
-                                                    subs.map { url ->
-                                                        ChannelImportItem(url = url, name = url, thumbnail = null)
-                                                    }
-                                            } else {
-                                                items = emptyList()
-                                            }
-                                            isLoading = false
-                                        } catch (e: Exception) {
-                                            Logger.e(TAG, "Failed to get subscriptions", e)
-                                            isLoading = false
-                                        }
-                                    }
+                                    importItems = emptyList()
+                                    importSelected = emptySet()
+                                    importTotal = -1
+                                    importError = null
+                                    importedCount = 0
+                                    isImporting = false
+                                    importGeneration++
+                                    showImportSheet = true
                                 },
                                 modifier =
                                     Modifier
@@ -542,23 +548,14 @@ fun PluginDetailScene(
                             Button(
                                 onClick = {
                                     importType = "playlists"
-                                    showImportDialog = true
-                                    isLoading = true
-                                    selectedItems = emptySet()
-                                    coroutineScope.launch {
-                                        try {
-                                            val client = StatePlatform.instance.getClient(config!!.id)
-                                            val playlists =
-                                                withContext(Dispatchers.IO) {
-                                                    client.getUserPlaylists()
-                                                }
-                                            items = playlists?.map { PlaylistImportItem(url = it, name = it) } ?: emptyList()
-                                            isLoading = false
-                                        } catch (e: Exception) {
-                                            Logger.e(TAG, "Failed to get playlists", e)
-                                            isLoading = false
-                                        }
-                                    }
+                                    importItems = emptyList()
+                                    importSelected = emptySet()
+                                    importTotal = -1
+                                    importError = null
+                                    importedCount = 0
+                                    isImporting = false
+                                    importGeneration++
+                                    showImportSheet = true
                                 },
                                 modifier =
                                     Modifier
@@ -572,156 +569,270 @@ fun PluginDetailScene(
                                 Text("Import Playlists")
                             }
 
-                            // Import dialog
-                            if (showImportDialog) {
-                                AlertDialog(
-                                    onDismissRequest = { showImportDialog = false },
-                                    title = { Text("Import $importType") },
-                                    text = {
-                                        if (isLoading) {
-                                            CircularProgressIndicator()
-                                        } else {
-                                            Column(
-                                                modifier =
-                                                    Modifier
-                                                        .fillMaxWidth()
-                                                        .height(300.dp)
-                                                        .verticalScroll(rememberScrollState()),
-                                            ) {
-                                                Text("Select items to import:")
-                                                items.forEach { item ->
-                                                    when (item) {
-                                                        is ChannelImportItem -> {
-                                                            Row(
-                                                                modifier =
-                                                                    Modifier
-                                                                        .fillMaxWidth()
-                                                                        .padding(vertical = 4.dp),
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                            ) {
-                                                                Checkbox(
-                                                                    checked = selectedItems.contains(item),
-                                                                    onCheckedChange = { checked ->
-                                                                        if (checked) {
-                                                                            selectedItems = selectedItems + item
-                                                                        } else {
-                                                                            selectedItems = selectedItems - item
-                                                                        }
-                                                                    },
-                                                                )
-                                                                if (item.thumbnail != null) {
-                                                                    AsyncImage(
-                                                                        model = item.thumbnail,
-                                                                        contentDescription = null,
-                                                                        modifier =
-                                                                            Modifier
-                                                                                .size(40.dp)
-                                                                                .padding(start = 8.dp),
+                            // Import sheet — resolves each URL one by one (channel name +
+                            // thumbnail, playlist name + video count) and shows live
+                            // "loaded/total" progress, like the legacy app.
+                            if (showImportSheet) {
+                                val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                                ModalBottomSheet(
+                                    onDismissRequest = { showImportSheet = false },
+                                    sheetState = importSheetState,
+                                ) {
+                                    LaunchedEffect(importGeneration) {
+                                        importResolving = true
+                                        importError = null
+                                        try {
+                                            val client = StatePlatform.instance.getClient(config!!.id)
+                                            val urls =
+                                                withContext(Dispatchers.IO) {
+                                                    when (importType) {
+                                                        "subscriptions" ->
+                                                            client
+                                                                .getUserSubscriptions()
+                                                                .distinct()
+                                                                .filter { !StateSubscriptions.instance.isSubscribed(it) }
+                                                                .toList()
+                                                        else -> client.getUserPlaylists().distinct().toList()
+                                                    }
+                                                }
+                                            importTotal = urls.size
+                                            urls.forEachIndexed { index, url ->
+                                                try {
+                                                    val item =
+                                                        withContext(Dispatchers.IO) {
+                                                            when (importType) {
+                                                                "subscriptions" -> {
+                                                                    val channel =
+                                                                        StatePlatform.instance.getChannelLive(url, false)
+                                                                    ImportChannel(
+                                                                        url,
+                                                                        channel.name,
+                                                                        channel.thumbnail,
+                                                                        channel,
                                                                     )
                                                                 }
-                                                                Text(
-                                                                    text = item.name,
-                                                                    modifier = Modifier.padding(start = 8.dp),
-                                                                )
+                                                                else -> {
+                                                                    val playlist =
+                                                                        StatePlatform.instance.getPlaylist(url)
+                                                                    ImportPlaylist(
+                                                                        url,
+                                                                        playlist.name,
+                                                                        playlist.thumbnail,
+                                                                        playlist.videoCount,
+                                                                        playlist,
+                                                                    )
+                                                                }
                                                             }
                                                         }
+                                                    importItems = importItems + item
+                                                } catch (e: Exception) {
+                                                    Logger.w(TAG, "Failed to resolve $url", e)
+                                                }
+                                                if (
+                                                    index >= IMPORT_SLOWDOWN_INDEX &&
+                                                    index % IMPORT_SLOWDOWN_EVERY == 0
+                                                ) {
+                                                    delay(IMPORT_SLOWDOWN_DELAY_MS)
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            Logger.e(TAG, "Failed to load import list", e)
+                                            importError = e.message ?: "Failed to load"
+                                            importTotal = 0
+                                        }
+                                        importResolving = false
+                                    }
 
-                                                        is PlaylistImportItem -> {
-                                                            Row(
-                                                                modifier =
-                                                                    Modifier
-                                                                        .fillMaxWidth()
-                                                                        .padding(vertical = 4.dp),
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                            ) {
-                                                                Checkbox(
-                                                                    checked = selectedItems.contains(item),
-                                                                    onCheckedChange = { checked ->
-                                                                        if (checked) {
-                                                                            selectedItems = selectedItems + item
-                                                                        } else {
-                                                                            selectedItems = selectedItems - item
-                                                                        }
-                                                                    },
-                                                                )
-                                                                Text(
-                                                                    text = item.name,
-                                                                    modifier = Modifier.padding(start = 8.dp),
-                                                                )
-                                                            }
+                                    Column(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxSize()
+                                                .padding(bottom = 16.dp),
+                                    ) {
+                                        Row(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = Tokens.SpaceLg, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text(
+                                                text =
+                                                    if (importTotal == -1)
+                                                        "Loading…"
+                                                    else "${importItems.size}/$importTotal",
+                                                style = MaterialTheme.typography.titleMedium,
+                                            )
+                                            if (importResolving) {
+                                                Spacer(Modifier.width(12.dp))
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(16.dp),
+                                                    strokeWidth = 2.dp,
+                                                )
+                                            }
+                                            Spacer(Modifier.weight(1f))
+                                            val allSelected =
+                                                importItems.isNotEmpty() &&
+                                                    importSelected.size == importItems.size
+                                            TextButton(
+                                                onClick = {
+                                                    importSelected =
+                                                        if (allSelected) emptySet()
+                                                        else importItems.map { it.url }.toSet()
+                                                },
+                                            ) {
+                                                Text(if (allSelected) "Deselect all" else "Select all")
+                                            }
+                                        }
+
+                                        importError?.let { error ->
+                                            Text(
+                                                text = error,
+                                                color = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.padding(horizontal = Tokens.SpaceLg),
+                                            )
+                                        }
+
+                                        if (importTotal == 0 && importError == null) {
+                                            Text(
+                                                text =
+                                                    if (importType == "subscriptions")
+                                                        "You're already subscribed to all of the plugin's channels"
+                                                    else "No playlists found",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                modifier = Modifier.padding(horizontal = Tokens.SpaceLg),
+                                            )
+                                        }
+
+                                        LazyColumn(modifier = Modifier.weight(1f)) {
+                                            items(importItems, key = { it.url }) { item ->
+                                                Row(
+                                                    modifier =
+                                                        Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(
+                                                                horizontal = Tokens.SpaceLg,
+                                                                vertical = 4.dp,
+                                                            ),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    Checkbox(
+                                                        checked = importSelected.contains(item.url),
+                                                        onCheckedChange = { checked ->
+                                                            importSelected =
+                                                                if (checked)
+                                                                    importSelected + item.url
+                                                                else importSelected - item.url
+                                                        },
+                                                    )
+                                                    if (item.thumbnail != null) {
+                                                        AsyncImage(
+                                                            model = item.thumbnail,
+                                                            contentDescription = null,
+                                                            modifier =
+                                                                Modifier
+                                                                    .size(40.dp)
+                                                                    .padding(start = 8.dp)
+                                                                    .clip(RoundedCornerShape(8.dp)),
+                                                            contentScale = ContentScale.Crop,
+                                                        )
+                                                    }
+                                                    Column(
+                                                        modifier =
+                                                            Modifier
+                                                                .weight(1f)
+                                                                .padding(start = 8.dp),
+                                                    ) {
+                                                        Text(
+                                                            text = item.name,
+                                                            style = MaterialTheme.typography.bodyLarge,
+                                                        )
+                                                        if (item is ImportPlaylist) {
+                                                            Text(
+                                                                text =
+                                                                    "${item.videoCount} ${
+                                                                        if (item.videoCount == 1)
+                                                                            "video"
+                                                                        else "videos"
+                                                                    }",
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                color =
+                                                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            )
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                    },
-                                    confirmButton = {
-                                        Button(
-                                            onClick = {
-                                                coroutineScope.launch {
-                                                    try {
-                                                        Logger.i(TAG, "Starting import of ${selectedItems.size} items")
-                                                        when (importType) {
-                                                            "subscriptions" -> {
-                                                                var successCount = 0
-                                                                for (item in selectedItems) {
-                                                                    if (item is ChannelImportItem) {
-                                                                        try {
-                                                                            val channel =
-                                                                                withContext(Dispatchers.IO) {
-                                                                                    StatePlatform.instance.getChannelLive(item.url, false)
-                                                                                }
-                                                                            StateSubscriptions.instance.addSubscription(channel)
-                                                                            successCount++
-                                                                            Logger.i(TAG, "Added subscription: ${channel.name}")
-                                                                        } catch (e: Exception) {
-                                                                            Logger.e(TAG, "Failed to add subscription: ${item.url}", e)
-                                                                        }
-                                                                    }
-                                                                }
-                                                                Logger.i(TAG, "Import completed: $successCount/${selectedItems.size} items")
-                                                            }
 
-                                                            "playlists" -> {
-                                                                var successCount = 0
-                                                                for (item in selectedItems) {
-                                                                    if (item is PlaylistImportItem) {
-                                                                        try {
-                                                                            Logger.i(TAG, "Adding playlist: ${item.name}")
-                                                                            // Create a simple playlist with just the URL
-                                                                            // Videos will be loaded later when user opens the playlist
-                                                                            val playlist = Playlist(item.name, emptyList())
-                                                                            StatePlaylists.instance.createOrUpdatePlaylist(playlist, true)
-                                                                            successCount++
-                                                                            Logger.i(TAG, "Added playlist: ${item.name}")
-                                                                        } catch (e: Exception) {
-                                                                            Logger.e(TAG, "Failed to add playlist: ${item.url}", e)
-                                                                        }
+                                        Row(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(start = Tokens.SpaceLg, end = Tokens.SpaceLg, top = 8.dp),
+                                        ) {
+                                            Spacer(Modifier.weight(1f))
+                                            TextButton(onClick = { showImportSheet = false }) {
+                                                Text("Cancel")
+                                            }
+                                            Button(
+                                                onClick = {
+                                                    isImporting = true
+                                                    importedCount = 0
+                                                    val toImport =
+                                                        importItems.filter { it.url in importSelected }
+                                                    coroutineScope.launch {
+                                                        var success = 0
+                                                        withContext(Dispatchers.IO) {
+                                                            for (item in toImport) {
+                                                                try {
+                                                                    when (item) {
+                                                                        is ImportChannel ->
+                                                                            StateSubscriptions.instance.addSubscription(
+                                                                                item.channel
+                                                                            )
+                                                                        is ImportPlaylist ->
+                                                                            StatePlaylists.instance.createOrUpdatePlaylist(
+                                                                                item.details.toPlaylist(),
+                                                                                true,
+                                                                            )
                                                                     }
+                                                                    success++
+                                                                } catch (e: Exception) {
+                                                                    Logger.e(
+                                                                        TAG,
+                                                                        "Failed to import ${item.url}",
+                                                                        e,
+                                                                    )
                                                                 }
-                                                                Logger.i(
-                                                                    TAG,
-                                                                    "Playlist import completed: $successCount/${selectedItems.size} items",
-                                                                )
+                                                                importedCount = success
                                                             }
                                                         }
-                                                        showImportDialog = false
-                                                    } catch (e: Exception) {
-                                                        Logger.e(TAG, "Failed to import", e)
+                                                        isImporting = false
+                                                        showImportSheet = false
+                                                        val noun =
+                                                            if (importType == "playlists")
+                                                                "playlist"
+                                                            else "subscription"
+                                                        UIDialogs.toast(
+                                                            context,
+                                                            "Imported $success $noun${
+                                                                if (success == 1) "" else "s"
+                                                            }",
+                                                        )
                                                     }
-                                                }
-                                            },
-                                            enabled = selectedItems.isNotEmpty(),
-                                        ) {
-                                            Text("Import (${selectedItems.size})")
+                                                },
+                                                enabled = importSelected.isNotEmpty() && !isImporting,
+                                            ) {
+                                                Text(
+                                                    if (isImporting)
+                                                        "Importing $importedCount/${importSelected.size}…"
+                                                    else "Import (${importSelected.size})",
+                                                )
+                                            }
                                         }
-                                    },
-                                    dismissButton = {
-                                        TextButton(onClick = { showImportDialog = false }) {
-                                            Text("Cancel")
-                                        }
-                                    },
-                                )
+                                    }
+                                }
                             }
                         }
 
