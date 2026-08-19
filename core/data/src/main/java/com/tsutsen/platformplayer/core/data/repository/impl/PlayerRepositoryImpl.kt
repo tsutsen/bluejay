@@ -27,19 +27,25 @@ import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import androidx.media3.exoplayer.text.TextRenderer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.tsutsen.platformplayer.core.data.repository.CommentRepository
+import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.data.service.PlayerService
 import com.tsutsen.platformplayer.core.model.Author
+import com.tsutsen.platformplayer.core.model.Card
+import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,6 +67,28 @@ class PlayerRepositoryImpl(
     fun setUrlResolver(resolver: VideoUrlResolver?) {
         this.urlResolver = resolver
     }
+
+    // Wired by the DI module after construction (same pattern as urlResolver).
+    private var commentRepository: CommentRepository? = null
+    private var contentExtrasRepository: ContentExtrasRepository? = null
+    private var settingsRepository: SettingsRepository? = null
+
+    fun setExtrasRepositories(
+        commentRepository: CommentRepository,
+        contentExtrasRepository: ContentExtrasRepository,
+        settingsRepository: SettingsRepository,
+    ) {
+        this.commentRepository = commentRepository
+        this.contentExtrasRepository = contentExtrasRepository
+        this.settingsRepository = settingsRepository
+    }
+
+    // Generation counter guarding the extras fetches: each play() bumps it,
+    // and a fetch only publishes if its generation is still current — so an
+    // in-flight fetch for the previous video can never overwrite the new
+    // video's extras (the "comments from the previous video" bug).
+    private val playGeneration = java.util.concurrent.atomic.AtomicInteger(0)
+    private val extrasScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val TAG = "PlayerRepositoryImpl"
 
@@ -260,6 +288,10 @@ class PlayerRepositoryImpl(
             it.copy(
                 isLoading = true,
                 error = null,
+                // A new video starts without the previous one's extras.
+                comments = emptyList(),
+                recommendations = emptyList(),
+                chapters = emptyList(),
                 currentVideo =
                     ContentItem(
                         id = videoId,
@@ -270,6 +302,55 @@ class PlayerRepositoryImpl(
                         contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
                     ),
             )
+        }
+
+        // Fetch the video's extras (comments / recommendations / chapters)
+        // here — in the ONE place every play path goes through (main screen,
+        // companion screen, notification taps, …) — instead of in
+        // PlayerViewModel, which the companion's play path never touches.
+        val generation = playGeneration.incrementAndGet()
+        val prefs = settingsRepository?.preferences?.value
+        if (prefs != null) {
+            extrasScope.launch {
+                if (prefs.showComments) {
+                    launch(Dispatchers.IO) {
+                        try {
+                            val comments =
+                                commentRepository?.getComments(videoId) ?: emptyList()
+                            if (generation == playGeneration.get()) {
+                                _playerState.update { it.copy(comments = comments) }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to fetch comments for $videoId", e)
+                        }
+                    }
+                }
+                if (prefs.showRecommendedVideos) {
+                    launch(Dispatchers.IO) {
+                        try {
+                            val recs =
+                                contentExtrasRepository?.getRecommendations(videoId)
+                                    ?: emptyList()
+                            if (generation == playGeneration.get()) {
+                                _playerState.update { it.copy(recommendations = recs) }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to fetch recommendations for $videoId", e)
+                        }
+                    }
+                }
+                launch(Dispatchers.IO) {
+                    try {
+                        val chapters =
+                            contentExtrasRepository?.getChapters(videoId) ?: emptyList()
+                        if (generation == playGeneration.get() && chapters.isNotEmpty()) {
+                            _playerState.update { it.copy(chapters = chapters) }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to fetch chapters for $videoId", e)
+                    }
+                }
+            }
         }
 
         try {
@@ -701,6 +782,10 @@ class PlayerRepositoryImpl(
 
     override suspend fun exitMiniPlayer() {
         _playerState.update { it.copy(isMinimized = false, isFullscreen = false) }
+    }
+
+    override fun setVideoExtras(comments: List<CommentItem>, recommendations: List<Card>) {
+        _playerState.update { it.copy(comments = comments, recommendations = recommendations) }
     }
 
     override suspend fun close() {

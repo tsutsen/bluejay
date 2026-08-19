@@ -15,6 +15,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.compose.GrayjayNavGraph
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
@@ -75,6 +77,28 @@ class MainActivity :
     }
 
     private var _pendingResultHandler: ((ActivityResult) -> Unit)? = null
+
+    override fun onStart() {
+        super.onStart()
+        // The system finishes the companion's task when the app goes to the
+        // background, so re-assert the dual-screen setting on every return
+        // to the foreground. The rear display can be busy handling the
+        // front display's return transition and silently drop a launch, so
+        // retry a couple of times if it didn't take (start() is a no-op
+        // once the companion is alive).
+        ensureCompanion()
+        lifecycleScope.launch {
+            for (delay in longArrayOf(2_500L, 6_000L)) {
+                delay(delay)
+                if (isFinishing || isDestroyed) return@launch
+                ensureCompanion()
+            }
+        }
+    }
+
+    private fun ensureCompanion() {
+        CompanionActivity.start(this, settingsRepository.preferences.value.dualScreen)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

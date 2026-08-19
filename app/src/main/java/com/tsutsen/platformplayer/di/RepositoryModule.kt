@@ -78,9 +78,13 @@ object PlayerRepositoryModule {
     fun providePlayerRepository(
         @ApplicationContext context: Context,
         urlResolver: VideoUrlResolver,
+        commentRepository: CommentRepository,
+        contentExtrasRepository: ContentExtrasRepository,
+        settingsRepository: SettingsRepository,
     ): PlayerRepository {
         val impl = PlayerRepositoryImpl(context)
         impl.setUrlResolver(urlResolver)
+        impl.setExtrasRepositories(commentRepository, contentExtrasRepository, settingsRepository)
         return impl
     }
 }

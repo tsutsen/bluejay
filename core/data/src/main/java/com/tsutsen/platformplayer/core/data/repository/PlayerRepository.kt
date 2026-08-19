@@ -3,6 +3,8 @@ package com.tsutsen.platformplayer.core.data.repository
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MediaSource
+import com.tsutsen.platformplayer.core.model.Card
+import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
 import kotlinx.coroutines.flow.StateFlow
 
@@ -30,6 +32,13 @@ interface PlayerRepository {
     suspend fun exitFullscreen()
     suspend fun exitMiniPlayer()
     suspend fun close()
+
+    /**
+     * Push the fetched extras for the current video into [playerState] so
+     * other surfaces (e.g. the companion display) can read the same data
+     * without re-fetching. The owning screen fetches once and pushes here.
+     */
+    fun setVideoExtras(comments: List<CommentItem>, recommendations: List<Card>)
 
     val mediaSessionToken: android.media.session.MediaSession.Token?
         get() = null

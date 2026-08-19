@@ -35,4 +35,5 @@ data class PlaylistVideoEntity(
     val addedAt: Long = System.currentTimeMillis(),
     val durationMs: Long = 0,
     val authorUrl: String? = null,
+    val viewCount: Long = 0,
 )

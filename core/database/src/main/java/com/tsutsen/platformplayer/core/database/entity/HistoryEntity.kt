@@ -15,4 +15,5 @@ data class HistoryEntity(
     val watchedAt: Long = System.currentTimeMillis(),
     val viewedAt: Long = System.currentTimeMillis(),
     val authorUrl: String? = null,
+    val viewCount: Long = 0,
 )

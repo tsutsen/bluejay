@@ -68,7 +68,6 @@ class PlayerViewModel
     constructor(
         private val playerRepository: PlayerRepository,
         private val commentRepository: CommentRepository,
-        private val contentExtrasRepository: ContentExtrasRepository,
         private val settingsRepository: SettingsRepository,
         private val historyTracker: HistoryTracker,
         private val libraryRepository: LibraryRepository,
@@ -85,11 +84,6 @@ class PlayerViewModel
                     SharingStarted.Lazily,
                     settingsRepository.preferences.value.gridColumns,
                 )
-
-        // Preserve comments/chapters/recommendations across repository state emissions
-        private var cachedComments: List<CommentItem> = emptyList()
-        private var cachedChapters: List<VideoChapter> = emptyList()
-        private var cachedRecommendations: List<Card> = emptyList()
 
         init {
             // Observe repository player state and map to UiState
@@ -113,14 +107,18 @@ class PlayerViewModel
                                 error = playerState.error,
                                 isLoading = playerState.isLoading,
                                 isCompleted = playerState.isCompleted,
-                                comments = cachedComments,
+                                // Comments/recommendations/chapters live in the shared
+                                // PlayerState — PlayerRepository.play() fetches them for
+                                // every play path (main screen AND companion screen),
+                                // so both displays always show the same data.
+                                comments = playerState.comments,
                                 videoQualities = playerState.videoQualities,
                                 subtitleLanguages = playerState.subtitleLanguages,
                                 selectedQuality = playerState.selectedQuality,
                                 selectedSubtitle = playerState.selectedSubtitle,
                                 subtitleText = playerState.subtitleText,
-                                chapters = cachedChapters,
-                                recommendations = cachedRecommendations,
+                                chapters = playerState.chapters,
+                                recommendations = playerState.recommendations,
                                 showComments = settingsRepository.preferences.value.showComments,
                                 showRecommended =
                                     settingsRepository.preferences.value
@@ -139,6 +137,7 @@ class PlayerViewModel
                                 authorUrl = video.author?.url?.takeIf { it.isNotEmpty() },
                                 thumbnailUrl = video.thumbnailUrl,
                                 totalDurationMs = playerState.durationMs,
+                                viewCount = video.viewCount,
                             )
                             if (playerState.durationMs > 0) {
                                 libraryRepository.backfillDuration(video.url, playerState.durationMs)
@@ -150,10 +149,9 @@ class PlayerViewModel
 
         fun play(videoId: String) {
             viewModelScope.launch {
-                // Reset extras for new video
-                cachedComments = emptyList()
-                cachedChapters = emptyList()
-                cachedRecommendations = emptyList()
+                // PlayerRepository.play() clears the previous video's extras and
+                // fetches the new one's (comments/recs/chapters) — the single
+                // orchestration point shared with the companion screen.
                 playerRepository.play(videoId)
                 // Track in history
                 historyTracker.trackPlayback(
@@ -162,74 +160,15 @@ class PlayerViewModel
                     author = null,
                     thumbnailUrl = null,
                 )
-                // Fetch extras after video starts playing (gated by content settings)
-                val prefs = settingsRepository.preferences.value
-                if (prefs.showComments) fetchComments(videoId)
-                fetchChapters(videoId)
-                if (prefs.showRecommendedVideos) fetchRecommendations(videoId)
-            }
-        }
-
-        private suspend fun fetchComments(contentUrl: String) {
-            try {
-                val comments =
-                    withContext(Dispatchers.IO) {
-                        commentRepository.getComments(contentUrl)
-                    }
-
-                cachedComments = comments
-                _uiState.value =
-                    when (val state = _uiState.value) {
-                        is PlayerUiState.Loaded -> state.copy(comments = comments)
-                        else -> state
-                    }
-            } catch (e: Exception) {
-                android.util.Log.e("PlayerViewModel", "Failed to fetch comments", e)
-            }
-        }
-
-        private suspend fun fetchChapters(contentUrl: String) {
-            try {
-                val chapters =
-                    withContext(Dispatchers.IO) {
-                        contentExtrasRepository.getChapters(contentUrl)
-                    }
-
-                if (chapters.isNotEmpty()) {
-                    cachedChapters = chapters
-                    _uiState.value =
-                        when (val state = _uiState.value) {
-                            is PlayerUiState.Loaded -> state.copy(chapters = chapters)
-                            else -> state
-                        }
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("PlayerViewModel", "Failed to fetch chapters", e)
-            }
-        }
-
-        private suspend fun fetchRecommendations(contentUrl: String) {
-            try {
-                val recommendations =
-                    withContext(Dispatchers.IO) {
-                        contentExtrasRepository.getRecommendations(contentUrl)
-                    }
-
-                if (recommendations.isNotEmpty()) {
-                    cachedRecommendations = recommendations
-                    _uiState.value =
-                        when (val state = _uiState.value) {
-                            is PlayerUiState.Loaded -> state.copy(recommendations = recommendations)
-                            else -> state
-                        }
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("PlayerViewModel", "Failed to fetch recommendations", e)
             }
         }
 
         fun loadMoreComments(contentUrl: String) {
             viewModelScope.launch {
+                // Guard: a faster switch to a new video supersedes this request.
+                if (playerRepository.playerState.value.currentVideo?.url != contentUrl) {
+                    return@launch
+                }
                 try {
                     val moreComments =
                         withContext(Dispatchers.IO) {
@@ -237,18 +176,11 @@ class PlayerViewModel
                         }
 
                     if (moreComments.isNotEmpty()) {
-                        cachedComments = cachedComments + moreComments
-                        _uiState.value =
-                            when (val state = _uiState.value) {
-                                is PlayerUiState.Loaded -> {
-                                    val updatedComments = state.comments + moreComments
-                                    state.copy(comments = updatedComments)
-                                }
-
-                                else -> {
-                                    state
-                                }
-                            }
+                        val current = playerRepository.playerState.value
+                        playerRepository.setVideoExtras(
+                            current.comments + moreComments,
+                            current.recommendations,
+                        )
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("PlayerViewModel", "Failed to load more comments", e)

@@ -23,6 +23,16 @@ private const val TAG = "GrayjayTheme"
  */
 @HiltAndroidApp
 class PlatformPlayerApp : Application() {
+    init {
+        // The Hilt-generated subclass injects the @Inject fields (the
+        // PlayerRepository graph, which includes SettingsRepository) BEFORE
+        // the onCreate() body runs. Settings persistence needs the context at
+        // that moment, so establish it as early as possible. (An Application
+        // IS its own application context; `applicationContext` is still null
+        // during construction, so store `this` directly.)
+        context = this
+    }
+
     @Inject
     lateinit var playerRepository: PlayerRepository
 
@@ -55,7 +65,6 @@ class PlatformPlayerApp : Application() {
     override fun onCreate() {
         Log.d(TAG, "PlatformPlayerApp.onCreate() starting")
         super.onCreate()
-        context = applicationContext
 
         applyThemeMode()
 

@@ -27,6 +27,7 @@ class HistoryTracker
             thumbnailUrl: String? = null,
             currentPositionMs: Long = 0,
             totalDurationMs: Long = 0,
+            viewCount: Long? = null,
         ) {
             withContext(Dispatchers.IO) {
                 val existing = historyDao.getByUrl(contentUrl)
@@ -43,6 +44,7 @@ class HistoryTracker
                             totalDurationMs = totalDurationMs,
                             watchedAt = System.currentTimeMillis(),
                             viewedAt = System.currentTimeMillis(),
+                            viewCount = viewCount ?: existing.viewCount,
                         ),
                     )
                 } else {
@@ -58,6 +60,7 @@ class HistoryTracker
                             totalDurationMs = totalDurationMs,
                             watchedAt = System.currentTimeMillis(),
                             viewedAt = System.currentTimeMillis(),
+                            viewCount = viewCount ?: 0L,
                         )
                     historyDao.upsert(entity)
                 }

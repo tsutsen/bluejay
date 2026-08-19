@@ -16,6 +16,10 @@ data class PlayerState(
     val isLoading: Boolean = false,
     val isCompleted: Boolean = false,
     val comments: List<CommentItem> = emptyList(),
+    /** Recommended videos for the current video, fetched by PlayerRepository.play(). */
+    val recommendations: List<Card> = emptyList(),
+    /** Chapter list for the current video, fetched by PlayerRepository.play(). */
+    val chapters: List<VideoChapter> = emptyList(),
     /** Available video track heights in pixels, descending (e.g. [2160, 1080, 720]). */
     val videoQualities: List<Int> = emptyList(),
     /** Available subtitle track language codes, in manifest order. */

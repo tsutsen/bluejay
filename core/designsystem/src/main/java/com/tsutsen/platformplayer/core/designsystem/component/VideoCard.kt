@@ -200,6 +200,182 @@ fun VideoCard(
 }
 
 /**
+ * Compact video card for small surfaces (e.g. the second display).
+ * All meta info — channel, views, posted time, duration — lives in pills on
+ * the thumbnail corners; only the title sits below. No meta row, so the card
+ * stays short and nothing gets clipped in tight slots.
+ */
+@Composable
+fun VideoCardPills(
+    card: VideoCard,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val title = card.title
+    val author = card.author
+    val viewCount = card.viewCount
+    val publishedAt = card.publishedAt
+    val durationMs = card.durationMs
+    val thumbnailUrl = card.thumbnailUrl
+
+    // The thumbnail keeps its fixed 16:9 aspect ratio, always. Callers that
+    // need the card to fit a short slot constrain the WIDTH (the card height
+    // follows from 16:9 + the title), never the thumbnail's ratio.
+    Card(
+        modifier = modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        shape = RoundedCornerShape(Tokens.RadiusSm),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
+                AsyncImage(
+                    url = thumbnailUrl,
+                    contentDescription = title,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(Tokens.RadiusSm)),
+                    contentScale = ContentScale.Crop,
+                )
+                if (author != null) {
+                    ThumbnailPill(text = author, modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
+                }
+                if (viewCount != null) {
+                    ThumbnailPill(text = formatViewCount(viewCount), modifier = Modifier.align(Alignment.TopEnd).padding(Tokens.SpaceSm))
+                }
+                if (publishedAt != null) {
+                    ThumbnailPill(text = RelativeTime.format(publishedAt), modifier = Modifier.align(Alignment.BottomStart).padding(Tokens.SpaceSm))
+                }
+                if (durationMs != null && durationMs > 0) {
+                    ThumbnailPill(text = formatDuration(durationMs), modifier = Modifier.align(Alignment.BottomEnd).padding(Tokens.SpaceSm))
+                }
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(Tokens.SpaceMd),
+            )
+        }
+    }
+}
+
+/**
+ * Full-size video card for list/strip contexts with vertical room (e.g. the
+ * second screen's recommended strip): fixed 16:9 thumbnail on top, title
+ * below it, channel + posted time pinned to the bottom edge. No pills, no
+ * duration, no view count — the card fills the height the strip gives it,
+ * like the comment cards.
+ */
+@Composable
+fun VideoCardFull(
+    card: VideoCard,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val title = card.title
+    val author = card.author
+    val publishedAt = card.publishedAt
+    val thumbnailUrl = card.thumbnailUrl
+
+    Card(
+        modifier =
+            modifier
+                .fillMaxHeight()
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        shape = RoundedCornerShape(Tokens.RadiusMd),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(Tokens.SpaceMd),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f),
+            ) {
+                AsyncImage(
+                    url = thumbnailUrl,
+                    contentDescription = title,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            // Push the meta row to the bottom edge.
+            Spacer(modifier = Modifier.weight(1f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = author ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (publishedAt != null) {
+                    Text(
+                        text = RelativeTime.format(publishedAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThumbnailPill(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        color = Color.Black.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(Tokens.RadiusXs),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .widthIn(max = 120.dp)
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/**
  * Compact landscape video card (96×54 thumbnail ratio).
  */
 @Composable

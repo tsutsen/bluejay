@@ -294,13 +294,17 @@ private fun optionTileRow(
 }
 
 @Composable
-// internal (not private): PlaylistOptionsSheet reuses the same tile.
-internal fun OptionTileView(
+// Public: PlaylistOptionsSheet and the companion (second screen) activity
+// reuse the same tile.
+fun OptionTileView(
     tile: OptionTile,
     modifier: Modifier = Modifier,
     // Null = default tint (selected-aware). Non-null overrides the icon
     // tint only (e.g. error color for a destructive action).
     iconTint: Color? = null,
+    // false = icon only (e.g. the second screen's playback controls, where
+    // the icon alone is self-evident).
+    showLabel: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val semantic = LocalSemanticColors.current
@@ -353,15 +357,17 @@ internal fun OptionTileView(
             modifier = Modifier.size(Tokens.IconMd),
             tint = iconTint ?: iconColor,
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = tile.label,
-            style = MaterialTheme.typography.labelSmall,
-            color = content,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
+        if (showLabel) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = tile.label,
+                style = MaterialTheme.typography.labelSmall,
+                color = content,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
+        }
         if (active) {
             val barModifier =
                 Modifier
@@ -404,8 +410,9 @@ private fun playlistPickRow(
     }
 }
 
-// internal (not private): PlaylistOptionsSheet reuses the same tile.
-internal data class OptionTile(
+// Public: PlaylistOptionsSheet and the companion (second screen) activity
+// reuse the same tile.
+data class OptionTile(
     val label: String,
     val icon: ImageVector,
     val selected: Boolean = false,
@@ -424,7 +431,7 @@ internal data class OptionTile(
  * highlight to primaryContainer, warning to [LocalSemanticColors]
  * (the only semantic role M3 does not provide).
  */
-internal enum class TileTone {
+enum class TileTone {
     Default,
     Highlight,
     Warning,

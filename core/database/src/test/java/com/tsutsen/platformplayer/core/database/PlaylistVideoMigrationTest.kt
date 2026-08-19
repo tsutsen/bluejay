@@ -70,7 +70,8 @@ class PlaylistVideoMigrationTest {
         val writable = db.openHelper.writableDatabase
         AppDatabase.MIGRATION_2_3.migrate(writable)
         writable.execSQL("ALTER TABLE `playlist_videos` ADD COLUMN `authorUrl` TEXT")
-        writable.execSQL("PRAGMA user_version = 5")
+        writable.execSQL("ALTER TABLE `playlist_videos` ADD COLUMN `viewCount` INTEGER NOT NULL DEFAULT 0")
+        writable.execSQL("PRAGMA user_version = 7")
     }
 
     private fun AppDatabase.dao(): PlaylistDao = playlistDao()

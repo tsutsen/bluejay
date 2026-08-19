@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.core.database.entity.*
         SavedVideoEntity::class,
         NotificationEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -52,6 +52,27 @@ abstract class AppDatabase : RoomDatabase() {
          * like the live-feed cards do. Existing rows keep 0 (tile
          * hidden) until re-saved.
          */
+        /**
+         * v6 -> v7: stores the view count in saved videos, history, and
+         * playlist videos so library cards can show it like the live-feed
+         * cards do. Existing rows keep 0 (pill hidden) until re-saved or
+         * re-watched.
+         */
+        val MIGRATION_6_7 =
+            object : Migration(6, 7) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE `saved_video` ADD COLUMN `viewCount` INTEGER NOT NULL DEFAULT 0",
+                    )
+                    db.execSQL(
+                        "ALTER TABLE `history` ADD COLUMN `viewCount` INTEGER NOT NULL DEFAULT 0",
+                    )
+                    db.execSQL(
+                        "ALTER TABLE `playlist_videos` ADD COLUMN `viewCount` INTEGER NOT NULL DEFAULT 0",
+                    )
+                }
+            }
+
         val MIGRATION_5_6 =
             object : Migration(5, 6) {
                 override fun migrate(db: SupportSQLiteDatabase) {

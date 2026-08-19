@@ -8,6 +8,7 @@ import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikes
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.states.StatePlatform
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -90,13 +91,22 @@ class EngineCommentRepository @Inject constructor() : CommentRepository {
         }
     }
 
+    /**
+     * The platform has no per-comment id — [IPlatformComment.contextUrl] is
+     * the *video* url, so every comment of a video would share one id and
+     * any keyed Lazy* list crashes on the second comment. Synthesize unique
+     * ids instead (nothing persists them, so a fresh value per mapping is
+     * fine).
+     */
+    private val commentIdCounter = AtomicInteger(0)
+
     private fun mapToCommentItem(comment: IPlatformComment): CommentItem? {
         return try {
             val author = comment.author
             val (likeCount, _) = extractLikesDislikes(comment.rating)
-            
+
             CommentItem(
-                id = comment.contextUrl,
+                id = "${comment.contextUrl}#${commentIdCounter.incrementAndGet()}",
                 author = author?.name ?: "Unknown",
                 authorThumbnailUrl = author?.thumbnail,
                 text = comment.message,
