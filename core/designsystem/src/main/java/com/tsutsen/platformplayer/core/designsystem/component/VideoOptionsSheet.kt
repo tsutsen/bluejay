@@ -86,10 +86,11 @@ fun VideoOptionsSheet(
     durationMs: Long? = null,
     viewCount: Long? = null,
     publishedAt: Long? = null,
-    // Modal (material3 ModalBottomSheet) for activities; a plain non-modal
-    // panel for surfaces without a SavedState/Lifecycle owner chain (e.g. a
-    // Presentation).
-    modal: Boolean = true,
+    // false (default): modal material3 ModalBottomSheet (main app).
+    // true: render the body bare — the host wraps it in its own sheet chrome
+    // (the second screen uses a material3 BottomSheetScaffold, which cannot
+    // host a Popup-based modal sheet).
+    embedded: Boolean = false,
 ) {
     val context = LocalContext.current
     var showPlaylists by remember { mutableStateOf(false) }
@@ -270,10 +271,10 @@ fun VideoOptionsSheet(
             }
         }
     }
-    if (modal) {
-        BluejayModalBottomSheet(onDismiss = onDismiss, content = body)
+    if (embedded) {
+        body()
     } else {
-        BluejayBottomSheetPanel(onDismiss = onDismiss, content = body)
+        BluejayModalBottomSheet(onDismiss = onDismiss, content = body)
     }
 }
 

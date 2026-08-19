@@ -40,7 +40,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
@@ -48,11 +50,16 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -245,7 +252,7 @@ class CompanionPresentation(
  * Vertical flick changes pages; horizontal swipes scroll the strips inside
  * each page. No vertical scrolling anywhere.
  */
-@ExperimentalFoundationApi
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun CompanionContent(
     playerRepository: PlayerRepository,
@@ -281,10 +288,60 @@ private fun CompanionContent(
     val onLongClick: (CoreVideoCard) -> Unit = { card -> optionsCard = card }
 
     val pagerState = rememberPagerState(pageCount = { 3 })
-    VerticalPager(
-        state = pagerState,
-        modifier = Modifier.fillMaxSize(),
-    ) { page ->
+
+    // Native M3 bottom sheet for the long-press options — material3's
+    // BottomSheetScaffold gives the standard Android sheet physics (drag,
+    // collapse, expand, handle). It is pure in-composition layout (no Popup
+    // window, unlike ModalBottomSheet), so it works inside a Presentation
+    // window. Skip the partial state: the sheet toggles hidden <-> expanded.
+    // (rememberModalBottomSheetState is the public SheetState factory in
+    // material3 1.4.0 — the state class is shared between the modal and
+    // scaffold variants.)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
+    LaunchedEffect(optionsCard) {
+        if (optionsCard != null) sheetState.expand() else sheetState.hide()
+    }
+    // Dragging the sheet down dismisses it — clear the selection so the
+    // sheet content goes away.
+    LaunchedEffect(sheetState) {
+        snapshotFlow { sheetState.targetValue }
+            .distinctUntilChanged()
+            .collect { value ->
+                if (value == SheetValue.Hidden && optionsCard != null) {
+                    optionsCard = null
+                }
+            }
+    }
+
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetPeekHeight = 56.dp,
+        sheetContent = {
+            optionsCard?.let { card ->
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 24.dp),
+                ) {
+                    CompanionVideoOptionsSheet(
+                        card = card,
+                        onDismiss = { optionsCard = null },
+                        onPlay = onPlay,
+                        libraryRepository = libraryRepository,
+                        downloadsRepository = downloadsRepository,
+                        scope = scope,
+                    )
+                }
+            }
+        },
+        content = { _ ->
+        VerticalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+        ) { page ->
         when (page) {
             0 -> CompanionVideoPage(
                 playerState = playerState,
@@ -317,32 +374,23 @@ private fun CompanionContent(
                     }
                 },
                 onSeekTo = { ms -> scope.launch { playerRepository.seekTo(ms) } },
-                onPlay = onPlay,
-                onLongClick = onLongClick,
-            )
-
-            1 -> CompanionLibraryPage(sections = sections, onPlay = onPlay, onLongClick = onLongClick)
-
-            2 ->
-                CompanionHomePage(
-                    items = home.items,
-                    onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
                     onPlay = onPlay,
                     onLongClick = onLongClick,
                 )
-        }
-    }
 
-    if (optionsCard != null) {
-        CompanionVideoOptionsSheet(
-            card = optionsCard!!,
-            onDismiss = { optionsCard = null },
-            onPlay = onPlay,
-            libraryRepository = libraryRepository,
-            downloadsRepository = downloadsRepository,
-            scope = scope,
-        )
-    }
+                1 -> CompanionLibraryPage(sections = sections, onPlay = onPlay, onLongClick = onLongClick)
+
+                2 ->
+                    CompanionHomePage(
+                        items = home.items,
+                        onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
+                        onPlay = onPlay,
+                        onLongClick = onLongClick,
+                    )
+            }
+        }
+        },
+    )
 }
 
 /**
@@ -837,7 +885,8 @@ private fun CompanionVideoOptionsSheet(
         durationMs = card.durationMs,
         viewCount = card.viewCount,
         publishedAt = card.publishedAt,
-        modal = false,
+        // The host wraps this in a material3 BottomSheetScaffold sheet.
+        embedded = true,
     )
 }
 
