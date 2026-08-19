@@ -740,7 +740,18 @@ class PlayerRepositoryImpl(
         val builder = TrackSelectionParameters.Builder()
         val height = selectedQuality.removeSuffix("p").toIntOrNull()
         if (height != null && height > 0) {
-            builder.setMaxVideoSize(-1, height)
+            // Constrain a narrow band around the selected height so the exact
+            // quality is forced. A max-only cap would leave lower tracks
+            // "acceptable" and SABR's sticky ABR would keep the current (lower)
+            // format instead of stepping up. "NNNp" => [NNN-10, NNN+10]; Auto => unconstrained.
+            //
+            // maxWidth MUST be a real large value (9999), not -1: media3's
+            // isWithinMaxConstraints checks `format.width <= maxVideoWidth`, so -1 makes
+            // EVERY video track fail the max constraint. Combined with the in-band high-res
+            // track being ineligible, that sends media3 down the "outside min & max ->
+            // prefer lower quality" path and it collapses to 144p. Grayjay uses 9999.
+            builder.setMinVideoSize(0, height - 10)
+            builder.setMaxVideoSize(9999, height + 10)
         }
         when (selectedSubtitle) {
             "Off" -> {
