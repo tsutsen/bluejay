@@ -1,14 +1,18 @@
 package com.tsutsen.platformplayer.activities
 
-import android.app.ActivityOptions
 import android.content.Context
-import android.content.Intent
+import android.app.Presentation
+import androidx.compose.ui.platform.ComposeView
+import android.view.ViewGroup
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import com.tsutsen.platformplayer.logging.Logger
+import kotlinx.coroutines.flow.distinctUntilChanged
+import java.lang.reflect.Proxy
 import android.os.Bundle
-import android.os.SystemClock
-import android.hardware.display.DisplayManager
 import android.view.Display
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -77,7 +81,6 @@ import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
-import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.core.designsystem.component.formatDuration
 import com.tsutsen.platformplayer.core.designsystem.theme.GrayjayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
@@ -88,18 +91,17 @@ import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
-import dagger.hilt.android.AndroidEntryPoint
-import java.lang.ref.WeakReference
-import javax.inject.Inject
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
- * Renders the second-display companion (dual screen).
+ * The second-screen UI, hosted in a Presentation window on the rear display
+ * — the same mechanism Cemu uses for its external display. A Presentation is
+ * a window, not a task, so the AYN shell's rear-display task management (which
+ * hid/evicted a companion *activity* during front-display transitions, killing
+ * the second screen) never touches it.
  *
- * Launched on the rear display via [start] when the dual-screen setting is
- * on. Three fixed pages you flick between vertically; everything inside a
- * page scrolls horizontally so the gestures never conflict:
+ * Three fixed pages you flick between vertically; everything inside a page
+ * scrolls horizontally so the gestures never conflict:
  *  0. current video — controls, title block, comments/recommended strips
  *  1. library — up to four horizontal slots (Watch Later, Liked, ...)
  *  2. home — two horizontal rows of feed cards
@@ -109,88 +111,44 @@ import kotlinx.coroutines.launch
  * are read from the shared [PlayerState] — the main player's ViewModel fetches
  * them once and pushes them there, so nothing is fetched twice.
  */
-@AndroidEntryPoint
-@OptIn(ExperimentalFoundationApi::class)
-class CompanionActivity : ComponentActivity() {
+class CompanionPresentation(
+    context: Context,
+    display: Display,
+    private val playerRepository: PlayerRepository,
+    private val libraryRepository: LibraryRepository,
+    private val homeRepository: HomeRepository,
+    private val settingsRepository: SettingsRepository,
+) : Presentation(context, display) {
 
-    @Inject lateinit var playerRepository: PlayerRepository
-    @Inject lateinit var libraryRepository: LibraryRepository
-    @Inject lateinit var homeRepository: HomeRepository
-    @Inject lateinit var settingsRepository: SettingsRepository
-
-    companion object {
-        private const val TAG = "CompanionActivity"
-        private const val EXTRA_DISPLAY_ID = "displayId"
-        private var instance: WeakReference<CompanionActivity>? = null
-        // Set while a launch is in flight (before onCreate registers
-        // [instance]) so start() called twice in quick succession — e.g.
-        // MainActivity.onStart plus the settings LaunchedEffect — doesn't
-        // launch a second window. Short on purpose: it only guards against
-        // same-moment double fires, and must expire quickly so a silently
-        // dropped launch (rear display busy with the front display's return
-        // transition) doesn't block the retries MainActivity schedules.
-        private const val LAUNCH_PENDING_TTL_MS = 2_000L
-        private var launchPendingUntilMs = 0L
-
-        fun start(context: Context, enabled: Boolean) {
-            val current = instance?.get()
-            if (!enabled) {
-                // Close the companion window if it's open
-                if (current != null && !current.isDestroyed) current.finish()
-                return
-            }
-            // Already running — don't launch a duplicate. A finishing/destroyed
-            // instance (e.g. killed while the app was backgrounded) counts as
-            // dead and gets relaunched below.
-            if (current != null && !current.isFinishing && !current.isDestroyed) {
-                Logger.v(TAG, "start(): companion already running, skip")
-                return
-            }
-            if (SystemClock.uptimeMillis() < launchPendingUntilMs) {
-                Logger.v(TAG, "start(): launch already in flight, skip")
-                return
-            }
-
-            val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-            val display = displayManager.displays.firstOrNull { it.displayId != Display.DEFAULT_DISPLAY }
-            if (display == null) {
-                Logger.w(TAG, "start(): no second display found")
-                return
-            }
-            val intent = Intent(context, CompanionActivity::class.java)
-                .putExtra(EXTRA_DISPLAY_ID, display.displayId)
-            // Activity.setDisplay was removed in SDK 36 — launch on the
-            // target display via ActivityOptions instead.
-            val options = ActivityOptions.makeBasic().apply { launchDisplayId = display.displayId }
-            launchPendingUntilMs = SystemClock.uptimeMillis() + LAUNCH_PENDING_TTL_MS
-            try {
-                Logger.i(TAG, "start(): launching companion on display ${display.displayId}")
-                context.startActivity(intent, options.toBundle())
-            } catch (t: Throwable) {
-                launchPendingUntilMs = 0L
-                throw t
-            }
-        }
-    }
-
+    @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val displayId = intent?.getIntExtra(EXTRA_DISPLAY_ID, -1) ?: -1
-        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        val display = displayManager.getDisplay(displayId)
-        launchPendingUntilMs = 0L
-        if (displayId == Display.DEFAULT_DISPLAY || display == null) {
-            // No second screen (or stale display id after a hot-unplug).
-            finish()
-            return
-        }
-        instance = WeakReference(this)
+        // ComposeView (not the internal AndroidComposeView) — the only
+        // public Compose host view, and it's a plain View so it can live in
+        // a Presentation window.
+        @Suppress("DEPRECATION")
+        val composeView = ComposeView(context)
+        // A Presentation window carries no ViewTreeLifecycleOwner (unlike an
+        // activity window), but Compose requires one in the hierarchy — bind
+        // the owning activity's lifecycle (always present: MainActivity
+        // creates us), falling back to a permanently-resumed owner.
+        val lifecycleOwner =
+            (context as? LifecycleOwner) ?: object : LifecycleOwner {
+                private val registry = LifecycleRegistry(this)
+                init { registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME) }
+                override val lifecycle: Lifecycle
+                    get() = registry
+            }
+        composeView.setViewTreeLifecycleOwner(lifecycleOwner)
+        attachSavedStateOwner(composeView)
 
-        val playerRepository = playerRepository
-        val libraryRepository = libraryRepository
-        val homeRepository = homeRepository
-        val settingsRepository = settingsRepository
-        setContent {
+        composeView.layoutParams =
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
+        setContentView(composeView)
+        composeView.setContent {
             // Follow the user's theme settings — same computation as
             // MainActivity, so the second screen matches the main app.
             val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
@@ -208,6 +166,68 @@ class CompanionActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    /**
+     * Compose requires a ViewTreeSavedStateRegistryOwner in the hierarchy.
+     * The androidx.savedstate classes ship in the APK but are not exposed to
+     * this module's Kotlin compile classpath (KMP variant quirk), so the
+     * owner is wired up reflectively — it is plain, stable API.
+     */
+    private fun attachSavedStateOwner(view: android.view.View) {
+        // Dedicated registry (not the activity's): performRestore() must run
+        // while the owner is still in its initialization stage (like
+        // ComponentActivity does in onCreate), so it must start INITIALIZED
+        // and never be advanced.
+        val savedStateLifecycle = object : LifecycleOwner {
+            private val registry = LifecycleRegistry(this)
+            override val lifecycle: Lifecycle
+                get() = registry
+        }
+        try {
+            val ownerItf = Class.forName("androidx.savedstate.SavedStateRegistryOwner")
+            val controllerCls = Class.forName("androidx.savedstate.SavedStateRegistryController")
+            val companion = controllerCls.getField("Companion").get(null)
+            val create = controllerCls.getMethod("create", ownerItf)
+            var controller: Any? = null
+            val owner = Proxy.newProxyInstance(
+                ownerItf.classLoader,
+                arrayOf(ownerItf),
+            ) { proxy, method, args ->
+                when (method.name) {
+                    "getLifecycle" -> savedStateLifecycle.lifecycle
+                    "getSavedStateRegistry" -> {
+                        if (controller == null) controller = create.invoke(companion, proxy)
+                        controller!!
+                            .javaClass
+                            .getMethod("getSavedStateRegistry")
+                            .invoke(controller)
+                    }
+                    "hashCode" -> System.identityHashCode(proxy)
+                    "equals" -> proxy === args?.getOrNull(0)
+                    "toString" -> "CompanionSavedStateOwner"
+                    else -> throw UnsupportedOperationException(method.name)
+                }
+            }
+            // create() only calls getLifecycle() (not getSavedStateRegistry),
+            // so this cannot recurse.
+            controller = create.invoke(companion, owner)
+            controller!!
+                .javaClass
+                .getMethod("performRestore", android.os.Bundle::class.java)
+                .invoke(controller, null)
+            val set = Class.forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
+                .getMethod("set", android.view.View::class.java, ownerItf)
+            set.invoke(null, view, owner)
+        } catch (t: Throwable) {
+            var root: Throwable? = t
+            while (root?.cause != null) root = root.cause
+            Logger.w(TAG, t) { "Could not attach saved-state owner (root: $root)" }
+        }
+    }
+
+    private companion object {
+        const val TAG = "CompanionPresentation"
     }
 }
 
@@ -240,7 +260,9 @@ private fun CompanionContent(
     // Live library + home data (shared repositories — updates propagate).
     val sections by libraryRepository.sections.collectAsState()
     val home by homeRepository.feed.collectAsState()
-    LaunchedEffect(Unit) { homeRepository.loadInitial() }
+    // NOTE: deliberately no loadInitial() here — the main app triggers the
+    // home load. A second concurrent call would re-run JS-client init and
+    // deadlocks the V8 busy lock (see PackageHttp.autoParallelPool).
 
     var selectedTab by remember { mutableIntStateOf(0) }
 

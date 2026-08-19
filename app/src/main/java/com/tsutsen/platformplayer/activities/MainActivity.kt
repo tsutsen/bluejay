@@ -1,10 +1,13 @@
 package com.tsutsen.platformplayer.activities
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Bundle
+import android.view.Display
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +21,8 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.compose.GrayjayNavGraph
+import com.tsutsen.platformplayer.core.data.repository.HomeRepository
+import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
@@ -35,8 +40,8 @@ import javax.inject.Inject
 
 /**
  * Compose-based MainActivity for Bluejay.
- * Hosts AppLayout with GrayjayNavGraph, and drives the CompanionActivity on
- * the second display from the "dual screen" setting.
+ * Hosts AppLayout with GrayjayNavGraph, and drives the second-screen
+ * CompanionPresentation on the rear display from the "dual screen" setting.
  */
 @AndroidEntryPoint
 class MainActivity :
@@ -50,6 +55,14 @@ class MainActivity :
 
     @Inject
     lateinit var settingsRepository: SettingsRepository
+
+    @Inject
+    lateinit var libraryRepository: LibraryRepository
+
+    @Inject
+    lateinit var homeRepository: HomeRepository
+
+    private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
         registerForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts
@@ -80,12 +93,10 @@ class MainActivity :
 
     override fun onStart() {
         super.onStart()
-        // The system finishes the companion's task when the app goes to the
-        // background, so re-assert the dual-screen setting on every return
-        // to the foreground. The rear display can be busy handling the
-        // front display's return transition and silently drop a launch, so
-        // retry a couple of times if it didn't take (start() is a no-op
-        // once the companion is alive).
+        // Re-assert the dual-screen setting on every return to the
+        // foreground. The rear display can still be in its wake/return
+        // transition when onStart fires (STATE_OFF), so retry a couple of
+        // times — ensureCompanion() is a no-op once the presentation shows.
         ensureCompanion()
         lifecycleScope.launch {
             for (delay in longArrayOf(2_500L, 6_000L)) {
@@ -96,8 +107,49 @@ class MainActivity :
         }
     }
 
-    private fun ensureCompanion() {
-        CompanionActivity.start(this, settingsRepository.preferences.value.dualScreen)
+    internal fun ensureCompanion() {
+        if (isFinishing || isDestroyed) return
+        val enabled = settingsRepository.preferences.value.dualScreen
+        val display = rearDisplay()
+        if (!enabled || display == null) {
+            companionPresentation?.dismiss()
+            companionPresentation = null
+            return
+        }
+        val current = companionPresentation
+        if (current != null && current.isShowing) return
+        current?.dismiss()
+        companionPresentation =
+            CompanionPresentation(
+                context = this,
+                display = display,
+                playerRepository = playerRepository,
+                libraryRepository = libraryRepository,
+                homeRepository = homeRepository,
+                settingsRepository = settingsRepository,
+            ).also { it.show() }
+    }
+
+    private fun rearDisplay(): Display? {
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        return displayManager.displays.firstOrNull {
+            it.displayId != Display.DEFAULT_DISPLAY && it.isValid &&
+                it.state == Display.STATE_ON
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // When returning from the lock screen the displays are still in their
+        // wake transition when onStart fires. By the time our window has
+        // focus the displays are up, so re-assert (no-op if already shown).
+        if (hasFocus) ensureCompanion()
+    }
+
+    override fun onDestroy() {
+        companionPresentation?.dismiss()
+        companionPresentation = null
+        super.onDestroy()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -147,11 +199,11 @@ private fun GrayjayMainActivity(
             ThemeMode.AUTO -> isSystemInDarkTheme()
         }
 
-    // Second display: follow the "dual screen" toggle. CompanionActivity.start
-    // is a no-op on single-screen devices and finishes the window when the
+    // Second display: follow the "dual screen" toggle. ensureCompanion is a
+    // no-op when nothing changes and dismisses the presentation when the
     // toggle turns off.
     LaunchedEffect(prefs.dualScreen) {
-        CompanionActivity.start(activity, prefs.dualScreen)
+        activity.ensureCompanion()
     }
 
     GrayjayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {

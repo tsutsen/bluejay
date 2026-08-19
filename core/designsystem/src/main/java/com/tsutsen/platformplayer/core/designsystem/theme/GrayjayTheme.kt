@@ -43,7 +43,9 @@ fun GrayjayTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            // The context is not an Activity when the UI is hosted in a
+            // Presentation (second screen) — skip window chrome there.
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
             window.statusBarColor = colorScheme.surface.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }

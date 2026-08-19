@@ -177,14 +177,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".activities.CompanionActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:launchMode="singleTask"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
-            android:theme="@style/Theme.App.NoActionBar" />
-        <activity
             android:name=".activities.CaptchaActivity"
             android:screenOrientation="sensorPortrait"
             android:theme="@style/Theme.App.NoActionBar"

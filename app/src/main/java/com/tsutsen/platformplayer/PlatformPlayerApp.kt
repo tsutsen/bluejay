@@ -10,6 +10,7 @@ import androidx.core.content.edit
 import com.google.android.material.color.DynamicColors
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.database.dao.NotificationDao
+import com.tsutsen.platformplayer.states.StateApp
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import javax.inject.Inject
@@ -65,6 +66,14 @@ class PlatformPlayerApp : Application() {
     override fun onCreate() {
         Log.d(TAG, "PlatformPlayerApp.onCreate() starting")
         super.onCreate()
+
+        // Hilt injects the singleton graph (MainActivity's fields pull in
+        // EngineDownloadsRepository, whose constructor reads persisted
+        // downloads from FragmentedStorage) before any Activity onCreate
+        // runs. Make file storage available now — MainActivity's
+        // mainAppStarting() force-initializes it later exactly as before.
+        StateApp.instance.setGlobalContext(applicationContext)
+        StateApp.instance.initializeFiles()
 
         applyThemeMode()
 
