@@ -162,7 +162,7 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                     )
                 }
             Logger.i(TAG, "Plugins list created with ${result.size} items")
-            result
+            result.sortedBy { it.name.lowercase() }
         }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -176,7 +176,6 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                 }
             },
         )
-            Text("Found ${plugins.size} plugins")
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
