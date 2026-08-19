@@ -136,14 +136,6 @@ internal fun PlayerDetails(
                         }
                     }
                 } else {
-                    item {
-                        Text(
-                            text = "Recommended",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
-                    }
                     items(
                         recommendations.chunked(gridColumns),
                         key = { row -> row.first().id },
