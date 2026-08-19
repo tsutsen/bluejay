@@ -31,6 +31,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -359,18 +362,36 @@ private fun CompanionVideoPage(
                 durationMs = playerState.durationMs,
             )
             val chapters = playerState.chapters
+            // One scroll state per tab — switching tabs never shares or
+            // resets a strip's position.
+            val tabStates = remember { List(3) { LazyListState() } }
+            val currentChapterIndex =
+                chapters.indexOfLast { it.startTimeMs <= playerState.currentPositionMs }
+            // Follow the playhead: while on the chapters tab, a chapter
+            // change scrolls the strip to the newly active chapter.
+            LaunchedEffect(currentChapterIndex) {
+                if (selectedTab == 1 && currentChapterIndex >= 0) {
+                    tabStates[1].animateScrollToItem(currentChapterIndex)
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 CompanionTab("Comments", selected = selectedTab == 0) { onTabSelected(0) }
                 CompanionTab("Chapters", selected = selectedTab == 1) { onTabSelected(1) }
                 CompanionTab("Recommended", selected = selectedTab == 2) { onTabSelected(2) }
             }
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(end = 8.dp),
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
             ) {
+                key(selectedTab) {
+                    LazyRow(
+                        state = tabStates[selectedTab],
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(end = 8.dp),
+                    ) {
                 if (selectedTab == 0) {
                     if (comments.isEmpty()) {
                         item(key = "no-comments") {
@@ -397,7 +418,25 @@ private fun CompanionVideoPage(
                         }
                     }
                     itemsIndexed(chapters, key = { _, c -> c.startTimeMs }) { index, chapter ->
-                        // Same card chrome as the comment cards.
+                        // Same card chrome as the comment cards; the chapter
+                        // containing the current playhead is highlighted.
+                        val scheme = MaterialTheme.colorScheme
+                        val isCurrent = index == currentChapterIndex
+                        // Animated highlight: the active chapter eases in.
+                        val containerColor by animateColorAsState(
+                            targetValue =
+                                if (isCurrent) scheme.primaryContainer
+                                else scheme.surfaceContainer,
+                            animationSpec = tween(300),
+                            label = "chapterBg",
+                        )
+                        val cardFg by animateColorAsState(
+                            targetValue =
+                                if (isCurrent) scheme.onPrimaryContainer
+                                else scheme.onSurface,
+                            animationSpec = tween(300),
+                            label = "chapterFg",
+                        )
                         Card(
                             modifier =
                                 Modifier
@@ -408,7 +447,7 @@ private fun CompanionVideoPage(
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             colors =
                                 CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                    containerColor = containerColor,
                                 ),
                         ) {
                             Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
@@ -416,20 +455,20 @@ private fun CompanionVideoPage(
                                     Text(
                                         text = "${index + 1}",
                                         style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = cardFg,
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         text = formatDuration(chapter.startTimeMs),
                                         style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = cardFg,
                                     )
                                 }
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     text = chapter.title,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = cardFg,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -455,6 +494,8 @@ private fun CompanionVideoPage(
                                 .width(240.dp)
                                 .padding(horizontal = 2.dp),
                         )
+                    }
+                }
                     }
                 }
             }
@@ -756,14 +797,15 @@ private fun CompanionControlRow(
     onNext: () -> Unit,
 ) {
     Row(modifier = Modifier.fillMaxWidth()) {
+        val tileModifier: Modifier = Modifier.weight(1f).height(80.dp)
         OptionTileView(
             OptionTile(label = "Previous", icon = Icons.Filled.SkipPrevious, onClick = onPrevious),
-            modifier = Modifier.weight(1f),
+            modifier = tileModifier,
             showLabel = false,
         )
         OptionTileView(
             OptionTile(label = "Back 10s", icon = Icons.Filled.Replay10, onClick = { onSeekBy(-10_000L) }),
-            modifier = Modifier.weight(1f),
+            modifier = tileModifier,
             showLabel = false,
         )
         OptionTileView(
@@ -772,17 +814,17 @@ private fun CompanionControlRow(
                 icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 onClick = onPlayPause,
             ),
-            modifier = Modifier.weight(1f),
+            modifier = tileModifier,
             showLabel = false,
         )
         OptionTileView(
             OptionTile(label = "Fwd 10s", icon = Icons.Filled.Forward10, onClick = { onSeekBy(10_000L) }),
-            modifier = Modifier.weight(1f),
+            modifier = tileModifier,
             showLabel = false,
         )
         OptionTileView(
             OptionTile(label = "Next", icon = Icons.Filled.SkipNext, onClick = onNext),
-            modifier = Modifier.weight(1f),
+            modifier = tileModifier,
             showLabel = false,
         )
     }

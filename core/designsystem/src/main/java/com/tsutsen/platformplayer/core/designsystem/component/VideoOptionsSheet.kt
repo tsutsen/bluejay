@@ -4,6 +4,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -350,6 +351,7 @@ fun OptionTileView(
                 ).clickable(enabled = !tile.disabled, onClick = tile.onClick)
                 .padding(vertical = Tokens.SpaceMd),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         Icon(
             imageVector = tile.icon,
