@@ -45,6 +45,7 @@ class SettingsRepositoryImpl
                 enablePictureInPicture = s.playback.enablePictureInPicture,
                 confirmExit = s.confirmExit,
                 enableDeveloperOptions = s.advancedSettings,
+                dualScreen = s.dualScreen,
                 gridColumns = s.feed.gridColumns,
                 searchHistory = s.search.history,
                 showRecommendedVideos = s.content.showRecommendedVideos,
@@ -87,6 +88,7 @@ class SettingsRepositoryImpl
                 "enablePictureInPicture" -> s.playback.enablePictureInPicture = value as Boolean
                 "confirmExit" -> s.confirmExit = value as Boolean
                 "enableDeveloperOptions" -> s.advancedSettings = value as Boolean
+                "dualScreen" -> s.dualScreen = value as Boolean
                 "dynamicColor" -> s.appearance.dynamicColor = value as Boolean
                 "gridColumns" -> s.feed.gridColumns = value as Int
                 "searchHistory" -> s.search.history = value as List<String>
@@ -111,6 +113,7 @@ class SettingsRepositoryImpl
             s.notifications.enabled = true
             s.confirmExit = false
             s.advancedSettings = false
+            s.dualScreen = false
             s.language = "en"
             s.feed.gridColumns = 3
             s.content.showRecommendedVideos = true

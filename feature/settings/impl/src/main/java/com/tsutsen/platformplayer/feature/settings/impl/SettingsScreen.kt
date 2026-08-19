@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Contrast
+import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.GridOn
@@ -502,6 +503,15 @@ private fun LazyListScope.SectionItems(
                     subtitle = "Show advanced settings",
                     checked = state.enableDeveloperOptions,
                     onCheckedChange = { viewModel.updateGeneral("enableDeveloperOptions", it) },
+                )
+            }
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Filled.DisplaySettings,
+                    title = "Dual screen",
+                    subtitle = "Show video controls on the second screen",
+                    checked = state.dualScreen,
+                    onCheckedChange = { viewModel.updateGeneral("dualScreen", it) },
                 )
             }
             item {

@@ -79,6 +79,9 @@ class Settings {
     // Tabs settings
     var advancedSettings: Boolean = false
 
+    // Second (rear) display companion window
+    var dualScreen: Boolean = false
+
     // General settings (confirm exit dialog, UI language)
     var confirmExit: Boolean = false
     var language: String = "en"

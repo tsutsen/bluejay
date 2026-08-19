@@ -26,8 +26,6 @@ import com.tsutsen.platformplayer.core.designsystem.layout.rememberAppLayoutConf
 import com.tsutsen.platformplayer.core.designsystem.theme.GrayjayTheme
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
-import com.tsutsen.platformplayer.feature.dualscreen.CompanionWindowManager
-import com.tsutsen.platformplayer.feature.dualscreen.ScreenCoordinator
 import com.tsutsen.platformplayer.feature.player.impl.PlayerView
 import com.tsutsen.platformplayer.states.StateApp
 import dagger.hilt.android.AndroidEntryPoint
@@ -35,20 +33,13 @@ import javax.inject.Inject
 
 /**
  * Compose-based MainActivity for Bluejay.
- * Hosts AppLayout with GrayjayNavGraph, observes ScreenCoordinator for
- * cross-activity state (e.g., mini player), and launches CompanionActivity
- * when a secondary display is available.
+ * Hosts AppLayout with GrayjayNavGraph, and drives the CompanionActivity on
+ * the second display from the "dual screen" setting.
  */
 @AndroidEntryPoint
 class MainActivity :
     ComponentActivity(),
     IWithResultLauncher {
-    @Inject
-    lateinit var screenCoordinator: ScreenCoordinator
-
-    @Inject
-    lateinit var companionWindowManager: CompanionWindowManager
-
     @Inject
     lateinit var navigator: Navigator
 
@@ -108,27 +99,17 @@ class MainActivity :
         setContent {
             GrayjayMainActivity(
                 this,
-                screenCoordinator,
-                companionWindowManager,
                 navigator,
                 playerRepository,
                 settingsRepository,
             )
         }
     }
-
-    override fun onResume() {
-        super.onResume()
-        // Check for secondary display availability
-        screenCoordinator.setCompanionVisible(companionWindowManager.isCompanionAvailable.value)
-    }
 }
 
 @Composable
 private fun GrayjayMainActivity(
     activity: MainActivity,
-    screenCoordinator: ScreenCoordinator,
-    companionWindowManager: CompanionWindowManager,
     navigator: Navigator,
     playerRepository: PlayerRepository,
     settingsRepository: SettingsRepository,
@@ -142,11 +123,16 @@ private fun GrayjayMainActivity(
             ThemeMode.AUTO -> isSystemInDarkTheme()
         }
 
+    // Second display: follow the "dual screen" toggle. CompanionActivity.start
+    // is a no-op on single-screen devices and finishes the window when the
+    // toggle turns off.
+    LaunchedEffect(prefs.dualScreen) {
+        CompanionActivity.start(activity, prefs.dualScreen)
+    }
+
     GrayjayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
         grayjayMainActivityContent(
             activity,
-            screenCoordinator,
-            companionWindowManager,
             navigator,
             playerRepository,
         )
@@ -156,21 +142,11 @@ private fun GrayjayMainActivity(
 @Composable
 private fun grayjayMainActivityContent(
     activity: MainActivity,
-    screenCoordinator: ScreenCoordinator,
-    companionWindowManager: CompanionWindowManager,
     navigator: Navigator,
     playerRepository: PlayerRepository,
 ) {
-    val companionVisible by screenCoordinator.companionVisible.collectAsState()
     val config = rememberAppLayoutConfig()
     val playerState by playerRepository.playerState.collectAsState()
-
-    // Launch companion window when secondary display becomes available
-    LaunchedEffect(companionVisible) {
-        if (companionVisible) {
-            companionWindowManager.launchCompanionWindow(activity)
-        }
-    }
 
     // Navigating away while a video is active (tab switch, go-to-channel, ...)
     // collapses the player to the mini player instead of leaving it covering
