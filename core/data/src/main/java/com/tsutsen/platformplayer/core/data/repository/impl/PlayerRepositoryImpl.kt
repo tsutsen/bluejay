@@ -112,6 +112,8 @@ class PlayerRepositoryImpl(
 
     override val exoPlayer: ExoPlayer? get() = _exoPlayer
     private var _exoPlayer: ExoPlayer? = null
+    private var loopMode = PlayerRepository.LOOP_OFF
+    private var loopOnceArmed = false
 
     // Holds the connection to PlayerService open while playback is active.
     // The bind is what makes the service create its MediaSession — a bare
@@ -151,6 +153,14 @@ class PlayerRepositoryImpl(
                     pendingResumePosition = 0
                     if (duration <= 0 || pos < duration * 0.95) {
                         _exoPlayer?.seekTo(pos)
+                    }
+                }
+                // LOOP_ONCE: replay the video exactly one more time, then stop.
+                if (playbackState == Player.STATE_ENDED && loopOnceArmed) {
+                    loopOnceArmed = false
+                    _exoPlayer?.let {
+                        it.seekTo(0)
+                        it.playWhenReady = true
                     }
                 }
             }
@@ -497,6 +507,9 @@ class PlayerRepositoryImpl(
                 _exoPlayer?.prepare()
                 Log.i(TAG, "Setting playWhenReady to true...")
                 _exoPlayer?.playWhenReady = true
+                // Re-arm the once-replay for the new video; the infinite mode
+                // is repeatMode and needs no arming.
+                loopOnceArmed = loopMode == PlayerRepository.LOOP_ONCE
                 // Re-apply the user's track preferences to a (possibly new)
                 // player so quality/subtitle choices persist across videos.
                 applyTrackSelectionParameters()
@@ -691,6 +704,20 @@ class PlayerRepositoryImpl(
         }
         // Don't update currentPositionMs here - let the position ticker handle it
         // This ensures the UI always shows the actual player position
+    }
+
+    override fun setLoopMode(mode: Int) {
+        loopMode = mode
+        // ExoPlayer's API is thread-safe; no dispatch needed.
+        _exoPlayer?.let { player ->
+            if (mode == PlayerRepository.LOOP_INFINITE) {
+                loopOnceArmed = false
+                player.repeatMode = Player.REPEAT_MODE_ONE
+            } else {
+                loopOnceArmed = mode == PlayerRepository.LOOP_ONCE
+                player.repeatMode = Player.REPEAT_MODE_OFF
+            }
+        }
     }
 
     override suspend fun setVolume(volume: Float) {

@@ -3,9 +3,11 @@ package com.tsutsen.platformplayer.feature.player.impl.ui.overlays
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +24,9 @@ internal fun PlayerNormalTopOverlay(
     title: String,
     channelName: String,
     onMinimize: () -> Unit,
-    onReplayToggle: () -> Unit,
+    // Loop mode: 0 = off, 1 = repeat once, 2 = repeat indefinitely.
+    loopMode: Int = 0,
+    onLoopMode: () -> Unit,
     onWatchLater: () -> Unit,
     onOptions: () -> Unit,
 ) {
@@ -57,11 +61,17 @@ internal fun PlayerNormalTopOverlay(
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        IconButton(onClick = onReplayToggle) {
+        IconButton(onClick = onLoopMode) {
+            val (icon, label) =
+                when (loopMode) {
+                    1 -> Icons.Filled.RepeatOne to "Loop once"
+                    2 -> Icons.Filled.Repeat to "Loop indefinitely"
+                    else -> Icons.Outlined.Repeat to "Do not loop"
+                }
             Icon(
-                imageVector = Icons.Default.Replay,
-                contentDescription = "Replay",
-                tint = Color.White,
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (loopMode == 0) Color.White.copy(alpha = 0.6f) else Color.White,
             )
         }
         IconButton(onClick = onWatchLater) {

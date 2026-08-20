@@ -40,6 +40,13 @@ interface PlayerRepository {
      * (or the first available one).
      */
     suspend fun toggleSubtitles()
+
+    /**
+     * Set the loop mode: [LOOP_OFF] advances/stops at the end, [LOOP_ONCE]
+     * replays the current video exactly one more time, [LOOP_INFINITE]
+     * replays it forever.
+     */
+    fun setLoopMode(mode: Int)
     suspend fun toggleFullscreen()
     suspend fun minimize()
     suspend fun exitFullscreen()
@@ -55,6 +62,12 @@ interface PlayerRepository {
 
     val mediaSessionToken: android.media.session.MediaSession.Token?
         get() = null
+
+    companion object {
+        const val LOOP_OFF = 0
+        const val LOOP_ONCE = 1
+        const val LOOP_INFINITE = 2
+    }
 }
 
 /**

@@ -65,6 +65,8 @@ fun PlayerView(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val gridColumns by viewModel.gridColumns.collectAsState()
+    val savedTypes by viewModel.savedTypes.collectAsState(initial = emptySet())
+    val loopMode by viewModel.loopMode.collectAsState(initial = 0)
     // While the player is fullscreen, back exits fullscreen instead of
     // falling through to the app-level handler (home / exit).
     // This BackHandler is registered after the app-level one (PlayerView is
@@ -644,8 +646,11 @@ fun PlayerView(
                         onClose = {
                             viewModel.close()
                         },
-                        onReplayToggle = { viewModel.toggleReplay() },
-                        onWatchLater = { /* TODO */ },
+                        loopMode = loopMode,
+                        onLoopMode = { viewModel.cycleLoopMode() },
+                        onWatchLater = {
+                            viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
+                        },
                         onPrevious = { viewModel.skipPrevious() },
                         onNext = { viewModel.skipNext() },
                         onSeek = { positionMs ->

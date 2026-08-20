@@ -45,7 +45,7 @@ internal fun LikeDislikePill(
     Row(
         modifier =
             modifier
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(18.dp)) // full stadium: half of the 36dp height
                 .background(scheme.surfaceVariant),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -85,7 +85,7 @@ private fun PillHalf(
     Row(
         modifier =
             Modifier
-                .height(32.dp)
+                .height(36.dp)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
