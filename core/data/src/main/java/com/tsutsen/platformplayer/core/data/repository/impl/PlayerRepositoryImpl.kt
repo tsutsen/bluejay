@@ -42,6 +42,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
+import com.tsutsen.platformplayer.core.model.VideoChapter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,6 +96,14 @@ class PlayerRepositoryImpl(
     // video's extras (the "comments from the previous video" bug).
     private val playGeneration = java.util.concurrent.atomic.AtomicInteger(0)
     private val extrasScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    // Per-video extras caches for the session: replaying a video (tab
+    // re-entry, re-tap, notification tap, next→previous) applies the cached
+    // extras instantly instead of refetching comments/recommendations/
+    // chapters over the network. Bounded LRU, ~50 videos each.
+    private val commentsCache = ExtrasCache<List<CommentItem>>()
+    private val recommendationsCache = ExtrasCache<List<Card>>()
+    private val chaptersCache = ExtrasCache<List<VideoChapter>>()
 
     private val TAG = "PlayerRepositoryImpl"
 
@@ -340,7 +349,10 @@ class PlayerRepositoryImpl(
                     launch(Dispatchers.IO) {
                         try {
                             val comments =
-                                commentRepository?.getComments(videoId) ?: emptyList()
+                                commentsCache.get(videoId)
+                                    ?: commentRepository?.getComments(videoId)
+                                        ?: emptyList()
+                            commentsCache.put(videoId, comments)
                             if (generation == playGeneration.get()) {
                                 _playerState.update { it.copy(comments = comments) }
                             }
@@ -353,8 +365,10 @@ class PlayerRepositoryImpl(
                     launch(Dispatchers.IO) {
                         try {
                             val recs =
-                                contentExtrasRepository?.getRecommendations(videoId)
-                                    ?: emptyList()
+                                recommendationsCache.get(videoId)
+                                    ?: contentExtrasRepository?.getRecommendations(videoId)
+                                        ?: emptyList()
+                            recommendationsCache.put(videoId, recs)
                             if (generation == playGeneration.get()) {
                                 _playerState.update { it.copy(recommendations = recs) }
                             }
@@ -366,7 +380,10 @@ class PlayerRepositoryImpl(
                 launch(Dispatchers.IO) {
                     try {
                         val chapters =
-                            contentExtrasRepository?.getChapters(videoId) ?: emptyList()
+                            chaptersCache.get(videoId)
+                                ?: contentExtrasRepository?.getChapters(videoId)
+                                    ?: emptyList()
+                        chaptersCache.put(videoId, chapters)
                         if (generation == playGeneration.get() && chapters.isNotEmpty()) {
                             _playerState.update { it.copy(chapters = chapters) }
                         }
@@ -851,5 +868,24 @@ class PlayerRepositoryImpl(
     private companion object {
         // Formats ExoPlayer's text renderer can display (mirrors Grayjay).
         val SUPPORTED_SUBTITLE_FORMATS = setOf("text/vtt", "application/x-subrip")
+    }
+}
+
+/**
+ * Small thread-safe LRU cache keyed by video URL.
+ */
+private class ExtrasCache<V>(private val capacity: Int = 50) {
+    private val map = LinkedHashMap<String, V>(16, 0.75f, true)
+
+    @Synchronized
+    fun get(key: String): V? = map[key]
+
+    @Synchronized
+    fun put(key: String, value: V) {
+        map[key] = value
+        while (map.size > capacity) {
+            val eldest = map.keys.first()
+            map.remove(eldest)
+        }
     }
 }

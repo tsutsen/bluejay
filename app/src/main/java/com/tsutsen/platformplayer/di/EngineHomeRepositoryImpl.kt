@@ -33,7 +33,25 @@ class EngineHomeRepositoryImpl
 
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
 
+        // Single-flight: loadInitial re-runs the full plugin init + client
+        // enable + home fetch, so overlapping calls (e.g. refresh() racing a
+        // fresh init) double the work. Concurrent callers bail out; the
+        // in-flight call publishes the result.
+        private val loadInitialInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
+
         override suspend fun loadInitial() {
+            if (!loadInitialInFlight.compareAndSet(false, true)) {
+                Logger.i("EngineHomeRepository", "loadInitial already in flight, skipping")
+                return
+            }
+            try {
+                doLoadInitial()
+            } finally {
+                loadInitialInFlight.set(false)
+            }
+        }
+
+        private suspend fun doLoadInitial() {
             Logger.i("EngineHomeRepository", "loadInitial")
             _feed.update { it.copy(isLoading = true, error = null) }
 

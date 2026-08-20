@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -40,16 +41,29 @@ class LibrarySectionDetailViewModel
         private val _items = MutableStateFlow<List<Card>>(emptyList())
         val items: StateFlow<List<Card>> = _items.asStateFlow()
 
+        // The VM is activity-scoped, so without a guard every entry into the
+        // screen (LaunchedEffect re-fires on recomposition) stacks two more
+        // live collectors on top of the previous ones.
+        private var loadedSectionId: String? = null
+        private var sectionJob: Job? = null
+        private var itemsJob: Job? = null
+
         fun loadSection(sectionId: String) {
-            viewModelScope.launch {
-                libraryRepository.sections.collect { sections ->
-                    _section.value = sections.find { it.id == sectionId }
+            if (loadedSectionId == sectionId) return
+            loadedSectionId = sectionId
+            sectionJob?.cancel()
+            itemsJob?.cancel()
+            sectionJob =
+                viewModelScope.launch {
+                    libraryRepository.sections.collect { sections ->
+                        _section.value = sections.find { it.id == sectionId }
+                    }
                 }
-            }
-            viewModelScope.launch {
-                libraryRepository.observeSectionItems(sectionId).collect { list ->
-                    _items.value = list
+            itemsJob =
+                viewModelScope.launch {
+                    libraryRepository.observeSectionItems(sectionId).collect { list ->
+                        _items.value = list
+                    }
                 }
-            }
         }
     }
