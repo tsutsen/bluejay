@@ -13,7 +13,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +29,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DragIndicator
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,15 +49,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.tsutsen.platformplayer.core.designsystem.reorder.ReorderableListItem
-import com.tsutsen.platformplayer.core.designsystem.reorder.detectReorder
-import com.tsutsen.platformplayer.core.designsystem.reorder.rememberReorderableState
-import com.tsutsen.platformplayer.core.designsystem.reorder.reorderable
+import com.tsutsen.platformplayer.core.designsystem.reorder.FlipItem
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -70,20 +65,21 @@ private val CARD_W = 240.dp
 private val CARD_H = 160.dp
 private val STRIP_GAP = 12.dp
 private val ANIM = 180
-// Right-hand drag-handle column: its own zone so the dots never overlap the
-// thumbnail or the text, and pressing them never triggers the card swipe.
+// Right-hand move-button column: its own zone so the arrows never overlap
+// the thumbnail or the text, and pressing them never triggers the card
+// swipe.
 private val HANDLE_W = 36.dp
 
 /**
  * Horizontal queue strip. Queued cards: thumbnail, title, channel, duration
- * in their own text row, dotted drag handle in its own column.
+ * in their own text row, move buttons (< earlier / > later) in their own
+ * column.
  *
- * Reordering: HOLD the dots, then drag — the cards rearrange live while
- * dragging (the dragged card follows the finger, the others slide into
- * their new slots), and a cancelled drag springs the card back. Adding or
- * removing a card animates the rest into their new positions. Swipe a card
- * up/down to remove it — it flies out in the direction it was dragged.
- * Long-press a card for the video options sheet.
+ * Reordering: tap < or > — the card slides into the new slot and the
+ * neighbours slide in. Adding or removing a card animates the rest into
+ * their new positions. Swipe a card up/down to remove it — it flies out in
+ * the direction it was dragged. Long-press a card for the video options
+ * sheet.
  */
 @Composable
 fun QueueStripCard(
@@ -144,13 +140,8 @@ private fun QueuedCardStrip(
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
-    val state =
-        rememberReorderableState(
-            onMove = { from, to -> onMove(from.index, to.index) },
-            orientation = Orientation.Horizontal,
-        )
 
-    // FLIP: whenever the queue content changes, slide each item from its old
+    // FLIP: whenever the queue order changes, slide each item from its old
     // slot to the new one. Every card is exactly [stepPx] apart, so the
     // delta is (newIndex - oldIndex) * step. Driven from data, never from
     // position callbacks (which feed back on the animation itself and fire
@@ -182,8 +173,6 @@ private fun QueuedCardStrip(
             )
         }
     }
-    var containerCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
-
     // Scroll to newly added items so an off-screen add is never invisible.
     val prevUrls = remember { mutableStateOf<Set<String>>(items.mapTo(mutableSetOf()) { it.url }) }
     LaunchedEffect(items) {
@@ -197,31 +186,22 @@ private fun QueuedCardStrip(
     }
 
     Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                // Outermost: must see (and consume) moves before the scroll
-                // node while a drag is active.
-                .reorderable(state)
-                .onGloballyPositioned { containerCoords = it }
-                .horizontalScroll(scrollState),
+        modifier = modifier.fillMaxWidth().horizontalScroll(scrollState),
         horizontalArrangement = Arrangement.spacedBy(STRIP_GAP),
     ) {
         items.forEachIndexed { index, item ->
-            ReorderableListItem(
-                state = state,
-                index = index,
-                key = item.url,
-                container = containerCoords,
+            FlipItem(
                 flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
-            ) { isDragging ->
+            ) {
                 QueueStripItem(
                     item = item,
-                    isDragging = isDragging,
                     onPlay = { onPlay(index) },
                     onRemove = { onRemove(item.url) },
                     onLongClick = { onLongClick(item) },
-                    handleModifier = Modifier.detectReorder(state),
+                    canMoveEarlier = index > 0,
+                    canMoveLater = index < items.size - 1,
+                    onMoveEarlier = { onMove(index, index - 1) },
+                    onMoveLater = { onMove(index, index + 1) },
                 )
             }
         }
@@ -231,11 +211,13 @@ private fun QueuedCardStrip(
 @Composable
 private fun QueueStripItem(
     item: ContentItem,
-    isDragging: Boolean,
     onPlay: () -> Unit,
     onRemove: () -> Unit,
     onLongClick: () -> Unit,
-    handleModifier: Modifier,
+    canMoveEarlier: Boolean,
+    canMoveLater: Boolean,
+    onMoveEarlier: () -> Unit,
+    onMoveLater: () -> Unit,
 ) {
     val density = LocalDensity.current
     val swipe = remember { Animatable(0f) }
@@ -268,8 +250,9 @@ private fun QueueStripItem(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             // Content area: swipe up/down to remove, tap to play, long-press
-            // for the video sheet. The handle column below is a sibling, so
-            // dragging the dots never triggers the swipe (and vice versa).
+            // for the video sheet. The move-button column below is a
+            // sibling, so tapping it never triggers the swipe (and vice
+            // versa).
             Box(
                 modifier =
                     Modifier
@@ -393,22 +376,39 @@ private fun QueueStripItem(
                     )
                 }
             }
-            // Dotted drag handle in its own column: never overlaps the
-            // thumbnail or text. Hold it, then drag, to reorder.
-            Box(
+            // Move buttons in the handle column (where the drag dots were):
+            // < earlier / > later in the queue.
+            Column(
                 modifier =
                     Modifier
                         .width(HANDLE_W)
                         .fillMaxSize()
                         .align(Alignment.CenterEnd),
-                contentAlignment = Alignment.Center,
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                IconButton(onClick = {}, modifier = handleModifier) {
+                IconButton(
+                    onClick = onMoveEarlier,
+                    enabled = canMoveEarlier,
+                    modifier = Modifier.size(32.dp),
+                ) {
                     Icon(
-                        imageVector = Icons.Outlined.DragIndicator,
-                        contentDescription = "Reorder",
+                        imageVector = Icons.Outlined.ChevronLeft,
+                        contentDescription = "Move earlier in queue",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                IconButton(
+                    onClick = onMoveLater,
+                    enabled = canMoveLater,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = "Move later in queue",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
