@@ -168,10 +168,14 @@ private fun QueuedCardStrip(
             val anim = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) }
             val delta = (newIdx - oldIdx).toFloat() * stepPx
             anim.snapTo(Offset(delta, 0f))
-            anim.animateTo(
-                Offset.Zero,
-                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-            )
+            // Launch per item so all cards slide concurrently — awaiting
+            // animateTo inline would run them one by one.
+            launch {
+                anim.animateTo(
+                    Offset.Zero,
+                    spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+                )
+            }
         }
     }
     // Scroll to newly added items so an off-screen add is never invisible.

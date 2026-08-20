@@ -120,10 +120,14 @@ fun QueueList(
             val anim = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) }
             val delta = (newIdx - oldIdx).toFloat() * stepPx
             anim.snapTo(Offset(0f, delta))
-            anim.animateTo(
-                Offset.Zero,
-                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-            )
+            // Launch per item so all rows slide concurrently — awaiting
+            // animateTo inline would run them one by one.
+            launch {
+                anim.animateTo(
+                    Offset.Zero,
+                    spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+                )
+            }
         }
     }
 
