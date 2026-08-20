@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
+import androidx.compose.material3.CircularProgressIndicator
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.ScrollEndReached
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
@@ -199,7 +200,12 @@ fun ChannelScreen(
 
         when (val state = uiState) {
             is ChannelViewModel.ChannelUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize())
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
             }
 
             is ChannelViewModel.ChannelUiState.Error -> {
@@ -395,7 +401,16 @@ private fun ChannelContent(
         else -> {
             if (state.cards.isEmpty()) {
                 val contentError = state.contentError
-                if (contentError != null) {
+                if (state.contentLoading) {
+                    //Initial load or retry in flight — spinner takes priority
+                    //over a stale error so the retry press has feedback.
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (contentError != null) {
                     ErrorState(
                         message = contentError,
                         onRetry = { onRetryContent() },

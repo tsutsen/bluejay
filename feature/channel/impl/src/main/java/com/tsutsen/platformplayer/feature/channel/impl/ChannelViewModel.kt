@@ -48,6 +48,7 @@ class ChannelViewModel
                 val cards: List<Card> = emptyList(),
                 val hasMore: Boolean = false,
                 val isLoadingMore: Boolean = false,
+                val contentLoading: Boolean = false,
                 val contentError: String? = null,
                 val playlists: List<Card> = emptyList(),
                 val isSubscribed: Boolean = false,
@@ -68,11 +69,14 @@ class ChannelViewModel
             viewModelScope.launch {
                 runCatching { channelRepository.getChannel(channelUrl) }
                     .onSuccess { info ->
+                        //Header is up, content is still fetching — show the
+                        //spinner in the content area instead of a blank gap.
                         _uiState.value =
                             ChannelUiState.Loaded(
                                 channel = info,
                                 isSubscribed = info.isSubscribed,
                                 notifyEnabled = info.notifyEnabled,
+                                contentLoading = true,
                             )
                         loadInitialContents()
                     }.onFailure { e ->
@@ -82,7 +86,19 @@ class ChannelViewModel
         }
 
         fun retry() {
-            val url = (uiState.value as? ChannelUiState.Loaded)?.channel?.url
+            val current = uiState.value
+            //Retry from the full-page error — the Loading state (spinner)
+            //takes over until the reload resolves.
+            if (current is ChannelUiState.Error) {
+                val url = loadedChannelUrl
+                if (url != null) {
+                    loadedChannelUrl = null
+                    _uiState.value = ChannelUiState.Loading
+                    load(url)
+                }
+                return
+            }
+            val url = (current as? ChannelUiState.Loaded)?.channel?.url
             if (url != null) {
                 loadedChannelUrl = null
                 load(url)
@@ -92,12 +108,18 @@ class ChannelViewModel
         fun loadInitialContents() {
             val url = (uiState.value as? ChannelUiState.Loaded)?.channel?.url ?: return
             viewModelScope.launch {
+                //Retry after a content error re-shows the spinner so the
+                //press has visible feedback.
+                _uiState.update {
+                    if (it is ChannelUiState.Loaded) it.copy(contentLoading = true) else it
+                }
                 val page = channelRepository.loadInitialContents(url)
                 _uiState.update { state ->
                     if (state is ChannelUiState.Loaded) {
                         state.copy(
                             cards = page.cards,
                             hasMore = page.hasMore,
+                            contentLoading = false,
                             contentError = page.error,
                         )
                     } else {
