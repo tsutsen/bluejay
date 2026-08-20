@@ -14,6 +14,7 @@ import java.lang.reflect.Proxy
 import android.os.Bundle
 import android.view.Display
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -32,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -76,6 +78,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -299,6 +302,14 @@ private fun CompanionContent(
     // scaffold variants.)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
+    // BottomSheetScaffold is non-modal (no scrim, no outside-tap). Add the
+    // standard modal affordance: dim the content while the sheet is
+    // expanded; tapping the scrim hides the sheet.
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (sheetState.targetValue == SheetValue.Expanded) 0.4f else 0f,
+        animationSpec = tween(200),
+        label = "sheetScrim",
+    )
     LaunchedEffect(optionsCard) {
         if (optionsCard != null) sheetState.expand() else sheetState.hide()
     }
@@ -337,7 +348,12 @@ private fun CompanionContent(
                 }
             }
         },
-        content = { _ ->
+        content = { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
         VerticalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
@@ -388,6 +404,15 @@ private fun CompanionContent(
                         onLongClick = onLongClick,
                     )
             }
+        }
+        if (scrimAlpha > 0.001f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = scrimAlpha))
+                    .clickable { scope.launch { sheetState.hide() } },
+            )
+        }
         }
         },
     )
