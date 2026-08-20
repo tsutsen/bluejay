@@ -325,9 +325,12 @@ private fun CompanionContent(
             }
     }
 
+    // No peek: the sheet only ever opens programmatically (long-press), so
+    // a 56dp peek would just reserve a blank strip below the content.
+    // 0dp keeps the content's top and bottom insets equal.
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
-        sheetPeekHeight = 56.dp,
+        sheetPeekHeight = 0.dp,
         sheetContent = {
             optionsCard?.let { card ->
                 Column(
@@ -597,12 +600,16 @@ private fun CompanionVideoPage(
                 }
             }
         } else {
-            Text(
-                "Nothing playing",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 40.dp),
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "Nothing playing",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -621,8 +628,8 @@ private fun CompanionLibraryPage(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             text = "Library",
@@ -681,7 +688,7 @@ private fun LibrarySlotPager(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.padding(8.dp),
+        modifier = modifier.padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
