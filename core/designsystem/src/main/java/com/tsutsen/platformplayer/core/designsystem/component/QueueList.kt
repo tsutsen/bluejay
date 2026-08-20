@@ -1,6 +1,10 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -40,9 +44,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -93,12 +99,42 @@ fun QueueList(
     val state =
         rememberReorderableState(
             onMove = { from, to -> onMove(from.index, to.index) },
-            scrollState = scrollState,
             orientation = Orientation.Vertical,
         )
     var containerCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val removing = remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
+
+    // FLIP: slide each row from its old slot to the new one whenever the
+    // queue changes (rows are all [QUEUE_ROW_HEIGHT_DP]dp tall, no gap).
+    // Driven from data, never from position callbacks.
+    val flipAnims = remember { mutableMapOf<String, Animatable<Offset, *>>() }
+    val stepPx = with(LocalDensity.current) { QUEUE_ROW_HEIGHT_DP.dp.toPx() }
+    val lastOrder = remember { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(items) {
+        val prev = lastOrder.value
+        val cur = items.map { it.url }
+        lastOrder.value = cur
+        if (prev == null || prev == cur) return@LaunchedEffect
+        // Adds/removals reflow via their AnimatedVisibility enter/exit — the
+        // layout itself slides the neighbours. Only a pure reorder (drag)
+        // jumps instantly and needs the FLIP slide.
+        val prevSet = prev.toSet()
+        val curSet = cur.toSet()
+        if (prevSet != curSet) return@LaunchedEffect
+        val oldIndex = prev.withIndex().associate { (i, k) -> k to i }
+        items.forEachIndexed { newIdx, item ->
+            val oldIdx = oldIndex[item.url] ?: return@forEachIndexed
+            if (oldIdx == newIdx) return@forEachIndexed
+            val anim = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) }
+            val delta = (newIdx - oldIdx).toFloat() * stepPx
+            anim.snapTo(Offset(0f, delta))
+            anim.animateTo(
+                Offset.Zero,
+                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+            )
+        }
+    }
 
     Column(
         modifier =
@@ -126,6 +162,7 @@ fun QueueList(
                     index = index,
                     key = item.url,
                     container = containerCoords,
+                    flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
                 ) { isDragging ->
                     QueueRow(
                         item = item,

@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
@@ -45,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -145,21 +147,52 @@ private fun QueuedCardStrip(
     val state =
         rememberReorderableState(
             onMove = { from, to -> onMove(from.index, to.index) },
-            scrollState = scrollState,
             orientation = Orientation.Horizontal,
         )
+
+    // FLIP: whenever the queue content changes, slide each item from its old
+    // slot to the new one. Every card is exactly [stepPx] apart, so the
+    // delta is (newIndex - oldIndex) * step. Driven from data, never from
+    // position callbacks (which feed back on the animation itself and fire
+    // constantly while scrolling).
+    val flipAnims = remember { mutableMapOf<String, Animatable<Offset, *>>() }
+    val stepPx = with(LocalDensity.current) { (CARD_W + STRIP_GAP).toPx() }
+    val lastOrder = remember { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(items) {
+        val prev = lastOrder.value
+        val cur = items.map { it.url }
+        lastOrder.value = cur
+        if (prev == null || prev == cur) return@LaunchedEffect
+        // Adds/removals reflow via their AnimatedVisibility enter/exit — the
+        // layout itself slides the neighbours. Only a pure reorder (drag)
+        // jumps instantly and needs the FLIP slide.
+        val prevSet = prev.toSet()
+        val curSet = cur.toSet()
+        if (prevSet != curSet) return@LaunchedEffect
+        val oldIndex = prev.withIndex().associate { (i, k) -> k to i }
+        items.forEachIndexed { newIdx, item ->
+            val oldIdx = oldIndex[item.url] ?: return@forEachIndexed
+            if (oldIdx == newIdx) return@forEachIndexed
+            val anim = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) }
+            val delta = (newIdx - oldIdx).toFloat() * stepPx
+            anim.snapTo(Offset(delta, 0f))
+            anim.animateTo(
+                Offset.Zero,
+                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+            )
+        }
+    }
     var containerCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     // Scroll to newly added items so an off-screen add is never invisible.
     val prevUrls = remember { mutableStateOf<Set<String>>(items.mapTo(mutableSetOf()) { it.url }) }
-    val stepPx = with(LocalDensity.current) { (CARD_W + STRIP_GAP).toPx().toInt() }
     LaunchedEffect(items) {
         val urls = items.mapTo(mutableSetOf()) { it.url }
         val added = urls - prevUrls.value
         prevUrls.value = urls
         if (added.isNotEmpty() && items.isNotEmpty()) {
             val index = items.indexOfFirst { it.url in added }
-            scrollState.animateScrollTo(index * stepPx)
+            scrollState.animateScrollTo(index * stepPx.toInt())
         }
     }
 
@@ -180,6 +213,7 @@ private fun QueuedCardStrip(
                 index = index,
                 key = item.url,
                 container = containerCoords,
+                flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
             ) { isDragging ->
                 QueueStripItem(
                     item = item,

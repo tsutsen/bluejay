@@ -3,16 +3,16 @@
  * Apache License 2.0, copyright André Claßen and the Android Open Source Project.
  *
  * Adapted for this app (Compose 1.11.2):
- * - Non-lazy layouts (Row + horizontalScroll / Column + verticalScroll). Item
- *   positions are registered by each item in content space (layout position
- *   plus scroll offset), so hit tests stay valid while the list scrolls.
+ * - Non-lazy layouts (Row + horizontalScroll / Column + verticalScroll).
+ *   Item positions are registered by each item in the list's visible space
+ *   (screen position minus the list's screen position), the same space a
+ *   pointer-down arrives in.
  * - The reorder drag starts on LONG-PRESS of the drag handle (hold the dots,
  *   then drag). Immediate slop-based dragging fights the list's own scroll
  *   gesture.
- * - Non-dragged items FLIP-animate into their new slot whenever the list
- *   changes (there is no Modifier.animateItem() in this Compose version).
- * - IntOffset does not exist in this Compose version; a local IntPoint
- *   replaces it.
+ * - FLIP animation of the other items is driven by the component from
+ *   data changes (index deltas), NOT from position watching — watching
+ *   positions feeds back on the animation itself (and on scrolling).
  * Dropped: grid support, the lazy-list state, auto-scroll while dragging.
  */
 package com.tsutsen.platformplayer.core.designsystem.reorder
@@ -21,7 +21,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.forEachGesture
@@ -314,8 +313,8 @@ abstract class ReorderableState<T>(
 
 /**
  * An item registered by [ReorderableListItem]. Coordinates are in the list's
- * content space (visual position + scroll offset), so hit tests stay valid
- * while the list is scrolled.
+ * visible space (same space pointer events arrive in), refreshed on every
+ * layout change including scrolls.
  */
 class ItemRect(
     val index: Int,
@@ -336,7 +335,6 @@ class ReorderableMapState(
     onDragEnd: ((startIndex: Int, endIndex: Int) -> Unit)?,
     val orientation: Orientation,
     dragCancelledAnimation: DragCancelledAnimation,
-    val scrollState: ScrollState?,
 ) : ReorderableState<ItemRect>(scope, onMove, canDragOver, onDragEnd, dragCancelledAnimation) {
     private val rects = mutableMapOf<Any?, ItemRect>()
 
@@ -365,22 +363,18 @@ class ReorderableMapState(
     override suspend fun scrollToItem(index: Int, offset: Int) {
         // ponytail: no edge auto-scroll — the queues are short, scroll manually.
     }
-
-    /** How far the list is scrolled; item rects are in content space. */
-    val scrollOffset: Int get() = scrollState?.value ?: 0
 }
 
 @Composable
 fun rememberReorderableState(
     onMove: (ItemPosition, ItemPosition) -> Unit,
-    scrollState: ScrollState? = null,
     orientation: Orientation = Orientation.Horizontal,
     canDragOver: ((draggedOver: ItemPosition, dragging: ItemPosition) -> Boolean)? = null,
     onDragEnd: ((startIndex: Int, endIndex: Int) -> Unit)? = null,
     dragCancelledAnimation: DragCancelledAnimation = SpringDragCancelledAnimation(),
 ): ReorderableMapState {
     val scope = rememberCoroutineScope()
-    return remember(scrollState, orientation) {
+    return remember(orientation) {
         ReorderableMapState(
             scope,
             onMove,
@@ -388,7 +382,6 @@ fun rememberReorderableState(
             onDragEnd,
             orientation,
             dragCancelledAnimation,
-            scrollState,
         )
     }
 }
@@ -398,13 +391,15 @@ fun rememberReorderableState(
 // ---------------------------------------------------------------------------
 
 /**
- * A queue row/card inside a plain (non-lazy) Row/Column. Registers the item's
- * content-space rect with [state], translates the card while it is dragged,
- * and FLIP-animates the card into its new slot whenever the list changes
- * (item added, removed, or moved).
+ * A queue row/card inside a plain (non-lazy) Row/Column. Registers the
+ * item's visible-space rect with [state] and applies translations: the drag
+ * offset while this card is dragged, the cancelled-drag offset while
+ * springing back, or the component-driven FLIP offset otherwise.
  *
  * [container] must be the list's own [LayoutCoordinates] (the component
  * captures it via [onGloballyPositioned] on the scrollable Row/Column).
+ * [flip] is owned by the component, keyed per item, and driven from data
+ * changes — never from position callbacks.
  */
 @Composable
 fun ReorderableListItem(
@@ -412,15 +407,13 @@ fun ReorderableListItem(
     index: Int,
     key: Any?,
     container: LayoutCoordinates?,
+    flip: Animatable<Offset, *>,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.(isDragging: Boolean) -> Unit,
 ) {
     val isDragging = state.draggingItemIndex == index
     val cancel = state.dragCancelledAnimation
     val isCancelling = !isDragging && (cancel.position?.index == index || cancel.position?.key == key)
-    val scope = rememberCoroutineScope()
-    val flip = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
-    var lastPos by remember(key) { mutableStateOf<IntPoint?>(null) }
 
     Box(
         modifier =
@@ -444,44 +437,16 @@ fun ReorderableListItem(
                 }
                 .onGloballyPositioned { coords ->
                     val c = container ?: return@onGloballyPositioned
-                    // Content space = visual position + scroll offset.
+                    // Visible space = same space pointer events arrive in.
                     val visual = coords.positionInRoot() - c.positionInRoot()
-                    val content =
-                        IntPoint(
-                            (visual.x + state.scrollOffset).toInt(),
-                            (visual.y + state.scrollOffset).toInt(),
-                        )
                     state.registerItem(
                         index,
                         key,
-                        content.x,
-                        content.y,
+                        visual.x.toInt(),
+                        visual.y.toInt(),
                         coords.size.width,
                         coords.size.height,
                     )
-                    val prev = lastPos
-                    if (prev == null || prev == content || isDragging) {
-                        lastPos = content
-                    } else {
-                        // The list changed (add/remove/move) — slide this card
-                        // from its old slot to the new one (FLIP).
-                        lastPos = content
-                        scope.launch {
-                            flip.snapTo(
-                                Offset(
-                                    (prev.x - content.x).toFloat(),
-                                    (prev.y - content.y).toFloat(),
-                                ),
-                            )
-                            flip.animateTo(
-                                Offset.Zero,
-                                spring(
-                                    dampingRatio = 0.8f,
-                                    stiffness = Spring.StiffnessMedium,
-                                ),
-                            )
-                        }
-                    }
                 },
     ) { content(isDragging) }
 }
