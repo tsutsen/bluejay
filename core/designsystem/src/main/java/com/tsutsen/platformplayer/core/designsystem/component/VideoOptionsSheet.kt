@@ -111,6 +111,11 @@ fun VideoOptionsSheet(
     // made rows jump under the finger while a box was being checked. Pin
     // the order while the section is open; re-snapshot on each open.
     var pinnedPlaylists by remember { mutableStateOf<List<PlaylistOption>?>(null) }
+    // Local mirror of the contained set, seeded on open and updated
+    // optimistically on tap: the box flips in the same frame as the tap
+    // (a live-DB-only bind lags a frame behind the re-flow, reading as
+    // "nothing happens"), while the add/remove persists in the background.
+    var checkedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
     val body: @Composable () -> Unit = {
         // Header: title, then the metadata row underneath (title and stats
@@ -225,6 +230,7 @@ fun VideoOptionsSheet(
                                 pinnedPlaylists = null
                             } else {
                                 pinnedPlaylists = playlists
+                                checkedIds = containedPlaylistIds
                                 showPlaylists = true
                             }
                         },
@@ -296,8 +302,11 @@ fun VideoOptionsSheet(
                 (pinnedPlaylists ?: playlists).forEach { playlist ->
                     playlistCheckRow(
                         label = playlist.name,
-                        checked = playlist.id in containedPlaylistIds,
+                        checked = playlist.id in checkedIds,
                         onCheckedChange = { checked ->
+                            checkedIds =
+                                if (checked) checkedIds + playlist.id
+                                else checkedIds - playlist.id
                             onTogglePlaylist(playlist.id, checked)
                         },
                     )

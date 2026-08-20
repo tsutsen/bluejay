@@ -11,6 +11,18 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<PlaylistEntity>>
 
+    // Like observeAll, but videoCount is the REAL row count, not the stored
+    // counter (which drifted: the old count-based videoOrder collided after
+    // removals left gaps, INSERT IGNORE dropped the row, and the counter
+    // still incremented). Rows are the source of truth.
+    @Query(
+        "SELECT p.id, p.name, p.description, p.thumbnailUrl, " +
+            "(SELECT COUNT(*) FROM playlist_videos pv WHERE pv.playlistId = p.id) AS videoCount, " +
+            "p.createdAt, p.updatedAt " +
+            "FROM playlists p ORDER BY p.updatedAt DESC",
+    )
+    fun observeAllWithCounts(): Flow<List<PlaylistEntity>>
+
     @Query("SELECT * FROM playlists WHERE id = :id")
     suspend fun getById(id: Long): PlaylistEntity?
 
@@ -76,6 +88,12 @@ interface PlaylistDao {
 
     @Query("SELECT COUNT(*) FROM playlist_videos WHERE playlistId = :playlistId")
     suspend fun countVideos(playlistId: Long): Int
+
+    // Append position: max(existing) + 1. countVideos() collides with an
+    // existing videoOrder whenever a removal left a gap, and the IGNORE
+    // conflict strategy then drops the new row silently.
+    @Query("SELECT COALESCE(MAX(videoOrder), -1) + 1 FROM playlist_videos WHERE playlistId = :playlistId")
+    suspend fun nextVideoOrder(playlistId: Long): Int
 
     // Reverse lookup for the options sheet: which playlists already contain
     // a video, so its checkboxes can be pre-checked. Reactive so a

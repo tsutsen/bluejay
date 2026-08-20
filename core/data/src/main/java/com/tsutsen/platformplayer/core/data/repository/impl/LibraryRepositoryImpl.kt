@@ -68,7 +68,7 @@ class LibraryRepositoryImpl
                 combine(
                     historyDao.observeAll(),
                     downloadsRepository.downloads,
-                    playlistDao.observeAll(),
+                    playlistDao.observeAllWithCounts(),
                 ) { history, downloads, playlists ->
                     Triple(history, downloads, playlists)
                 }
@@ -88,10 +88,10 @@ class LibraryRepositoryImpl
             repositoryScope.launch {
                 combinedFlow.collect { _sections.value = it }
             }
-            // observeAll() is already ORDER BY updatedAt DESC, so the
-            // picker's recency sort comes for free.
+            // observeAllWithCounts() is already ORDER BY updatedAt DESC, so
+            // the picker's recency sort comes for free.
             repositoryScope.launch {
-                playlistDao.observeAll().collect { list ->
+                playlistDao.observeAllWithCounts().collect { list ->
                     _playlists.value = list.map {
                         PlaylistOption(
                             id = it.id,
@@ -116,18 +116,20 @@ class LibraryRepositoryImpl
                 FAVOURITE_ID -> savedVideoDao.observeByType(SavedVideoType.FAVOURITE).map { list -> list.map { it.toVideoCard() } }
                 HISTORY_ID -> historyDao.observeAll().map { list -> list.map { it.toVideoCard() } }
                 DOWNLOADS_ID -> downloadsRepository.downloads.map { list -> list.map { it.toVideoCard() } }
-                PLAYLISTS_ID -> playlistDao.observeAll().map { list -> list.map { it.toPlaylistCard() } }
+                PLAYLISTS_ID -> playlistDao.observeAllWithCounts().map { list -> list.map { it.toPlaylistCard() } }
                 else -> MutableStateFlow<List<Card>>(emptyList())
             }
 
         override suspend fun getLocalPlaylist(playlistId: Long): PlaylistInfo? =
             withContext(Dispatchers.IO) {
                 playlistDao.getById(playlistId)?.let {
+                    // Real row count — the stored counter drifted on the
+                    // old videoOrder-collision path.
                     PlaylistInfo(
                         url = "playlist:$playlistId",
                         name = it.name,
                         thumbnail = it.thumbnailUrl,
-                        videoCount = it.videoCount,
+                        videoCount = playlistDao.countVideos(playlistId),
                     )
                 }
             }
@@ -209,7 +211,7 @@ class LibraryRepositoryImpl
             playlistDao.insertVideo(
                 PlaylistVideoEntity(
                     playlistId = playlistId,
-                    videoOrder = playlistDao.countVideos(playlistId),
+                    videoOrder = playlistDao.nextVideoOrder(playlistId),
                     contentUrl = video.url,
                     title = video.title,
                     author = video.author,
