@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +20,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.DragIndicator
@@ -40,12 +41,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-import com.tsutsen.platformplayer.core.designsystem.reorder.ReorderableItem
+import com.tsutsen.platformplayer.core.designsystem.reorder.ReorderableListItem
 import com.tsutsen.platformplayer.core.designsystem.reorder.detectReorder
-import com.tsutsen.platformplayer.core.designsystem.reorder.rememberReorderableLazyListState
+import com.tsutsen.platformplayer.core.designsystem.reorder.rememberReorderableState
 import com.tsutsen.platformplayer.core.designsystem.reorder.reorderable
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -58,9 +61,10 @@ private const val ANIM = 180
 
 /**
  * Shared vertical queue list (player queue sheet). Tap a row to play it,
- * drag the dotted handle to reorder (live — the list rearranges while
- * dragging and the dragged card follows the finger), tap X to remove
- * (animated), long-press for the video sheet.
+ * HOLD the dotted handle to reorder (the rows rearrange live while
+ * dragging, the others slide into their new slots; a cancelled drag
+ * springs back), tap X to remove (animated — the remaining rows slide
+ * up into the freed space), long-press for the video sheet.
  */
 @Composable
 fun QueueList(
@@ -85,26 +89,44 @@ fun QueueList(
         return
     }
 
-    val state = rememberReorderableLazyListState(onMove = { from, to -> onMove(from.index, to.index) })
+    val scrollState = rememberScrollState()
+    val state =
+        rememberReorderableState(
+            onMove = { from, to -> onMove(from.index, to.index) },
+            scrollState = scrollState,
+            orientation = Orientation.Vertical,
+        )
+    var containerCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val removing = remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
 
-    LazyColumn(
-        state = state.listState,
-        modifier = modifier.fillMaxWidth().reorderable(state),
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                // Outermost: must see (and consume) moves before the scroll
+                // node while a drag is active.
+                .reorderable(state)
+                .onGloballyPositioned { containerCoords = it }
+                .verticalScroll(scrollState),
     ) {
-        itemsIndexed(items, key = { _, it -> it.url }) { index, item ->
+        items.forEachIndexed { index, item ->
             // Entry animation only; removals animate by holding the row in
             // [removing] for one exit cycle before the data drops it.
             var hasAppeared by remember(item.url) { mutableStateOf(false) }
             LaunchedEffect(Unit) { hasAppeared = true }
 
-            ReorderableItem(state, key = item.url) { isDragging ->
-                AnimatedVisibility(
-                    visible = hasAppeared && item.url !in removing.value,
-                    enter = fadeIn(tween(ANIM)) + expandVertically(tween(ANIM)),
-                    exit = fadeOut(tween(ANIM)) + shrinkVertically(tween(ANIM)),
-                ) {
+            AnimatedVisibility(
+                visible = hasAppeared && item.url !in removing.value,
+                enter = fadeIn(tween(ANIM)) + expandVertically(tween(ANIM)),
+                exit = fadeOut(tween(ANIM)) + shrinkVertically(tween(ANIM)),
+            ) {
+                ReorderableListItem(
+                    state = state,
+                    index = index,
+                    key = item.url,
+                    container = containerCoords,
+                ) { isDragging ->
                     QueueRow(
                         item = item,
                         onPlay = { onPlay(index) },
@@ -155,7 +177,11 @@ private fun QueueRow(
                 AsyncImage(
                     url = url,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(8.dp)),
                 )
             }
             item.durationMs?.takeIf { it > 0 }?.let { ms ->
@@ -166,7 +192,10 @@ private fun QueueRow(
                     modifier =
                         Modifier
                             .align(Alignment.BottomEnd)
-                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(4.dp))
+                            .background(
+                                Color.Black.copy(alpha = 0.75f),
+                                RoundedCornerShape(4.dp),
+                            )
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                 )
             }

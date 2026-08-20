@@ -446,16 +446,13 @@ private fun CompanionContent(
  * the title block, then the comments/recommended tabs + horizontal strip.
  */
 /**
- * Second-screen Queue tab: the playing video pinned on top (play/pause)
- * and the pending queue below it (tap = play, drag = reorder, X = remove).
- * The same horizontal strip component as the Feed queue card.
+ * Second-screen Queue tab: the pending queue (tap = play, hold the dots to
+ * reorder, X = remove). The same horizontal strip component as the Feed
+ * queue card.
  */
 @Composable
 private fun CompanionQueueTabContent(
-    current: ContentItem?,
-    isPlaying: Boolean,
     queue: List<ContentItem>,
-    onPlayPause: () -> Unit,
     onPlayItem: (Int) -> Unit,
     onRemove: (String) -> Unit,
     onMove: (Int, Int) -> Unit,
@@ -467,10 +464,7 @@ private fun CompanionQueueTabContent(
         contentAlignment = Alignment.TopCenter,
     ) {
         QueueStripCard(
-            current = current,
-            isPlaying = isPlaying,
             queue = queue,
-            onPlayPause = onPlayPause,
             onPlay = onPlayItem,
             onRemove = onRemove,
             onMove = onMove,
@@ -551,10 +545,7 @@ private fun CompanionVideoPage(
                         // X = remove). The same horizontal strip as the
                         // tabs' horizontal strips.
                         CompanionQueueTabContent(
-                            current = video,
-                            isPlaying = playerState.isPlaying,
                             queue = queue,
-                            onPlayPause = onPlayPause,
                             onPlayItem = onQueuePlay,
                             onRemove = onQueueRemove,
                             onMove = onQueueMove,
