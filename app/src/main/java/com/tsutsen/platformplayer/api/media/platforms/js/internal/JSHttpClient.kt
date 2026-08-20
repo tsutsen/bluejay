@@ -17,6 +17,7 @@ import com.google.common.net.MediaType
 import okhttp3.OkHttpClient
 import okio.GzipSource
 import java.net.InetSocketAddress
+import java.time.Duration
 import java.net.Proxy
 import java.util.UUID
 
@@ -42,9 +43,9 @@ class JSHttpClient : ManagedHttpClient {
             (if((jsClient?.config?.id == StateDeveloper.DEV_ID || jsClient == null) && StateDeveloper.instance.devProxy != null)
                 OkHttpClient.Builder().proxy(Proxy(Proxy.Type.HTTP,
                     InetSocketAddress(StateDeveloper.instance.devProxy!!.url, StateDeveloper.instance.devProxy!!.port)
-                ))
+                )).callTimeout(Duration.ofSeconds(60))
             else
-                OkHttpClient.Builder())
+                OkHttpClient.Builder().callTimeout(Duration.ofSeconds(60)))
         ) {
         _jsClient = jsClient;
         _jsConfig = config;
