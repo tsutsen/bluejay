@@ -436,7 +436,7 @@ class PackageHttp: V8Package {
         fun GETInternal(url: String, headers: MutableMap<String, String> = HashMap(), returnType: ReturnType = ReturnType.STRING) : IBridgeHttpResponse {
             applyDefaultHeaders(headers);
             return logExceptions {
-                catchHttp(retryOnTimeout = true) {
+                catchHttp {
                     val client = _client;
                     //logRequest("GET", url, headers, null);
                     val resp = client.get(url, headers);
@@ -614,13 +614,14 @@ class PackageHttp: V8Package {
             }
         }
 
-        private fun catchHttp(retryOnTimeout: Boolean = false, handle: ()->IBridgeHttpResponse): IBridgeHttpResponse {
+        private fun catchHttp(retryOnTimeout: Boolean = true, handle: ()->IBridgeHttpResponse): IBridgeHttpResponse {
             try{
                 return handle();
             }
             //Forward timeouts. A single retry rescues calls that hit a
-            //transient network stall (VPN re-keying etc.) — idempotent
-            //callers opt in (GET only).
+            //transient network stall (VPN re-keying etc.). Plugin traffic is
+            //read-only (page fetches, innertube queries, consent save), so
+            //retrying once is safe for every method.
             catch(ex: SocketTimeoutException) {
                 if (retryOnTimeout) {
                     Logger.w("Plugin[${_package._config.name}]", "HTTP timeout, retrying once", ex);
