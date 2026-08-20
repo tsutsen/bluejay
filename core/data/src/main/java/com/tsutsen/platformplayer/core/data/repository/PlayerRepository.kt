@@ -33,6 +33,13 @@ interface PlayerRepository {
     suspend fun setPlaybackSpeed(speed: Float)
     suspend fun setVideoQuality(quality: String)
     suspend fun setSubtitle(selection: String)
+
+    /**
+     * Toggles subtitles for the current video: turns them off when a concrete
+     * track is active, otherwise activates the last explicitly selected track
+     * (or the first available one).
+     */
+    suspend fun toggleSubtitles()
     suspend fun toggleFullscreen()
     suspend fun minimize()
     suspend fun exitFullscreen()

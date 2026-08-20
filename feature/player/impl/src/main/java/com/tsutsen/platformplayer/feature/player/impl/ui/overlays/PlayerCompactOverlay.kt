@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,9 +73,9 @@ internal fun PlayerCompactOverlay(
             }
             IconButton(onClick = onSubtitleToggle) {
                 Icon(
-                    imageVector = Icons.Default.ClosedCaption,
+                    imageVector = if (subtitlesOn) Icons.Filled.ClosedCaption else Icons.Outlined.ClosedCaption,
                     contentDescription = "Subtitles",
-                    tint = if (subtitlesOn) MaterialTheme.colorScheme.primary else Color.White
+                    tint = Color.White
                 )
             }
             IconButton(onClick = onWatchLater) {

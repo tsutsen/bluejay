@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -94,9 +95,9 @@ internal fun PlayerNormalBottomOverlay(
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = onSubtitleToggle) {
                 Icon(
-                    imageVector = Icons.Default.ClosedCaption,
+                    imageVector = if (subtitlesOn) Icons.Filled.ClosedCaption else Icons.Outlined.ClosedCaption,
                     contentDescription = "Subtitles",
-                    tint = if (subtitlesOn) MaterialTheme.colorScheme.primary else Color.White,
+                    tint = Color.White,
                 )
             }
             IconButton(onClick = onChapters) {

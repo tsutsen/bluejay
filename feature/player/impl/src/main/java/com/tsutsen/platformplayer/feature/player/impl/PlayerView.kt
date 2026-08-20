@@ -583,10 +583,14 @@ fun PlayerView(
                         isLoading = state.isLoading,
                         activeProgressIndicator = activeProgressIndicator,
                         badgeState = badgeState,
+                        onBadgeSessionEnded = {
+                            badgeState = GestureBadgeState()
+                        },
                         scrubPositionMs = scrubPositionMs,
-                        subtitlesOn = state.selectedSubtitle != "Off",
+                        subtitlesOn =
+                            state.selectedSubtitle != "Off" && state.selectedSubtitle != "Auto",
                         onSubtitleToggle = {
-                            viewModel.setSubtitle(if (state.selectedSubtitle != "Off") "Off" else "Auto")
+                            viewModel.toggleSubtitles()
                         },
                         onMinimize = {
                             viewModel.minimize()

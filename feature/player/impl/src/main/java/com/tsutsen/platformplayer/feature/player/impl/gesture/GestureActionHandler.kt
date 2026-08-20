@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
+import android.provider.Settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Replay10
@@ -57,6 +58,13 @@ class PlayerGestureActionHandler(
     // --- brightness state ---
     private var startBrightness = 1f
     private var currentBrightness = 1f
+    /**
+     * Whether device-wide (system) brightness can be controlled. Determined once
+     * via a no-op test write: [Settings.System.putInt] on SCREEN_BRIGHTNESS throws
+     * SecurityException when WRITE_SETTINGS has not been granted by the user,
+     * in which case we fall back to window-local brightness.
+     */
+    private var systemBrightnessAvailable: Boolean? = null
 
     // --- volume state ---
     private var audioManager: AudioManager? = null
@@ -79,6 +87,8 @@ class PlayerGestureActionHandler(
     private var speedHoldJob: Job? = null
 
     // --- speed hold state ---
+    // Written on the pointer thread (ACTIVE), read by the keep-alive coroutine.
+    @Volatile
     private var lastSpeedHoldReported = 0f
 
     // --- consecutive double-tap seek accumulation ---
@@ -92,8 +102,25 @@ class PlayerGestureActionHandler(
     }
 
     fun snapshotBrightness() {
-        currentBrightness = activity?.window?.attributes?.screenBrightness ?: 1f
-        if (currentBrightness < 0f) currentBrightness = 1f // auto mode fallback
+        if (systemBrightnessAvailable == null) {
+            val resolver = activity?.contentResolver
+            val current = runCatching {
+                Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS)
+            }.getOrNull()
+            systemBrightnessAvailable = runCatching {
+                if (resolver != null && current != null) {
+                    Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, current)
+                }
+            }.isSuccess
+        }
+        if (systemBrightnessAvailable == true) {
+            currentBrightness = runCatching {
+                Settings.System.getInt(activity?.contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+            }.getOrNull()?.let { it / 255f } ?: 1f
+        } else {
+            currentBrightness = activity?.window?.attributes?.screenBrightness ?: 1f
+            if (currentBrightness < 0f) currentBrightness = 1f // auto mode fallback
+        }
         startBrightness = currentBrightness
     }
 
@@ -103,9 +130,7 @@ class PlayerGestureActionHandler(
     }
 
     fun snapshotSpeed() {
-        // We read speed from the ViewModel uiState when available;
-        // for now default to 1f — the ViewModel will provide actual value.
-        originalSpeed = 1f
+        originalSpeed = (viewModel.uiState.value as? com.tsutsen.platformplayer.feature.player.impl.PlayerUiState.Loaded)?.playbackSpeed ?: 1f
     }
 
     override fun handleGestureFrame(frame: GestureFrame) {
@@ -179,8 +204,19 @@ class PlayerGestureActionHandler(
                 // instantDelta.y: negative = swipe up (brighter), positive = down (darker)
                 val delta = -frame.instantDelta.y / screenHeight()
                 currentBrightness = (currentBrightness + delta).coerceIn(0f, 1f)
-                activity?.window?.attributes = (activity.window.attributes).apply {
-                    screenBrightness = currentBrightness
+                if (systemBrightnessAvailable == true) {
+                    // Device-wide brightness, so the whole system follows the gesture.
+                    runCatching {
+                        Settings.System.putInt(
+                            activity?.contentResolver,
+                            Settings.System.SCREEN_BRIGHTNESS,
+                            (currentBrightness * 255).toInt().coerceIn(0, 255),
+                        )
+                    }
+                } else {
+                    activity?.window?.attributes = (activity.window.attributes).apply {
+                        screenBrightness = currentBrightness
+                    }
                 }
                 onIndicator(GestureAction.BRIGHTNESS.defaultIndicator(currentBrightness))
             }
@@ -231,18 +267,20 @@ class PlayerGestureActionHandler(
         when (frame.phase) {
             GesturePhase.START -> {
                 snapshotSpeed()
-                lastSpeedHoldReported = 0f
+                lastSpeedHoldReported = baseMultiplier
                 viewModel.setPlaybackSpeed(baseMultiplier)
                 onIndicator(GestureAction.SPEEDUP.defaultIndicator(baseMultiplier))
-                // Start keep-alive coroutine — emits onIndicator periodically so badge stays visible
+                // Start keep-alive coroutine — re-emits the *current* speed periodically so
+                // the badge stays visible during still holds. Re-emitting the base here would
+                // snap the badge back to x2 while the finger is held after a movement step.
                 speedHoldJob?.cancel()
                 speedHoldJob = CoroutineScope(Dispatchers.Default).launch {
                     while (true) {
                         delay(KEEP_ALIVE_INTERVAL_MS)
-                        val steps = 0
-                        val speed = (baseMultiplier + steps * SPEED_STEP).coerceIn(0.25f, 4f)
-                        val snapped = (speed * 10).toInt() / 10f
-                        onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
+                        val current = lastSpeedHoldReported
+                        if (current > 0f) {
+                            onIndicator(GestureAction.SPEEDUP.defaultIndicator(current))
+                        }
                     }
                 }
             }

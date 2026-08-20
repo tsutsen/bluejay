@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -57,6 +59,7 @@ fun PlayerControls(
     isLoading: Boolean,
     activeProgressIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator.Progress?,
     badgeState: GestureBadgeState,
+    onBadgeSessionEnded: () -> Unit = {},
     state: PlayerUiState.Loaded,
     player: ExoPlayer?,
     subtitlesOn: Boolean,
@@ -86,6 +89,10 @@ fun PlayerControls(
     onMorphDragEnd: (dragY: Float) -> Unit,
 ) {
     val density = LocalDensity.current
+    // Measured heights of the top/bottom control bars — used to shift the gesture
+    // badge so it never overlaps the visible controls.
+    var topBarHeightPx by remember { mutableIntStateOf(0) }
+    var bottomBarHeightPx by remember { mutableIntStateOf(0) }
 
     // ==================== Controls hide/show animation ====================
     // `isMorphDragging` is driven by PlayerGestureSystem and passed in from PlayerView;
@@ -118,6 +125,13 @@ fun PlayerControls(
             // touches in Compose, so keeping this subtree composed and just fading it visually
             // preserves tap-to-reveal even while fully transparent.
             val effectiveNormalAlpha = normalAlpha * controlsVisibleAlpha
+            // Badge-shift flags: true only when the bar is actually visible on screen.
+            val topBarVisible =
+                resolvedShowTopBar && effectiveNormalAlpha > 0.01f &&
+                    maxOf(normalBarAlpha, fullscreenBarAlpha) * (1f - miniProgress).coerceIn(0f, 1f) > 0.01f
+            val bottomBarVisible =
+                resolvedShowBottomBar && effectiveNormalAlpha > 0.01f &&
+                    (1f - miniProgress).coerceIn(0f, 1f) > 0.01f
             if (normalAlpha > 0.01f) {
                 Box(modifier = Modifier.alpha(effectiveNormalAlpha)) {
                     // Fade out gradient backgrounds along with controls
@@ -158,7 +172,8 @@ fun PlayerControls(
                                             // driven by the same controlsVisibleAlpha as the fade,
                                             // so both directions are symmetric by construction.
                                             translationY = (1f - controlsVisibleAlpha) * -CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
-                                        },
+                                        }
+                                            .onSizeChanged { topBarHeightPx = it.height },
                                 ) {
                                     PlayerNormalTopOverlay(
                                         title = state.currentVideo?.title ?: "Unknown",
@@ -182,7 +197,8 @@ fun PlayerControls(
                                                 // Slide down and out on hide, slide up and in on
                                                 // show - mirrors the top bar's upward slide.
                                                 translationY = (1f - controlsVisibleAlpha) * CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
-                                            },
+                                            }
+                                            .onSizeChanged { bottomBarHeightPx = it.height },
                                 ) {
                                     // FULLSCREEN bottom overlay
                                     if (fullscreenBarAlpha > 0.99f) {
@@ -272,6 +288,11 @@ fun PlayerControls(
                     GestureIndicatorOverlay(
                         activeProgressIndicator = activeProgressIndicator,
                         badgeState = badgeState,
+                        topBarHeightPx = topBarHeightPx,
+                        bottomBarHeightPx = bottomBarHeightPx,
+                        topBarVisible = topBarVisible,
+                        bottomBarVisible = bottomBarVisible,
+                        onBadgeSessionEnded = onBadgeSessionEnded,
                     )
                 }
             }

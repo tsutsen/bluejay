@@ -275,15 +275,16 @@ private fun NavigationBarSurface(
             animationSpec = tween(300, easing = FastOutSlowInEasing),
             label = "navBarSurfaceBottomGap",
         )
-    // The card's top edge never touches the screen, so the top corners only
-    // depend on the side gaps; the bottom corners also need a bottom gap.
-    // (Dp is not Comparable in 1.11.x — compare .value.)
-    val sideRounded = sideGap.value > 0.5f
-    val bottomRounded = sideRounded && bottomGap.value > 0.5f
-    val topStart = animatedCorner(sideRounded, "navBarCornerTopStart")
-    val topEnd = animatedCorner(sideRounded, "navBarCornerTopEnd")
-    val bottomEnd = animatedCorner(bottomRounded, "navBarCornerBottomEnd")
-    val bottomStart = animatedCorner(bottomRounded, "navBarCornerBottomStart")
+    // A corner is squared only when it sits on a screen edge (zero gap). The
+    // bar's top edge never touches the screen, so the top corners follow the
+    // side gaps; the bottom corners also follow the bottom gap. (Dp is not
+    // Comparable in 1.11.x — compare .value.)
+    val sideOnEdge = sideGap.value <= 0.5f
+    val bottomOnEdge = bottomGap.value <= 0.5f
+    val topStart = animatedCorner(!sideOnEdge, "navBarCornerTopStart")
+    val topEnd = animatedCorner(!sideOnEdge, "navBarCornerTopEnd")
+    val bottomEnd = animatedCorner(!sideOnEdge && !bottomOnEdge, "navBarCornerBottomEnd")
+    val bottomStart = animatedCorner(!sideOnEdge && !bottomOnEdge, "navBarCornerBottomStart")
 
     Box(
         modifier = Modifier.fillMaxWidth().onSizeChanged { containerWidthPx.intValue = it.width },
@@ -378,10 +379,16 @@ private fun NavigationRailSurface(
             animationSpec = tween(300, easing = FastOutSlowInEasing),
             label = "navRailGapEnd",
         )
-    val topStart = animatedCorner(vTop.value > 0.5f && hStart.value > 0.5f, "navRailCornerTopStart")
-    val topEnd = animatedCorner(vTop.value > 0.5f && hEnd.value > 0.5f, "navRailCornerTopEnd")
-    val bottomEnd = animatedCorner(vBottom.value > 0.5f && hEnd.value > 0.5f, "navRailCornerBottomEnd")
-    val bottomStart = animatedCorner(vBottom.value > 0.5f && hStart.value > 0.5f, "navRailCornerBottomStart")
+    // The rail's end (right) side never touches the screen edge — only its
+    // start, top and bottom sides can — so end-side corners only square off
+    // via the vertical gaps. (Dp is not Comparable in 1.11.x — compare .value.)
+    val startOnEdge = hStart.value <= 0.5f
+    val topOnEdge = vTop.value <= 0.5f
+    val bottomOnEdge = vBottom.value <= 0.5f
+    val topStart = animatedCorner(!startOnEdge && !topOnEdge, "navRailCornerTopStart")
+    val topEnd = animatedCorner(!topOnEdge, "navRailCornerTopEnd")
+    val bottomEnd = animatedCorner(!bottomOnEdge, "navRailCornerBottomEnd")
+    val bottomStart = animatedCorner(!startOnEdge && !bottomOnEdge, "navRailCornerBottomStart")
 
     Box(
         modifier =

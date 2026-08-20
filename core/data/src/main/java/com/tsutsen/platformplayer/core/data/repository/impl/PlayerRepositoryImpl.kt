@@ -122,6 +122,8 @@ class PlayerRepositoryImpl(
     // via [applyTrackSelectionParameters] and re-applied to each new player.
     private var selectedQuality: String = "Auto"
     private var selectedSubtitle: String = "Auto"
+    /** Last concretely selected track — used by [toggleSubtitles] when re-enabling. */
+    private var lastExplicitSubtitle: String? = null
     private var pendingResumePosition: Long = 0
 
     // The primary source + engine-provided subtitle tracks for the video
@@ -718,10 +720,23 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun setSubtitle(selection: String) {
+        if (selection != "Off" && selection != "Auto") {
+            lastExplicitSubtitle = selection
+        }
         selectedSubtitle = selection
         applyTrackSelectionParameters()
         _playerState.update { it.copy(selectedSubtitle = selection) }
         applySubtitleSource()
+    }
+
+    override suspend fun toggleSubtitles() {
+        val current = selectedSubtitle
+        if (current != "Off" && current != "Auto") {
+            setSubtitle("Off")
+            return
+        }
+        val target = lastExplicitSubtitle ?: currentSubtitles.firstOrNull()?.name
+        if (target != null) setSubtitle(target)
     }
 
     /**

@@ -22,8 +22,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlin.math.sqrt
 
 // ---- gesture recognition thresholds ----
@@ -230,7 +232,46 @@ fun PlayerGestureSystem(
 
                                 while (true) {
                                     startJustSent = false
-                                    val event = awaitPointerEvent()
+                                    // Race the wait against the hold deadline: a perfectly still
+                                    // finger emits no pointer events, so without this a hold
+                                    // would only ever activate on hold *plus* movement.
+                                    val event =
+                                        if (holdTriggered) {
+                                            awaitPointerEvent()
+                                        } else {
+                                            val remaining = downTime + HOLD_TIMEOUT_MS - System.currentTimeMillis()
+                                            if (remaining > 0) {
+                                                try {
+                                                    withTimeout(remaining) { awaitPointerEvent() }
+                                                } catch (_: TimeoutCancellationException) {
+                                                    // Full hold elapsed with no pointer events:
+                                                    // finger is still and pressed — activate hold now.
+                                                    holdTriggered = true
+                                                    gestureRecognized = true
+                                                    gestureType = GestureType.HOLD
+                                                    val holdAction = cfg.resolve(sector, GestureType.HOLD)
+                                                    if (holdAction != GestureAction.NONE) {
+                                                        currentHandler.handleGestureFrame(
+                                                            GestureFrame(
+                                                                sector = sector,
+                                                                gestureType = GestureType.HOLD,
+                                                                action = holdAction,
+                                                                phase = GesturePhase.START,
+                                                                instantDelta = Offset.Zero,
+                                                                totalDelta = Offset.Zero,
+                                                                elapsedMs = System.currentTimeMillis() - downTime,
+                                                                fingerPosition = lastPos,
+                                                            )
+                                                        )
+                                                    }
+                                                    startFrameSent = true
+                                                    startJustSent = true
+                                                    continue
+                                                }
+                                            } else {
+                                                awaitPointerEvent()
+                                            }
+                                        }
 
                                     // ---- Pointer up — check first before anything else ----
                                     if (event.changes.all { !it.pressed }) {

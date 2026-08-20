@@ -272,6 +272,12 @@ class PlayerViewModel
             }
         }
 
+        fun toggleSubtitles() {
+            viewModelScope.launch {
+                playerRepository.toggleSubtitles()
+            }
+        }
+
         fun toggleFullscreen() {
             viewModelScope.launch {
                 playerRepository.toggleFullscreen()

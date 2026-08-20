@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
@@ -61,6 +65,11 @@ data class GestureBadgeState(
 internal fun GestureIndicatorOverlay(
     activeProgressIndicator: GestureIndicator.Progress?,
     badgeState: GestureBadgeState,
+    topBarHeightPx: Int = 0,
+    bottomBarHeightPx: Int = 0,
+    topBarVisible: Boolean = false,
+    bottomBarVisible: Boolean = false,
+    onBadgeSessionEnded: () -> Unit = {},
 ) {
     // Session tracks the current badge and whether it's visible.
     // Key changes → new session (fade in). Same key + visible → just update content + reset timer.
@@ -115,7 +124,19 @@ internal fun GestureIndicatorOverlay(
         // Only fade out if this session is still current (no new emission intervened)
         if (session == s) {
             session = s.copy(visible = false)
+            // Tell the parent the badge is gone so it can clear badgeState — otherwise a
+            // stale visible state resurrects the badge when the overlay re-enters
+            // composition after a normal/fullscreen/floating morph.
+            onBadgeSessionEnded()
         } else {
+        }
+    }
+
+    // If the overlay leaves composition while a badge is still visible (mode morph),
+    // report it so the parent clears the stale state.
+    DisposableEffect(Unit) {
+        onDispose {
+            if (session?.visible == true) onBadgeSessionEnded()
         }
     }
 
@@ -134,18 +155,36 @@ internal fun GestureIndicatorOverlay(
         }
     }
 
-    // Centre text badge — AnimatedVisibility owns enter/exit, content recomposes freely
-    AnimatedVisibility(
-        visible = session?.visible == true,
-        enter = fadeIn(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
-        exit = fadeOut(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
+    // Centre text badge — AnimatedVisibility owns enter/exit, content recomposes freely.
+    // Vertical padding tracks the control bars so the badge never overlaps them.
+    val density = LocalDensity.current
+    val badgeTopPad: Dp by animateDpAsState(
+        targetValue = if (topBarVisible) with(density) { topBarHeightPx.toDp() } + 8.dp else 16.dp,
+        animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS),
+        label = "badgeTopPad",
+    )
+    val badgeBottomPad: Dp by animateDpAsState(
+        targetValue = if (bottomBarVisible) with(density) { bottomBarHeightPx.toDp() } + 8.dp else 0.dp,
+        animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS),
+        label = "badgeBottomPad",
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = badgeTopPad, bottom = badgeBottomPad),
+        contentAlignment = Alignment.TopStart,
     ) {
-        val s = session!!
-        Surface(
-            color = Color.Black.copy(alpha = 0.7f),
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.padding(16.dp)
+        AnimatedVisibility(
+            visible = session?.visible == true,
+            enter = fadeIn(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
+            exit = fadeOut(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
         ) {
+            val s = session!!
+            Surface(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -157,11 +196,12 @@ internal fun GestureIndicatorOverlay(
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = s.label,
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                    Text(
+                        text = s.label,
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             }
         }
     }
