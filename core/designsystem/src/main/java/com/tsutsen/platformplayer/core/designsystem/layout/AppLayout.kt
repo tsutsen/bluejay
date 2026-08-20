@@ -216,14 +216,18 @@ fun AppNavigationBar(
 /**
  * Padding between the nav card edge and the nav items.
  */
-private val NavSurfacePadH = 12.dp
-private val NavSurfacePadV = 8.dp
+private val NavSurfacePadH = 16.dp
+private val NavSurfacePadV = 12.dp
 
 private val NavSurfaceCorner = 24.dp
 
 /**
  * Corner radius that eases to 0 when [rounded] is false (edge flush with the
- * screen edge gets no rounding).
+ * screen edge gets no rounding). The 300ms FastOutSlowIn spec matches the gap
+ * animations exactly, so corners and size move in the same window — pass
+ * `navMorphed` into the [rounded] decision (not the animated gap) so the
+ * corner starts moving at t=0 when the morph begins, not when the gap
+ * finally crosses zero.
  */
 @Composable
 private fun animatedCorner(rounded: Boolean, label: String): Dp =
@@ -237,8 +241,9 @@ private fun animatedCorner(rounded: Boolean, label: String): Dp =
  * Surface behind the bottom navigation bar. Normally a rounded card hugging
  * the nav items with inner padding, floating above the bottom edge; morphs to
  * a flat full-width rectangle while the video page is in normal mode, stopping
- * at the bottom system inset so it never sits under the system bars. Corners
- * on a screen edge (zero gap) are squared.
+ * at the bottom system inset so it never sits under the system bars. When
+ * morphed every corner is squared; when shrunken, a corner is squared only
+ * when it sits on a screen edge (zero gap).
  */
 @Composable
 private fun NavigationBarSurface(
@@ -275,16 +280,17 @@ private fun NavigationBarSurface(
             animationSpec = tween(300, easing = FastOutSlowInEasing),
             label = "navBarSurfaceBottomGap",
         )
-    // A corner is squared only when it sits on a screen edge (zero gap). The
-    // bar's top edge never touches the screen, so the top corners follow the
-    // side gaps; the bottom corners also follow the bottom gap. (Dp is not
-    // Comparable in 1.11.x — compare .value.)
+    // Morphed: fully flat rectangle. Shrunken: a corner is squared only when
+    // it sits on a screen edge (zero gap). The bar's top edge never touches
+    // the screen, so the top corners follow the side gaps; the bottom corners
+    // also follow the bottom gap. (Dp is not Comparable in 1.11.x — compare
+    // .value.)
     val sideOnEdge = sideGap.value <= 0.5f
     val bottomOnEdge = bottomGap.value <= 0.5f
-    val topStart = animatedCorner(!sideOnEdge, "navBarCornerTopStart")
-    val topEnd = animatedCorner(!sideOnEdge, "navBarCornerTopEnd")
-    val bottomEnd = animatedCorner(!sideOnEdge && !bottomOnEdge, "navBarCornerBottomEnd")
-    val bottomStart = animatedCorner(!sideOnEdge && !bottomOnEdge, "navBarCornerBottomStart")
+    val topStart = animatedCorner(!sideOnEdge && !navMorphed, "navBarCornerTopStart")
+    val topEnd = animatedCorner(!sideOnEdge && !navMorphed, "navBarCornerTopEnd")
+    val bottomEnd = animatedCorner(!sideOnEdge && !bottomOnEdge && !navMorphed, "navBarCornerBottomEnd")
+    val bottomStart = animatedCorner(!sideOnEdge && !bottomOnEdge && !navMorphed, "navBarCornerBottomStart")
 
     Box(
         modifier = Modifier.fillMaxWidth().onSizeChanged { containerWidthPx.intValue = it.width },
@@ -315,9 +321,11 @@ private fun NavigationBarSurface(
 
 /**
  * Surface behind the navigation rail. Normally a rounded card hugging the
- * rail items with inner padding; morphs to a flat full-height rectangle while
- * the video page is in normal mode, stopping at the system insets so it never
- * sits under the status bar. Corners on a screen edge (zero gap) are squared.
+ * rail items with inner padding (the start side hugs the screen edge, so its
+ * corners are squared — D-shape); morphs to a flat full-height rectangle
+ * while the video page is in normal mode, stopping at the system insets so it
+ * never sits under the status bar. When morphed every corner is squared;
+ * when shrunken, corners on a screen edge (zero gap) are squared.
  */
 @Composable
 private fun NavigationRailSurface(
@@ -379,16 +387,17 @@ private fun NavigationRailSurface(
             animationSpec = tween(300, easing = FastOutSlowInEasing),
             label = "navRailGapEnd",
         )
-    // The rail's end (right) side never touches the screen edge — only its
-    // start, top and bottom sides can — so end-side corners only square off
-    // via the vertical gaps. (Dp is not Comparable in 1.11.x — compare .value.)
+    // Morphed: fully flat rectangle (all corners 0). Shrunken: the rail's
+    // end (right) side never touches the screen edge — only its start, top
+    // and bottom sides can — so end-side corners only square off via the
+    // vertical gaps. (Dp is not Comparable in 1.11.x — compare .value.)
     val startOnEdge = hStart.value <= 0.5f
     val topOnEdge = vTop.value <= 0.5f
     val bottomOnEdge = vBottom.value <= 0.5f
-    val topStart = animatedCorner(!startOnEdge && !topOnEdge, "navRailCornerTopStart")
-    val topEnd = animatedCorner(!topOnEdge, "navRailCornerTopEnd")
-    val bottomEnd = animatedCorner(!bottomOnEdge, "navRailCornerBottomEnd")
-    val bottomStart = animatedCorner(!startOnEdge && !bottomOnEdge, "navRailCornerBottomStart")
+    val topStart = animatedCorner(!startOnEdge && !topOnEdge && !navMorphed, "navRailCornerTopStart")
+    val topEnd = animatedCorner(!topOnEdge && !navMorphed, "navRailCornerTopEnd")
+    val bottomEnd = animatedCorner(!bottomOnEdge && !navMorphed, "navRailCornerBottomEnd")
+    val bottomStart = animatedCorner(!startOnEdge && !bottomOnEdge && !navMorphed, "navRailCornerBottomStart")
 
     Box(
         modifier =
