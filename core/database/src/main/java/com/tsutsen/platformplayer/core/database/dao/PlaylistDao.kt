@@ -77,6 +77,12 @@ interface PlaylistDao {
     @Query("SELECT COUNT(*) FROM playlist_videos WHERE playlistId = :playlistId")
     suspend fun countVideos(playlistId: Long): Int
 
+    // Reverse lookup for the options sheet: which playlists already contain
+    // a video, so its checkboxes can be pre-checked. Reactive so a
+    // just-added video flips its box on without a refresh.
+    @Query("SELECT playlistId FROM playlist_videos WHERE contentUrl = :contentUrl")
+    fun observePlaylistIdsForVideo(contentUrl: String): Flow<List<Long>>
+
     @Query(
         "SELECT (SELECT COUNT(*) FROM playlist_videos WHERE playlistId = :playlistId) AS videoCount, " +
             "(SELECT COALESCE(SUM(durationMs), 0) FROM playlist_videos WHERE playlistId = :playlistId) AS totalDurationMs",

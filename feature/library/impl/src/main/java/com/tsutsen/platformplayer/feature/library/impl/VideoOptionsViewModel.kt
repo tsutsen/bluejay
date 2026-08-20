@@ -145,6 +145,35 @@ class VideoOptionsViewModel
             }
         }
 
+        private val containedPlaylistsCache = mutableMapOf<String, StateFlow<Set<Long>>>()
+
+        /** Playlists already containing [url] — pre-checks the sheet boxes. */
+        fun playlistsContaining(url: String): StateFlow<Set<Long>> =
+            containedPlaylistsCache.getOrPut(url) {
+                libraryRepository
+                    .observePlaylistsContaining(url)
+                    .stateIn(
+                        viewModelScope,
+                        SharingStarted.WhileSubscribed(5_000),
+                        emptySet(),
+                    )
+            }
+
+        /** Auto-commit: check adds the video, uncheck removes it. */
+        fun togglePlaylist(
+            playlistId: Long,
+            add: Boolean,
+            video: VideoCard,
+        ) {
+            viewModelScope.launch {
+                if (add) {
+                    libraryRepository.addVideoToPlaylist(playlistId, video)
+                } else {
+                    libraryRepository.removeVideoFromPlaylist(playlistId, video.url)
+                }
+            }
+        }
+
         fun createPlaylistAndAdd(
             name: String,
             video: VideoCard,

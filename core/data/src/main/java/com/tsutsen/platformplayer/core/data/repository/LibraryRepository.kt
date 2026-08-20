@@ -33,6 +33,9 @@ interface LibraryRepository {
     /** Which save types apply to a video (for the options sheet toggles). */
     fun observeSavedTypes(url: String): Flow<Set<SavedVideoType>>
 
+    /** Playlists already containing a video (pre-checks the options sheet). */
+    fun observePlaylistsContaining(url: String): Flow<Set<Long>>
+
     suspend fun saveVideo(
         type: SavedVideoType,
         video: VideoCard,

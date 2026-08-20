@@ -42,6 +42,9 @@ fun VideoOptionsSheetHost(
         .downloadState(video.url)
         .collectAsState(initial = DownloadButtonState.Idle)
     val downloadMessage by viewModel.downloadMessage.collectAsState()
+    val containedPlaylists by viewModel
+        .playlistsContaining(video.url)
+        .collectAsState(initial = emptySet())
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
 
     // One-shot feedback for download failures as a system toast (success
@@ -81,13 +84,16 @@ fun VideoOptionsSheetHost(
             }
         },
         downloadState = downloadState,
+        // "New playlist" row (the checkboxes use onTogglePlaylist).
         onAddToPlaylist = { playlistId ->
             if (playlistId == null) {
                 showNewPlaylistDialog = true
-            } else {
-                viewModel.addToPlaylist(playlistId, video)
             }
         },
+        onTogglePlaylist = { playlistId, checked ->
+            viewModel.togglePlaylist(playlistId, checked, video)
+        },
+        containedPlaylistIds = containedPlaylists,
         isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),
         isFavouriteSaved = savedTypes.contains(SavedVideoType.FAVOURITE),

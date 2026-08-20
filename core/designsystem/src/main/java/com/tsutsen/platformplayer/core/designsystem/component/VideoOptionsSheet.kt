@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
@@ -31,7 +33,6 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -93,6 +94,10 @@ fun VideoOptionsSheet(
     durationMs: Long? = null,
     viewCount: Long? = null,
     publishedAt: Long? = null,
+    // Playlists already containing this video — their boxes start checked.
+    containedPlaylistIds: Set<Long> = emptySet(),
+    // Auto-commit: checked = add the video, unchecked = remove it.
+    onTogglePlaylist: (Long, Boolean) -> Unit = { _, _ -> },
     // false (default): modal material3 ModalBottomSheet (main app).
     // true: render the body bare — the host wraps it in its own sheet chrome
     // (the second screen uses a material3 BottomSheetScaffold, which cannot
@@ -101,7 +106,6 @@ fun VideoOptionsSheet(
 ) {
     val context = LocalContext.current
     var showPlaylists by remember { mutableStateOf(false) }
-    var selectedPlaylists by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
     val body: @Composable () -> Unit = {
         // Header: title, then the metadata row underneath (title and stats
@@ -256,8 +260,9 @@ fun VideoOptionsSheet(
             // here if a 10th action is ever added.
         }
 
-        // Playlist picker: revealed by the "Add to playlist" tile. Multi-
-        // select — check the target playlists, then confirm.
+        // Playlist picker: revealed by the "Add to playlist" tile. Toggles
+        // auto-commit — checking a box adds the video, unchecking removes
+        // it (the contained set is live, so the boxes stay in sync).
         AnimatedVisibility(
             visible = showPlaylists,
             enter = expandVertically(clip = true) + fadeIn(),
@@ -278,41 +283,17 @@ fun VideoOptionsSheet(
                 playlists.forEach { playlist ->
                     playlistCheckRow(
                         label = playlist.name,
-                        checked = playlist.id in selectedPlaylists,
+                        checked = playlist.id in containedPlaylistIds,
                         onCheckedChange = { checked ->
-                            selectedPlaylists =
-                                if (checked) selectedPlaylists + playlist.id
-                                else selectedPlaylists - playlist.id
+                            onTogglePlaylist(playlist.id, checked)
                         },
                     )
                 }
-                playlistPickRow("New playlist") {
+                newPlaylistRow {
                     // No onDismiss here: the host shows a create dialog on
                     // top of this sheet. Dismissing first would unmount the
                     // dialog.
                     onAddToPlaylist(null)
-                }
-                if (playlists.isNotEmpty()) {
-                    val count = selectedPlaylists.size
-                    Button(
-                        enabled = count > 0,
-                        onClick = {
-                            val ids = selectedPlaylists
-                            selectedPlaylists = emptySet()
-                            showPlaylists = false
-                            ids.forEach { onAddToPlaylist(it) }
-                            onDismiss()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                    ) {
-                        Text(
-                            text =
-                                if (count == 1) "Add to playlist"
-                                else "Add to $count playlists",
-                        )
-                    }
                 }
             }
         }
@@ -453,23 +434,7 @@ private fun playlistCheckRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(Tokens.RadiusMd))
-                .clickable { onCheckedChange(!checked) }
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+    playlistRow(label, onClick = { onCheckedChange(!checked) }) {
         Checkbox(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -478,23 +443,52 @@ private fun playlistCheckRow(
 }
 
 @Composable
-private fun playlistPickRow(
+private fun newPlaylistRow(onClick: () -> Unit) {
+    // Same row shape as the checkbox rows; the + icon sits in the same
+    // 48dp slot a checkbox occupies, so heights line up.
+    playlistRow("New playlist", onClick = onClick) {
+        Box(
+            modifier = Modifier.size(48.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = "New playlist",
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun playlistRow(
     label: String,
     onClick: () -> Unit,
+    trailing: @Composable () -> Unit,
 ) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 4.dp, vertical = 10.dp),
+                .padding(vertical = 2.dp)
+                .clip(RoundedCornerShape(Tokens.RadiusMd))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp, end = 4.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
+        trailing()
     }
 }
 

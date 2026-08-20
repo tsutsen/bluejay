@@ -859,6 +859,9 @@ private fun CompanionVideoOptionsSheet(
 ) {
     val savedTypes by libraryRepository.observeSavedTypes(card.url).collectAsState(initial = emptySet())
     val playlists by libraryRepository.playlists.collectAsState(initial = emptyList())
+    val containedPlaylists by libraryRepository
+        .observePlaylistsContaining(card.url)
+        .collectAsState(initial = emptySet())
     var downloading by remember { mutableStateOf(false) }
 
     VideoOptionsSheet(
@@ -891,15 +894,24 @@ private fun CompanionVideoOptionsSheet(
             }
         },
         onAddToPlaylist = { playlistId ->
-            scope.launch {
-                if (playlistId != null) {
-                    libraryRepository.addVideoToPlaylist(playlistId, card)
-                } else {
+            // "New playlist" row only (checkboxes use onTogglePlaylist).
+            if (playlistId == null) {
+                scope.launch {
                     val id = libraryRepository.createPlaylist("New playlist")
                     libraryRepository.addVideoToPlaylist(id, card)
                 }
             }
         },
+        onTogglePlaylist = { playlistId, checked ->
+            scope.launch {
+                if (checked) {
+                    libraryRepository.addVideoToPlaylist(playlistId, card)
+                } else {
+                    libraryRepository.removeVideoFromPlaylist(playlistId, card.url)
+                }
+            }
+        },
+        containedPlaylistIds = containedPlaylists,
         downloadState = if (downloading) DownloadButtonState.Downloading(0f) else DownloadButtonState.Idle,
         isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),

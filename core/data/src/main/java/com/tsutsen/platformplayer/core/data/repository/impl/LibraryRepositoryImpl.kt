@@ -106,6 +106,9 @@ class LibraryRepositoryImpl
         override fun observeSavedTypes(url: String): Flow<Set<SavedVideoType>> =
             savedVideoDao.observeTypes(url).map { types -> types.toSet() }
 
+        override fun observePlaylistsContaining(url: String): Flow<Set<Long>> =
+            playlistDao.observePlaylistIdsForVideo(url).map { ids -> ids.toSet() }
+
         override fun observeSectionItems(sectionId: String): Flow<List<Card>> =
             when (sectionId) {
                 WATCH_LATER_ID -> savedVideoDao.observeByType(SavedVideoType.WATCH_LATER).map { list -> list.map { it.toVideoCard() } }
