@@ -97,9 +97,9 @@ class PlayerViewModel
         private val _savedTypes = MutableStateFlow<Set<SavedVideoType>>(emptySet())
         val savedTypes: StateFlow<Set<SavedVideoType>> = _savedTypes.asStateFlow()
 
-        /** Loop mode: OFF → ONCE → INFINITE, cycled by the loop button. */
-        private val _loopMode = MutableStateFlow(PlayerRepository.LOOP_OFF)
-        val loopMode: StateFlow<Int> = _loopMode.asStateFlow()
+        /** Loop mode: OFF → ONCE → INFINITE, cycled by the loop button.
+         * Backed by the repository so it survives configuration changes. */
+        val loopMode: StateFlow<Int> = playerRepository.loopMode
 
         /** Playlists containing the current video (options sheet checkboxes). */
         private val _containedPlaylists = MutableStateFlow<Set<Long>>(emptySet())
@@ -545,8 +545,7 @@ class PlayerViewModel
         }
 
         fun cycleLoopMode() {
-            val next = (_loopMode.value + 1) % 3
-            _loopMode.value = next
+            val next = (playerRepository.loopMode.value + 1) % 3
             playerRepository.setLoopMode(next)
         }
     }

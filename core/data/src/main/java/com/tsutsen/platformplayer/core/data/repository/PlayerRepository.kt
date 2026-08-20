@@ -47,6 +47,9 @@ interface PlayerRepository {
      * replays it forever.
      */
     fun setLoopMode(mode: Int)
+
+    /** Current loop mode (see [setLoopMode]). Survives ViewModel restarts. */
+    val loopMode: kotlinx.coroutines.flow.StateFlow<Int>
     suspend fun toggleFullscreen()
     suspend fun minimize()
     suspend fun exitFullscreen()

@@ -112,7 +112,8 @@ class PlayerRepositoryImpl(
 
     override val exoPlayer: ExoPlayer? get() = _exoPlayer
     private var _exoPlayer: ExoPlayer? = null
-    private var loopMode = PlayerRepository.LOOP_OFF
+    private val _loopMode = MutableStateFlow(PlayerRepository.LOOP_OFF)
+    override val loopMode: kotlinx.coroutines.flow.StateFlow<Int> = _loopMode.asStateFlow()
     private var loopOnceArmed = false
 
     // Holds the connection to PlayerService open while playback is active.
@@ -507,9 +508,15 @@ class PlayerRepositoryImpl(
                 _exoPlayer?.prepare()
                 Log.i(TAG, "Setting playWhenReady to true...")
                 _exoPlayer?.playWhenReady = true
-                // Re-arm the once-replay for the new video; the infinite mode
-                // is repeatMode and needs no arming.
-                loopOnceArmed = loopMode == PlayerRepository.LOOP_ONCE
+                // Re-arm the once-replay for the new video and re-apply the
+                // repeat mode (repeatMode normally persists across prepares).
+                loopOnceArmed = _loopMode.value == PlayerRepository.LOOP_ONCE
+                _exoPlayer?.repeatMode =
+                    if (_loopMode.value == PlayerRepository.LOOP_INFINITE) {
+                        Player.REPEAT_MODE_ONE
+                    } else {
+                        Player.REPEAT_MODE_OFF
+                    }
                 // Re-apply the user's track preferences to a (possibly new)
                 // player so quality/subtitle choices persist across videos.
                 applyTrackSelectionParameters()
@@ -707,7 +714,7 @@ class PlayerRepositoryImpl(
     }
 
     override fun setLoopMode(mode: Int) {
-        loopMode = mode
+        _loopMode.value = mode
         // ExoPlayer's API is thread-safe; no dispatch needed.
         _exoPlayer?.let { player ->
             if (mode == PlayerRepository.LOOP_INFINITE) {
