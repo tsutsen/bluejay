@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.zIndex
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
@@ -117,6 +118,10 @@ fun BluejayNavGraph(
             Box(
                 Modifier
                     .fillMaxSize()
+                    // Active tab must sit above the hidden keep-alive tabs in
+                    // draw order, otherwise their pointer-swallowing layer
+                    // (topmost by visit order) steals its drag events.
+                    .zIndex(if (isActive) 1f else 0f)
                     .alpha(if (isActive) 1f else 0f)
                     .pointerInput(isActive) {
                         if (!isActive) {
