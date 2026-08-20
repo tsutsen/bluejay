@@ -104,8 +104,9 @@ fun PlayerView(
     var badgeState by remember { mutableStateOf(GestureBadgeState()) }
     var badgeKeepAliveCounter by remember { mutableStateOf(0) }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
-    // Three-dot menu → the video options sheet (same as long-press on cards).
-    var showVideoOptions by remember { mutableStateOf(false) }
+    // Video options sheet (three-dot menu + long-press on queue cards): the
+    // video it is bound to, or null when closed.
+    var sheetVideo by remember { mutableStateOf<ContentItem?>(null) }
     var showQueueSheet by remember { mutableStateOf(false) }
     // Stable callbacks — captured once per text by LinkifiedText's remember.
     val onTimestampClick: (Long) -> Unit = remember { { ms -> viewModel.seekToClamped(ms) } }
@@ -603,7 +604,7 @@ fun PlayerView(
                         onChannelClick = onChannelClick,
                         onLike = { viewModel.toggleLike(state.isLiked) },
                         onDislike = { viewModel.toggleDislike(state.isDisliked) },
-                        onMore = { showVideoOptions = true },
+                        onMore = { sheetVideo = state.currentVideo },
                         isSubscribedChannel = state.isSubscribedChannel,
                         onSubscribe = { viewModel.subscribeChannel() },
                         onTimestampClick = onTimestampClick,
@@ -702,17 +703,16 @@ fun PlayerView(
                     )
                 }
 
-                // Three-dot menu: the video options sheet (same sheet as
-                // long-press on video cards), bound to the current video.
-                if (showVideoOptions) {
-                    state.currentVideo?.let { video ->
-                        CurrentVideoOptionsSheet(
-                            video = video,
-                            viewModel = viewModel,
-                            onDismiss = { showVideoOptions = false },
-                            onGoToChannel = onChannelClick,
-                        )
-                    }
+                // Video options sheet (three-dot menu + long-press on queue
+                // cards), bound to the long-pressed / current video.
+                sheetVideo?.let { video ->
+                    CurrentVideoOptionsSheet(
+                        video = video,
+                        viewModel = viewModel,
+                        isCurrentlyPlaying = video.url == state.currentVideo?.url,
+                        onDismiss = { sheetVideo = null },
+                        onGoToChannel = onChannelClick,
+                    )
                 }
 
                 // Queue button (top row) → the queue sheet.
@@ -730,6 +730,7 @@ fun PlayerView(
                             },
                             onRemove = { url -> viewModel.removeQueueItemUrl(url) },
                             onMove = { from, to -> viewModel.moveQueueItem(from, to) },
+                            onLongClick = { video -> sheetVideo = video },
                             modifier = Modifier.fillMaxHeight(0.7f),
                         )
                     }
@@ -761,6 +762,7 @@ fun PlayerView(
 private fun CurrentVideoOptionsSheet(
     video: ContentItem,
     viewModel: PlayerViewModel,
+    isCurrentlyPlaying: Boolean,
     onDismiss: () -> Unit,
     onGoToChannel: (String) -> Unit,
 ) {
@@ -768,6 +770,7 @@ private fun CurrentVideoOptionsSheet(
     val playlists by viewModel.playlists.collectAsState(initial = emptyList())
     val contained by viewModel.containedPlaylists.collectAsState(initial = emptySet())
     val downloads by viewModel.downloads.collectAsState(initial = emptyList())
+    val queue by viewModel.queue.collectAsState(initial = emptyList())
     val downloadInfo = downloads.find { it.url == video.url }
     val downloadState = when {
         downloadInfo == null -> DownloadButtonState.Idle
@@ -803,6 +806,9 @@ private fun CurrentVideoOptionsSheet(
             else viewModel.addToPlaylist(video, playlistId)
         },
         onAddToQueue = { viewModel.addToQueue(video) },
+        isInQueue = queue.any { it.url == video.url },
+        isCurrentlyPlaying = isCurrentlyPlaying,
+        onRemoveFromQueue = { viewModel.removeQueueItemUrl(video.url) },
         downloadState = downloadState,
         isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),

@@ -26,6 +26,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +38,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.database.dao.NotificationDao
 import com.tsutsen.platformplayer.core.database.entity.NotificationEntity
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -85,6 +90,8 @@ fun NotificationsScreen(
     val queue by playerViewModel.queue.collectAsState(initial = emptyList())
     val playerUi by playerViewModel.uiState.collectAsState()
     val playerLoaded = playerUi as? com.tsutsen.platformplayer.feature.player.impl.PlayerUiState.Loaded
+    // Long-press on a queue card → the shared video options sheet.
+    var sheetVideo by remember { mutableStateOf<ContentItem?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         AppHeader(
@@ -117,8 +124,25 @@ fun NotificationsScreen(
             onPlay = { index -> playerViewModel.playQueueItem(index) },
             onRemove = { url -> playerViewModel.removeQueueItemUrl(url) },
             onMove = { from, to -> playerViewModel.moveQueueItem(from, to) },
+            onLongClick = { video -> sheetVideo = video },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
+
+        // Long-press sheet for the queue cards (same host as every other
+        // video card in the app). "Go to channel" is hidden: this screen
+        // has no navigation target.
+        sheetVideo?.let { video ->
+            com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost(
+                video = video.toVideoCard(authorUrl = null),
+                onDismiss = { sheetVideo = null },
+                onPlay = {
+                    playerViewModel.play(video.url)
+                    sheetVideo = null
+                },
+                onGoToChannel = {},
+                currentVideoUrl = playerLoaded?.currentVideo?.url,
+            )
+        }
 
         if (notifications.isEmpty()) {
             Box(
@@ -156,6 +180,19 @@ fun NotificationsScreen(
         }
     }
 }
+
+private fun ContentItem.toVideoCard(authorUrl: String? = this.author?.url): VideoCard =
+    VideoCard(
+        id = id,
+        title = title,
+        thumbnailUrl = thumbnailUrl,
+        author = author?.name,
+        authorUrl = authorUrl,
+        durationMs = durationMs,
+        viewCount = viewCount,
+        publishedAt = publishedAt,
+        url = url,
+    )
 
 @Composable
 private fun NotificationRow(

@@ -43,6 +43,14 @@ class VideoOptionsViewModel
         /** One-shot feedback for download failures (shown as a toast). */
         val downloadMessage: StateFlow<String?> = _downloadMessage
 
+        /** Live playback queue (drives the sheet's queue tile). */
+        val queue: StateFlow<List<ContentItem>>
+            get() = playbackQueueRepository.queue
+
+        fun removeFromQueue(url: String) {
+            playbackQueueRepository.remove(url)
+        }
+
         fun consumeDownloadMessage() {
             _downloadMessage.value = null
         }

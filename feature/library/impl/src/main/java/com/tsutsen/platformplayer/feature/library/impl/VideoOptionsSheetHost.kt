@@ -34,6 +34,9 @@ fun VideoOptionsSheetHost(
     onDismiss: () -> Unit,
     onPlay: () -> Unit,
     onGoToChannel: (String) -> Unit,
+    // The currently playing video's URL (null when unknown): its queue
+    // tile shows "Now playing" and is disabled.
+    currentVideoUrl: String? = null,
 ) {
     val viewModel: VideoOptionsViewModel = hiltViewModel()
     val savedTypes by viewModel.savedTypes(video.url).collectAsState(initial = emptySet())
@@ -45,6 +48,7 @@ fun VideoOptionsSheetHost(
     val containedPlaylists by viewModel
         .playlistsContaining(video.url)
         .collectAsState(initial = emptySet())
+    val queue by viewModel.queue.collectAsState(initial = emptyList())
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
 
     // One-shot feedback for download failures as a system toast (success
@@ -94,6 +98,9 @@ fun VideoOptionsSheetHost(
             viewModel.addToQueue(video)
             onDismiss()
         },
+        isInQueue = queue.any { it.url == video.url },
+        isCurrentlyPlaying = currentVideoUrl != null && currentVideoUrl == video.url,
+        onRemoveFromQueue = { viewModel.removeFromQueue(video.url) },
         onTogglePlaylist = { playlistId, checked ->
             viewModel.togglePlaylist(playlistId, checked, video)
         },

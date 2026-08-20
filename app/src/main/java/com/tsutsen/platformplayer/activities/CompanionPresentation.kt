@@ -361,6 +361,8 @@ private fun CompanionContent(
                         downloadsRepository = downloadsRepository,
                         playbackQueueRepository = playbackQueueRepository,
                         scope = scope,
+                        queue = queue,
+                        currentVideoUrl = playerState.currentVideo?.url,
                     )
                 }
             }
@@ -457,6 +459,7 @@ private fun CompanionQueueTabContent(
     onPlayItem: (Int) -> Unit,
     onRemove: (String) -> Unit,
     onMove: (Int, Int) -> Unit,
+    onLongClick: (ContentItem) -> Unit,
 ) {
     // Same horizontal component as the Feed queue card on the main screen.
     Box(
@@ -471,6 +474,7 @@ private fun CompanionQueueTabContent(
             onPlay = onPlayItem,
             onRemove = onRemove,
             onMove = onMove,
+            onLongClick = onLongClick,
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -554,6 +558,21 @@ private fun CompanionVideoPage(
                             onPlayItem = onQueuePlay,
                             onRemove = onQueueRemove,
                             onMove = onQueueMove,
+                            onLongClick = { item ->
+                                onLongClick(
+                                    CoreVideoCard(
+                                        id = item.id,
+                                        title = item.title,
+                                        thumbnailUrl = item.thumbnailUrl,
+                                        author = item.author?.name,
+                                        authorUrl = item.author?.url,
+                                        durationMs = item.durationMs,
+                                        viewCount = item.viewCount,
+                                        publishedAt = item.publishedAt,
+                                        url = item.url,
+                                    ),
+                                )
+                            },
                         )
                     } else if (selectedTab == 1 && chapters.isEmpty()) {
                         // Centre the empty state in the whole tab area — a
@@ -1044,6 +1063,8 @@ private fun CompanionVideoOptionsSheet(
     downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
     playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
     scope: kotlinx.coroutines.CoroutineScope,
+    queue: List<ContentItem> = emptyList(),
+    currentVideoUrl: String? = null,
 ) {
     val savedTypes by libraryRepository.observeSavedTypes(card.url).collectAsState(initial = emptySet())
     val playlists by libraryRepository.playlists.collectAsState(initial = emptyList())
@@ -1102,6 +1123,11 @@ private fun CompanionVideoOptionsSheet(
         onAddToQueue = {
             playbackQueueRepository.add(card.toContentItem())
             onDismiss()
+        },
+        isInQueue = queue.any { it.url == card.url },
+        isCurrentlyPlaying = currentVideoUrl != null && currentVideoUrl == card.url,
+        onRemoveFromQueue = {
+            scope.launch { playbackQueueRepository.remove(card.url) }
         },
         containedPlaylistIds = containedPlaylists,
         downloadState = if (downloading) DownloadButtonState.Downloading(0f) else DownloadButtonState.Idle,

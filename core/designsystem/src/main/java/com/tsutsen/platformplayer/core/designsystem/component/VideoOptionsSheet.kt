@@ -86,6 +86,12 @@ fun VideoOptionsSheet(
     onDownload: () -> Unit,
     onAddToPlaylist: (Long?) -> Unit,
     onAddToQueue: () -> Unit = {},
+    // Queue state: the tile becomes a highlighted "Remove from queue" when
+    // the video is already queued, and a dimmed "Now playing" when it is
+    // the current video.
+    isInQueue: Boolean = false,
+    isCurrentlyPlaying: Boolean = false,
+    onRemoveFromQueue: () -> Unit = {},
     downloadState: DownloadButtonState = DownloadButtonState.Idle,
     isWatchLaterSaved: Boolean = false,
     isLikedSaved: Boolean = false,
@@ -240,9 +246,19 @@ fun VideoOptionsSheet(
                 )
                 add(
                     OptionTile(
-                        label = "Add to queue",
+                        label =
+                            when {
+                                isCurrentlyPlaying -> "Now playing"
+                                isInQueue -> "Remove from queue"
+                                else -> "Add to queue"
+                            },
                         icon = Icons.Filled.QueueMusic,
-                        onClick = onAddToQueue,
+                        tone =
+                            if (isInQueue) TileTone.Danger else TileTone.Default,
+                        disabled = isCurrentlyPlaying,
+                        onClick = {
+                            if (isInQueue) onRemoveFromQueue() else onAddToQueue()
+                        },
                     ),
                 )
                 add(
