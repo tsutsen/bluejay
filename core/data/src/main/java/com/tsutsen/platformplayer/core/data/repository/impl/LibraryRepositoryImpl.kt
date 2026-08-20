@@ -120,25 +120,22 @@ class LibraryRepositoryImpl
                 else -> MutableStateFlow<List<Card>>(emptyList())
             }
 
-        override suspend fun getLocalPlaylist(playlistId: Long): PlaylistInfo? =
-            withContext(Dispatchers.IO) {
-                playlistDao.getById(playlistId)?.let {
-                    // Real row count — the stored counter drifted on the
-                    // old videoOrder-collision path.
+        override fun observeLocalPlaylist(playlistId: Long): Flow<Pair<PlaylistInfo, List<Card>>?> =
+            combine(
+                playlistDao.observeById(playlistId),
+                playlistDao.observeVideos(playlistId),
+            ) { entity, videos ->
+                val cards: List<Card> = videos.map { it.toVideoCard() }
+                entity?.let {
                     PlaylistInfo(
                         url = "playlist:$playlistId",
                         name = it.name,
                         thumbnail = it.thumbnailUrl,
-                        videoCount = playlistDao.countVideos(playlistId),
-                    )
+                        // Real row count — the stored counter drifted on the
+                        // old videoOrder-collision path.
+                        videoCount = cards.size,
+                    ) to cards
                 }
-            }
-
-        override suspend fun getLocalPlaylistVideos(playlistId: Long): List<Card> =
-            withContext(Dispatchers.IO) {
-                playlistDao
-                    .getVideosPaginated(playlistId, Int.MAX_VALUE, 0)
-                    .map { it.toVideoCard() }
             }
 
         private fun PlaylistVideoEntity.toVideoCard(): VideoCard =

@@ -26,6 +26,9 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists WHERE id = :id")
     suspend fun getById(id: Long): PlaylistEntity?
 
+    @Query("SELECT * FROM playlists WHERE id = :id")
+    fun observeById(id: Long): Flow<PlaylistEntity?>
+
     @Query("SELECT * FROM playlists ORDER BY updatedAt DESC LIMIT :limit OFFSET :offset")
     suspend fun getPaginated(
         limit: Int,

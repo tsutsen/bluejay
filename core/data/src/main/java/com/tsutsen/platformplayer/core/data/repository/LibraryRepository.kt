@@ -21,11 +21,12 @@ interface LibraryRepository {
     /** All items for a section, newest first (used by the detail screen). */
     fun observeSectionItems(sectionId: String): Flow<List<Card>>
 
-    /** Resolves a user-created local playlist (id from "playlist:<id>" urls). */
-    suspend fun getLocalPlaylist(playlistId: Long): PlaylistInfo?
-
-    /** All videos of a local playlist, ordered by videoOrder. */
-    suspend fun getLocalPlaylistVideos(playlistId: Long): List<Card>
+    /**
+     * Reactive (info, videos) for a user-created local playlist (id from
+     * "playlist:<id>" urls), so adds/removes from the options sheet land in
+     * an open detail screen without a reload.
+     */
+    fun observeLocalPlaylist(playlistId: Long): Flow<Pair<PlaylistInfo, List<Card>>?>
 
     /** User playlists, for the "Add to playlist" sheet action. */
     val playlists: StateFlow<List<PlaylistOption>>

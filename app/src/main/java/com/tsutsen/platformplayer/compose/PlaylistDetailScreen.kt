@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -269,22 +270,31 @@ class PlaylistDetailViewModel
             if (loadedPlaylistUrl == playlistUrl) return
             loadedPlaylistUrl = playlistUrl
             _uiState.value = UiState.Loading
-            viewModelScope.launch {
-                if (playlistUrl.startsWith(LOCAL_PLAYLIST_PREFIX)) {
-                    runCatching { loadLocal(playlistUrl) }
-                        .onSuccess { _uiState.value = it }
-                        .onFailure { e ->
-                            _uiState.value = UiState.Error(e.message ?: "Failed to load playlist")
-                        }
-                } else {
-                    runCatching { playlistRepository.getPlaylist(playlistUrl) }
-                        .onSuccess { info ->
-                            _uiState.value = UiState.Loaded(info = info)
-                            loadInitialVideos()
-                        }.onFailure { e ->
-                            _uiState.value = UiState.Error(e.message ?: "Failed to load playlist")
+            if (playlistUrl.startsWith(LOCAL_PLAYLIST_PREFIX)) {
+                val id =
+                    playlistUrl.removePrefix(LOCAL_PLAYLIST_PREFIX).toLongOrNull()
+                        ?: error("Invalid local playlist url: $playlistUrl")
+                // Reactive: adds/removes from the options sheet land while
+                // the screen is open (a one-shot load went stale whenever
+                // the screen survived in the back stack).
+                viewModelScope.launch {
+                    libraryRepository
+                        .observeLocalPlaylist(id)
+                        .filterNotNull()
+                        .collect { (info, cards) ->
+                            _uiState.value = UiState.Loaded(info = info, cards = cards, hasMore = false)
                         }
                 }
+                return
+            }
+            viewModelScope.launch {
+                runCatching { playlistRepository.getPlaylist(playlistUrl) }
+                    .onSuccess { info ->
+                        _uiState.value = UiState.Loaded(info = info)
+                        loadInitialVideos()
+                    }.onFailure { e ->
+                        _uiState.value = UiState.Error(e.message ?: "Failed to load playlist")
+                    }
             }
         }
 
@@ -297,21 +307,6 @@ class PlaylistDetailViewModel
                 _uiState.value = UiState.Loading
                 loadedPlaylistUrl?.let { load(it) }
             }
-        }
-
-        /**
-         * User-created playlists live in the local database ("playlist:<id>");
-         * engine playlists (e.g. YouTube) go through the engine bridge.
-         */
-        private suspend fun loadLocal(url: String): UiState {
-            val id =
-                url.removePrefix(LOCAL_PLAYLIST_PREFIX).toLongOrNull()
-                    ?: error("Invalid local playlist url: $url")
-            val info =
-                libraryRepository.getLocalPlaylist(id)
-                    ?: error("Local playlist not found: $id")
-            val videos = libraryRepository.getLocalPlaylistVideos(id)
-            return UiState.Loaded(info = info, cards = videos, hasMore = false)
         }
 
         fun loadInitialVideos() {
