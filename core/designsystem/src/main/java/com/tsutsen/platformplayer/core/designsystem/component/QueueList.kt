@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,7 +59,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-private const val QUEUE_ROW_HEIGHT_DP = 68
+private const val QUEUE_ROW_HEIGHT_DP = 80
 private const val ANIM = 180
 
 /**
@@ -130,6 +131,11 @@ fun QueueList(
         modifier = modifier.fillMaxWidth().verticalScroll(scrollState),
     ) {
         items.forEachIndexed { index, item ->
+            // Keyed by url: reorders must NOT reset per-row state (the
+            // position-scoped remember used to reset hasAppeared on every
+            // move, hiding the row forever since LaunchedEffect(Unit)
+            // doesn't re-fire).
+            key(item.url) {
             // Entry animation only; removals animate by holding the row in
             // [removing] for one exit cycle before the data drops it.
             var hasAppeared by remember(item.url) { mutableStateOf(false) }
@@ -162,6 +168,7 @@ fun QueueList(
                         onMoveDown = { onMove(index, index + 1) },
                     )
                 }
+            }
             }
         }
     }
@@ -249,29 +256,43 @@ private fun QueueRow(
         }
         Spacer(modifier = Modifier.width(4.dp))
         // Move buttons where the drag dots were: up/down in the queue.
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             IconButton(
                 onClick = onMoveUp,
                 enabled = canMoveUp,
-                modifier = Modifier.size(32.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            RoundedCornerShape(10.dp),
+                        ),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.ExpandLess,
                     contentDescription = "Move up in queue",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(22.dp),
                 )
             }
             IconButton(
                 onClick = onMoveDown,
                 enabled = canMoveDown,
-                modifier = Modifier.size(32.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            RoundedCornerShape(10.dp),
+                        ),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.ExpandMore,
                     contentDescription = "Move down in queue",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(22.dp),
                 )
             }
         }

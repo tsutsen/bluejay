@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,7 +69,7 @@ private val ANIM = 180
 // Right-hand move-button column: its own zone so the arrows never overlap
 // the thumbnail or the text, and pressing them never triggers the card
 // swipe.
-private val HANDLE_W = 36.dp
+private val HANDLE_W = 44.dp
 
 /**
  * Horizontal queue strip. Queued cards: thumbnail, title, channel, duration
@@ -190,6 +191,10 @@ private fun QueuedCardStrip(
         horizontalArrangement = Arrangement.spacedBy(STRIP_GAP),
     ) {
         items.forEachIndexed { index, item ->
+            // Keyed by url: reorders must NOT reset per-card state (the
+            // position-scoped remember used to reset hasAppeared on every
+            // move, hiding the card forever).
+            key(item.url) {
             FlipItem(
                 flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
             ) {
@@ -203,6 +208,7 @@ private fun QueuedCardStrip(
                     onMoveEarlier = { onMove(index, index - 1) },
                     onMoveLater = { onMove(index, index + 1) },
                 )
+            }
             }
         }
     }
@@ -378,38 +384,53 @@ private fun QueueStripItem(
             }
             // Move buttons in the handle column (where the drag dots were):
             // < earlier / > later in the queue.
-            Column(
+            Box(
                 modifier =
                     Modifier
                         .width(HANDLE_W)
                         .fillMaxSize()
                         .align(Alignment.CenterEnd),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
+                contentAlignment = Alignment.Center,
             ) {
-                IconButton(
-                    onClick = onMoveEarlier,
-                    enabled = canMoveEarlier,
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronLeft,
-                        contentDescription = "Move earlier in queue",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                IconButton(
-                    onClick = onMoveLater,
-                    enabled = canMoveLater,
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = "Move later in queue",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(
+                        onClick = onMoveEarlier,
+                        enabled = canMoveEarlier,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier =
+                            Modifier
+                                .size(40.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    RoundedCornerShape(10.dp),
+                                ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ChevronLeft,
+                            contentDescription = "Move earlier in queue",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = onMoveLater,
+                        enabled = canMoveLater,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier =
+                            Modifier
+                                .size(40.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    RoundedCornerShape(10.dp),
+                                ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ChevronRight,
+                            contentDescription = "Move later in queue",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
             }
         }
