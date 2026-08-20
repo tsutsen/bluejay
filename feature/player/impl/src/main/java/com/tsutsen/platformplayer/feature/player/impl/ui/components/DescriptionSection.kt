@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 
 /**
@@ -28,6 +29,8 @@ internal fun DescriptionSection(
     description: String,
     isExpanded: Boolean,
     onToggle: () -> Unit,
+    onTimestampClick: (Long) -> Unit,
+    onLinkClick: (String) -> Unit,
 ) {
     Card(
         modifier =
@@ -49,12 +52,14 @@ internal fun DescriptionSection(
                     .padding(12.dp),
         ) {
             if (description.isNotEmpty()) {
-                Text(
+                LinkifiedText(
                     text = description,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = if (isExpanded) Int.MAX_VALUE else 3,
                     overflow = TextOverflow.Ellipsis,
+                    onTimestampClick = onTimestampClick,
+                    onLinkClick = onLinkClick,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(

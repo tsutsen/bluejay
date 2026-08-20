@@ -94,6 +94,10 @@ fun PlayerContent(
     onLike: () -> Unit,
     onDislike: () -> Unit,
     onMore: () -> Unit,
+    isSubscribedChannel: Boolean = false,
+    onSubscribe: () -> Unit = {},
+    onTimestampClick: (Long) -> Unit = {},
+    onLinkClick: (String) -> Unit = {},
     isLoading: Boolean,
     activeProgressIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator.Progress?,
     badgeState: com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState,
@@ -374,6 +378,10 @@ fun PlayerContent(
                     onLike = onLike,
                     onDislike = onDislike,
                     onMore = onMore,
+                    isSubscribedChannel = isSubscribedChannel,
+                    onSubscribe = onSubscribe,
+                    onTimestampClick = onTimestampClick,
+                    onLinkClick = onLinkClick,
                 )
             }
         }

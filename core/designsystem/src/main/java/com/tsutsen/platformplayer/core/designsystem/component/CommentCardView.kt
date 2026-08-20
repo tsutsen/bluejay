@@ -42,6 +42,9 @@ import com.tsutsen.platformplayer.core.ui.RelativeTime
 fun CommentCardView(
     comment: CommentItem,
     modifier: Modifier = Modifier,
+    // Optional: make timestamps/links in the comment text clickable.
+    onTimestampClick: ((Long) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null,
 ) {
     // fillMaxHeight: in fixed-height strips every card fills the row, so
     // all comment cards are the same height regardless of text length.
@@ -109,14 +112,27 @@ fun CommentCardView(
             Spacer(Modifier.height(8.dp))
             // weight(1f): the text box eats the leftover height (text stays
             // top-aligned), which pins the like row to the card's bottom.
-            Text(
-                text = comment.text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            if (onTimestampClick != null || onLinkClick != null) {
+                LinkifiedText(
+                    text = comment.text,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                    onTimestampClick = onTimestampClick ?: {},
+                    onLinkClick = onLinkClick ?: {},
+                )
+            } else {
+                Text(
+                    text = comment.text,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(

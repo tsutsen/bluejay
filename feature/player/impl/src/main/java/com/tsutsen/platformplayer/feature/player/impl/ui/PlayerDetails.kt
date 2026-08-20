@@ -40,6 +40,10 @@ internal fun PlayerDetails(
     onLike: () -> Unit,
     onDislike: () -> Unit,
     onMore: () -> Unit,
+    isSubscribedChannel: Boolean = false,
+    onSubscribe: () -> Unit = {},
+    onTimestampClick: (Long) -> Unit = {},
+    onLinkClick: (String) -> Unit = {},
 ) {
     LazyColumn(
         state = scrollState,
@@ -68,7 +72,8 @@ internal fun PlayerDetails(
                 isLiked = state.isLiked,
                 dislikeCount = video?.dislikeCount,
                 isDisliked = state.isDisliked,
-                onSubscribe = { /* TODO */ },
+                isSubscribed = isSubscribedChannel,
+                onSubscribe = onSubscribe,
                 onLike = onLike,
                 onDislike = onDislike,
                 onMore = onMore,
@@ -80,6 +85,8 @@ internal fun PlayerDetails(
                 description = state.currentVideo?.description ?: "",
                 isExpanded = expandedDescription,
                 onToggle = onToggleDescription,
+                onTimestampClick = onTimestampClick,
+                onLinkClick = onLinkClick,
             )
         }
         val visibleTabs =
@@ -110,6 +117,8 @@ internal fun PlayerDetails(
                         likeCount = comment.likeCount.toInt(),
                         authorThumbnailUrl = comment.authorThumbnailUrl,
                         modifier = Modifier.padding(horizontal = 16.dp),
+                        onTimestampClick = onTimestampClick,
+                        onLinkClick = onLinkClick,
                     )
                     if (index < state.comments.lastIndex) {
                         Spacer(modifier = Modifier.height(12.dp))

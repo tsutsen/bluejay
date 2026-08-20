@@ -1,8 +1,11 @@
 package com.tsutsen.platformplayer.activities
 
 import android.content.Context
+import android.content.Intent
 import android.app.Presentation
+import android.net.Uri
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import android.view.ViewGroup
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -40,6 +43,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -78,6 +82,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -442,6 +447,7 @@ private fun CompanionVideoPage(
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -518,7 +524,22 @@ private fun CompanionVideoPage(
                         }
                     }
                     items(comments, key = { it.id }) { comment ->
-                        CommentCardView(comment = comment)
+                        CommentCardView(
+                            comment = comment,
+                            onTimestampClick = { ms ->
+                                val dur = playerState.durationMs
+                                val target =
+                                    if (dur > 0) ms.coerceIn(0, dur - 500) else ms.coerceAtLeast(0)
+                                onSeekTo(target)
+                            },
+                            onLinkClick = { url ->
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    )
+                                }
+                            },
+                        )
                     }
                 } else if (selectedTab == 1) {
                     if (chapters.isEmpty()) {
@@ -701,8 +722,9 @@ private fun CompanionLibraryPage(
 }
 
 /**
- * One corner slot: section header + a horizontal pager showing one card
- * per page. Empty slots show a placeholder.
+ * One corner slot: section header (with current/total page position) + a
+ * horizontal pager. Pages are slightly narrower than the slot so the next
+ * item peeks in, and edge fades let cards dissolve at the slot's edges.
  */
 @Composable
 private fun LibrarySlotPager(
@@ -711,69 +733,118 @@ private fun LibrarySlotPager(
     onLongClick: (CoreVideoCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val cardColor = MaterialTheme.colorScheme.surfaceContainer
+    // 1-based index of the page currently in the centre.
+    val currentPage = remember(section) { mutableIntStateOf(1) }
     Card(
         modifier = modifier.padding(4.dp),
         shape = RoundedCornerShape(Tokens.RadiusMd),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = section?.title ?: "Empty",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            val total = section?.totalCount ?: 0
-            if (total > 0) {
-                Spacer(Modifier.width(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "$total",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = section?.title ?: "Empty",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
-            }
-        }
-        val cards = section?.items.orEmpty()
-        if (cards.isEmpty()) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(Tokens.RadiusMd))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "Nothing here yet",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            // key() recreates the pager (and its state) when the list
-            // identity changes (e.g. empty -> loaded).
-            key(cards) {
-                val state = rememberPagerState(pageCount = { cards.size })
-                HorizontalPager(
-                    state = state,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    pageSpacing = 8.dp,
-                ) { index ->
-                    PagerCard(card = cards[index], onClick = onPlay, onLongClick = onLongClick)
+                val total = section?.totalCount ?: 0
+                if (total > 0) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "${currentPage.value.coerceIn(1, total)}/$total",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-        }
+            val cards = section?.items.orEmpty()
+            if (cards.isEmpty()) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(Tokens.RadiusMd))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Nothing here yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    // key() recreates the pager (and its state) when the list
+                    // identity changes (e.g. empty -> loaded).
+                    key(cards) {
+                        val state = rememberPagerState(pageCount = { cards.size })
+                        LaunchedEffect(state) {
+                            snapshotFlow { state.currentPage }
+                                .distinctUntilChanged()
+                                .collect { currentPage.value = it + 1 }
+                        }
+                        HorizontalPager(
+                            state = state,
+                            modifier = Modifier.fillMaxSize(),
+                            pageSpacing = 8.dp,
+                            // Fixed page width narrower than the viewport:
+                            // pages centre themselves, so ~20dp of each
+                            // neighbour peeks in at the edges.
+                            pageSize = PageSize.Fixed(maxWidth - 40.dp),
+                        ) { index ->
+                            PagerCard(
+                                card = cards[index],
+                                onClick = onPlay,
+                                onLongClick = onLongClick,
+                            )
+                        }
+                    }
+                    // Edge fades: the slot's card colour → transparent, so
+                    // peeked neighbours dissolve into the tile's edges.
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxHeight()
+                                .width(36.dp)
+                                .align(Alignment.CenterStart)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors =
+                                            listOf(
+                                                cardColor,
+                                                cardColor.copy(alpha = 0f),
+                                            )
+                                    )
+                                )
+                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxHeight()
+                                .width(36.dp)
+                                .align(Alignment.CenterEnd)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors =
+                                            listOf(
+                                                cardColor.copy(alpha = 0f),
+                                                cardColor,
+                                            )
+                                    )
+                                )
+                    )
+                }
+            }
         }
     }
 }

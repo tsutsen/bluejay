@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +46,7 @@ internal fun ChannelRow(
     isLiked: Boolean,
     dislikeCount: Long?,
     isDisliked: Boolean,
+    isSubscribed: Boolean = false,
     onSubscribe: () -> Unit,
     onLike: () -> Unit,
     onDislike: () -> Unit,
@@ -120,15 +122,29 @@ internal fun ChannelRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Button(
-            onClick = onSubscribe,
-            modifier = Modifier.height(36.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-        ) {
-            Text(
-                text = "Subscribe",
-                style = MaterialTheme.typography.labelMedium,
-            )
+        // Subscribed state is visibly different: tonal outline vs filled.
+        if (isSubscribed) {
+            OutlinedButton(
+                onClick = onSubscribe,
+                modifier = Modifier.height(36.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+            ) {
+                Text(
+                    text = "Subscribed",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        } else {
+            Button(
+                onClick = onSubscribe,
+                modifier = Modifier.height(36.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+            ) {
+                Text(
+                    text = "Subscribe",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))

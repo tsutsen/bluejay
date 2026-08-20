@@ -1,7 +1,9 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.net.Uri
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -13,8 +15,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +46,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.Player
+import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
+import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.DownloadButtonState
+import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.Job
@@ -89,6 +98,15 @@ fun PlayerView(
     var badgeState by remember { mutableStateOf(GestureBadgeState()) }
     var badgeKeepAliveCounter by remember { mutableStateOf(0) }
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
+    // Three-dot menu → the video options sheet (same as long-press on cards).
+    var showVideoOptions by remember { mutableStateOf(false) }
+    // Stable callbacks — captured once per text by LinkifiedText's remember.
+    val onTimestampClick: (Long) -> Unit = remember { { ms -> viewModel.seekToClamped(ms) } }
+    val onLinkClick: (String) -> Unit = remember(context) {
+        { url: String ->
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        }
+    }
 
     var controlsVisible by remember { mutableStateOf(true) }
     var hideControlsJob by remember { mutableStateOf<Job?>(null) }
@@ -578,7 +596,11 @@ fun PlayerView(
                         onChannelClick = onChannelClick,
                         onLike = { viewModel.toggleLike(state.isLiked) },
                         onDislike = { viewModel.toggleDislike(state.isDisliked) },
-                        onMore = { showOptionsModal = true },
+                        onMore = { showVideoOptions = true },
+                        isSubscribedChannel = state.isSubscribedChannel,
+                        onSubscribe = { viewModel.subscribeChannel() },
+                        onTimestampClick = onTimestampClick,
+                        onLinkClick = onLinkClick,
                         onTabSelected = { selectedTab = it },
                         onRecommendedClick = { video -> viewModel.play(video) },
                         gridColumns = gridColumns,
@@ -668,6 +690,19 @@ fun PlayerView(
                         onDismiss = { showChapters = false },
                     )
                 }
+
+                // Three-dot menu: the video options sheet (same sheet as
+                // long-press on video cards), bound to the current video.
+                if (showVideoOptions) {
+                    state.currentVideo?.let { video ->
+                        CurrentVideoOptionsSheet(
+                            video = video,
+                            viewModel = viewModel,
+                            onDismiss = { showVideoOptions = false },
+                            onGoToChannel = onChannelClick,
+                        )
+                    }
+                }
             }
         }
 
@@ -683,5 +718,101 @@ fun PlayerView(
                 )
             }
         }
+    }
+}
+
+/**
+ * Long-press-style options sheet for the currently playing video. Same
+ * [VideoOptionsSheet] the library uses for card long-presses, with live
+ * saved/download state from [PlayerViewModel].
+ */
+@Composable
+private fun CurrentVideoOptionsSheet(
+    video: ContentItem,
+    viewModel: PlayerViewModel,
+    onDismiss: () -> Unit,
+    onGoToChannel: (String) -> Unit,
+) {
+    val savedTypes by viewModel.savedTypes.collectAsState(initial = emptySet())
+    val playlists by viewModel.playlists.collectAsState(initial = emptyList())
+    val contained by viewModel.containedPlaylists.collectAsState(initial = emptySet())
+    val downloads by viewModel.downloads.collectAsState(initial = emptyList())
+    val downloadInfo = downloads.find { it.url == video.url }
+    val downloadState = when {
+        downloadInfo == null -> DownloadButtonState.Idle
+        downloadInfo.done -> DownloadButtonState.Downloaded
+        else -> DownloadButtonState.Downloading(downloadInfo.progress)
+    }
+    var showNewPlaylistDialog by remember { mutableStateOf(false) }
+
+    VideoOptionsSheet(
+        url = video.url,
+        onDismiss = onDismiss,
+        onPlay = onDismiss,
+        onGoToChannel = onGoToChannel,
+        onToggleWatchLater = {
+            viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
+        },
+        onToggleLiked = {
+            viewModel.toggleLike(savedTypes.contains(SavedVideoType.LIKED))
+        },
+        onToggleFavourite = {
+            viewModel.toggleFavourite(savedTypes.contains(SavedVideoType.FAVOURITE))
+        },
+        onDownload = {
+            when (downloadState) {
+                is DownloadButtonState.Idle -> viewModel.startDownload()
+                is DownloadButtonState.Downloading -> viewModel.cancelDownload()
+                is DownloadButtonState.Downloaded -> viewModel.deleteDownload()
+                is DownloadButtonState.Starting -> Unit
+            }
+        },
+        onAddToPlaylist = { playlistId ->
+            if (playlistId == null) showNewPlaylistDialog = true
+        },
+        downloadState = downloadState,
+        isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
+        isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),
+        isFavouriteSaved = savedTypes.contains(SavedVideoType.FAVOURITE),
+        playlists = playlists,
+        authorUrl = video.author?.url,
+        title = video.title,
+        durationMs = video.durationMs,
+        viewCount = video.viewCount,
+        publishedAt = video.publishedAt,
+        containedPlaylistIds = contained,
+        onTogglePlaylist = { id, checked ->
+            viewModel.togglePlaylistMembership(id, checked)
+        },
+    )
+
+    if (showNewPlaylistDialog) {
+        var name by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showNewPlaylistDialog = false },
+            title = { Text("New playlist") },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Playlist name") },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.createPlaylistAndAdd(name)
+                        showNewPlaylistDialog = false
+                        onDismiss()
+                    },
+                    enabled = name.isNotBlank(),
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewPlaylistDialog = false }) { Text("Cancel") }
+            },
+        )
     }
 }

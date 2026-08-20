@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 
@@ -45,6 +46,8 @@ internal fun CommentCard(
     likeCount: Int,
     authorThumbnailUrl: String? = null,
     modifier: Modifier = Modifier,
+    onTimestampClick: ((Long) -> Unit)? = null,
+    onLinkClick: ((String) -> Unit)? = null,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -104,11 +107,22 @@ internal fun CommentCard(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            // Timestamps/links become clickable when the host provides handlers.
+            if (onTimestampClick != null || onLinkClick != null) {
+                LinkifiedText(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    onTimestampClick = onTimestampClick ?: {},
+                    onLinkClick = onLinkClick ?: {},
+                )
+            } else {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             // Like label pinned to the right side of the card.
             Row(

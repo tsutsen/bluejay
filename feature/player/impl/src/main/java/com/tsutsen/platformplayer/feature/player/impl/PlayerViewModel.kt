@@ -2,15 +2,19 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
+import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.PlayerState
+import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.model.VideoChapter
@@ -54,6 +58,7 @@ sealed interface PlayerUiState {
         val showRecommended: Boolean = true,
         val isLiked: Boolean = false,
         val isDisliked: Boolean = false,
+        val isSubscribedChannel: Boolean = false,
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
@@ -76,6 +81,8 @@ class PlayerViewModel
         private val settingsRepository: SettingsRepository,
         private val historyTracker: HistoryTracker,
         private val libraryRepository: LibraryRepository,
+        private val channelRepository: ChannelRepository,
+        private val downloadsRepository: DownloadsRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
         val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -85,6 +92,25 @@ class PlayerViewModel
         private var currentSavedTypes: Set<SavedVideoType> = emptySet()
         private var savedTypesUrl: String? = null
         private var savedTypesJob: Job? = null
+
+        /** Live saved types as a flow — for the options sheet host. */
+        private val _savedTypes = MutableStateFlow<Set<SavedVideoType>>(emptySet())
+        val savedTypes: StateFlow<Set<SavedVideoType>> = _savedTypes.asStateFlow()
+
+        /** Playlists containing the current video (options sheet checkboxes). */
+        private val _containedPlaylists = MutableStateFlow<Set<Long>>(emptySet())
+        val containedPlaylists: StateFlow<Set<Long>> = _containedPlaylists.asStateFlow()
+        private var containedUrl: String? = null
+        private var containedJob: Job? = null
+
+        /** Channel subscription state for the current author (lazy-fetched). */
+        @Volatile
+        private var isSubscribedUrl: String? = null
+        @Volatile
+        private var isSubscribedCache: Boolean = false
+
+        val playlists: StateFlow<List<PlaylistOption>> = libraryRepository.playlists
+        val downloads: StateFlow<List<DownloadInfo>> = downloadsRepository.downloads
 
         /** Live grid columns from the single config — grids reflow when it changes. */
         val gridColumns: StateFlow<Int> =
@@ -133,6 +159,9 @@ class PlayerViewModel
                                 showComments = settingsRepository.preferences.value.showComments,
                                 isLiked = SavedVideoType.LIKED in currentSavedTypes,
                                 isDisliked = SavedVideoType.DISLIKED in currentSavedTypes,
+                                isSubscribedChannel = isSubscribedUrl?.let {
+                                    isSubscribedCache
+                                } ?: false,
                                 showRecommended =
                                     settingsRepository.preferences.value
                                         .showRecommendedVideos,
@@ -151,6 +180,7 @@ class PlayerViewModel
                                         .observeSavedTypes(video.url)
                                         .collect { types ->
                                             currentSavedTypes = types
+                                            _savedTypes.value = types
                                             _uiState.update {
                                                 (it as? PlayerUiState.Loaded)?.let {
                                                     s ->
@@ -164,6 +194,40 @@ class PlayerViewModel
                                             }
                                         }
                                 }
+                        }
+                        // Playlists containing this video (options sheet).
+                        if (video != null && video.url != containedUrl) {
+                            containedUrl = video.url
+                            containedJob?.cancel()
+                            containedJob =
+                                viewModelScope.launch {
+                                    libraryRepository
+                                        .observePlaylistsContaining(video.url)
+                                        .collect { ids ->
+                                            _containedPlaylists.value = ids
+                                        }
+                                }
+                        }
+                        // Channel subscription state for the current author.
+                        val channelUrl = video?.author?.url?.takeIf { it.isNotEmpty() }
+                        if (channelUrl != null && channelUrl != isSubscribedUrl) {
+                            isSubscribedUrl = channelUrl
+                            isSubscribedCache = false
+                            viewModelScope.launch {
+                                val subscribed =
+                                    withContext(Dispatchers.IO) {
+                                        channelRepository.isSubscribed(channelUrl)
+                                    }
+                                if (isSubscribedUrl == channelUrl) {
+                                    isSubscribedCache = subscribed
+                                    _uiState.update {
+                                        (it as? PlayerUiState.Loaded)?.copy(
+                                            isSubscribedChannel = subscribed
+                                        )
+                                            ?: it
+                                    }
+                                }
+                            }
                         }
                         if (video != null) {
                             historyTracker.trackPlayback(
@@ -194,14 +258,100 @@ class PlayerViewModel
         toggleSaveType(SavedVideoType.DISLIKED, disliked)
     }
 
+    /** Toggle the current video in/out of the library's Watch Later list. */
+    fun toggleWatchLater(saved: Boolean) {
+        toggleSaveType(SavedVideoType.WATCH_LATER, saved)
+    }
+
+    /** Toggle the current video in/out of the library's Favourites list. */
+    fun toggleFavourite(saved: Boolean) {
+        toggleSaveType(SavedVideoType.FAVOURITE, saved)
+    }
+
+    /**
+     * Toggle the current video in/out of a saved list. Like and dislike are
+     * mutually exclusive: adding one removes the other.
+     */
     private fun toggleSaveType(type: SavedVideoType, isSaved: Boolean) {
         viewModelScope.launch {
             val video = playerRepository.playerState.value.currentVideo ?: return@launch
             if (isSaved) {
                 libraryRepository.removeSavedVideo(type, video.url)
             } else {
+                when (type) {
+                    SavedVideoType.LIKED ->
+                        libraryRepository.removeSavedVideo(
+                            SavedVideoType.DISLIKED,
+                            video.url
+                        )
+                    SavedVideoType.DISLIKED ->
+                        libraryRepository.removeSavedVideo(SavedVideoType.LIKED, video.url)
+                    else -> Unit
+                }
                 libraryRepository.saveVideo(type, video.toVideoCard())
             }
+        }
+    }
+
+    /** Subscribe/unsubscribe the current video's channel. */
+    fun subscribeChannel() {
+        viewModelScope.launch {
+            val url = playerRepository.playerState.value.currentVideo?.author?.url
+            if (url.isNullOrEmpty()) return@launch
+            val subscribed =
+                withContext(Dispatchers.IO) {
+                    channelRepository.toggleSubscription(url)
+                }
+            isSubscribedCache = subscribed
+            _uiState.update {
+                (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = subscribed) ?: it
+            }
+        }
+    }
+
+    /** Start downloading the current video. */
+    fun startDownload() {
+        val url = playerRepository.playerState.value.currentVideo?.url ?: return
+        viewModelScope.launch { downloadsRepository.startDownload(url) }
+    }
+
+    /** Cancel the current video's download. */
+    fun cancelDownload() {
+        val url = playerRepository.playerState.value.currentVideo?.url ?: return
+        viewModelScope.launch { downloadsRepository.cancelDownload(url) }
+    }
+
+    /** Delete the current video's downloaded copy. */
+    fun deleteDownload() {
+        val url = playerRepository.playerState.value.currentVideo?.url ?: return
+        viewModelScope.launch { downloadsRepository.deleteDownload(url) }
+    }
+
+    /** Seek to [positionMs], clamped to the current video's duration. */
+    fun seekToClamped(positionMs: Long) {
+        val duration = playerRepository.playerState.value.durationMs
+        val target = if (duration > 0) positionMs.coerceIn(0, duration - 500) else positionMs.coerceAtLeast(0)
+        seekTo(target)
+    }
+
+    /** Add/remove the current video in/out of a local playlist (sheet checkbox). */
+    fun togglePlaylistMembership(playlistId: Long, add: Boolean) {
+        viewModelScope.launch {
+            val video = playerRepository.playerState.value.currentVideo ?: return@launch
+            if (add) {
+                libraryRepository.addVideoToPlaylist(playlistId, video.toVideoCard())
+            } else {
+                libraryRepository.removeVideoFromPlaylist(playlistId, video.url)
+            }
+        }
+    }
+
+    /** Create a new playlist and add the current video to it. */
+    fun createPlaylistAndAdd(name: String) {
+        viewModelScope.launch {
+            val video = playerRepository.playerState.value.currentVideo ?: return@launch
+            val id = libraryRepository.createPlaylist(name)
+            libraryRepository.addVideoToPlaylist(id, video.toVideoCard())
         }
     }
 
