@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -34,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -181,7 +184,9 @@ fun AppNavigationBar(
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
 ) {
-    NavigationBar {
+    // Transparent: the surface (rounded card / morphed rectangle) is drawn by
+    // the [NavigationSurface] wrapper in [AppLayout].
+    NavigationBar(containerColor = Color.Transparent) {
         items.forEach { item ->
             NavigationBarItem(
                 selected = item.key == currentDestination,
@@ -195,6 +200,40 @@ fun AppNavigationBar(
                 label = { Text(item.label) },
             )
         }
+    }
+}
+
+/**
+ * Animated surface behind the navigation chrome. Normally a rounded card
+ * (24dp corners, 8dp margins); morphs to a flat edge-to-edge rectangle while
+ * the video page is in normal mode, merging with the player area.
+ */
+@Composable
+private fun NavigationSurface(
+    navMorphed: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val corner by
+        animateDpAsState(
+            targetValue = if (navMorphed) 0.dp else 24.dp,
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navSurfaceCorner",
+        )
+    val margin by
+        animateDpAsState(
+            targetValue = if (navMorphed) 0.dp else 8.dp,
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navSurfaceMargin",
+        )
+    Box(
+        modifier =
+            modifier
+                .padding(margin)
+                .clip(RoundedCornerShape(corner))
+                .background(MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        content()
     }
 }
 
@@ -235,6 +274,7 @@ fun AppLayout(
     navigationContent: @Composable () -> Unit,
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    navMorphed: Boolean = false,
 ) {
     // Status-bar offset for the content area (edge-to-edge window): ease the
     // content down 28dp when the app chrome is visible, and to 0 when the
@@ -272,7 +312,12 @@ fun AppLayout(
                                 .width(railWidth)
                                 .graphicsLayer { alpha = railAlpha },
                     ) {
-                        navigationContent()
+                        NavigationSurface(
+                            navMorphed = navMorphed,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            navigationContent()
+                        }
                     }
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset)) {
@@ -290,7 +335,12 @@ fun AppLayout(
                     enter = fadeIn(animationSpec = tween(300)),
                     exit = fadeOut(animationSpec = tween(300)),
                 ) {
-                    navigationContent()
+                    NavigationSurface(
+                        navMorphed = navMorphed,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        navigationContent()
+                    }
                 }
             }
         }

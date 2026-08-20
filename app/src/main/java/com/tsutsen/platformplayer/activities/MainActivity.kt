@@ -240,8 +240,17 @@ private fun bluejayMainActivityContent(
 
     val showNavChrome = !playerState.isFullscreen
 
+    // The video page in normal (inline) mode merges the nav chrome into the
+    // player area: the chrome surface morphs from a rounded card into a flat
+    // edge-to-edge rectangle (see NavigationSurface in AppLayout).
+    val navMorphed =
+        playerState.currentVideo != null &&
+            !playerState.isFullscreen &&
+            !playerState.isMinimized
+
     AppLayout(
         config = config.copy(showNavigation = showNavChrome),
+        navMorphed = navMorphed,
         navigationContent = {
             AppNavigationChrome(
                 currentDestination =
