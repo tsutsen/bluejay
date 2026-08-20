@@ -5,6 +5,7 @@ import com.tsutsen.platformplayer.core.data.repository.ChannelContentPage
 import com.tsutsen.platformplayer.core.data.repository.PlaylistRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistInfo
+import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,8 +42,14 @@ class EnginePlaylistRepositoryImpl
             withContext(Dispatchers.IO) {
                 // Fresh flow per open: a cached flow keeps the previous
                 // visit's pager position and would start mid-window.
-                val flow = newVideoFlow(url)
-                videoFlows[url] = flow
+                val flow = try {
+                    newVideoFlow(url).also { videoFlows[url] = it }
+                } catch (e: Exception) {
+                    // Engine throws ScriptException when the source plugin's
+                    // HTTP call fails (e.g. network stall -> 408).
+                    Logger.w("PlaylistRepo", "loadInitialVideos failed for $url", e)
+                    return@withContext ChannelContentPage(emptyList(), hasMore = false, error = e.message ?: "Failed to load playlist")
+                }
                 flow.loadInitial()
                 ChannelContentPage(flow.items, flow.hasMore, flow.error)
             }

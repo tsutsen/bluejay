@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.data.repository.ChannelContentPage
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelInfo
+import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
@@ -57,8 +58,14 @@ class EngineChannelRepositoryImpl
             if (StateSubscriptions.instance.isSubscribed(url)) {
                 StateSubscriptions.instance.removeSubscription(url, isUserAction = true)
             } else {
-                val channel = StatePlatform.instance.getChannel(url).await()
-                StateSubscriptions.instance.addSubscription(channel)
+                try {
+                    val channel = StatePlatform.instance.getChannel(url).await()
+                    StateSubscriptions.instance.addSubscription(channel)
+                } catch (e: Exception) {
+                    // Unsubscribing never fails; subscribing needs a live
+                    // channel fetch — surface it as a no-op, not a crash.
+                    Logger.w("ChannelRepo", "subscribe failed for $url", e)
+                }
             }
             return StateSubscriptions.instance.isSubscribed(url)
         }
@@ -70,8 +77,15 @@ class EngineChannelRepositoryImpl
             withContext(Dispatchers.IO) {
                 // Fresh flow per open: a cached flow keeps the previous
                 // visit's pager position and would start mid-window.
-                val flow = newContentFlow(url)
-                contentFlows[url] = flow
+                val flow = try {
+                    newContentFlow(url).also { contentFlows[url] = it }
+                } catch (e: Exception) {
+                    // The engine throws ScriptException when the source
+                    // plugin's HTTP call fails (e.g. network stall -> 408).
+                    // Surface it as a page error, not a crash.
+                    Logger.w("ChannelRepo", "loadInitialContents failed for $url", e)
+                    return@withContext ChannelContentPage(emptyList(), hasMore = false, error = e.message ?: "Failed to load channel contents")
+                }
                 val cards = flow.loadInitial()
                 ChannelContentPage(cards, flow.hasMore, flow.error)
             }
@@ -85,8 +99,12 @@ class EngineChannelRepositoryImpl
 
         override suspend fun loadPlaylists(url: String): List<Card> =
             withContext(Dispatchers.IO) {
-                val flow = newPlaylistFlow(url)
-                playlistFlows[url] = flow
+                val flow = try {
+                    newPlaylistFlow(url).also { playlistFlows[url] = it }
+                } catch (e: Exception) {
+                    Logger.w("ChannelRepo", "loadPlaylists failed for $url", e)
+                    return@withContext emptyList()
+                }
                 flow.loadInitial()
                 flow.items
             }
