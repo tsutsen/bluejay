@@ -116,8 +116,10 @@ class PlayerViewModel
             playbackQueueRepository.playAt(index)
         }
 
-        fun removeQueueItem(index: Int) {
-            playbackQueueRepository.removeAt(index)
+        /** Remove [url] from the queue (URL-based so in-flight delete
+         * animations never act on a stale index). */
+        fun removeQueueItemUrl(url: String) {
+            playbackQueueRepository.remove(url)
         }
 
         fun moveQueueItem(from: Int, to: Int) {

@@ -49,13 +49,9 @@ class PlaybackQueueRepositoryImpl
         }
 
         override fun add(item: ContentItem) {
-            val state = playerRepository.playerState.value
-            if (state.currentVideo == null || state.isCompleted) {
-                play(item)
-            } else {
-                // Re-adding an already-queued item moves it to the end.
-                _queue.value = _queue.value.filterNot { it.url == item.url } + item
-            }
+            // Re-adding an already-queued item moves it to the end.
+            // Adding never auto-plays — only auto-advance does.
+            _queue.value = _queue.value.filterNot { it.url == item.url } + item
         }
 
         override fun addAll(items: List<ContentItem>) {

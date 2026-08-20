@@ -13,8 +13,9 @@ interface PlaybackQueueRepository {
     val queue: StateFlow<List<ContentItem>>
 
     /**
-     * Enqueue [item]. If nothing is playing (or the current video has
-     * ended), it starts playing immediately instead of queuing.
+     * Enqueue [item]. Adding never starts playback by itself — the item
+     * waits its turn (auto-advance starts it when the current video ends).
+     * Re-adding an already-queued item moves it to the end.
      */
     fun add(item: ContentItem)
 

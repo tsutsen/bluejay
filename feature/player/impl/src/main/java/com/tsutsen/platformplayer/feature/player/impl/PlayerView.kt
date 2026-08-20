@@ -728,7 +728,7 @@ fun PlayerView(
                                 viewModel.playQueueItem(it)
                                 showQueueSheet = false
                             },
-                            onRemove = { viewModel.removeQueueItem(it) },
+                            onRemove = { url -> viewModel.removeQueueItemUrl(url) },
                             onMove = { from, to -> viewModel.moveQueueItem(from, to) },
                             modifier = Modifier.fillMaxHeight(0.7f),
                         )

@@ -101,7 +101,7 @@ import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
-import com.tsutsen.platformplayer.core.designsystem.component.QueueList
+import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
@@ -411,7 +411,7 @@ private fun CompanionContent(
                     onLongClick = onLongClick,
                     queue = queue,
                     onQueuePlay = { index -> playbackQueueRepository.playAt(index) },
-                    onQueueRemove = { index -> playbackQueueRepository.removeAt(index) },
+                    onQueueRemove = { url -> playbackQueueRepository.remove(url) },
                     onQueueMove = { from, to -> playbackQueueRepository.move(from, to) },
                 )
 
@@ -446,7 +446,7 @@ private fun CompanionContent(
 /**
  * Second-screen Queue tab: the playing video pinned on top (play/pause)
  * and the pending queue below it (tap = play, drag = reorder, X = remove).
- * Vertical, unlike the other tabs' horizontal strips.
+ * The same horizontal strip component as the Feed queue card.
  */
 @Composable
 private fun CompanionQueueTabContent(
@@ -455,73 +455,23 @@ private fun CompanionQueueTabContent(
     queue: List<ContentItem>,
     onPlayPause: () -> Unit,
     onPlayItem: (Int) -> Unit,
-    onRemove: (Int) -> Unit,
+    onRemove: (String) -> Unit,
     onMove: (Int, Int) -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    // Same horizontal component as the Feed queue card on the main screen.
+    Box(
+        modifier = Modifier.fillMaxSize().padding(top = 12.dp),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        current?.let { video ->
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(76.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
-                        .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .width(112.dp)
-                            .height(63.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF202124)),
-                ) {
-                    video.thumbnailUrl?.let { url ->
-                        AsyncImage(
-                            url = url,
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(8.dp)),
-                        )
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        "Now playing",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        video.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                IconButton(onClick = onPlayPause) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                    )
-                }
-            }
-        }
-        QueueList(
-            items = queue,
+        QueueStripCard(
+            current = current,
+            isPlaying = isPlaying,
+            queue = queue,
+            onPlayPause = onPlayPause,
             onPlay = onPlayItem,
             onRemove = onRemove,
             onMove = onMove,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -543,7 +493,7 @@ private fun CompanionVideoPage(
     onLongClick: (CoreVideoCard) -> Unit,
     queue: List<ContentItem>,
     onQueuePlay: (Int) -> Unit,
-    onQueueRemove: (Int) -> Unit,
+    onQueueRemove: (String) -> Unit,
     onQueueMove: (Int, Int) -> Unit,
 ) {
     val context = LocalContext.current
@@ -594,7 +544,7 @@ private fun CompanionVideoPage(
                     if (selectedTab == 3) {
                         // Queue tab: the playing video pinned on top, then
                         // the pending queue (tap = play, drag = reorder,
-                        // X = remove). A vertical list — unlike the other
+                        // X = remove). The same horizontal strip as the
                         // tabs' horizontal strips.
                         CompanionQueueTabContent(
                             current = video,

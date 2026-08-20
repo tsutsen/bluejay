@@ -115,7 +115,7 @@ fun NotificationsScreen(
                 else playerViewModel.resume()
             },
             onPlay = { index -> playerViewModel.playQueueItem(index) },
-            onRemove = { index -> playerViewModel.removeQueueItem(index) },
+            onRemove = { url -> playerViewModel.removeQueueItemUrl(url) },
             onMove = { from, to -> playerViewModel.moveQueueItem(from, to) },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
