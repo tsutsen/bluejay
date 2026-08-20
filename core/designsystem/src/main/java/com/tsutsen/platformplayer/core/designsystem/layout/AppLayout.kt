@@ -39,10 +39,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
 
@@ -211,10 +214,31 @@ fun AppNavigationBar(
 }
 
 /**
- * Surface behind the bottom navigation bar. Normally a rounded card (24dp
- * corners) hugging just the nav items, floating above the bottom edge; morphs
- * to a flat full-width rectangle flush with the bottom edge while the video
- * page is in normal mode, merging with the player area.
+ * Padding between the nav card edge and the nav items.
+ */
+private val NavSurfacePadH = 12.dp
+private val NavSurfacePadV = 8.dp
+
+private val NavSurfaceCorner = 24.dp
+
+/**
+ * Corner radius that eases to 0 when [rounded] is false (edge flush with the
+ * screen edge gets no rounding).
+ */
+@Composable
+private fun animatedCorner(rounded: Boolean, label: String): Dp =
+    animateDpAsState(
+        targetValue = if (rounded) NavSurfaceCorner else 0.dp,
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        label = label,
+    ).value
+
+/**
+ * Surface behind the bottom navigation bar. Normally a rounded card hugging
+ * the nav items with inner padding, floating above the bottom edge; morphs to
+ * a flat full-width rectangle while the video page is in normal mode, stopping
+ * at the bottom system inset so it never sits under the system bars. Corners
+ * on a screen edge (zero gap) are squared.
  */
 @Composable
 private fun NavigationBarSurface(
@@ -224,12 +248,6 @@ private fun NavigationBarSurface(
     val density = LocalDensity.current
     val containerWidthPx = remember { mutableIntStateOf(0) }
     val barWidthPx = remember { mutableIntStateOf(0) }
-    val corner by
-        animateDpAsState(
-            targetValue = if (navMorphed) 0.dp else 24.dp,
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navBarSurfaceCorner",
-        )
     val bottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
     val sideGapTargetPx =
         with(density) {
@@ -237,7 +255,7 @@ private fun NavigationBarSurface(
                 0f
             } else {
                 val c = containerWidthPx.intValue
-                val b = barWidthPx.intValue
+                val b = barWidthPx.intValue + NavSurfacePadH.toPx() * 2
                 when {
                     c <= 0 || b <= 0 -> 8.dp.toPx()
                     b >= c -> 0f
@@ -253,18 +271,19 @@ private fun NavigationBarSurface(
         )
     val bottomGap by
         animateDpAsState(
-            targetValue = if (navMorphed) 0.dp else 8.dp + bottomInset,
+            targetValue = if (navMorphed) bottomInset else 8.dp + bottomInset,
             animationSpec = tween(300, easing = FastOutSlowInEasing),
             label = "navBarSurfaceBottomGap",
         )
-    // When morphed the flat rectangle must cover the bottom-inset strip too,
-    // with the icons still lifted above it.
-    val innerBottom by
-        animateDpAsState(
-            targetValue = if (navMorphed) bottomInset else 0.dp,
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navBarSurfaceInnerBottom",
-        )
+    // The card's top edge never touches the screen, so the top corners only
+    // depend on the side gaps; the bottom corners also need a bottom gap.
+    // (Dp is not Comparable in 1.11.x — compare .value.)
+    val sideRounded = sideGap.value > 0.5f
+    val bottomRounded = sideRounded && bottomGap.value > 0.5f
+    val topStart = animatedCorner(sideRounded, "navBarCornerTopStart")
+    val topEnd = animatedCorner(sideRounded, "navBarCornerTopEnd")
+    val bottomEnd = animatedCorner(bottomRounded, "navBarCornerBottomEnd")
+    val bottomStart = animatedCorner(bottomRounded, "navBarCornerBottomStart")
 
     Box(
         modifier = Modifier.fillMaxWidth().onSizeChanged { containerWidthPx.intValue = it.width },
@@ -275,9 +294,16 @@ private fun NavigationBarSurface(
                 Modifier
                     .fillMaxWidth()
                     .padding(start = sideGap, end = sideGap, bottom = bottomGap)
-                    .clip(RoundedCornerShape(corner))
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = topStart,
+                            topEnd = topEnd,
+                            bottomEnd = bottomEnd,
+                            bottomStart = bottomStart,
+                        ),
+                    )
                     .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(bottom = innerBottom),
+                    .padding(horizontal = NavSurfacePadH, vertical = NavSurfacePadV),
         ) {
             Box(modifier = Modifier.onSizeChanged { barWidthPx.intValue = it.width }) {
                 content()
@@ -287,62 +313,75 @@ private fun NavigationBarSurface(
 }
 
 /**
- * Surface behind the navigation rail. Normally a rounded card (24dp corners)
- * hugging just the rail items; morphs to a flat full-height rectangle flush
- * with the rail edges while the video page is in normal mode.
+ * Surface behind the navigation rail. Normally a rounded card hugging the
+ * rail items with inner padding; morphs to a flat full-height rectangle while
+ * the video page is in normal mode, stopping at the system insets so it never
+ * sits under the status bar. Corners on a screen edge (zero gap) are squared.
  */
 @Composable
 private fun NavigationRailSurface(
     navMorphed: Boolean,
     content: @Composable () -> Unit,
 ) {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
     val containerHeightPx = remember { mutableIntStateOf(0) }
     val containerWidthPx = remember { mutableIntStateOf(0) }
     val columnHeightPx = remember { mutableIntStateOf(0) }
     val columnWidthPx = remember { mutableIntStateOf(0) }
-    val density = LocalDensity.current
-    val corner by
-        animateDpAsState(
-            targetValue = if (navMorphed) 0.dp else 24.dp,
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navRailSurfaceCorner",
-        )
-    val verticalGapTargetPx =
+    val insets = WindowInsets.systemBars
+    val topInset = with(density) { insets.getTop(density).toDp() }
+    val bottomInset = with(density) { insets.getBottom(density).toDp() }
+    // 1.11.x has no getStart/getEnd — derive from left/right.
+    val leftInset = with(density) { insets.getLeft(density, layoutDirection).toDp() }
+    val rightInset = with(density) { insets.getRight(density, layoutDirection).toDp() }
+    val startInset = if (layoutDirection == LayoutDirection.Ltr) leftInset else rightInset
+    val endInset = if (layoutDirection == LayoutDirection.Ltr) rightInset else leftInset
+
+    val verticalGapPx =
         with(density) {
-            if (navMorphed) {
-                0f
-            } else {
-                val c = containerHeightPx.intValue
-                val b = columnHeightPx.intValue
-                when {
-                    c <= 0 || b <= 0 -> 8.dp.toPx()
-                    b >= c -> 0f
-                    else -> maxOf(8.dp.toPx(), (c - b) / 2f)
-                }
+            val c = containerHeightPx.intValue
+            val b = columnHeightPx.intValue + NavSurfacePadV.toPx() * 2
+            when {
+                c <= 0 || b <= 0 -> 8.dp.toPx()
+                b >= c -> 0f
+                else -> maxOf(8.dp.toPx(), (c - b) / 2f)
             }
         }
-    val horizontalGapTargetPx =
+    val horizontalGapPx =
         with(density) {
-            if (navMorphed) {
-                0f
-            } else {
-                val c = containerWidthPx.intValue
-                val b = columnWidthPx.intValue
-                if (c <= 0 || b <= 0 || b >= c) 0f else (c - b) / 2f
-            }
+            val c = containerWidthPx.intValue
+            val b = columnWidthPx.intValue + NavSurfacePadH.toPx() * 2
+            if (c <= 0 || b <= 0 || b >= c) 0f else (c - b) / 2f
         }
-    val verticalGap by
+    val vTop by
         animateDpAsState(
-            targetValue = with(density) { verticalGapTargetPx.toDp() },
+            targetValue = if (navMorphed) topInset else with(density) { verticalGapPx.toDp() },
             animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navRailSurfaceVerticalGap",
+            label = "navRailGapTop",
         )
-    val horizontalGap by
+    val vBottom by
         animateDpAsState(
-            targetValue = with(density) { horizontalGapTargetPx.toDp() },
+            targetValue = if (navMorphed) bottomInset else with(density) { verticalGapPx.toDp() },
             animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navRailSurfaceHorizontalGap",
+            label = "navRailGapBottom",
         )
+    val hStart by
+        animateDpAsState(
+            targetValue = if (navMorphed) startInset else with(density) { horizontalGapPx.toDp() },
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navRailGapStart",
+        )
+    val hEnd by
+        animateDpAsState(
+            targetValue = if (navMorphed) endInset else with(density) { horizontalGapPx.toDp() },
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navRailGapEnd",
+        )
+    val topStart = animatedCorner(vTop.value > 0.5f && hStart.value > 0.5f, "navRailCornerTopStart")
+    val topEnd = animatedCorner(vTop.value > 0.5f && hEnd.value > 0.5f, "navRailCornerTopEnd")
+    val bottomEnd = animatedCorner(vBottom.value > 0.5f && hEnd.value > 0.5f, "navRailCornerBottomEnd")
+    val bottomStart = animatedCorner(vBottom.value > 0.5f && hStart.value > 0.5f, "navRailCornerBottomStart")
 
     Box(
         modifier =
@@ -358,9 +397,17 @@ private fun NavigationRailSurface(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(vertical = verticalGap, horizontal = horizontalGap)
-                    .clip(RoundedCornerShape(corner))
-                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                    .padding(top = vTop, bottom = vBottom, start = hStart, end = hEnd)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = topStart,
+                            topEnd = topEnd,
+                            bottomEnd = bottomEnd,
+                            bottomStart = bottomStart,
+                        ),
+                    )
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(horizontal = NavSurfacePadH, vertical = NavSurfacePadV),
         ) {
             Box(
                 modifier =
