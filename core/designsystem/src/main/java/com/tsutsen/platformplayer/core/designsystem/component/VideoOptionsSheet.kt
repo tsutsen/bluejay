@@ -2,6 +2,11 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +31,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -94,6 +101,7 @@ fun VideoOptionsSheet(
 ) {
     val context = LocalContext.current
     var showPlaylists by remember { mutableStateOf(false) }
+    var selectedPlaylists by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
     val body: @Composable () -> Unit = {
         // Header: title, then the metadata row underneath (title and stats
@@ -248,25 +256,63 @@ fun VideoOptionsSheet(
             // here if a 10th action is ever added.
         }
 
-        // Playlist picker: revealed by the "Add to playlist" tile.
-        if (showPlaylists) {
+        // Playlist picker: revealed by the "Add to playlist" tile. Multi-
+        // select — check the target playlists, then confirm.
+        AnimatedVisibility(
+            visible = showPlaylists,
+            enter = expandVertically(clip = true) + fadeIn(),
+            exit = shrinkVertically(clip = true) + fadeOut(),
+        ) {
             Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
             ) {
+                Text(
+                    text = "Add this item",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
                 playlists.forEach { playlist ->
-                    playlistPickRow(playlist.name) {
-                        onAddToPlaylist(playlist.id)
-                        onDismiss()
-                    }
+                    playlistCheckRow(
+                        label = playlist.name,
+                        checked = playlist.id in selectedPlaylists,
+                        onCheckedChange = { checked ->
+                            selectedPlaylists =
+                                if (checked) selectedPlaylists + playlist.id
+                                else selectedPlaylists - playlist.id
+                        },
+                    )
                 }
                 playlistPickRow("New playlist") {
                     // No onDismiss here: the host shows a create dialog on
                     // top of this sheet. Dismissing first would unmount the
                     // dialog.
                     onAddToPlaylist(null)
+                }
+                if (playlists.isNotEmpty()) {
+                    val count = selectedPlaylists.size
+                    Button(
+                        enabled = count > 0,
+                        onClick = {
+                            val ids = selectedPlaylists
+                            selectedPlaylists = emptySet()
+                            showPlaylists = false
+                            ids.forEach { onAddToPlaylist(it) }
+                            onDismiss()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                    ) {
+                        Text(
+                            text =
+                                if (count == 1) "Add to playlist"
+                                else "Add to $count playlists",
+                        )
+                    }
                 }
             }
         }
@@ -398,6 +444,36 @@ fun OptionTileView(
                 LinearProgressIndicator(color = content, modifier = barModifier)
             }
         }
+    }
+}
+
+@Composable
+private fun playlistCheckRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Tokens.RadiusMd))
+                .clickable { onCheckedChange(!checked) }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
     }
 }
 

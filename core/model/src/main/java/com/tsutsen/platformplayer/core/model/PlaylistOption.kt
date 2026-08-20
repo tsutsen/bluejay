@@ -6,4 +6,6 @@ package com.tsutsen.platformplayer.core.model
 data class PlaylistOption(
     val id: Long,
     val name: String,
+    /** When the playlist was last modified (a video added/removed). */
+    val lastAddedAt: Long = 0,
 )

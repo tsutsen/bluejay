@@ -86,20 +86,19 @@ class LibraryRepositoryImpl
                     )
                 }
             repositoryScope.launch {
-                combinedFlow.collect {
-                    _sections.value = it
-                    _playlists.value =
-                        it
-                            .firstOrNull { section -> section.id == PLAYLISTS_ID }
-                            ?.items
-                            ?.filterIsInstance<PlaylistCard>()
-                            ?.map { card ->
-                                PlaylistOption(
-                                    id = card.id.toLongOrNull() ?: return@map null,
-                                    name = card.title,
-                                )
-                            }?.filterNotNull()
-                            ?: emptyList()
+                combinedFlow.collect { _sections.value = it }
+            }
+            // observeAll() is already ORDER BY updatedAt DESC, so the
+            // picker's recency sort comes for free.
+            repositoryScope.launch {
+                playlistDao.observeAll().collect { list ->
+                    _playlists.value = list.map {
+                        PlaylistOption(
+                            id = it.id,
+                            name = it.name,
+                            lastAddedAt = it.updatedAt,
+                        )
+                    }
                 }
             }
         }
