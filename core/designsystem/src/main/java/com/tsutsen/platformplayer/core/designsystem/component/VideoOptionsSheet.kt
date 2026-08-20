@@ -106,6 +106,11 @@ fun VideoOptionsSheet(
 ) {
     val context = LocalContext.current
     var showPlaylists by remember { mutableStateOf(false) }
+    // Snapshot of the (recency-sorted) list taken when the section opens.
+    // The live list re-sorts on every add/remove (updatedAt bump), which
+    // made rows jump under the finger while a box was being checked. Pin
+    // the order while the section is open; re-snapshot on each open.
+    var pinnedPlaylists by remember { mutableStateOf<List<PlaylistOption>?>(null) }
 
     val body: @Composable () -> Unit = {
         // Header: title, then the metadata row underneath (title and stats
@@ -214,7 +219,15 @@ fun VideoOptionsSheet(
                         label = "Add to playlist",
                         icon = Icons.Filled.HistoryEdu,
                         selected = showPlaylists,
-                        onClick = { showPlaylists = !showPlaylists },
+                        onClick = {
+                            if (showPlaylists) {
+                                showPlaylists = false
+                                pinnedPlaylists = null
+                            } else {
+                                pinnedPlaylists = playlists
+                                showPlaylists = true
+                            }
+                        },
                     ),
                 )
                 add(
@@ -280,7 +293,7 @@ fun VideoOptionsSheet(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
-                playlists.forEach { playlist ->
+                (pinnedPlaylists ?: playlists).forEach { playlist ->
                     playlistCheckRow(
                         label = playlist.name,
                         checked = playlist.id in containedPlaylistIds,
