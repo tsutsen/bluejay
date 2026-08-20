@@ -246,6 +246,11 @@ fun PlayerGestureSystem(
                                                 } catch (_: TimeoutCancellationException) {
                                                     // Full hold elapsed with no pointer events:
                                                     // finger is still and pressed — activate hold now.
+                                                    // Only when no gesture is recognised yet: hijacking an
+                                                    // active drag (e.g. a paused swipe) overwrites gestureType
+                                                    // so the drag's END frame is never dispatched, leaving
+                                                    // the drag callbacks (isDragging*) stuck on.
+                                                    if (gestureRecognized) continue
                                                     holdTriggered = true
                                                     gestureRecognized = true
                                                     gestureType = GestureType.HOLD
