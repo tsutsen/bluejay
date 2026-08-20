@@ -10,6 +10,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRailItem
@@ -32,11 +33,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -152,12 +156,11 @@ fun AppNavigationRail(
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
 ) {
-    // Plain Column (not M3 NavigationRail) so the item group centers
-    // vertically in the full-height rail instead of stacking from the top.
+    // Plain wrap-content Column (not M3 NavigationRail) — the parent
+    // [NavigationRailSurface] in [AppLayout] centers it and draws the card.
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
         items.forEach { item ->
             NavigationRailItem(
@@ -184,9 +187,13 @@ fun AppNavigationBar(
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
 ) {
-    // Transparent: the surface (rounded card / morphed rectangle) is drawn by
-    // the [NavigationSurface] wrapper in [AppLayout].
-    NavigationBar(containerColor = Color.Transparent) {
+    // Plain Row hugging the items (M3's NavigationBar is fillMaxWidth
+    // internally, which would prevent the floating surface from wrapping it
+    // exactly). The surface is drawn by [NavigationBarSurface] in [AppLayout].
+    Row(
+        modifier = Modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         items.forEach { item ->
             NavigationBarItem(
                 selected = item.key == currentDestination,
@@ -204,36 +211,167 @@ fun AppNavigationBar(
 }
 
 /**
- * Animated surface behind the navigation chrome. Normally a rounded card
- * (24dp corners, 8dp margins); morphs to a flat edge-to-edge rectangle while
- * the video page is in normal mode, merging with the player area.
+ * Surface behind the bottom navigation bar. Normally a rounded card (24dp
+ * corners) hugging just the nav items, floating above the bottom edge; morphs
+ * to a flat full-width rectangle flush with the bottom edge while the video
+ * page is in normal mode, merging with the player area.
  */
 @Composable
-private fun NavigationSurface(
+private fun NavigationBarSurface(
     navMorphed: Boolean,
-    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val density = LocalDensity.current
+    val containerWidthPx = remember { mutableIntStateOf(0) }
+    val barWidthPx = remember { mutableIntStateOf(0) }
     val corner by
         animateDpAsState(
             targetValue = if (navMorphed) 0.dp else 24.dp,
             animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navSurfaceCorner",
+            label = "navBarSurfaceCorner",
         )
-    val margin by
+    val bottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
+    val sideGapTargetPx =
+        with(density) {
+            if (navMorphed) {
+                0f
+            } else {
+                val c = containerWidthPx.intValue
+                val b = barWidthPx.intValue
+                when {
+                    c <= 0 || b <= 0 -> 8.dp.toPx()
+                    b >= c -> 0f
+                    else -> maxOf(8.dp.toPx(), (c - b) / 2f)
+                }
+            }
+        }
+    val sideGap by
         animateDpAsState(
-            targetValue = if (navMorphed) 0.dp else 8.dp,
+            targetValue = with(density) { sideGapTargetPx.toDp() },
             animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navSurfaceMargin",
+            label = "navBarSurfaceSideGap",
         )
+    val bottomGap by
+        animateDpAsState(
+            targetValue = if (navMorphed) 0.dp else 8.dp + bottomInset,
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navBarSurfaceBottomGap",
+        )
+    // When morphed the flat rectangle must cover the bottom-inset strip too,
+    // with the icons still lifted above it.
+    val innerBottom by
+        animateDpAsState(
+            targetValue = if (navMorphed) bottomInset else 0.dp,
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navBarSurfaceInnerBottom",
+        )
+
+    Box(
+        modifier = Modifier.fillMaxWidth().onSizeChanged { containerWidthPx.intValue = it.width },
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = sideGap, end = sideGap, bottom = bottomGap)
+                    .clip(RoundedCornerShape(corner))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(bottom = innerBottom),
+        ) {
+            Box(modifier = Modifier.onSizeChanged { barWidthPx.intValue = it.width }) {
+                content()
+            }
+        }
+    }
+}
+
+/**
+ * Surface behind the navigation rail. Normally a rounded card (24dp corners)
+ * hugging just the rail items; morphs to a flat full-height rectangle flush
+ * with the rail edges while the video page is in normal mode.
+ */
+@Composable
+private fun NavigationRailSurface(
+    navMorphed: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val containerHeightPx = remember { mutableIntStateOf(0) }
+    val containerWidthPx = remember { mutableIntStateOf(0) }
+    val columnHeightPx = remember { mutableIntStateOf(0) }
+    val columnWidthPx = remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val corner by
+        animateDpAsState(
+            targetValue = if (navMorphed) 0.dp else 24.dp,
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navRailSurfaceCorner",
+        )
+    val verticalGapTargetPx =
+        with(density) {
+            if (navMorphed) {
+                0f
+            } else {
+                val c = containerHeightPx.intValue
+                val b = columnHeightPx.intValue
+                when {
+                    c <= 0 || b <= 0 -> 8.dp.toPx()
+                    b >= c -> 0f
+                    else -> maxOf(8.dp.toPx(), (c - b) / 2f)
+                }
+            }
+        }
+    val horizontalGapTargetPx =
+        with(density) {
+            if (navMorphed) {
+                0f
+            } else {
+                val c = containerWidthPx.intValue
+                val b = columnWidthPx.intValue
+                if (c <= 0 || b <= 0 || b >= c) 0f else (c - b) / 2f
+            }
+        }
+    val verticalGap by
+        animateDpAsState(
+            targetValue = with(density) { verticalGapTargetPx.toDp() },
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navRailSurfaceVerticalGap",
+        )
+    val horizontalGap by
+        animateDpAsState(
+            targetValue = with(density) { horizontalGapTargetPx.toDp() },
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "navRailSurfaceHorizontalGap",
+        )
+
     Box(
         modifier =
-            modifier
-                .padding(margin)
-                .clip(RoundedCornerShape(corner))
-                .background(MaterialTheme.colorScheme.surfaceContainer),
+            Modifier
+                .fillMaxSize()
+                .onSizeChanged {
+                    containerHeightPx.intValue = it.height
+                    containerWidthPx.intValue = it.width
+                },
+        contentAlignment = Alignment.Center,
     ) {
-        content()
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(vertical = verticalGap, horizontal = horizontalGap)
+                    .clip(RoundedCornerShape(corner))
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+        ) {
+            Box(
+                modifier =
+                    Modifier.onSizeChanged {
+                        columnHeightPx.intValue = it.height
+                        columnWidthPx.intValue = it.width
+                    },
+            ) {
+                content()
+            }
+        }
     }
 }
 
@@ -312,10 +450,7 @@ fun AppLayout(
                                 .width(railWidth)
                                 .graphicsLayer { alpha = railAlpha },
                     ) {
-                        NavigationSurface(
-                            navMorphed = navMorphed,
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
+                        NavigationRailSurface(navMorphed = navMorphed) {
                             navigationContent()
                         }
                     }
@@ -335,10 +470,7 @@ fun AppLayout(
                     enter = fadeIn(animationSpec = tween(300)),
                     exit = fadeOut(animationSpec = tween(300)),
                 ) {
-                    NavigationSurface(
-                        navMorphed = navMorphed,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
+                    NavigationBarSurface(navMorphed = navMorphed) {
                         navigationContent()
                     }
                 }
