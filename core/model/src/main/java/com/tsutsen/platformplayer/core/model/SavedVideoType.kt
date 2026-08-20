@@ -7,5 +7,6 @@ package com.tsutsen.platformplayer.core.model
 enum class SavedVideoType {
     WATCH_LATER,
     LIKED,
+    DISLIKED,
     FAVOURITE,
 }

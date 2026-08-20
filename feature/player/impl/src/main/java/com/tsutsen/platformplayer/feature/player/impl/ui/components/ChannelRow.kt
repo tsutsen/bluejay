@@ -2,11 +2,24 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,12 +31,23 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.core.model.Author
 
+/**
+ * Channel badge row: avatar, name, subscribe, like/dislike pill, view count
+ * + published time, and the three-dot button that opens the video options
+ * sheet. Tapping the avatar or name opens the channel page.
+ */
 @Composable
 internal fun ChannelRow(
     author: Author?,
+    viewCount: Long?,
+    publishedAt: Long?,
+    likeCount: Long?,
+    isLiked: Boolean,
+    dislikeCount: Long?,
+    isDisliked: Boolean,
     onSubscribe: () -> Unit,
-    onWatchLater: () -> Unit,
-    onShare: () -> Unit,
+    onLike: () -> Unit,
+    onDislike: () -> Unit,
     onMore: () -> Unit,
     onChannelClick: ((String) -> Unit)? = null,
 ) {
@@ -74,64 +98,69 @@ internal fun ChannelRow(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Channel Info + Subscribe Button
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier.weight(1f).then(channelClick),
         ) {
-            Column(
-                modifier = Modifier.weight(1f).then(channelClick),
-            ) {
-                Text(
-                    text = author?.name ?: "Unknown Channel",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = "125K subscribers",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Button(
-                onClick = onSubscribe,
-                modifier = Modifier.height(36.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-            ) {
-                Text(
-                    text = "Subscribe",
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
-        }
-
-        // Watch Later
-        IconButton(onClick = onWatchLater) {
-            Icon(
-                imageVector = Icons.Default.Schedule,
-                contentDescription = "Watch Later",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(
+                text = author?.name ?: "Unknown Channel",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = "125K subscribers",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
-        // Share
-        IconButton(onClick = onShare) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = "Share",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Button(
+            onClick = onSubscribe,
+            modifier = Modifier.height(36.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+        ) {
+            Text(
+                text = "Subscribe",
+                style = MaterialTheme.typography.labelMedium,
             )
         }
 
-        // More
+        Spacer(modifier = Modifier.width(12.dp))
+
+        LikeDislikePill(
+            likeCount = likeCount,
+            isLiked = isLiked,
+            onLike = onLike,
+            dislikeCount = dislikeCount,
+            isDisliked = isDisliked,
+            onDislike = onDislike,
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        val stats =
+            buildList {
+                if (viewCount != null) add("${formatViewCount(viewCount)} views")
+                val ago = formatRelativeTime(publishedAt)
+                if (ago.isNotEmpty()) add(ago)
+            }.joinToString(" • ")
+        if (stats.isNotEmpty()) {
+            Text(
+                text = stats,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.padding(end = 4.dp),
+            )
+        }
+
+        // More — opens the video options sheet.
         IconButton(onClick = onMore) {
             Icon(
                 imageVector = Icons.Default.MoreVert,

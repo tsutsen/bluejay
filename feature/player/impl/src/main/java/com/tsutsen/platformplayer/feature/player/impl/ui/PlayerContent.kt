@@ -91,6 +91,9 @@ fun PlayerContent(
     gridColumns: Int,
     onLoadMoreComments: () -> Unit,
     onChannelClick: (String) -> Unit,
+    onLike: () -> Unit,
+    onDislike: () -> Unit,
+    onMore: () -> Unit,
     isLoading: Boolean,
     activeProgressIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator.Progress?,
     badgeState: com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState,
@@ -368,6 +371,9 @@ fun PlayerContent(
                     gridColumns = gridColumns,
                     onLoadMoreComments = onLoadMoreComments,
                     onChannelClick = onChannelClick,
+                    onLike = onLike,
+                    onDislike = onDislike,
+                    onMore = onMore,
                 )
             }
         }

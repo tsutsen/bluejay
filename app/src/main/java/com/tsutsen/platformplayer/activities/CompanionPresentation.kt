@@ -86,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
@@ -485,6 +486,20 @@ private fun CompanionVideoPage(
                         .weight(1f),
             ) {
                 key(selectedTab) {
+                    if (selectedTab == 1 && chapters.isEmpty()) {
+                        // Centre the empty state in the whole tab area — a
+                        // LazyRow item can't fill the (unbounded) row width.
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "No chapters",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
                     LazyRow(
                         state = tabStates[selectedTab],
                         modifier = Modifier.fillMaxSize(),
@@ -597,6 +612,7 @@ private fun CompanionVideoPage(
                     }
                 }
                     }
+                    }
                 }
             }
         } else {
@@ -637,7 +653,15 @@ private fun CompanionLibraryPage(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
-        val slots = sections.take(4)
+        // Fixed slots for the 2x2 layout (order matters). Disliked is not
+        // shown here — it's reachable from the main library.
+        val slots =
+            listOf(
+                LibraryRepositoryImpl.WATCH_LATER_ID,
+                LibraryRepositoryImpl.LIKED_ID,
+                LibraryRepositoryImpl.FAVOURITE_ID,
+                LibraryRepositoryImpl.HISTORY_ID,
+            ).mapNotNull { id -> sections.firstOrNull { it.id == id } }
         if (slots.isEmpty()) {
             Text(
                 text = "Nothing here yet",
@@ -687,10 +711,19 @@ private fun LibrarySlotPager(
     onLongClick: (CoreVideoCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Card(
         modifier = modifier.padding(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        shape = RoundedCornerShape(Tokens.RadiusMd),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = section?.title ?: "Empty",
@@ -740,6 +773,7 @@ private fun LibrarySlotPager(
                     PagerCard(card = cards[index], onClick = onPlay, onLongClick = onLongClick)
                 }
             }
+        }
         }
     }
 }
@@ -821,10 +855,21 @@ private fun HomeGridPage(
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
 ) {
-    Column(
+    // The whole 2x2 page lives in one card so it reads as a single element,
+    // not four separate cells.
+    Card(
         modifier = Modifier.fillMaxSize().padding(4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        shape = RoundedCornerShape(Tokens.RadiusMd),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
             HomeGridCell(pageItems.getOrNull(0), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
             HomeGridCell(pageItems.getOrNull(1), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
@@ -832,6 +877,7 @@ private fun HomeGridPage(
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
             HomeGridCell(pageItems.getOrNull(2), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
             HomeGridCell(pageItems.getOrNull(3), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+        }
         }
     }
 }

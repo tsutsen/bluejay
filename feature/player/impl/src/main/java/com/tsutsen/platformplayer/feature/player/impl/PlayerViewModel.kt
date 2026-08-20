@@ -11,9 +11,12 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
+import com.tsutsen.platformplayer.core.model.SavedVideoType
+import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -49,6 +52,8 @@ sealed interface PlayerUiState {
         val recommendations: List<Card> = emptyList(),
         val showComments: Boolean = true,
         val showRecommended: Boolean = true,
+        val isLiked: Boolean = false,
+        val isDisliked: Boolean = false,
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
@@ -74,6 +79,12 @@ class PlayerViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
         val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+        /** Live saved types for the current video (drives like/dislike buttons). */
+        @Volatile
+        private var currentSavedTypes: Set<SavedVideoType> = emptySet()
+        private var savedTypesUrl: String? = null
+        private var savedTypesJob: Job? = null
 
         /** Live grid columns from the single config — grids reflow when it changes. */
         val gridColumns: StateFlow<Int> =
@@ -120,6 +131,8 @@ class PlayerViewModel
                                 chapters = playerState.chapters,
                                 recommendations = playerState.recommendations,
                                 showComments = settingsRepository.preferences.value.showComments,
+                                isLiked = SavedVideoType.LIKED in currentSavedTypes,
+                                isDisliked = SavedVideoType.DISLIKED in currentSavedTypes,
                                 showRecommended =
                                     settingsRepository.preferences.value
                                         .showRecommendedVideos,
@@ -129,6 +142,29 @@ class PlayerViewModel
                         // backfills history + library rows that stored none,
                         // so library cards show a duration after one play.
                         val video = playerState.currentVideo
+                        if (video != null && video.url != savedTypesUrl) {
+                            savedTypesUrl = video.url
+                            savedTypesJob?.cancel()
+                            savedTypesJob =
+                                viewModelScope.launch {
+                                    libraryRepository
+                                        .observeSavedTypes(video.url)
+                                        .collect { types ->
+                                            currentSavedTypes = types
+                                            _uiState.update {
+                                                (it as? PlayerUiState.Loaded)?.let {
+                                                    s ->
+                                                    s.copy(
+                                                        isLiked = SavedVideoType.LIKED in types,
+                                                        isDisliked =
+                                                            SavedVideoType.DISLIKED in types,
+                                                    )
+                                                }
+                                                    ?: it
+                                            }
+                                        }
+                                }
+                        }
                         if (video != null) {
                             historyTracker.trackPlayback(
                                 contentUrl = video.url,
@@ -148,7 +184,41 @@ class PlayerViewModel
             }
         }
 
-        fun play(videoId: String, initial: com.tsutsen.platformplayer.core.model.ContentItem? = null) {
+        /** Toggle the current video in/out of the library's Liked list. */
+    fun toggleLike(liked: Boolean) {
+        toggleSaveType(SavedVideoType.LIKED, liked)
+    }
+
+    /** Toggle the current video in/out of the library's Disliked list. */
+    fun toggleDislike(disliked: Boolean) {
+        toggleSaveType(SavedVideoType.DISLIKED, disliked)
+    }
+
+    private fun toggleSaveType(type: SavedVideoType, isSaved: Boolean) {
+        viewModelScope.launch {
+            val video = playerRepository.playerState.value.currentVideo ?: return@launch
+            if (isSaved) {
+                libraryRepository.removeSavedVideo(type, video.url)
+            } else {
+                libraryRepository.saveVideo(type, video.toVideoCard())
+            }
+        }
+    }
+
+    private fun ContentItem.toVideoCard() =
+        VideoCard(
+            id = id,
+            title = title,
+            thumbnailUrl = thumbnailUrl,
+            author = author?.name,
+            authorUrl = author?.url?.takeIf { it.isNotEmpty() },
+            durationMs = durationMs,
+            viewCount = viewCount,
+            publishedAt = publishedAt,
+            url = url,
+        )
+
+    fun play(videoId: String, initial: com.tsutsen.platformplayer.core.model.ContentItem? = null) {
             viewModelScope.launch {
                 // PlayerRepository.play() clears the previous video's extras and
                 // fetches the new one's (comments/recs/chapters) — the single

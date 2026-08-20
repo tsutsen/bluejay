@@ -37,6 +37,13 @@ import javax.inject.Singleton
  * LibraryRepository implementation.
  * Sections are live views over SavedVideoDao + PlaylistDao (reactive, no loads).
  */
+private data class SavedLists(
+    val watchLater: List<SavedVideoEntity>,
+    val liked: List<SavedVideoEntity>,
+    val disliked: List<SavedVideoEntity>,
+    val favourite: List<SavedVideoEntity>,
+)
+
 @Singleton
 class LibraryRepositoryImpl
     @Inject
@@ -55,14 +62,15 @@ class LibraryRepositoryImpl
         override val playlists: StateFlow<List<PlaylistOption>> = _playlists.asStateFlow()
 
         init {
-            // combine() tops out at 5 flows — nest two 3-way combines.
+            // combine() tops out at 5 flows — nest two 4-way combines.
             val savedFlow =
                 combine(
                     savedVideoDao.observeByType(SavedVideoType.WATCH_LATER),
                     savedVideoDao.observeByType(SavedVideoType.LIKED),
+                    savedVideoDao.observeByType(SavedVideoType.DISLIKED),
                     savedVideoDao.observeByType(SavedVideoType.FAVOURITE),
-                ) { watchLater, liked, favourite ->
-                    Triple(watchLater, liked, favourite)
+                ) { watchLater, liked, disliked, favourite ->
+                    SavedLists(watchLater, liked, disliked, favourite)
                 }
             val restFlow =
                 combine(
@@ -74,11 +82,12 @@ class LibraryRepositoryImpl
                 }
             val combinedFlow =
                 combine(savedFlow, restFlow) { saved, rest ->
-                    val (watchLater, liked, favourite) = saved
+                    val (watchLater, liked, disliked, favourite) = saved
                     val (history, downloads, playlists) = rest
                     listOf(
                         buildSection(WATCH_LATER_ID, "Watch Later", watchLater.map { it.toVideoCard() }),
                         buildSection(LIKED_ID, "Liked", liked.map { it.toVideoCard() }),
+                        buildSection(DISLIKED_ID, "Disliked", disliked.map { it.toVideoCard() }),
                         buildSection(FAVOURITE_ID, "Favourites", favourite.map { it.toVideoCard() }),
                         buildSection(HISTORY_ID, "History", history.map { it.toVideoCard() }),
                         buildSection(DOWNLOADS_ID, "Downloads", downloads.map { it.toVideoCard() }),
@@ -113,6 +122,7 @@ class LibraryRepositoryImpl
             when (sectionId) {
                 WATCH_LATER_ID -> savedVideoDao.observeByType(SavedVideoType.WATCH_LATER).map { list -> list.map { it.toVideoCard() } }
                 LIKED_ID -> savedVideoDao.observeByType(SavedVideoType.LIKED).map { list -> list.map { it.toVideoCard() } }
+                DISLIKED_ID -> savedVideoDao.observeByType(SavedVideoType.DISLIKED).map { list -> list.map { it.toVideoCard() } }
                 FAVOURITE_ID -> savedVideoDao.observeByType(SavedVideoType.FAVOURITE).map { list -> list.map { it.toVideoCard() } }
                 HISTORY_ID -> historyDao.observeAll().map { list -> list.map { it.toVideoCard() } }
                 DOWNLOADS_ID -> downloadsRepository.downloads.map { list -> list.map { it.toVideoCard() } }
@@ -330,6 +340,7 @@ class LibraryRepositoryImpl
         companion object {
             const val WATCH_LATER_ID = "watch_later"
             const val LIKED_ID = "liked"
+            const val DISLIKED_ID = "disliked"
             const val FAVOURITE_ID = "favourite"
             const val HISTORY_ID = "history"
             const val DOWNLOADS_ID = "downloads"

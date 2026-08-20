@@ -37,6 +37,9 @@ internal fun PlayerDetails(
     onRecommendedClick: (VideoCard) -> Unit,
     onLoadMoreComments: () -> Unit,
     onChannelClick: (String) -> Unit,
+    onLike: () -> Unit,
+    onDislike: () -> Unit,
+    onMore: () -> Unit,
 ) {
     LazyColumn(
         state = scrollState,
@@ -56,21 +59,20 @@ internal fun PlayerDetails(
             )
         }
         item {
+            val video = state.currentVideo
             ChannelRow(
-                author = state.currentVideo?.author,
+                author = video?.author,
+                viewCount = video?.viewCount,
+                publishedAt = video?.publishedAt,
+                likeCount = video?.likeCount,
+                isLiked = state.isLiked,
+                dislikeCount = video?.dislikeCount,
+                isDisliked = state.isDisliked,
                 onSubscribe = { /* TODO */ },
-                onWatchLater = { /* TODO */ },
-                onShare = { /* TODO */ },
-                onMore = { /* TODO */ },
+                onLike = onLike,
+                onDislike = onDislike,
+                onMore = onMore,
                 onChannelClick = onChannelClick,
-            )
-        }
-        item {
-            VideoStatsRow(
-                viewCount = state.currentVideo?.viewCount ?: 0,
-                publishedAt = state.currentVideo?.publishedAt,
-                likeCount = state.currentVideo?.likeCount,
-                dislikeCount = state.currentVideo?.dislikeCount,
             )
         }
         item {
