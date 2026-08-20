@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
+import com.tsutsen.platformplayer.core.model.Author
+import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.ContentType
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
@@ -30,6 +34,7 @@ class VideoOptionsViewModel
     constructor(
         private val libraryRepository: LibraryRepository,
         private val downloadsRepository: DownloadsRepository,
+        private val playbackQueueRepository: PlaybackQueueRepository,
     ) : ViewModel() {
         private val savedTypesCache = mutableMapOf<String, StateFlow<Set<SavedVideoType>>>()
 
@@ -40,6 +45,30 @@ class VideoOptionsViewModel
 
         fun consumeDownloadMessage() {
             _downloadMessage.value = null
+        }
+
+        /** Enqueue [video] (starts playing if nothing is). */
+        fun addToQueue(video: VideoCard) {
+            playbackQueueRepository.add(
+                ContentItem(
+                    id = video.id,
+                    url = video.url,
+                    title = video.title,
+                    author = video.author?.let { name ->
+                        Author(
+                            id = video.id,
+                            name = name,
+                            url = video.authorUrl,
+                            thumbnailUrl = null,
+                        )
+                    },
+                    thumbnailUrl = video.thumbnailUrl,
+                    contentType = ContentType.VIDEO,
+                    durationMs = video.durationMs,
+                    viewCount = video.viewCount,
+                    publishedAt = video.publishedAt,
+                )
+            )
         }
 
         /**

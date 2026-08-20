@@ -88,7 +88,7 @@ val bluejayNavItems =
         NavItemDef("search", Icons.Outlined.Search, Icons.Filled.Search, "Search"),
         NavItemDef("subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subs"),
         NavItemDef("library", Icons.Outlined.LibraryBooks, Icons.Filled.LibraryBooks, "Library"),
-        NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "News"),
+        NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Feed"),
         NavItemDef("settings", Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
     )
 

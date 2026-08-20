@@ -60,6 +60,8 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -99,6 +101,7 @@ import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
+import com.tsutsen.platformplayer.core.designsystem.component.QueueList
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
@@ -142,6 +145,7 @@ class CompanionPresentation(
     private val homeRepository: HomeRepository,
     private val settingsRepository: SettingsRepository,
     private val downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
+    private val playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
 ) : Presentation(context, display) {
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -188,6 +192,7 @@ class CompanionPresentation(
                     libraryRepository = libraryRepository,
                     homeRepository = homeRepository,
                     downloadsRepository = downloadsRepository,
+                    playbackQueueRepository = playbackQueueRepository,
                 )
             }
         }
@@ -268,8 +273,10 @@ private fun CompanionContent(
     libraryRepository: LibraryRepository,
     homeRepository: HomeRepository,
     downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
+    playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
+    val queue by playbackQueueRepository.queue.collectAsState()
     val scope = rememberCoroutineScope()
     val video = playerState.currentVideo
 
@@ -352,6 +359,7 @@ private fun CompanionContent(
                         onPlay = onPlay,
                         libraryRepository = libraryRepository,
                         downloadsRepository = downloadsRepository,
+                        playbackQueueRepository = playbackQueueRepository,
                         scope = scope,
                     )
                 }
@@ -401,6 +409,10 @@ private fun CompanionContent(
                 onSeekTo = { ms -> scope.launch { playerRepository.seekTo(ms) } },
                     onPlay = onPlay,
                     onLongClick = onLongClick,
+                    queue = queue,
+                    onQueuePlay = { index -> playbackQueueRepository.playAt(index) },
+                    onQueueRemove = { index -> playbackQueueRepository.removeAt(index) },
+                    onQueueMove = { from, to -> playbackQueueRepository.move(from, to) },
                 )
 
                 1 -> CompanionLibraryPage(sections = sections, onPlay = onPlay, onLongClick = onLongClick)
@@ -431,6 +443,89 @@ private fun CompanionContent(
  * Page 0: the currently playing video. Controls aligned to the top, then
  * the title block, then the comments/recommended tabs + horizontal strip.
  */
+/**
+ * Second-screen Queue tab: the playing video pinned on top (play/pause)
+ * and the pending queue below it (tap = play, drag = reorder, X = remove).
+ * Vertical, unlike the other tabs' horizontal strips.
+ */
+@Composable
+private fun CompanionQueueTabContent(
+    current: ContentItem?,
+    isPlaying: Boolean,
+    queue: List<ContentItem>,
+    onPlayPause: () -> Unit,
+    onPlayItem: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+    onMove: (Int, Int) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        current?.let { video ->
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(76.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+                        .padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .width(112.dp)
+                            .height(63.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF202124)),
+                ) {
+                    video.thumbnailUrl?.let { url ->
+                        AsyncImage(
+                            url = url,
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(8.dp)),
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        "Now playing",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        video.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                IconButton(onClick = onPlayPause) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                    )
+                }
+            }
+        }
+        QueueList(
+            items = queue,
+            onPlay = onPlayItem,
+            onRemove = onRemove,
+            onMove = onMove,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
 @Composable
 private fun CompanionVideoPage(
     playerState: com.tsutsen.platformplayer.core.model.PlayerState,
@@ -446,6 +541,10 @@ private fun CompanionVideoPage(
     onSeekTo: (Long) -> Unit,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    queue: List<ContentItem>,
+    onQueuePlay: (Int) -> Unit,
+    onQueueRemove: (Int) -> Unit,
+    onQueueMove: (Int, Int) -> Unit,
 ) {
     val context = LocalContext.current
     Column(
@@ -470,7 +569,7 @@ private fun CompanionVideoPage(
             val chapters = playerState.chapters
             // One scroll state per tab — switching tabs never shares or
             // resets a strip's position.
-            val tabStates = remember { List(3) { LazyListState() } }
+            val tabStates = remember { List(4) { LazyListState() } }
             val currentChapterIndex =
                 chapters.indexOfLast { it.startTimeMs <= playerState.currentPositionMs }
             // Follow the playhead: while on the chapters tab, a chapter
@@ -481,7 +580,7 @@ private fun CompanionVideoPage(
                 }
             }
             PillTabs(
-                labels = listOf("Comments", "Chapters", "Recommended"),
+                labels = listOf("Comments", "Chapters", "Recommended", "Queue"),
                 selected = selectedTab,
                 onSelect = onTabSelected,
             )
@@ -492,7 +591,21 @@ private fun CompanionVideoPage(
                         .weight(1f),
             ) {
                 key(selectedTab) {
-                    if (selectedTab == 1 && chapters.isEmpty()) {
+                    if (selectedTab == 3) {
+                        // Queue tab: the playing video pinned on top, then
+                        // the pending queue (tap = play, drag = reorder,
+                        // X = remove). A vertical list — unlike the other
+                        // tabs' horizontal strips.
+                        CompanionQueueTabContent(
+                            current = video,
+                            isPlaying = playerState.isPlaying,
+                            queue = queue,
+                            onPlayPause = onPlayPause,
+                            onPlayItem = onQueuePlay,
+                            onRemove = onQueueRemove,
+                            onMove = onQueueMove,
+                        )
+                    } else if (selectedTab == 1 && chapters.isEmpty()) {
                         // Centre the empty state in the whole tab area — a
                         // LazyRow item can't fill the (unbounded) row width.
                         Box(
@@ -979,6 +1092,7 @@ private fun CompanionVideoOptionsSheet(
     onPlay: (String) -> Unit,
     libraryRepository: LibraryRepository,
     downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
+    playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
     scope: kotlinx.coroutines.CoroutineScope,
 ) {
     val savedTypes by libraryRepository.observeSavedTypes(card.url).collectAsState(initial = emptySet())
@@ -1035,6 +1149,10 @@ private fun CompanionVideoOptionsSheet(
                 }
             }
         },
+        onAddToQueue = {
+            playbackQueueRepository.add(card.toContentItem())
+            onDismiss()
+        },
         containedPlaylistIds = containedPlaylists,
         downloadState = if (downloading) DownloadButtonState.Downloading(0f) else DownloadButtonState.Idle,
         isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
@@ -1050,6 +1168,26 @@ private fun CompanionVideoOptionsSheet(
         embedded = true,
     )
 }
+
+private fun CoreVideoCard.toContentItem() =
+    com.tsutsen.platformplayer.core.model.ContentItem(
+        id = id,
+        url = url,
+        title = title,
+        author = author?.let { name ->
+            com.tsutsen.platformplayer.core.model.Author(
+                id = id,
+                name = name,
+                url = authorUrl,
+                thumbnailUrl = null,
+            )
+        },
+        thumbnailUrl = thumbnailUrl,
+        contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+        durationMs = durationMs,
+        viewCount = viewCount,
+        publishedAt = publishedAt,
+    )
 
 private suspend fun toggleSaveType(
     libraryRepository: LibraryRepository,

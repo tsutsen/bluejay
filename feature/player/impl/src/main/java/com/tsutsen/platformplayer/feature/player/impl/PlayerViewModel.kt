@@ -7,6 +7,7 @@ import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.Card
@@ -83,6 +84,7 @@ class PlayerViewModel
         private val libraryRepository: LibraryRepository,
         private val channelRepository: ChannelRepository,
         private val downloadsRepository: DownloadsRepository,
+        private val playbackQueueRepository: PlaybackQueueRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
         val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -100,6 +102,27 @@ class PlayerViewModel
         /** Loop mode: OFF → ONCE → INFINITE, cycled by the loop button.
          * Backed by the repository so it survives configuration changes. */
         val loopMode: StateFlow<Int> = playerRepository.loopMode
+
+        /** Pending queue items (the playing video is not included). */
+        val queue: StateFlow<List<com.tsutsen.platformplayer.core.model.ContentItem>> =
+            playbackQueueRepository.queue
+
+        /** Enqueue the given video (starts playing if nothing is). */
+        fun addToQueue(item: com.tsutsen.platformplayer.core.model.ContentItem) {
+            playbackQueueRepository.add(item)
+        }
+
+        fun playQueueItem(index: Int) {
+            playbackQueueRepository.playAt(index)
+        }
+
+        fun removeQueueItem(index: Int) {
+            playbackQueueRepository.removeAt(index)
+        }
+
+        fun moveQueueItem(from: Int, to: Int) {
+            playbackQueueRepository.move(from, to)
+        }
 
         /** Playlists containing the current video (options sheet checkboxes). */
         private val _containedPlaylists = MutableStateFlow<Set<Long>>(emptySet())
@@ -331,6 +354,26 @@ class PlayerViewModel
         viewModelScope.launch { downloadsRepository.deleteDownload(url) }
     }
 
+    /** Add [video] to a local playlist (options-sheet picker). */
+    fun addToPlaylist(video: ContentItem, playlistId: Long) {
+        viewModelScope.launch {
+            libraryRepository.addVideoToPlaylist(
+                playlistId,
+                VideoCard(
+                    id = video.id,
+                    title = video.title,
+                    thumbnailUrl = video.thumbnailUrl,
+                    author = video.author?.name,
+                    authorUrl = video.author?.url,
+                    durationMs = video.durationMs,
+                    viewCount = video.viewCount,
+                    publishedAt = video.publishedAt,
+                    url = video.url,
+                )
+            )
+        }
+    }
+
     /** Seek to [positionMs], clamped to the current video's duration. */
     fun seekToClamped(positionMs: Long) {
         val duration = playerRepository.playerState.value.durationMs
@@ -533,9 +576,7 @@ class PlayerViewModel
         }
 
         fun skipNext() {
-            viewModelScope.launch {
-                // TODO: Implement queue navigation
-            }
+            playbackQueueRepository.playAt(0)
         }
 
         fun skipPrevious() {

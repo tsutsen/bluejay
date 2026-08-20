@@ -13,6 +13,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
@@ -46,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.Player
+import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
+import com.tsutsen.platformplayer.core.designsystem.component.QueueList
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
@@ -67,6 +70,7 @@ fun PlayerView(
     val gridColumns by viewModel.gridColumns.collectAsState()
     val savedTypes by viewModel.savedTypes.collectAsState(initial = emptySet())
     val loopMode by viewModel.loopMode.collectAsState(initial = 0)
+    val queue by viewModel.queue.collectAsState(initial = emptyList())
     // While the player is fullscreen, back exits fullscreen instead of
     // falling through to the app-level handler (home / exit).
     // This BackHandler is registered after the app-level one (PlayerView is
@@ -102,6 +106,7 @@ fun PlayerView(
     var showMiniPlayerOptions by remember { mutableStateOf(false) }
     // Three-dot menu → the video options sheet (same as long-press on cards).
     var showVideoOptions by remember { mutableStateOf(false) }
+    var showQueueSheet by remember { mutableStateOf(false) }
     // Stable callbacks — captured once per text by LinkifiedText's remember.
     val onTimestampClick: (Long) -> Unit = remember { { ms -> viewModel.seekToClamped(ms) } }
     val onLinkClick: (String) -> Unit = remember(context) {
@@ -651,6 +656,7 @@ fun PlayerView(
                         onWatchLater = {
                             viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
                         },
+                        onQueue = { showQueueSheet = true },
                         onPrevious = { viewModel.skipPrevious() },
                         onNext = { viewModel.skipNext() },
                         onSeek = { positionMs ->
@@ -705,6 +711,26 @@ fun PlayerView(
                             viewModel = viewModel,
                             onDismiss = { showVideoOptions = false },
                             onGoToChannel = onChannelClick,
+                        )
+                    }
+                }
+
+                // Queue button (top row) → the queue sheet.
+                if (showQueueSheet) {
+                    BluejayModalBottomSheet(
+                        onDismiss = { showQueueSheet = false },
+                        title = "Queue",
+                        scroll = false,
+                    ) {
+                        QueueList(
+                            items = queue,
+                            onPlay = {
+                                viewModel.playQueueItem(it)
+                                showQueueSheet = false
+                            },
+                            onRemove = { viewModel.removeQueueItem(it) },
+                            onMove = { from, to -> viewModel.moveQueueItem(from, to) },
+                            modifier = Modifier.fillMaxHeight(0.7f),
                         )
                     }
                 }
@@ -774,7 +800,9 @@ private fun CurrentVideoOptionsSheet(
         },
         onAddToPlaylist = { playlistId ->
             if (playlistId == null) showNewPlaylistDialog = true
+            else viewModel.addToPlaylist(video, playlistId)
         },
+        onAddToQueue = { viewModel.addToQueue(video) },
         downloadState = downloadState,
         isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),

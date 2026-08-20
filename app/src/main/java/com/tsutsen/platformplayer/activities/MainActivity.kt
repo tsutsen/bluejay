@@ -65,6 +65,9 @@ class MainActivity :
     @Inject
     lateinit var downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 
+    @Inject
+    lateinit var playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
+
     private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
         registerForActivityResult(
@@ -131,6 +134,7 @@ class MainActivity :
                 homeRepository = homeRepository,
                 settingsRepository = settingsRepository,
                 downloadsRepository = downloadsRepository,
+                playbackQueueRepository = playbackQueueRepository,
             ).also { it.show() }
     }
 

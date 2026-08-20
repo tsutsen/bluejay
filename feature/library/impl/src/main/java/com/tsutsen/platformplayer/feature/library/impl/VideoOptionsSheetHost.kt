@@ -90,6 +90,10 @@ fun VideoOptionsSheetHost(
                 showNewPlaylistDialog = true
             }
         },
+        onAddToQueue = {
+            viewModel.addToQueue(video)
+            onDismiss()
+        },
         onTogglePlaylist = { playlistId, checked ->
             viewModel.togglePlaylist(playlistId, checked, video)
         },

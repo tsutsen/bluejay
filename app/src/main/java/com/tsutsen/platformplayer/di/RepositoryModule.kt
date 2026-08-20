@@ -7,6 +7,7 @@ import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaylistRepository
 import com.tsutsen.platformplayer.core.data.repository.SearchRepository
@@ -14,6 +15,7 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
+import com.tsutsen.platformplayer.core.data.repository.impl.PlaybackQueueRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.PlayerRepositoryImpl
 import com.tsutsen.platformplayer.di.EngineSubscriptionsRepositoryImpl
 import dagger.Binds
@@ -60,6 +62,12 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindLibraryRepository(impl: LibraryRepositoryImpl): LibraryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPlaybackQueueRepository(
+        impl: PlaybackQueueRepositoryImpl
+    ): PlaybackQueueRepository
 
     @Binds
     @Singleton

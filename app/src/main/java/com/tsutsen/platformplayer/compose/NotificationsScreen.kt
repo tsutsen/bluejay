@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.database.dao.NotificationDao
 import com.tsutsen.platformplayer.core.database.entity.NotificationEntity
@@ -81,10 +82,13 @@ fun NotificationsScreen(
     viewModel: NotificationsViewModel = hiltViewModel(),
 ) {
     val notifications by viewModel.notifications.collectAsState()
+    val queue by playerViewModel.queue.collectAsState(initial = emptyList())
+    val playerUi by playerViewModel.uiState.collectAsState()
+    val playerLoaded = playerUi as? com.tsutsen.platformplayer.feature.player.impl.PlayerUiState.Loaded
 
     Column(modifier = Modifier.fillMaxSize()) {
         AppHeader(
-            title = { Text("Notifications", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("Feed", style = MaterialTheme.typography.titleLarge) },
             actions = {
                 TextButton(onClick = { viewModel.markAllRead() }) {
                     Icon(
@@ -99,6 +103,21 @@ fun NotificationsScreen(
                     )
                 }
             },
+        )
+
+        // Persistent queue card at the top of the Feed.
+        QueueStripCard(
+            current = playerLoaded?.currentVideo,
+            isPlaying = playerLoaded?.isPlaying ?: false,
+            queue = queue,
+            onPlayPause = {
+                if (playerLoaded?.isPlaying == true) playerViewModel.pause()
+                else playerViewModel.resume()
+            },
+            onPlay = { index -> playerViewModel.playQueueItem(index) },
+            onRemove = { index -> playerViewModel.removeQueueItem(index) },
+            onMove = { from, to -> playerViewModel.moveQueueItem(from, to) },
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
 
         if (notifications.isEmpty()) {

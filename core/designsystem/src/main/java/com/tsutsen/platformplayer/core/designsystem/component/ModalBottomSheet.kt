@@ -22,6 +22,11 @@ import androidx.compose.ui.unit.dp
 fun BluejayModalBottomSheet(
     onDismiss: () -> Unit,
     title: String? = null,
+    // false for lazily scrolling content (e.g. the queue list) — a
+    // LazyColumn can't nest inside a verticalScroll ancestor. Must stay
+    // before [content]: a trailing lambda needs the last param to be a
+    // function type.
+    scroll: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     // Sheets with several rows open in the partial state and clip their
@@ -38,7 +43,7 @@ fun BluejayModalBottomSheet(
         Column(
             modifier =
                 Modifier
-                    .verticalScroll(rememberScrollState())
+                    .then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                     .padding(bottom = 32.dp),
         ) {
             if (title != null) {

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HistoryEdu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -84,6 +85,7 @@ fun VideoOptionsSheet(
     onToggleFavourite: () -> Unit,
     onDownload: () -> Unit,
     onAddToPlaylist: (Long?) -> Unit,
+    onAddToQueue: () -> Unit = {},
     downloadState: DownloadButtonState = DownloadButtonState.Idle,
     isWatchLaterSaved: Boolean = false,
     isLikedSaved: Boolean = false,
@@ -234,6 +236,13 @@ fun VideoOptionsSheet(
                                 showPlaylists = true
                             }
                         },
+                    ),
+                )
+                add(
+                    OptionTile(
+                        label = "Add to queue",
+                        icon = Icons.Filled.QueueMusic,
+                        onClick = onAddToQueue,
                     ),
                 )
                 add(
