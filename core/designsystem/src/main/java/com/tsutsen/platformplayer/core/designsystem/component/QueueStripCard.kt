@@ -21,14 +21,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Icon
@@ -46,10 +50,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,25 +76,30 @@ private val ANIM = 180
 // Right-hand move-button column: its own zone so the arrows never overlap
 // the thumbnail or the text, and pressing them never triggers the card
 // swipe.
-private val HANDLE_W = 44.dp
+private val HANDLE_W = 48.dp
 
 /**
- * Horizontal queue strip. Queued cards: thumbnail, title, channel, duration
- * in their own text row, move buttons (< earlier / > later) in their own
- * column.
+ * Horizontal queue strip. The now-playing card (full-bleed thumbnail,
+ * bottom gradient, play/pause) sits at its natural position in the strip —
+ * it scrolls, swaps and reflows like any other card. Queued cards: 
+ * thumbnail, title, channel, duration, and move buttons (< earlier / > 
+ * later) in their own column.
  *
  * Reordering: tap < or > — the card slides into the new slot and the
- * neighbours slide in. Adding or removing a card animates the rest into
- * their new positions. Swipe a card up/down to remove it — it flies out in
- * the direction it was dragged. Long-press a card for the video options
- * sheet.
+ * swapped neighbour slides in. Adding or removing a card animates the rest
+ * into their new positions. Swipe a card up/down to remove it — it flies
+ * out in the direction it was dragged. Long-press a card for the video
+ * options sheet.
  */
 @Composable
 fun QueueStripCard(
     queue: List<ContentItem>,
+    current: ContentItem?,
+    isPlaying: Boolean,
     onPlay: (Int) -> Unit,
     onRemove: (String) -> Unit,
     onMove: (Int, Int) -> Unit,
+    onPlayPause: () -> Unit,
     onLongClick: (ContentItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -115,9 +127,12 @@ fun QueueStripCard(
             }
             QueuedCardStrip(
                 items = queue,
+                current = current,
+                isPlaying = isPlaying,
                 onPlay = onPlay,
                 onRemove = onRemove,
                 onMove = onMove,
+                onPlayPause = onPlayPause,
                 onLongClick = onLongClick,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -126,58 +141,54 @@ fun QueueStripCard(
 }
 
 /**
- * The queued cards on a plain scrollable [Row] (non-lazy): hold a card's
- * dots to reorder, swipe up/down to remove. New items are revealed by
- * scrolling the strip to them (an item added at the end is otherwise
- * off-screen and reads as "didn't appear").
+ * The queue cards on a plain scrollable [Row] (non-lazy): the now-playing
+ * card at its natural position, move buttons to swap neighbours, swipe
+ * up/down to remove. New items are revealed by scrolling the strip to them
+ * (an item added at the end is otherwise off-screen and reads as "didn't
+ * appear").
  */
 @Composable
 private fun QueuedCardStrip(
     items: List<ContentItem>,
+    current: ContentItem?,
+    isPlaying: Boolean,
     onPlay: (Int) -> Unit,
     onRemove: (String) -> Unit,
     onMove: (Int, Int) -> Unit,
+    onPlayPause: () -> Unit,
     onLongClick: (ContentItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val viewportPx = remember { mutableStateOf(0) }
 
-    // FLIP: whenever the queue order changes, slide each item from its old
-    // slot to the new one. Every card is exactly [stepPx] apart, so the
-    // delta is (newIndex - oldIndex) * step. Driven from data, never from
-    // position callbacks (which feed back on the animation itself and fire
-    // constantly while scrolling).
+    // FLIP for swaps: the move buttons only ever swap adjacent cards, so
+    // the delta is known at the press — no order diffing. Every card is
+    // exactly [stepPx] apart.
     val flipAnims = remember { mutableMapOf<String, Animatable<Offset, *>>() }
     val stepPx = with(LocalDensity.current) { (CARD_W + STRIP_GAP).toPx() }
-    val lastOrder = remember { mutableStateOf<List<String>?>(null) }
-    LaunchedEffect(items) {
-        val prev = lastOrder.value
-        val cur = items.map { it.url }
-        lastOrder.value = cur
-        if (prev == null || prev == cur) return@LaunchedEffect
-        // Adds/removals reflow via their AnimatedVisibility enter/exit — the
-        // layout itself slides the neighbours. Only a pure reorder (drag)
-        // jumps instantly and needs the FLIP slide.
-        val prevSet = prev.toSet()
-        val curSet = cur.toSet()
-        if (prevSet != curSet) return@LaunchedEffect
-        val oldIndex = prev.withIndex().associate { (i, k) -> k to i }
-        items.forEachIndexed { newIdx, item ->
-            val oldIdx = oldIndex[item.url] ?: return@forEachIndexed
-            if (oldIdx == newIdx) return@forEachIndexed
-            val anim = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) }
-            val delta = (newIdx - oldIdx).toFloat() * stepPx
-            anim.snapTo(Offset(delta, 0f))
-            // Launch per item so all cards slide concurrently — awaiting
-            // animateTo inline would run them one by one.
-            launch {
-                anim.animateTo(
-                    Offset.Zero,
-                    spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-                )
-            }
+
+    /** Displace [url] by [steps] card slots (steps = newIndex - oldIndex)
+     * and slide it back to rest. */
+    fun slide(url: String, steps: Int) {
+        val anim = flipAnims.getOrPut(url) { Animatable(Offset.Zero, Offset.VectorConverter) }
+        scope.launch {
+            anim.snapTo(Offset(-steps * stepPx, 0f))
+            anim.animateTo(
+                Offset.Zero,
+                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+            )
         }
     }
+    // Keep a reordered card centered so the user can follow it.
+    fun followCard(index: Int) {
+        val target = ((index + 0.5f) * stepPx - viewportPx.value / 2f).toInt()
+        scope.launch {
+            scrollState.animateScrollTo(target.coerceIn(0, scrollState.maxValue))
+        }
+    }
+
     // Scroll to newly added items so an off-screen add is never invisible.
     val prevUrls = remember { mutableStateOf<Set<String>>(items.mapTo(mutableSetOf()) { it.url }) }
     LaunchedEffect(items) {
@@ -191,7 +202,11 @@ private fun QueuedCardStrip(
     }
 
     Row(
-        modifier = modifier.fillMaxWidth().horizontalScroll(scrollState),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .onSizeChanged { viewportPx.value = it.width }
+                .horizontalScroll(scrollState),
         horizontalArrangement = Arrangement.spacedBy(STRIP_GAP),
     ) {
         items.forEachIndexed { index, item ->
@@ -202,16 +217,35 @@ private fun QueuedCardStrip(
             FlipItem(
                 flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
             ) {
-                QueueStripItem(
-                    item = item,
-                    onPlay = { onPlay(index) },
-                    onRemove = { onRemove(item.url) },
-                    onLongClick = { onLongClick(item) },
-                    canMoveEarlier = index > 0,
-                    canMoveLater = index < items.size - 1,
-                    onMoveEarlier = { onMove(index, index - 1) },
-                    onMoveLater = { onMove(index, index + 1) },
-                )
+                if (item.url == current?.url) {
+                    NowPlayingCard(
+                        item = item,
+                        isPlaying = isPlaying,
+                        onPlayPause = onPlayPause,
+                        onLongClick = { onLongClick(item) },
+                    )
+                } else {
+                    QueueStripItem(
+                        item = item,
+                        onPlay = { onPlay(index) },
+                        onRemove = { onRemove(item.url) },
+                        onLongClick = { onLongClick(item) },
+                        canMoveEarlier = index > 0,
+                        canMoveLater = index < items.size - 1,
+                        onMoveEarlier = {
+                            onMove(index, index - 1)
+                            slide(item.url, -1)
+                            slide(items[index - 1].url, +1)
+                            followCard(index - 1)
+                        },
+                        onMoveLater = {
+                            onMove(index, index + 1)
+                            slide(item.url, +1)
+                            slide(items[index + 1].url, -1)
+                            followCard(index + 1)
+                        },
+                    )
+                }
             }
             }
         }
@@ -387,56 +421,160 @@ private fun QueueStripItem(
                 }
             }
             // Move buttons in the handle column (where the drag dots were):
-            // < earlier / > later in the queue.
-            Box(
+            // < earlier / > later in the queue. Both stretch to fill the
+            // card height (minus padding).
+            Column(
                 modifier =
                     Modifier
                         .width(HANDLE_W)
                         .fillMaxSize()
-                        .align(Alignment.CenterEnd),
-                contentAlignment = Alignment.Center,
+                        .align(Alignment.CenterEnd)
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(
-                        onClick = onMoveEarlier,
-                        enabled = canMoveEarlier,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier =
-                            Modifier
-                                .size(40.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    RoundedCornerShape(10.dp),
-                                ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.ChevronLeft,
-                            contentDescription = "Move earlier in queue",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    IconButton(
-                        onClick = onMoveLater,
-                        enabled = canMoveLater,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier =
-                            Modifier
-                                .size(40.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    RoundedCornerShape(10.dp),
-                                ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.ChevronRight,
-                            contentDescription = "Move later in queue",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
+                IconButton(
+                    onClick = onMoveEarlier,
+                    enabled = canMoveEarlier,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                RoundedCornerShape(10.dp),
+                            ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronLeft,
+                        contentDescription = "Move earlier in queue",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                IconButton(
+                    onClick = onMoveLater,
+                    enabled = canMoveLater,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                RoundedCornerShape(10.dp),
+                            ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = "Move later in queue",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp),
+                    )
                 }
             }
         }
+    }
+}
+
+/** Now-playing card: full-bleed thumbnail, gradient, play/pause, meta. */
+@Composable
+private fun NowPlayingCard(
+    item: ContentItem,
+    isPlaying: Boolean,
+    onPlayPause: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    Box(
+        modifier =
+            Modifier
+                .width(CARD_W)
+                .height(CARD_H)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF1F1F1F))
+                .combinedClickable(onClick = onPlayPause, onLongClick = onLongClick),
+    ) {
+        AsyncImage(
+            url = item.thumbnailUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+        )
+        // Bottom gradient (transparent -> card gray) so the title, channel
+        // and duration stay readable over the thumbnail.
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            brush =
+                                Brush.verticalGradient(
+                                    colors =
+                                        listOf(
+                                            Color.Transparent,
+                                            surfaceVariant,
+                                            surfaceVariant,
+                                        ),
+                                    startY = size.height * 0.45f,
+                                    endY = size.height,
+                                ),
+                        )
+                    },
+        )
+        IconButton(
+            onClick = onPlayPause,
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = 42.dp)
+                    .size(48.dp),
+        ) {
+            Icon(
+                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (isPlaying) "Pause" else "Play",
+                tint = Color.White,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(Color(0xCC009369)),
+            )
+        }
+        Column(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 12.dp, end = 72.dp, bottom = 10.dp),
+        ) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = item.author?.name ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        item.durationMs
+            ?.takeIf { it > 0 }
+            ?.let { ms ->
+                Text(
+                    text = formatDuration(ms),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 8.dp, bottom = 8.dp)
+                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                )
+            }
     }
 }

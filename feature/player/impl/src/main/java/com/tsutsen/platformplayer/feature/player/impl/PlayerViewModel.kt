@@ -103,7 +103,8 @@ class PlayerViewModel
          * Backed by the repository so it survives configuration changes. */
         val loopMode: StateFlow<Int> = playerRepository.loopMode
 
-        /** Pending queue items (the playing video is not included). */
+        /** Queue items, including the currently playing video (shown as the
+         * now-playing card in the queue UI). */
         val queue: StateFlow<List<com.tsutsen.platformplayer.core.model.ContentItem>> =
             playbackQueueRepository.queue
 

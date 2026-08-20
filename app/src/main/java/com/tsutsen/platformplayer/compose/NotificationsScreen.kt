@@ -115,9 +115,18 @@ fun NotificationsScreen(
         // Persistent queue card at the top of the Feed.
         QueueStripCard(
             queue = queue,
+            current = playerLoaded?.currentVideo,
+            isPlaying = playerLoaded?.isPlaying ?: false,
             onPlay = { index -> playerViewModel.playQueueItem(index) },
             onRemove = { url -> playerViewModel.removeQueueItemUrl(url) },
             onMove = { from, to -> playerViewModel.moveQueueItem(from, to) },
+            onPlayPause = {
+                if (playerLoaded?.isPlaying == true) {
+                    playerViewModel.pause()
+                } else {
+                    playerViewModel.resume()
+                }
+            },
             onLongClick = { video -> sheetVideo = video },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )

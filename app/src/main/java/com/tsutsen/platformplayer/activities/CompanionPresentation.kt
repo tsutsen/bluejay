@@ -453,9 +453,12 @@ private fun CompanionContent(
 @Composable
 private fun CompanionQueueTabContent(
     queue: List<ContentItem>,
+    current: ContentItem?,
+    isPlaying: Boolean,
     onPlayItem: (Int) -> Unit,
     onRemove: (String) -> Unit,
     onMove: (Int, Int) -> Unit,
+    onPlayPause: () -> Unit,
     onLongClick: (ContentItem) -> Unit,
 ) {
     // Same horizontal component as the Feed queue card on the main screen.
@@ -465,9 +468,12 @@ private fun CompanionQueueTabContent(
     ) {
         QueueStripCard(
             queue = queue,
+            current = current,
+            isPlaying = isPlaying,
             onPlay = onPlayItem,
             onRemove = onRemove,
             onMove = onMove,
+            onPlayPause = onPlayPause,
             onLongClick = onLongClick,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -546,9 +552,12 @@ private fun CompanionVideoPage(
                         // tabs' horizontal strips.
                         CompanionQueueTabContent(
                             queue = queue,
+                            current = playerState.currentVideo,
+                            isPlaying = playerState.isPlaying,
                             onPlayItem = onQueuePlay,
                             onRemove = onQueueRemove,
                             onMove = onQueueMove,
+                            onPlayPause = onPlayPause,
                             onLongClick = { item ->
                                 onLongClick(
                                     CoreVideoCard(

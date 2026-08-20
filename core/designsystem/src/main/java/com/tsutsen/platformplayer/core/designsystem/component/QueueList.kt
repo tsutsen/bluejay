@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,44 +96,41 @@ fun QueueList(
     val scrollState = rememberScrollState()
     val removing = remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
+    val viewportPx = remember { mutableStateOf(0) }
 
-    // FLIP: slide each row from its old slot to the new one whenever the
-    // queue changes (rows are all [QUEUE_ROW_HEIGHT_DP]dp tall, no gap).
-    // Driven from data, never from position callbacks.
+    // FLIP for swaps: the move buttons only ever swap adjacent rows, so
+    // the delta is known at the press — no order diffing. Rows are all
+    // [QUEUE_ROW_HEIGHT_DP]dp tall.
     val flipAnims = remember { mutableMapOf<String, Animatable<Offset, *>>() }
     val stepPx = with(LocalDensity.current) { QUEUE_ROW_HEIGHT_DP.dp.toPx() }
-    val lastOrder = remember { mutableStateOf<List<String>?>(null) }
-    LaunchedEffect(items) {
-        val prev = lastOrder.value
-        val cur = items.map { it.url }
-        lastOrder.value = cur
-        if (prev == null || prev == cur) return@LaunchedEffect
-        // Adds/removals reflow via their AnimatedVisibility enter/exit — the
-        // layout itself slides the neighbours. Only a pure reorder (drag)
-        // jumps instantly and needs the FLIP slide.
-        val prevSet = prev.toSet()
-        val curSet = cur.toSet()
-        if (prevSet != curSet) return@LaunchedEffect
-        val oldIndex = prev.withIndex().associate { (i, k) -> k to i }
-        items.forEachIndexed { newIdx, item ->
-            val oldIdx = oldIndex[item.url] ?: return@forEachIndexed
-            if (oldIdx == newIdx) return@forEachIndexed
-            val anim = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) }
-            val delta = (newIdx - oldIdx).toFloat() * stepPx
-            anim.snapTo(Offset(0f, delta))
-            // Launch per item so all rows slide concurrently — awaiting
-            // animateTo inline would run them one by one.
-            launch {
-                anim.animateTo(
-                    Offset.Zero,
-                    spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-                )
-            }
+
+    /** Displace [url] by [steps] row slots (steps = newIndex - oldIndex)
+     * and slide it back to rest. */
+    fun slide(url: String, steps: Int) {
+        val anim = flipAnims.getOrPut(url) { Animatable(Offset.Zero, Offset.VectorConverter) }
+        scope.launch {
+            anim.snapTo(Offset(0f, -steps * stepPx))
+            anim.animateTo(
+                Offset.Zero,
+                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+            )
+        }
+    }
+
+    // Keep a reordered row centered so the user can follow it.
+    fun followRow(index: Int) {
+        val target = ((index + 0.5f) * stepPx - viewportPx.value / 2f).toInt()
+        scope.launch {
+            scrollState.animateScrollTo(target.coerceIn(0, scrollState.maxValue))
         }
     }
 
     Column(
-        modifier = modifier.fillMaxWidth().verticalScroll(scrollState),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .onSizeChanged { viewportPx.value = it.height }
+                .verticalScroll(scrollState),
     ) {
         items.forEachIndexed { index, item ->
             // Keyed by url: reorders must NOT reset per-row state (the
@@ -168,8 +166,18 @@ fun QueueList(
                         onLongClick = { onLongClick(item) },
                         canMoveUp = index > 0,
                         canMoveDown = index < items.size - 1,
-                        onMoveUp = { onMove(index, index - 1) },
-                        onMoveDown = { onMove(index, index + 1) },
+                        onMoveUp = {
+                            onMove(index, index - 1)
+                            slide(item.url, -1)
+                            slide(items[index - 1].url, +1)
+                            followRow(index - 1)
+                        },
+                        onMoveDown = {
+                            onMove(index, index + 1)
+                            slide(item.url, +1)
+                            slide(items[index + 1].url, -1)
+                            followRow(index + 1)
+                        },
                     )
                 }
             }

@@ -38,8 +38,12 @@ class PlaybackQueueRepositoryImpl
 
         private fun advance() {
             val currentUrl = playerRepository.playerState.value.currentVideo?.url ?: return
-            val next = _queue.value.firstOrNull { it.url != currentUrl } ?: return
-            _queue.value = _queue.value.filterNot { it.url == currentUrl }
+            // The finished video drops out of the queue, then the first
+            // remaining item plays (the current video stays in the queue
+            // while it plays — it's shown as the now-playing card).
+            val remaining = _queue.value.filterNot { it.url == currentUrl }
+            val next = remaining.firstOrNull() ?: return
+            _queue.value = remaining
             Log.i(TAG, "Auto-advancing queue to: ${next.title}")
             play(next)
         }
@@ -60,7 +64,8 @@ class PlaybackQueueRepositoryImpl
 
         override fun playAt(index: Int) {
             val item = _queue.value.getOrNull(index) ?: return
-            _queue.value = _queue.value.filterNot { it.url == item.url }
+            // The item stays in the queue while it plays (the strip shows
+            // it as the now-playing card); advance() drops it on completion.
             play(item)
         }
 
