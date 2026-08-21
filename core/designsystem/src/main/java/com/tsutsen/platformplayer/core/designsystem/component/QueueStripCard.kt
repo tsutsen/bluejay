@@ -113,8 +113,10 @@ fun QueueStripCard(
         Column(modifier = Modifier.padding(Tokens.SpaceLg)) {
             Text("Queue", style = MaterialTheme.typography.titleSmall)
             if (queue.isEmpty()) {
+                // Same height as the populated strip (8dp gap + CARD_H) so
+                // the feed layout never jumps when the queue empties.
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(96.dp),
+                    modifier = Modifier.fillMaxWidth().height(8.dp + CARD_H),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -429,7 +431,7 @@ private fun QueueStripItem(
                         .width(HANDLE_W)
                         .fillMaxSize()
                         .align(Alignment.CenterEnd)
-                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                        .padding(start = 2.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 IconButton(
@@ -440,14 +442,14 @@ private fun QueueStripItem(
                         Modifier
                             .weight(1f)
                             .background(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                MaterialTheme.colorScheme.primaryContainer,
                                 RoundedCornerShape(10.dp),
                             ),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ChevronLeft,
                         contentDescription = "Move earlier in queue",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(22.dp),
                     )
                 }
@@ -459,14 +461,14 @@ private fun QueueStripItem(
                         Modifier
                             .weight(1f)
                             .background(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                MaterialTheme.colorScheme.primaryContainer,
                                 RoundedCornerShape(10.dp),
                             ),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ChevronRight,
                         contentDescription = "Move later in queue",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(22.dp),
                     )
                 }

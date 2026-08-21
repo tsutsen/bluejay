@@ -301,6 +301,9 @@ private fun bluejayMainActivityContent(
                         "settings" -> navigator.navigateSettings()
                     }
                 },
+                // Labels hide the moment fullscreen engages (before the
+                // rail/bar finishes fading out) and return on exit.
+                labelsVisible = !playerState.isFullscreen,
                 isWide = config.isWide,
             )
         },

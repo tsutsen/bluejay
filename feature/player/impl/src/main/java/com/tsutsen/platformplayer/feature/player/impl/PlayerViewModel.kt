@@ -602,7 +602,7 @@ class PlayerViewModel
         }
 
         fun skipNext() {
-            playbackQueueRepository.playAt(0)
+            playbackQueueRepository.playNext()
         }
 
         fun skipPrevious() {

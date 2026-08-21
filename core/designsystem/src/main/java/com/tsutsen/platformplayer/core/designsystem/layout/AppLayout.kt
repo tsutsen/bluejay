@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -158,6 +159,7 @@ fun AppNavigationRail(
     items: List<NavItemDef>,
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
+    labelsVisible: Boolean = true,
 ) {
     // Plain wrap-content Column (not M3 NavigationRail) — the parent
     // [NavigationRailSurface] in [AppLayout] centers it and draws the card.
@@ -175,7 +177,14 @@ fun AppNavigationRail(
                         contentDescription = item.label,
                     )
                 },
-                label = { Text(item.label) },
+                // Alpha (not visibility) so the item height never reflows
+                // while the rail is fading out into fullscreen.
+                label = {
+                    Text(
+                        text = item.label,
+                        modifier = Modifier.alpha(if (labelsVisible) 1f else 0f),
+                    )
+                },
             )
         }
     }
@@ -189,6 +198,7 @@ fun AppNavigationBar(
     items: List<NavItemDef>,
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
+    labelsVisible: Boolean = true,
 ) {
     // Plain Row hugging the items (M3's NavigationBar is fillMaxWidth
     // internally, which would prevent the floating surface from wrapping it
@@ -207,7 +217,14 @@ fun AppNavigationBar(
                         contentDescription = item.label,
                     )
                 },
-                label = { Text(item.label) },
+                // Alpha (not visibility) so the bar height never reflows
+                // while the bar is fading out into fullscreen.
+                label = {
+                    Text(
+                        text = item.label,
+                        modifier = Modifier.alpha(if (labelsVisible) 1f else 0f),
+                    )
+                },
             )
         }
     }
@@ -448,18 +465,21 @@ fun AppNavigationChrome(
     isWide: Boolean =
         currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
             currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED,
+    labelsVisible: Boolean = true,
 ) {
     if (isWide) {
         AppNavigationRail(
             items = bluejayNavItems,
             currentDestination = currentDestination,
             onTabSelected = onTabSelected,
+            labelsVisible = labelsVisible,
         )
     } else {
         AppNavigationBar(
             items = bluejayNavItems,
             currentDestination = currentDestination,
             onTabSelected = onTabSelected,
+            labelsVisible = labelsVisible,
         )
     }
 }

@@ -37,15 +37,8 @@ class PlaybackQueueRepositoryImpl
         }
 
         private fun advance() {
-            val currentUrl = playerRepository.playerState.value.currentVideo?.url ?: return
-            // The finished video drops out of the queue, then the first
-            // remaining item plays (the current video stays in the queue
-            // while it plays — it's shown as the now-playing card).
-            val remaining = _queue.value.filterNot { it.url == currentUrl }
-            val next = remaining.firstOrNull() ?: return
-            _queue.value = remaining
-            Log.i(TAG, "Auto-advancing queue to: ${next.title}")
-            play(next)
+            Log.i(TAG, "Auto-advancing queue")
+            playNext()
         }
 
         private fun play(item: ContentItem) {
@@ -64,9 +57,32 @@ class PlaybackQueueRepositoryImpl
 
         override fun playAt(index: Int) {
             val item = _queue.value.getOrNull(index) ?: return
-            // The item stays in the queue while it plays (the strip shows
-            // it as the now-playing card); advance() drops it on completion.
+            val currentUrl = playerRepository.playerState.value.currentVideo?.url
+            if (item.url == currentUrl) {
+                // Tapping the already-playing video just (re)starts it —
+                // no reordering.
+                play(item)
+                return
+            }
+            // Tap-to-play: the tapped video takes over as the first queued
+            // item and the previously playing video is evicted (replaced,
+            // not re-added).
+            _queue.value =
+                listOf(item) +
+                    _queue.value.filter {
+                        it.url != item.url && it.url != currentUrl
+                    }
             play(item)
+        }
+
+        override fun playNext() {
+            val currentUrl = playerRepository.playerState.value.currentVideo?.url
+            // The finished / superseded video drops out of the queue, then
+            // the first remaining item plays.
+            val remaining = _queue.value.filterNot { it.url == currentUrl }
+            val next = remaining.firstOrNull() ?: return
+            _queue.value = remaining
+            play(next)
         }
 
         override fun removeAt(index: Int) {

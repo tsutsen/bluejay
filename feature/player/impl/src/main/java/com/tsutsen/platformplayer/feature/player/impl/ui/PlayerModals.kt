@@ -7,10 +7,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.model.VideoChapter
@@ -23,55 +32,74 @@ internal fun OptionsModal(
     qualities: List<Int>,
     subtitle: String,
     subtitles: List<String>,
+    loopMode: Int,
+    isWatchLater: Boolean,
     onSpeedChange: (Float) -> Unit,
     onQualityChange: (String) -> Unit,
     onSubtitleChange: (String) -> Unit,
+    onLoopClick: () -> Unit,
+    onWatchLaterClick: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
     ) {
-        OptionRow(title = "Speed") {
-            listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
-                FilterChip(
-                    selected = playbackSpeed == speed,
-                    onClick = { onSpeedChange(speed) },
-                    label = { Text("${speed}x") },
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            OptionCard(title = "Speed") {
+                listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
+                    FilterChip(
+                        selected = playbackSpeed == speed,
+                        onClick = { onSpeedChange(speed) },
+                        label = { Text("${speed}x") },
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
             }
-        }
-        OptionRow(title = "Quality") {
-            (listOf("Auto") + qualities.map { "${it}p" }).forEach { q ->
-                FilterChip(
-                    selected = quality == q,
-                    onClick = { onQualityChange(q) },
-                    label = { Text(q) },
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            OptionCard(title = "Quality") {
+                (listOf("Auto") + qualities.map { "${it}p" }).forEach { q ->
+                    FilterChip(
+                        selected = quality == q,
+                        onClick = { onQualityChange(q) },
+                        label = { Text(q) },
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
             }
-        }
-        OptionRow(title = "Subtitles") {
-            val subtitleOptions = if (subtitles.isEmpty()) listOf("Auto", "Off") else listOf("Off") + subtitles
-            subtitleOptions.forEach { s ->
-                FilterChip(
-                    selected = subtitle == s,
-                    onClick = { onSubtitleChange(s) },
-                    label = { Text(s) },
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            OptionCard(title = "Subtitles") {
+                val subtitleOptions = if (subtitles.isEmpty()) listOf("Auto", "Off") else listOf("Off") + subtitles
+                subtitleOptions.forEach { s ->
+                    FilterChip(
+                        selected = subtitle == s,
+                        onClick = { onSubtitleChange(s) },
+                        label = { Text(s) },
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
             }
+            PlaybackCard(
+                loopMode = loopMode,
+                isWatchLater = isWatchLater,
+                onLoopClick = onLoopClick,
+                onWatchLaterClick = onWatchLaterClick,
+            )
         }
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
 /**
- * One options-sheet section: title on the left, horizontally scrolling
- * controls on the same row - saves a vertical row per section.
+ * One options-sheet section: card with a fixed-width label on the left
+ * (so the chip rows of every section align) and horizontally scrolling
+ * controls on the right.
  */
 @Composable
-private fun OptionRow(
+private fun OptionCard(
     title: String,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -79,14 +107,15 @@ private fun OptionRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(vertical = 8.dp),
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(end = 12.dp),
+            modifier = Modifier.width(76.dp),
         )
         Row(
             modifier =
@@ -96,6 +125,86 @@ private fun OptionRow(
         ) {
             content()
         }
+    }
+}
+
+/**
+ * Loop / Watch later tiles: the same actions as the player's top overlay,
+ * kept out of the chip rows so they stay one-tap reachable.
+ */
+@Composable
+private fun PlaybackCard(
+    loopMode: Int,
+    isWatchLater: Boolean,
+    onLoopClick: () -> Unit,
+    onWatchLaterClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        PlaybackTile(
+            icon =
+                when (loopMode) {
+                    1 -> Icons.Filled.RepeatOne
+                    2 -> Icons.Filled.Repeat
+                    else -> Icons.Outlined.Repeat
+                },
+            label =
+                when (loopMode) {
+                    1 -> "Once"
+                    2 -> "Infinite"
+                    else -> "Loop off"
+                },
+            selected = loopMode != 0,
+            onClick = onLoopClick,
+            modifier = Modifier.weight(1f),
+        )
+        PlaybackTile(
+            icon = Icons.Outlined.Schedule,
+            label = "Watch later",
+            selected = isWatchLater,
+            onClick = onWatchLaterClick,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun PlaybackTile(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(9.dp))
+                .background(
+                    if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                )
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 

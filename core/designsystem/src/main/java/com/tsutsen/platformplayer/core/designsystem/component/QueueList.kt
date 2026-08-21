@@ -203,7 +203,7 @@ private fun QueueRow(
                 .fillMaxWidth()
                 .height(QUEUE_ROW_HEIGHT_DP.dp)
                 .combinedClickable(onClick = onPlay, onLongClick = onLongClick)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(start = 8.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -277,14 +277,14 @@ private fun QueueRow(
                     Modifier
                         .size(34.dp)
                         .background(
-                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            MaterialTheme.colorScheme.primaryContainer,
                             RoundedCornerShape(10.dp),
                         ),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.ExpandLess,
                     contentDescription = "Move up in queue",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -296,14 +296,14 @@ private fun QueueRow(
                     Modifier
                         .size(34.dp)
                         .background(
-                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            MaterialTheme.colorScheme.primaryContainer,
                             RoundedCornerShape(10.dp),
                         ),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.ExpandMore,
                     contentDescription = "Move down in queue",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(22.dp),
                 )
             }

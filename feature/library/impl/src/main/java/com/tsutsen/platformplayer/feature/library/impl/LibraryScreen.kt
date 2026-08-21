@@ -190,7 +190,15 @@ private fun LibrarySectionRow(
     onPlaylistLongClick: (PlaylistCard) -> Unit,
     onNewPlaylist: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd)) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(Tokens.SpaceLg),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+    ) {
         Row(
             modifier =
                 Modifier

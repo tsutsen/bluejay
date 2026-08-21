@@ -723,6 +723,8 @@ fun PlayerView(
                         qualities = state.videoQualities,
                         subtitle = state.selectedSubtitle,
                         subtitles = state.subtitleLanguages,
+                        loopMode = loopMode,
+                        isWatchLater = savedTypes.contains(SavedVideoType.WATCH_LATER),
                         onSpeedChange = { speed ->
                             viewModel.setPlaybackSpeed(speed)
                         },
@@ -731,6 +733,10 @@ fun PlayerView(
                         },
                         onSubtitleChange = { subtitle ->
                             viewModel.setSubtitle(subtitle)
+                        },
+                        onLoopClick = { viewModel.cycleLoopMode() },
+                        onWatchLaterClick = {
+                            viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
                         },
                         onDismiss = { showOptionsModal = false },
                     )
