@@ -30,4 +30,8 @@ data class PlayerState(
     val selectedSubtitle: String = "Auto",
     /** Text of the currently active subtitle cues (empty when none). */
     val subtitleText: String = "",
+    /** True while playback is being mirrored to a cast receiver. */
+    val isCasting: Boolean = false,
+    /** Name of the active cast receiver (null when not casting). */
+    val castDeviceName: String? = null,
 )

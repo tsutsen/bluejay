@@ -14,7 +14,13 @@ import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikeDislikes
 import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikes
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IDashManifestSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IHLSManifestSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoUrlSource
+import com.tsutsen.platformplayer.api.media.models.subtitles.ISubtitleSource
+import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.states.StateApp
+import com.tsutsen.platformplayer.states.StateCasting
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawAudioSource
@@ -49,7 +55,7 @@ class EngineVideoUrlResolver
     constructor() : VideoUrlResolver {
         private val TAG = "EngineVideoUrlResolver"
 
-        override suspend fun resolve(contentUrl: String): ResolutionResult {
+        override suspend fun resolve(contentUrl: String, resumePositionMs: Long): ResolutionResult {
             // Downloaded videos play from local files — no network, no engine.
             val local = StateDownloads.instance.getDownloadedVideos().find { it.url == contentUrl }
             if (local != null) {
@@ -90,6 +96,38 @@ class EngineVideoUrlResolver
                 )
 
                 Log.i(TAG, "Engine details type: ${details.javaClass.simpleName}")
+
+                // Cast path: if a receiver is connected and casting is enabled,
+                // hand the video to the receiver instead of building a local
+                // MediaSource. Falls back to local playback if the receiver
+                // can't take it.
+                if (Settings.instance.casting.enabled && StateCasting.instance.isCasting) {
+                    val (videoSrc, audioSrc, subSrc) = pickCastSources(videoDetails)
+                    if (videoSrc != null) {
+                        try {
+                            val castOk = StateCasting.instance.castIfAvailable(
+                                StateApp.instance.context.contentResolver,
+                                videoDetails,
+                                videoSrc,
+                                audioSrc,
+                                subSrc,
+                                resumePositionMs,
+                                null,
+                                -1,
+                                null,
+                                null,
+                                null,
+                                null,
+                            )
+                            if (castOk) {
+                                Log.i(TAG, "Video handed to the cast receiver")
+                                return ResolutionResult(null, mappedDetails, casted = true)
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Cast failed, falling back to local playback", e)
+                        }
+                    }
+                }
 
                 // Create HTTP data source factory
                 val httpDataSourceFactory =
@@ -215,6 +253,25 @@ class EngineVideoUrlResolver
                 is RatingLikeDislikes -> Pair(rating.likes, rating.dislikes)
                 else -> Pair(null, null)
             }
+        }
+
+        /**
+         * Pick the raw engine sources for the cast path, mirroring the local
+         * priority: live > DASH > HLS > descriptor's first video source.
+         */
+        private fun pickCastSources(
+            details: IPlatformVideoDetails,
+        ): Triple<IVideoSource?, IAudioSource?, ISubtitleSource?> {
+            val video: IVideoSource? =
+                details.live
+                    ?: details.dash
+                    ?: details.hls
+                    ?: (details.video as? JSVideoSourceDescriptor)?.videoSources?.firstOrNull()
+                    ?: (details.video as? JSUnMuxVideoSourceDescriptor)?.videoSources?.firstOrNull()
+            if (video == null) return Triple(null, null, null)
+            val audio =
+                (details.video as? JSUnMuxVideoSourceDescriptor)?.audioSources?.firstOrNull()
+            return Triple(video, audio, details.subtitles.firstOrNull())
         }
 
         private fun resolveVideoSource(

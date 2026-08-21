@@ -12,11 +12,19 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -55,6 +63,7 @@ import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
+import com.tsutsen.platformplayer.feature.player.impl.ui.CastingSheet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -108,6 +117,7 @@ fun PlayerView(
     // video it is bound to, or null when closed.
     var sheetVideo by remember { mutableStateOf<ContentItem?>(null) }
     var showQueueSheet by remember { mutableStateOf(false) }
+    var showCastingSheet by remember { mutableStateOf(false) }
     // Stable callbacks — captured once per text by LinkifiedText's remember.
     val onTimestampClick: (Long) -> Unit = remember { { ms -> viewModel.seekToClamped(ms) } }
     val onLinkClick: (String) -> Unit = remember(context) {
@@ -658,6 +668,11 @@ fun PlayerView(
                             viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
                         },
                         onQueue = { showQueueSheet = true },
+                        // Casting deferred: the fcast protocol only reaches fcast
+                        // receiver apps (not Chromecast TVs), which is niche. Users
+                        // can use system screen cast instead. Re-enable by
+                        // restoring this line + the sheet block below.
+                        // onCast = { showCastingSheet = true },
                         onPrevious = { viewModel.skipPrevious() },
                         onNext = { viewModel.skipNext() },
                         onSeek = { positionMs ->
@@ -668,6 +683,36 @@ fun PlayerView(
                         onMoreOptions = { showMiniPlayerOptions = true },
                         onFullscreenToggle = { viewModel.toggleFullscreen() },
                     )
+                }
+
+                // Casting indicator — while mirrored to a receiver, a chip
+                // above the controls names the active device.
+                if (state.isCasting) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 64.dp)
+                                .background(
+                                    Color.Black.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(16.dp),
+                                )
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cast,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(
+                            text = "Casting to ${state.castDeviceName ?: "receiver"}",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
 
                 // ==================== Modals ====================
@@ -714,6 +759,28 @@ fun PlayerView(
                         onGoToChannel = onChannelClick,
                     )
                 }
+
+                // Cast button (top row) → the casting sheet.
+                // Deferred — see the onCast note above. Kept (commented) so the
+                // cast stack (StateCasting, repository, resolver path) stays
+                // wired and re-enabling is a two-line change.
+                // if (showCastingSheet) {
+                //     BluejayModalBottomSheet(
+                //         onDismiss = { showCastingSheet = false },
+                //         title = "Cast to…",
+                //     ) {
+                //         CastingSheet(
+                //             castState = viewModel.castState,
+                //             onConnect = { viewModel.castConnect(it) },
+                //             onConnectByUrl = { viewModel.castConnectByUrl(it) },
+                //             onDisconnect = {
+                //                 viewModel.castDisconnect()
+                //                 showCastingSheet = false
+                //             },
+                //             onDismiss = { showCastingSheet = false },
+                //         )
+                //     }
+                // }
 
                 // Queue button (top row) → the queue sheet.
                 if (showQueueSheet) {

@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.player.impl.ui.overlays
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
@@ -31,6 +32,7 @@ internal fun PlayerNormalTopOverlay(
     onWatchLater: () -> Unit,
     onQueue: () -> Unit,
     onOptions: () -> Unit,
+    onCast: (() -> Unit)? = null,
 ) {
     Row(
         modifier =
@@ -89,6 +91,15 @@ internal fun PlayerNormalTopOverlay(
                 contentDescription = "Queue",
                 tint = Color.White,
             )
+        }
+        if (onCast != null) {
+            IconButton(onClick = onCast) {
+                Icon(
+                    imageVector = Icons.Default.Cast,
+                    contentDescription = "Cast",
+                    tint = Color.White,
+                )
+            }
         }
         IconButton(onClick = onOptions) {
             Icon(

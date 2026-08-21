@@ -79,7 +79,12 @@ interface PlayerRepository {
  */
 data class ResolutionResult(
     val mediaSource: MediaSource?,
-    val videoDetails: VideoDetails?
+    val videoDetails: VideoDetails?,
+    /**
+     * True when the resolver handed the video to the cast subsystem instead
+     * of producing a local [MediaSource] — [mediaSource] is null in that case.
+     */
+    val casted: Boolean = false,
 )
 
 /**
@@ -88,5 +93,11 @@ data class ResolutionResult(
  * Returns both a MediaSource for playback and IPlatformVideoDetails for the UI.
  */
 interface VideoUrlResolver {
-    suspend fun resolve(contentUrl: String): ResolutionResult
+    /**
+     * Resolve [contentUrl] to a playable [ResolutionResult].
+     *
+     * [resumePositionMs] is the position this video was last watched at; the
+     * cast path uses it as its start position.
+     */
+    suspend fun resolve(contentUrl: String, resumePositionMs: Long = 0): ResolutionResult
 }

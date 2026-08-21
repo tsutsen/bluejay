@@ -65,15 +65,17 @@ class PlatformPlayerApp : Application() {
 
     override fun onCreate() {
         Log.d(TAG, "PlatformPlayerApp.onCreate() starting")
-        super.onCreate()
 
-        // Hilt injects the singleton graph (MainActivity's fields pull in
-        // EngineDownloadsRepository, whose constructor reads persisted
-        // downloads from FragmentedStorage) before any Activity onCreate
-        // runs. Make file storage available now — MainActivity's
-        // mainAppStarting() force-initializes it later exactly as before.
+        // Hilt injects the singleton graph inside super.onCreate() — before
+        // any Activity onCreate runs. Some singletons (the casting
+        // repository) can reach FragmentedStorage during construction, so
+        // file storage must exist BEFORE the injection, not after.
+        // MainActivity's mainAppStarting() force-initializes it later
+        // exactly as before.
         StateApp.instance.setGlobalContext(applicationContext)
         StateApp.instance.initializeFiles()
+
+        super.onCreate()
 
         applyThemeMode()
 

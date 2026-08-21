@@ -27,6 +27,7 @@ import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import androidx.media3.exoplayer.text.TextRenderer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.tsutsen.platformplayer.core.data.repository.CastingRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
@@ -68,6 +69,14 @@ class PlayerRepositoryImpl(
 
     fun setUrlResolver(resolver: VideoUrlResolver?) {
         this.urlResolver = resolver
+    }
+
+    // Wired by the DI module after construction (same pattern as urlResolver).
+    // Present on every build that has a cast subsystem (fcast sender SDK).
+    private var castingRepository: CastingRepository? = null
+
+    fun setCastingRepository(repository: CastingRepository?) {
+        this.castingRepository = repository
     }
 
     // Wired by the DI module after construction (same pattern as urlResolver).
@@ -128,6 +137,34 @@ class PlayerRepositoryImpl(
     /** Last concretely selected track — used by [toggleSubtitles] when re-enabling. */
     private var lastExplicitSubtitle: String? = null
     private var pendingResumePosition: Long = 0
+
+    // Collects the cast receiver's position/duration while [PlayerState.isCasting].
+    private var castTrackingJob: kotlinx.coroutines.Job? = null
+
+    private fun startCastTracking() {
+        castTrackingJob?.cancel()
+        val repo = castingRepository
+        if (repo == null) return
+        repo.setMediaEndedListener {
+            _playerState.update { it.copy(isPlaying = false, isCompleted = true) }
+        }
+        castTrackingJob = extrasScope.launch {
+            launch {
+                repo.currentTimeMs.collect { pos ->
+                    if (_playerState.value.isCasting) {
+                        _playerState.update { it.copy(currentPositionMs = pos) }
+                    }
+                }
+            }
+            launch {
+                repo.durationMs.collect { dur ->
+                    if (_playerState.value.isCasting && dur > 0) {
+                        _playerState.update { it.copy(durationMs = dur) }
+                    }
+                }
+            }
+        }
+    }
 
     // The primary source + engine-provided subtitle tracks for the video
     // currently loaded. Subtitles are applied as an extra media source
@@ -424,12 +461,31 @@ class PlayerRepositoryImpl(
                 withContext(Dispatchers.IO) {
                     if (!isStreamingUrl(videoId)) {
                         Log.i(TAG, "Content URL detected, resolving to MediaSource + details...")
-                        resolveWithDetails(videoId)
+                        resolveWithDetails(videoId, pendingResumePosition)
                     } else {
                         Log.i(TAG, "Streaming URL detected, creating MediaSource from URL...")
                         ResolutionResult(createMediaSourceFromUrl(videoId), null)
                     }
                 }
+
+            // Cast path: the resolver already handed this video to a receiver.
+            // No local ExoPlayer work is needed — position and duration arrive
+            // from the cast state flows instead of the position ticker.
+            if (resolution.casted) {
+                Log.i(TAG, "Video handed to the cast receiver; skipping local playback")
+                _playerState.update {
+                    it.copy(
+                        isCasting = true,
+                        castDeviceName = castingRepository?.state?.value?.activeDevice?.name,
+                        isLoading = false,
+                        isPlaying = true,
+                        isCompleted = false,
+                        error = null,
+                    )
+                }
+                startCastTracking()
+                return
+            }
 
             Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
 
@@ -596,14 +652,14 @@ class PlayerRepositoryImpl(
         }
     }
 
-    private suspend fun resolveWithDetails(contentUrl: String): ResolutionResult =
+    private suspend fun resolveWithDetails(contentUrl: String, resumePositionMs: Long = 0): ResolutionResult =
         try {
             Log.i(TAG, "Resolving MediaSource + details for content URL: $contentUrl")
             Log.i(TAG, "urlResolver is null: ${urlResolver == null}")
             val resolver = urlResolver
             if (resolver != null) {
                 Log.i(TAG, "Calling resolver.resolve()...")
-                val resolution = resolver.resolve(contentUrl)
+                val resolution = resolver.resolve(contentUrl, resumePositionMs)
                 Log.i(TAG, "Resolved MediaSource: ${resolution.mediaSource?.javaClass?.simpleName}")
                 Log.i(TAG, "Video details available: ${resolution.videoDetails != null}")
                 if (resolution.videoDetails != null) {
@@ -692,6 +748,11 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun pause() {
+        if (_playerState.value.isCasting) {
+            castingRepository?.pause()
+            _playerState.update { it.copy(isPlaying = false) }
+            return
+        }
         withContext(Dispatchers.Main) {
             _exoPlayer?.playWhenReady = false
         }
@@ -699,6 +760,11 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun resume() {
+        if (_playerState.value.isCasting) {
+            castingRepository?.resume()
+            _playerState.update { it.copy(isPlaying = true) }
+            return
+        }
         withContext(Dispatchers.Main) {
             _exoPlayer?.playWhenReady = true
         }
@@ -706,6 +772,10 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun seekTo(positionMs: Long) {
+        if (_playerState.value.isCasting) {
+            castingRepository?.seekTo(positionMs)
+            return
+        }
         withContext(Dispatchers.Main) {
             _exoPlayer?.seekTo(positionMs)
         }
@@ -740,6 +810,13 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun setPlaybackSpeed(speed: Float) {
+        if (_playerState.value.isCasting) {
+            val supported = castingRepository?.setSpeed(speed) ?: true
+            if (supported) {
+                _playerState.update { it.copy(playbackSpeed = speed) }
+            }
+            return
+        }
         withContext(Dispatchers.Main) {
             _exoPlayer?.playbackParameters = _exoPlayer?.playbackParameters?.withSpeed(speed)
                 ?: androidx.media3.common.PlaybackParameters(speed)
@@ -890,6 +967,13 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun close() {
+        // Leaving the player stops the cast session — the receiver keeps
+        // playing only while the player is on screen.
+        if (_playerState.value.isCasting) {
+            castingRepository?.disconnect()
+        }
+        castTrackingJob?.cancel()
+        castTrackingJob = null
         positionTickerJob?.cancel()
         positionTickerJob = null
         mediaController?.release()

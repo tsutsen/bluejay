@@ -141,7 +141,11 @@ class Settings {
 
     @Serializable
     class CastingSettings {
+        var enabled: Boolean = true
+        var keepScreenOn: Boolean = true
+        var alwaysProxyRequests: Boolean = false
         var allowIpv6: Boolean = false
+        var allowLinkLocalIpv4: Boolean = false
     }
 
     @Serializable

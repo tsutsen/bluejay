@@ -35,6 +35,7 @@ import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PlayerView
 import com.tsutsen.platformplayer.states.StateApp
+import com.tsutsen.platformplayer.states.StateCasting
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -154,6 +155,13 @@ class MainActivity :
         if (hasFocus) ensureCompanion()
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Paired with the (deferred) casting start below — restore both
+        // together when re-enabling casting.
+        // StateCasting.instance.onStop()
+    }
+
     override fun onDestroy() {
         companionPresentation?.dismiss()
         companionPresentation = null
@@ -166,6 +174,13 @@ class MainActivity :
         // Initialize StateApp and FragmentedStorage before setting content
         StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")
         StateApp.instance.mainAppStarting(this)
+
+        // Casting deferred: fcast only reaches fcast-receiver apps (not
+        // Chromecast TVs), which is niche — users can use system screen cast.
+        // This also stops the background mDNS discovery + cast proxy server.
+        // Re-enable together with the onStop() call above and the cast
+        // button in PlayerView.
+        // StateCasting.instance.start(this)
 
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

@@ -8,9 +8,12 @@ import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
+import com.tsutsen.platformplayer.core.data.repository.CastingRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.Card
+import com.tsutsen.platformplayer.core.model.CastDevice
+import com.tsutsen.platformplayer.core.model.CastState
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadInfo
@@ -60,6 +63,8 @@ sealed interface PlayerUiState {
         val isLiked: Boolean = false,
         val isDisliked: Boolean = false,
         val isSubscribedChannel: Boolean = false,
+        val isCasting: Boolean = false,
+        val castDeviceName: String? = null,
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
@@ -85,6 +90,7 @@ class PlayerViewModel
         private val channelRepository: ChannelRepository,
         private val downloadsRepository: DownloadsRepository,
         private val playbackQueueRepository: PlaybackQueueRepository,
+        private val castingRepository: CastingRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
         val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -107,6 +113,21 @@ class PlayerViewModel
          * now-playing card in the queue UI). */
         val queue: StateFlow<List<com.tsutsen.platformplayer.core.model.ContentItem>> =
             playbackQueueRepository.queue
+
+        /** Cast connection / discovery state for the casting sheet. */
+        val castState: StateFlow<CastState> = castingRepository.state
+
+        fun castConnect(device: CastDevice) {
+            castingRepository.connect(device)
+        }
+
+        fun castConnectByUrl(url: String) {
+            castingRepository.connectByUrl(url)
+        }
+
+        fun castDisconnect() {
+            castingRepository.disconnect()
+        }
 
         /** Enqueue the given video (starts playing if nothing is). */
         fun addToQueue(item: com.tsutsen.platformplayer.core.model.ContentItem) {
@@ -195,6 +216,8 @@ class PlayerViewModel
                                 showRecommended =
                                     settingsRepository.preferences.value
                                         .showRecommendedVideos,
+                                isCasting = playerState.isCasting,
+                                castDeviceName = playerState.castDeviceName,
                             )
 
                         // Track playback history. The player's real duration

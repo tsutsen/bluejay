@@ -84,6 +84,7 @@ fun PlayerControls(
     onLoopMode: () -> Unit,
     onQueue: () -> Unit,
     onOptions: () -> Unit,
+    onCast: (() -> Unit)? = null,
     onSeek: (Long) -> Unit,
     isMorphDragging: Boolean,
     onMorphDragStart: () -> Unit,
@@ -186,6 +187,7 @@ fun PlayerControls(
                                         onWatchLater = onWatchLater,
                                         onQueue = onQueue,
                                         onOptions = onOptions,
+                                        onCast = onCast,
                                     )
                                 }
                             }
