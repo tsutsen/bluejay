@@ -140,29 +140,6 @@ internal fun PlayerNormalBottomOverlay(
         var seekPosition by remember { mutableFloatStateOf(0f) }
 
         Box {
-            // Chapter boundary ticks above the track (skipping the leading edge)
-            if (chapters.isNotEmpty() && durationMs > 0) {
-                Box(
-                    modifier =
-                        Modifier
-                            .matchParentSize()
-                            .drawBehind {
-                                val cy = size.height / 2f
-                                val radius = 4.dp.toPx()
-                                chapters.forEach { chapter ->
-                                    val fraction =
-                                        (chapter.startTimeMs.toFloat() / durationMs)
-                                            .coerceIn(0f, 1f)
-                                    if (fraction <= 0.001f) return@forEach
-                                    drawCircle(
-                                        color = Color.White,
-                                        radius = radius,
-                                        center = Offset(fraction * size.width, cy),
-                                    )
-                                }
-                            },
-                )
-            }
             Slider(
                 value = if (isDragging) seekPosition else (if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f),
                 onValueChange = {
@@ -185,6 +162,34 @@ internal fun PlayerNormalBottomOverlay(
                 colors = SliderDefaults.colors(),
                 interactionSource = remember { MutableInteractionSource() },
             )
+            // Chapter dots over the timeline (drawn after the slider so they
+            // sit on the track), skipping the leading edge. Played part ->
+            // secondary, unplayed part -> primary.
+            val progress = if (isDragging) seekPosition else (if (durationMs > 0) currentPositionMs.toFloat() / durationMs else 0f)
+            val playedDotColor = MaterialTheme.colorScheme.secondaryContainer
+            val unplayedDotColor = MaterialTheme.colorScheme.primary
+            if (chapters.isNotEmpty() && durationMs > 0) {
+                Box(
+                    modifier =
+                        Modifier
+                            .matchParentSize()
+                            .drawBehind {
+                                val cy = size.height / 2f
+                                val radius = 2.dp.toPx()
+                                chapters.forEach { chapter ->
+                                    val fraction =
+                                        (chapter.startTimeMs.toFloat() / durationMs)
+                                            .coerceIn(0f, 1f)
+                                    if (fraction <= 0.001f) return@forEach
+                                    drawCircle(
+                                        color = if (fraction <= progress) playedDotColor else unplayedDotColor,
+                                        radius = radius,
+                                        center = Offset(fraction * size.width, cy),
+                                    )
+                                }
+                            },
+                )
+            }
         }
     }
 }
