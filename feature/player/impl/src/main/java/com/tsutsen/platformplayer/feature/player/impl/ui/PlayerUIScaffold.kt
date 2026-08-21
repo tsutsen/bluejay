@@ -104,7 +104,7 @@ fun PlayerUIScaffold(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
+                        .height(200.dp)
                         .align(Alignment.TopCenter)
                         .background(
                             Brush.verticalGradient(
@@ -122,7 +122,7 @@ fun PlayerUIScaffold(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
+                        .height(200.dp)
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
