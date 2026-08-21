@@ -26,27 +26,44 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 // ---- gesture recognition thresholds ----
-private const val SWIPE_THRESHOLD = 30f          // px to recognise swipe vs jitter
+private const val SWIPE_THRESHOLD = 30f          // px to recognise slide vs jitter
 private const val HOLD_TIMEOUT_MS = 500L         // ms to trigger hold
 private const val DOUBLE_TAP_TIMEOUT_MS = 300L   // max gap between taps for double-tap
 private const val DOUBLE_TAP_SLOP_DP = 36f       // tap drift tolerance between the two taps (dp)
 
-// ---- morph drag thresholds (from existing code) ----
-private const val MORPH_DRAG_MIN_VELLOCITY = 0.3f // fraction of container height
+/** Outcome of the decision phase. */
+private enum class Decision { TAP, HOLD, SLIDE }
 
 /**
- * Unified gesture detection composable that replaces the old stacked-box [PlayerGestures].
+ * Unified gesture detection.
  *
- * A single [awaitEachGesture] loop owns all pointer events on the player surface:
- *  1. Resolves the 3×3 sector from touch position
- *  2. Recognises gesture type (swipe / hold / double-tap)
- *  3. Emits [GestureFrame] stream to [handler]
- *  4. Morph drag takes precedence in NORMAL / COMPACT modes
+ * The player surface is divided into a 3x3 grid of [GestureSector]s; each
+ * sector maps the four gestures (double tap, vertical slide, horizontal
+ * slide, hold) to a [GestureAction] through [GestureConfigs].
  *
- * [isScrubbing] blocks all gesture recognition when the timeline is being interacted with.
+ * A single [awaitEachGesture] loop owns every pointer on the surface:
+ *
+ *   1. **Double tap** — recognised synchronously on DOWN against the
+ *      previous tap; fires [GestureActionHandler.handleInstantAction]
+ *      immediately.
+ *   2. **Decision phase** — the gesture is waited on until it becomes
+ *      unambiguous: the finger moves [SWIPE_THRESHOLD] px → slide; the
+ *      [HOLD_TIMEOUT_MS] deadline elapses → hold (a perfectly still
+ *      finger emits no events, so the [withTimeout] race against the
+ *      event stream is the decision itself); the finger lifts → single tap.
+ *   3. **Execution phase** — the recognised gesture runs to pointer-up:
+ *      continuous gestures emit START → ACTIVE… → END frames through
+ *      [handler]. END is dispatched exactly once (try/finally), even if
+ *      the player leaves composition mid-gesture, so indicators and
+ *      playback speed can never stick.
+ *
+ * The pointerInput is never restarted on mode / scrub changes — those
+ * are read per gesture through [rememberUpdatedState] — so a
+ * recomposition cannot kill an in-flight gesture.
  */
 @Composable
 fun PlayerGestureSystem(
@@ -76,8 +93,8 @@ fun PlayerGestureSystem(
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    // Survive recomposition / pointerInput restart so an in-flight deferred single-tap
-    // can still be cancelled when a second tap arrives.
+    // Survives recomposition / pointerInput restarts so an in-flight
+    // deferred single-tap can still be cancelled when a second tap arrives.
     var pendingTapJob by remember { mutableStateOf<Job?>(null) }
     val currentHandler by rememberUpdatedState(handler)
     val currentConfigs by rememberUpdatedState(gestureConfigs)
@@ -95,9 +112,10 @@ fun PlayerGestureSystem(
     val currentDoubleTapSlopPx by rememberUpdatedState(with(density) { DOUBLE_TAP_SLOP_DP.dp.toPx() })
 
     Box(modifier = modifier) {
-        // ---- Floating mode: drag + tap ----
+        // ---- floating mode: drag + tap ----
         if (overlayMode == com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.FLOATING
-            && floatingVideoLayout != null) {
+            && floatingVideoLayout != null
+        ) {
             val latestOffsetX by rememberUpdatedState(currentOffsetX)
             val latestOffsetY by rememberUpdatedState(currentOffsetY)
             val latestRestX by rememberUpdatedState(floatingRestX)
@@ -162,15 +180,13 @@ fun PlayerGestureSystem(
             )
         }
 
-        // ---- Non-floating: unified gesture detection ----
+        // ---- non-floating: unified gesture detection ----
         if (overlayMode != com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.FLOATING) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(currentOverlayMode, currentIsScrubbing) {
-                        val cfg = currentConfigs.forMode(currentOverlayMode)
-
-                        // Tap tracking persists across awaitEachGesture iterations
+                    .pointerInput(Unit) {
+                        // Tap tracking persists across gestures (double-tap detection).
                         var lastTapTime = 0L
                         var lastTapPos = Offset.Zero
 
@@ -178,292 +194,282 @@ fun PlayerGestureSystem(
                             val down = awaitFirstDown()
                             val downPos = down.position
                             val downTime = System.currentTimeMillis()
+                            val pointerId = down.id
+                            val downX = downPos.x
+                            val downY = downPos.y
 
-                            val sector = GestureSector.fromPosition(
-                                downPos.x, downPos.y,
-                                size.width.toFloat(), size.height.toFloat()
-                            )
-
-                            // ---- Track pointer movement ----
-                            var lastPos = downPos
-                            var totalDeltaX = 0f
-                            var totalDeltaY = 0f
-                            var gestureRecognized = false
-                            var gestureType: GestureType? = null
-                            var holdTriggered = false
-                            var startFrameSent = false
-                            var startJustSent = false
-                            var isSwipeDownward = false
-                            var endSent = false
-
-                            // Cancel any pending single-tap on new down event
+                            // A new down cancels any pending deferred single-tap.
                             pendingTapJob?.cancel()
                             pendingTapJob = null
 
-                            // Dispatches the END frame for the in-flight gesture, at most
-                            // once. Called on normal pointer-up and from the finally below
-                            // when the pointerInput is cancelled mid-gesture (overlay mode
-                            // or scrubbing change) — otherwise the handler's END-side
-                            // cleanup (indicator hide, speed restore) never runs and the
-                            // indicator sticks on screen.
+                            // Mode + config are read once per gesture.
+                            val cfg = currentConfigs.forMode(currentOverlayMode)
+                            val sector = GestureSector.fromPosition(
+                                downX, downY,
+                                size.width.toFloat(), size.height.toFloat()
+                            )
+
+                            // A recognised continuous gesture ends in exactly one
+                            // END frame — on release, or from finally when the
+                            // player leaves composition mid-gesture.
+                            var activeAction: GestureAction? = null
+                            var activeType: GestureType? = null
+                            var endSent = false
+
                             fun dispatchEnd() {
                                 if (endSent) return
                                 endSent = true
-                                if (gestureRecognized && gestureType != null && gestureType != GestureType.DOUBLE_TAP) {
-                                    val action = cfg.resolve(sector, gestureType!!)
-                                    if (action != GestureAction.NONE) {
-                                        currentHandler.handleGestureFrame(
-                                            GestureFrame(
-                                                sector = sector,
-                                                gestureType = gestureType!!,
-                                                action = action,
-                                                phase = GesturePhase.END,
-                                                totalDelta = Offset(totalDeltaX, totalDeltaY),
-                                                elapsedMs = System.currentTimeMillis() - downTime,
-                                                fingerPosition = Offset(totalDeltaX + downPos.x, totalDeltaY + downPos.y)
-                                            )
-                                        )
-                                    }
-                                }
+                                val action = activeAction ?: return
+                                val type = activeType ?: return
+                                if (action == GestureAction.NONE) return
+                                currentHandler.handleGestureFrame(
+                                    GestureFrame(
+                                        sector = sector,
+                                        gestureType = type,
+                                        action = action,
+                                        phase = GesturePhase.END,
+                                        elapsedMs = System.currentTimeMillis() - downTime,
+                                        fingerPosition = downPos
+                                    )
+                                )
                             }
 
-                            try {
-                            // Check for double-tap first (compare with previous tap)
+                            // ---- 1. Double tap: synchronous on down ----
                             val now = System.currentTimeMillis()
-                            val timeSinceLastTap = now - lastTapTime
-                            val distFromLastTap = sqrt(
-                                (downPos.x - lastTapPos.x) * (downPos.x - lastTapPos.x) +
-                                (downPos.y - lastTapPos.y) * (downPos.y - lastTapPos.y)
-                            )
+                            val dxFromLast = downX - lastTapPos.x
+                            val dyFromLast = downY - lastTapPos.y
+                            val distFromLastTap = sqrt(dxFromLast * dxFromLast + dyFromLast * dyFromLast)
 
-                            if (timeSinceLastTap < DOUBLE_TAP_TIMEOUT_MS && distFromLastTap < currentDoubleTapSlopPx) {
-                                // Double-tap detected — cancel pending single-tap
-                                pendingTapJob?.cancel()
-                                pendingTapJob = null
-                                gestureRecognized = true
-                                gestureType = GestureType.DOUBLE_TAP
+                            if (now - lastTapTime < DOUBLE_TAP_TIMEOUT_MS &&
+                                distFromLastTap < currentDoubleTapSlopPx
+                            ) {
+                                lastTapTime = now
+                                lastTapPos = downPos
                                 val action = cfg.resolve(sector, GestureType.DOUBLE_TAP)
                                 if (action != GestureAction.NONE) {
                                     currentHandler.handleInstantAction(
                                         InstantActionEvent(sector, action, downPos)
                                     )
                                 }
-                                // Update last tap tracking
-                                lastTapTime = now
-                                lastTapPos = downPos
+                                // Drain the pointer: the second tap may still be
+                                // held down, and leftover moves must not spawn a
+                                // phantom gesture on the next iteration.
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change =
+                                        event.changes.lastOrNull { it.id == pointerId } ?: continue
+                                    if (!change.pressed) break
+                                    change.consume()
+                                }
+                                return@awaitEachGesture
                             }
 
-                            // Wait for more events to distinguish swipe vs hold vs single tap
-                            if (!gestureRecognized) {
-                                lastTapTime = now
-                                lastTapPos = downPos
-
+                            // While the timeline is being scrubbed, swallow the gesture.
+                            if (currentIsScrubbing) {
                                 while (true) {
-                                    startJustSent = false
-                                    // Race the wait against the hold deadline: a perfectly still
-                                    // finger emits no pointer events, so without this a hold
-                                    // would only ever activate on hold *plus* movement.
-                                    val event =
-                                        if (holdTriggered) {
-                                            awaitPointerEvent()
-                                        } else {
-                                            val remaining = downTime + HOLD_TIMEOUT_MS - System.currentTimeMillis()
-                                            if (remaining > 0) {
-                                                try {
-                                                    withTimeout(remaining) { awaitPointerEvent() }
-                                                } catch (_: TimeoutCancellationException) {
-                                                    // Full hold elapsed with no pointer events:
-                                                    // finger is still and pressed — activate hold now.
-                                                    // Only when no gesture is recognised yet: hijacking an
-                                                    // active drag (e.g. a paused swipe) overwrites gestureType
-                                                    // so the drag's END frame is never dispatched, leaving
-                                                    // the drag callbacks (isDragging*) stuck on.
-                                                    if (gestureRecognized) continue
-                                                    holdTriggered = true
-                                                    gestureRecognized = true
-                                                    gestureType = GestureType.HOLD
-                                                    val holdAction = cfg.resolve(sector, GestureType.HOLD)
-                                                    if (holdAction != GestureAction.NONE) {
-                                                        currentHandler.handleGestureFrame(
-                                                            GestureFrame(
-                                                                sector = sector,
-                                                                gestureType = GestureType.HOLD,
-                                                                action = holdAction,
-                                                                phase = GesturePhase.START,
-                                                                instantDelta = Offset.Zero,
-                                                                totalDelta = Offset.Zero,
-                                                                elapsedMs = System.currentTimeMillis() - downTime,
-                                                                fingerPosition = lastPos,
-                                                            )
-                                                        )
-                                                    }
-                                                    startFrameSent = true
-                                                    startJustSent = true
-                                                    continue
-                                                }
-                                            } else {
-                                                awaitPointerEvent()
-                                            }
-                                        }
+                                    val event = awaitPointerEvent()
+                                    val change =
+                                        event.changes.lastOrNull { it.id == pointerId } ?: continue
+                                    if (!change.pressed) break
+                                    change.consume()
+                                }
+                                return@awaitEachGesture
+                            }
 
-                                    // ---- Pointer up — check first before anything else ----
-                                    // One event can carry the down pointer's final MOVE and
-                                    // its UP as two changes; only the last change for that
-                                    // pointer is authoritative. (The old all-changes check
-                                    // missed the batched case: the loop then blocked on
-                                    // awaitPointerEvent forever and END was never sent,
-                                    // leaving the indicator stuck on screen.)
-                                    val downChange = event.changes.lastOrNull { it.id == down.id }
-                                    if (downChange != null && !downChange.pressed) {
-                                        if (!gestureRecognized) {
-                                            // Single tap — defer to avoid firing on first tap of a double-tap
-                                            pendingTapJob = scope.launch {
-                                                delay(DOUBLE_TAP_TIMEOUT_MS)
-                                                currentOnTap()
-                                            }
+                            // ---- 2. Decision phase ----
+                            var decision = Decision.TAP
+                            var slideType = GestureType.SWIPE_VERTICAL
+                            var slideDownward = false
+
+                            while (true) {
+                                val remaining = downTime + HOLD_TIMEOUT_MS - System.currentTimeMillis()
+                                val event =
+                                    if (remaining > 0) {
+                                        try {
+                                            withTimeout(remaining) { awaitPointerEvent() }
+                                        } catch (_: TimeoutCancellationException) {
+                                            // The hold deadline elapsed — a perfectly
+                                            // still finger emits no events, so the
+                                            // timeout itself is the decision.
+                                            decision = Decision.HOLD
+                                            break
                                         }
-                                        dispatchEnd()
+                                    } else {
+                                        decision = Decision.HOLD
                                         break
                                     }
 
-                                    val change = event.changes.lastOrNull { it.id == down.id && it.pressed } ?: continue
+                                val change = event.changes.lastOrNull { it.id == pointerId } ?: continue
+                                if (!change.pressed) {
+                                    decision = Decision.TAP
+                                    break
+                                }
+                                change.consume()
 
-                                    val pos = change.position
-                                    totalDeltaX = pos.x - downPos.x
-                                    totalDeltaY = pos.y - downPos.y
-                                    val totalDist = sqrt(totalDeltaX * totalDeltaX + totalDeltaY * totalDeltaY)
-                                    val elapsed = System.currentTimeMillis() - downTime
+                                val totalDx = change.position.x - downX
+                                val totalDy = change.position.y - downY
+                                val totalDist = sqrt(totalDx * totalDx + totalDy * totalDy)
+                                if (totalDist > SWIPE_THRESHOLD) {
+                                    decision = Decision.SLIDE
+                                    val isHorizontal = abs(totalDx) > abs(totalDy)
+                                    slideType =
+                                        if (isHorizontal) GestureType.SWIPE_HORIZONTAL
+                                        else GestureType.SWIPE_VERTICAL
+                                    slideDownward = !isHorizontal && totalDy > 0
+                                    break
+                                }
+                            }
 
-                                    // ---- Swipe detection ----
-                                    if (!gestureRecognized && totalDist > SWIPE_THRESHOLD) {
-                                        gestureRecognized = true
-                                        val isHorizontal = kotlin.math.abs(totalDeltaX) > kotlin.math.abs(totalDeltaY)
-                                        gestureType = if (isHorizontal) {
-                                            GestureType.SWIPE_HORIZONTAL
-                                        } else {
-                                            isSwipeDownward = totalDeltaY > 0
-                                            GestureType.SWIPE_VERTICAL
+                            // ---- 3. Execution phase ----
+                            try {
+                                when (decision) {
+                                    Decision.TAP -> {
+                                        lastTapTime = now
+                                        lastTapPos = downPos
+                                        // Defer: the first tap of a double tap must not fire.
+                                        pendingTapJob = scope.launch {
+                                            delay(DOUBLE_TAP_TIMEOUT_MS)
+                                            currentOnTap()
                                         }
-
-                                        // ---- Morph drag precedence check ----
-                                        // NORMAL/COMPACT: any downward swipe → morph to floating
-                                        // FULLSCREEN: only top-row downward swipe → morph (middle/bottom do brightness/volume)
-                                        val isTopRow = sector == GestureSector.TOP_LEFT ||
-                                            sector == GestureSector.TOP_CENTER ||
-                                            sector == GestureSector.TOP_RIGHT
-                                        val isMorphCandidate = (
-                                            ((currentOverlayMode == com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.NORMAL ||
-                                              currentOverlayMode == com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.COMPACT) ||
-                                             (currentOverlayMode == com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.FULLSCREEN && isTopRow)) &&
-                                            gestureType == GestureType.SWIPE_VERTICAL &&
-                                            isSwipeDownward
-                                        )
-
-                                        if (isMorphCandidate) {
-                                            // Morph drag takes precedence — fire morph callbacks
-                                            currentOnMorphDragStart()
-                                            currentOnMorphDrag(totalDeltaY.coerceAtLeast(0f))
-                                            change.consume()
-
-                                            // Continue tracking for morph drag
-                                            while (true) {
-                                                val morphEvent = awaitPointerEvent()
-                                                val morphChange = morphEvent.changes.lastOrNull { it.id == down.id } ?: continue
-                                                if (!morphChange.pressed) {
-                                                    val finalDragY = totalDeltaY.coerceAtLeast(0f)
-                                                    currentOnMorphDragEnd(finalDragY)
-                                                    break
-                                                }
-                                                val morphPos = morphChange.position
-                                                totalDeltaY = morphPos.y - downPos.y
-                                                currentOnMorphDrag(totalDeltaY.coerceAtLeast(0f))
-                                                morphChange.consume()
-                                            }
-                                            break
-                                        }
-
-                                        // Regular swipe — emit START frame
-                                        val action = cfg.resolve(sector, gestureType!!)
-                                        if (action != GestureAction.NONE) {
-                                            currentHandler.handleGestureFrame(
-                                                GestureFrame(
-                                                    sector = sector,
-                                                    gestureType = gestureType!!,
-                                                    action = action,
-                                                    phase = GesturePhase.START,
-                                                    instantDelta = Offset.Zero,
-                                                    totalDelta = Offset(totalDeltaX, totalDeltaY),
-                                                    elapsedMs = elapsed,
-                                                    fingerPosition = pos
-                                                )
-                                            )
-                                        }
-                                        startFrameSent = true
-                                        startJustSent = true
-                                        change.consume()
                                     }
 
-                                    // ---- Hold detection ----
-                                    // No jitter cap: a real finger always drifts a few px,
-                                    // so requiring < 15px made hold almost impossible.
-                                    // A genuine swipe beats hold: it is recognised first
-                                    // at 30px and sets gestureRecognized, which blocks
-                                    // this branch.
-                                    if (!gestureRecognized && !holdTriggered &&
-                                        elapsed > HOLD_TIMEOUT_MS) {
-                                        holdTriggered = true
-                                        gestureRecognized = true
-                                        gestureType = GestureType.HOLD
-
+                                    Decision.HOLD -> {
                                         val action = cfg.resolve(sector, GestureType.HOLD)
                                         if (action != GestureAction.NONE) {
+                                            activeAction = action
+                                            activeType = GestureType.HOLD
                                             currentHandler.handleGestureFrame(
                                                 GestureFrame(
                                                     sector = sector,
                                                     gestureType = GestureType.HOLD,
                                                     action = action,
                                                     phase = GesturePhase.START,
-                                                    instantDelta = Offset.Zero,
-                                                    totalDelta = Offset.Zero,
-                                                    elapsedMs = elapsed,
-                                                    fingerPosition = pos
+                                                    elapsedMs = System.currentTimeMillis() - downTime,
+                                                    fingerPosition = downPos
                                                 )
                                             )
+                                            // Hold to the end, modulating with finger drift.
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                val change =
+                                                    event.changes.lastOrNull { it.id == pointerId } ?: continue
+                                                if (!change.pressed) break
+                                                change.consume()
+                                                currentHandler.handleGestureFrame(
+                                                    GestureFrame(
+                                                        sector = sector,
+                                                        gestureType = GestureType.HOLD,
+                                                        action = action,
+                                                        phase = GesturePhase.ACTIVE,
+                                                        totalDelta = Offset(
+                                                            change.position.x - downX,
+                                                            change.position.y - downY
+                                                        ),
+                                                        elapsedMs = System.currentTimeMillis() - downTime,
+                                                        fingerPosition = change.position
+                                                    )
+                                                )
+                                            }
+                                        } else {
+                                            // No action: just wait for release.
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                val change =
+                                                    event.changes.lastOrNull { it.id == pointerId } ?: continue
+                                                if (!change.pressed) break
+                                                change.consume()
+                                            }
                                         }
-                                        startFrameSent = true
-                                        startJustSent = true
                                     }
 
-                                    // ---- Continuous frames for recognised gestures ----
-                                    // Skip ACTIVE on the same iteration as START so START indicator renders first
-                                    if (gestureRecognized && gestureType != GestureType.DOUBLE_TAP && startFrameSent && !startJustSent) {
-                                        val instantDx = pos.x - lastPos.x
-                                        val instantDy = pos.y - lastPos.y
-                                        val newElapsed = System.currentTimeMillis() - downTime
+                                    Decision.SLIDE -> {
+                                        val isTopRow = sector.row == 0
+                                        val isMorphDrag =
+                                            (currentOverlayMode ==
+                                                com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.NORMAL ||
+                                                currentOverlayMode ==
+                                                com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.COMPACT ||
+                                                (currentOverlayMode ==
+                                                    com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode.FULLSCREEN &&
+                                                    isTopRow)) &&
+                                            slideType == GestureType.SWIPE_VERTICAL &&
+                                            slideDownward
 
-                                        val action = cfg.resolve(sector, gestureType!!)
-                                        if (action != GestureAction.NONE) {
-                                            currentHandler.handleGestureFrame(
-                                                GestureFrame(
-                                                    sector = sector,
-                                                    gestureType = gestureType!!,
-                                                    action = action,
-                                                    phase = GesturePhase.ACTIVE,
-                                                    instantDelta = Offset(instantDx, instantDy),
-                                                    totalDelta = Offset(totalDeltaX, totalDeltaY),
-                                                    elapsedMs = newElapsed,
-                                                    fingerPosition = pos
+                                        if (isMorphDrag) {
+                                            // Live morph-to-floating drag: callbacks, no frames.
+                                            currentOnMorphDragStart()
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                val change =
+                                                    event.changes.lastOrNull { it.id == pointerId } ?: continue
+                                                if (!change.pressed) {
+                                                    currentOnMorphDragEnd(
+                                                        (change.position.y - downY).coerceAtLeast(0f)
+                                                    )
+                                                    break
+                                                }
+                                                change.consume()
+                                                currentOnMorphDrag(
+                                                    (change.position.y - downY).coerceAtLeast(0f)
                                                 )
-                                            )
+                                            }
+                                        } else {
+                                            val action = cfg.resolve(sector, slideType)
+                                            if (action != GestureAction.NONE) {
+                                                activeAction = action
+                                                activeType = slideType
+                                                var lastPos = downPos
+                                                currentHandler.handleGestureFrame(
+                                                    GestureFrame(
+                                                        sector = sector,
+                                                        gestureType = slideType,
+                                                        action = action,
+                                                        phase = GesturePhase.START,
+                                                        totalDelta = Offset.Zero,
+                                                        elapsedMs = System.currentTimeMillis() - downTime,
+                                                        fingerPosition = downPos
+                                                    )
+                                                )
+                                                while (true) {
+                                                    val event = awaitPointerEvent()
+                                                    val change =
+                                                        event.changes.lastOrNull { it.id == pointerId } ?: continue
+                                                    if (!change.pressed) break
+                                                    change.consume()
+                                                    currentHandler.handleGestureFrame(
+                                                        GestureFrame(
+                                                            sector = sector,
+                                                            gestureType = slideType,
+                                                            action = action,
+                                                            phase = GesturePhase.ACTIVE,
+                                                            instantDelta = Offset(
+                                                                change.position.x - lastPos.x,
+                                                                change.position.y - lastPos.y
+                                                            ),
+                                                            totalDelta = Offset(
+                                                                change.position.x - downX,
+                                                                change.position.y - downY
+                                                            ),
+                                                            elapsedMs = System.currentTimeMillis() - downTime,
+                                                            fingerPosition = change.position
+                                                        )
+                                                    )
+                                                    lastPos = change.position
+                                                }
+                                            } else {
+                                                // No action: just wait for release.
+                                                while (true) {
+                                                    val event = awaitPointerEvent()
+                                                    val change =
+                                                        event.changes.lastOrNull { it.id == pointerId } ?: continue
+                                                    if (!change.pressed) break
+                                                    change.consume()
+                                                }
+                                            }
                                         }
-                                        lastPos = pos
                                     }
                                 }
-                            }
                             } finally {
-                                // The pointerInput can be cancelled mid-gesture (overlay
-                                // mode or scrubbing change restarts it). Make sure the
-                                // handler still gets its END frame.
                                 dispatchEnd()
                             }
                         }

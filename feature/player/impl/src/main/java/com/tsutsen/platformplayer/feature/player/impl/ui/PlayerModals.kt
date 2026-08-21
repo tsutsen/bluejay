@@ -9,19 +9,24 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
+import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
+import com.tsutsen.platformplayer.core.designsystem.component.TileTone
+import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.VideoChapter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,11 +39,13 @@ internal fun OptionsModal(
     subtitles: List<String>,
     loopMode: Int,
     isWatchLater: Boolean,
+    downloadState: DownloadButtonState,
     onSpeedChange: (Float) -> Unit,
     onQualityChange: (String) -> Unit,
     onSubtitleChange: (String) -> Unit,
     onLoopClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
+    onDownload: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -83,12 +90,64 @@ internal fun OptionsModal(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
             }
-            PlaybackCard(
-                loopMode = loopMode,
-                isWatchLater = isWatchLater,
-                onLoopClick = onLoopClick,
-                onWatchLaterClick = onWatchLaterClick,
-            )
+            // Same tiles as the video card's options sheet — no card
+            // wrapper, the tiles carry their own surface.
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OptionTileView(
+                    tile =
+                        OptionTile(
+                            label = "Loop",
+                            icon =
+                                when (loopMode) {
+                                    1 -> Icons.Filled.RepeatOne
+                                    2 -> Icons.Filled.Repeat
+                                    else -> Icons.Outlined.Repeat
+                                },
+                            selected = loopMode != 0,
+                            onClick = onLoopClick,
+                        ),
+                    modifier = Modifier.weight(1f),
+                )
+                OptionTileView(
+                    tile =
+                        OptionTile(
+                            label = "Watch later",
+                            icon = Icons.Filled.History,
+                            selected = isWatchLater,
+                            onClick = onWatchLaterClick,
+                        ),
+                    modifier = Modifier.weight(1f),
+                )
+                OptionTileView(
+                    tile =
+                        OptionTile(
+                            label =
+                                when (downloadState) {
+                                    is DownloadButtonState.Downloading -> "Stop download"
+                                    is DownloadButtonState.Downloaded -> "Delete"
+                                    is DownloadButtonState.Starting -> "Starting..."
+                                    is DownloadButtonState.Idle -> "Download"
+                                },
+                            icon =
+                                when (downloadState) {
+                                    is DownloadButtonState.Downloading -> Icons.Filled.Stop
+                                    is DownloadButtonState.Downloaded -> Icons.Filled.Delete
+                                    else -> Icons.Filled.Download
+                                },
+                            tone =
+                                when (downloadState) {
+                                    is DownloadButtonState.Downloading -> TileTone.Warning
+                                    is DownloadButtonState.Downloaded -> TileTone.Danger
+                                    is DownloadButtonState.Starting -> TileTone.Highlight
+                                    is DownloadButtonState.Idle -> TileTone.Default
+                                },
+                            progress = (downloadState as? DownloadButtonState.Downloading)?.progress,
+                            indeterminate = downloadState is DownloadButtonState.Starting,
+                            onClick = onDownload,
+                        ),
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -125,86 +184,6 @@ private fun OptionCard(
         ) {
             content()
         }
-    }
-}
-
-/**
- * Loop / Watch later tiles: the same actions as the player's top overlay,
- * kept out of the chip rows so they stay one-tap reachable.
- */
-@Composable
-private fun PlaybackCard(
-    loopMode: Int,
-    isWatchLater: Boolean,
-    onLoopClick: () -> Unit,
-    onWatchLaterClick: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        PlaybackTile(
-            icon =
-                when (loopMode) {
-                    1 -> Icons.Filled.RepeatOne
-                    2 -> Icons.Filled.Repeat
-                    else -> Icons.Outlined.Repeat
-                },
-            label =
-                when (loopMode) {
-                    1 -> "Once"
-                    2 -> "Infinite"
-                    else -> "Loop off"
-                },
-            selected = loopMode != 0,
-            onClick = onLoopClick,
-            modifier = Modifier.weight(1f),
-        )
-        PlaybackTile(
-            icon = Icons.Outlined.Schedule,
-            label = "Watch later",
-            selected = isWatchLater,
-            onClick = onWatchLaterClick,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun PlaybackTile(
-    icon: ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(9.dp))
-                .background(
-                    if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                )
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-        )
     }
 }
 
