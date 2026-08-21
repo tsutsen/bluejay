@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.tsutsen.platformplayer.core.model.VideoChapter
@@ -43,6 +44,8 @@ internal fun PlayerNormalBottomOverlay(
     scrubPositionMs: Long = currentPositionMs,
     chapters: List<VideoChapter> = emptyList(),
 ) {
+    val positionMs = if (isScrubbing) scrubPositionMs else currentPositionMs
+
     Column(
         modifier =
             Modifier
@@ -80,13 +83,29 @@ internal fun PlayerNormalBottomOverlay(
                     tint = Color.White,
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+            // Current chapter title fills the space left of the time text.
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                val currentChapter = chapters.lastOrNull { it.startTimeMs <= positionMs }
+                if (currentChapter != null) {
+                    Text(
+                        text = currentChapter.title,
+                        color = Color.White.copy(alpha = 0.9f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
+            }
             Box(
                 modifier = Modifier.height(40.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "${formatTime(if (isScrubbing) scrubPositionMs else currentPositionMs)} / ${formatTime(durationMs)}",
+                    text = "${formatTime(positionMs)} / ${formatTime(durationMs)}",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.padding(top = 2.dp),

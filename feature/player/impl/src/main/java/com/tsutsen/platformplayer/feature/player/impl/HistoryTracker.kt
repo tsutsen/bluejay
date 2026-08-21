@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import com.tsutsen.platformplayer.core.database.dao.HistoryDao
 import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -66,6 +67,11 @@ class HistoryTracker
                 }
             }
         }
+
+        /**
+         * Observe all history entries (live, updates as playback is tracked).
+         */
+        fun observeHistory(): Flow<List<HistoryEntity>> = historyDao.observeAll()
 
         /**
          * Delete a video from history.

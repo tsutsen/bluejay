@@ -78,6 +78,7 @@ fun PlaylistDetailScreen(
     viewModel: PlaylistDetailViewModel = hiltViewModel(),
 ) {
     val gridColumns by viewModel.gridColumns.collectAsState()
+    val watchStates by playerViewModel.watchStates.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val isWide = rememberIsWide()
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
@@ -206,6 +207,8 @@ fun PlaylistDetailScreen(
                                 card = card,
                                 onClick = { playerViewModel.play(card) },
                                 onLongClick = { optionsCard = card },
+                                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                                isWatched = watchStates[card.url]?.isWatched ?: false,
                             )
                         } else {
                             Box(Modifier.height(1.dp))

@@ -161,12 +161,15 @@ private fun LibraryCard(
     onVideoLongClick: (CoreVideoCard) -> Unit,
     onPlaylistLongClick: (PlaylistCard) -> Unit,
 ) {
+    val watchStates by hiltViewModel<PlayerViewModel>().watchStates.collectAsState()
     when (card) {
         is CoreVideoCard -> {
             VideoCard(
                 card = card,
                 onClick = { onClick(card) },
                 onLongClick = { onVideoLongClick(card) },
+                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                isWatched = watchStates[card.url]?.isWatched ?: false,
             )
         }
 

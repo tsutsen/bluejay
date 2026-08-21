@@ -330,6 +330,7 @@ private fun ChannelContent(
     onRetryContent: () -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
+    val watchStates by hiltViewModel<PlayerViewModel>().watchStates.collectAsState()
     when (selectedTab) {
         TAB_ABOUT -> {
             Column(
@@ -440,6 +441,8 @@ private fun ChannelContent(
                             card = card,
                             onClick = { onCardClick(card) },
                             onLongClick = { onVideoLongClick(card) },
+                            watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                            isWatched = watchStates[card.url]?.isWatched ?: false,
                         )
                     } else {
                         Box(Modifier.height(1.dp))
@@ -531,12 +534,15 @@ private fun WideVideoCell(
     onCardClick: (Card) -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
+    val watchStates by androidx.hilt.navigation.compose.hiltViewModel<PlayerViewModel>().watchStates.collectAsState()
     Box(modifier) {
         if (card is CoreVideoCard) {
             VideoCard(
                 card = card,
                 onClick = { onCardClick(card) },
                 onLongClick = { onVideoLongClick(card) },
+                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                isWatched = watchStates[card.url]?.isWatched ?: false,
             )
         }
     }

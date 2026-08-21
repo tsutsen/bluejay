@@ -28,6 +28,7 @@ import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.VideoCard
+import com.tsutsen.platformplayer.core.model.WatchState
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
@@ -47,6 +48,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val gridColumns by viewModel.gridColumns.collectAsState()
+    val watchStates by playerViewModel.watchStates.collectAsState()
     val isWide = rememberIsWide()
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
 
@@ -75,6 +77,7 @@ fun HomeScreen(
                     hasMorePages = state.hasMorePages,
                     isWide = isWide,
                     gridColumns = gridColumns,
+                    watchStates = watchStates,
                     onCardClick = { card ->
                         when (card) {
                             is VideoCard -> playerViewModel.play(card)
@@ -118,6 +121,7 @@ private fun HomeFeedContent(
     hasMorePages: Boolean,
     isWide: Boolean,
     gridColumns: Int,
+    watchStates: Map<String, WatchState> = emptyMap(),
     onCardClick: (Card) -> Unit,
     onVideoLongClick: (VideoCard) -> Unit,
     onLoadMore: () -> Unit,
@@ -157,6 +161,8 @@ private fun HomeFeedContent(
                                 card = card,
                                 onClick = { onCardClick(card) },
                                 onLongClick = { onVideoLongClick(card) },
+                                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                                isWatched = watchStates[card.url]?.isWatched ?: false,
                             )
                         }
 

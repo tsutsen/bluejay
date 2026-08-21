@@ -4,10 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,6 +40,10 @@ fun VideoCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    /** 0..1 watch progress from local history; null = not started. Hidden while downloading. */
+    watchProgress: Float? = null,
+    /** Shows the watched checkmark badge. */
+    isWatched: Boolean = false,
 ) {
     val title = card.title
     val author = card.author
@@ -99,6 +107,45 @@ fun VideoCard(
                                 Modifier
                                     .fillMaxWidth()
                                     .height(4.dp),
+                        )
+                    }
+                }
+
+                // Watch progress bar (bottom edge), hidden while downloading.
+                if (downloadProgress == null && watchProgress != null) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(Color.Black.copy(alpha = 0.5f)),
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
+                                    .background(MaterialTheme.colorScheme.primary),
+                        )
+                    }
+                }
+
+                // Watched checkmark (top-right)
+                if (isWatched) {
+                    Surface(
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(Tokens.SpaceSm),
+                        color = Color.Black.copy(alpha = 0.6f),
+                        shape = CircleShape,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = "Watched",
+                            tint = Color.White,
+                            modifier = Modifier.padding(2.dp),
                         )
                     }
                 }

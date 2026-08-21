@@ -100,6 +100,7 @@ fun SearchScreen(
 ) {
     val isWide = rememberIsWide()
     val gridColumns by viewModel.gridColumns.collectAsState()
+    val watchStates by playerViewModel.watchStates.collectAsState()
     val searchType by viewModel.searchType.collectAsState()
     val sort by viewModel.sort.collectAsState()
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
@@ -476,6 +477,8 @@ fun SearchScreen(
                                                         card = card,
                                                         onClick = { playerViewModel.play(card) },
                                                         onLongClick = { optionsCard = card },
+                                                        watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                                                        isWatched = watchStates[card.url]?.isWatched ?: false,
                                                     )
                                                 }
                                             }

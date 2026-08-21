@@ -75,6 +75,7 @@ fun SubscriptionsScreen(
     playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val gridColumns by viewModel.gridColumns.collectAsState()
+    val watchStates by playerViewModel.watchStates.collectAsState()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isWide = rememberIsWide()
     val coroutineScope = rememberCoroutineScope()
@@ -98,6 +99,7 @@ fun SubscriptionsScreen(
                         state = state,
                         isWide = isWide,
                         gridColumns = gridColumns,
+                        watchStates = watchStates,
                         onCreatorSelected = viewModel::selectCreator,
                         onGoToChannel = { navigator.navigateToChannel(it) },
                         onStartedToggle = viewModel::toggleStarted,
@@ -156,6 +158,7 @@ private fun SubscriptionsContent(
     state: SubscriptionsUiState.Success,
     isWide: Boolean,
     gridColumns: Int,
+    watchStates: Map<String, com.tsutsen.platformplayer.core.model.WatchState> = emptyMap(),
     onCreatorSelected: (String?) -> Unit,
     onGoToChannel: (String) -> Unit,
     onStartedToggle: () -> Unit,
@@ -216,6 +219,8 @@ private fun SubscriptionsContent(
                                 onClick = { onItemClicked((card as ModelVideoCard).url) },
                                 onLongClick = { onVideoLongClick(card as ModelVideoCard) },
                                 modifier = Modifier.fillMaxWidth(),
+                                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                                isWatched = watchStates[card.url]?.isWatched ?: false,
                             )
                         }
                     },
@@ -328,6 +333,8 @@ private fun SubscriptionsContent(
                             onClick = { onItemClicked((card as ModelVideoCard).url) },
                             onLongClick = { onVideoLongClick(card as ModelVideoCard) },
                             modifier = Modifier.fillMaxWidth(),
+                            watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                            isWatched = watchStates[card.url]?.isWatched ?: false,
                         )
                     }
                 },

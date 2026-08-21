@@ -22,6 +22,7 @@ import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.model.VideoChapter
+import com.tsutsen.platformplayer.core.model.WatchState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,6 +31,12 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+/** Minimum watch time before a video counts as "in progress" on cards. */
+private const val MIN_WATCH_MS = 15_000L
+
+/** Position/duration fraction at or above which a video is "watched". */
+private const val WATCHED_FRACTION = 0.95f
 
 /**
  * MVI state for the Video Player screen.
@@ -116,6 +123,28 @@ class PlayerViewModel
 
         /** Cast connection / discovery state for the casting sheet. */
         val castState: StateFlow<CastState> = castingRepository.state
+
+        /** Watch state per video url, live from local history. Empty entry =
+         * not (meaningfully) watched. Feeds use this for progress bars and
+         * the watched checkmark on video cards. */
+        val watchStates: StateFlow<Map<String, WatchState>> =
+            historyTracker.observeHistory()
+                .map { entries ->
+                    entries
+                        .filter { it.totalDurationMs > 0 && it.lastPositionMs >= MIN_WATCH_MS }
+                        .associate {
+                            it.contentUrl to
+                                WatchState(
+                                    progress =
+                                        (it.lastPositionMs.toFloat() / it.totalDurationMs)
+                                            .coerceIn(0f, 1f),
+                                    isWatched =
+                                        it.lastPositionMs >=
+                                            it.totalDurationMs * WATCHED_FRACTION,
+                                )
+                        }
+                }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
         fun castConnect(device: CastDevice) {
             castingRepository.connect(device)

@@ -356,6 +356,12 @@ class PlayerRepositoryImpl(
         }
 
     override suspend fun play(videoId: String, initial: com.tsutsen.platformplayer.core.model.ContentItem?) {
+        // Stop the current video IMMEDIATELY — otherwise it keeps playing
+        // (audio included) until the new MediaSource is resolved and prepared,
+        // which can take seconds of network I/O. prepare() below starts the
+        // new one. Harmless on an idle player (e.g. cast-only sessions).
+        withContext(Dispatchers.Main) { _exoPlayer?.stop() }
+
         // Resume: look up where this video was last watched (applied once the
         // player is READY, see onPlaybackStateChanged).
         pendingResumePosition =
@@ -467,6 +473,14 @@ class PlayerRepositoryImpl(
                         ResolutionResult(createMediaSourceFromUrl(videoId), null)
                     }
                 }
+
+            // The player was closed (or superseded) while resolution was in
+            // flight — abort before touching ExoPlayer, or this play would
+            // resurrect the released player (recreate + prepare + start).
+            if (generation != playGeneration.get()) {
+                Log.i(TAG, "play() aborted: superseded during resolution ($videoId)")
+                return
+            }
 
             // Cast path: the resolver already handed this video to a receiver.
             // No local ExoPlayer work is needed — position and duration arrive
@@ -967,6 +981,9 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun close() {
+        // Invalidate any in-flight play() so it cannot resurrect the player
+        // after its resolution completes (close-during-load).
+        playGeneration.incrementAndGet()
         // Leaving the player stops the cast session — the receiver keeps
         // playing only while the player is on screen.
         if (_playerState.value.isCasting) {
