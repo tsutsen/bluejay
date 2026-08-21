@@ -80,6 +80,7 @@ fun PlayerView(
     val savedTypes by viewModel.savedTypes.collectAsState(initial = emptySet())
     val loopMode by viewModel.loopMode.collectAsState(initial = 0)
     val queue by viewModel.queue.collectAsState(initial = emptyList())
+    val downloads by viewModel.downloads.collectAsState(initial = emptyList())
     // While the player is fullscreen, back exits fullscreen instead of
     // falling through to the app-level handler (home / exit).
     // This BackHandler is registered after the app-level one (PlayerView is
@@ -717,6 +718,12 @@ fun PlayerView(
 
                 // ==================== Modals ====================
                 if (showOptionsModal) {
+                    val downloadInfo = downloads.find { it.url == state.currentVideo?.url }
+                    val downloadState = when {
+                        downloadInfo == null -> DownloadButtonState.Idle
+                        downloadInfo.done -> DownloadButtonState.Downloaded
+                        else -> DownloadButtonState.Downloading(downloadInfo.progress)
+                    }
                     OptionsModal(
                         playbackSpeed = state.playbackSpeed,
                         quality = state.selectedQuality,
@@ -725,6 +732,7 @@ fun PlayerView(
                         subtitles = state.subtitleLanguages,
                         loopMode = loopMode,
                         isWatchLater = savedTypes.contains(SavedVideoType.WATCH_LATER),
+                        downloadState = downloadState,
                         onSpeedChange = { speed ->
                             viewModel.setPlaybackSpeed(speed)
                         },
@@ -737,6 +745,14 @@ fun PlayerView(
                         onLoopClick = { viewModel.cycleLoopMode() },
                         onWatchLaterClick = {
                             viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
+                        },
+                        onDownload = {
+                            when (downloadState) {
+                                is DownloadButtonState.Idle -> viewModel.startDownload()
+                                is DownloadButtonState.Downloading -> viewModel.cancelDownload()
+                                is DownloadButtonState.Downloaded -> viewModel.deleteDownload()
+                                is DownloadButtonState.Starting -> Unit
+                            }
                         },
                         onDismiss = { showOptionsModal = false },
                     )

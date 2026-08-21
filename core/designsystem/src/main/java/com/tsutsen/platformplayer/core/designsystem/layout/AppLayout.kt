@@ -159,7 +159,7 @@ fun AppNavigationRail(
     items: List<NavItemDef>,
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
-    labelsVisible: Boolean = true,
+    labelAlpha: Float = 1f,
 ) {
     // Plain wrap-content Column (not M3 NavigationRail) — the parent
     // [NavigationRailSurface] in [AppLayout] centers it and draws the card.
@@ -178,11 +178,11 @@ fun AppNavigationRail(
                     )
                 },
                 // Alpha (not visibility) so the item height never reflows
-                // while the rail is fading out into fullscreen.
+                // while the rail fades in/out of fullscreen.
                 label = {
                     Text(
                         text = item.label,
-                        modifier = Modifier.alpha(if (labelsVisible) 1f else 0f),
+                        modifier = Modifier.alpha(labelAlpha),
                     )
                 },
             )
@@ -198,7 +198,7 @@ fun AppNavigationBar(
     items: List<NavItemDef>,
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
-    labelsVisible: Boolean = true,
+    labelAlpha: Float = 1f,
 ) {
     // Plain Row hugging the items (M3's NavigationBar is fillMaxWidth
     // internally, which would prevent the floating surface from wrapping it
@@ -218,11 +218,11 @@ fun AppNavigationBar(
                     )
                 },
                 // Alpha (not visibility) so the bar height never reflows
-                // while the bar is fading out into fullscreen.
+                // while the bar fades in/out of fullscreen.
                 label = {
                     Text(
                         text = item.label,
-                        modifier = Modifier.alpha(if (labelsVisible) 1f else 0f),
+                        modifier = Modifier.alpha(labelAlpha),
                     )
                 },
             )
@@ -467,19 +467,27 @@ fun AppNavigationChrome(
             currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED,
     labelsVisible: Boolean = true,
 ) {
+    // Faded labels: out immediately when fullscreen engages, back only
+    // after the rail/bar fade-in (300ms) from fullscreen has completed.
+    val labelAlpha by
+        animateFloatAsState(
+            targetValue = if (labelsVisible) 1f else 0f,
+            animationSpec = if (labelsVisible) tween(250, delayMillis = 300) else tween(250),
+            label = "navLabelAlpha",
+        )
     if (isWide) {
         AppNavigationRail(
             items = bluejayNavItems,
             currentDestination = currentDestination,
             onTabSelected = onTabSelected,
-            labelsVisible = labelsVisible,
+            labelAlpha = labelAlpha,
         )
     } else {
         AppNavigationBar(
             items = bluejayNavItems,
             currentDestination = currentDestination,
             onTabSelected = onTabSelected,
-            labelsVisible = labelsVisible,
+            labelAlpha = labelAlpha,
         )
     }
 }
