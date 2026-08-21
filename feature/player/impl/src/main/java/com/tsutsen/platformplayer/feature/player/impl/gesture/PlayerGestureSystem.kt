@@ -30,7 +30,6 @@ import kotlin.math.sqrt
 
 // ---- gesture recognition thresholds ----
 private const val SWIPE_THRESHOLD = 30f          // px to recognise swipe vs jitter
-private const val HOLD_JITTER_THRESHOLD = 15f    // max drift before hold still activates
 private const val HOLD_TIMEOUT_MS = 500L         // ms to trigger hold
 private const val DOUBLE_TAP_TIMEOUT_MS = 300L   // max gap between taps for double-tap
 private const val DOUBLE_TAP_SLOP_DP = 36f       // tap drift tolerance between the two taps (dp)
@@ -195,11 +194,40 @@ fun PlayerGestureSystem(
                             var startFrameSent = false
                             var startJustSent = false
                             var isSwipeDownward = false
+                            var endSent = false
 
                             // Cancel any pending single-tap on new down event
                             pendingTapJob?.cancel()
                             pendingTapJob = null
 
+                            // Dispatches the END frame for the in-flight gesture, at most
+                            // once. Called on normal pointer-up and from the finally below
+                            // when the pointerInput is cancelled mid-gesture (overlay mode
+                            // or scrubbing change) — otherwise the handler's END-side
+                            // cleanup (indicator hide, speed restore) never runs and the
+                            // indicator sticks on screen.
+                            fun dispatchEnd() {
+                                if (endSent) return
+                                endSent = true
+                                if (gestureRecognized && gestureType != null && gestureType != GestureType.DOUBLE_TAP) {
+                                    val action = cfg.resolve(sector, gestureType!!)
+                                    if (action != GestureAction.NONE) {
+                                        currentHandler.handleGestureFrame(
+                                            GestureFrame(
+                                                sector = sector,
+                                                gestureType = gestureType!!,
+                                                action = action,
+                                                phase = GesturePhase.END,
+                                                totalDelta = Offset(totalDeltaX, totalDeltaY),
+                                                elapsedMs = System.currentTimeMillis() - downTime,
+                                                fingerPosition = Offset(totalDeltaX + downPos.x, totalDeltaY + downPos.y)
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            try {
                             // Check for double-tap first (compare with previous tap)
                             val now = System.currentTimeMillis()
                             val timeSinceLastTap = now - lastTapTime
@@ -279,33 +307,26 @@ fun PlayerGestureSystem(
                                         }
 
                                     // ---- Pointer up — check first before anything else ----
-                                    if (event.changes.all { !it.pressed }) {
-                                        if (gestureRecognized && gestureType != null && gestureType != GestureType.DOUBLE_TAP) {
-                                            val action = cfg.resolve(sector, gestureType!!)
-                                            if (action != GestureAction.NONE) {
-                                                currentHandler.handleGestureFrame(
-                                                    GestureFrame(
-                                                        sector = sector,
-                                                        gestureType = gestureType!!,
-                                                        action = action,
-                                                        phase = GesturePhase.END,
-                                                        totalDelta = Offset(totalDeltaX, totalDeltaY),
-                                                        elapsedMs = System.currentTimeMillis() - downTime,
-                                                        fingerPosition = Offset(totalDeltaX + downPos.x, totalDeltaY + downPos.y)
-                                                    )
-                                                )
-                                            }
-                                        } else if (!gestureRecognized) {
+                                    // One event can carry the down pointer's final MOVE and
+                                    // its UP as two changes; only the last change for that
+                                    // pointer is authoritative. (The old all-changes check
+                                    // missed the batched case: the loop then blocked on
+                                    // awaitPointerEvent forever and END was never sent,
+                                    // leaving the indicator stuck on screen.)
+                                    val downChange = event.changes.lastOrNull { it.id == down.id }
+                                    if (downChange != null && !downChange.pressed) {
+                                        if (!gestureRecognized) {
                                             // Single tap — defer to avoid firing on first tap of a double-tap
                                             pendingTapJob = scope.launch {
                                                 delay(DOUBLE_TAP_TIMEOUT_MS)
                                                 currentOnTap()
                                             }
                                         }
+                                        dispatchEnd()
                                         break
                                     }
 
-                                    val change = event.changes.firstOrNull { it.pressed } ?: continue
+                                    val change = event.changes.lastOrNull { it.id == down.id && it.pressed } ?: continue
 
                                     val pos = change.position
                                     totalDeltaX = pos.x - downPos.x
@@ -347,7 +368,7 @@ fun PlayerGestureSystem(
                                             // Continue tracking for morph drag
                                             while (true) {
                                                 val morphEvent = awaitPointerEvent()
-                                                val morphChange = morphEvent.changes.firstOrNull() ?: break
+                                                val morphChange = morphEvent.changes.lastOrNull { it.id == down.id } ?: continue
                                                 if (!morphChange.pressed) {
                                                     val finalDragY = totalDeltaY.coerceAtLeast(0f)
                                                     currentOnMorphDragEnd(finalDragY)
@@ -383,8 +404,13 @@ fun PlayerGestureSystem(
                                     }
 
                                     // ---- Hold detection ----
+                                    // No jitter cap: a real finger always drifts a few px,
+                                    // so requiring < 15px made hold almost impossible.
+                                    // A genuine swipe beats hold: it is recognised first
+                                    // at 30px and sets gestureRecognized, which blocks
+                                    // this branch.
                                     if (!gestureRecognized && !holdTriggered &&
-                                        elapsed > HOLD_TIMEOUT_MS && totalDist < HOLD_JITTER_THRESHOLD) {
+                                        elapsed > HOLD_TIMEOUT_MS) {
                                         holdTriggered = true
                                         gestureRecognized = true
                                         gestureType = GestureType.HOLD
@@ -433,6 +459,12 @@ fun PlayerGestureSystem(
                                         lastPos = pos
                                     }
                                 }
+                            }
+                            } finally {
+                                // The pointerInput can be cancelled mid-gesture (overlay
+                                // mode or scrubbing change restarts it). Make sure the
+                                // handler still gets its END frame.
+                                dispatchEnd()
                             }
                         }
                     }
