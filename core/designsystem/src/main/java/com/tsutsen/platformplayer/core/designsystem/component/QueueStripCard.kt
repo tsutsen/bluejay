@@ -254,6 +254,10 @@ private fun QueuedCardStrip(
             }
             }
         }
+        // Trailing inset so the last card doesn't sit flush against the
+        // container's right edge — a real Spacer, not a padding modifier
+        // on the Row, so it can't get clipped away by horizontalScroll.
+        Spacer(modifier = Modifier.width(Tokens.SpaceLg))
     }
 }
 
@@ -437,41 +441,55 @@ private fun QueueStripItem(
                         .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                // Disabled buttons melt into the card (same surface, dim
+                // icon) so "can't move earlier/later" reads at a glance.
+                val earlierEnabled = canMoveEarlier
                 IconButton(
                     onClick = onMoveEarlier,
-                    enabled = canMoveEarlier,
-                    shape = RoundedCornerShape(10.dp),
+                    enabled = earlierEnabled,
                     modifier =
                         Modifier
                             .weight(1f)
                             .background(
-                                MaterialTheme.colorScheme.primaryContainer,
+                                if (earlierEnabled)
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant,
                                 RoundedCornerShape(10.dp),
                             ),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ChevronLeft,
                         contentDescription = "Move earlier in queue",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        tint =
+                            if (earlierEnabled)
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                         modifier = Modifier.size(22.dp),
                     )
                 }
+                val laterEnabled = canMoveLater
                 IconButton(
                     onClick = onMoveLater,
-                    enabled = canMoveLater,
-                    shape = RoundedCornerShape(10.dp),
+                    enabled = laterEnabled,
                     modifier =
                         Modifier
                             .weight(1f)
                             .background(
-                                MaterialTheme.colorScheme.primaryContainer,
+                                if (laterEnabled)
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant,
                                 RoundedCornerShape(10.dp),
                             ),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ChevronRight,
                         contentDescription = "Move later in queue",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        tint =
+                            if (laterEnabled)
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                         modifier = Modifier.size(22.dp),
                     )
                 }
@@ -540,6 +558,8 @@ private fun NowPlayingCard(
                         )
                     },
         )
+        // Rounded-square tile with a small centered icon (a full-size icon
+        // in a circle read as a giant blob).
         IconButton(
             onClick = onPlayPause,
             modifier =
@@ -548,16 +568,21 @@ private fun NowPlayingCard(
                     .offset(y = 42.dp)
                     .size(48.dp),
         ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                contentDescription = if (isPlaying) "Pause" else "Play",
-                tint = Color.White,
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xCC009369)),
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
         Column(
             modifier =
@@ -597,3 +622,4 @@ private fun NowPlayingCard(
             }
     }
 }
+

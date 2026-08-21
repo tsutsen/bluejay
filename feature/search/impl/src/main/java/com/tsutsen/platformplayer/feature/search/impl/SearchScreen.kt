@@ -2,12 +2,15 @@ package com.tsutsen.platformplayer.feature.search.impl
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,7 +39,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -47,12 +50,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -63,8 +69,13 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
@@ -84,7 +95,9 @@ import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 /**
  * Search screen composable.
@@ -118,13 +131,6 @@ fun SearchScreen(
         remember { mutableStateOf(Rect.Zero) }
 
     val refreshingState = rememberPullToRefreshState()
-
-    // Circular backgrounds for the field's trailing action buttons.
-    val searchButtonBg =
-        Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
 
     // Focus the field on entry only when we arrived via a tab-bar press
     // (other entries, e.g. "Find channels", leave the keyboard down).
@@ -248,23 +254,22 @@ fun SearchScreen(
                 trailingIcon = {
                     // A Row: the slot is a single centered box, so two
                     // bare buttons here would stack on top of each other.
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.setQuery("") }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Clear",
-                                    modifier = searchButtonBg,
-                                )
-                            }
-                        }
-                        IconButton(onClick = { performSearch() }) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                                modifier = searchButtonBg,
+                            SearchFieldButton(
+                                icon = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                onClick = { viewModel.setQuery("") },
                             )
                         }
+                        SearchFieldButton(
+                            icon = Icons.Default.Search,
+                            contentDescription = "Search",
+                            onClick = { performSearch() },
+                        )
                     }
                 },
                 singleLine = true,
@@ -572,36 +577,130 @@ private fun RecentSearches(
             }
         }
 
-        items(history) { query ->
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant,
-                            RoundedCornerShape(12.dp),
-                        )
-                        .clickable { onItemClick(query) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = query,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Delete",
+        items(history, key = { it }) { query ->
+            // Swipe the row left or right to delete it from history.
+            SwipeToDeleteRow(onSwipedAway = { onDeleteItem(query) }) {
+                Row(
                     modifier =
                         Modifier
-                            .size(20.dp)
-                            .clickable { onDeleteItem(query) },
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(12.dp),
+                            )
+                            .clickable { onItemClick(query) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = query,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Delete",
+                        modifier =
+                            Modifier
+                                .size(20.dp)
+                                .clickable { onDeleteItem(query) },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
+        }
+    }
+}
+
+/**
+ * Small circular action button embedded in the search field: 28dp circle
+ * with a 16dp icon.
+ */
+@Composable
+private fun SearchFieldButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Horizontal swipe-to-delete wrapper: dragging [content] left or right
+ * follows the finger; releasing past the threshold animates it off-screen
+ * in the drag direction and calls [onSwipedAway], otherwise it springs
+ * back.
+ */
+@Composable
+private fun SwipeToDeleteRow(
+    onSwipedAway: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val rowWidthPx = remember { mutableIntStateOf(0) }
+    val offsetAnim = remember { Animatable(0f) }
+    var settleJob by remember { mutableStateOf<Job?>(null) }
+    val thresholdPx = with(LocalDensity.current) { 80.dp.toPx() }
+
+    Box(
+        modifier =
+            Modifier
+                .onSizeChanged { rowWidthPx.value = it.width }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            // Grabbing the row cancels any in-flight settle or
+                            // fly-away, so the user can save a row mid-flight.
+                            settleJob?.cancel()
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            val bound = rowWidthPx.value.toFloat().coerceAtLeast(1f)
+                            // Main.immediate: runs inline on the UI thread.
+                            scope.launch {
+                                offsetAnim.snapTo(
+                                    (offsetAnim.value + dragAmount).coerceIn(-bound, bound)
+                                )
+                            }
+                        },
+                        onDragEnd = {
+                            settleJob =
+                                scope.launch {
+                                    if (abs(offsetAnim.value) > thresholdPx) {
+                                        val target =
+                                            (if (offsetAnim.value > 0f) 1f else -1f) *
+                                                (rowWidthPx.value + 60f)
+                                        offsetAnim.animateTo(target, spring())
+                                        onSwipedAway()
+                                    } else {
+                                        offsetAnim.animateTo(0f, spring())
+                                    }
+                                }
+                        },
+                        onDragCancel = {
+                            settleJob = scope.launch { offsetAnim.animateTo(0f, spring()) }
+                        },
+                    )
+                },
+    ) {
+        Box(modifier = Modifier.offset { IntOffset(offsetAnim.value.roundToInt(), 0) }) {
+            content()
         }
     }
 }

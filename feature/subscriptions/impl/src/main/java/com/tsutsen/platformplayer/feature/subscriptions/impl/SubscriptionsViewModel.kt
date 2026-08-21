@@ -25,6 +25,9 @@ sealed interface SubscriptionsUiState {
         val isLoading: Boolean = false,
         val hasMorePages: Boolean = false,
         val error: String? = null,
+        // True only for a deliberate refresh (pull / retry) — the spinner
+        // must NOT spin while "load more" prefetches the next page.
+        val isRefreshing: Boolean = false,
     ) : SubscriptionsUiState
 
     data class Error(
@@ -54,9 +57,12 @@ class SubscriptionsViewModel
             )
         val uiState: StateFlow<SubscriptionsUiState> = _uiState.asStateFlow()
 
+        private val _isRefreshing = MutableStateFlow(false)
+
         init {
             viewModelScope.launch {
                 subscriptionRepository.feed.collect { feed ->
+                    if (!feed.isLoading) _isRefreshing.value = false
                     _uiState.value =
                         SubscriptionsUiState.Success(
                             items = feed.items,
@@ -69,6 +75,7 @@ class SubscriptionsViewModel
                             isLoading = feed.isLoading,
                             hasMorePages = feed.hasMorePages,
                             error = feed.error,
+                            isRefreshing = _isRefreshing.value,
                         )
                 }
             }
@@ -78,6 +85,7 @@ class SubscriptionsViewModel
         }
 
         fun refresh() {
+            _isRefreshing.value = true
             viewModelScope.launch { subscriptionRepository.refresh() }
         }
 

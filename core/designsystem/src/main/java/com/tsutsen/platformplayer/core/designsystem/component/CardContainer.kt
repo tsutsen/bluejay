@@ -102,7 +102,7 @@ fun VideoContainer(
                 itemCount = items.size,
                 isLoading = isLoading,
                 hasMorePages = hasMorePages,
-                threshold = 3,
+                threshold = 6,
                 onEndReached = onLoadMore,
             )
             LazyColumn(
@@ -126,7 +126,7 @@ fun VideoContainer(
                 itemCount = items.size,
                 isLoading = isLoading,
                 hasMorePages = hasMorePages,
-                threshold = 3,
+                threshold = 6,
                 onEndReached = onLoadMore,
             )
             LazyRow(
@@ -147,7 +147,7 @@ fun VideoContainer(
                 itemCount = items.size,
                 isLoading = isLoading,
                 hasMorePages = hasMorePages,
-                threshold = 3,
+                threshold = 6,
                 onEndReached = onLoadMore,
             )
             LazyVerticalGrid(

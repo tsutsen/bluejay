@@ -78,6 +78,7 @@ fun HomeScreen(
                     isWide = isWide,
                     gridColumns = gridColumns,
                     watchStates = watchStates,
+                    isRefreshing = state.isRefreshing,
                     onCardClick = { card ->
                         when (card) {
                             is VideoCard -> playerViewModel.play(card)
@@ -120,6 +121,7 @@ private fun HomeFeedContent(
     isLoading: Boolean,
     hasMorePages: Boolean,
     isWide: Boolean,
+    isRefreshing: Boolean = false,
     gridColumns: Int,
     watchStates: Map<String, WatchState> = emptyMap(),
     onCardClick: (Card) -> Unit,
@@ -132,9 +134,9 @@ private fun HomeFeedContent(
 
     Box(modifier = modifier.fillMaxSize()) {
         PullToRefreshBox(
-            // Reuse the pull-to-refresh spinner as the general loading indicator:
-            // true while the feed is loading (initial refresh or pull-to-refresh).
-            isRefreshing = isLoading,
+            // Spinner only for a deliberate refresh or the very first page.
+            // "Load more" prefetches silently — no spinner, no footer.
+            isRefreshing = isRefreshing || (isLoading && cards.isEmpty()),
             state = refreshingState,
             onRefresh = onRefresh,
             content = {
@@ -176,18 +178,6 @@ private fun HomeFeedContent(
                         else -> {
                             Box(Modifier.height(1.dp))
                         }
-                    }
-                }
-
-                // Show loading indicator at bottom when loading more pages
-                if (isLoading && hasMorePages && cards.isNotEmpty()) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .padding(Tokens.SpaceLg),
-                    ) {
-                        // Could add a circular progress indicator here
                     }
                 }
             },

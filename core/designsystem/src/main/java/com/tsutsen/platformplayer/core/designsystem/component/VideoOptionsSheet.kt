@@ -23,8 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HistoryEdu
 import androidx.compose.material.icons.filled.PlayArrow
@@ -34,6 +33,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -187,7 +187,7 @@ fun VideoOptionsSheet(
                 add(
                     OptionTile(
                         label = "Like",
-                        icon = if (isLikedSaved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        icon = if (isLikedSaved) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                         selected = isLikedSaved,
                         onClick = onToggleLiked,
                     ),

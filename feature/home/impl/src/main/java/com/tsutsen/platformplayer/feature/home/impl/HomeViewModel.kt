@@ -20,6 +20,10 @@ sealed interface HomeUiState {
         val isLoading: Boolean,
         val hasMorePages: Boolean,
         val error: String?,
+        // True only for a deliberate refresh (pull / retry) — the
+        // pull-to-refresh spinner must NOT spin while "load more" is
+        // quietly prefetching the next page.
+        val isRefreshing: Boolean = false,
     ) : HomeUiState
 
     data object Initial : HomeUiState
@@ -51,17 +55,21 @@ class HomeViewModel
         private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Initial)
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+        private val _isRefreshing = MutableStateFlow(false)
+
         init {
             // Observe repository feed and map to UiState
             viewModelScope.launch {
                 homeRepository.feed
                     .collect { feedPage ->
+                        if (!feedPage.isLoading) _isRefreshing.value = false
                         _uiState.value =
                             HomeUiState.Loaded(
                                 items = feedPage.items,
                                 isLoading = feedPage.isLoading,
                                 hasMorePages = feedPage.hasMorePages,
                                 error = feedPage.error,
+                                isRefreshing = _isRefreshing.value,
                             )
                     }
             }
@@ -85,12 +93,14 @@ class HomeViewModel
         }
 
         fun refresh() {
+            _isRefreshing.value = true
             viewModelScope.launch {
                 homeRepository.refresh()
             }
         }
 
         fun retry() {
+            _isRefreshing.value = true
             viewModelScope.launch {
                 homeRepository.refresh()
             }

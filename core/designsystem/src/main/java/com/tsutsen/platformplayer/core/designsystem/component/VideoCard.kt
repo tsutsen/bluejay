@@ -29,6 +29,12 @@ import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.core.ui.RelativeTime
 
+// Shared thumbnail-pill geometry: the duration pill, the watched-progress
+// pill and the completed badge all use these so they line up on the
+// thumbnail corners.
+private val PILL_HEIGHT = 18.dp
+private val CHECK_BADGE_WIDTH = 36.dp
+
 /**
  * Standard video card with fixed height layout.
  * Thumbnail: 60% of height (16:9 aspect ratio)
@@ -111,60 +117,71 @@ fun VideoCard(
                     }
                 }
 
-                // Watch progress bar (bottom edge), hidden while downloading.
+                // Watch progress (bottom-LEFT): a stadium pill, same height
+                // as the duration pill, half the thumbnail width — far more
+                // visible than the old 4dp edge bar. Hidden while downloading.
                 if (downloadProgress == null && watchProgress != null) {
                     Box(
                         modifier =
                             Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .align(Alignment.BottomCenter)
-                                .background(Color.Black.copy(alpha = 0.5f)),
+                                .align(Alignment.BottomStart)
+                                .padding(Tokens.SpaceSm)
+                                .fillMaxWidth(0.5f)
+                                .height(PILL_HEIGHT)
+                                .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
+                                .background(Color.Black.copy(alpha = 0.7f)),
                     ) {
                         Box(
                             modifier =
                                 Modifier
                                     .fillMaxHeight()
                                     .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
+                                    .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
                                     .background(MaterialTheme.colorScheme.primary),
                         )
                     }
                 }
 
-                // Watched checkmark (top-right)
+                // Completed badge (top-right): same width as the duration
+                // pill, same background.
                 if (isWatched) {
-                    Surface(
+                    Box(
                         modifier =
                             Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(Tokens.SpaceSm),
-                        color = Color.Black.copy(alpha = 0.6f),
-                        shape = CircleShape,
+                                .padding(Tokens.SpaceSm)
+                                .width(CHECK_BADGE_WIDTH)
+                                .height(PILL_HEIGHT)
+                                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                                .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Check,
                             contentDescription = "Watched",
                             tint = Color.White,
-                            modifier = Modifier.padding(2.dp),
+                            modifier = Modifier.size(14.dp),
                         )
                     }
                 }
 
-                // Duration pill (bottom-left)
+                // Duration pill (bottom-right)
                 if (durationMs != null && durationMs > 0) {
-                    Surface(
+                    Box(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(Tokens.SpaceSm),
-                        color = Color.Black.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(Tokens.RadiusXs),
+                                .padding(Tokens.SpaceSm)
+                                .height(PILL_HEIGHT)
+                                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                                .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = formatDuration(durationMs),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(horizontal = 4.dp),
                             fontWeight = FontWeight.Bold,
                         )
                     }

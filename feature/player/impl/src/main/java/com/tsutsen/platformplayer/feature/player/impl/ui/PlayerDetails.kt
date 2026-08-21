@@ -2,10 +2,14 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -17,9 +21,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoCard
+import kotlin.math.max
 
 /**
  * Scrollable details panel below the video. Contains title, channel row,
@@ -45,12 +52,16 @@ internal fun PlayerDetails(
     onTimestampClick: (Long) -> Unit = {},
     onLinkClick: (String) -> Unit = {},
 ) {
+    val density = LocalDensity.current
+    val systemBottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
     LazyColumn(
         state = scrollState,
+        // Bottom padding so the last row / button can scroll clear of the
+        // screen edge (and any system bars on non-fullscreen-bleed devices).
+        contentPadding = PaddingValues(bottom = maxOf(Tokens.SpaceXl, systemBottomInset)),
         modifier =
             Modifier
-                .fillMaxWidth()
-                .fillMaxWidth()
+                .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface),
     ) {
         item {
@@ -124,13 +135,17 @@ internal fun PlayerDetails(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        TextButton(onClick = onLoadMoreComments) {
-                            Text("Load more comments")
+                // Only once comments have actually loaded — before that the
+                // button is a no-op and looked like dead UI.
+                if (state.comments.isNotEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            TextButton(onClick = onLoadMoreComments) {
+                                Text("Load more comments")
+                            }
                         }
                     }
                 }
@@ -154,6 +169,7 @@ internal fun PlayerDetails(
                     ) { rowCards ->
                         RecommendedGridRow(
                             cards = rowCards,
+                            gridColumns = gridColumns,
                             onClick = onRecommendedClick,
                         )
                     }

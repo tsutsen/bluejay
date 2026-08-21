@@ -199,8 +199,9 @@ private fun SubscriptionsContent(
 
                 // Videos in grid
                 PullToRefreshBox(
-                    // Reuse the pull-to-refresh spinner as the loading indicator.
-                    isRefreshing = state.isLoading,
+                    // Spinner only for a deliberate refresh or first page —
+                    // "load more" prefetches silently.
+                    isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
                     state = pullToRefreshState,
                     onRefresh = onRefresh,
                     content = {
@@ -313,8 +314,9 @@ private fun SubscriptionsContent(
 
             // Videos in list
             PullToRefreshBox(
-                // Reuse the pull-to-refresh spinner as the loading indicator.
-                isRefreshing = state.isLoading,
+                // Spinner only for a deliberate refresh or first page —
+                // "load more" prefetches silently.
+                isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
                 state = pullToRefreshState,
                 onRefresh = onRefresh,
                 content = {

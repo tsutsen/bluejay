@@ -28,10 +28,25 @@ class PlaybackQueueRepositoryImpl
         init {
             scope.launch {
                 playerRepository.playerState.collect { state ->
-                    // Auto-advance: when the current video ends, play the
-                    // next queued item (the current one drops out of the
-                    // queue if it was in it).
-                    if (state.isCompleted) advance()
+                    val current = state.currentVideo ?: return@collect
+                    if (state.isCompleted) {
+                        // Auto-advance: when the current video ends, play
+                        // the next queued item.
+                        advance()
+                        return@collect
+                    }
+                    // The current video is always the FIRST queue item, even
+                    // when it was started from outside the queue (feed tap,
+                    // recommendation, search...). Keeps the queue from ever
+                    // reading as empty while something is playing.
+                    val q = _queue.value
+                    val idx = q.indexOfFirst { it.url == current.url }
+                    if (idx != 0) {
+                        _queue.value =
+                            if (idx >= 0)
+                                listOf(current) + q.filter { it.url != current.url }
+                            else listOf(current) + q
+                    }
                 }
             }
         }
