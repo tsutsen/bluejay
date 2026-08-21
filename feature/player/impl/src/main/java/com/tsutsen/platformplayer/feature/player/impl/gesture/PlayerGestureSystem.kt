@@ -310,6 +310,9 @@ fun PlayerGestureSystem(
                             var holdFired = false
                             var released = false
                             var maxDist = 0f
+                            // Once a speed-hold's drift goes horizontal, that decision
+                            // is locked — a later vertical drift must not intercept it.
+                            var holdHorizontalLocked = false
 
                             val holdWatchdog = scope.launch {
                                 delay(HOLD_TIMEOUT_MS)
@@ -358,23 +361,35 @@ fun PlayerGestureSystem(
                                     change.consume()
 
                                     if (totalDist > SWIPE_THRESHOLD) {
-                                        if (holdFired) {
-                                            // Slide wins — end the hold now; re-arm
-                                            // dispatchEnd for the slide that follows.
-                                            holdFired = false
-                                            dispatchEnd()
-                                            endSent = false
-                                            activeAction = null
-                                            activeType = null
-                                        }
-                                        decision = Decision.SLIDE
                                         val isHorizontal = abs(totalDx) > abs(totalDy)
-                                        slideType =
-                                            if (isHorizontal) GestureType.SWIPE_HORIZONTAL
-                                            else GestureType.SWIPE_VERTICAL
-                                        slideDownward = !isHorizontal && totalDy > 0
-                                        Log.d("GESTURE", "decision=SLIDE type=$slideType down=$slideDownward")
-                                        break
+                                        // Horizontal drift during a speed hold is fine
+                                        // tuning — the hold stays alive and keeps
+                                        // modulating (below) instead of handing off.
+                                        // The first dominant axis locks the decision;
+                                        // once locked horizontal, a vertical drift can
+                                        // never intercept it.
+                                        if (holdFired && (isHorizontal || holdHorizontalLocked)) {
+                                            if (isHorizontal) holdHorizontalLocked = true
+                                            // keep holding
+                                        } else {
+                                            if (holdFired) {
+                                                // Slide wins — end the hold now;
+                                                // re-arm dispatchEnd for the slide
+                                                // that follows.
+                                                holdFired = false
+                                                dispatchEnd()
+                                                endSent = false
+                                                activeAction = null
+                                                activeType = null
+                                            }
+                                            decision = Decision.SLIDE
+                                            slideType =
+                                                if (isHorizontal) GestureType.SWIPE_HORIZONTAL
+                                                else GestureType.SWIPE_VERTICAL
+                                            slideDownward = !isHorizontal && totalDy > 0
+                                            Log.d("GESTURE", "decision=SLIDE type=$slideType down=$slideDownward")
+                                            break
+                                        }
                                     }
 
                                     if (holdFired && activeAction != null) {

@@ -25,11 +25,15 @@ fun buildDefaultGestureConfigs(): GestureConfigs {
     // --- reusable slot configs ---
     val none = GestureSlotConfig()
 
-    // Left-column sector: hold→SPEEDUP, double-tap→REWIND_BACK
-    val leftHoldRewindBack = GestureSlotConfig(doubleTap = rewindBack, hold = speedup)
+    // Left-column sector: hold→SPEEDUP, horizontal swipe→SPEEDUP (scrub),
+    // double-tap→REWIND_BACK
+    val leftHoldRewindBack =
+        GestureSlotConfig(doubleTap = rewindBack, hold = speedup, swipeHorizontal = speedup)
 
-    // Right-column sector: hold→SPEEDUP, double-tap→REWIND_FORWARD
-    val rightHoldRewindFwd = GestureSlotConfig(doubleTap = rewindForward, hold = speedup)
+    // Right-column sector: hold→SPEEDUP, horizontal swipe→SPEEDUP (scrub),
+    // double-tap→REWIND_FORWARD
+    val rightHoldRewindFwd =
+        GestureSlotConfig(doubleTap = rewindForward, hold = speedup, swipeHorizontal = speedup)
 
     // --- FULLSCREEN ---
     val fullscreen = GestureConfig().withSectors(mapOf(
