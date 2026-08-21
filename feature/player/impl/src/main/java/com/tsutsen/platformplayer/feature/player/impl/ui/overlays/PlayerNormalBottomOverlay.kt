@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -147,19 +146,17 @@ internal fun PlayerNormalBottomOverlay(
                         Modifier
                             .matchParentSize()
                             .drawBehind {
-                                val tickWidth = 2.dp.toPx()
-                                val tickHeight = 8.dp.toPx()
                                 val cy = size.height / 2f
+                                val radius = 4.dp.toPx()
                                 chapters.forEach { chapter ->
                                     val fraction =
                                         (chapter.startTimeMs.toFloat() / durationMs)
                                             .coerceIn(0f, 1f)
                                     if (fraction <= 0.001f) return@forEach
-                                    val x = fraction * size.width - tickWidth / 2f
-                                    drawRect(
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        topLeft = Offset(x, cy - tickHeight / 2f),
-                                        size = Size(tickWidth, tickHeight),
+                                    drawCircle(
+                                        color = Color.White,
+                                        radius = radius,
+                                        center = Offset(fraction * size.width, cy),
                                     )
                                 }
                             },
