@@ -39,6 +39,7 @@ internal fun PlayerNormalBottomOverlay(
     subtitlesOn: Boolean,
     onSubtitleToggle: () -> Unit,
     onSeek: (Long) -> Unit = {},
+    onScrubFinished: () -> Unit = {},
     isScrubbing: Boolean = false,
     scrubPositionMs: Long = currentPositionMs,
     chapters: List<VideoChapter> = emptyList(),
@@ -173,6 +174,7 @@ internal fun PlayerNormalBottomOverlay(
                 onValueChangeFinished = {
                     val seekToMs = (seekPosition * durationMs).toLong()
                     onSeek(seekToMs)
+                    onScrubFinished()
                     isDragging = false
                 },
                 modifier =

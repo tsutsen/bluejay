@@ -121,6 +121,7 @@ fun PlayerContent(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onSeek: (Long) -> Unit,
+    onScrubFinished: () -> Unit = {},
     onMoreOptions: () -> Unit,
     onFullscreenToggle: () -> Unit,
 ) {
@@ -434,6 +435,7 @@ fun PlayerContent(
             onOptions = onOptions,
             onCast = onCast,
             onSeek = onSeek,
+            onScrubFinished = onScrubFinished,
             isMorphDragging = isMorphDragging,
             onMorphDragStart = onMorphDragStart,
             onMorphDrag = onMorphDrag,

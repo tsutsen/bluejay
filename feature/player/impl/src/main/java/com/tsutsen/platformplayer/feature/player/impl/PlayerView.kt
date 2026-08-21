@@ -681,6 +681,9 @@ fun PlayerView(
                             isScrubbing = true
                             viewModel.seekTo(positionMs)
                         },
+                        onScrubFinished = {
+                            isScrubbing = false
+                        },
                         onMoreOptions = { showMiniPlayerOptions = true },
                         onFullscreenToggle = { viewModel.toggleFullscreen() },
                     )
