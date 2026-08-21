@@ -2,6 +2,9 @@ package com.tsutsen.platformplayer.feature.subscriptions.impl
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -14,16 +17,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Subscriptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -34,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,10 +50,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -60,6 +78,8 @@ import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.core.model.VideoCard as ModelVideoCard
 
@@ -172,30 +192,88 @@ private fun SubscriptionsContent(
     modifier: Modifier = Modifier,
 ) {
     val pullToRefreshState = rememberPullToRefreshState()
+    val density = LocalDensity.current
 
-    if (isWide) {
-        // Wide: Filters + videos in center, creators on right side
-        Row(modifier = modifier.fillMaxSize()) {
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxSize()
-                        // First element of the tab: on the shared 42dp content line.
-                        .padding(top = TabContentTopPadding),
-            ) {
-                // Filter chips: independent toggles, no cross-coupling
-                SubscriptionFilterBadges(
-                    filterStarted = state.filterStarted,
-                    filterWatched = state.filterWatched,
-                    filterVideo = state.filterVideo,
-                    filterStreams = state.filterStreams,
-                    onStartedToggle = onStartedToggle,
-                    onWatchedToggle = onWatchedToggle,
-                    onVideoToggle = onVideoToggle,
-                    onStreamsToggle = onStreamsToggle,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+    // Channel peek: long-press a creator bubble and a pill with the
+    // channel name slides out from it (the strip shows no names).
+    var peek by remember { mutableStateOf<SubscriptionCreator?>(null) }
+    val bubbles = remember { mutableMapOf<String, Rect>() }
+    val rootOrigin = remember { mutableStateOf(Offset.Zero) }
+    val pillSize = remember { mutableStateOf(IntSize.Zero) }
+    val slide = remember { Animatable(0f) }
+    LaunchedEffect(peek) {
+        if (peek != null) {
+            slide.snapTo(0f)
+            slide.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
+        } else {
+            slide.snapTo(0f)
+        }
+    }
+    // Selecting a creator (or "All") closes the peek.
+    LaunchedEffect(state.activeCreatorId) { peek = null }
+
+    val headerTitle =
+        state.creators.firstOrNull { it.id == state.activeCreatorId }
+            ?.let { "by ${it.name}" }
+            ?: "All subs"
+
+    // One creator item: the avatar plus its window-relative bounds, so the
+    // peek pill can anchor to it. (Plain map — the bounds are read by the
+    // overlay, never by the lazy items themselves.)
+    val creatorItemContent: @Composable (SubscriptionCreator) -> Unit = { creator ->
+        Box(
+            modifier =
+                Modifier.onGloballyPositioned {
+                    val r = it.boundsInWindow()
+                    val o = rootOrigin.value
+                    bubbles[creator.id] = Rect(
+                        r.left - o.x, r.top - o.y, r.right - o.x, r.bottom - o.y,
+                    )
+                },
+        ) {
+            CreatorAvatar(
+                creator = creator,
+                isSelected = creator.id == state.activeCreatorId,
+                onClick = { onCreatorSelected(creator.id) },
+                onLongClick = {
+                    // Toggle: long-pressing the open bubble closes the pill.
+                    if (peek?.id == creator.id) peek = null
+                    else peek = creator
+                },
+            )
+        }
+    }
+
+    Box(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .onGloballyPositioned { rootOrigin.value = it.boundsInWindow().topLeft },
+    ) {
+        if (isWide) {
+            // Wide: header + videos in center, creators on right side
+            Row(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            // First element of the tab: on the shared 42dp
+                            // content line.
+                            .padding(top = TabContentTopPadding),
+                ) {
+                    // Title + filter chips share the header row.
+                    SubsHeader(
+                        title = headerTitle,
+                        filterStarted = state.filterStarted,
+                        filterWatched = state.filterWatched,
+                        filterVideo = state.filterVideo,
+                        filterStreams = state.filterStreams,
+                        onStartedToggle = onStartedToggle,
+                        onWatchedToggle = onWatchedToggle,
+                        onVideoToggle = onVideoToggle,
+                        onStreamsToggle = onStreamsToggle,
+                    )
 
                 // Videos in grid
                 PullToRefreshBox(
@@ -251,66 +329,56 @@ private fun SubscriptionsContent(
                     )
                 }
                 items(state.creators) { creator ->
-                    CreatorAvatar(
-                        creator = creator,
-                        isSelected = creator.id == state.activeCreatorId,
-                        onClick = { onCreatorSelected(creator.id) },
-                        onLongClick = { onGoToChannel(creator.url) },
-                    )
+                    creatorItemContent(creator)
                 }
             }
-        }
-    } else {
-        // Portrait: Creators on top, videos below
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    // First element of the tab: on the shared 42dp content line.
-                    .padding(top = TabContentTopPadding),
-        ) {
-            // Creator avatar strip
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-                contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
+            }
+        } else {
+            // Portrait: Creators on top, videos below
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        // First element of the tab: on the shared 42dp content line.
+                        .padding(top = TabContentTopPadding),
             ) {
-                item {
-                    CreatorAvatar(
-                        creator =
-                            SubscriptionCreator(
-                                id = "",
-                                name = "All",
-                                thumbnailUrl = null,
-                                subscriberCount = null,
-                                url = "",
-                            ),
-                        isSelected = state.activeCreatorId == null,
-                        onClick = { onCreatorSelected(null) },
-                    )
-                }
-                items(state.creators) { creator ->
-                    CreatorAvatar(
-                        creator = creator,
-                        isSelected = creator.id == state.activeCreatorId,
-                        onClick = { onCreatorSelected(creator.id) },
-                        onLongClick = { onGoToChannel(creator.url) },
-                    )
-                }
-            }
+                // Title + filter chips share the header row.
+                SubsHeader(
+                    title = headerTitle,
+                    filterStarted = state.filterStarted,
+                    filterWatched = state.filterWatched,
+                    filterVideo = state.filterVideo,
+                    filterStreams = state.filterStreams,
+                    onStartedToggle = onStartedToggle,
+                    onWatchedToggle = onWatchedToggle,
+                    onVideoToggle = onVideoToggle,
+                    onStreamsToggle = onStreamsToggle,
+                )
 
-            // Filter chips: independent toggles, no cross-coupling
-            SubscriptionFilterBadges(
-                filterStarted = state.filterStarted,
-                filterWatched = state.filterWatched,
-                filterVideo = state.filterVideo,
-                filterStreams = state.filterStreams,
-                onStartedToggle = onStartedToggle,
-                onWatchedToggle = onWatchedToggle,
-                onVideoToggle = onVideoToggle,
-                onStreamsToggle = onStreamsToggle,
-                modifier = Modifier.fillMaxWidth(),
-            )
+                // Creator avatar strip
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                    contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
+                ) {
+                    item {
+                        CreatorAvatar(
+                            creator =
+                                SubscriptionCreator(
+                                    id = "",
+                                    name = "All",
+                                    thumbnailUrl = null,
+                                    subscriberCount = null,
+                                    url = "",
+                                ),
+                            isSelected = state.activeCreatorId == null,
+                            onClick = { onCreatorSelected(null) },
+                        )
+                    }
+                    items(state.creators) { creator ->
+                        creatorItemContent(creator)
+                    }
+                }
 
             // Videos in list
             PullToRefreshBox(
@@ -341,6 +409,61 @@ private fun SubscriptionsContent(
                     }
                 },
             )
+            }
+        }
+
+        // Channel peek overlay: a pill sliding out of the long-pressed
+        // bubble; tapping anywhere else dismisses.
+        peek?.let { creator ->
+            Box(modifier = Modifier.fillMaxSize().clickable { peek = null })
+            val bubble = bubbles[creator.id]
+            if (bubble != null && pillSize.value != IntSize.Zero) {
+                val gapPx = with(density) { 8.dp.toPx() }
+                val pw = pillSize.value.width.toFloat()
+                val ph = pillSize.value.height.toFloat()
+                val x =
+                    if (isWide) {
+                        lerp(bubble.right - pw, bubble.left - gapPx - pw, slide.value)
+                    } else {
+                        bubble.left
+                    }
+                val y =
+                    if (isWide) {
+                        bubble.center.y - ph / 2f
+                    } else {
+                        lerp(bubble.top, bubble.bottom + gapPx, slide.value)
+                    }
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+                            .graphicsLayer { alpha = slide.value }
+                            .onSizeChanged { pillSize.value = it },
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shadowElevation = 6.dp,
+                    ) {
+                        Row(modifier = Modifier.padding(5.dp)) {
+                            Button(
+                                onClick = {
+                                    onGoToChannel(creator.url)
+                                    peek = null
+                                },
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 5.dp),
+                            ) {
+                                Text(
+                                    text = creator.name,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -410,13 +533,16 @@ private fun CreatorAvatar(
 }
 
 /**
- * Filter chips. Each chip is an independent toggle:
+ * Tab header row: the title ("All subs" or "by <channel>") on the left,
+ * the filter chips inline on the right. Each chip is an independent
+ * toggle:
  *  - Videos / Live are OR within the type category
  *  - Started / Watched gate the watch state (both on by default = all
  *    videos; fresh videos always show, AND with the type)
  */
 @Composable
-private fun SubscriptionFilterBadges(
+private fun SubsHeader(
+    title: String,
     filterStarted: Boolean,
     filterWatched: Boolean,
     filterVideo: Boolean,
@@ -425,40 +551,42 @@ private fun SubscriptionFilterBadges(
     onWatchedToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onStreamsToggle: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-        contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
-        item {
-            FilterChip(
-                selected = filterVideo,
-                onClick = onVideoToggle,
-                label = { Text("Videos") },
-            )
-        }
-        item {
-            FilterChip(
-                selected = filterStreams,
-                onClick = onStreamsToggle,
-                label = { Text("Live") },
-            )
-        }
-        item {
-            FilterChip(
-                selected = filterStarted,
-                onClick = onStartedToggle,
-                label = { Text("Started") },
-            )
-        }
-        item {
-            FilterChip(
-                selected = filterWatched,
-                onClick = onWatchedToggle,
-                label = { Text("Watched") },
-            )
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        FilterChip(
+            selected = filterVideo,
+            onClick = onVideoToggle,
+            label = { Text("Videos") },
+        )
+        FilterChip(
+            selected = filterStreams,
+            onClick = onStreamsToggle,
+            label = { Text("Live") },
+        )
+        FilterChip(
+            selected = filterStarted,
+            onClick = onStartedToggle,
+            label = { Text("Started") },
+        )
+        FilterChip(
+            selected = filterWatched,
+            onClick = onWatchedToggle,
+            label = { Text("Watched") },
+        )
     }
 }

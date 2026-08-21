@@ -278,7 +278,7 @@ fun PlayerContent(
                     modifier =
                         Modifier
                             .padding(horizontal = 16.dp)
-                            .padding(bottom = 8.dp)
+                            .padding(bottom = SubtitleStyle.bottomPadding)
                             .then(
                                 if (SubtitleStyle.backdropEnabled) {
                                     Modifier

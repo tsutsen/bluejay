@@ -100,6 +100,20 @@ class PlayerViewModel
         private val castingRepository: CastingRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
+
+        init {
+            // Subtitle appearance follows the settings live (font, size,
+            // bottom padding).
+            viewModelScope.launch {
+                settingsRepository.preferences.collect { prefs ->
+                    SubtitleStyle.applyPreferences(
+                        font = prefs.subtitle.font,
+                        size = prefs.subtitle.size,
+                        padding = prefs.subtitle.bottomPadding,
+                    )
+                }
+            }
+        }
         val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
         /** Live saved types for the current video (drives like/dislike buttons). */
@@ -476,6 +490,11 @@ class PlayerViewModel
                 // fetches the new one's (comments/recs/chapters) — the single
                 // orchestration point shared with the companion screen.
                 playerRepository.play(videoId, initial)
+                // A new video starts at the user's default speed (manual
+                // changes during playback still override it).
+                playerRepository.setPlaybackSpeed(
+                    settingsRepository.preferences.value.defaultPlaybackSpeed,
+                )
                 // Track in history
                 historyTracker.trackPlayback(
                     contentUrl = videoId,

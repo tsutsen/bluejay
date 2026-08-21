@@ -4,8 +4,8 @@ import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
-import com.tsutsen.platformplayer.core.datastore.model.ContrastLevel
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
+import com.tsutsen.platformplayer.core.datastore.model.SubtitlePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,26 +33,22 @@ class SettingsRepositoryImpl
                         themeMode =
                             runCatching { ThemeMode.valueOf(s.appearance.themeMode) }
                                 .getOrDefault(ThemeMode.AUTO),
-                        contrastLevel =
-                            runCatching { ContrastLevel.valueOf(s.appearance.contrastLevel) }
-                                .getOrDefault(ContrastLevel.STANDARD),
                         dynamicColor = s.appearance.dynamicColor,
                     ),
                 playback = PlaybackPreferences(autoPlay = s.playback.autoplay),
-                language = s.language,
-                enableNotifications = s.notifications.enabled,
-                enableBackgroundPlayback = s.playback.enableBackgroundPlayback,
-                enablePictureInPicture = s.playback.enablePictureInPicture,
-                confirmExit = s.confirmExit,
+                subtitle =
+                    SubtitlePreferences(
+                        font = s.playback.subtitleFont,
+                        size = s.playback.subtitleSize,
+                        bottomPadding = s.playback.subtitleBottomPadding,
+                    ),
+                defaultPlaybackSpeed = s.playback.defaultPlaybackSpeed,
                 enableDeveloperOptions = s.advancedSettings,
                 dualScreen = s.dualScreen,
                 gridColumns = s.feed.gridColumns,
                 searchHistory = s.search.history,
                 showRecommendedVideos = s.content.showRecommendedVideos,
                 showComments = s.content.showComments,
-                defaultResolution = s.playback.defaultResolution,
-                rememberSubtitleState = s.playback.rememberSubtitleState,
-                preferredSubtitleLanguage = s.playback.preferredSubtitleLanguage,
             )
         }
 
@@ -63,7 +59,6 @@ class SettingsRepositoryImpl
         override suspend fun updateAppearance(prefs: AppearancePreferences) {
             val s = Settings.instance
             s.appearance.themeMode = prefs.themeMode.name
-            s.appearance.contrastLevel = prefs.contrastLevel.name
             s.appearance.dynamicColor = prefs.dynamicColor
             s.save()
             emit()
@@ -82,11 +77,6 @@ class SettingsRepositoryImpl
         ) {
             val s = Settings.instance
             when (key) {
-                "language" -> s.language = value as String
-                "enableNotifications" -> s.notifications.enabled = value as Boolean
-                "enableBackgroundPlayback" -> s.playback.enableBackgroundPlayback = value as Boolean
-                "enablePictureInPicture" -> s.playback.enablePictureInPicture = value as Boolean
-                "confirmExit" -> s.confirmExit = value as Boolean
                 "enableDeveloperOptions" -> s.advancedSettings = value as Boolean
                 "dualScreen" -> s.dualScreen = value as Boolean
                 "dynamicColor" -> s.appearance.dynamicColor = value as Boolean
@@ -94,9 +84,10 @@ class SettingsRepositoryImpl
                 "searchHistory" -> s.search.history = value as List<String>
                 "showRecommendedVideos" -> s.content.showRecommendedVideos = value as Boolean
                 "showComments" -> s.content.showComments = value as Boolean
-                "defaultResolution" -> s.playback.defaultResolution = value as String
-                "rememberSubtitleState" -> s.playback.rememberSubtitleState = value as Boolean
-                "preferredSubtitleLanguage" -> s.playback.preferredSubtitleLanguage = value as String
+                "subtitleFont" -> s.playback.subtitleFont = value as String
+                "subtitleSize" -> s.playback.subtitleSize = value as String
+                "subtitleBottomPadding" -> s.playback.subtitleBottomPadding = value as String
+                "defaultPlaybackSpeed" -> s.playback.defaultPlaybackSpeed = value as Float
                 else -> return
             }
             s.save()
@@ -107,20 +98,15 @@ class SettingsRepositoryImpl
             val s = Settings.instance
             s.appearance.themeMode = "AUTO"
             s.appearance.dynamicColor = true
-            s.appearance.contrastLevel = "STANDARD"
-            s.playback.enableBackgroundPlayback = true
-            s.playback.enablePictureInPicture = true
-            s.notifications.enabled = true
-            s.confirmExit = false
             s.advancedSettings = false
             s.dualScreen = false
-            s.language = "en"
             s.feed.gridColumns = 3
             s.content.showRecommendedVideos = true
             s.content.showComments = true
-            s.playback.defaultResolution = "auto"
-            s.playback.rememberSubtitleState = false
-            s.playback.preferredSubtitleLanguage = "auto"
+            s.playback.defaultPlaybackSpeed = 1f
+            s.playback.subtitleFont = "default"
+            s.playback.subtitleSize = "standard"
+            s.playback.subtitleBottomPadding = "standard"
             s.save()
             emit()
         }

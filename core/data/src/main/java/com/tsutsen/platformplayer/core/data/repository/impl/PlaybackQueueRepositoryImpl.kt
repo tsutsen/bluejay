@@ -116,7 +116,7 @@ class PlaybackQueueRepositoryImpl
             // it, and it itself can't be moved.
             val currentIndex =
                 q.indexOfFirst { it.url == playerRepository.playerState.value.currentVideo?.url }
-            if (currentIndex >= 0 && (from == currentIndex || to < currentIndex)) return
+            if (currentIndex >= 0 && (from == currentIndex || to <= currentIndex)) return
             val item = q.removeAt(from)
             q.add(to, item)
             _queue.value = q

@@ -157,6 +157,10 @@ class MainActivity :
 
     override fun onStop() {
         super.onStop()
+        // The companion only makes sense while the app is in the
+        // foreground — dismiss on minimize. onStart() re-asserts it.
+        companionPresentation?.dismiss()
+        companionPresentation = null
         // Paired with the (deferred) casting start below — restore both
         // together when re-enabling casting.
         // StateCasting.instance.onStop()

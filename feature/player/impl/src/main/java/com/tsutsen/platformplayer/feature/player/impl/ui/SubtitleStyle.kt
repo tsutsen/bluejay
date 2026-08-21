@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /**
  * Styling of the in-player subtitle overlay.
@@ -23,6 +25,9 @@ object SubtitleStyle {
     /** Line height in sp; tighter than the font's default (~18.75 for 16sp). */
     var lineHeight: Float = 18f
 
+    /** Gap between the video's bottom edge and the subtitle text. */
+    var bottomPadding: Dp = 8.dp
+
     /** Crisp glyph outline, drawn as an offset ring of copies. */
     var outlineColor: Color = Color.Black
     var outlineWidth: Float = 1.5f
@@ -30,4 +35,40 @@ object SubtitleStyle {
     /** Opaque plate behind the text. Disabled by default. */
     var backdropEnabled: Boolean = false
     var backdropColor: Color = Color(0x99000000)
+
+    /**
+     * Applies the user's subtitle settings (font, size, bottom padding).
+     * Called from the player ViewModel whenever the preferences change.
+     */
+    fun applyPreferences(font: String, size: String, padding: String) {
+        fontFamily =
+            when (font) {
+                "sans" -> FontFamily.SansSerif
+                "serif" -> FontFamily.Serif
+                "mono" -> FontFamily.Monospace
+                else -> FontFamily.Default
+            }
+        when (size) {
+            "small" -> {
+                fontSize = 14f
+                lineHeight = 16f
+            }
+
+            "large" -> {
+                fontSize = 20f
+                lineHeight = 23f
+            }
+
+            else -> {
+                fontSize = 16f
+                lineHeight = 18f
+            }
+        }
+        bottomPadding =
+            when (padding) {
+                "tight" -> 8.dp
+                "wide" -> 40.dp
+                else -> 20.dp
+            }
+    }
 }

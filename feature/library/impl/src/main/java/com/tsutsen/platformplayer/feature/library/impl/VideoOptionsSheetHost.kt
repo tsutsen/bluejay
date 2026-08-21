@@ -95,8 +95,9 @@ fun VideoOptionsSheetHost(
             }
         },
         onAddToQueue = {
+            // No onDismiss: the sheet stays open so the user can keep
+            // choosing actions.
             viewModel.addToQueue(video)
-            onDismiss()
         },
         isInQueue = queue.any { it.url == video.url },
         isCurrentlyPlaying = currentVideoUrl != null && currentVideoUrl == video.url,

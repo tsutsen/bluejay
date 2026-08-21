@@ -82,10 +82,6 @@ class Settings {
     // Second (rear) display companion window
     var dualScreen: Boolean = false
 
-    // General settings (confirm exit dialog, UI language)
-    var confirmExit: Boolean = false
-    var language: String = "en"
-
     @Serializable
     class AutoUpdateSettings {
         var shouldBackgroundDownload: Boolean = true
@@ -110,18 +106,15 @@ class Settings {
         var preferOriginalAudio: Boolean = false
         var restartPlaybackAfterLoss: Int = 0 // 0=off, 1=10s, 2=30s, 3=always
         var autoplay: Boolean = true
-        var enableBackgroundPlayback: Boolean = true
-        var enablePictureInPicture: Boolean = true
 
-        // Preferred resolution for new playback sessions ("auto" = let ExoPlayer pick).
-        var defaultResolution: String = "auto"
+        // Default speed applied when a new video starts.
+        var defaultPlaybackSpeed: Float = 1f
 
-        // When true, the player restores the subtitle on/off state from the
-        // last session instead of always starting with the default.
-        var rememberSubtitleState: Boolean = false
-
-        // Preferred subtitle track language ("auto" = player default).
-        var preferredSubtitleLanguage: String = "auto"
+        // Subtitle appearance: font (default|sans|serif|mono),
+        // size (small|standard|large), bottom padding (tight|standard|wide).
+        var subtitleFont: String = "default"
+        var subtitleSize: String = "standard"
+        var subtitleBottomPadding: String = "standard"
     }
 
     @Serializable
@@ -175,9 +168,6 @@ class Settings {
 
         // Material You (wallpaper) color scheme
         var dynamicColor: Boolean = true
-
-        // STANDARD | MEDIUM | HIGH
-        var contrastLevel: String = "STANDARD"
     }
 
     @Serializable

@@ -1121,8 +1121,9 @@ private fun CompanionVideoOptionsSheet(
             }
         },
         onAddToQueue = {
+            // No onDismiss: the sheet stays open so the user can keep
+            // choosing actions.
             playbackQueueRepository.add(card.toContentItem())
-            onDismiss()
         },
         isInQueue = queue.any { it.url == card.url },
         isCurrentlyPlaying = currentVideoUrl != null && currentVideoUrl == card.url,

@@ -2,7 +2,6 @@ package com.tsutsen.platformplayer.di
 
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
-import com.tsutsen.platformplayer.core.datastore.model.ContrastLevel
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import kotlinx.coroutines.flow.first
@@ -26,14 +25,13 @@ class SettingsRepositoryImplTest {
         val s = Settings.instance
         s.appearance.themeMode = "AUTO"
         s.appearance.dynamicColor = true
-        s.appearance.contrastLevel = "STANDARD"
         s.playback.autoplay = true
-        s.playback.enableBackgroundPlayback = true
-        s.playback.enablePictureInPicture = true
+        s.playback.defaultPlaybackSpeed = 1f
+        s.playback.subtitleFont = "default"
+        s.playback.subtitleSize = "standard"
+        s.playback.subtitleBottomPadding = "standard"
         s.notifications.enabled = true
-        s.confirmExit = false
         s.advancedSettings = false
-        s.language = "en"
         s.feed.gridColumns = 3
         repo = SettingsRepositoryImpl()
     }
@@ -44,14 +42,12 @@ class SettingsRepositoryImplTest {
             val prefs = repo.preferences.first()
             assertEquals(ThemeMode.AUTO, prefs.appearance.themeMode)
             assertTrue(prefs.appearance.dynamicColor)
-            assertEquals(ContrastLevel.STANDARD, prefs.appearance.contrastLevel)
             assertTrue(prefs.playback.autoPlay)
-            assertTrue(prefs.enableBackgroundPlayback)
-            assertTrue(prefs.enablePictureInPicture)
-            assertTrue(prefs.enableNotifications)
-            assertFalse(prefs.confirmExit)
+            assertEquals(1f, prefs.defaultPlaybackSpeed)
+            assertEquals("default", prefs.subtitle.font)
+            assertEquals("standard", prefs.subtitle.size)
+            assertEquals("standard", prefs.subtitle.bottomPadding)
             assertFalse(prefs.enableDeveloperOptions)
-            assertEquals("en", prefs.language)
             assertEquals(3, prefs.gridColumns)
         }
 
@@ -61,19 +57,16 @@ class SettingsRepositoryImplTest {
             val newAppearance =
                 AppearancePreferences(
                     themeMode = ThemeMode.DARK,
-                    contrastLevel = ContrastLevel.HIGH,
                     dynamicColor = false,
                 )
             repo.updateAppearance(newAppearance)
 
             val s = Settings.instance
             assertEquals("DARK", s.appearance.themeMode)
-            assertEquals("HIGH", s.appearance.contrastLevel)
             assertFalse(s.appearance.dynamicColor)
 
             val prefs = repo.preferences.value
             assertEquals(ThemeMode.DARK, prefs.appearance.themeMode)
-            assertEquals(ContrastLevel.HIGH, prefs.appearance.contrastLevel)
             assertFalse(prefs.appearance.dynamicColor)
         }
 
@@ -87,43 +80,35 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
-    fun updateGeneralLanguagePersistsAndEmits() =
+    fun updateGeneralSubtitleFontPersistsAndEmits() =
         runTest {
-            repo.updateGeneral("language", "de")
-            assertEquals("de", Settings.instance.language)
-            assertEquals("de", repo.preferences.value.language)
+            repo.updateGeneral("subtitleFont", "serif")
+            assertEquals("serif", Settings.instance.playback.subtitleFont)
+            assertEquals("serif", repo.preferences.value.subtitle.font)
         }
 
     @Test
-    fun updateGeneralEnableNotificationsPersistsAndEmits() =
+    fun updateGeneralSubtitleSizePersistsAndEmits() =
         runTest {
-            repo.updateGeneral("enableNotifications", false)
-            assertFalse(Settings.instance.notifications.enabled)
-            assertFalse(repo.preferences.value.enableNotifications)
+            repo.updateGeneral("subtitleSize", "large")
+            assertEquals("large", Settings.instance.playback.subtitleSize)
+            assertEquals("large", repo.preferences.value.subtitle.size)
         }
 
     @Test
-    fun updateGeneralBackgroundPlaybackPersistsAndEmits() =
+    fun updateGeneralSubtitleBottomPaddingPersistsAndEmits() =
         runTest {
-            repo.updateGeneral("enableBackgroundPlayback", false)
-            assertFalse(Settings.instance.playback.enableBackgroundPlayback)
-            assertFalse(repo.preferences.value.enableBackgroundPlayback)
+            repo.updateGeneral("subtitleBottomPadding", "wide")
+            assertEquals("wide", Settings.instance.playback.subtitleBottomPadding)
+            assertEquals("wide", repo.preferences.value.subtitle.bottomPadding)
         }
 
     @Test
-    fun updateGeneralPictureInPicturePersistsAndEmits() =
+    fun updateGeneralDefaultPlaybackSpeedPersistsAndEmits() =
         runTest {
-            repo.updateGeneral("enablePictureInPicture", false)
-            assertFalse(Settings.instance.playback.enablePictureInPicture)
-            assertFalse(repo.preferences.value.enablePictureInPicture)
-        }
-
-    @Test
-    fun updateGeneralConfirmExitPersistsAndEmits() =
-        runTest {
-            repo.updateGeneral("confirmExit", true)
-            assertTrue(Settings.instance.confirmExit)
-            assertTrue(repo.preferences.value.confirmExit)
+            repo.updateGeneral("defaultPlaybackSpeed", 1.5f)
+            assertEquals(1.5f, Settings.instance.playback.defaultPlaybackSpeed)
+            assertEquals(1.5f, repo.preferences.value.defaultPlaybackSpeed)
         }
 
     @Test
@@ -154,26 +139,22 @@ class SettingsRepositoryImplTest {
     fun resetToDefaultsRestoresPersistedAndEmits() =
         runTest {
             repo.updateAppearance(AppearancePreferences(themeMode = ThemeMode.LIGHT))
-            repo.updateGeneral("confirmExit", true)
             repo.updateGeneral("gridColumns", 4)
+            repo.updateGeneral("defaultPlaybackSpeed", 2f)
 
             repo.resetToDefaults()
 
             val s = Settings.instance
             assertEquals("AUTO", s.appearance.themeMode)
             assertTrue(s.appearance.dynamicColor)
-            assertEquals("STANDARD", s.appearance.contrastLevel)
-            assertTrue(s.playback.enableBackgroundPlayback)
-            assertTrue(s.playback.enablePictureInPicture)
-            assertTrue(s.notifications.enabled)
-            assertFalse(s.confirmExit)
             assertFalse(s.advancedSettings)
-            assertEquals("en", s.language)
+            assertEquals(1f, s.playback.defaultPlaybackSpeed)
+            assertEquals("default", s.playback.subtitleFont)
             assertEquals(3, s.feed.gridColumns)
 
             val prefs = repo.preferences.value
             assertEquals(ThemeMode.AUTO, prefs.appearance.themeMode)
-            assertFalse(prefs.confirmExit)
             assertEquals(3, prefs.gridColumns)
+            assertEquals(1f, prefs.defaultPlaybackSpeed)
         }
 }

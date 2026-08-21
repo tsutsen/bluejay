@@ -20,23 +20,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.DisplaySettings
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
-import androidx.compose.material.icons.filled.Swipe
-import androidx.compose.material.icons.filled.SwipeLeft
-import androidx.compose.material.icons.filled.SwipeRight
-import androidx.compose.material.icons.filled.SwipeVertical
-import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,7 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
-import com.tsutsen.platformplayer.core.datastore.model.ContrastLevel
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsButtonCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
@@ -114,14 +106,6 @@ fun SettingsScreen(
                     }
                     item {
                         SettingsOptionCard(
-                            icon = Icons.Filled.Swipe,
-                            title = "Gestures",
-                            subtitle = "Screen swipe actions",
-                            onClick = { navigator.navigateToSettingsFragment("gestures") },
-                        )
-                    }
-                    item {
-                        SettingsOptionCard(
                             icon = Icons.Filled.Extension,
                             title = "Content",
                             subtitle = "Plugins, video page sections",
@@ -132,7 +116,7 @@ fun SettingsScreen(
                         SettingsOptionCard(
                             icon = Icons.Filled.PlayArrow,
                             title = "Playback",
-                            subtitle = "Quality, subtitles, background playback",
+                            subtitle = "Subtitles, default speed",
                             onClick = { navigator.navigateToSettingsFragment("playback") },
                         )
                     }
@@ -217,28 +201,6 @@ fun SettingsSectionScreen(
             }
         }
 
-        Choice.CONTRAST -> {
-            loaded?.let {
-                ChoiceDialog(
-                    title = "Contrast",
-                    options =
-                        listOf(
-                            "Standard" to "STANDARD",
-                            "Medium" to "MEDIUM",
-                            "High" to "HIGH",
-                        ),
-                    selected = it.appearance.contrastLevel.name,
-                    onSelected = { value ->
-                        viewModel.updateAppearance(
-                            it.appearance.copy(contrastLevel = ContrastLevel.valueOf(value)),
-                        )
-                        selectedChoice = null
-                    },
-                    onDismiss = { selectedChoice = null },
-                )
-            }
-        }
-
         Choice.GRID_COLUMNS -> {
             loaded?.let {
                 ChoiceDialog(
@@ -259,24 +221,20 @@ fun SettingsSectionScreen(
             }
         }
 
-        Choice.DEFAULT_RESOLUTION -> {
+        Choice.SUBTITLE_FONT -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Default resolution",
+                    title = "Subtitle font",
                     options =
                         listOf(
-                            "Auto" to "auto",
-                            "144p" to "144",
-                            "240p" to "240",
-                            "360p" to "360",
-                            "480p" to "480",
-                            "720p" to "720",
-                            "1080p" to "1080",
-                            "1440p" to "1440",
+                            "Default" to "default",
+                            "Sans-serif" to "sans",
+                            "Serif" to "serif",
+                            "Monospace" to "mono",
                         ),
-                    selected = it.defaultResolution,
+                    selected = it.subtitle.font,
                     onSelected = { value ->
-                        viewModel.updateGeneral("defaultResolution", value)
+                        viewModel.updateGeneral("subtitleFont", value)
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -284,26 +242,61 @@ fun SettingsSectionScreen(
             }
         }
 
-        Choice.SUBTITLE_LANGUAGE -> {
+        Choice.SUBTITLE_SIZE -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Preferred subtitle language",
+                    title = "Subtitle size",
                     options =
                         listOf(
-                            "Auto" to "auto",
-                            "English" to "en",
-                            "German" to "de",
-                            "French" to "fr",
-                            "Spanish" to "es",
-                            "Italian" to "it",
-                            "Japanese" to "ja",
-                            "Korean" to "ko",
-                            "Portuguese" to "pt",
-                            "Russian" to "ru",
+                            "Small" to "small",
+                            "Standard" to "standard",
+                            "Large" to "large",
                         ),
-                    selected = it.preferredSubtitleLanguage,
+                    selected = it.subtitle.size,
                     onSelected = { value ->
-                        viewModel.updateGeneral("preferredSubtitleLanguage", value)
+                        viewModel.updateGeneral("subtitleSize", value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.SUBTITLE_PADDING -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Subtitle bottom padding",
+                    options =
+                        listOf(
+                            "Tight" to "tight",
+                            "Standard" to "standard",
+                            "Wide" to "wide",
+                        ),
+                    selected = it.subtitle.bottomPadding,
+                    onSelected = { value ->
+                        viewModel.updateGeneral("subtitleBottomPadding", value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.PLAYBACK_SPEED -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Default playback speed",
+                    options =
+                        listOf(
+                            "0.75x" to "0.75",
+                            "1x" to "1.0",
+                            "1.25x" to "1.25",
+                            "1.5x" to "1.5",
+                            "2x" to "2.0",
+                        ),
+                    selected = it.defaultPlaybackSpeed.toString(),
+                    onSelected = { value ->
+                        viewModel.updateGeneral("defaultPlaybackSpeed", value.toFloat())
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -355,47 +348,6 @@ private fun LazyListScope.SectionItems(
                     onCheckedChange = { viewModel.updateGeneral("dynamicColor", it) },
                 )
             }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Contrast,
-                    title = "Contrast",
-                    subtitle =
-                        when (state.appearance.contrastLevel) {
-                            ContrastLevel.STANDARD -> "Standard"
-                            ContrastLevel.MEDIUM -> "Medium"
-                            ContrastLevel.HIGH -> "High"
-                        },
-                    onClick = { onChoiceSelected(Choice.CONTRAST) },
-                )
-            }
-        }
-
-        "gestures" -> {
-            // Placeholder slots — actions to be defined.
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.SwipeLeft,
-                    title = "Left slot",
-                    subtitle = "No action assigned",
-                    onClick = {},
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.SwipeRight,
-                    title = "Right slot",
-                    subtitle = "No action assigned",
-                    onClick = {},
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.SwipeVertical,
-                    title = "Top slot",
-                    subtitle = "No action assigned",
-                    onClick = {},
-                )
-            }
         }
 
         "content" -> {
@@ -438,64 +390,39 @@ private fun LazyListScope.SectionItems(
         "playback" -> {
             item {
                 SettingsOptionCard(
-                    icon = Icons.Filled.HighQuality,
-                    title = "Default resolution",
-                    subtitle =
-                        if (state.defaultResolution == "auto") {
-                            "Auto"
-                        } else {
-                            "${state.defaultResolution}p"
-                        },
-                    onClick = { onChoiceSelected(Choice.DEFAULT_RESOLUTION) },
-                )
-            }
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.Headphones,
-                    title = "Background playback",
-                    subtitle = "Keep playing when the app is in the background",
-                    checked = state.enableBackgroundPlayback,
-                    onCheckedChange = { viewModel.updateGeneral("enableBackgroundPlayback", it) },
-                )
-            }
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.PictureInPictureAlt,
-                    title = "Picture-in-picture",
-                    subtitle = "Play video in a floating window",
-                    checked = state.enablePictureInPicture,
-                    onCheckedChange = { viewModel.updateGeneral("enablePictureInPicture", it) },
-                )
-            }
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.Subtitles,
-                    title = "Remember subtitle state",
-                    subtitle = "Keep subtitle on/off across sessions",
-                    checked = state.rememberSubtitleState,
-                    onCheckedChange = { viewModel.updateGeneral("rememberSubtitleState", it) },
+                    icon = Icons.Filled.Speed,
+                    title = "Default playback speed",
+                    subtitle = "${state.defaultPlaybackSpeed}x",
+                    onClick = { onChoiceSelected(Choice.PLAYBACK_SPEED) },
                 )
             }
             item {
                 SettingsOptionCard(
-                    icon = Icons.Filled.Translate,
-                    title = "Preferred subtitle language",
-                    subtitle = subtitleLanguageLabel(state.preferredSubtitleLanguage),
-                    onClick = { onChoiceSelected(Choice.SUBTITLE_LANGUAGE) },
+                    icon = Icons.Filled.Subtitles,
+                    title = "Subtitle font",
+                    subtitle = subtitleFontLabel(state.subtitle.font),
+                    onClick = { onChoiceSelected(Choice.SUBTITLE_FONT) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.TextFields,
+                    title = "Subtitle size",
+                    subtitle = subtitleChoiceLabel(state.subtitle.size),
+                    onClick = { onChoiceSelected(Choice.SUBTITLE_SIZE) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.VerticalAlignBottom,
+                    title = "Subtitle bottom padding",
+                    subtitle = subtitleChoiceLabel(state.subtitle.bottomPadding),
+                    onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
                 )
             }
         }
 
         "general" -> {
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.ExitToApp,
-                    title = "Confirm exit",
-                    subtitle = "Ask before closing the app",
-                    checked = state.confirmExit,
-                    onCheckedChange = { viewModel.updateGeneral("confirmExit", it) },
-                )
-            }
             item {
                 SettingsSwitchCard(
                     icon = Icons.Filled.Code,
@@ -529,34 +456,36 @@ private fun LazyListScope.SectionItems(
 private fun sectionTitle(category: String): String =
     when (category) {
         "appearance" -> "Appearance"
-        "gestures" -> "Gestures"
         "content" -> "Content"
         "playback" -> "Playback"
         "general" -> "General"
         else -> "Settings"
     }
 
-private fun subtitleLanguageLabel(code: String): String =
+private fun subtitleFontLabel(code: String): String =
     when (code) {
-        "auto" -> "Auto"
-        "en" -> "English"
-        "de" -> "German"
-        "fr" -> "French"
-        "es" -> "Spanish"
-        "it" -> "Italian"
-        "ja" -> "Japanese"
-        "ko" -> "Korean"
-        "pt" -> "Portuguese"
-        "ru" -> "Russian"
-        else -> code
+        "sans" -> "Sans-serif"
+        "serif" -> "Serif"
+        "mono" -> "Monospace"
+        else -> "Default"
+    }
+
+private fun subtitleChoiceLabel(code: String): String =
+    when (code) {
+        "small" -> "Small"
+        "large" -> "Large"
+        "tight" -> "Tight"
+        "wide" -> "Wide"
+        else -> "Standard"
     }
 
 private enum class Choice {
     THEME,
-    CONTRAST,
     GRID_COLUMNS,
-    DEFAULT_RESOLUTION,
-    SUBTITLE_LANGUAGE,
+    SUBTITLE_FONT,
+    SUBTITLE_SIZE,
+    SUBTITLE_PADDING,
+    PLAYBACK_SPEED,
 }
 
 @Composable

@@ -15,20 +15,13 @@ import javax.inject.Inject
 sealed interface SettingsUiState {
     data class Loaded(
         val appearance: AppearancePreferences,
-        val playback: PlaybackPreferences,
-        val language: String,
-        val enableNotifications: Boolean,
-        val enableBackgroundPlayback: Boolean,
-        val enablePictureInPicture: Boolean,
-        val confirmExit: Boolean,
+        val subtitle: SubtitlePreferences,
+        val defaultPlaybackSpeed: Float,
         val enableDeveloperOptions: Boolean,
         val dualScreen: Boolean,
         val gridColumns: Int,
         val showRecommendedVideos: Boolean,
         val showComments: Boolean,
-        val defaultResolution: String,
-        val rememberSubtitleState: Boolean,
-        val preferredSubtitleLanguage: String,
     ) : SettingsUiState
 
     data object Loading : SettingsUiState
@@ -58,20 +51,13 @@ class SettingsViewModel
                         _uiState.value =
                             SettingsUiState.Loaded(
                                 appearance = prefs.appearance,
-                                playback = prefs.playback,
-                                language = prefs.language,
-                                enableNotifications = prefs.enableNotifications,
-                                enableBackgroundPlayback = prefs.enableBackgroundPlayback,
-                                enablePictureInPicture = prefs.enablePictureInPicture,
-                                confirmExit = prefs.confirmExit,
+                                subtitle = prefs.subtitle,
+                                defaultPlaybackSpeed = prefs.defaultPlaybackSpeed,
                                 enableDeveloperOptions = prefs.enableDeveloperOptions,
                                 dualScreen = prefs.dualScreen,
                                 gridColumns = prefs.gridColumns,
                                 showRecommendedVideos = prefs.showRecommendedVideos,
                                 showComments = prefs.showComments,
-                                defaultResolution = prefs.defaultResolution,
-                                rememberSubtitleState = prefs.rememberSubtitleState,
-                                preferredSubtitleLanguage = prefs.preferredSubtitleLanguage,
                             )
                     }
             }

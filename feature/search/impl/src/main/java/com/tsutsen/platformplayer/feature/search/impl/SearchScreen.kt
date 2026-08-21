@@ -4,9 +4,12 @@ import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,11 +19,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -254,16 +259,30 @@ fun SearchScreen(
                 trailingIcon = {
                     // A Row: the slot is a single centered box, so two
                     // bare buttons here would stack on top of each other.
+                    // The group pins to the RIGHT edge of the field; the
+                    // clear button slides in to the left of the search
+                    // button so search never moves when clear appears.
                     Row(
+                        modifier = Modifier.fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.End,
                     ) {
-                        if (searchQuery.isNotEmpty()) {
-                            SearchFieldButton(
-                                icon = Icons.Default.Close,
-                                contentDescription = "Clear",
-                                onClick = { viewModel.setQuery("") },
-                            )
+                        AnimatedVisibility(
+                            visible = searchQuery.isNotEmpty(),
+                            enter = fadeIn(tween(120)) + expandHorizontally(tween(120)),
+                            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(120)),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                SearchFieldButton(
+                                    icon = Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    onClick = { viewModel.setQuery("") },
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
                         }
                         SearchFieldButton(
                             icon = Icons.Default.Search,
@@ -303,7 +322,12 @@ fun SearchScreen(
                 SearchType.entries.forEach { type ->
                     FilterChip(
                         selected = type == searchType,
-                        onClick = { viewModel.setSearchType(type) },
+                        onClick = {
+                            // Switching the type tab releases the field's
+                            // focus (and the keyboard).
+                            focusManager.clearFocus()
+                            viewModel.setSearchType(type)
+                        },
                         label = { Text(searchTypeLabel(type)) },
                     )
                 }
@@ -615,8 +639,8 @@ private fun RecentSearches(
 }
 
 /**
- * Small circular action button embedded in the search field: 28dp circle
- * with a 16dp icon.
+ * Small rounded-rectangle action button embedded in the search field:
+ * primary fill, 26dp tall, 16dp icon.
  */
 @Composable
 private fun SearchFieldButton(
@@ -627,17 +651,20 @@ private fun SearchFieldButton(
     Box(
         modifier =
             Modifier
-                .size(28.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .height(26.dp)
+                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .background(MaterialTheme.colorScheme.primary)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier =
+                Modifier
+                    .size(16.dp)
+                    .padding(horizontal = 8.dp),
+            tint = MaterialTheme.colorScheme.onPrimary,
         )
     }
 }

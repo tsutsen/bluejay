@@ -165,7 +165,8 @@ fun QueueList(
                             }
                         },
                         onLongClick = { onLongClick(item) },
-                        canMoveUp = index > 0 && index > currentIndex,
+                        // Nothing may move in front of the now-playing item.
+            canMoveUp = if (currentIndex >= 0) index > currentIndex + 1 else index > 0,
                         canMoveDown = index < items.size - 1,
                         onMoveUp = {
                             onMove(index, index - 1)

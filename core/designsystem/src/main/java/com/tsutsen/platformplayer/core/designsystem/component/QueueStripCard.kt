@@ -235,7 +235,9 @@ private fun QueuedCardStrip(
                         onPlay = { onPlay(index) },
                         onRemove = { onRemove(item.url) },
                         onLongClick = { onLongClick(item) },
-                        canMoveEarlier = index > 0 && index > currentIndex,
+                        // Nothing may move in front of the now-playing card.
+                        canMoveEarlier =
+                            if (currentIndex >= 0) index > currentIndex + 1 else index > 0,
                         canMoveLater = index < items.size - 1,
                         onMoveEarlier = {
                             onMove(index, index - 1)
@@ -278,6 +280,15 @@ private fun QueueStripItem(
     val swipeJob = remember { mutableStateOf<Job?>(null) }
     val swipeThresholdPx = remember { with(density) { 80.dp.toPx() } }
     val swipeFlyPx = remember { with(density) { 280.dp.toPx() } }
+    // Arrow tiles: rounded on the left edge only — the square right edge
+    // meets the card edge (the card's own clip rounds the outer corner).
+    val arrowShape =
+        RoundedCornerShape(
+            topStart = 10.dp,
+            topEnd = 0.dp,
+            bottomStart = 10.dp,
+            bottomEnd = 0.dp,
+        )
     // Entry animation: items start collapsed and expand in.
     var hasAppeared by remember(item.url) { mutableStateOf(false) }
     LaunchedEffect(Unit) { hasAppeared = true }
@@ -438,7 +449,8 @@ private fun QueueStripItem(
                         .width(HANDLE_W)
                         .fillMaxSize()
                         .align(Alignment.CenterEnd)
-                        .padding(8.dp),
+                        // No end padding: the square right edge meets the card edge.
+                        .padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 // Disabled buttons melt into the card (same surface, dim
@@ -452,9 +464,9 @@ private fun QueueStripItem(
                             .weight(1f)
                             .background(
                                 if (earlierEnabled)
-                                    MaterialTheme.colorScheme.secondaryContainer
+                                    MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(10.dp),
+                                arrowShape,
                             ),
                 ) {
                     Icon(
@@ -462,7 +474,7 @@ private fun QueueStripItem(
                         contentDescription = "Move earlier in queue",
                         tint =
                             if (earlierEnabled)
-                                MaterialTheme.colorScheme.onSecondaryContainer
+                                MaterialTheme.colorScheme.onPrimary
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                         modifier = Modifier.size(22.dp),
@@ -477,9 +489,9 @@ private fun QueueStripItem(
                             .weight(1f)
                             .background(
                                 if (laterEnabled)
-                                    MaterialTheme.colorScheme.secondaryContainer
+                                    MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(10.dp),
+                                arrowShape,
                             ),
                 ) {
                     Icon(
@@ -487,7 +499,7 @@ private fun QueueStripItem(
                         contentDescription = "Move later in queue",
                         tint =
                             if (laterEnabled)
-                                MaterialTheme.colorScheme.onSecondaryContainer
+                                MaterialTheme.colorScheme.onPrimary
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                         modifier = Modifier.size(22.dp),

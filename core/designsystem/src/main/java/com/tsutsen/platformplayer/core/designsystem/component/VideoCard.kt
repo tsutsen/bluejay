@@ -19,7 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +35,6 @@ import com.tsutsen.platformplayer.core.ui.RelativeTime
 // pill and the completed badge all use these so they line up on the
 // thumbnail corners.
 private val PILL_HEIGHT = 18.dp
-private val CHECK_BADGE_WIDTH = 36.dp
 
 /**
  * Standard video card with fixed height layout.
@@ -125,32 +126,53 @@ fun VideoCard(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(Tokens.SpaceSm)
-                                .fillMaxWidth(0.5f)
-                                .height(PILL_HEIGHT)
-                                .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
-                                .background(Color.Black.copy(alpha = 0.7f)),
+                                .padding(Tokens.SpaceSm),
                     ) {
+                        // Light glow behind the pill: same size as the pill,
+                        // scaled up + blurred so it extends past the edges
+                        // (separate node, so the blur isn't clipped by the
+                        // pill's bounds).
                         Box(
                             modifier =
                                 Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
-                                    .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
-                                    .background(MaterialTheme.colorScheme.primary),
+                                    .fillMaxWidth(0.5f)
+                                    .height(PILL_HEIGHT)
+                                    .scale(1.04f, 1.7f)
+                                    .blur(4.dp)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                         )
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth(0.5f)
+                                    .height(PILL_HEIGHT)
+                                    .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
+                                    .background(Color.Black.copy(alpha = 0.7f)),
+                        ) {
+                            // Played fill: no clip of its own — the track's
+                            // stadium clip trims it, leaving a squarer right
+                            // edge.
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
+                                        .background(MaterialTheme.colorScheme.primary),
+                            )
+                        }
                     }
                 }
 
-                // Completed badge (top-right): same width as the duration
-                // pill, same background.
+                // Completed badge (bottom-LEFT, never drawn together with the
+                // progress pill — callers hide progress when watched):
+                // same background as the duration pill, sized to the
+                // checkmark + its padding.
                 if (isWatched) {
                     Box(
                         modifier =
                             Modifier
-                                .align(Alignment.TopEnd)
+                                .align(Alignment.BottomStart)
                                 .padding(Tokens.SpaceSm)
-                                .width(CHECK_BADGE_WIDTH)
                                 .height(PILL_HEIGHT)
                                 .clip(RoundedCornerShape(Tokens.RadiusXs))
                                 .background(Color.Black.copy(alpha = 0.7f)),
@@ -160,7 +182,10 @@ fun VideoCard(
                             imageVector = Icons.Filled.Check,
                             contentDescription = "Watched",
                             tint = Color.White,
-                            modifier = Modifier.size(14.dp),
+                            modifier =
+                                Modifier
+                                    .size(14.dp)
+                                    .padding(horizontal = 4.dp),
                         )
                     }
                 }

@@ -33,11 +33,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.delay
@@ -140,16 +142,21 @@ internal fun GestureIndicatorOverlay(
         }
     }
 
-    // Progress indicator (brightness/volume — side bars)
-    activeProgressIndicator?.let { indicator ->
-        val alignment = if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
-            Box(modifier = Modifier.fillMaxHeight().width(120.dp)) {
+    // Progress indicator (brightness/volume — Android-style side capsule)
+    AnimatedVisibility(
+        visible = activeProgressIndicator != null,
+        enter = fadeIn(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
+        exit = fadeOut(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
+    ) {
+        activeProgressIndicator?.let { indicator ->
+            val alignment =
+                if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
                 ProgressIndicator(
                     value = indicator.value,
                     icon = indicator.icon,
                     format = indicator.format,
-                    modifier = Modifier.align(Alignment.Center)
+                    modifier = Modifier.align(Alignment.Center),
                 )
             }
         }
@@ -214,36 +221,46 @@ private fun ProgressIndicator(
     format: (Float) -> String = { "${(it * 100).toInt()}%" },
     modifier: Modifier = Modifier,
 ) {
+    // Android-style volume/brightness capsule: dark rounded panel, icon on
+    // top, slim fill bar, percentage at the bottom — all inside the panel.
     Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier =
+            modifier
+                .width(44.dp)
+                .clip(RoundedCornerShape(Tokens.RadiusMd))
+                .background(Color.Black.copy(alpha = 0.6f))
+                .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(16.dp),
         )
         Spacer(modifier = Modifier.height(8.dp))
         Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(100.dp)
-                .background(Color.White.copy(alpha = 0.3f))
+            modifier =
+                Modifier
+                    .width(4.dp)
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.25f)),
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(value)
-                    .align(Alignment.BottomCenter)
-                    .background(Color.White)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(value)
+                        .align(Alignment.BottomCenter)
+                        .background(Color.White),
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = format(value),
-            color = Color.White,
-            style = MaterialTheme.typography.bodySmall
+            color = Color.White.copy(alpha = 0.9f),
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
