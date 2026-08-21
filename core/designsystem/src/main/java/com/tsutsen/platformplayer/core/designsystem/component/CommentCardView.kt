@@ -117,7 +117,7 @@ fun CommentCardView(
                     text = comment.text,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 4,
+                    maxLines = 8,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                     onTimestampClick = onTimestampClick ?: {},
@@ -128,7 +128,7 @@ fun CommentCardView(
                     text = comment.text,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 4,
+                    maxLines = 8,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )

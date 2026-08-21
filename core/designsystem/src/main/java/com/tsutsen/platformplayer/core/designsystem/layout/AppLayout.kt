@@ -506,11 +506,15 @@ fun AppLayout(
     navMorphed: Boolean = false,
 ) {
     // Status-bar offset for the content area (edge-to-edge window): ease the
-    // content down 28dp when the app chrome is visible, and to 0 when the
-    // player goes fullscreen, in step with the rail/300ms morph.
+    // content down to the real status-bar inset when the app chrome is
+    // visible, and to 0 when the player goes fullscreen, in step with the
+    // rail/300ms morph. The morphed nav rail stops at this same inset, so
+    // the content and the nav share one top line.
+    val density = LocalDensity.current
+    val statusBarTop = with(density) { WindowInsets.systemBars.getTop(density).toDp() }
     val topInset by
         animateDpAsState(
-            targetValue = if (config.showNavigation) AppContentTopInset else 0.dp,
+            targetValue = if (config.showNavigation) statusBarTop else 0.dp,
             animationSpec = tween(300, easing = FastOutSlowInEasing),
             label = "appContentTopInset",
         )

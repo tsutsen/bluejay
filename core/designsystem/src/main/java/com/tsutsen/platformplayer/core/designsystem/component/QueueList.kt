@@ -73,6 +73,7 @@ private const val ANIM = 180
 @Composable
 fun QueueList(
     items: List<ContentItem>,
+    currentIndex: Int = -1,
     onPlay: (Int) -> Unit,
     onRemove: (String) -> Unit,
     onMove: (Int, Int) -> Unit,
@@ -164,7 +165,7 @@ fun QueueList(
                             }
                         },
                         onLongClick = { onLongClick(item) },
-                        canMoveUp = index > 0,
+                        canMoveUp = index > 0 && index > currentIndex,
                         canMoveDown = index < items.size - 1,
                         onMoveUp = {
                             onMove(index, index - 1)

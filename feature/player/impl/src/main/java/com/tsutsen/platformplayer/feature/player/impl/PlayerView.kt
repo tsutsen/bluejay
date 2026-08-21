@@ -816,6 +816,7 @@ fun PlayerView(
                     ) {
                         QueueList(
                             items = queue,
+                            currentIndex = state.selectedIndex,
                             onPlay = {
                                 viewModel.playQueueItem(it)
                                 showQueueSheet = false

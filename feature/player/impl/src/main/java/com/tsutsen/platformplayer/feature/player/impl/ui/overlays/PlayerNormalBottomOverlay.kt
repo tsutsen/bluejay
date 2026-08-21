@@ -108,7 +108,6 @@ internal fun PlayerNormalBottomOverlay(
                     text = "${formatTime(positionMs)} / ${formatTime(durationMs)}",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))

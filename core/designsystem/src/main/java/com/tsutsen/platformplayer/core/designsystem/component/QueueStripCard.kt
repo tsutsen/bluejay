@@ -18,6 +18,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -164,6 +165,8 @@ private fun QueuedCardStrip(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val viewportPx = remember { mutableStateOf(0) }
+    // The now-playing card's position: items can't move in front of it.
+    val currentIndex = items.indexOfFirst { it.url == current?.url }
 
     // FLIP for swaps: the move buttons only ever swap adjacent cards, so
     // the delta is known at the press — no order diffing. Every card is
@@ -232,7 +235,7 @@ private fun QueuedCardStrip(
                         onPlay = { onPlay(index) },
                         onRemove = { onRemove(item.url) },
                         onLongClick = { onLongClick(item) },
-                        canMoveEarlier = index > 0,
+                        canMoveEarlier = index > 0 && index > currentIndex,
                         canMoveLater = index < items.size - 1,
                         onMoveEarlier = {
                             onMove(index, index - 1)
@@ -431,7 +434,7 @@ private fun QueueStripItem(
                         .width(HANDLE_W)
                         .fillMaxSize()
                         .align(Alignment.CenterEnd)
-                        .padding(start = 2.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                        .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 IconButton(
@@ -495,17 +498,31 @@ private fun NowPlayingCard(
                 .background(Color(0xFF1F1F1F))
                 .combinedClickable(onClick = onPlayPause, onLongClick = onLongClick),
     ) {
-        AsyncImage(
-            url = item.thumbnailUrl,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-        )
+        // 16:9 thumbnail pinned to the top edge; the band below holds the
+        // gradient + meta (same proportions as the queued cards' thumbnails).
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .align(Alignment.TopCenter)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF1F1F1F)),
+        ) {
+            AsyncImage(
+                url = item.thumbnailUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         // Bottom gradient (transparent -> card gray) so the title, channel
-        // and duration stay readable over the thumbnail.
+        // and duration stay readable over the thumbnail. Clipped to the card
+        // radius so the inner drawing can't exceed the rounded bounds.
         Box(
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp))
                     .drawWithContent {
                         drawContent()
                         drawRect(

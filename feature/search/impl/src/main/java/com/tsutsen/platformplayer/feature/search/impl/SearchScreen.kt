@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -42,6 +43,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -117,12 +119,25 @@ fun SearchScreen(
 
     val refreshingState = rememberPullToRefreshState()
 
+    // Circular backgrounds for the field's trailing action buttons.
+    val searchButtonBg =
+        Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+
     // Focus the field on entry only when we arrived via a tab-bar press
     // (other entries, e.g. "Find channels", leave the keyboard down).
     LaunchedEffect(Unit) {
         if (navigator.searchAutoFocus.value) {
             focusRequester.requestFocus()
         }
+    }
+
+    // Leaving the tab (or the screen) releases the field's focus and with
+    // it the keyboard.
+    DisposableEffect(Unit) {
+        onDispose { focusManager.clearFocus() }
     }
 
     val performSearch = {
@@ -231,20 +246,25 @@ fun SearchScreen(
                         .onFocusChanged { isSearchFocused = it.isFocused },
                 placeholder = { Text("Search") },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.setQuery("") }) {
+                    // A Row: the slot is a single centered box, so two
+                    // bare buttons here would stack on top of each other.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.setQuery("") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    modifier = searchButtonBg,
+                                )
+                            }
+                        }
+                        IconButton(onClick = { performSearch() }) {
                             Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear",
-                                modifier = Modifier.size(Tokens.IconMd),
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                modifier = searchButtonBg,
                             )
                         }
-                    }
-                    IconButton(onClick = { performSearch() }) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                        )
                     }
                 },
                 singleLine = true,
@@ -557,16 +577,15 @@ private fun RecentSearches(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .clickable { onItemClick(query) },
+                        .padding(horizontal = 4.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            RoundedCornerShape(12.dp),
+                        )
+                        .clickable { onItemClick(query) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    imageVector = Icons.Default.History,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 Text(
                     text = query,
                     style = MaterialTheme.typography.bodyMedium,
@@ -574,7 +593,7 @@ private fun RecentSearches(
                     modifier = Modifier.weight(1f),
                 )
                 Icon(
-                    imageVector = Icons.Default.Delete,
+                    imageVector = Icons.Default.Close,
                     contentDescription = "Delete",
                     modifier =
                         Modifier

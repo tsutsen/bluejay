@@ -243,7 +243,8 @@ fun PlayerContent(
         // Rendered inside the video's offset/size space (clipped with it) so
         // captions follow the surface across morph/fullscreen transitions.
         // Constant font size regardless of surface size - see SubtitleStyle.
-        if (state.subtitleText.isNotBlank()) {
+        // Hidden in floating (mini) mode: the surface is too small for them.
+        if (state.subtitleText.isNotBlank() && miniProgress < MINI_SETTLED_THRESHOLD) {
             val subtitleTextStyle =
                 MaterialTheme.typography.bodyLarge.copy(
                     fontFamily = SubtitleStyle.fontFamily,

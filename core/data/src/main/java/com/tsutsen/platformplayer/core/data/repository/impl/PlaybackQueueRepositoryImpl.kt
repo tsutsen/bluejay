@@ -97,6 +97,11 @@ class PlaybackQueueRepositoryImpl
         override fun move(from: Int, to: Int) {
             val q = _queue.value.toMutableList()
             if (from !in q.indices || to !in q.indices) return
+            // The now-playing item stays put: nothing can move in front of
+            // it, and it itself can't be moved.
+            val currentIndex =
+                q.indexOfFirst { it.url == playerRepository.playerState.value.currentVideo?.url }
+            if (currentIndex >= 0 && (from == currentIndex || to < currentIndex)) return
             val item = q.removeAt(from)
             q.add(to, item)
             _queue.value = q
