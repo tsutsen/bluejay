@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +30,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.TileTone
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.VideoChapter
+import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,10 +194,12 @@ private fun OptionCard(
 @Composable
 internal fun ChaptersPanel(
     chapters: List<VideoChapter>,
-    currentPositionMs: Long,
+    positionMs: StateFlow<Long>,
     onChapterClick: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // Collected here — the panel is only composed while open.
+    val currentPositionMs by positionMs.collectAsState(initial = 0L)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
     ) {

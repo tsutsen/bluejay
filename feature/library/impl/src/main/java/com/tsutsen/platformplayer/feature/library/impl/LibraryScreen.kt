@@ -1,6 +1,5 @@
 package com.tsutsen.platformplayer.feature.library.impl
 
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -47,11 +46,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
@@ -60,8 +61,8 @@ import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
-import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 import kotlinx.coroutines.launch
+import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 
 /**
  * Library screen: Watch Later, Liked, Favourites, Playlists.
@@ -280,7 +281,8 @@ private fun LibraryCard(
     onVideoLongClick: (CoreVideoCard) -> Unit,
     onPlaylistLongClick: (PlaylistCard) -> Unit,
 ) {
-    val watchStates by hiltViewModel<PlayerViewModel>().watchStates.collectAsState()
+    // Paused while this keep-alive tab is hidden (LocalTabActive).
+    val watchStates by hiltViewModel<PlayerViewModel>().watchStates.collectAsActiveState(emptyMap())
     when (card) {
         is CoreVideoCard -> {
             VideoCard(

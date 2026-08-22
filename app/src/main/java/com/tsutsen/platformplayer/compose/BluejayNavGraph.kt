@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -18,6 +19,7 @@ import androidx.compose.ui.zIndex
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
+import com.tsutsen.platformplayer.core.designsystem.LocalTabActive
 import com.tsutsen.platformplayer.core.designsystem.component.PlaceholderScreen
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
@@ -133,14 +135,18 @@ fun BluejayNavGraph(
                         }
                     },
             ) {
-                when (tab) {
-                    NavDestination.Home -> HomeScreen(navigator = navigator)
-                    NavDestination.Search -> SearchScreen(navigator = navigator)
-                    NavDestination.Subscriptions -> SubscriptionsScreen(navigator = navigator)
-                    NavDestination.Library -> LibraryScreen(navigator = navigator)
-                    NavDestination.Settings -> SettingsScreen(navigator = navigator)
-                    NavDestination.Notifications -> NotificationsScreen()
-                    else -> Unit
+                // Hidden keep-alive tabs report inactive so their screens can
+                // pause shared-state collection (see LocalTabActive).
+                CompositionLocalProvider(LocalTabActive provides isActive) {
+                    when (tab) {
+                        NavDestination.Home -> HomeScreen(navigator = navigator)
+                        NavDestination.Search -> SearchScreen(navigator = navigator)
+                        NavDestination.Subscriptions -> SubscriptionsScreen(navigator = navigator)
+                        NavDestination.Library -> LibraryScreen(navigator = navigator)
+                        NavDestination.Settings -> SettingsScreen(navigator = navigator)
+                        NavDestination.Notifications -> NotificationsScreen()
+                        else -> Unit
+                    }
                 }
             }
         }

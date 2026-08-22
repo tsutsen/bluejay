@@ -121,11 +121,12 @@ fun PlayerView(
     var showCastingSheet by remember { mutableStateOf(false) }
     // Stable callbacks — captured once per text by LinkifiedText's remember.
     val onTimestampClick: (Long) -> Unit = remember { { ms -> viewModel.seekToClamped(ms) } }
-    val onLinkClick: (String) -> Unit = remember(context) {
-        { url: String ->
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    val onLinkClick: (String) -> Unit =
+        remember(context) {
+            { url: String ->
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            }
         }
-    }
 
     var controlsVisible by remember { mutableStateOf(true) }
     var hideControlsJob by remember { mutableStateOf<Job?>(null) }
@@ -352,12 +353,18 @@ fun PlayerView(
             //  - Portrait: a width-constrained 16:9 box. 0.7 of the tall
             //    portrait window height would make the video far too large.
             val maxPlayerHeightPx =
-                if (isLandscape) containerSize.height * 0.7f
-                else containerSize.width * 9f / 16f
+                if (isLandscape) {
+                    containerSize.height * 0.7f
+                } else {
+                    containerSize.width * 9f / 16f
+                }
             // Scroll-collapsible lower bound (drag the video shorter).
             val minPlayerHeightPx =
-                if (isLandscape) containerSize.height * 0.2f
-                else maxPlayerHeightPx * 0.4f
+                if (isLandscape) {
+                    containerSize.height * 0.2f
+                } else {
+                    maxPlayerHeightPx * 0.4f
+                }
             var playerHeightPx by remember { mutableStateOf(0f) }
 
             // Reset the collapsed height the moment the state leaves the
@@ -595,6 +602,7 @@ fun PlayerView(
                     PlayerContent(
                         player = player,
                         state = state,
+                        positionMs = viewModel.positionMs,
                         videoLayout = videoLayout,
                         miniProgress = morphProgress.value,
                         fullscreenProgress = fullscreenP,
@@ -720,8 +728,7 @@ fun PlayerView(
                                 .background(
                                     Color.Black.copy(alpha = 0.5f),
                                     shape = RoundedCornerShape(16.dp),
-                                )
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                ).padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
@@ -742,11 +749,12 @@ fun PlayerView(
                 // ==================== Modals ====================
                 if (showOptionsModal) {
                     val downloadInfo = downloads.find { it.url == state.currentVideo?.url }
-                    val downloadState = when {
-                        downloadInfo == null -> DownloadButtonState.Idle
-                        downloadInfo.done -> DownloadButtonState.Downloaded
-                        else -> DownloadButtonState.Downloading(downloadInfo.progress)
-                    }
+                    val downloadState =
+                        when {
+                            downloadInfo == null -> DownloadButtonState.Idle
+                            downloadInfo.done -> DownloadButtonState.Downloaded
+                            else -> DownloadButtonState.Downloading(downloadInfo.progress)
+                        }
                     OptionsModal(
                         playbackSpeed = state.playbackSpeed,
                         quality = state.selectedQuality,
@@ -784,7 +792,7 @@ fun PlayerView(
                 if (showChapters) {
                     ChaptersPanel(
                         chapters = state.chapters,
-                        currentPositionMs = state.currentPositionMs,
+                        positionMs = viewModel.positionMs,
                         onChapterClick = { positionMs ->
                             viewModel.seekTo(positionMs)
                             showChapters = false
@@ -885,11 +893,12 @@ private fun CurrentVideoOptionsSheet(
     val downloads by viewModel.downloads.collectAsState(initial = emptyList())
     val queue by viewModel.queue.collectAsState(initial = emptyList())
     val downloadInfo = downloads.find { it.url == video.url }
-    val downloadState = when {
-        downloadInfo == null -> DownloadButtonState.Idle
-        downloadInfo.done -> DownloadButtonState.Downloaded
-        else -> DownloadButtonState.Downloading(downloadInfo.progress)
-    }
+    val downloadState =
+        when {
+            downloadInfo == null -> DownloadButtonState.Idle
+            downloadInfo.done -> DownloadButtonState.Downloaded
+            else -> DownloadButtonState.Downloading(downloadInfo.progress)
+        }
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
 
     VideoOptionsSheet(
@@ -916,8 +925,11 @@ private fun CurrentVideoOptionsSheet(
         },
         onDownloadWithQuality = { quality -> viewModel.startDownload(quality) },
         onAddToPlaylist = { playlistId ->
-            if (playlistId == null) showNewPlaylistDialog = true
-            else viewModel.addToPlaylist(video, playlistId)
+            if (playlistId == null) {
+                showNewPlaylistDialog = true
+            } else {
+                viewModel.addToPlaylist(video, playlistId)
+            }
         },
         onAddToQueue = { viewModel.addToQueue(video) },
         isInQueue = queue.any { it.url == video.url },

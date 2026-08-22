@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -26,9 +25,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.core.ui.RelativeTime
+import kotlin.math.roundToLong
 
 // Shared thumbnail-pill geometry: the duration pill, the watched-progress
 // pill and the completed badge all use these so they line up on the
@@ -133,8 +134,7 @@ fun VideoCard(
                                         bottomStart = Tokens.RadiusSm,
                                         bottomEnd = Tokens.RadiusSm,
                                     ),
-                                )
-                                .background(Color.Black.copy(alpha = 0.6f)),
+                                ).background(Color.Black.copy(alpha = 0.6f)),
                     ) {
                         Box(
                             modifier =
@@ -313,7 +313,10 @@ fun VideoCardPills(
                     ThumbnailPill(text = formatViewCount(viewCount), modifier = Modifier.align(Alignment.TopEnd).padding(Tokens.SpaceSm))
                 }
                 if (publishedAt != null) {
-                    ThumbnailPill(text = RelativeTime.format(publishedAt), modifier = Modifier.align(Alignment.BottomStart).padding(Tokens.SpaceSm))
+                    ThumbnailPill(
+                        text = RelativeTime.format(publishedAt),
+                        modifier = Modifier.align(Alignment.BottomStart).padding(Tokens.SpaceSm),
+                    )
                 }
                 if (durationMs != null && durationMs > 0) {
                     ThumbnailPill(text = formatDuration(durationMs), modifier = Modifier.align(Alignment.BottomEnd).padding(Tokens.SpaceSm))
@@ -438,9 +441,10 @@ private fun ThumbnailPill(
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .widthIn(max = 120.dp)
-                .padding(horizontal = 4.dp, vertical = 2.dp),
+            modifier =
+                Modifier
+                    .widthIn(max = 120.dp)
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
         )
     }
 }
@@ -501,12 +505,22 @@ fun CompactVideoCard(
     }
 }
 
+/**
+ * "1.2M" / "340K" view counts.
+ * Hand-rolled 1-decimal formatting: String.format pulls in locale machinery
+ * and this runs on every recomposition of every visible card.
+ */
 fun formatViewCount(count: Long): String =
     when {
-        count >= 1_000_000 -> "${String.format("%.1f", count / 1_000_000.0)}M"
-        count >= 1_000 -> "${String.format("%.1f", count / 1_000.0)}K"
+        count >= 1_000_000 -> "${oneDecimal(count / 1_000_000.0)}M"
+        count >= 1_000 -> "${oneDecimal(count / 1_000.0)}K"
         else -> count.toString()
     }
+
+private fun oneDecimal(value: Double): String {
+    val tenths = (value * 10).roundToLong()
+    return "${tenths / 10}.${tenths % 10}"
+}
 
 /** "M:SS" under an hour, "H:MM:SS" from an hour up (e.g. 1:06:00). */
 fun formatDuration(ms: Long): String {

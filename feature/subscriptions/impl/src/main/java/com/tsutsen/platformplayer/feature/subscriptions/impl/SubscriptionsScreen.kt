@@ -1,7 +1,5 @@
 package com.tsutsen.platformplayer.feature.subscriptions.impl
 
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
-import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -22,11 +20,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material3.Button
@@ -62,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
@@ -69,18 +68,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import com.tsutsen.platformplayer.core.model.VideoCard as ModelVideoCard
 
 /**
@@ -95,7 +96,8 @@ fun SubscriptionsScreen(
     playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val gridColumns by viewModel.gridColumns.collectAsState()
-    val watchStates by playerViewModel.watchStates.collectAsState()
+    // Paused while this keep-alive tab is hidden (LocalTabActive).
+    val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isWide = rememberIsWide()
     val coroutineScope = rememberCoroutineScope()
@@ -213,7 +215,8 @@ private fun SubscriptionsContent(
     LaunchedEffect(state.activeCreatorId) { peek = null }
 
     val headerTitle =
-        state.creators.firstOrNull { it.id == state.activeCreatorId }
+        state.creators
+            .firstOrNull { it.id == state.activeCreatorId }
             ?.let { "by ${it.name}" }
             ?: "All subs"
 
@@ -226,9 +229,13 @@ private fun SubscriptionsContent(
                 Modifier.onGloballyPositioned {
                     val r = it.boundsInWindow()
                     val o = rootOrigin.value
-                    bubbles[creator.id] = Rect(
-                        r.left - o.x, r.top - o.y, r.right - o.x, r.bottom - o.y,
-                    )
+                    bubbles[creator.id] =
+                        Rect(
+                            r.left - o.x,
+                            r.top - o.y,
+                            r.right - o.x,
+                            r.bottom - o.y,
+                        )
                 },
         ) {
             CreatorAvatar(
@@ -271,63 +278,63 @@ private fun SubscriptionsContent(
                         onStreamsToggle = onStreamsToggle,
                     )
 
-                // Videos in grid
-                PullToRefreshBox(
-                    // Spinner only for a deliberate refresh or first page —
-                    // "load more" prefetches silently.
-                    isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
-                    state = pullToRefreshState,
-                    onRefresh = onRefresh,
-                    content = {
-                        VideoContainer(
-                            items = state.items,
-                            layout = ContainerLayout.Grid(gridColumns),
-                            isLoading = false,
-                            hasMorePages = state.hasMorePages,
-                            onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
-                            onLoadMore = onLoadMore,
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(Tokens.SpaceSm),
-                        ) { card ->
-                            VideoCard(
-                                card = card as ModelVideoCard,
-                                onClick = { onItemClicked((card as ModelVideoCard).url) },
-                                onLongClick = { onVideoLongClick(card as ModelVideoCard) },
+                    // Videos in grid
+                    PullToRefreshBox(
+                        // Spinner only for a deliberate refresh or first page —
+                        // "load more" prefetches silently.
+                        isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
+                        state = pullToRefreshState,
+                        onRefresh = onRefresh,
+                        content = {
+                            VideoContainer(
+                                items = state.items,
+                                layout = ContainerLayout.Grid(gridColumns),
+                                isLoading = false,
+                                hasMorePages = state.hasMorePages,
+                                onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
+                                onLoadMore = onLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
-                                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
-                                isWatched = watchStates[card.url]?.isWatched ?: false,
-                            )
-                        }
-                    },
-                )
-            }
-
-            // Creators on right side ("All" first — the same escape hatch
-            // the portrait strip has)
-            LazyColumn(
-                modifier = Modifier.width(80.dp).fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-                contentPadding = PaddingValues(top = TabContentTopPadding),
-            ) {
-                item {
-                    CreatorAvatar(
-                        creator =
-                            SubscriptionCreator(
-                                id = "",
-                                name = "All",
-                                thumbnailUrl = null,
-                                subscriberCount = null,
-                                url = "",
-                            ),
-                        isSelected = state.activeCreatorId == null,
-                        onClick = { onCreatorSelected(null) },
+                                contentPadding = PaddingValues(Tokens.SpaceSm),
+                            ) { card ->
+                                VideoCard(
+                                    card = card as ModelVideoCard,
+                                    onClick = { onItemClicked((card as ModelVideoCard).url) },
+                                    onLongClick = { onVideoLongClick(card as ModelVideoCard) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                                    isWatched = watchStates[card.url]?.isWatched ?: false,
+                                )
+                            }
+                        },
                     )
                 }
-                items(state.creators) { creator ->
-                    creatorItemContent(creator)
+
+                // Creators on right side ("All" first — the same escape hatch
+                // the portrait strip has)
+                LazyColumn(
+                    modifier = Modifier.width(80.dp).fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                    contentPadding = PaddingValues(top = TabContentTopPadding),
+                ) {
+                    item {
+                        CreatorAvatar(
+                            creator =
+                                SubscriptionCreator(
+                                    id = "",
+                                    name = "All",
+                                    thumbnailUrl = null,
+                                    subscriberCount = null,
+                                    url = "",
+                                ),
+                            isSelected = state.activeCreatorId == null,
+                            onClick = { onCreatorSelected(null) },
+                        )
+                    }
+                    items(state.creators) { creator ->
+                        creatorItemContent(creator)
+                    }
                 }
-            }
             }
         } else {
             // Portrait: Creators on top, videos below
@@ -376,35 +383,35 @@ private fun SubscriptionsContent(
                     }
                 }
 
-            // Videos in list
-            PullToRefreshBox(
-                // Spinner only for a deliberate refresh or first page —
-                // "load more" prefetches silently.
-                isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
-                state = pullToRefreshState,
-                onRefresh = onRefresh,
-                content = {
-                    VideoContainer(
-                        items = state.items,
-                        layout = ContainerLayout.List,
-                        isLoading = false,
-                        hasMorePages = state.hasMorePages,
-                        onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
-                        onLoadMore = onLoadMore,
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(Tokens.SpaceSm),
-                    ) { card ->
-                        VideoCard(
-                            card = card as ModelVideoCard,
-                            onClick = { onItemClicked((card as ModelVideoCard).url) },
-                            onLongClick = { onVideoLongClick(card as ModelVideoCard) },
+                // Videos in list
+                PullToRefreshBox(
+                    // Spinner only for a deliberate refresh or first page —
+                    // "load more" prefetches silently.
+                    isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
+                    state = pullToRefreshState,
+                    onRefresh = onRefresh,
+                    content = {
+                        VideoContainer(
+                            items = state.items,
+                            layout = ContainerLayout.List,
+                            isLoading = false,
+                            hasMorePages = state.hasMorePages,
+                            onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
+                            onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
-                            watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
-                            isWatched = watchStates[card.url]?.isWatched ?: false,
-                        )
-                    }
-                },
-            )
+                            contentPadding = PaddingValues(Tokens.SpaceSm),
+                        ) { card ->
+                            VideoCard(
+                                card = card as ModelVideoCard,
+                                onClick = { onItemClicked((card as ModelVideoCard).url) },
+                                onLongClick = { onVideoLongClick(card as ModelVideoCard) },
+                                modifier = Modifier.fillMaxWidth(),
+                                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                                isWatched = watchStates[card.url]?.isWatched ?: false,
+                            )
+                        }
+                    },
+                )
             }
         }
 

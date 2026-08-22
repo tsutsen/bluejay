@@ -1,6 +1,5 @@
 package com.tsutsen.platformplayer.feature.home.impl
 
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
@@ -25,6 +25,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.VideoCard
@@ -48,13 +49,15 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val gridColumns by viewModel.gridColumns.collectAsState()
-    val watchStates by playerViewModel.watchStates.collectAsState()
+    // Paused while this keep-alive tab is hidden (LocalTabActive).
+    val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())
     val isWide = rememberIsWide()
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
 
     when (val state = uiState) {
         is HomeUiState.Initial,
-        is HomeUiState.Loading -> {
+        is HomeUiState.Loading,
+        -> {
             Box(modifier = Modifier.fillMaxSize())
         }
 

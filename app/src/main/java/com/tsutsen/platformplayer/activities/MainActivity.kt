@@ -17,9 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
@@ -37,6 +37,10 @@ import com.tsutsen.platformplayer.feature.player.impl.PlayerView
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateCasting
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -249,27 +253,42 @@ private fun bluejayMainActivityContent(
     playerRepository: PlayerRepository,
 ) {
     val config = rememberAppLayoutConfig()
-    val playerState by playerRepository.playerState.collectAsState()
+    // The shell only reads a few flags — project to them so the 10 Hz
+    // position ticks in playerState don't recompose the whole app shell.
+    val playerFlags =
+        remember {
+            val s = playerRepository.playerState.value
+            mutableStateOf(Triple(s.currentVideo != null, s.isMinimized, s.isFullscreen))
+        }
+    LaunchedEffect(Unit) {
+        playerRepository.playerState
+            .map { Triple(it.currentVideo != null, it.isMinimized, it.isFullscreen) }
+            .distinctUntilChanged()
+            .collect { playerFlags.value = it }
+    }
+    val hasVideo = playerFlags.value.first
+    val isMinimized = playerFlags.value.second
+    val isFullscreen = playerFlags.value.third
 
     // Navigating away while a video is active (tab switch, go-to-channel, ...)
     // collapses the player to the mini player instead of leaving it covering
     // the new screen.
     val currentRoute by navigator.currentRoute.collectAsState(initial = null)
     LaunchedEffect(currentRoute) {
-        if (playerState.currentVideo != null && !playerState.isMinimized) {
+        if (hasVideo && !isMinimized) {
             playerRepository.minimize()
         }
     }
 
-    val showNavChrome = !playerState.isFullscreen
+    val showNavChrome = !isFullscreen
 
     // The video page in normal (inline) mode merges the nav chrome into the
     // player area: the chrome surface morphs from a rounded card into a flat
     // edge-to-edge rectangle (see NavigationSurface in AppLayout).
     val navMorphed =
-        playerState.currentVideo != null &&
-            !playerState.isFullscreen &&
-            !playerState.isMinimized
+        hasVideo &&
+            !isFullscreen &&
+            !isMinimized
 
     AppLayout(
         config = config.copy(showNavigation = showNavChrome),
@@ -307,7 +326,7 @@ private fun bluejayMainActivityContent(
                 },
                 // Labels hide the moment fullscreen engages (before the
                 // rail/bar finishes fading out) and return on exit.
-                labelsVisible = !playerState.isFullscreen,
+                labelsVisible = !isFullscreen,
                 isWide = config.isWide,
             )
         },
@@ -317,7 +336,7 @@ private fun bluejayMainActivityContent(
                 startDestination = NavDestination.Home,
             )
             // Player overlay — only rendered when there's a video to play
-            if (playerState.currentVideo != null) {
+            if (hasVideo) {
                 PlayerView(onChannelClick = { navigator.navigateToChannel(it) })
             }
         },

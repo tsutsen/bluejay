@@ -27,17 +27,18 @@ import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import androidx.media3.exoplayer.text.TextRenderer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.tsutsen.platformplayer.core.data.BuildConfig
 import com.tsutsen.platformplayer.core.data.repository.CastingRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import com.tsutsen.platformplayer.core.database.dao.HistoryDao
 import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.data.service.PlayerService
+import com.tsutsen.platformplayer.core.database.dao.HistoryDao
 import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
@@ -103,7 +104,9 @@ class PlayerRepositoryImpl(
     // and a fetch only publishes if its generation is still current — so an
     // in-flight fetch for the previous video can never overwrite the new
     // video's extras (the "comments from the previous video" bug).
-    private val playGeneration = java.util.concurrent.atomic.AtomicInteger(0)
+    private val playGeneration =
+        java.util.concurrent.atomic
+            .AtomicInteger(0)
     private val extrasScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     // Per-video extras caches for the session: replaying a video (tab
@@ -134,6 +137,7 @@ class PlayerRepositoryImpl(
     // via [applyTrackSelectionParameters] and re-applied to each new player.
     private var selectedQuality: String = "Auto"
     private var selectedSubtitle: String = "Off"
+
     /** Last concretely selected track — used by [toggleSubtitles] when re-enabling. */
     private var lastExplicitSubtitle: String? = null
     private var pendingResumePosition: Long = 0
@@ -148,22 +152,23 @@ class PlayerRepositoryImpl(
         repo.setMediaEndedListener {
             _playerState.update { it.copy(isPlaying = false, isCompleted = true) }
         }
-        castTrackingJob = extrasScope.launch {
-            launch {
-                repo.currentTimeMs.collect { pos ->
-                    if (_playerState.value.isCasting) {
-                        _playerState.update { it.copy(currentPositionMs = pos) }
+        castTrackingJob =
+            extrasScope.launch {
+                launch {
+                    repo.currentTimeMs.collect { pos ->
+                        if (_playerState.value.isCasting) {
+                            _playerState.update { it.copy(currentPositionMs = pos) }
+                        }
+                    }
+                }
+                launch {
+                    repo.durationMs.collect { dur ->
+                        if (_playerState.value.isCasting && dur > 0) {
+                            _playerState.update { it.copy(durationMs = dur) }
+                        }
                     }
                 }
             }
-            launch {
-                repo.durationMs.collect { dur ->
-                    if (_playerState.value.isCasting && dur > 0) {
-                        _playerState.update { it.copy(durationMs = dur) }
-                    }
-                }
-            }
-        }
     }
 
     // The primary source + engine-provided subtitle tracks for the video
@@ -294,7 +299,11 @@ class PlayerRepositoryImpl(
                 player: Player,
                 events: Player.Events,
             ) {
-                Log.i(TAG, "Player events: $events")
+                // Gated: this fires on every ExoPlayer event batch on the main
+                // thread, and the string interpolation alone is not free.
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "Player events: $events")
+                }
             }
         }
 
@@ -355,7 +364,10 @@ class PlayerRepositoryImpl(
             }
         }
 
-    override suspend fun play(videoId: String, initial: com.tsutsen.platformplayer.core.model.ContentItem?) {
+    override suspend fun play(
+        videoId: String,
+        initial: com.tsutsen.platformplayer.core.model.ContentItem?,
+    ) {
         // Stop the current video IMMEDIATELY — otherwise it keeps playing
         // (audio included) until the new MediaSource is resolved and prepared,
         // which can take seconds of network I/O. prepare() below starts the
@@ -416,7 +428,7 @@ class PlayerRepositoryImpl(
                             val comments =
                                 commentsCache.get(videoId)
                                     ?: commentRepository?.getComments(videoId)
-                                        ?: emptyList()
+                                    ?: emptyList()
                             commentsCache.put(videoId, comments)
                             if (generation == playGeneration.get()) {
                                 _playerState.update { it.copy(comments = comments) }
@@ -432,7 +444,7 @@ class PlayerRepositoryImpl(
                             val recs =
                                 recommendationsCache.get(videoId)
                                     ?: contentExtrasRepository?.getRecommendations(videoId)
-                                        ?: emptyList()
+                                    ?: emptyList()
                             recommendationsCache.put(videoId, recs)
                             if (generation == playGeneration.get()) {
                                 _playerState.update { it.copy(recommendations = recs) }
@@ -447,7 +459,7 @@ class PlayerRepositoryImpl(
                         val chapters =
                             chaptersCache.get(videoId)
                                 ?: contentExtrasRepository?.getChapters(videoId)
-                                    ?: emptyList()
+                                ?: emptyList()
                         chaptersCache.put(videoId, chapters)
                         if (generation == playGeneration.get() && chapters.isNotEmpty()) {
                             _playerState.update { it.copy(chapters = chapters) }
@@ -499,7 +511,12 @@ class PlayerRepositoryImpl(
                 _playerState.update {
                     it.copy(
                         isCasting = true,
-                        castDeviceName = castingRepository?.state?.value?.activeDevice?.name,
+                        castDeviceName =
+                            castingRepository
+                                ?.state
+                                ?.value
+                                ?.activeDevice
+                                ?.name,
                         isLoading = false,
                         isPlaying = true,
                         isCompleted = false,
@@ -675,7 +692,10 @@ class PlayerRepositoryImpl(
         }
     }
 
-    private suspend fun resolveWithDetails(contentUrl: String, resumePositionMs: Long = 0): ResolutionResult =
+    private suspend fun resolveWithDetails(
+        contentUrl: String,
+        resumePositionMs: Long = 0,
+    ): ResolutionResult =
         try {
             Log.i(TAG, "Resolving MediaSource + details for content URL: $contentUrl")
             Log.i(TAG, "urlResolver is null: ${urlResolver == null}")
@@ -985,7 +1005,10 @@ class PlayerRepositoryImpl(
         _playerState.update { it.copy(isMinimized = false, isFullscreen = false) }
     }
 
-    override fun setVideoExtras(comments: List<CommentItem>, recommendations: List<Card>) {
+    override fun setVideoExtras(
+        comments: List<CommentItem>,
+        recommendations: List<Card>,
+    ) {
         _playerState.update { it.copy(comments = comments, recommendations = recommendations) }
     }
 
@@ -1033,14 +1056,19 @@ class PlayerRepositoryImpl(
 /**
  * Small thread-safe LRU cache keyed by video URL.
  */
-private class ExtrasCache<V>(private val capacity: Int = 50) {
+private class ExtrasCache<V>(
+    private val capacity: Int = 50,
+) {
     private val map = LinkedHashMap<String, V>(16, 0.75f, true)
 
     @Synchronized
     fun get(key: String): V? = map[key]
 
     @Synchronized
-    fun put(key: String, value: V) {
+    fun put(
+        key: String,
+        value: V,
+    ) {
         map[key] = value
         while (map.size > capacity) {
             val eldest = map.keys.first()

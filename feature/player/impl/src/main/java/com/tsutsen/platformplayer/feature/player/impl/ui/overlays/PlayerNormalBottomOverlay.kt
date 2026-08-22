@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -25,10 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 internal fun PlayerNormalBottomOverlay(
-    currentPositionMs: Long,
+    positionMs: StateFlow<Long>,
     durationMs: Long,
     isPlaying: Boolean,
     onPlayPause: () -> Unit,
@@ -41,10 +43,13 @@ internal fun PlayerNormalBottomOverlay(
     onSeek: (Long) -> Unit = {},
     onScrubFinished: () -> Unit = {},
     isScrubbing: Boolean = false,
-    scrubPositionMs: Long = currentPositionMs,
+    scrubPositionMs: Long = 0L,
     chapters: List<VideoChapter> = emptyList(),
 ) {
-    val positionMs = if (isScrubbing) scrubPositionMs else currentPositionMs
+    // Collected here — at the leaf — so the 10 Hz position ticks recompose
+    // only this overlay, not the whole player screen.
+    val currentPositionMs by positionMs.collectAsState(initial = 0L)
+    val effectivePositionMs = if (isScrubbing) scrubPositionMs else currentPositionMs
 
     Column(
         modifier =
@@ -88,7 +93,7 @@ internal fun PlayerNormalBottomOverlay(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                val currentChapter = chapters.lastOrNull { it.startTimeMs <= positionMs }
+                val currentChapter = chapters.lastOrNull { it.startTimeMs <= effectivePositionMs }
                 if (currentChapter != null) {
                     Text(
                         text = currentChapter.title,
@@ -105,7 +110,7 @@ internal fun PlayerNormalBottomOverlay(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "${formatTime(positionMs)} / ${formatTime(durationMs)}",
+                    text = "${formatTime(effectivePositionMs)} / ${formatTime(durationMs)}",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 )

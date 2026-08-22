@@ -29,6 +29,7 @@ import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerCompactO
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerFloatingOverlay
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalBottomOverlay
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerNormalTopOverlay
+import kotlinx.coroutines.flow.StateFlow
 
 private const val TAG = "PlayerControls"
 private const val CONTROLS_SLIDE_DISTANCE_DP = 24
@@ -61,6 +62,7 @@ fun PlayerControls(
     badgeState: GestureBadgeState,
     onBadgeSessionEnded: () -> Unit = {},
     state: PlayerUiState.Loaded,
+    positionMs: StateFlow<Long>,
     player: ExoPlayer?,
     subtitlesOn: Boolean,
     isScrubbing: Boolean,
@@ -171,14 +173,14 @@ fun PlayerControls(
                             if (topAlpha > 0.01f) {
                                 Box(
                                     modifier =
-                                        Modifier.graphicsLayer {
-                                            alpha = topAlpha
-                                            // Slide up and out on hide, slide down and in on show -
-                                            // driven by the same controlsVisibleAlpha as the fade,
-                                            // so both directions are symmetric by construction.
-                                            translationY = (1f - controlsVisibleAlpha) * -CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
-                                        }
-                                            .onSizeChanged { topBarHeightPx = it.height },
+                                        Modifier
+                                            .graphicsLayer {
+                                                alpha = topAlpha
+                                                // Slide up and out on hide, slide down and in on show -
+                                                // driven by the same controlsVisibleAlpha as the fade,
+                                                // so both directions are symmetric by construction.
+                                                translationY = (1f - controlsVisibleAlpha) * -CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
+                                            }.onSizeChanged { topBarHeightPx = it.height },
                                 ) {
                                     PlayerNormalTopOverlay(
                                         title = state.currentVideo?.title ?: "Unknown",
@@ -206,14 +208,13 @@ fun PlayerControls(
                                                 // Slide down and out on hide, slide up and in on
                                                 // show - mirrors the top bar's upward slide.
                                                 translationY = (1f - controlsVisibleAlpha) * CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
-                                            }
-                                            .onSizeChanged { bottomBarHeightPx = it.height },
+                                            }.onSizeChanged { bottomBarHeightPx = it.height },
                                 ) {
                                     // FULLSCREEN bottom overlay
                                     if (fullscreenBarAlpha > 0.99f) {
                                         Box(modifier = Modifier.alpha(fullscreenBarAlpha)) {
                                             PlayerNormalBottomOverlay(
-                                                currentPositionMs = state.currentPositionMs,
+                                                positionMs = positionMs,
                                                 durationMs = state.durationMs,
                                                 isPlaying = state.isPlaying,
                                                 onPlayPause = onPlayPause,
@@ -256,7 +257,7 @@ fun PlayerControls(
                                                 )
                                             } else {
                                                 PlayerNormalBottomOverlay(
-                                                    currentPositionMs = state.currentPositionMs,
+                                                    positionMs = positionMs,
                                                     durationMs = state.durationMs,
                                                     isPlaying = state.isPlaying,
                                                     onPlayPause = onPlayPause,
@@ -378,6 +379,7 @@ fun PlayerControls(
                     ) {
                         PlayerFloatingOverlay(
                             state = state,
+                            positionMs = positionMs,
                             onPlayPause = onPlayPause,
                             onClose = onClose,
                             onFullscreen = onFullscreenToggle,

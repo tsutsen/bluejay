@@ -32,6 +32,7 @@ import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureActionHandler
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs
 import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureSystem
+import kotlinx.coroutines.flow.StateFlow
 
 private const val TAG = "PlayerContent"
 
@@ -54,6 +55,7 @@ const val FULLSCREEN_SETTLED_THRESHOLD = 0.01f
 fun PlayerContent(
     player: ExoPlayer?,
     state: PlayerUiState.Loaded,
+    positionMs: StateFlow<Long>,
     videoLayout: VideoLayout,
     miniProgress: Float,
     fullscreenProgress: Float,
@@ -414,6 +416,7 @@ fun PlayerContent(
             badgeState = badgeState,
             onBadgeSessionEnded = onBadgeSessionEnded,
             state = state,
+            positionMs = positionMs,
             player = player,
             subtitlesOn = subtitlesOn,
             isScrubbing = isScrubbing,
