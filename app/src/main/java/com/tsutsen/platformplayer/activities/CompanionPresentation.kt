@@ -93,7 +93,6 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
-import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
@@ -289,7 +288,7 @@ private fun CompanionContent(
     val videoTabKeys =
         listOf("comments", "chapters", "recommended", "queue")
             .filter { it in prefs.dualScreenVideoTabs }
-    val librarySectionIds = prefs.dualScreenLibrarySections
+    val librarySlotValues = prefs.dualScreenLibrarySlots
 
     // Same data the main screen shows: the PlayerViewModel fetches comments
     // and recommendations once per video and pushes them into the shared
@@ -462,7 +461,8 @@ private fun CompanionContent(
                 "library" ->
                     CompanionLibraryPage(
                         sections = sections,
-                        sectionIds = librarySectionIds,
+                        slots = librarySlotValues,
+                        libraryRepository = libraryRepository,
                         onPlay = onPlay,
                         onLongClick = onLongClick,
                     )
@@ -796,8 +796,9 @@ private fun CompanionVideoPage(
 @Composable
 private fun CompanionLibraryPage(
     sections: List<LibrarySection>,
-    sectionIds: List<String> =
+    slots: List<String> =
         listOf("watch_later", "liked", "favourite", "history"),
+    libraryRepository: LibraryRepository,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
 ) {
@@ -813,54 +814,80 @@ private fun CompanionLibraryPage(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 8.dp),
         )
-        // Fixed slots for the 2x2 layout (order matters). Disliked is not
-        // shown here — it's reachable from the main library. Hidden sections
-        // (Settings > Dual screen > Library sections) leave their slot blank.
-        val slots =
-            listOf(
-                LibraryRepositoryImpl.WATCH_LATER_ID,
-                LibraryRepositoryImpl.LIKED_ID,
-                LibraryRepositoryImpl.FAVOURITE_ID,
-                LibraryRepositoryImpl.HISTORY_ID,
-            )
-            .filter { it in sectionIds }
-            .mapNotNull { id -> sections.firstOrNull { it.id == id } }
-        if (slots.isEmpty()) {
-            Text(
-                text = "Nothing here yet",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        // Four 2x2 slots (order matters). Each is a section id or a
+        // "playlist:<id>" reference (Settings > Dual screen > Library slots).
+        val slotValues = (0 until 4).map { slots.getOrNull(it) }
+        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            LibrarySlotCell(value = slotValues.getOrNull(0), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(value = slotValues.getOrNull(1), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
         }
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            LibrarySlotCell(section = slots.getOrNull(0), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            LibrarySlotCell(section = slots.getOrNull(1), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-        }
-        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            LibrarySlotCell(section = slots.getOrNull(2), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            LibrarySlotCell(section = slots.getOrNull(3), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(value = slotValues.getOrNull(2), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(value = slotValues.getOrNull(3), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
         }
     }
 }
 
-/** One 2x2 corner: the slot pager, or blank when the section is hidden. */
+/** One 2x2 corner: a section or playlist slot, blank when unset. */
 @Composable
 private fun LibrarySlotCell(
-    section: LibrarySection?,
+    value: String?,
+    sections: List<LibrarySection>,
+    libraryRepository: LibraryRepository,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (section == null) {
+    if (value == null) {
         Box(modifier = modifier)
-    } else {
-        LibrarySlotPager(
-            section = section,
+        return
+    }
+    if (value.startsWith("playlist:")) {
+        PlaylistSlotPager(
+            playlistId = value.substringAfter(":"),
+            libraryRepository = libraryRepository,
             onPlay = onPlay,
             onLongClick = onLongClick,
             modifier = modifier,
         )
+        return
     }
+    val section = sections.firstOrNull { it.id == value }
+    LibrarySlotPager(
+        title = section?.title ?: "Empty",
+        cards = section?.items.orEmpty(),
+        totalCount = section?.totalCount ?: 0,
+        onPlay = onPlay,
+        onLongClick = onLongClick,
+        modifier = modifier,
+    )
+}
+
+/** A playlist-backed 2x2 slot. Collects the live playlist cards. */
+@Composable
+private fun PlaylistSlotPager(
+    playlistId: String,
+    libraryRepository: LibraryRepository,
+    onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val id = playlistId.toLongOrNull()
+    if (id == null) {
+        Box(modifier = modifier)
+        return
+    }
+    val pair by libraryRepository
+        .observeLocalPlaylist(id)
+        .collectAsState(initial = null)
+    LibrarySlotPager(
+        title = pair?.first?.name ?: "Playlist",
+        cards = pair?.second.orEmpty(),
+        totalCount = pair?.second?.size ?: 0,
+        onPlay = onPlay,
+        onLongClick = onLongClick,
+        modifier = modifier,
+    )
 }
 
 private fun String.companionTabLabel(): String =
@@ -878,14 +905,16 @@ private fun String.companionTabLabel(): String =
  */
 @Composable
 private fun LibrarySlotPager(
-    section: LibrarySection?,
+    title: String,
+    cards: List<com.tsutsen.platformplayer.core.model.Card>,
+    totalCount: Int,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surfaceContainer
     // 1-based index of the page currently in the centre.
-    val currentPage = remember(section) { mutableIntStateOf(1) }
+    val currentPage = remember(title) { mutableIntStateOf(1) }
     Card(
         modifier = modifier.padding(4.dp),
         shape = RoundedCornerShape(Tokens.RadiusMd),
@@ -898,14 +927,14 @@ private fun LibrarySlotPager(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = section?.title ?: "Empty",
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                val total = section?.totalCount ?: 0
+                val total = totalCount
                 if (total > 0) {
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -915,7 +944,6 @@ private fun LibrarySlotPager(
                     )
                 }
             }
-            val cards = section?.items.orEmpty()
             if (cards.isEmpty()) {
                 Box(
                     modifier =

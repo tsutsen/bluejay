@@ -20,6 +20,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Extension
@@ -51,7 +54,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.model.PlaylistOption
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
@@ -147,6 +152,7 @@ fun SettingsSectionScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val playlists by viewModel.playlists.collectAsState(initial = emptyList())
     var selectedChoice by remember { mutableStateOf<Choice?>(null) }
     val state = uiState as? SettingsUiState.Loaded
 
@@ -166,6 +172,7 @@ fun SettingsSectionScreen(
                     category = category,
                     state = loaded,
                     viewModel = viewModel,
+                    playlists = playlists,
                     onChoiceSelected = { selectedChoice = it },
                     onPluginsClick = onPluginsClick,
                 )
@@ -310,17 +317,29 @@ fun SettingsSectionScreen(
             }
         }
 
-        Choice.DUAL_SECTIONS -> {
+        Choice.DUAL_SLOTS -> {
             loaded?.let {
-                MultiSelectDialog(
-                    title = "Library sections",
-                    options = dualSectionNames.map { (key, label) -> label to key },
-                    selected = it.dualScreenLibrarySections,
-                    onToggle = { key, checked ->
-                        viewModel.setDualScreenLibrarySections(
-                            if (checked) it.dualScreenLibrarySections + key else it.dualScreenLibrarySections - key,
-                        )
+                SlotsDialog(
+                    slots = it.dualScreenLibrarySlots,
+                    sectionNames = librarySectionNames,
+                    playlists = playlists,
+                    onSetSlot = { index, value ->
+                        val current = it.dualScreenLibrarySlots
+                        val newList = (0 until 4).map { i -> current.getOrNull(i) ?: "watch_later" }.toMutableList()
+                        newList[index] = value
+                        viewModel.setDualScreenLibrarySlots(newList)
                     },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.LIBRARY_SECTION_ORDER -> {
+            loaded?.let {
+                ReorderDialog(
+                    title = "Library sections",
+                    items = it.librarySectionOrder.map { id -> id to (librarySectionNames[id] ?: id) },
+                    onChange = { newOrder -> viewModel.setLibrarySectionOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
                 )
             }
@@ -365,6 +384,7 @@ private fun LazyListScope.SectionItems(
     category: String,
     state: SettingsUiState.Loaded,
     viewModel: SettingsViewModel,
+    playlists: List<PlaylistOption>,
     onChoiceSelected: (Choice) -> Unit,
     onPluginsClick: () -> Unit,
 ) {
@@ -427,6 +447,14 @@ private fun LazyListScope.SectionItems(
                     subtitle = "Comments tab on the video page",
                     checked = state.showComments,
                     onCheckedChange = { viewModel.updateGeneral("showComments", it) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.VideoLibrary,
+                    title = "Library sections",
+                    subtitle = "Order of sections on the library screen",
+                    onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
                 )
             }
         }
@@ -495,9 +523,9 @@ private fun LazyListScope.SectionItems(
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.VideoLibrary,
-                    title = "Library sections",
-                    subtitle = dualListLabel(state.dualScreenLibrarySections, dualSectionNames),
-                    onClick = { onChoiceSelected(Choice.DUAL_SECTIONS) },
+                    title = "Library slots",
+                    subtitle = slotListLabel(state.dualScreenLibrarySlots, playlists),
+                    onClick = { onChoiceSelected(Choice.DUAL_SLOTS) },
                 )
             }
         }
@@ -519,13 +547,38 @@ private val dualTabNames =
         "queue" to "Queue",
     )
 
-private val dualSectionNames =
+private val librarySectionNames =
     mapOf(
         "watch_later" to "Watch Later",
         "liked" to "Liked",
+        "disliked" to "Disliked",
         "favourite" to "Favourites",
         "history" to "History",
+        "downloads" to "Downloads",
+        "playlists" to "Playlists",
     )
+
+/** Display name for a second-screen slot (section id or "playlist:<id>"). */
+private fun slotLabel(
+    value: String,
+    sectionNames: Map<String, String>,
+    playlists: List<PlaylistOption>,
+): String {
+    if (value.startsWith("playlist:")) {
+        val id = value.substringAfter(":").toLongOrNull()
+        return playlists.firstOrNull { it.id == id }?.name ?: "Playlist"
+    }
+    return sectionNames[value] ?: "Empty"
+}
+
+/** Short subtitle for the "Library slots" settings card. */
+private fun slotListLabel(
+    slots: List<String>,
+    playlists: List<PlaylistOption>,
+): String =
+    (0 until 4).joinToString(", ") {
+        slotLabel(slots.getOrNull(it) ?: "", librarySectionNames, playlists)
+    }
 
 private fun dualListLabel(keys: List<String>, names: Map<String, String>): String {
     val all = names.keys.filter { it in keys }
@@ -601,7 +654,8 @@ private enum class Choice {
     SUBTITLE_PADDING,
     DUAL_PAGES,
     DUAL_TABS,
-    DUAL_SECTIONS,
+    DUAL_SLOTS,
+    LIBRARY_SECTION_ORDER,
     PLAYBACK_SPEED,
 }
 
@@ -685,4 +739,172 @@ private fun ChoiceDialog(
             }
         },
     )
+}
+
+/**
+ * Reorder a list of items (up/down per row). Live-updates on each move.
+ * [items] is (id, label) in the current order; [onChange] receives the new
+ * ordered ids.
+ */
+@Composable
+private fun ReorderDialog(
+    title: String,
+    items: List<Pair<String, String>>,
+    onChange: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var draft by remember { mutableStateOf(items) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                draft.forEachIndexed { index, (id, label) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(
+                            onClick = {
+                                if (index > 0) {
+                                    val d = draft.toMutableList()
+                                    val t = d[index]
+                                    d[index] = d[index - 1]
+                                    d[index - 1] = t
+                                    draft = d
+                                    onChange(d.map { it.first })
+                                }
+                            },
+                            enabled = index > 0,
+                        ) {
+                            Icon(Icons.Filled.ExpandLess, contentDescription = "Move up")
+                        }
+                        IconButton(
+                            onClick = {
+                                if (index < draft.size - 1) {
+                                    val d = draft.toMutableList()
+                                    val t = d[index]
+                                    d[index] = d[index + 1]
+                                    d[index + 1] = t
+                                    draft = d
+                                    onChange(d.map { it.first })
+                                }
+                            },
+                            enabled = index < draft.size - 1,
+                        ) {
+                            Icon(Icons.Filled.ExpandMore, contentDescription = "Move down")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
+}
+
+/**
+ * Configure the four 2x2 second-screen library slots. Tapping a slot opens a
+ * picker of all sections + all playlists; picking one assigns it to that slot.
+ */
+@Composable
+private fun SlotsDialog(
+    slots: List<String>,
+    sectionNames: Map<String, String>,
+    playlists: List<PlaylistOption>,
+    onSetSlot: (Int, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var editing by remember { mutableStateOf<Int?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (editing == null) "Library slots" else "Slot ${editing!! + 1}") },
+        text = {
+            if (editing == null) {
+                Column {
+                    (0 until 4).forEach { index ->
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { editing = index }
+                                    .padding(vertical = Tokens.SpaceXs),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "Slot ${index + 1}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(Tokens.SpaceSm))
+                            Text(
+                                text = slotLabel(slots.getOrNull(index) ?: "", sectionNames, playlists),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Icon(Icons.Filled.ChevronRight, contentDescription = null)
+                        }
+                    }
+                }
+            } else {
+                Column {
+                    sectionNames.forEach { (id, name) ->
+                        SlotPickRow(
+                            name = name,
+                            selected = slots.getOrNull(editing!!) == id,
+                            onClick = { onSetSlot(editing!!, id); editing = null },
+                        )
+                    }
+                    if (playlists.isNotEmpty()) {
+                        Spacer(Modifier.height(Tokens.SpaceSm))
+                        Text(
+                            text = "Playlists",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    playlists.forEach { p ->
+                        val value = "playlist:${p.id}"
+                        SlotPickRow(
+                            name = p.name,
+                            selected = slots.getOrNull(editing!!) == value,
+                            onClick = { onSetSlot(editing!!, value); editing = null },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
+}
+
+@Composable
+private fun SlotPickRow(
+    name: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = Tokens.SpaceXs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Spacer(Modifier.width(Tokens.SpaceSm))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }

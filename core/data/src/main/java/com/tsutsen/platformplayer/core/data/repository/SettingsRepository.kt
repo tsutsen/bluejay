@@ -12,6 +12,7 @@ interface SettingsRepository {
     suspend fun updateGeneral(key: String, value: Any)
     suspend fun updateDualScreenPages(pages: List<String>)
     suspend fun updateDualScreenVideoTabs(tabs: List<String>)
-    suspend fun updateDualScreenLibrarySections(sectionIds: List<String>)
+    suspend fun updateDualScreenLibrarySlots(slots: List<String>)
+    suspend fun updateLibrarySectionOrder(order: List<String>)
     suspend fun resetToDefaults()
 }

@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer
 
 import android.content.Context
+import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -79,13 +80,33 @@ class Settings {
     // Tabs settings
     var advancedSettings: Boolean = false
 
+    // Main-screen library: display order of the sections (reorderable in
+    // Settings). Defaults to the natural LibraryRepository order.
+    var librarySectionOrder: List<String> =
+        listOf(
+            LibraryRepositoryImpl.WATCH_LATER_ID,
+            LibraryRepositoryImpl.LIKED_ID,
+            LibraryRepositoryImpl.DISLIKED_ID,
+            LibraryRepositoryImpl.FAVOURITE_ID,
+            LibraryRepositoryImpl.HISTORY_ID,
+            LibraryRepositoryImpl.DOWNLOADS_ID,
+            LibraryRepositoryImpl.PLAYLISTS_ID,
+        )
+
     // Second (rear) display companion window
     var dualScreen: Boolean = false
     var dualScreenPages: List<String> = listOf("video", "library", "home")
     var dualScreenVideoTabs: List<String> =
         listOf("comments", "chapters", "recommended", "queue")
-    var dualScreenLibrarySections: List<String> =
-        listOf("watch_later", "liked", "favourite", "history")
+    // Second-screen library: the four 2x2 slots. Each entry is a section id
+    // or a "playlist:<id>" reference (see Settings > Dual screen).
+    var dualScreenLibrarySlots: List<String> =
+        listOf(
+            LibraryRepositoryImpl.WATCH_LATER_ID,
+            LibraryRepositoryImpl.LIKED_ID,
+            LibraryRepositoryImpl.FAVOURITE_ID,
+            LibraryRepositoryImpl.HISTORY_ID,
+        )
 
     @Serializable
     class AutoUpdateSettings {

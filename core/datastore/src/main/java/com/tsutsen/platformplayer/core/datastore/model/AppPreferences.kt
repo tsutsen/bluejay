@@ -6,10 +6,13 @@ data class AppPreferences(
     val subtitle: SubtitlePreferences = SubtitlePreferences(),
     val defaultPlaybackSpeed: Float = 1f,
     val enableDeveloperOptions: Boolean = false,
+    val librarySectionOrder: List<String> =
+        listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),
     val dualScreen: Boolean = false,
     val dualScreenPages: List<String> = listOf("video", "library", "home"),
     val dualScreenVideoTabs: List<String> = listOf("comments", "chapters", "recommended", "queue"),
-    val dualScreenLibrarySections: List<String> = listOf("watch_later", "liked", "favourite", "history"),
+    val dualScreenLibrarySlots: List<String> =
+        listOf("watch_later", "liked", "favourite", "history"),
     val gridColumns: Int = 3,
     val searchHistory: List<String> = emptyList(),
     val showRecommendedVideos: Boolean = true,

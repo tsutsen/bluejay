@@ -47,7 +47,8 @@ class SettingsRepositoryImpl
                 dualScreen = s.dualScreen,
                 dualScreenPages = s.dualScreenPages,
                 dualScreenVideoTabs = s.dualScreenVideoTabs,
-                dualScreenLibrarySections = s.dualScreenLibrarySections,
+                dualScreenLibrarySlots = s.dualScreenLibrarySlots,
+                librarySectionOrder = s.librarySectionOrder,
                 gridColumns = s.feed.gridColumns,
                 searchHistory = s.search.history,
                 showRecommendedVideos = s.content.showRecommendedVideos,
@@ -111,9 +112,16 @@ class SettingsRepositoryImpl
             emit()
         }
 
-        override suspend fun updateDualScreenLibrarySections(sectionIds: List<String>) {
+        override suspend fun updateDualScreenLibrarySlots(slots: List<String>) {
             val s = Settings.instance
-            s.dualScreenLibrarySections = sectionIds
+            s.dualScreenLibrarySlots = slots
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateLibrarySectionOrder(order: List<String>) {
+            val s = Settings.instance
+            s.librarySectionOrder = order
             s.save()
             emit()
         }
@@ -127,8 +135,10 @@ class SettingsRepositoryImpl
             s.dualScreenPages = listOf("video", "library", "home")
             s.dualScreenVideoTabs =
                 listOf("comments", "chapters", "recommended", "queue")
-            s.dualScreenLibrarySections =
+            s.dualScreenLibrarySlots =
                 listOf("watch_later", "liked", "favourite", "history")
+            s.librarySectionOrder =
+                listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists")
             s.feed.gridColumns = 3
             s.content.showRecommendedVideos = true
             s.content.showComments = true

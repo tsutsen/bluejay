@@ -3,11 +3,13 @@ package com.tsutsen.platformplayer.feature.library.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,8 +24,27 @@ class LibraryViewModel
     @Inject
     constructor(
         private val libraryRepository: LibraryRepository,
+        private val settingsRepository: SettingsRepository,
     ) : ViewModel() {
-        val sections: StateFlow<List<LibrarySection>> = libraryRepository.sections
+        // Sections ordered by the user-configured librarySectionOrder. Stable
+        // sort keeps any ids missing from the saved order in their original
+        // relative position, at the end.
+        val sections: StateFlow<List<LibrarySection>> =
+            combine(
+                libraryRepository.sections,
+                settingsRepository.preferences,
+            ) { raw, prefs ->
+                val order = prefs.librarySectionOrder
+                if (order.isEmpty()) raw
+                else {
+                    val index = order.withIndex().associate { (i, id) -> id to i }
+                    raw.sortedBy { index[it.id] ?: Int.MAX_VALUE }
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
 
         private val playlistStatsCache = mutableMapOf<Long, StateFlow<PlaylistStats>>()
 
