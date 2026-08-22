@@ -12,7 +12,12 @@ plugins {
 
 ext {
     gitVersionName = grgit.describe()
-    gitVersionCode = gitVersionName != null && gitVersionName.isInteger() ? gitVersionName.toInteger() : 1
+    // Semver tags (v0.1.0) → store versionCode via major*1e6 + minor*1e3 + patch,
+    // so 0.1.0 → 1000 (above legacy's max 389, keeps store updates monotonic).
+    // Unparseable (e.g. no tag yet) falls back to 1.
+    def semver = (gitVersionName ?: '').replaceAll(/^v/, '').split('-')[0].split('\\.')
+    gitVersionCode = (semver.length == 3 && semver.every { it.isInteger() }) ?
+        semver[0].toInteger() * 1_000_000 + semver[1].toInteger() * 1_000 + semver[2].toInteger() : 1
 }
 
 println("Version Name: $gitVersionName")
