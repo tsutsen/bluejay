@@ -239,6 +239,13 @@ private val NavSurfacePadV = 12.dp
 private val NavSurfaceCorner = 24.dp
 
 /**
+ * Vertical padding for the PORTRAIT bottom bar. Reduced from [NavSurfacePadV]
+ * (the shared rail/card value) so the portrait bar is shorter. The portrait
+ * bar is always a flat, full-width surface (no rounded floating card).
+ */
+private val PortraitNavPadV = 4.dp
+
+/**
  * Corner radius that eases to 0 when [rounded] is false (edge flush with the
  * screen edge gets no rounding). The 300ms FastOutSlowIn spec matches the gap
  * animations exactly, so corners and size move in the same window — pass
@@ -255,83 +262,36 @@ private fun animatedCorner(rounded: Boolean, label: String): Dp =
     ).value
 
 /**
- * Surface behind the bottom navigation bar. Normally a rounded card hugging
- * the nav items with inner padding, floating above the bottom edge; morphs to
- * a flat full-width rectangle while the video page is in normal mode, stopping
- * at the bottom system inset so it never sits under the system bars. When
- * morphed every corner is squared; when shrunken, a corner is squared only
- * when it sits on a screen edge (zero gap).
+ * Surface behind the portrait bottom navigation bar.
+ *
+ * Always a flat, full-width rectangle — no rounded floating card in portrait
+ * (this also means there are no corners to "restore" when the video closes).
+ * The bar hugs the bottom system inset so it never sits under the system
+ * bars, and uses [PortraitNavPadV] (shorter than the shared card padding) to
+ * keep the bar compact. The nav row is centered within the bar.
  */
 @Composable
 private fun NavigationBarSurface(
-    navMorphed: Boolean,
+    @Suppress("UNUSED_PARAMETER") navMorphed: Boolean,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
-    val containerWidthPx = remember { mutableIntStateOf(0) }
-    val barWidthPx = remember { mutableIntStateOf(0) }
     val bottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
-    val sideGapTargetPx =
-        with(density) {
-            if (navMorphed) {
-                0f
-            } else {
-                val c = containerWidthPx.intValue
-                val b = barWidthPx.intValue + NavSurfacePadH.toPx() * 2
-                when {
-                    c <= 0 || b <= 0 -> 8.dp.toPx()
-                    b >= c -> 0f
-                    else -> maxOf(8.dp.toPx(), (c - b) / 2f)
-                }
-            }
-        }
-    val sideGap by
-        animateDpAsState(
-            targetValue = with(density) { sideGapTargetPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navBarSurfaceSideGap",
-        )
-    val bottomGap by
-        animateDpAsState(
-            targetValue = if (navMorphed) bottomInset else 8.dp + bottomInset,
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
-            label = "navBarSurfaceBottomGap",
-        )
-    // Morphed: fully flat rectangle. Shrunken: a corner is squared only when
-    // it sits on a screen edge (zero gap). The bar's top edge never touches
-    // the screen, so the top corners follow the side gaps; the bottom corners
-    // also follow the bottom gap. (Dp is not Comparable in 1.11.x — compare
-    // .value.)
-    val sideOnEdge = sideGap.value <= 0.5f
-    val bottomOnEdge = bottomGap.value <= 0.5f
-    val topStart = animatedCorner(!sideOnEdge && !navMorphed, "navBarCornerTopStart")
-    val topEnd = animatedCorner(!sideOnEdge && !navMorphed, "navBarCornerTopEnd")
-    val bottomEnd = animatedCorner(!sideOnEdge && !bottomOnEdge && !navMorphed, "navBarCornerBottomEnd")
-    val bottomStart = animatedCorner(!sideOnEdge && !bottomOnEdge && !navMorphed, "navBarCornerBottomStart")
 
     Box(
-        modifier = Modifier.fillMaxWidth().onSizeChanged { containerWidthPx.intValue = it.width },
-        contentAlignment = Alignment.BottomCenter,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = bottomInset)
+                .background(MaterialTheme.colorScheme.surfaceContainer),
+        contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .padding(start = sideGap, end = sideGap, bottom = bottomGap)
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = topStart,
-                            topEnd = topEnd,
-                            bottomEnd = bottomEnd,
-                            bottomStart = bottomStart,
-                        ),
-                    )
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(horizontal = NavSurfacePadH, vertical = NavSurfacePadV),
+                    .padding(horizontal = NavSurfacePadH, vertical = PortraitNavPadV),
         ) {
-            Box(modifier = Modifier.onSizeChanged { barWidthPx.intValue = it.width }) {
-                content()
-            }
+            content()
         }
     }
 }

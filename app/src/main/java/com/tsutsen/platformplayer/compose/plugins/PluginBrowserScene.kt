@@ -1008,10 +1008,18 @@ private fun PluginSettingsSection(
                             var menuExpanded by remember { mutableStateOf(false) }
                             Box {
                                 // Same trigger style as the search tab's sort pill.
+                                // maxLines=1 + ellipsis: a long selected option
+                                // must not wrap / overflow the chip in portrait.
                                 FilterChip(
                                     selected = false,
                                     onClick = { menuExpanded = true },
-                                    label = { Text(current) },
+                                    label = {
+                                        Text(
+                                            current,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
                                     trailingIcon = {
                                         Icon(
                                             imageVector = Icons.Filled.ArrowDropDown,

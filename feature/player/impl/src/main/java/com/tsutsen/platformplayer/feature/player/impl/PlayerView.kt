@@ -268,11 +268,13 @@ fun PlayerView(
                 }
 
             // ==================== Orientation & system UI ====================
+            // Small-window devices auto-enter fullscreen on landscape. Portrait
+            // fullscreen is fully supported (it fills the portrait window with
+            // the video letterboxed), so there is NO forced exit when not
+            // landscape — the user controls it via the button or back.
             LaunchedEffect(isLandscape, isSmallWindow, isFullscreen) {
                 if (isLandscape && isSmallWindow && !isFullscreen && !isMinimized) {
                     viewModel.toggleFullscreen()
-                } else if (!isLandscape && isFullscreen) {
-                    viewModel.exitFullscreen()
                 }
             }
 
@@ -344,8 +346,18 @@ fun PlayerView(
 
             // ==================== Collapsing player height ====================
             val scrollState = rememberLazyListState()
-            val maxPlayerHeightPx = containerSize.height * 0.7f
-            val minPlayerHeightPx = containerSize.height * 0.2f
+            // The NORMAL-mode video height.
+            //  - Landscape: 70% of the window height, leaving room for the
+            //    details page below the video.
+            //  - Portrait: a width-constrained 16:9 box. 0.7 of the tall
+            //    portrait window height would make the video far too large.
+            val maxPlayerHeightPx =
+                if (isLandscape) containerSize.height * 0.7f
+                else containerSize.width * 9f / 16f
+            // Scroll-collapsible lower bound (drag the video shorter).
+            val minPlayerHeightPx =
+                if (isLandscape) containerSize.height * 0.2f
+                else maxPlayerHeightPx * 0.4f
             var playerHeightPx by remember { mutableStateOf(0f) }
 
             // Reset the collapsed height the moment the state leaves the

@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoCard
 import kotlin.math.max
@@ -54,6 +55,9 @@ internal fun PlayerDetails(
 ) {
     val density = LocalDensity.current
     val systemBottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
+    // Match the home feed's orientation-aware layout: single column in
+    // portrait, grid in landscape. No bespoke recommended-only container.
+    val isWide = rememberIsWide()
     LazyColumn(
         state = scrollState,
         // Bottom padding so the last row / button can scroll clear of the
@@ -163,13 +167,14 @@ internal fun PlayerDetails(
                         }
                     }
                 } else {
+                    val recColumns = if (isWide) gridColumns else 1
                     items(
-                        recommendations.chunked(gridColumns),
+                        recommendations.chunked(recColumns),
                         key = { row -> row.first().id },
                     ) { rowCards ->
                         RecommendedGridRow(
                             cards = rowCards,
-                            gridColumns = gridColumns,
+                            gridColumns = recColumns,
                             onClick = onRecommendedClick,
                         )
                     }
