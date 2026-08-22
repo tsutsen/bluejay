@@ -181,17 +181,16 @@ private fun QueuedCardStrip(
     val lastX = remember { mutableMapOf<String, Float>() }
     val stepPx = with(LocalDensity.current) { (CARD_W + STRIP_GAP).toPx() }
 
-    /** Start a FLIP displacement of [url] by [dx] px, springing back. */
+    /** Start a FLIP displacement of [url] by [dx] px, easing back to rest. */
     fun flip(url: String, dx: Float) {
         flipJobs[url]?.cancel()
         val anim = flipAnims.getOrPut(url) { Animatable(Offset.Zero, Offset.VectorConverter) }
         flipJobs[url] =
             scope.launch {
                 anim.snapTo(Offset(dx, 0f))
-                anim.animateTo(
-                    Offset.Zero,
-                    spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-                )
+                // Fixed-duration tween: consistent timing, no overshoot. A
+                // spring lagged and bounced — the "laggy / abrupt" feel.
+                anim.animateTo(Offset.Zero, tween(ANIM, easing = FastOutSlowInEasing))
             }
     }
     // Keep a reordered card centered so the user can follow it.
@@ -234,10 +233,18 @@ private fun QueuedCardStrip(
             Box(
                 modifier =
                     Modifier.onGloballyPositioned {
-                        val x = it.boundsInWindow().left
+                        // Add the scroll offset back so x is in content
+                        // space: scrolling shifts the window x but leaves
+                        // this value unchanged, so only a real reorder
+                        // (index change) triggers a flip — scrolling never
+                        // causes a spurious one on every card.
+                        val x = it.boundsInWindow().left + scrollState.value
                         val old = lastX[item.url]
                         lastX[item.url] = x
-                        if (old != null && old != x) flip(item.url, old - x)
+                        // Epsilon: ignore sub-pixel drift from multi-fire /
+                        // float noise. A real reorder moves a card by
+                        // ~stepPx, far above this.
+                        if (old != null && abs(old - x) > 2f) flip(item.url, old - x)
                     },
             ) {
             FlipItem(
