@@ -33,11 +33,14 @@ internal fun PlayerCompactOverlay(
         modifier = modifier
             .fillMaxSize()
             .background(
+                // Top must be dark from the very first pixel (like the
+                // video player's scrim) — the old 0.0 top stop left a
+                // non-darkened sliver above the video.
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color.Black.copy(alpha = 0.0f),
+                        Color.Black.copy(alpha = 0.7f),
                         Color.Black.copy(alpha = 0.8f),
-                        Color.Black.copy(alpha = 0.0f)
+                        Color.Black.copy(alpha = 0.3f)
                     )
                 )
             )

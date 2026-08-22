@@ -556,13 +556,13 @@ private fun SubsHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
+                .padding(horizontal = Tokens.SpaceLg),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

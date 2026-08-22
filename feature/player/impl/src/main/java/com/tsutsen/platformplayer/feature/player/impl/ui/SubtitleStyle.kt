@@ -37,10 +37,11 @@ object SubtitleStyle {
     var backdropColor: Color = Color(0x99000000)
 
     /**
-     * Applies the user's subtitle settings (font, size, bottom padding).
-     * Called from the player ViewModel whenever the preferences change.
+     * Applies the user's subtitle settings (font family, size in pt,
+     * bottom padding in dp). Called from the player ViewModel whenever
+     * the preferences change.
      */
-    fun applyPreferences(font: String, size: String, padding: String) {
+    fun applyPreferences(font: String, size: Int, padding: Int) {
         fontFamily =
             when (font) {
                 "sans" -> FontFamily.SansSerif
@@ -48,27 +49,8 @@ object SubtitleStyle {
                 "mono" -> FontFamily.Monospace
                 else -> FontFamily.Default
             }
-        when (size) {
-            "small" -> {
-                fontSize = 14f
-                lineHeight = 16f
-            }
-
-            "large" -> {
-                fontSize = 20f
-                lineHeight = 23f
-            }
-
-            else -> {
-                fontSize = 16f
-                lineHeight = 18f
-            }
-        }
-        bottomPadding =
-            when (padding) {
-                "tight" -> 8.dp
-                "wide" -> 40.dp
-                else -> 20.dp
-            }
+        fontSize = size.toFloat().coerceIn(8f, 32f)
+        lineHeight = fontSize * 1.125f
+        bottomPadding = padding.coerceIn(0, 80).dp
     }
 }

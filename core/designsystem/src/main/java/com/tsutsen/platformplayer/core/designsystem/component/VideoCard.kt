@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -19,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -128,19 +128,6 @@ fun VideoCard(
                                 .align(Alignment.BottomStart)
                                 .padding(Tokens.SpaceSm),
                     ) {
-                        // Light glow behind the pill: same size as the pill,
-                        // scaled up + blurred so it extends past the edges
-                        // (separate node, so the blur isn't clipped by the
-                        // pill's bounds).
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth(0.5f)
-                                    .height(PILL_HEIGHT)
-                                    .scale(1.04f, 1.7f)
-                                    .blur(4.dp)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                        )
                         Box(
                             modifier =
                                 Modifier
@@ -149,33 +136,43 @@ fun VideoCard(
                                     .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
                                     .background(Color.Black.copy(alpha = 0.7f)),
                         ) {
-                            // Played fill: no clip of its own — the track's
-                            // stadium clip trims it, leaving a squarer right
-                            // edge.
+                            // Played fill: semi-transparent white, no clip of
+                            // its own — the track's stadium clip trims it.
                             Box(
                                 modifier =
                                     Modifier
                                         .fillMaxHeight()
                                         .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
-                                        .background(MaterialTheme.colorScheme.primary),
+                                        .background(Color.White.copy(alpha = 0.6f)),
+                            )
+                            // Inner outline in Primary, on top so the fill
+                            // never covers it.
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .matchParentSize()
+                                        .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
+                                        .border(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            shape = RoundedCornerShape(PILL_HEIGHT / 2f),
+                                        ),
                             )
                         }
                     }
                 }
 
                 // Completed badge (bottom-LEFT, never drawn together with the
-                // progress pill — callers hide progress when watched):
-                // same background as the duration pill, sized to the
-                // checkmark + its padding.
+                // progress pill — callers hide progress when watched).
                 if (isWatched) {
                     Box(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
                                 .padding(Tokens.SpaceSm)
-                                .height(PILL_HEIGHT)
+                                .height(20.dp)
                                 .clip(RoundedCornerShape(Tokens.RadiusXs))
-                                .background(Color.Black.copy(alpha = 0.7f)),
+                                .background(Color.Black.copy(alpha = 0.85f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -184,8 +181,8 @@ fun VideoCard(
                             tint = Color.White,
                             modifier =
                                 Modifier
-                                    .size(14.dp)
-                                    .padding(horizontal = 4.dp),
+                                    .size(16.dp)
+                                    .padding(horizontal = 6.dp),
                         )
                     }
                 }

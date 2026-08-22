@@ -17,8 +17,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Extension
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -118,6 +121,14 @@ fun SettingsScreen(
                             title = "Playback",
                             subtitle = "Subtitles, default speed",
                             onClick = { navigator.navigateToSettingsFragment("playback") },
+                        )
+                    }
+                    item {
+                        SettingsOptionCard(
+                            icon = Icons.Filled.DisplaySettings,
+                            title = "Dual screen",
+                            subtitle = "Second display pages, tabs, sections",
+                            onClick = { navigator.navigateToSettingsFragment("dual") },
                         )
                     }
                     item {
@@ -244,17 +255,15 @@ fun SettingsSectionScreen(
 
         Choice.SUBTITLE_SIZE -> {
             loaded?.let {
-                ChoiceDialog(
+                StepperDialog(
                     title = "Subtitle size",
-                    options =
-                        listOf(
-                            "Small" to "small",
-                            "Standard" to "standard",
-                            "Large" to "large",
-                        ),
-                    selected = it.subtitle.size,
+                    value = it.subtitle.size,
+                    step = 1,
+                    min = 8,
+                    max = 32,
+                    suffix = " pt",
                     onSelected = { value ->
-                        viewModel.updateGeneral("subtitleSize", value)
+                        viewModel.updateGeneral("subtitleFontSize", value)
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -264,18 +273,64 @@ fun SettingsSectionScreen(
 
         Choice.SUBTITLE_PADDING -> {
             loaded?.let {
-                ChoiceDialog(
+                StepperDialog(
                     title = "Subtitle bottom padding",
-                    options =
-                        listOf(
-                            "Tight" to "tight",
-                            "Standard" to "standard",
-                            "Wide" to "wide",
-                        ),
-                    selected = it.subtitle.bottomPadding,
+                    value = it.subtitle.bottomPadding,
+                    step = 4,
+                    min = 0,
+                    max = 80,
+                    suffix = " dp",
                     onSelected = { value ->
                         viewModel.updateGeneral("subtitleBottomPadding", value)
                         selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DUAL_PAGES -> {
+            loaded?.let {
+                MultiSelectDialog(
+                    title = "Pages",
+                    options = dualPageNames.map { (key, label) -> label to key },
+                    selected = it.dualScreenPages,
+                    onToggle = { key, checked ->
+                        viewModel.setDualScreenPages(
+                            if (checked) it.dualScreenPages + key else it.dualScreenPages - key,
+                        )
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DUAL_TABS -> {
+            loaded?.let {
+                MultiSelectDialog(
+                    title = "Video page tabs",
+                    options = dualTabNames.map { (key, label) -> label to key },
+                    selected = it.dualScreenVideoTabs,
+                    onToggle = { key, checked ->
+                        viewModel.setDualScreenVideoTabs(
+                            if (checked) it.dualScreenVideoTabs + key else it.dualScreenVideoTabs - key,
+                        )
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DUAL_SECTIONS -> {
+            loaded?.let {
+                MultiSelectDialog(
+                    title = "Library sections",
+                    options = dualSectionNames.map { (key, label) -> label to key },
+                    selected = it.dualScreenLibrarySections,
+                    onToggle = { key, checked ->
+                        viewModel.setDualScreenLibrarySections(
+                            if (checked) it.dualScreenLibrarySections + key else it.dualScreenLibrarySections - key,
+                        )
                     },
                     onDismiss = { selectedChoice = null },
                 )
@@ -348,6 +403,14 @@ private fun LazyListScope.SectionItems(
                     onCheckedChange = { viewModel.updateGeneral("dynamicColor", it) },
                 )
             }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.GridOn,
+                    title = "Grid columns",
+                    subtitle = "${state.gridColumns} columns",
+                    onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
+                )
+            }
         }
 
         "content" -> {
@@ -377,14 +440,6 @@ private fun LazyListScope.SectionItems(
                     onCheckedChange = { viewModel.updateGeneral("showComments", it) },
                 )
             }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.GridOn,
-                    title = "Grid columns",
-                    subtitle = "${state.gridColumns} columns",
-                    onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
-                )
-            }
         }
 
         "playback" -> {
@@ -408,7 +463,7 @@ private fun LazyListScope.SectionItems(
                 SettingsOptionCard(
                     icon = Icons.Filled.TextFields,
                     title = "Subtitle size",
-                    subtitle = subtitleChoiceLabel(state.subtitle.size),
+                    subtitle = "${state.subtitle.size} pt",
                     onClick = { onChoiceSelected(Choice.SUBTITLE_SIZE) },
                 )
             }
@@ -416,7 +471,7 @@ private fun LazyListScope.SectionItems(
                 SettingsOptionCard(
                     icon = Icons.Filled.VerticalAlignBottom,
                     title = "Subtitle bottom padding",
-                    subtitle = subtitleChoiceLabel(state.subtitle.bottomPadding),
+                    subtitle = "${state.subtitle.bottomPadding} dp",
                     onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
                 )
             }
@@ -432,17 +487,6 @@ private fun LazyListScope.SectionItems(
                     onCheckedChange = { viewModel.updateGeneral("enableDeveloperOptions", it) },
                 )
             }
-            if (state.enableDeveloperOptions) {
-                item {
-                    SettingsSwitchCard(
-                        icon = Icons.Filled.DisplaySettings,
-                        title = "Dual screen",
-                        subtitle = "Show video controls on the second screen",
-                        checked = state.dualScreen,
-                        onCheckedChange = { viewModel.updateGeneral("dualScreen", it) },
-                    )
-                }
-            }
             item {
                 SettingsButtonCard(
                     title = "Reset to defaults",
@@ -450,6 +494,74 @@ private fun LazyListScope.SectionItems(
                 )
             }
         }
+
+        "dual" -> {
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Filled.DisplaySettings,
+                    title = "Dual screen",
+                    subtitle = "Show video controls on the second screen",
+                    checked = state.dualScreen,
+                    onCheckedChange = { viewModel.updateGeneral("dualScreen", it) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.PlayArrow,
+                    title = "Pages",
+                    subtitle = dualListLabel(state.dualScreenPages, dualPageNames),
+                    onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Chat,
+                    title = "Video page tabs",
+                    subtitle = dualListLabel(state.dualScreenVideoTabs, dualTabNames),
+                    onClick = { onChoiceSelected(Choice.DUAL_TABS) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.VideoLibrary,
+                    title = "Library sections",
+                    subtitle = dualListLabel(state.dualScreenLibrarySections, dualSectionNames),
+                    onClick = { onChoiceSelected(Choice.DUAL_SECTIONS) },
+                )
+            }
+        }
+    }
+}
+
+private val dualPageNames =
+    mapOf(
+        "video" to "Video page",
+        "library" to "Library page",
+        "home" to "Home page",
+    )
+
+private val dualTabNames =
+    mapOf(
+        "comments" to "Comments",
+        "chapters" to "Chapters",
+        "recommended" to "Recommended",
+        "queue" to "Queue",
+    )
+
+private val dualSectionNames =
+    mapOf(
+        "watch_later" to "Watch Later",
+        "liked" to "Liked",
+        "favourite" to "Favourites",
+        "history" to "History",
+    )
+
+private fun dualListLabel(keys: List<String>, names: Map<String, String>): String {
+    val all = names.keys.filter { it in keys }
+    return when {
+        all.isEmpty() -> "None"
+        all.size == names.keys.size -> "All"
+        else -> all.joinToString(", ") { names[it] ?: it }
     }
 }
 
@@ -459,6 +571,7 @@ private fun sectionTitle(category: String): String =
         "content" -> "Content"
         "playback" -> "Playback"
         "general" -> "General"
+        "dual" -> "Dual screen"
         else -> "Settings"
     }
 
@@ -470,14 +583,45 @@ private fun subtitleFontLabel(code: String): String =
         else -> "Default"
     }
 
-private fun subtitleChoiceLabel(code: String): String =
-    when (code) {
-        "small" -> "Small"
-        "large" -> "Large"
-        "tight" -> "Tight"
-        "wide" -> "Wide"
-        else -> "Standard"
-    }
+/** Dialog for choosing a numeric value (subtitle size in pt, padding in dp). */
+@Composable
+private fun StepperDialog(
+    title: String,
+    value: Int,
+    step: Int,
+    min: Int,
+    max: Int,
+    suffix: String,
+    onSelected: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var draft by remember(value) { mutableStateOf(value) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = { draft = (draft - step).coerceAtLeast(min) }) {
+                    Icon(Icons.Filled.Remove, contentDescription = "Decrease")
+                }
+                Text("$draft$suffix", style = MaterialTheme.typography.titleMedium)
+                IconButton(onClick = { draft = (draft + step).coerceAtMost(max) }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Increase")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSelected(draft) }) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
 
 private enum class Choice {
     THEME,
@@ -485,7 +629,49 @@ private enum class Choice {
     SUBTITLE_FONT,
     SUBTITLE_SIZE,
     SUBTITLE_PADDING,
+    DUAL_PAGES,
+    DUAL_TABS,
+    DUAL_SECTIONS,
     PLAYBACK_SPEED,
+}
+
+@Composable
+private fun MultiSelectDialog(
+    title: String,
+    options: List<Pair<String, String>>,
+    selected: List<String>,
+    onToggle: (String, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                options.forEach { (label, value) ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onToggle(value, value !in selected) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = value in selected,
+                            onCheckedChange = { onToggle(value, it) },
+                        )
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+    )
 }
 
 @Composable

@@ -39,12 +39,15 @@ class SettingsRepositoryImpl
                 subtitle =
                     SubtitlePreferences(
                         font = s.playback.subtitleFont,
-                        size = s.playback.subtitleSize,
+                        size = s.playback.subtitleFontSize,
                         bottomPadding = s.playback.subtitleBottomPadding,
                     ),
                 defaultPlaybackSpeed = s.playback.defaultPlaybackSpeed,
                 enableDeveloperOptions = s.advancedSettings,
                 dualScreen = s.dualScreen,
+                dualScreenPages = s.dualScreenPages,
+                dualScreenVideoTabs = s.dualScreenVideoTabs,
+                dualScreenLibrarySections = s.dualScreenLibrarySections,
                 gridColumns = s.feed.gridColumns,
                 searchHistory = s.search.history,
                 showRecommendedVideos = s.content.showRecommendedVideos,
@@ -85,11 +88,32 @@ class SettingsRepositoryImpl
                 "showRecommendedVideos" -> s.content.showRecommendedVideos = value as Boolean
                 "showComments" -> s.content.showComments = value as Boolean
                 "subtitleFont" -> s.playback.subtitleFont = value as String
-                "subtitleSize" -> s.playback.subtitleSize = value as String
-                "subtitleBottomPadding" -> s.playback.subtitleBottomPadding = value as String
+                "subtitleFontSize" -> s.playback.subtitleFontSize = (value as Number).toInt()
+                "subtitleBottomPadding" -> s.playback.subtitleBottomPadding = (value as Number).toInt()
                 "defaultPlaybackSpeed" -> s.playback.defaultPlaybackSpeed = value as Float
                 else -> return
             }
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateDualScreenPages(pages: List<String>) {
+            val s = Settings.instance
+            s.dualScreenPages = pages
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateDualScreenVideoTabs(tabs: List<String>) {
+            val s = Settings.instance
+            s.dualScreenVideoTabs = tabs
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateDualScreenLibrarySections(sectionIds: List<String>) {
+            val s = Settings.instance
+            s.dualScreenLibrarySections = sectionIds
             s.save()
             emit()
         }
@@ -100,13 +124,18 @@ class SettingsRepositoryImpl
             s.appearance.dynamicColor = true
             s.advancedSettings = false
             s.dualScreen = false
+            s.dualScreenPages = listOf("video", "library", "home")
+            s.dualScreenVideoTabs =
+                listOf("comments", "chapters", "recommended", "queue")
+            s.dualScreenLibrarySections =
+                listOf("watch_later", "liked", "favourite", "history")
             s.feed.gridColumns = 3
             s.content.showRecommendedVideos = true
             s.content.showComments = true
             s.playback.defaultPlaybackSpeed = 1f
             s.playback.subtitleFont = "default"
-            s.playback.subtitleSize = "standard"
-            s.playback.subtitleBottomPadding = "standard"
+            s.playback.subtitleFontSize = 16
+            s.playback.subtitleBottomPadding = 20
             s.save()
             emit()
         }

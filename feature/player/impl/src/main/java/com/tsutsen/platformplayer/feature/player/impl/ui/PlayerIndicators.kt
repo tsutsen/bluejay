@@ -149,8 +149,11 @@ internal fun GestureIndicatorOverlay(
         exit = fadeOut(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
     ) {
         activeProgressIndicator?.let { indicator ->
+            // Badge appears on the OPPOSITE side of the swiped area:
+            // right swipe (volume) → badge on the left, left swipe
+            // (brightness) → badge on the right.
             val alignment =
-                if (indicator.key == "brightness") Alignment.CenterStart else Alignment.CenterEnd
+                if (indicator.key == "brightness") Alignment.CenterEnd else Alignment.CenterStart
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
                 ProgressIndicator(
                     value = indicator.value,
@@ -242,7 +245,7 @@ private fun ProgressIndicator(
         Box(
             modifier =
                 Modifier
-                    .width(4.dp)
+                    .width(6.dp)
                     .height(56.dp)
                     .clip(RoundedCornerShape(999.dp))
                     .background(Color.White.copy(alpha = 0.25f)),

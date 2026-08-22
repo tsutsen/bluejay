@@ -42,6 +42,7 @@ fun SettingsOptionCard(
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
                 .padding(vertical = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
@@ -106,6 +107,7 @@ fun SettingsSwitchCard(
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
@@ -172,6 +174,7 @@ fun SettingsSwitchOptionCard(
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
                 .padding(vertical = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
@@ -238,6 +241,7 @@ fun SettingsTextCard(
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(

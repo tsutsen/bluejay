@@ -28,8 +28,8 @@ class SettingsRepositoryImplTest {
         s.playback.autoplay = true
         s.playback.defaultPlaybackSpeed = 1f
         s.playback.subtitleFont = "default"
-        s.playback.subtitleSize = "standard"
-        s.playback.subtitleBottomPadding = "standard"
+        s.playback.subtitleFontSize = 16
+        s.playback.subtitleBottomPadding = 20
         s.notifications.enabled = true
         s.advancedSettings = false
         s.feed.gridColumns = 3
@@ -90,17 +90,17 @@ class SettingsRepositoryImplTest {
     @Test
     fun updateGeneralSubtitleSizePersistsAndEmits() =
         runTest {
-            repo.updateGeneral("subtitleSize", "large")
-            assertEquals("large", Settings.instance.playback.subtitleSize)
-            assertEquals("large", repo.preferences.value.subtitle.size)
+            repo.updateGeneral("subtitleFontSize", 22)
+            assertEquals(22, Settings.instance.playback.subtitleFontSize)
+            assertEquals(22, repo.preferences.value.subtitle.size)
         }
 
     @Test
     fun updateGeneralSubtitleBottomPaddingPersistsAndEmits() =
         runTest {
-            repo.updateGeneral("subtitleBottomPadding", "wide")
-            assertEquals("wide", Settings.instance.playback.subtitleBottomPadding)
-            assertEquals("wide", repo.preferences.value.subtitle.bottomPadding)
+            repo.updateGeneral("subtitleBottomPadding", 40)
+            assertEquals(40, Settings.instance.playback.subtitleBottomPadding)
+            assertEquals(40, repo.preferences.value.subtitle.bottomPadding)
         }
 
     @Test
@@ -150,6 +150,8 @@ class SettingsRepositoryImplTest {
             assertFalse(s.advancedSettings)
             assertEquals(1f, s.playback.defaultPlaybackSpeed)
             assertEquals("default", s.playback.subtitleFont)
+            assertEquals(16, s.playback.subtitleFontSize)
+            assertEquals(20, s.playback.subtitleBottomPadding)
             assertEquals(3, s.feed.gridColumns)
 
             val prefs = repo.preferences.value

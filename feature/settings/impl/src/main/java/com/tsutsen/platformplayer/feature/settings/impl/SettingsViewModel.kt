@@ -19,6 +19,9 @@ sealed interface SettingsUiState {
         val defaultPlaybackSpeed: Float,
         val enableDeveloperOptions: Boolean,
         val dualScreen: Boolean,
+        val dualScreenPages: List<String>,
+        val dualScreenVideoTabs: List<String>,
+        val dualScreenLibrarySections: List<String>,
         val gridColumns: Int,
         val showRecommendedVideos: Boolean,
         val showComments: Boolean,
@@ -55,6 +58,9 @@ class SettingsViewModel
                                 defaultPlaybackSpeed = prefs.defaultPlaybackSpeed,
                                 enableDeveloperOptions = prefs.enableDeveloperOptions,
                                 dualScreen = prefs.dualScreen,
+                                dualScreenPages = prefs.dualScreenPages,
+                                dualScreenVideoTabs = prefs.dualScreenVideoTabs,
+                                dualScreenLibrarySections = prefs.dualScreenLibrarySections,
                                 gridColumns = prefs.gridColumns,
                                 showRecommendedVideos = prefs.showRecommendedVideos,
                                 showComments = prefs.showComments,
@@ -82,6 +88,18 @@ class SettingsViewModel
             viewModelScope.launch {
                 settingsRepository.updateGeneral(key, value)
             }
+        }
+
+        fun setDualScreenPages(pages: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenPages(pages) }
+        }
+
+        fun setDualScreenVideoTabs(tabs: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenVideoTabs(tabs) }
+        }
+
+        fun setDualScreenLibrarySections(sectionIds: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenLibrarySections(sectionIds) }
         }
 
         fun resetToDefaults() {

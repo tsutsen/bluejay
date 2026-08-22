@@ -77,6 +77,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.OnApplyWindowInsetsListener
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.ui.text.input.ImeAction
@@ -96,6 +100,7 @@ import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.SearchSort
 import com.tsutsen.platformplayer.core.model.SearchType
 import com.tsutsen.platformplayer.core.model.VideoCard
+import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
@@ -129,11 +134,42 @@ fun SearchScreen(
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     var isSearchFocused by remember { mutableStateOf(false) }
-    // Screen-space bounds of the results area: only gestures that START
-    // inside it clear the search field's focus — the field itself, the
-    // filter chips and the history list never do.
+
+    // Tabs are keep-alive (the screen never leaves composition), so release
+    // the field's focus explicitly whenever another tab becomes current.
+    val currentRoute by navigator.currentRoute.collectAsState()
+    LaunchedEffect(currentRoute) {
+        if (currentRoute !is NavDestination.Search && isSearchFocused) {
+            focusManager.clearFocus(force = true)
+        }
+    }
+
+    // Back gesture: the system hands the first back to the IME, which just
+    // hides the keyboard and leaves the field focused. Watch the IME's
+    // bottom inset directly — when it collapses while the field holds
+    // focus, release the focus too.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val listener =
+            OnApplyWindowInsetsListener { v, insets ->
+                if (insets.getInsets(WindowInsetsCompat.Type.ime()).bottom == 0 &&
+                    isSearchFocused
+                ) {
+                    focusManager.clearFocus(force = true)
+                }
+                insets
+            }
+        ViewCompat.setOnApplyWindowInsetsListener(view, listener)
+        onDispose { ViewCompat.setOnApplyWindowInsetsListener(view, null) }
+    }
+    // Bounds of the results area, in window space (pointer positions are
+    // local to the root Box, so the root Box's window rect is kept too and
+    // the conversion happens at event time). Only gestures that START
+    // inside the results area clear the field's focus — the field itself,
+    // the filter chips and the history list never do.
     val resultsBounds =
         remember { mutableStateOf(Rect.Zero) }
+    val rootBounds = remember { mutableStateOf(Rect.Zero) }
 
     val refreshingState = rememberPullToRefreshState()
 
@@ -170,6 +206,7 @@ fun SearchScreen(
         modifier =
             modifier
                 .fillMaxSize()
+                .onGloballyPositioned { rootBounds.value = it.boundsInWindow() }
                 .pointerInput(focusManager, resultsBounds) {
                     // Initial pass: see every touch BEFORE children
                     // consume it, so both "tap a result card" and
@@ -179,6 +216,12 @@ fun SearchScreen(
                     // chips, history list) are left alone.
                     val slop = 8.dp.toPx()
                     awaitPointerEventScope {
+                        // Local pointer position → window space, using the
+                        // root Box's current window rect.
+                        fun Offset.toWindow(): Offset {
+                            val rb = rootBounds.value
+                            return Offset(x + rb.left, y + rb.top)
+                        }
                         var downPos: Offset? = null
                         var startedInResults = false
                         var cleared = false
@@ -194,6 +237,7 @@ fun SearchScreen(
                                         event.changes
                                             .firstOrNull { it.pressed }
                                             ?.position
+                                            ?.toWindow()
                                     downPos = pos
                                     startedInResults =
                                         pos != null &&
@@ -205,6 +249,7 @@ fun SearchScreen(
                                         event.changes
                                             .firstOrNull()
                                             ?.position
+                                            ?.toWindow()
                                             ?: continue
                                     val down = downPos ?: continue
                                     if (startedInResults && !cleared &&
@@ -220,6 +265,7 @@ fun SearchScreen(
                                         event.changes
                                             .firstOrNull()
                                             ?.position
+                                            ?.toWindow()
                                     val down = downPos
                                     if (startedInResults && !cleared &&
                                         pos != null && down != null &&
@@ -257,38 +303,46 @@ fun SearchScreen(
                         .onFocusChanged { isSearchFocused = it.isFocused },
                 placeholder = { Text("Search") },
                 trailingIcon = {
-                    // A Row: the slot is a single centered box, so two
-                    // bare buttons here would stack on top of each other.
-                    // The group pins to the RIGHT edge of the field; the
-                    // clear button slides in to the left of the search
-                    // button so search never moves when clear appears.
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
+                    // Fixed-width slot (26 + 4 + 26): the M3 trailing-icon
+                    // slot imposes its own constraints on its content, so a
+                    // wrap-content Row there shifts around when the clear
+                    // button appears. A box with an enforced width keeps the
+                    // layout deterministic: search pins to the slot's right
+                    // edge, clear slides in to its left.
+                    Box(
+                        modifier =
+                            Modifier
+                                .width(56.dp)
+                                .height(26.dp),
+                        contentAlignment = Alignment.CenterEnd,
                     ) {
-                        AnimatedVisibility(
-                            visible = searchQuery.isNotEmpty(),
-                            enter = fadeIn(tween(120)) + expandHorizontally(tween(120)),
-                            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(120)),
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End,
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            AnimatedVisibility(
+                                visible = searchQuery.isNotEmpty(),
+                                enter = fadeIn(tween(120)) + expandHorizontally(tween(120)),
+                                exit = fadeOut(tween(120)) + shrinkHorizontally(tween(120)),
                             ) {
-                                SearchFieldButton(
-                                    icon = Icons.Default.Close,
-                                    contentDescription = "Clear",
-                                    onClick = { viewModel.setQuery("") },
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    SearchFieldButton(
+                                        icon = Icons.Default.Close,
+                                        contentDescription = "Clear",
+                                        onClick = { viewModel.setQuery("") },
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
                             }
+                            SearchFieldButton(
+                                icon = Icons.Default.Search,
+                                contentDescription = "Search",
+                                onClick = { performSearch() },
+                            )
                         }
-                        SearchFieldButton(
-                            icon = Icons.Default.Search,
-                            contentDescription = "Search",
-                            onClick = { performSearch() },
-                        )
                     }
                 },
                 singleLine = true,
@@ -640,7 +694,7 @@ private fun RecentSearches(
 
 /**
  * Small rounded-rectangle action button embedded in the search field:
- * primary fill, 26dp tall, 16dp icon.
+ * primary fill, 26dp square, 16dp icon.
  */
 @Composable
 private fun SearchFieldButton(
@@ -651,7 +705,7 @@ private fun SearchFieldButton(
     Box(
         modifier =
             Modifier
-                .height(26.dp)
+                .size(26.dp)
                 .clip(RoundedCornerShape(Tokens.RadiusXs))
                 .background(MaterialTheme.colorScheme.primary)
                 .clickable(onClick = onClick),
@@ -660,10 +714,7 @@ private fun SearchFieldButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            modifier =
-                Modifier
-                    .size(16.dp)
-                    .padding(horizontal = 8.dp),
+            modifier = Modifier.size(16.dp),
             tint = MaterialTheme.colorScheme.onPrimary,
         )
     }

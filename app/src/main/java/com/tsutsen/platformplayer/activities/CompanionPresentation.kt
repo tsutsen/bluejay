@@ -193,6 +193,7 @@ class CompanionPresentation(
                     homeRepository = homeRepository,
                     downloadsRepository = downloadsRepository,
                     playbackQueueRepository = playbackQueueRepository,
+                    settingsRepository = settingsRepository,
                 )
             }
         }
@@ -274,11 +275,21 @@ private fun CompanionContent(
     homeRepository: HomeRepository,
     downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
     playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
+    settingsRepository: SettingsRepository,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
     val queue by playbackQueueRepository.queue.collectAsState()
     val scope = rememberCoroutineScope()
     val video = playerState.currentVideo
+
+    // Dual screen settings: which pages / video-page tabs / library
+    // sections the second screen shows (Settings > Dual screen).
+    val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
+    val pageKeys = listOf("video", "library", "home").filter { it in prefs.dualScreenPages }
+    val videoTabKeys =
+        listOf("comments", "chapters", "recommended", "queue")
+            .filter { it in prefs.dualScreenVideoTabs }
+    val librarySectionIds = prefs.dualScreenLibrarySections
 
     // Same data the main screen shows: the PlayerViewModel fetches comments
     // and recommendations once per video and pushes them into the shared
@@ -298,12 +309,30 @@ private fun CompanionContent(
     // deadlocks the V8 busy lock (see PackageHttp.autoParallelPool).
 
     var selectedTab by remember { mutableIntStateOf(0) }
+    // Settings can shrink the tab list while the page is up — reset the
+    // selection to the first tab.
+    LaunchedEffect(prefs.dualScreenVideoTabs) {
+        val enabled =
+            listOf("comments", "chapters", "recommended", "queue")
+                .filter { it in prefs.dualScreenVideoTabs }
+        if (enabled.isNotEmpty() && selectedTab >= enabled.size) {
+            selectedTab = 0
+        }
+    }
+
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
 
     val onPlay: (String) -> Unit = { url -> scope.launch { playerRepository.play(url) } }
     val onLongClick: (CoreVideoCard) -> Unit = { card -> optionsCard = card }
 
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(pageCount = { pageKeys.size })
+    // Settings can shrink the page list while the screen is up — snap back
+    // to the first page instead of clamping mid-gesture.
+    LaunchedEffect(pageKeys.size) {
+        if (pageKeys.isNotEmpty() && pagerState.currentPage >= pageKeys.size) {
+            pagerState.scrollToPage(0)
+        }
+    }
 
     // Native M3 bottom sheet for the long-press options — material3's
     // BottomSheetScaffold gives the standard Android sheet physics (drag,
@@ -373,12 +402,24 @@ private fun CompanionContent(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+        if (pageKeys.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "No pages enabled",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
         VerticalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
-        when (page) {
-            0 -> CompanionVideoPage(
+        when (pageKeys.getOrNull(page)) {
+            "video" -> CompanionVideoPage(
                 playerState = playerState,
                 video = video,
                 comments = comments,
@@ -415,11 +456,18 @@ private fun CompanionContent(
                     onQueuePlay = { index -> playbackQueueRepository.playAt(index) },
                     onQueueRemove = { url -> playbackQueueRepository.remove(url) },
                     onQueueMove = { from, to -> playbackQueueRepository.move(from, to) },
+                    videoTabKeys = videoTabKeys,
                 )
 
-                1 -> CompanionLibraryPage(sections = sections, onPlay = onPlay, onLongClick = onLongClick)
+                "library" ->
+                    CompanionLibraryPage(
+                        sections = sections,
+                        sectionIds = librarySectionIds,
+                        onPlay = onPlay,
+                        onLongClick = onLongClick,
+                    )
 
-                2 ->
+                "home" ->
                     CompanionHomePage(
                         items = home.items,
                         onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
@@ -427,6 +475,7 @@ private fun CompanionContent(
                         onLongClick = onLongClick,
                     )
             }
+        }
         }
         if (scrimAlpha > 0.001f) {
             Box(
@@ -499,6 +548,8 @@ private fun CompanionVideoPage(
     onQueuePlay: (Int) -> Unit,
     onQueueRemove: (String) -> Unit,
     onQueueMove: (Int, Int) -> Unit,
+    videoTabKeys: List<String> =
+        listOf("comments", "chapters", "recommended", "queue"),
 ) {
     val context = LocalContext.current
     Column(
@@ -521,20 +572,21 @@ private fun CompanionVideoPage(
                 durationMs = playerState.durationMs,
             )
             val chapters = playerState.chapters
-            // One scroll state per tab — switching tabs never shares or
-            // resets a strip's position.
-            val tabStates = remember { List(4) { LazyListState() } }
+            // One scroll state per (enabled) tab — switching tabs never
+            // shares or resets a strip's position.
+            val tabStates = remember(videoTabKeys) { videoTabKeys.map { LazyListState() } }
+            val activeTab = videoTabKeys.getOrNull(selectedTab)
             val currentChapterIndex =
                 chapters.indexOfLast { it.startTimeMs <= playerState.currentPositionMs }
             // Follow the playhead: while on the chapters tab, a chapter
             // change scrolls the strip to the newly active chapter.
             LaunchedEffect(currentChapterIndex) {
-                if (selectedTab == 1 && currentChapterIndex >= 0) {
-                    tabStates[1].animateScrollToItem(currentChapterIndex)
+                if (activeTab == "chapters" && currentChapterIndex >= 0) {
+                    tabStates.getOrNull(selectedTab)?.animateScrollToItem(currentChapterIndex)
                 }
             }
             PillTabs(
-                labels = listOf("Comments", "Chapters", "Recommended", "Queue"),
+                labels = videoTabKeys.map { it.companionTabLabel() },
                 selected = selectedTab,
                 onSelect = onTabSelected,
             )
@@ -545,7 +597,10 @@ private fun CompanionVideoPage(
                         .weight(1f),
             ) {
                 key(selectedTab) {
-                    if (selectedTab == 3) {
+                    if (activeTab == null) {
+                        // No tabs enabled — nothing to show in the strip.
+                        Unit
+                    } else if (activeTab == "queue") {
                         // Queue tab: the playing video pinned on top, then
                         // the pending queue (tap = play, drag = reorder,
                         // X = remove). The same horizontal strip as the
@@ -574,7 +629,7 @@ private fun CompanionVideoPage(
                                 )
                             },
                         )
-                    } else if (selectedTab == 1 && chapters.isEmpty()) {
+                    } else if (activeTab == "chapters" && chapters.isEmpty()) {
                         // Centre the empty state in the whole tab area — a
                         // LazyRow item can't fill the (unbounded) row width.
                         Box(
@@ -594,7 +649,7 @@ private fun CompanionVideoPage(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(end = 8.dp),
                     ) {
-                if (selectedTab == 0) {
+                if (activeTab == "comments") {
                     if (comments.isEmpty()) {
                         item(key = "no-comments") {
                             Text(
@@ -623,7 +678,7 @@ private fun CompanionVideoPage(
                             },
                         )
                     }
-                } else if (selectedTab == 1) {
+                } else if (activeTab == "chapters") {
                     if (chapters.isEmpty()) {
                         item(key = "no-chapters") {
                             Text(
@@ -741,6 +796,8 @@ private fun CompanionVideoPage(
 @Composable
 private fun CompanionLibraryPage(
     sections: List<LibrarySection>,
+    sectionIds: List<String> =
+        listOf("watch_later", "liked", "favourite", "history"),
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
 ) {
@@ -757,14 +814,17 @@ private fun CompanionLibraryPage(
             modifier = Modifier.padding(horizontal = 8.dp),
         )
         // Fixed slots for the 2x2 layout (order matters). Disliked is not
-        // shown here — it's reachable from the main library.
+        // shown here — it's reachable from the main library. Hidden sections
+        // (Settings > Dual screen > Library sections) leave their slot blank.
         val slots =
             listOf(
                 LibraryRepositoryImpl.WATCH_LATER_ID,
                 LibraryRepositoryImpl.LIKED_ID,
                 LibraryRepositoryImpl.FAVOURITE_ID,
                 LibraryRepositoryImpl.HISTORY_ID,
-            ).mapNotNull { id -> sections.firstOrNull { it.id == id } }
+            )
+            .filter { it in sectionIds }
+            .mapNotNull { id -> sections.firstOrNull { it.id == id } }
         if (slots.isEmpty()) {
             Text(
                 text = "Nothing here yet",
@@ -773,35 +833,43 @@ private fun CompanionLibraryPage(
             )
         }
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            LibrarySlotPager(
-                section = slots.getOrNull(0),
-                onPlay = onPlay,
-                onLongClick = onLongClick,
-                modifier = Modifier.weight(1f),
-            )
-            LibrarySlotPager(
-                section = slots.getOrNull(1),
-                onPlay = onPlay,
-                onLongClick = onLongClick,
-                modifier = Modifier.weight(1f),
-            )
+            LibrarySlotCell(section = slots.getOrNull(0), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(section = slots.getOrNull(1), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
         }
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            LibrarySlotPager(
-                section = slots.getOrNull(2),
-                onPlay = onPlay,
-                onLongClick = onLongClick,
-                modifier = Modifier.weight(1f),
-            )
-            LibrarySlotPager(
-                section = slots.getOrNull(3),
-                onPlay = onPlay,
-                onLongClick = onLongClick,
-                modifier = Modifier.weight(1f),
-            )
+            LibrarySlotCell(section = slots.getOrNull(2), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(section = slots.getOrNull(3), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
         }
     }
 }
+
+/** One 2x2 corner: the slot pager, or blank when the section is hidden. */
+@Composable
+private fun LibrarySlotCell(
+    section: LibrarySection?,
+    onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (section == null) {
+        Box(modifier = modifier)
+    } else {
+        LibrarySlotPager(
+            section = section,
+            onPlay = onPlay,
+            onLongClick = onLongClick,
+            modifier = modifier,
+        )
+    }
+}
+
+private fun String.companionTabLabel(): String =
+    when (this) {
+        "comments" -> "Comments"
+        "chapters" -> "Chapters"
+        "recommended" -> "Recommended"
+        else -> "Queue"
+    }
 
 /**
  * One corner slot: section header (with current/total page position) + a

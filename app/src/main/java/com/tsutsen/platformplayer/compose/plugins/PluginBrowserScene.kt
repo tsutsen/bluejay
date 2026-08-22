@@ -21,11 +21,16 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -359,26 +364,64 @@ fun PluginDetailScene(
                                 .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            text = config!!.name,
-                            style = MaterialTheme.typography.headlineMedium,
-                        )
-                        Text(
-                            text = config!!.description ?: "No description",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = "Version: ${config!!.version}",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = "Author: ${config!!.author ?: "Unknown"}",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = "URL: $configUrl",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        // Header card: name, description, and one secondary
+                        // row with version, author and the (clickable)
+                        // source URL.
+                        Card(
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = config!!.name,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    text = config!!.description ?: "No description",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = "v${config!!.version}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text = config!!.author ?: "Unknown",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    LinkifiedText(
+                                        text = configUrl,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false),
+                                        onTimestampClick = {},
+                                        onLinkClick = { url ->
+                                            runCatching {
+                                                context.startActivity(
+                                                    Intent(Intent.ACTION_VIEW, Uri.parse(url)),
+                                                )
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
 
                         // Update button
                         Button(
@@ -878,61 +921,60 @@ private fun PluginSettingsSection(
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineSmall)
+        Text("Settings", style = MaterialTheme.typography.titleLarge)
 
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "Show advanced settings",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            Switch(checked = showAdvanced, onCheckedChange = { showAdvanced = it })
+        PluginSettingsCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Show advanced settings",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(checked = showAdvanced, onCheckedChange = { showAdvanced = it })
+            }
         }
 
         config.settings.forEach { setting ->
             if (setting.isAdvanced == true && !showAdvanced) return@forEach
             when (setting.type) {
                 "Header" -> {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Text(setting.name, style = MaterialTheme.typography.titleMedium)
+                    PluginSettingsCard {
+                        Text(setting.name, style = MaterialTheme.typography.titleMedium)
+                    }
                 }
 
                 "Boolean" -> {
                     val variable = setting.variableOrName
                     val current = (settings[variable] ?: setting.default) == "true"
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(setting.name, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                setting.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    PluginSettingsCard {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(setting.name, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    setting.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Switch(
+                                checked = current,
+                                onCheckedChange = { newValue ->
+                                    // ponytail: no dependency handling; dependent settings can be toggled freely
+                                    if (newValue && setting.warningDialog != null) {
+                                        warningConfirm = setting
+                                    } else {
+                                        onSettingChanged(variable, newValue.toString())
+                                    }
+                                },
                             )
                         }
-                        Spacer(Modifier.width(12.dp))
-                        Switch(
-                            checked = current,
-                            onCheckedChange = { newValue ->
-                                // ponytail: no dependency handling; dependent settings can be toggled freely
-                                if (newValue && setting.warningDialog != null) {
-                                    warningConfirm = setting
-                                } else {
-                                    onSettingChanged(variable, newValue.toString())
-                                }
-                            },
-                        )
                     }
                 }
 
@@ -949,54 +991,53 @@ private fun PluginSettingsSection(
                         } else {
                             rawValue
                         }
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(setting.name, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                setting.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        var menuExpanded by remember { mutableStateOf(false) }
-                        Box {
-                            // Same trigger style as the search tab's sort pill.
-                            FilterChip(
-                                selected = false,
-                                onClick = { menuExpanded = true },
-                                label = { Text(current) },
-                                trailingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Filled.ArrowDropDown,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(Tokens.IconSm),
-                                    )
-                                },
-                            )
-                            DropdownMenu(
-                                expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false },
-                            ) {
-                                options.forEachIndexed { index, option ->
-                                    DropdownMenuItem(
-                                        leadingIcon = {
-                                            if (option == current) {
-                                                Icon(Icons.Default.Check, contentDescription = null)
-                                            }
-                                        },
-                                        text = { Text(option) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onSettingChanged(variable, index.toString())
-                                        },
-                                    )
+                    PluginSettingsCard {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(setting.name, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    setting.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            var menuExpanded by remember { mutableStateOf(false) }
+                            Box {
+                                // Same trigger style as the search tab's sort pill.
+                                FilterChip(
+                                    selected = false,
+                                    onClick = { menuExpanded = true },
+                                    label = { Text(current) },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Filled.ArrowDropDown,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(Tokens.IconSm),
+                                        )
+                                    },
+                                )
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false },
+                                ) {
+                                    options.forEachIndexed { index, option ->
+                                        DropdownMenuItem(
+                                            leadingIcon = {
+                                                if (option == current) {
+                                                    Icon(Icons.Default.Check, contentDescription = null)
+                                                }
+                                            },
+                                            text = { Text(option) },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onSettingChanged(variable, index.toString())
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1027,5 +1068,23 @@ private fun PluginSettingsSection(
                 }
             },
         )
+    }
+}
+
+/** One card per plugin setting (same surface as the rest of settings). */
+@Composable
+private fun PluginSettingsCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), content = content)
     }
 }

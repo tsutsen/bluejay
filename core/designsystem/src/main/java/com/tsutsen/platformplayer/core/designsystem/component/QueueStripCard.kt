@@ -57,6 +57,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -168,23 +170,29 @@ private fun QueuedCardStrip(
     // The now-playing card's position: items can't move in front of it.
     val currentIndex = items.indexOfFirst { it.url == current?.url }
 
-    // FLIP for swaps: the move buttons only ever swap adjacent cards, so
-    // the delta is known at the press — no order diffing. Every card is
-    // exactly [stepPx] apart.
+    // FLIP for every list change (move, add, remove): each card's x is
+    // remembered from the last layout pass; when a card's x jumps (a
+    // neighbour appeared or vanished) it starts displaced by the delta and
+    // springs back, so survivors slide into their new slots. Scrolling
+    // moves every card by the same amount, so deltas cancel out and no
+    // spurious animation fires.
     val flipAnims = remember { mutableMapOf<String, Animatable<Offset, *>>() }
+    val flipJobs = remember { mutableMapOf<String, Job>() }
+    val lastX = remember { mutableMapOf<String, Float>() }
     val stepPx = with(LocalDensity.current) { (CARD_W + STRIP_GAP).toPx() }
 
-    /** Displace [url] by [steps] card slots (steps = newIndex - oldIndex)
-     * and slide it back to rest. */
-    fun slide(url: String, steps: Int) {
+    /** Start a FLIP displacement of [url] by [dx] px, springing back. */
+    fun flip(url: String, dx: Float) {
+        flipJobs[url]?.cancel()
         val anim = flipAnims.getOrPut(url) { Animatable(Offset.Zero, Offset.VectorConverter) }
-        scope.launch {
-            anim.snapTo(Offset(-steps * stepPx, 0f))
-            anim.animateTo(
-                Offset.Zero,
-                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-            )
-        }
+        flipJobs[url] =
+            scope.launch {
+                anim.snapTo(Offset(dx, 0f))
+                anim.animateTo(
+                    Offset.Zero,
+                    spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+                )
+            }
     }
     // Keep a reordered card centered so the user can follow it.
     fun followCard(index: Int) {
@@ -194,12 +202,14 @@ private fun QueuedCardStrip(
         }
     }
 
-    // Scroll to newly added items so an off-screen add is never invisible.
+    // Scroll to newly added items so an off-screen add is never invisible;
+    // drop FLIP state of removed cards.
     val prevUrls = remember { mutableStateOf<Set<String>>(items.mapTo(mutableSetOf()) { it.url }) }
     LaunchedEffect(items) {
         val urls = items.mapTo(mutableSetOf()) { it.url }
         val added = urls - prevUrls.value
         prevUrls.value = urls
+        lastX.keys.removeAll { it !in urls }
         if (added.isNotEmpty() && items.isNotEmpty()) {
             val index = items.indexOfFirst { it.url in added }
             scrollState.animateScrollTo(index * stepPx.toInt())
@@ -219,6 +229,17 @@ private fun QueuedCardStrip(
             // position-scoped remember used to reset hasAppeared on every
             // move, hiding the card forever).
             key(item.url) {
+            // FLIP measurement wrapper (outside the flip offset, so it
+            // always reads the true layout position).
+            Box(
+                modifier =
+                    Modifier.onGloballyPositioned {
+                        val x = it.boundsInWindow().left
+                        val old = lastX[item.url]
+                        lastX[item.url] = x
+                        if (old != null && old != x) flip(item.url, old - x)
+                    },
+            ) {
             FlipItem(
                 flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
             ) {
@@ -241,18 +262,15 @@ private fun QueuedCardStrip(
                         canMoveLater = index < items.size - 1,
                         onMoveEarlier = {
                             onMove(index, index - 1)
-                            slide(item.url, -1)
-                            slide(items[index - 1].url, +1)
                             followCard(index - 1)
                         },
                         onMoveLater = {
                             onMove(index, index + 1)
-                            slide(item.url, +1)
-                            slide(items[index + 1].url, -1)
                             followCard(index + 1)
                         },
                     )
                 }
+            }
             }
             }
         }

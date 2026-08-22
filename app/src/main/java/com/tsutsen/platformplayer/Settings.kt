@@ -81,6 +81,11 @@ class Settings {
 
     // Second (rear) display companion window
     var dualScreen: Boolean = false
+    var dualScreenPages: List<String> = listOf("video", "library", "home")
+    var dualScreenVideoTabs: List<String> =
+        listOf("comments", "chapters", "recommended", "queue")
+    var dualScreenLibrarySections: List<String> =
+        listOf("watch_later", "liked", "favourite", "history")
 
     @Serializable
     class AutoUpdateSettings {
@@ -113,8 +118,8 @@ class Settings {
         // Subtitle appearance: font (default|sans|serif|mono),
         // size (small|standard|large), bottom padding (tight|standard|wide).
         var subtitleFont: String = "default"
-        var subtitleSize: String = "standard"
-        var subtitleBottomPadding: String = "standard"
+        var subtitleFontSize: Int = 16
+        var subtitleBottomPadding: Int = 20
     }
 
     @Serializable

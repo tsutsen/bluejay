@@ -7,6 +7,9 @@ data class AppPreferences(
     val defaultPlaybackSpeed: Float = 1f,
     val enableDeveloperOptions: Boolean = false,
     val dualScreen: Boolean = false,
+    val dualScreenPages: List<String> = listOf("video", "library", "home"),
+    val dualScreenVideoTabs: List<String> = listOf("comments", "chapters", "recommended", "queue"),
+    val dualScreenLibrarySections: List<String> = listOf("watch_later", "liked", "favourite", "history"),
     val gridColumns: Int = 3,
     val searchHistory: List<String> = emptyList(),
     val showRecommendedVideos: Boolean = true,
@@ -15,13 +18,12 @@ data class AppPreferences(
 
 /**
  * Subtitle appearance for the in-player caption overlay.
- * Values are simple strings so the settings UI can offer fixed choices:
  *  - font: "default" | "sans" | "serif" | "mono"
- *  - size: "small" | "standard" | "large"
- *  - bottomPadding: "tight" | "standard" | "wide"
+ *  - size: font size in pt
+ *  - bottomPadding: gap below the video's bottom edge, in dp
  */
 data class SubtitlePreferences(
     val font: String = "default",
-    val size: String = "standard",
-    val bottomPadding: String = "standard",
+    val size: Int = 16,
+    val bottomPadding: Int = 20,
 )
