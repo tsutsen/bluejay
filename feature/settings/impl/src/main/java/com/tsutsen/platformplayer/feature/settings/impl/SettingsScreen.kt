@@ -21,13 +21,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.TextFields
@@ -57,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
-import com.tsutsen.platformplayer.core.designsystem.component.SettingsButtonCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
@@ -129,14 +126,6 @@ fun SettingsScreen(
                             title = "Dual screen",
                             subtitle = "Second display pages, tabs, sections",
                             onClick = { navigator.navigateToSettingsFragment("dual") },
-                        )
-                    }
-                    item {
-                        SettingsOptionCard(
-                            icon = Icons.Filled.Settings,
-                            title = "General",
-                            subtitle = "App behavior, reset to defaults",
-                            onClick = { navigator.navigateToSettingsFragment("general") },
                         )
                     }
                 }
@@ -477,24 +466,6 @@ private fun LazyListScope.SectionItems(
             }
         }
 
-        "general" -> {
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.Code,
-                    title = "Developer options",
-                    subtitle = "Show advanced settings",
-                    checked = state.enableDeveloperOptions,
-                    onCheckedChange = { viewModel.updateGeneral("enableDeveloperOptions", it) },
-                )
-            }
-            item {
-                SettingsButtonCard(
-                    title = "Reset to defaults",
-                    onClick = { viewModel.resetToDefaults() },
-                )
-            }
-        }
-
         "dual" -> {
             item {
                 SettingsSwitchCard(
@@ -570,7 +541,6 @@ private fun sectionTitle(category: String): String =
         "appearance" -> "Appearance"
         "content" -> "Content"
         "playback" -> "Playback"
-        "general" -> "General"
         "dual" -> "Dual screen"
         else -> "Settings"
     }
