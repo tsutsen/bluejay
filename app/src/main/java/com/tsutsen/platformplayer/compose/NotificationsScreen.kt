@@ -37,12 +37,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
+import com.tsutsen.platformplayer.core.designsystem.component.DownloadStripCard
 import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.database.dao.NotificationDao
 import com.tsutsen.platformplayer.core.database.entity.NotificationEntity
+import kotlinx.coroutines.flow.map
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.core.ui.RelativeTime
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
@@ -63,11 +67,18 @@ class NotificationsViewModel
     @Inject
     constructor(
         private val notificationDao: NotificationDao,
+        private val downloadsRepository: DownloadsRepository,
     ) : ViewModel() {
         val notifications: StateFlow<List<NotificationEntity>> =
             notificationDao
                 .observeAll()
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        /** In-flight downloads (not complete) for the Feed's progress widget. */
+        val activeDownloads: StateFlow<List<DownloadInfo>> =
+            downloadsRepository.downloads
+                .map { list -> list.filter { !it.done } }
+                .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
         fun markRead(id: Long) {
             viewModelScope.launch { notificationDao.markRead(id) }
@@ -80,6 +91,10 @@ class NotificationsViewModel
         fun clearAll() {
             viewModelScope.launch { notificationDao.clear() }
         }
+
+        fun cancelDownload(url: String) {
+            viewModelScope.launch { downloadsRepository.cancelDownload(url) }
+        }
     }
 
 @Composable
@@ -91,6 +106,7 @@ fun NotificationsScreen(
     val queue by playerViewModel.queue.collectAsState(initial = emptyList())
     val playerUi by playerViewModel.uiState.collectAsState()
     val playerLoaded = playerUi as? com.tsutsen.platformplayer.feature.player.impl.PlayerUiState.Loaded
+    val activeDownloads by viewModel.activeDownloads.collectAsState(initial = emptyList())
     // Long-press on a queue card → the shared video options sheet.
     var sheetVideo by remember { mutableStateOf<ContentItem?>(null) }
 
@@ -130,6 +146,13 @@ fun NotificationsScreen(
             },
             onLongClick = { video -> sheetVideo = video },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        // Persistent download-progress card (active downloads only).
+        DownloadStripCard(
+            downloads = activeDownloads,
+            onRemove = { url -> viewModel.cancelDownload(url) },
+            modifier = Modifier.padding(horizontal = 16.dp).padding(top = 4.dp),
         )
 
         // Long-press sheet for the queue cards (same host as every other
