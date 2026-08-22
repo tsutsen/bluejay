@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ClosedCaption
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ internal fun PlayerCompactOverlay(
     onChapters: () -> Unit,
     onSubtitleToggle: () -> Unit,
     onWatchLater: () -> Unit,
+    isWatchLater: Boolean = false,
     onOptions: () -> Unit,
     onFullscreen: () -> Unit,
     modifier: Modifier = Modifier
@@ -83,9 +85,10 @@ internal fun PlayerCompactOverlay(
             }
             IconButton(onClick = onWatchLater) {
                 Icon(
-                    imageVector = Icons.Default.Schedule,
+                    imageVector =
+                        if (isWatchLater) Icons.Filled.Schedule else Icons.Outlined.Schedule,
                     contentDescription = "Watch Later",
-                    tint = Color.White
+                    tint = if (isWatchLater) Color.White else Color.White.copy(alpha = 0.6f)
                 )
             }
             IconButton(onClick = onOptions) {

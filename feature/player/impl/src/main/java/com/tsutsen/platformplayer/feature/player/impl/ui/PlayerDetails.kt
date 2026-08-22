@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +54,8 @@ internal fun PlayerDetails(
     onSubscribe: () -> Unit = {},
     onTimestampClick: (Long) -> Unit = {},
     onLinkClick: (String) -> Unit = {},
+    /** Fired when the list is dragged down past the threshold while at the top. */
+    onOverdragTop: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val systemBottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
@@ -66,7 +70,52 @@ internal fun PlayerDetails(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
+                .background(MaterialTheme.colorScheme.surface)
+                // Overdrag-to-fullscreen: when the list is already at the top
+                // and the user keeps dragging DOWN, accumulate the overscroll.
+                // Past the threshold, trigger the parent's fullscreen morph.
+                // We never consume the change (we can't from this callback),
+                // which is fine: at the top the LazyColumn has nothing to
+                // scroll, so there is no competing scroll to steal the drag.
+                .pointerInput(Unit) {
+                    val thresholdPx = with(density) { 120.dp.toPx() }
+                    var topOverscrollPx = 0f
+                    var fired = false
+                    detectDragGestures(
+                        onDragStart = {
+                            topOverscrollPx = 0f
+                            fired = false
+                        },
+                        onDrag = { change, amount ->
+                            if (!scrollState.canScrollBackward) {
+                                when {
+                                    // Dragging down while at the top: accumulate.
+                                    amount.y > 0f && !fired -> {
+                                        topOverscrollPx += amount.y
+                                        if (topOverscrollPx >= thresholdPx) {
+                                            fired = true
+                                            change.consume()
+                                            onOverdragTop()
+                                        }
+                                    }
+
+                                    // Dragging up while at the top: reset.
+                                    amount.y < 0f -> topOverscrollPx = 0f
+                                }
+                            } else {
+                                topOverscrollPx = 0f
+                            }
+                        },
+                        onDragEnd = {
+                            topOverscrollPx = 0f
+                            fired = false
+                        },
+                        onDragCancel = {
+                            topOverscrollPx = 0f
+                            fired = false
+                        },
+                    )
+                },
     ) {
         item {
             Text(

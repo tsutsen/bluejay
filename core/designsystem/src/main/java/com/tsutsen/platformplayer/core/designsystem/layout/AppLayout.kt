@@ -266,9 +266,11 @@ private fun animatedCorner(rounded: Boolean, label: String): Dp =
  *
  * Always a flat, full-width rectangle — no rounded floating card in portrait
  * (this also means there are no corners to "restore" when the video closes).
- * The bar hugs the bottom system inset so it never sits under the system
- * bars, and uses [PortraitNavPadV] (shorter than the shared card padding) to
- * keep the bar compact. The nav row is centered within the bar.
+ *
+ * Native edge-to-edge: the background bleeds to the very bottom of the screen
+ * (under the system gesture bar); only the CONTENT is inset by the system bar
+ * inset. Insetting the whole bar (the old approach) left a gap at the bottom
+ * where app content peeked through.
  */
 @Composable
 private fun NavigationBarSurface(
@@ -278,18 +280,26 @@ private fun NavigationBarSurface(
     val density = LocalDensity.current
     val bottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
 
+    // Full-bleed background — the bar's bottom edge is the screen's bottom edge.
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(bottom = bottomInset)
                 .background(MaterialTheme.colorScheme.surfaceContainer),
-        contentAlignment = Alignment.Center,
     ) {
+        // Inset only the content: horizontal card padding on the sides, the
+        // system bar inset (plus a little) below so the items clear the gesture bar.
         Box(
             modifier =
                 Modifier
-                    .padding(horizontal = NavSurfacePadH, vertical = PortraitNavPadV),
+                    .fillMaxWidth()
+                    .padding(
+                        start = NavSurfacePadH,
+                        end = NavSurfacePadH,
+                        top = PortraitNavPadV,
+                        bottom = bottomInset + PortraitNavPadV,
+                    ),
+            contentAlignment = Alignment.Center,
         ) {
             content()
         }

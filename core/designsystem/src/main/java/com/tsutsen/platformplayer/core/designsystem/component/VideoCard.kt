@@ -1,7 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -118,47 +117,32 @@ fun VideoCard(
                     }
                 }
 
-                // Watch progress (bottom-LEFT): a stadium pill, same height
-                // as the duration pill, half the thumbnail width — far more
-                // visible than the old 4dp edge bar. Hidden while downloading.
+                // Watch progress: a thin bar hugging the thumbnail's bottom
+                // edge (full width, 4dp). The track's bottom corners follow the
+                // thumbnail radius so it sits flush on the edge. Hidden while
+                // downloading.
                 if (downloadProgress == null && watchProgress != null) {
                     Box(
                         modifier =
                             Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(Tokens.SpaceSm),
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(
+                                    RoundedCornerShape(
+                                        bottomStart = Tokens.RadiusSm,
+                                        bottomEnd = Tokens.RadiusSm,
+                                    ),
+                                )
+                                .background(Color.Black.copy(alpha = 0.6f)),
                     ) {
                         Box(
                             modifier =
                                 Modifier
-                                    .fillMaxWidth(0.5f)
-                                    .height(PILL_HEIGHT)
-                                    .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
-                                    .background(Color.Black.copy(alpha = 0.7f)),
-                        ) {
-                            // Played fill: semi-transparent white, no clip of
-                            // its own — the track's stadium clip trims it.
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
-                                        .background(Color.White.copy(alpha = 0.6f)),
-                            )
-                            // Inner outline in Primary, on top so the fill
-                            // never covers it.
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .matchParentSize()
-                                        .clip(RoundedCornerShape(PILL_HEIGHT / 2f))
-                                        .border(
-                                            width = 1.dp,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            shape = RoundedCornerShape(PILL_HEIGHT / 2f),
-                                        ),
-                            )
-                        }
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
+                                    .background(MaterialTheme.colorScheme.primary),
+                        )
                     }
                 }
 
@@ -170,7 +154,7 @@ fun VideoCard(
                             Modifier
                                 .align(Alignment.BottomStart)
                                 .padding(Tokens.SpaceSm)
-                                .height(20.dp)
+                                .height(26.dp)
                                 .clip(RoundedCornerShape(Tokens.RadiusXs))
                                 .background(Color.Black.copy(alpha = 0.85f)),
                         contentAlignment = Alignment.Center,
@@ -181,8 +165,8 @@ fun VideoCard(
                             tint = Color.White,
                             modifier =
                                 Modifier
-                                    .size(16.dp)
-                                    .padding(horizontal = 6.dp),
+                                    .size(22.dp)
+                                    .padding(horizontal = 8.dp),
                         )
                     }
                 }

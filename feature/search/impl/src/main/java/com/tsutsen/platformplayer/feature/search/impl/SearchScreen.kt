@@ -313,7 +313,10 @@ fun SearchScreen(
                         modifier =
                             Modifier
                                 .width(56.dp)
-                                .height(26.dp),
+                                .height(26.dp)
+                                // Keep the search/clear cluster off the field's
+                                // right edge — the slot hugs the edge otherwise.
+                                .padding(end = 8.dp),
                         contentAlignment = Alignment.CenterEnd,
                     ) {
                         Row(

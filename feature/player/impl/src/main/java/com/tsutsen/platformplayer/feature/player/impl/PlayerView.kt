@@ -414,10 +414,16 @@ fun PlayerView(
                     }
                 }
 
+            // "Collapsed" = the video has been dragged down to (or below) half
+            // of its own maximum height. Measuring against maxPlayerHeightPx
+            // (not the window height) is orientation-independent: in portrait
+            // the 16:9 video is only ~25% of the tall window height, so a fixed
+            // 0.45 window-fraction made it read as permanently collapsed and
+            // never entered NORMAL mode.
             val isCollapsedControls =
                 !isFullscreenAnim.value &&
-                    containerSize.height > 0f &&
-                    (playerHeightPx / containerSize.height) <= 0.45f
+                    maxPlayerHeightPx > 0f &&
+                    (playerHeightPx / maxPlayerHeightPx) <= 0.5f
 
             // ==================== Geometry ====================
             val density = LocalDensity.current
@@ -680,6 +686,7 @@ fun PlayerView(
                         onWatchLater = {
                             viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
                         },
+                        isWatchLater = savedTypes.contains(SavedVideoType.WATCH_LATER),
                         onQueue = { showQueueSheet = true },
                         // Casting deferred: the fcast protocol only reaches fcast
                         // receiver apps (not Chromecast TVs), which is niche. Users
@@ -698,6 +705,7 @@ fun PlayerView(
                         },
                         onMoreOptions = { showMiniPlayerOptions = true },
                         onFullscreenToggle = { viewModel.toggleFullscreen() },
+                        onDetailsOverdrag = { viewModel.toggleFullscreen() },
                     )
                 }
 

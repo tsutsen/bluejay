@@ -80,6 +80,7 @@ fun PlayerControls(
     onClose: () -> Unit,
     onMoreOptions: () -> Unit,
     onWatchLater: () -> Unit,
+    isWatchLater: Boolean = false,
     loopMode: Int,
     onLoopMode: () -> Unit,
     onQueue: () -> Unit,
@@ -186,6 +187,7 @@ fun PlayerControls(
                                         loopMode = loopMode,
                                         onLoopMode = onLoopMode,
                                         onWatchLater = onWatchLater,
+                                        isWatchLater = isWatchLater,
                                         onQueue = onQueue,
                                         onOptions = onOptions,
                                         onCast = onCast,
@@ -248,6 +250,7 @@ fun PlayerControls(
                                                     onChapters = onChapters,
                                                     onSubtitleToggle = onSubtitleToggle,
                                                     onWatchLater = onWatchLater,
+                                                    isWatchLater = isWatchLater,
                                                     onOptions = onOptions,
                                                     onFullscreen = onFullscreenToggle,
                                                 )

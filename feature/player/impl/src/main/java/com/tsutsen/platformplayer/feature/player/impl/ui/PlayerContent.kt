@@ -117,6 +117,7 @@ fun PlayerContent(
     loopMode: Int,
     onLoopMode: () -> Unit,
     onWatchLater: () -> Unit,
+    isWatchLater: Boolean = false,
     onQueue: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -124,6 +125,7 @@ fun PlayerContent(
     onScrubFinished: () -> Unit = {},
     onMoreOptions: () -> Unit,
     onFullscreenToggle: () -> Unit,
+    onDetailsOverdrag: () -> Unit = {},
 ) {
     val density = LocalDensity.current
 
@@ -387,6 +389,7 @@ fun PlayerContent(
                     onSubscribe = onSubscribe,
                     onTimestampClick = onTimestampClick,
                     onLinkClick = onLinkClick,
+                    onOverdragTop = onDetailsOverdrag,
                 )
             }
         }
@@ -430,6 +433,7 @@ fun PlayerContent(
             onClose = onClose,
             onMoreOptions = onMoreOptions,
             onWatchLater = onWatchLater,
+            isWatchLater = isWatchLater,
             loopMode = loopMode,
             onLoopMode = onLoopMode,
             onQueue = onQueue,
