@@ -920,6 +920,7 @@ private fun PluginSettingsSection(
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Settings", style = MaterialTheme.typography.titleLarge)
 
