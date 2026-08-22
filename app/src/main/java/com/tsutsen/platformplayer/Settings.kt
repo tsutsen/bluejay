@@ -136,6 +136,14 @@ class Settings {
         // Default speed applied when a new video starts.
         var defaultPlaybackSpeed: Float = 1f
 
+        // Speed multiplier reached after holding the right-hand side
+        // (the "speed up" hold gesture). 2x by default.
+        var defaultSpeedup: Float = 2f
+
+        // Horizontal-swipe sensitivity of the speed-up/slow-down hold:
+        // 1.0 = default, higher = less movement per speed step.
+        var speedupSensitivity: Float = 1f
+
         // Subtitle appearance: font (default|sans|serif|mono),
         // size (small|standard|large), bottom padding (tight|standard|wide).
         var subtitleFont: String = "default"
@@ -147,6 +155,12 @@ class Settings {
     class ContentSettings {
         var showRecommendedVideos: Boolean = true
         var showComments: Boolean = true
+
+        // "Auto" or "NNNp" — quality the player starts each video at.
+        var defaultVideoResolution: String = "Auto"
+
+        // Resolution label (DownloadQuality label) a plain download uses.
+        var defaultDownloadResolution: String = "480p"
     }
 
     @Serializable

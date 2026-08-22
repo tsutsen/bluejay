@@ -5,6 +5,10 @@ data class AppPreferences(
     val playback: PlaybackPreferences = PlaybackPreferences(),
     val subtitle: SubtitlePreferences = SubtitlePreferences(),
     val defaultPlaybackSpeed: Float = 1f,
+    val defaultSpeedup: Float = 2f,
+    val speedupSensitivity: Float = 1f,
+    val defaultVideoResolution: String = "Auto",
+    val defaultDownloadResolution: String = "480p",
     val enableDeveloperOptions: Boolean = false,
     val librarySectionOrder: List<String> =
         listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),

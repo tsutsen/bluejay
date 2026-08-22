@@ -85,12 +85,20 @@ class EngineDownloadsRepository
                         refresh()
                         return@withContext null
                     }
-                    // Quality: null (plain download) keeps the small mobile
-                    // default; a chosen quality uses its own targets (null =
-                    // best). The engine picks the closest available source.
+                    // Quality: a chosen quality uses its own targets (null =
+                    // best); a plain download (null) uses the user's default
+                    // download resolution. The engine picks the closest
+                    // available source.
                     val (targetPx, targetBr) =
                         videoQuality?.let { it.targetPixelCount to it.targetBitrate }
-                            ?: (256L * 144L to 64_000L)
+                            ?: run {
+                                val def =
+                                    DownloadQuality.fromLabel(
+                                        com.tsutsen.platformplayer.Settings.instance.content
+                                            .defaultDownloadResolution,
+                                    )
+                                def.targetPixelCount to def.targetBitrate
+                            }
                     // The engine's own entry point: validates (rejects
                     // already-queued URLs), persists, toasts, and starts
                     // the DownloadService.

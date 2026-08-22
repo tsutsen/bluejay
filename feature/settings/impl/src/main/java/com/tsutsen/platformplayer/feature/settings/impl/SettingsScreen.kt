@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
@@ -27,7 +30,9 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.DisplaySettings
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Hd
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
@@ -55,6 +60,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -350,18 +356,80 @@ fun SettingsSectionScreen(
         Choice.PLAYBACK_SPEED -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Default playback speed",
+                    title = "Default playback speedup",
                     options =
                         listOf(
-                            "0.75x" to "0.75",
-                            "1x" to "1.0",
-                            "1.25x" to "1.25",
                             "1.5x" to "1.5",
                             "2x" to "2.0",
+                            "3x" to "3.0",
+                            "4x" to "4.0",
                         ),
-                    selected = it.defaultPlaybackSpeed.toString(),
+                    selected = it.defaultSpeedup.toString(),
                     onSelected = { value ->
-                        viewModel.updateGeneral("defaultPlaybackSpeed", value.toFloat())
+                        viewModel.updateGeneral("defaultSpeedup", value.toFloat())
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+        Choice.SPEEDUP_SENSITIVITY -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Speedup gesture sensitivity",
+                    options =
+                        listOf(
+                            "Low" to "0.5",
+                            "Normal" to "1.0",
+                            "High" to "1.5",
+                            "Very high" to "2.0",
+                        ),
+                    selected = it.speedupSensitivity.toString(),
+                    onSelected = { value ->
+                        viewModel.updateGeneral("speedupSensitivity", value.toFloat())
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+        Choice.VIDEO_RESOLUTION -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Default video resolution",
+                    options =
+                        listOf(
+                            "Auto" to "Auto",
+                            "144p" to "144p",
+                            "360p" to "360p",
+                            "480p" to "480p",
+                            "720p" to "720p",
+                            "1080p" to "1080p",
+                        ),
+                    selected = it.defaultVideoResolution,
+                    onSelected = { value ->
+                        viewModel.updateGeneral("defaultVideoResolution", value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+        Choice.DOWNLOAD_RESOLUTION -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Default download resolution",
+                    options =
+                        listOf(
+                            "1080p" to "1080p",
+                            "720p" to "720p",
+                            "480p" to "480p",
+                            "360p" to "360p",
+                            "144p" to "144p",
+                        ),
+                    selected = it.defaultDownloadResolution,
+                    onSelected = { value ->
+                        viewModel.updateGeneral("defaultDownloadResolution", value)
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -459,15 +527,39 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
                 )
             }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Hd,
+                    title = "Default video resolution",
+                    subtitle = state.defaultVideoResolution,
+                    onClick = { onChoiceSelected(Choice.VIDEO_RESOLUTION) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Download,
+                    title = "Default download resolution",
+                    subtitle = state.defaultDownloadResolution,
+                    onClick = { onChoiceSelected(Choice.DOWNLOAD_RESOLUTION) },
+                )
+            }
         }
 
         "playback" -> {
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.Speed,
-                    title = "Default playback speed",
-                    subtitle = "${state.defaultPlaybackSpeed}x",
+                    title = "Default playback speedup",
+                    subtitle = "${state.defaultSpeedup}x",
                     onClick = { onChoiceSelected(Choice.PLAYBACK_SPEED) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Speed,
+                    title = "Speedup gesture sensitivity",
+                    subtitle = "${state.speedupSensitivity}x",
+                    onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
                 )
             }
             item {
@@ -659,6 +751,9 @@ private enum class Choice {
     DUAL_SLOTS,
     LIBRARY_SECTION_ORDER,
     PLAYBACK_SPEED,
+    SPEEDUP_SENSITIVITY,
+    VIDEO_RESOLUTION,
+    DOWNLOAD_RESOLUTION,
 }
 
 @Composable
@@ -673,7 +768,7 @@ private fun MultiSelectDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 options.forEach { (label, value) ->
                     Row(
                         modifier =
@@ -712,7 +807,7 @@ private fun ChoiceDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 options.forEach { (label, value) ->
                     Row(
                         modifier =
@@ -760,10 +855,13 @@ private fun ReorderDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 draft.forEachIndexed { index, (id, label) ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -783,8 +881,17 @@ private fun ReorderDialog(
                                 }
                             },
                             enabled = index > 0,
+                            modifier =
+                                Modifier
+                                    .size(30.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                         ) {
-                            Icon(Icons.Filled.ExpandLess, contentDescription = "Move up")
+                            Icon(
+                                Icons.Filled.ExpandLess,
+                                contentDescription = "Move up",
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                         IconButton(
                             onClick = {
@@ -798,8 +905,17 @@ private fun ReorderDialog(
                                 }
                             },
                             enabled = index < draft.size - 1,
+                            modifier =
+                                Modifier
+                                    .size(30.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                         ) {
-                            Icon(Icons.Filled.ExpandMore, contentDescription = "Move down")
+                            Icon(
+                                Icons.Filled.ExpandMore,
+                                contentDescription = "Move down",
+                                modifier = Modifier.size(18.dp),
+                            )
                         }
                     }
                 }
@@ -827,14 +943,16 @@ private fun SlotsDialog(
         title = { Text(if (editing == null) "Library slots" else "Slot ${editing!! + 1}") },
         text = {
             if (editing == null) {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     (0 until 4).forEach { index ->
                         Row(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
+                                    .clip(RoundedCornerShape(Tokens.RadiusMd))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                     .clickable { editing = index }
-                                    .padding(vertical = Tokens.SpaceXs),
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(

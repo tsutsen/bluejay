@@ -43,6 +43,10 @@ class SettingsRepositoryImpl
                         bottomPadding = s.playback.subtitleBottomPadding,
                     ),
                 defaultPlaybackSpeed = s.playback.defaultPlaybackSpeed,
+                defaultSpeedup = s.playback.defaultSpeedup,
+                speedupSensitivity = s.playback.speedupSensitivity,
+                defaultVideoResolution = s.content.defaultVideoResolution,
+                defaultDownloadResolution = s.content.defaultDownloadResolution,
                 enableDeveloperOptions = s.advancedSettings,
                 dualScreen = s.dualScreen,
                 dualScreenPages = s.dualScreenPages,
@@ -92,6 +96,10 @@ class SettingsRepositoryImpl
                 "subtitleFontSize" -> s.playback.subtitleFontSize = (value as Number).toInt()
                 "subtitleBottomPadding" -> s.playback.subtitleBottomPadding = (value as Number).toInt()
                 "defaultPlaybackSpeed" -> s.playback.defaultPlaybackSpeed = value as Float
+                "defaultSpeedup" -> s.playback.defaultSpeedup = value as Float
+                "speedupSensitivity" -> s.playback.speedupSensitivity = value as Float
+                "defaultVideoResolution" -> s.content.defaultVideoResolution = value as String
+                "defaultDownloadResolution" -> s.content.defaultDownloadResolution = value as String
                 else -> return
             }
             s.save()
@@ -143,6 +151,10 @@ class SettingsRepositoryImpl
             s.content.showRecommendedVideos = true
             s.content.showComments = true
             s.playback.defaultPlaybackSpeed = 1f
+            s.playback.defaultSpeedup = 2f
+            s.playback.speedupSensitivity = 1f
+            s.content.defaultVideoResolution = "Auto"
+            s.content.defaultDownloadResolution = "480p"
             s.playback.subtitleFont = "default"
             s.playback.subtitleFontSize = 16
             s.playback.subtitleBottomPadding = 20

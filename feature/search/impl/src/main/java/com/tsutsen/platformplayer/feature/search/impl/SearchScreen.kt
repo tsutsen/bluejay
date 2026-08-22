@@ -303,49 +303,32 @@ fun SearchScreen(
                         .onFocusChanged { isSearchFocused = it.isFocused },
                 placeholder = { Text("Search") },
                 trailingIcon = {
-                    // Fixed-width slot (26 + 4 + 26): the M3 trailing-icon
-                    // slot imposes its own constraints on its content, so a
-                    // wrap-content Row there shifts around when the clear
-                    // button appears. A box with an enforced width keeps the
-                    // layout deterministic: search pins to the slot's right
-                    // edge, clear slides in to its left.
-                    Box(
-                        modifier =
-                            Modifier
-                                .width(56.dp)
-                                .height(26.dp)
-                                // Keep the search/clear cluster off the field's
-                                // right edge — the slot hugs the edge otherwise.
-                                .padding(end = 8.dp),
-                        contentAlignment = Alignment.CenterEnd,
+                    // Search button pins to the field's right edge; the clear
+                    // button slides in to its left when there's text. Buttons
+                    // are fixed-size, so nothing squishes.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.End,
+                        AnimatedVisibility(
+                            visible = searchQuery.isNotEmpty(),
+                            enter = fadeIn(tween(120)) + expandHorizontally(tween(120)),
+                            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(120)),
                         ) {
-                            AnimatedVisibility(
-                                visible = searchQuery.isNotEmpty(),
-                                enter = fadeIn(tween(120)) + expandHorizontally(tween(120)),
-                                exit = fadeOut(tween(120)) + shrinkHorizontally(tween(120)),
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    SearchFieldButton(
-                                        icon = Icons.Default.Close,
-                                        contentDescription = "Clear",
-                                        onClick = { viewModel.setQuery("") },
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                }
+                            Row {
+                                SearchFieldButton(
+                                    icon = Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    onClick = { viewModel.setQuery("") },
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                             }
-                            SearchFieldButton(
-                                icon = Icons.Default.Search,
-                                contentDescription = "Search",
-                                onClick = { performSearch() },
-                            )
                         }
+                        SearchFieldButton(
+                            icon = Icons.Default.Search,
+                            contentDescription = "Search",
+                            onClick = { performSearch() },
+                        )
                     }
                 },
                 singleLine = true,

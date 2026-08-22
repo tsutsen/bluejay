@@ -235,11 +235,7 @@ private fun SubscriptionsContent(
                 creator = creator,
                 isSelected = creator.id == state.activeCreatorId,
                 onClick = { onCreatorSelected(creator.id) },
-                onLongClick = {
-                    // Toggle: long-pressing the open bubble closes the pill.
-                    if (peek?.id == creator.id) peek = null
-                    else peek = creator
-                },
+                onLongClick = { onGoToChannel(creator.url) },
             )
         }
     }

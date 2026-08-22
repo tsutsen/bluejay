@@ -138,7 +138,8 @@ class PlayerGestureActionHandler(
             GestureAction.NONE -> {}
             GestureAction.BRIGHTNESS -> handleBrightness(frame)
             GestureAction.VOLUME -> handleVolume(frame)
-            GestureAction.SPEEDUP -> handleSpeedHold(frame, baseMultiplier = 2f)
+            GestureAction.SPEEDUP ->
+                handleSpeedHold(frame, baseMultiplier = viewModel.defaultSpeedup)
             GestureAction.SPEEDDOWN -> handleSpeedHold(frame, baseMultiplier = 0.5f)
             GestureAction.MORPH_TO_FLOATING -> handleMorphToFloating(frame)
             GestureAction.MORPH_TO_FULLSCREEN -> handleMorphToFullscreen(frame)
@@ -286,7 +287,8 @@ class PlayerGestureActionHandler(
             }
             GesturePhase.ACTIVE -> {
                 // totalDelta.x: positive = swipe right (faster), negative = left (slower)
-                val steps = (frame.totalDelta.x / SPEED_SWIPE_STEP_PX).toInt()
+                val steps =
+                    (frame.totalDelta.x / (SPEED_SWIPE_STEP_PX / viewModel.speedupSensitivity)).toInt()
                 val speed = (baseMultiplier + steps * SPEED_STEP).coerceIn(0.25f, 4f)
                 // Round to nearest 0.1 to avoid floating-point drift
                 val snapped = (speed * 10).toInt() / 10f

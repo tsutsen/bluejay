@@ -133,7 +133,7 @@ class PlayerRepositoryImpl(
     // User-selected track preferences (UI labels). Applied to the ExoPlayer
     // via [applyTrackSelectionParameters] and re-applied to each new player.
     private var selectedQuality: String = "Auto"
-    private var selectedSubtitle: String = "Auto"
+    private var selectedSubtitle: String = "Off"
     /** Last concretely selected track — used by [toggleSubtitles] when re-enabling. */
     private var lastExplicitSubtitle: String? = null
     private var pendingResumePosition: Long = 0
@@ -399,6 +399,15 @@ class PlayerRepositoryImpl(
         // PlayerViewModel, which the companion's play path never touches.
         val generation = playGeneration.incrementAndGet()
         val prefs = settingsRepository?.preferences?.value
+
+        // A new video starts at the user's default resolution. selectedQuality
+        // is a persistent field, so reset it here (the one place every play
+        // path goes through) before the track selection is applied below.
+        prefs?.defaultVideoResolution?.let { res ->
+            selectedQuality = res
+            _playerState.update { it.copy(selectedQuality = res) }
+        }
+
         if (prefs != null) {
             extrasScope.launch {
                 if (prefs.showComments) {

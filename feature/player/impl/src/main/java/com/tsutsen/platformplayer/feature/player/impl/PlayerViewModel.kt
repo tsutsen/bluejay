@@ -62,7 +62,7 @@ sealed interface PlayerUiState {
         val videoQualities: List<Int> = emptyList(),
         val subtitleLanguages: List<String> = emptyList(),
         val selectedQuality: String = "Auto",
-        val selectedSubtitle: String = "Auto",
+        val selectedSubtitle: String = "Off",
         val subtitleText: String = "",
         val chapters: List<VideoChapter> = emptyList(),
         val recommendations: List<Card> = emptyList(),
@@ -116,6 +116,14 @@ class PlayerViewModel
             }
         }
         val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+        /** Speed multiplier reached after holding the speed-up side. */
+        val defaultSpeedup: Float
+            get() = settingsRepository.preferences.value.defaultSpeedup
+
+        /** Horizontal-swipe sensitivity of the speed-up/slow-down hold. */
+        val speedupSensitivity: Float
+            get() = settingsRepository.preferences.value.speedupSensitivity
 
         /** Live saved types for the current video (drives like/dislike buttons). */
         @Volatile

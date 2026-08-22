@@ -57,13 +57,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.tsutsen.platformplayer.core.designsystem.reorder.FlipItem
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -170,29 +167,20 @@ private fun QueuedCardStrip(
     // The now-playing card's position: items can't move in front of it.
     val currentIndex = items.indexOfFirst { it.url == current?.url }
 
-    // FLIP for every list change (move, add, remove): each card's x is
-    // remembered from the last layout pass; when a card's x jumps (a
-    // neighbour appeared or vanished) it starts displaced by the delta and
-    // springs back, so survivors slide into their new slots. Scrolling
-    // moves every card by the same amount, so deltas cancel out and no
-    // spurious animation fires.
-    val flipAnims = remember { mutableMapOf<String, Animatable<Offset, *>>() }
-    val flipJobs = remember { mutableMapOf<String, Job>() }
-    val lastX = remember { mutableMapOf<String, Float>() }
+    // FLIP driven from data, never from position callbacks: when the queue
+    // order changes, slide each survivor from its old slot to its new one.
+    // Cards sit exactly [stepPx] apart, so the invert offset is
+    // (oldIndex - newIndex) * stepPx. Because this only runs on a real
+    // [items] change, scrolling the strip (or a card entering the viewport)
+    // never triggers a slide.
     val stepPx = with(LocalDensity.current) { (CARD_W + STRIP_GAP).toPx() }
+    // Previous order of the queue, keyed by url. Each card's flip offset is
+    // computed from this during composition (lastOrder still holds the
+    // previous order at that point), so a reorder's first frame is already at
+    // the old slot — no one-frame jump to the final position.
+    val lastOrder = remember { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(items) { lastOrder.value = items.map { it.url } }
 
-    /** Start a FLIP displacement of [url] by [dx] px, easing back to rest. */
-    fun flip(url: String, dx: Float) {
-        flipJobs[url]?.cancel()
-        val anim = flipAnims.getOrPut(url) { Animatable(Offset.Zero, Offset.VectorConverter) }
-        flipJobs[url] =
-            scope.launch {
-                anim.snapTo(Offset(dx, 0f))
-                // Fixed-duration tween: consistent timing, no overshoot. A
-                // spring lagged and bounced — the "laggy / abrupt" feel.
-                anim.animateTo(Offset.Zero, tween(ANIM, easing = FastOutSlowInEasing))
-            }
-    }
     // Keep a reordered card centered so the user can follow it.
     fun followCard(index: Int) {
         val target = ((index + 0.5f) * stepPx - viewportPx.value / 2f).toInt()
@@ -201,14 +189,12 @@ private fun QueuedCardStrip(
         }
     }
 
-    // Scroll to newly added items so an off-screen add is never invisible;
-    // drop FLIP state of removed cards.
+    // Scroll to newly added items so an off-screen add is never invisible.
     val prevUrls = remember { mutableStateOf<Set<String>>(items.mapTo(mutableSetOf()) { it.url }) }
     LaunchedEffect(items) {
         val urls = items.mapTo(mutableSetOf()) { it.url }
         val added = urls - prevUrls.value
         prevUrls.value = urls
-        lastX.keys.removeAll { it !in urls }
         if (added.isNotEmpty() && items.isNotEmpty()) {
             val index = items.indexOfFirst { it.url in added }
             scrollState.animateScrollTo(index * stepPx.toInt())
@@ -228,57 +214,59 @@ private fun QueuedCardStrip(
             // position-scoped remember used to reset hasAppeared on every
             // move, hiding the card forever).
             key(item.url) {
-            // FLIP measurement wrapper (outside the flip offset, so it
-            // always reads the true layout position).
-            Box(
-                modifier =
-                    Modifier.onGloballyPositioned {
-                        // Add the scroll offset back so x is in content
-                        // space: scrolling shifts the window x but leaves
-                        // this value unchanged, so only a real reorder
-                        // (index change) triggers a flip — scrolling never
-                        // causes a spurious one on every card.
-                        val x = it.boundsInWindow().left + scrollState.value
-                        val old = lastX[item.url]
-                        lastX[item.url] = x
-                        // Epsilon: ignore sub-pixel drift from multi-fire /
-                        // float noise. A real reorder moves a card by
-                        // ~stepPx, far above this.
-                        if (old != null && abs(old - x) > 2f) flip(item.url, old - x)
-                    },
-            ) {
-            FlipItem(
-                flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
-            ) {
-                if (item.url == current?.url) {
-                    NowPlayingCard(
-                        item = item,
-                        isPlaying = isPlaying,
-                        onPlayPause = onPlayPause,
-                        onLongClick = { onLongClick(item) },
-                    )
-                } else {
-                    QueueStripItem(
-                        item = item,
-                        onPlay = { onPlay(index) },
-                        onRemove = { onRemove(item.url) },
-                        onLongClick = { onLongClick(item) },
-                        // Nothing may move in front of the now-playing card.
-                        canMoveEarlier =
-                            if (currentIndex >= 0) index > currentIndex + 1 else index > 0,
-                        canMoveLater = index < items.size - 1,
-                        onMoveEarlier = {
-                            onMove(index, index - 1)
-                            followCard(index - 1)
-                        },
-                        onMoveLater = {
-                            onMove(index, index + 1)
-                            followCard(index + 1)
-                        },
-                    )
+                // FLIP: when this card's index changes, capture the offset from
+                // its old slot and animate back. Computed during composition
+                // (lastOrder still holds the previous order), so the first
+                // frame is already at the old position — no 1-frame jump.
+                val oldIdx = lastOrder.value?.indexOf(item.url) ?: -1
+                val flipDelta =
+                    remember(index) {
+                        if (oldIdx >= 0 && oldIdx != index) {
+                            (oldIdx - index).toFloat() * stepPx
+                        } else {
+                            0f
+                        }
+                    }
+                val flipProgress = remember(index) { Animatable(Offset.Zero, Offset.VectorConverter) }
+                LaunchedEffect(index) {
+                    if (flipDelta != 0f) {
+                        flipProgress.animateTo(Offset(1f, 0f), tween(ANIM, easing = FastOutSlowInEasing))
+                    }
                 }
-            }
-            }
+                Box(
+                    modifier =
+                        Modifier.graphicsLayer {
+                            translationX = flipDelta * (1f - flipProgress.value.x)
+                        },
+                ) {
+                    if (item.url == current?.url) {
+                        NowPlayingCard(
+                            item = item,
+                            isPlaying = isPlaying,
+                            onPlayPause = onPlayPause,
+                            onLongClick = { onLongClick(item) },
+                        )
+                    } else {
+                        QueueStripItem(
+                            item = item,
+                            onPlay = { onPlay(index) },
+                            onRemove = { onRemove(item.url) },
+                            onLongClick = { onLongClick(item) },
+                            // Nothing may move in front of the now-playing card.
+                            canMoveEarlier =
+                                if (currentIndex >= 0) index > currentIndex + 1 else index > 0,
+                            canMoveLater = index < items.size - 1,
+                            onMoveEarlier = {
+                                onMove(index, index - 1)
+                                followCard(index - 1)
+                            },
+                            onMoveLater = {
+                                onMove(index, index + 1)
+                                followCard(index + 1)
+                            },
+                        )
+                    }
+                }
             }
         }
         // Trailing inset so the last card doesn't sit flush against the
@@ -314,16 +302,7 @@ private fun QueueStripItem(
             bottomStart = 10.dp,
             bottomEnd = 0.dp,
         )
-    // Entry animation: items start collapsed and expand in.
-    var hasAppeared by remember(item.url) { mutableStateOf(false) }
-    LaunchedEffect(Unit) { hasAppeared = true }
-
-    AnimatedVisibility(
-        visible = hasAppeared,
-        enter = fadeIn(tween(ANIM)) + expandHorizontally(tween(ANIM)),
-        exit = fadeOut(tween(ANIM)) + shrinkHorizontally(tween(ANIM)),
-    ) {
-        Box(
+    Box(
             modifier =
                 Modifier
                     .width(CARD_W)
@@ -532,7 +511,6 @@ private fun QueueStripItem(
                 }
             }
         }
-    }
 }
 
 /** Now-playing card: full-bleed thumbnail, gradient, play/pause, meta. */
