@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.core.data.repository
 
 import com.tsutsen.platformplayer.core.model.DownloadInfo
+import com.tsutsen.platformplayer.core.model.DownloadQuality
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -14,9 +15,11 @@ interface DownloadsRepository {
 
     /**
      * Enqueue a download for [videoUrl].
+     * @param videoQuality the quality to download at; null = the default
+     *   mobile quality (144p / 64kbps).
      * @return an error message, or null if the download was started.
      */
-    suspend fun startDownload(videoUrl: String): String?
+    suspend fun startDownload(videoUrl: String, videoQuality: DownloadQuality? = null): String?
 
     /**
      * Cancel a queued/in-progress download for [videoUrl] and stop the

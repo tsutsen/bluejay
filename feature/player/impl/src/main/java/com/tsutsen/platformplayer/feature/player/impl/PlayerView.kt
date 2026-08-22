@@ -914,6 +914,7 @@ private fun CurrentVideoOptionsSheet(
                 is DownloadButtonState.Starting -> Unit
             }
         },
+        onDownloadWithQuality = { quality -> viewModel.startDownload(quality) },
         onAddToPlaylist = { playlistId ->
             if (playlistId == null) showNewPlaylistDialog = true
             else viewModel.addToPlaylist(video, playlistId)

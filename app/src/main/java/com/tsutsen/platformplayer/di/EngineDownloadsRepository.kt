@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.di
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.model.DownloadInfo
+import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.downloads.VideoDownload
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.services.DownloadService
@@ -60,7 +61,10 @@ class EngineDownloadsRepository
             }
         }
 
-        override suspend fun startDownload(videoUrl: String): String? =
+        override suspend fun startDownload(
+            videoUrl: String,
+            videoQuality: DownloadQuality?,
+        ): String? =
             withContext(Dispatchers.IO) {
                 try {
                     // Duplicate-queue guard: the engine's download() has
@@ -81,10 +85,16 @@ class EngineDownloadsRepository
                         refresh()
                         return@withContext null
                     }
+                    // Quality: null (plain download) keeps the small mobile
+                    // default; a chosen quality uses its own targets (null =
+                    // best). The engine picks the closest available source.
+                    val (targetPx, targetBr) =
+                        videoQuality?.let { it.targetPixelCount to it.targetBitrate }
+                            ?: (256L * 144L to 64_000L)
                     // The engine's own entry point: validates (rejects
                     // already-queued URLs), persists, toasts, and starts
-                    // the DownloadService. 144p / 64kbps for mobile.
-                    StateDownloads.instance.download(video, 256L * 144L, 64_000L)
+                    // the DownloadService.
+                    StateDownloads.instance.download(video, targetPx, targetBr)
                     trackProgress()
                     refresh()
                     null
@@ -93,6 +103,7 @@ class EngineDownloadsRepository
                     e.message ?: "Download failed"
                 }
             }
+    
 
         override suspend fun deleteDownload(videoUrl: String): String? =
             withContext(Dispatchers.IO) {

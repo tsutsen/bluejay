@@ -87,6 +87,7 @@ fun VideoOptionsSheetHost(
                 is DownloadButtonState.Starting -> Unit
             }
         },
+        onDownloadWithQuality = { quality -> viewModel.download(video, quality) },
         downloadState = downloadState,
         // "New playlist" row (the checkboxes use onTogglePlaylist).
         onAddToPlaylist = { playlistId ->

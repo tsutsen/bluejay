@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -34,11 +36,14 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.LocalSemanticColors
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
+import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.ui.RelativeTime
 
@@ -84,6 +90,9 @@ fun VideoOptionsSheet(
     onToggleLiked: () -> Unit,
     onToggleFavourite: () -> Unit,
     onDownload: () -> Unit,
+    // Long-press the download tile to pick a quality; null hides the
+    // long-press (hosts that don't offer quality selection).
+    onDownloadWithQuality: ((DownloadQuality) -> Unit)? = null,
     onAddToPlaylist: (Long?) -> Unit,
     onAddToQueue: () -> Unit = {},
     // Queue state: the tile becomes a highlighted "Remove from queue" when
@@ -114,6 +123,7 @@ fun VideoOptionsSheet(
 ) {
     val context = LocalContext.current
     var showPlaylists by remember { mutableStateOf(false) }
+    var showQualityDialog by remember { mutableStateOf(false) }
     // Snapshot of the (recency-sorted) list taken when the section opens.
     // The live list re-sorts on every add/remove (updatedAt bump), which
     // made rows jump under the finger while a box was being checked. Pin
@@ -225,6 +235,10 @@ fun VideoOptionsSheet(
                         progress = (downloadState as? DownloadButtonState.Downloading)?.progress,
                         indeterminate = downloadState is DownloadButtonState.Starting,
                         onClick = onDownload,
+                        onLongClick =
+                            if (downloadState is DownloadButtonState.Idle && onDownloadWithQuality != null) {
+                                { showQualityDialog = true }
+                            } else null,
                     ),
                 )
                 add(
@@ -350,6 +364,63 @@ fun VideoOptionsSheet(
     } else {
         BluejayModalBottomSheet(onDismiss = onDismiss, content = body)
     }
+    if (showQualityDialog) {
+        DownloadQualityDialog(
+            onDismiss = { showQualityDialog = false },
+            onConfirm = { q ->
+                showQualityDialog = false
+                onDownloadWithQuality?.invoke(q)
+            },
+        )
+    }
+}
+
+@Composable
+private fun DownloadQualityDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (DownloadQuality) -> Unit,
+) {
+    var selected by remember { mutableStateOf(DownloadQuality.Default) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Download quality") },
+        text = {
+            Column {
+                DownloadQuality.Options.forEach { q ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(Tokens.RadiusMd))
+                                .clickable { selected = q }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = selected == q,
+                            onClick = { selected = q },
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = q.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) {
+                Text("Download")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable
@@ -424,6 +495,19 @@ fun OptionTileView(
                 Triple(scheme.surfaceContainer, scheme.onSurface, scheme.onSurfaceVariant)
             }
         }
+    val clickModifier =
+        if (tile.onLongClick != null) {
+            Modifier.combinedClickable(
+                enabled = !tile.disabled,
+                onClick = tile.onClick,
+                onLongClick = {
+                    tile.onLongClick?.invoke()
+                    true
+                },
+            )
+        } else {
+            Modifier.clickable(enabled = !tile.disabled, onClick = tile.onClick)
+        }
     Column(
         modifier =
             modifier
@@ -432,7 +516,7 @@ fun OptionTileView(
                     RoundedCornerShape(Tokens.RadiusMd),
                 ).background(
                     bg,
-                ).clickable(enabled = !tile.disabled, onClick = tile.onClick)
+                ).then(clickModifier)
                 .padding(vertical = Tokens.SpaceMd),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -553,6 +637,8 @@ data class OptionTile(
     val indeterminate: Boolean = false,
     /** Dimmed, clicks ignored. */
     val disabled: Boolean = false,
+    /** Optional long-press action (e.g. pick a download quality). */
+    val onLongClick: (() -> Unit)? = null,
 )
 
 /**

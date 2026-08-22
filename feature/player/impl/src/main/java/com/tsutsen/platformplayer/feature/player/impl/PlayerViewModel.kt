@@ -17,6 +17,7 @@ import com.tsutsen.platformplayer.core.model.CastState
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadInfo
+import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlayerState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
@@ -405,10 +406,10 @@ class PlayerViewModel
         }
     }
 
-    /** Start downloading the current video. */
-    fun startDownload() {
+    /** Start downloading the current video (null quality = engine default). */
+    fun startDownload(quality: DownloadQuality? = null) {
         val url = playerRepository.playerState.value.currentVideo?.url ?: return
-        viewModelScope.launch { downloadsRepository.startDownload(url) }
+        viewModelScope.launch { downloadsRepository.startDownload(url, quality) }
     }
 
     /** Cancel the current video's download. */

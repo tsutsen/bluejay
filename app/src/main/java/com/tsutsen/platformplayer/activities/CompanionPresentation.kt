@@ -1198,6 +1198,12 @@ private fun CompanionVideoOptionsSheet(
                 }
             }
         },
+        onDownloadWithQuality = { quality ->
+            scope.launch {
+                downloading = true
+                downloadsRepository.startDownload(card.url, quality)
+            }
+        },
         onAddToPlaylist = { playlistId ->
             // "New playlist" row only (checkboxes use onTogglePlaylist).
             if (playlistId == null) {

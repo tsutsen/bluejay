@@ -9,6 +9,7 @@ import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.ContentType
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
+import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
@@ -86,7 +87,7 @@ class VideoOptionsViewModel
          */
         private val _startingUrls = MutableStateFlow<Set<String>>(emptySet())
 
-        fun download(video: VideoCard) {
+        fun download(video: VideoCard, quality: DownloadQuality? = null) {
             // Check + add on the main thread with no suspension between
             // them, so rapid double/triple taps can't both slip through
             // (each would otherwise queue a separate full download).
@@ -96,7 +97,9 @@ class VideoOptionsViewModel
                 try {
                     // The engine toasts on success and dialogs on its own
                     // failures; only surface pre-resolution errors here.
-                    downloadsRepository.startDownload(video.url)?.let { _downloadMessage.value = it }
+                    downloadsRepository
+                        .startDownload(video.url, quality)
+                        ?.let { _downloadMessage.value = it }
                 } finally {
                     _startingUrls.value -= video.url
                 }
