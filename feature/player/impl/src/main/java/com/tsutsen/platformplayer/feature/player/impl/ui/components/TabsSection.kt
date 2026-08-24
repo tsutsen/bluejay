@@ -11,12 +11,13 @@ import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 internal fun TabsSection(
     showComments: Boolean,
     showRecommended: Boolean,
+    isLive: Boolean = false,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
 ) {
     val tabs =
         buildList {
-            if (showComments) add(0 to "Comments")
+            if (showComments) add(0 to if (isLive) "Live chat" else "Comments")
             if (showRecommended) add(1 to "Recommended")
         }
     if (tabs.isEmpty()) return

@@ -76,6 +76,7 @@ fun PlayerView(
     onChannelClick: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val liveChat by viewModel.liveChat.collectAsState()
     val gridColumns by viewModel.gridColumns.collectAsState()
     val savedTypes by viewModel.savedTypes.collectAsState(initial = emptySet())
     val loopMode by viewModel.loopMode.collectAsState(initial = 0)
@@ -644,6 +645,8 @@ fun PlayerView(
                         onMore = { sheetVideo = state.currentVideo },
                         isSubscribedChannel = state.isSubscribedChannel,
                         onSubscribe = { viewModel.subscribeChannel() },
+                        isLive = state.isLive,
+                        liveChat = liveChat,
                         onTimestampClick = onTimestampClick,
                         onLinkClick = onLinkClick,
                         onTabSelected = { selectedTab = it },

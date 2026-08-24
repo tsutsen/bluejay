@@ -20,6 +20,7 @@ data class VideoDetails(
     val publishedAtMs: Long?,
     val likeCount: Long?,
     val dislikeCount: Long?,
+    val isLive: Boolean = false,
     val subtitles: List<SubtitleSource> = emptyList()
 )
 

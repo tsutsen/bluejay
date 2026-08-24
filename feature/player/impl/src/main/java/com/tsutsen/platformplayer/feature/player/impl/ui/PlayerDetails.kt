@@ -2,8 +2,10 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,15 +22,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.model.LiveChatUiState
 import com.tsutsen.platformplayer.core.model.VideoCard
+import com.tsutsen.platformplayer.feature.player.impl.ui.components.LiveChatPanel
 import kotlin.math.max
 
 /**
@@ -52,6 +58,8 @@ internal fun PlayerDetails(
     onMore: () -> Unit,
     isSubscribedChannel: Boolean = false,
     onSubscribe: () -> Unit = {},
+    isLive: Boolean = false,
+    liveChat: LiveChatUiState? = null,
     onTimestampClick: (Long) -> Unit = {},
     onLinkClick: (String) -> Unit = {},
     /** Fired when the list is dragged down past the threshold while at the top. */
@@ -118,13 +126,29 @@ internal fun PlayerDetails(
                 },
     ) {
         item {
-            Text(
-                text = state.currentVideo?.title ?: "Unknown",
-                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
-                fontSize = 18.sp,
+            Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = state.currentVideo?.title ?: "Unknown",
+                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+                    fontSize = 18.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                if (isLive) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .background(Color(0xFFE60000), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text("LIVE", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+            }
         }
         item {
             val video = state.currentVideo
@@ -155,7 +179,7 @@ internal fun PlayerDetails(
         }
         val visibleTabs =
             listOfNotNull(
-                0.takeIf { state.showComments },
+                0.takeIf { isLive || state.showComments },
                 1.takeIf { state.showRecommended },
             )
         if (visibleTabs.isEmpty()) {
@@ -165,14 +189,25 @@ internal fun PlayerDetails(
             if (selectedTab in visibleTabs) selectedTab else visibleTabs.first()
         item {
             TabsSection(
-                showComments = state.showComments,
+                showComments = isLive || state.showComments,
                 showRecommended = state.showRecommended,
+                isLive = isLive,
                 selectedTab = effectiveTab,
                 onTabSelected = onTabSelected,
             )
         }
         when (effectiveTab) {
             0 -> {
+                if (isLive) {
+                    item {
+                        LiveChatPanel(
+                            state = liveChat,
+                            onLinkClick = onLinkClick,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    return@LazyColumn
+                }
                 itemsIndexed(state.comments) { index, comment ->
                     CommentCard(
                         username = comment.author,

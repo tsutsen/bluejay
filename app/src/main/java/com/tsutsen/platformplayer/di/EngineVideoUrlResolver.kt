@@ -232,6 +232,7 @@ class EngineVideoUrlResolver
                 publishedAtMs = details.datetime?.toInstant()?.toEpochMilli(),
                 likeCount = likeCount,
                 dislikeCount = dislikeCount,
+                isLive = details.isLive || details.live != null,
                 subtitles =
                     details.subtitles.map { source ->
                         SubtitleSource(

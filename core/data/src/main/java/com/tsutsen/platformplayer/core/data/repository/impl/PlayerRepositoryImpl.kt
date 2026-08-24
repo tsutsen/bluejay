@@ -739,7 +739,9 @@ class PlayerRepositoryImpl(
                     )
                 },
             thumbnailUrl = details.thumbnailUrl,
-            contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+            contentType =
+                if (details.isLive) com.tsutsen.platformplayer.core.model.ContentType.LIVE
+                else com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
             publishedAt = details.publishedAtMs,
             durationMs = details.durationMs,
             viewCount = details.viewCount,

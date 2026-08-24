@@ -73,6 +73,9 @@ class MainActivity :
     @Inject
     lateinit var playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 
+    @Inject
+    lateinit var liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository
+
     private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
         registerForActivityResult(
@@ -140,6 +143,7 @@ class MainActivity :
                 settingsRepository = settingsRepository,
                 downloadsRepository = downloadsRepository,
                 playbackQueueRepository = playbackQueueRepository,
+                liveChatRepository = liveChatRepository,
             ).also { it.show() }
     }
 
