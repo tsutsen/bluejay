@@ -311,13 +311,13 @@ class StatePlugins {
             return false;
         }
     }
-    fun installPlugins(context: Context, scope: CoroutineScope, sourceUrls: List<String>, handler: ((Boolean) -> Unit)? = null) {
+    fun installPlugins(context: Context, scope: CoroutineScope, sourceUrls: List<String>, assumeReinstall: Boolean = false, handler: ((Boolean) -> Unit)? = null) {
         if(sourceUrls.isEmpty()) {
             handler?.invoke(true);
             return;
         }
-        installPlugin(context, scope, sourceUrls[0]) {
-           installPlugins(context, scope, sourceUrls.drop(1), handler);
+        installPlugin(context, scope, sourceUrls[0], assumeReinstall) {
+           installPlugins(context, scope, sourceUrls.drop(1), assumeReinstall, handler);
         }
     }
     fun requestConfig(sourceUrl: String): SourcePluginConfig {
@@ -329,7 +329,7 @@ class StatePlugins {
             throw IllegalStateException("No response");
         return SourcePluginConfig.fromJson(configJson, sourceUrl);
     }
-    fun installPlugin(context: Context, scope: CoroutineScope, sourceUrl: String, handler: ((Boolean) -> Unit)? = null) {
+    fun installPlugin(context: Context, scope: CoroutineScope, sourceUrl: String, assumeReinstall: Boolean = false, handler: ((Boolean) -> Unit)? = null) {
         scope.launch(Dispatchers.IO) {
             val client = ManagedHttpClient();
             val config: SourcePluginConfig;
@@ -385,11 +385,11 @@ class StatePlugins {
             }
 
             withContext(Dispatchers.Main) {
-                installPlugin(context, scope, config, script, handler);
+                installPlugin(context, scope, config, script, assumeReinstall, handler);
             }
         }
     }
-    fun installPlugin(context: Context, scope: CoroutineScope, config: SourcePluginConfig, script: String, handler: ((Boolean)->Unit)? = null) {
+    fun installPlugin(context: Context, scope: CoroutineScope, config: SourcePluginConfig, script: String, assumeReinstall: Boolean = false, handler: ((Boolean)->Unit)? = null) {
         val client = ManagedHttpClient();
         val warnings = config.getWarnings();
 
@@ -452,7 +452,9 @@ class StatePlugins {
         }
         fun verifyCanInstall() {
             val installed = StatePlatform.instance.getClientOrNull(config.id);
-            if(installed != null)
+            if(installed != null && assumeReinstall)
+                doInstall(true);
+            else if(installed != null)
                 UIDialogs.showDialog(context, android.R.drawable.ic_dialog_info,
                     "A plugin with this id already exists named:\n" +
                             "${installed.name}\n[${config.id}]\n\n" +

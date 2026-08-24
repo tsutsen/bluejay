@@ -32,6 +32,7 @@ sealed interface SettingsUiState {
         val gridColumns: Int,
         val showRecommendedVideos: Boolean,
         val showComments: Boolean,
+        val autoUpdatePlugins: Boolean,
     ) : SettingsUiState
 
     data object Loading : SettingsUiState
@@ -80,6 +81,7 @@ class SettingsViewModel
                                 gridColumns = prefs.gridColumns,
                                 showRecommendedVideos = prefs.showRecommendedVideos,
                                 showComments = prefs.showComments,
+                                autoUpdatePlugins = prefs.autoUpdatePlugins,
                             )
                     }
             }

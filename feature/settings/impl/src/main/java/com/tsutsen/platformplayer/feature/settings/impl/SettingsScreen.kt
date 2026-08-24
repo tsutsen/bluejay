@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
@@ -499,6 +500,15 @@ private fun LazyListScope.SectionItems(
                     title = "Plugins",
                     subtitle = "Manage installed source plugins",
                     onClick = onPluginsClick,
+                )
+            }
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Filled.SystemUpdateAlt,
+                    title = "Auto-update plugins",
+                    subtitle = "Check for and install plugin updates on launch",
+                    checked = state.autoUpdatePlugins,
+                    onCheckedChange = { viewModel.updateGeneral("autoUpdatePlugins", it) },
                 )
             }
             item {

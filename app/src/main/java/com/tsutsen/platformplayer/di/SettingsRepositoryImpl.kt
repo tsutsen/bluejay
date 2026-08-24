@@ -57,6 +57,7 @@ class SettingsRepositoryImpl
                 searchHistory = s.search.history,
                 showRecommendedVideos = s.content.showRecommendedVideos,
                 showComments = s.content.showComments,
+                autoUpdatePlugins = s.plugins.autoUpdatePlugins,
             )
         }
 
@@ -92,6 +93,7 @@ class SettingsRepositoryImpl
                 "searchHistory" -> s.search.history = value as List<String>
                 "showRecommendedVideos" -> s.content.showRecommendedVideos = value as Boolean
                 "showComments" -> s.content.showComments = value as Boolean
+                "autoUpdatePlugins" -> s.plugins.autoUpdatePlugins = value as Boolean
                 "subtitleFont" -> s.playback.subtitleFont = value as String
                 "subtitleFontSize" -> s.playback.subtitleFontSize = (value as Number).toInt()
                 "subtitleBottomPadding" -> s.playback.subtitleBottomPadding = (value as Number).toInt()

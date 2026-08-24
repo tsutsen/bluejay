@@ -226,6 +226,9 @@ class Settings {
         fun shouldClearWebviewCookies(): Boolean = false
 
         var checkDisabledPluginsForUpdates: Boolean = true
+
+        // Auto-install available plugin updates on app launch.
+        var autoUpdatePlugins: Boolean = true
     }
 
     @Serializable

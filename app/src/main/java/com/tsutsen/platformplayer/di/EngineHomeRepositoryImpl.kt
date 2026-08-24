@@ -4,12 +4,14 @@ import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.FeedPage
+import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +34,11 @@ class EngineHomeRepositoryImpl
         override val feed: StateFlow<FeedPage> = _feed.asStateFlow()
 
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
+
+        // Survives across loadInitial calls; auto-update installs can take
+        // longer than one launch's work and must not be cancelled.
+        private val pluginUpdateScope =
+            CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         // Single-flight: loadInitial re-runs the full plugin init + client
         // enable + home fetch, so overlapping calls (e.g. refresh() racing a
@@ -71,6 +78,25 @@ class EngineHomeRepositoryImpl
                     if (youtubeClient != null && !StatePlatform.instance.isClientEnabled(youtubeClient)) {
                         Logger.i("EngineHomeRepository", "Enabling YouTube by default")
                         StatePlatform.instance.enableClient(listOf(youtubeClient.id))
+                    }
+
+                    // Auto-update plugins in the background: check every
+                    // enabled source, install anything newer when the user
+                    // allows it (Settings > Content > Auto-update plugins).
+                    pluginUpdateScope.launch {
+                        val updates = StatePlugins.instance.checkForUpdates()
+                        if (updates.isEmpty()) return@launch
+                        if (!Settings.instance.plugins.autoUpdatePlugins) {
+                            Logger.i("EngineHomeRepository", "${updates.size} plugin update(s) available, auto-update off")
+                            return@launch
+                        }
+                        Logger.i("EngineHomeRepository", "Auto-installing ${updates.size} plugin update(s)")
+                        StatePlugins.instance.installPlugins(
+                            context,
+                            this,
+                            updates.mapNotNull { it.second.sourceUrl },
+                            assumeReinstall = true,
+                        )
                     }
                 }
             } catch (e: Exception) {
