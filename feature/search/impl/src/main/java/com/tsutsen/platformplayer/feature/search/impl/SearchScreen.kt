@@ -33,18 +33,18 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -416,33 +416,30 @@ fun SearchScreen(
                                 expanded = sourceMenuExpanded.value,
                                 onDismissRequest = { sourceMenuExpanded.value = false },
                             ) {
-                                enabledSources.forEach { source ->
-                                    val isSelected =
-                                        selectedSources.isEmpty() || source.id in selectedSources
-                                    DropdownMenuItem(
-                                        leadingIcon = {
-                                            if (isSelected) {
-                                                Icon(Icons.Default.Check, contentDescription = null)
+                                // Checkbox variant: the menu stays open after a
+                                // pick so several sources can be toggled.
+                                SelectionDropdownItems(
+                                    items = enabledSources,
+                                    label = { it.name },
+                                    isSelected = {
+                                        selectedSources.isEmpty() || it.id in selectedSources
+                                    },
+                                    multiSelect = true,
+                                    onPick = { source ->
+                                        val next =
+                                            if (selectedSources.isEmpty()) {
+                                                setOf(source.id)
+                                            } else if (source.id in selectedSources) {
+                                                selectedSources - source.id
+                                            } else {
+                                                selectedSources + source.id
                                             }
-                                        },
-                                        text = { Text(source.name) },
-                                        onClick = {
-                                            sourceMenuExpanded.value = false
-                                            val next =
-                                                if (selectedSources.isEmpty()) {
-                                                    setOf(source.id)
-                                                } else if (source.id in selectedSources) {
-                                                    selectedSources - source.id
-                                                } else {
-                                                    selectedSources + source.id
-                                                }
-                                            // All checked collapses back to "all".
-                                            viewModel.setSelectedSources(
-                                                if (next == allSourceIds) emptySet() else next,
-                                            )
-                                        },
-                                    )
-                                }
+                                        // All checked collapses back to "all".
+                                        viewModel.setSelectedSources(
+                                            if (next == allSourceIds) emptySet() else next,
+                                        )
+                                    },
+                                )
                             }
                         }
                     }
@@ -468,20 +465,16 @@ fun SearchScreen(
                                 expanded = sortMenuExpanded.value,
                                 onDismissRequest = { sortMenuExpanded.value = false },
                             ) {
-                                SearchSort.entries.forEach { s ->
-                                    DropdownMenuItem(
-                                        leadingIcon = {
-                                            if (s == sort) {
-                                                Icon(Icons.Default.Check, contentDescription = null)
-                                            }
-                                        },
-                                        text = { Text(s.label) },
-                                        onClick = {
-                                            sortMenuExpanded.value = false
-                                            viewModel.setSort(s)
-                                        },
-                                    )
-                                }
+                                SelectionDropdownItems(
+                                    items = SearchSort.entries,
+                                    label = { it.label },
+                                    isSelected = { it == sort },
+                                    multiSelect = false,
+                                    onPick = { s ->
+                                        sortMenuExpanded.value = false
+                                        viewModel.setSort(s)
+                                    },
+                                )
                             }
                         }
                     }
@@ -833,6 +826,46 @@ private fun SwipeToDeleteRow(
     ) {
         Box(modifier = Modifier.offset { IntOffset(offsetAnim.value.roundToInt(), 0) }) {
             content()
+        }
+    }
+}
+
+/**
+ * Dropdown content with the selection element (radio / checkbox) to the
+ * right of the label. Radio variant: the caller closes the menu on pick.
+ * Checkbox variant ([multiSelect]): the menu stays open after a pick.
+ */
+@Composable
+private fun <T> SelectionDropdownItems(
+    items: List<T>,
+    label: (T) -> String,
+    isSelected: (T) -> Boolean,
+    multiSelect: Boolean,
+    onPick: (T) -> Unit,
+) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        items.forEach { item ->
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onPick(item) }
+                        .padding(horizontal = Tokens.SpaceMd, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label(item),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(Tokens.SpaceSm))
+                if (multiSelect) {
+                    Checkbox(checked = isSelected(item), onCheckedChange = { onPick(item) })
+                } else {
+                    RadioButton(selected = isSelected(item), onClick = { onPick(item) })
+                }
+            }
         }
     }
 }

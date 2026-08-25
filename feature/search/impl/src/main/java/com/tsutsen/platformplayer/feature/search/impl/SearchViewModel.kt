@@ -108,14 +108,22 @@ class SearchViewModel
             }
         }
 
-        /** Re-runs the last search against a different content type. */
+        /**
+         * Switch the content type and submit the search with the current
+         * field query: when the user typed something new (different from
+         * the last query) the chip press submits it. Nothing changes
+         * (same query, same type) — don't re-query what we already have.
+         */
         fun setSearchType(type: SearchType) {
-            if (type == _searchType.value) return
+            val oldType = _searchType.value
             _searchType.value = type
-            if (lastQuery.isNotBlank()) {
-                viewModelScope.launch {
-                    searchRepository.search(lastQuery, type, _sort.value, _selectedSources.value)
-                }
+            val q = _query.value.trim()
+            if (q.isBlank()) return
+            if (q == lastQuery && type == oldType) return
+            lastQuery = q
+            viewModelScope.launch {
+                searchRepository.search(q, type, _sort.value, _selectedSources.value)
+                addToHistory(q)
             }
         }
 
