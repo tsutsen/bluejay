@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.SearchResult
 import com.tsutsen.platformplayer.core.model.SearchSort
 import com.tsutsen.platformplayer.core.model.SearchType
+import com.tsutsen.platformplayer.core.model.SourceInfo
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
@@ -28,8 +29,30 @@ class EngineSearchRepositoryImpl
         private val _results = MutableStateFlow(SearchResult())
         override val results: StateFlow<SearchResult> = _results.asStateFlow()
 
+        private val _enabledSources = MutableStateFlow(emptyList<SourceInfo>())
+        override val enabledSources: StateFlow<List<SourceInfo>> = _enabledSources.asStateFlow()
+
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
         private var _lastQuery: String = ""
+        /** Non-empty when the user restricted the search to some sources. */
+        private var restrictedSources: Set<String>? = null
+
+        init {
+            publishEnabledSources()
+        }
+
+        private fun publishEnabledSources() {
+            _enabledSources.value =
+                StatePlatform.instance
+                    .getEnabledClients()
+                    .map { SourceInfo(it.id, it.name, it.icon?.url) }
+                    .sortedBy { it.name.lowercase() }
+        }
+
+        private fun visibleItems(flow: PagerFlow<IPlatformContent, Card>): List<Card> {
+            val restricted = restrictedSources ?: return flow.items
+            return flow.items.filter { it.sourceId == null || it.sourceId in restricted }
+        }
 
         override suspend fun search(
             query: String,
@@ -39,23 +62,28 @@ class EngineSearchRepositoryImpl
         ) {
             Logger.i("EngineSearchRepository", "search: $query ($type), sources: $sources")
             _lastQuery = query
+            restrictedSources = sources.takeIf { it.isNotEmpty() }
+            publishEnabledSources()
             _results.update { it.copy(query = query, isLoading = true, error = null, items = emptyList()) }
 
             try {
                 // Run engine call on IO dispatcher to avoid main thread blocking
                 withContext(Dispatchers.IO) {
+                    val clientIds = restrictedSources?.toList()
                     val pager =
                         when (type) {
                             SearchType.MEDIA -> {
-                                StatePlatform.instance.search(query, sort = sort.jsOrder)
+                                StatePlatform.instance.search(query, sort = sort.jsOrder, clientIds = clientIds)
                             }
 
                             SearchType.CREATORS -> {
+                                // No clientIds support: filter the mapped cards
+                                // by source below.
                                 StatePlatform.instance.searchChannelsAsContent(query)
                             }
 
                             SearchType.PLAYLISTS -> {
-                                StatePlatform.instance.searchPlaylist(query)
+                                StatePlatform.instance.searchPlaylist(query, clientIds = clientIds)
                             }
                         }
                     val flow = PagerFlow(pager, EngineCardMapper::toCard, { it.id })
@@ -65,7 +93,7 @@ class EngineSearchRepositoryImpl
                     _results.update {
                         it.copy(
                             isLoading = false,
-                            items = items,
+                            items = visibleItems(flow),
                             hasMorePages = flow.hasMore,
                             error = flow.error,
                         )
@@ -107,7 +135,7 @@ class EngineSearchRepositoryImpl
                 _results.update {
                     it.copy(
                         isLoading = false,
-                        items = flow.items,
+                        items = visibleItems(flow),
                         hasMorePages = flow.hasMore,
                         error = flow.error,
                     )

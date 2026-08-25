@@ -4,6 +4,7 @@ import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.FeedPage
+import com.tsutsen.platformplayer.core.model.SourceInfo
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateApp
@@ -32,6 +33,9 @@ class EngineHomeRepositoryImpl
     constructor() : HomeRepository {
         private val _feed = MutableStateFlow(FeedPage())
         override val feed: StateFlow<FeedPage> = _feed.asStateFlow()
+
+        private val _enabledSources = MutableStateFlow(emptyList<SourceInfo>())
+        override val enabledSources: StateFlow<List<SourceInfo>> = _enabledSources.asStateFlow()
 
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
 
@@ -79,6 +83,8 @@ class EngineHomeRepositoryImpl
                         Logger.i("EngineHomeRepository", "Enabling YouTube by default")
                         StatePlatform.instance.enableClient(listOf(youtubeClient.id))
                     }
+
+                    publishEnabledSources()
 
                     // Auto-update plugins in the background: check every
                     // enabled source, install anything newer when the user
@@ -131,7 +137,16 @@ class EngineHomeRepositoryImpl
             }
         }
 
-        override suspend fun loadNextPage() {
+        /** Enabled clients → display info (id, name, icon url). */
+    private fun publishEnabledSources() {
+        _enabledSources.value =
+            StatePlatform.instance
+                .getEnabledClients()
+                .map { SourceInfo(it.id, it.name, it.icon?.url) }
+                .sortedBy { it.name.lowercase() }
+    }
+
+    override suspend fun loadNextPage() {
             Logger.i("EngineHomeRepository", "loadNextPage")
             _feed.update { it.copy(isLoading = true) }
 

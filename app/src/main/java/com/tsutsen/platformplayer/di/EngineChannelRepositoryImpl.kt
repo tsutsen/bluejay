@@ -28,6 +28,9 @@ class EngineChannelRepositoryImpl
 
         override suspend fun getChannel(url: String): ChannelInfo {
             val channel = StatePlatform.instance.getChannel(url).await()
+            // Source badge only earns its place with >1 enabled source.
+            val client = StatePlatform.instance.getClientOrNullByUrl(url)
+            val multiSource = StatePlatform.instance.getEnabledClients().size > 1
             return ChannelInfo(
                 url = channel.url,
                 name = channel.name,
@@ -38,6 +41,7 @@ class EngineChannelRepositoryImpl
                 links = channel.links,
                 isSubscribed = StateSubscriptions.instance.isSubscribed(channel.url),
                 notifyEnabled = StateSubscriptions.instance.getSubscription(channel.url)?.doNotifications == true,
+                sourceIconUrl = if (multiSource) client?.icon?.url else null,
             )
         }
 

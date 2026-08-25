@@ -11,6 +11,8 @@ sealed interface Card : Parcelable {
     val id: String
     val title: String
     val thumbnailUrl: String?
+    /** Client/plugin id the content came from (null for local/unknown). */
+    val sourceId: String?
 }
 
 @Parcelize
@@ -26,6 +28,7 @@ data class VideoCard(
     val url: String,
     /** In-progress download (0..1); null when not downloading. */
     val downloadProgress: Float? = null,
+    override val sourceId: String? = null,
 ) : Card
 
 @Parcelize
@@ -36,6 +39,7 @@ data class ShortCard(
     val author: String?,
     val viewCount: Long? = null,
     val url: String,
+    override val sourceId: String? = null,
 ) : Card
 
 @Parcelize
@@ -46,6 +50,7 @@ data class PlaylistCard(
     val videoCount: Int? = null,
     val author: String? = null,
     val url: String,
+    override val sourceId: String? = null,
 ) : Card
 
 @Parcelize
@@ -55,6 +60,7 @@ data class ChannelCard(
     override val thumbnailUrl: String?,
     val subscriberCount: Long? = null,
     val url: String,
+    override val sourceId: String? = null,
 ) : Card
 
 @Parcelize
@@ -65,6 +71,7 @@ data class PostCard(
     val author: String?,
     val publishedAt: Long? = null,
     val url: String,
+    override val sourceId: String? = null,
 ) : Card
 
 @Parcelize
@@ -75,4 +82,5 @@ data class ArticleCard(
     val author: String?,
     val publishedAt: Long? = null,
     val url: String,
+    override val sourceId: String? = null,
 ) : Card

@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.FeedPage
+import com.tsutsen.platformplayer.core.model.SourceInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -51,6 +52,9 @@ class HomeViewModel
             settingsRepository.preferences
                 .map { it.gridColumns }
                 .stateIn(viewModelScope, SharingStarted.Lazily, settingsRepository.preferences.value.gridColumns)
+
+        /** Enabled sources (id, name, icon) for the source filter chips. */
+        val enabledSources: StateFlow<List<SourceInfo>> = homeRepository.enabledSources
 
         private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Initial)
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()

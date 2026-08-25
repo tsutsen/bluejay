@@ -50,6 +50,7 @@ object EngineCardMapper {
                     thumbnailUrl = content.thumbnail,
                     subscriberCount = content.subscribers?.takeIf { it > 0 },
                     url = content.url,
+                    sourceId = content.id.pluginId,
                 )
             }
 
@@ -61,6 +62,7 @@ object EngineCardMapper {
                     videoCount = content.videoCount.takeIf { it > 0 },
                     author = content.author.name,
                     url = content.url,
+                    sourceId = content.id.pluginId,
                 )
             }
 
@@ -72,6 +74,7 @@ object EngineCardMapper {
                     author = content.author.name,
                     publishedAt = epochMs(content.datetime),
                     url = content.url,
+                    sourceId = content.id.pluginId,
                 )
             }
 
@@ -85,6 +88,7 @@ object EngineCardMapper {
                     publishedAt = epochMs(content.datetime),
                     url = content.url,
                     authorUrl = content.author.url,
+                    sourceId = content.id.pluginId,
                 )
             }
 
@@ -117,6 +121,7 @@ object EngineCardMapper {
             publishedAt = epochMs(video.playbackDate ?: video.datetime),
             url = video.url,
             authorUrl = video.author.url,
+            sourceId = video.id.pluginId,
         )
 
     private fun contentThumbnails(content: IPlatformContent): Thumbnails? =

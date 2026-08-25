@@ -70,6 +70,7 @@ data class PluginInfo(
     val isInstalled: Boolean,
     val isEnabled: Boolean,
     val isAuthenticated: Boolean = false,
+    val iconUrl: String? = null,
 )
 
 // Import item — a raw URL resolved into real details (name, thumbnail, and for
@@ -164,6 +165,7 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                         isInstalled = true,
                         isEnabled = enabledClientIds.value.contains(config.id),
                         isAuthenticated = isAuthenticated,
+                        iconUrl = config.iconUrl,
                     )
                 }
             Logger.i(TAG, "Plugins list created with ${result.size} items")
@@ -188,6 +190,7 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
             items(plugins, key = { it.id }) { plugin ->
                 SettingsSwitchOptionCard(
                     icon = Icons.Default.Extension,
+                    iconUrl = plugin.iconUrl,
                     title = plugin.name,
                     subtitle =
                         if (plugin.isAuthenticated) {
@@ -986,9 +989,8 @@ private fun PluginSettingsSection(
             if (setting.isAdvanced == true && !showAdvanced) return@forEach
             when (setting.type) {
                 "Header" -> {
-                    PluginSettingsCard {
-                        Text(setting.name, style = MaterialTheme.typography.titleMedium)
-                    }
+                    // Section headers are plain text, not cards.
+                    Text(setting.name, style = MaterialTheme.typography.titleMedium)
                 }
 
                 "Boolean" -> {

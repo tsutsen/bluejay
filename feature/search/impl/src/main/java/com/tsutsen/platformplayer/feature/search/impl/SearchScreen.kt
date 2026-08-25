@@ -130,6 +130,8 @@ fun SearchScreen(
     val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())
     val searchType by viewModel.searchType.collectAsState()
     val sort by viewModel.sort.collectAsState()
+    val enabledSources by viewModel.enabledSources.collectAsState()
+    val selectedSources by viewModel.selectedSources.collectAsState()
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
     val searchQuery by viewModel.query.collectAsState()
     val hasSearched = searchQuery.isNotBlank()
@@ -374,16 +376,81 @@ fun SearchScreen(
                     )
                 }
 
-                // Sorting is only supported for media search: a pill that
-                // opens the sort menu from itself.
-                if (searchType == SearchType.MEDIA) {
-                    val sortMenuExpanded = remember { mutableStateOf(false) }
-                    // Pushed to the right, separate from the type chips; the
-                    // menu anchors to the pill itself.
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
+                // Pushed to the right, separate from the type chips; the
+                // menus anchor to their pills.
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                ) {
+                    // Source filter — only when more than one source is
+                    // enabled. Empty selection means "all sources".
+                    if (enabledSources.size > 1) {
+                        val sourceMenuExpanded = remember { mutableStateOf(false) }
+                        val allSourceIds = enabledSources.map { it.id }.toSet()
+                        Box {
+                            FilterChip(
+                                selected = selectedSources.isNotEmpty(),
+                                onClick = { sourceMenuExpanded.value = true },
+                                label = {
+                                    Text(
+                                        when {
+                                            selectedSources.isEmpty() -> "All sources"
+                                            selectedSources.size == 1 ->
+                                                enabledSources.firstOrNull {
+                                                    it.id in selectedSources
+                                                }?.name ?: "Sources"
+
+                                            else -> "${selectedSources.size} sources"
+                                        },
+                                    )
+                                },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(Tokens.IconSm),
+                                    )
+                                },
+                            )
+                            DropdownMenu(
+                                expanded = sourceMenuExpanded.value,
+                                onDismissRequest = { sourceMenuExpanded.value = false },
+                            ) {
+                                enabledSources.forEach { source ->
+                                    val isSelected =
+                                        selectedSources.isEmpty() || source.id in selectedSources
+                                    DropdownMenuItem(
+                                        leadingIcon = {
+                                            if (isSelected) {
+                                                Icon(Icons.Default.Check, contentDescription = null)
+                                            }
+                                        },
+                                        text = { Text(source.name) },
+                                        onClick = {
+                                            sourceMenuExpanded.value = false
+                                            val next =
+                                                if (selectedSources.isEmpty()) {
+                                                    setOf(source.id)
+                                                } else if (source.id in selectedSources) {
+                                                    selectedSources - source.id
+                                                } else {
+                                                    selectedSources + source.id
+                                                }
+                                            // All checked collapses back to "all".
+                                            viewModel.setSelectedSources(
+                                                if (next == allSourceIds) emptySet() else next,
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Sorting is only supported for media search: a pill that
+                    // opens the sort menu from itself.
+                    if (searchType == SearchType.MEDIA) {
+                        val sortMenuExpanded = remember { mutableStateOf(false) }
                         Box {
                             FilterChip(
                                 selected = sort != SearchSort.RELEVANCE,

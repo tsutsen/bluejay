@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.data.repository.SearchRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.SearchResult
 import com.tsutsen.platformplayer.core.model.SearchSort
+import com.tsutsen.platformplayer.core.model.SourceInfo
 import com.tsutsen.platformplayer.core.model.SearchType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +48,9 @@ class SearchViewModel
                 .map { it.gridColumns }
                 .stateIn(viewModelScope, SharingStarted.Lazily, settingsRepository.preferences.value.gridColumns)
 
+        /** Enabled sources (id, name, icon) for the source selector. */
+        val enabledSources: StateFlow<List<SourceInfo>> = searchRepository.enabledSources
+
         val repositoryResults: StateFlow<SearchResult> =
             searchRepository.results.stateIn(
                 scope = viewModelScope,
@@ -81,12 +85,37 @@ class SearchViewModel
         private val _sort = MutableStateFlow(SearchSort.RELEVANCE)
         val sort: StateFlow<SearchSort> = _sort.asStateFlow()
 
+        /**
+         * Restricts results to these sources (client ids). Empty = all
+         * enabled sources.
+         */
+        private val _selectedSources = MutableStateFlow<Set<String>>(emptySet())
+        val selectedSources: StateFlow<Set<String>> = _selectedSources.asStateFlow()
+
+        /** Re-runs the last search against a different source selection. */
+        fun setSelectedSources(sources: Set<String>) {
+            if (sources == _selectedSources.value) return
+            _selectedSources.value = sources
+            if (lastQuery.isNotBlank()) {
+                viewModelScope.launch {
+                    searchRepository.search(
+                        lastQuery,
+                        _searchType.value,
+                        _sort.value,
+                        _selectedSources.value,
+                    )
+                }
+            }
+        }
+
         /** Re-runs the last search against a different content type. */
         fun setSearchType(type: SearchType) {
             if (type == _searchType.value) return
             _searchType.value = type
             if (lastQuery.isNotBlank()) {
-                viewModelScope.launch { searchRepository.search(lastQuery, type, _sort.value) }
+                viewModelScope.launch {
+                    searchRepository.search(lastQuery, type, _sort.value, _selectedSources.value)
+                }
             }
         }
 
@@ -95,7 +124,9 @@ class SearchViewModel
             if (newSort == _sort.value) return
             _sort.value = newSort
             if (lastQuery.isNotBlank()) {
-                viewModelScope.launch { searchRepository.search(lastQuery, _searchType.value, _sort.value) }
+                viewModelScope.launch {
+                    searchRepository.search(lastQuery, _searchType.value, _sort.value, _selectedSources.value)
+                }
             }
         }
 
@@ -107,7 +138,7 @@ class SearchViewModel
             lastQuery = query
             _query.value = query
             viewModelScope.launch {
-                searchRepository.search(query, _searchType.value, _sort.value)
+                searchRepository.search(query, _searchType.value, _sort.value, _selectedSources.value)
                 addToHistory(query)
             }
         }

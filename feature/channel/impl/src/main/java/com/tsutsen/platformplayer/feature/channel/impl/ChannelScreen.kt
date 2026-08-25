@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -145,12 +146,31 @@ fun ChannelScreen(
                                         .padding(start = Tokens.SpaceMd)
                                         .weight(1f),
                             ) {
-                                Text(
-                                    text = state.channel.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        text = state.channel.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    // Source badge — present only when the
+                                    // app has >1 enabled source.
+                                    state.channel.sourceIconUrl?.let { iconUrl ->
+                                        AsyncImage(
+                                            url = iconUrl,
+                                            contentDescription = "Source",
+                                            modifier =
+                                                Modifier
+                                                    .padding(start = Tokens.SpaceXs)
+                                                    .size(16.dp)
+                                                    .clip(RoundedCornerShape(4.dp)),
+                                            contentScale = ContentScale.FillBounds,
+                                        )
+                                    }
+                                }
                                 Text(
                                     text = formatSubscribers(state.channel.subscribers),
                                     style = MaterialTheme.typography.bodySmall,
