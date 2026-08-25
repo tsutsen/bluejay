@@ -171,14 +171,17 @@ fun PlayerContent(
     }
     // Time-based fade-IN: the p-based alpha window (0.1-0.4) is traversed in
     // only ~90ms of the 300ms click-to-expand tween, so the details would
-    // pop in. Multiply by a settle that runs 0->1 over 250ms whenever the
-    // details (re)appear. Fade-OUT stays p-based, so drags remain tied to
-    // the finger.
+    // pop in. Multiply by a settle that runs 0->1 whenever the details
+    // (re)appear. The 100ms wait lets the details subtree's first heavy
+    // compose/measure frame land while the alpha is still 0, so the fade
+    // itself runs on lighter frames. Fade-OUT stays p-based, so drags
+    // remain tied to the finger.
     val detailsSettle = remember { Animatable(1f) }
     LaunchedEffect(detailsVisible) {
         if (detailsVisible) {
             detailsSettle.snapTo(0f)
-            detailsSettle.animateTo(1f, tween(250, easing = FastOutSlowInEasing))
+            kotlinx.coroutines.delay(100)
+            detailsSettle.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
         }
     }
 
