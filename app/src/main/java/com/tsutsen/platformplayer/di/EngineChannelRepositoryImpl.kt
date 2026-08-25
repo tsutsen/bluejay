@@ -8,6 +8,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelInfo
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,7 +42,8 @@ class EngineChannelRepositoryImpl
                 links = channel.links,
                 isSubscribed = StateSubscriptions.instance.isSubscribed(channel.url),
                 notifyEnabled = StateSubscriptions.instance.getSubscription(channel.url)?.doNotifications == true,
-                sourceIconUrl = if (multiSource) client?.icon?.url else null,
+                sourceIconUrl =
+                    if (multiSource && client != null) StatePlugins.instance.getPluginIconUriOrNull(client.id) else null,
             )
         }
 

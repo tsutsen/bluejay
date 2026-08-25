@@ -55,6 +55,18 @@ class StatePlugins {
         return null;
     }
 
+    /**
+     * File URI of the plugin's stored icon — both embedded and remote
+     * plugins store their icon binary in [iconsDir] on install, so this
+     * is the single source for rendering plugin icons. null when the
+     * plugin has no stored icon.
+     */
+    fun getPluginIconUriOrNull(id: String): String? {
+        if(!iconsDir.hasIcon(id))
+            return null;
+        return android.net.Uri.fromFile(iconsDir.getFileReference(id)).toString();
+    }
+
     fun reloadPluginFile(){
         _plugins = FragmentedStorage.storeJson<SourcePluginDescriptor>("plugins")
             .load();

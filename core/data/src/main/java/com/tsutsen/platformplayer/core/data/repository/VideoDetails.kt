@@ -21,6 +21,8 @@ data class VideoDetails(
     val likeCount: Long?,
     val dislikeCount: Long?,
     val isLive: Boolean = false,
+    /** Plugin icon (file URI) for the channel badge — null with a single enabled source. */
+    val sourceIconUrl: String? = null,
     val subtitles: List<SubtitleSource> = emptyList()
 )
 

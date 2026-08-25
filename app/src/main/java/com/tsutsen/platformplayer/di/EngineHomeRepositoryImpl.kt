@@ -142,7 +142,7 @@ class EngineHomeRepositoryImpl
         _enabledSources.value =
             StatePlatform.instance
                 .getEnabledClients()
-                .map { SourceInfo(it.id, it.name, it.icon?.url) }
+                .map { SourceInfo(it.id, it.name, StatePlugins.instance.getPluginIconUriOrNull(it.id)) }
                 .sortedBy { it.name.lowercase() }
     }
 

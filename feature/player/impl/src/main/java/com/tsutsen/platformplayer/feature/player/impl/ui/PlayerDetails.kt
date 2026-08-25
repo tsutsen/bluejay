@@ -166,6 +166,7 @@ internal fun PlayerDetails(
                 onDislike = onDislike,
                 onMore = onMore,
                 onChannelClick = onChannelClick,
+                sourceIconUrl = video?.sourceIconUrl,
             )
         }
         item {

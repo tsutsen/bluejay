@@ -165,7 +165,7 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                         isInstalled = true,
                         isEnabled = enabledClientIds.value.contains(config.id),
                         isAuthenticated = isAuthenticated,
-                        iconUrl = config.iconUrl,
+                        iconUrl = StatePlugins.instance.getPluginIconUriOrNull(config.id),
                     )
                 }
             Logger.i(TAG, "Plugins list created with ${result.size} items")

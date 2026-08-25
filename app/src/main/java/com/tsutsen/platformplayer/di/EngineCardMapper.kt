@@ -16,6 +16,8 @@ import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PostCard
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import java.time.OffsetDateTime
 
 /**
@@ -51,6 +53,7 @@ object EngineCardMapper {
                     subscriberCount = content.subscribers?.takeIf { it > 0 },
                     url = content.url,
                     sourceId = content.id.pluginId,
+                    sourceIconUrl = sourceIcon(content.id.pluginId),
                 )
             }
 
@@ -132,4 +135,14 @@ object EngineCardMapper {
         }
 
     private fun epochMs(datetime: OffsetDateTime?): Long? = datetime?.toInstant()?.toEpochMilli()
+
+    /**
+     * Source badge for channel cards: the plugin's stored icon, only when
+     * more than one source is enabled (single-source makes it pointless).
+     */
+    private fun sourceIcon(pluginId: String?): String? {
+        if (pluginId.isNullOrEmpty()) return null
+        if (StatePlatform.instance.getEnabledClients().size <= 1) return null
+        return StatePlugins.instance.getPluginIconUriOrNull(pluginId)
+    }
 }

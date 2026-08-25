@@ -40,6 +40,7 @@ import com.tsutsen.platformplayer.downloads.VideoLocal
 import com.tsutsen.platformplayer.sabr.media3.SabrMediaSource
 import com.tsutsen.platformplayer.states.StateDownloads
 import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -233,6 +234,7 @@ class EngineVideoUrlResolver
                 likeCount = likeCount,
                 dislikeCount = dislikeCount,
                 isLive = details.isLive || details.live != null,
+                sourceIconUrl = resolveSourceIcon(details.id.pluginId),
                 subtitles =
                     details.subtitles.map { source ->
                         SubtitleSource(
@@ -242,6 +244,17 @@ class EngineVideoUrlResolver
                         )
                     },
             )
+        }
+
+        /**
+         * Source badge for the channel row: the plugin's stored icon, only
+         * when more than one source is enabled (single-source makes the
+         * badge pointless).
+         */
+        private fun resolveSourceIcon(pluginId: String?): String? {
+            if (pluginId.isNullOrEmpty()) return null
+            if (StatePlatform.instance.getEnabledClients().size <= 1) return null
+            return StatePlugins.instance.getPluginIconUriOrNull(pluginId)
         }
 
         /**

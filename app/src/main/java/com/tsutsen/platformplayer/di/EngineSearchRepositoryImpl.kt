@@ -9,6 +9,7 @@ import com.tsutsen.platformplayer.core.model.SearchType
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,7 +46,7 @@ class EngineSearchRepositoryImpl
             _enabledSources.value =
                 StatePlatform.instance
                     .getEnabledClients()
-                    .map { SourceInfo(it.id, it.name, it.icon?.url) }
+                    .map { SourceInfo(it.id, it.name, StatePlugins.instance.getPluginIconUriOrNull(it.id)) }
                     .sortedBy { it.name.lowercase() }
         }
 

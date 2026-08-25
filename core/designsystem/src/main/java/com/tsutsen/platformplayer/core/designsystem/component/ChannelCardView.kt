@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,12 +55,30 @@ fun ChannelCardView(
         )
         Spacer(Modifier.width(Tokens.SpaceMd))
         Column(Modifier.weight(1f)) {
-            Text(
-                text = card.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = card.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                card.sourceIconUrl?.let { iconUrl ->
+                    AsyncImage(
+                        model = iconUrl,
+                        contentDescription = "Source",
+                        modifier =
+                            Modifier
+                                .padding(start = 4.dp)
+                                .size(16.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                        contentScale = ContentScale.FillBounds,
+                    )
+                }
+            }
             card.subscriberCount?.let { count ->
                 Text(
                     text = "${NumberFormat.getInstance().format(count)} subscribers",

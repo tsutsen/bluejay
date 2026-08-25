@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
@@ -59,6 +60,7 @@ internal fun ChannelRow(
     onDislike: () -> Unit,
     onMore: () -> Unit,
     onChannelClick: ((String) -> Unit)? = null,
+    sourceIconUrl: String? = null,
 ) {
     val isWide = rememberIsWide()
     // Tapping the avatar or name opens the channel page.
@@ -87,7 +89,7 @@ internal fun ChannelRow(
         ) {
             ChannelAvatar(author, channelClick)
             Spacer(modifier = Modifier.width(12.dp))
-            ChannelName(author, channelClick)
+            ChannelName(author, channelClick, sourceIconUrl)
             Spacer(modifier = Modifier.width(8.dp))
             SubscribeButton(isSubscribed, onSubscribe)
             Spacer(modifier = Modifier.width(12.dp))
@@ -121,7 +123,7 @@ internal fun ChannelRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ChannelAvatar(author, channelClick)
                 Spacer(modifier = Modifier.width(12.dp))
-                ChannelName(author, channelClick)
+                ChannelName(author, channelClick, sourceIconUrl)
                 Spacer(modifier = Modifier.width(8.dp))
                 SubscribeButton(isSubscribed, onSubscribe)
                 MoreButton(onMore)
@@ -189,19 +191,39 @@ private fun ChannelAvatar(
 private fun RowScope.ChannelName(
     author: Author?,
     channelClick: Modifier,
+    sourceIconUrl: String? = null,
 ) {
     Column(
         modifier = Modifier.weight(1f).then(channelClick),
     ) {
-        Text(
-            text = author?.name ?: "Unknown Channel",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        // Name + optional source icon on one line; the name keeps its
+        // ellipsis by taking the remaining width.
+        Row(
             modifier = Modifier.fillMaxWidth(),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = author?.name ?: "Unknown Channel",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (sourceIconUrl != null) {
+                AsyncImage(
+                    model = sourceIconUrl,
+                    contentDescription = "Source",
+                    modifier =
+                        Modifier
+                            .padding(start = 4.dp)
+                            .size(16.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                    contentScale = ContentScale.FillBounds,
+                )
+            }
+        }
         Text(
             text = "125K subscribers",
             style = MaterialTheme.typography.bodySmall,

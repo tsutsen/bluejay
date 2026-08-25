@@ -61,6 +61,8 @@ data class ChannelCard(
     val subscriberCount: Long? = null,
     val url: String,
     override val sourceId: String? = null,
+    /** Plugin icon (file URI) shown next to the name — set only with >1 enabled source. */
+    val sourceIconUrl: String? = null,
 ) : Card
 
 @Parcelize
