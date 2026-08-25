@@ -1,6 +1,5 @@
 package com.tsutsen.platformplayer.feature.player.impl.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,10 +24,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -114,11 +112,22 @@ private fun ChatMessageList(
 ) {
     val listState = rememberLazyListState()
 
-    // Always follow the newest message; the size key keeps the scroll off
-    // the frame clock while chat is idle.
+    // Follow new messages only while the user is at the bottom; someone
+    // scrolled up through history must not be yanked back on every
+    // message.
+    val nearBottom =
+        remember {
+            derivedStateOf {
+                val info = listState.layoutInfo
+                val last = info.totalItemsCount - 1
+                last <= 0 || info.visibleItemsInfo.any { it.index >= last - 3 }
+            }
+        }
+
+    // The size key keeps the scroll off the frame clock while chat is idle.
     LaunchedEffect(state.entries.size) {
         delay(120)
-        if (state.entries.isNotEmpty()) {
+        if (nearBottom.value && state.entries.isNotEmpty()) {
             listState.animateScrollToItem(state.entries.size - 1)
         }
     }
@@ -129,9 +138,11 @@ private fun ChatMessageList(
         state = listState,
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(vertical = 2.dp),
+        // Same horizontal inset as the comment cards on the main screen
+        // (and the companion, which reuses this panel).
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
     ) {
-        items(state.entries, key = { it.timeMs }) { entry ->
+        items(state.entries, key = { it.uid }) { entry ->
             when (entry) {
                 is LiveChatEntry.ChatMessage ->
                     ChatMessageCard(entry, emotes, onLinkClick)
@@ -183,63 +194,40 @@ private fun ChatMessageCard(
             modifier = Modifier.padding(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Avatar: event thumbnail, or the name initial on a tinted
-                // circle (same fallback as the comment cards).
-                Box(
-                    modifier =
-                        Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    val thumbnail = entry.thumbnail
-                    if (thumbnail != null) {
-                        AsyncImage(
-                            url = thumbnail,
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                            contentScale = ContentScale.Crop,
-                        )
-                    } else {
+                val badge = entry.badge
+                if (badge != null) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                    ) {
                         Text(
-                            text = entry.name.firstOrNull()?.uppercase() ?: "?",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = badge,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
+                    Spacer(modifier = Modifier.width(6.dp))
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val badge = entry.badge
-                        if (badge != null) {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                            ) {
-                                Text(
-                                    text = badge,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
-                        Text(
-                            text = entry.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = colorForName(entry.colorName),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                Text(
+                    text = entry.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Plugins may not carry a timestamp (default -1) — only
+                // show it when one was provided.
+                if (entry.timeMs > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = formatChatTime(entry.timeMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(6.dp))
@@ -343,13 +331,5 @@ private fun splitEmotes(text: String, emoteNames: Set<String>): List<Pair<Boolea
     return out
 }
 
-private fun colorForName(colorName: String?, default: Color = Color(0xFF9146FF)): Color =
-    when (colorName?.lowercase()) {
-        "blue" -> Color(0xFF00A8FC)
-        "green" -> Color(0xFF00FF7F)
-        "orange" -> Color(0xFFFF7F00)
-        "red" -> Color(0xFFFF0000)
-        "yellow" -> Color(0xFFFFD700)
-        "purple", null -> default
-        else -> default
-    }
+private fun formatChatTime(timeMs: Long): String =
+    java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(timeMs))

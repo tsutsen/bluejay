@@ -36,6 +36,7 @@ class LiveChatRepositoryImpl
 
         private var _manager: LiveChatManager? = null
         private var _url: String? = null
+        private val uidCounter = java.util.concurrent.atomic.AtomicLong(0)
 
         override suspend fun start(url: String) {
             if (_url == url) return
@@ -68,11 +69,12 @@ class LiveChatRepositoryImpl
 
         private fun merge(events: List<IPlatformLiveEvent>) {
             val current = _state.value ?: return
-            val newEntries =
+            val mapped =
                 events.mapNotNull { event ->
                     when (event) {
                         is LiveEventComment -> {
                             LiveChatEntry.ChatMessage(
+                                uid = 0,
                                 timeMs = event.time,
                                 name = event.name,
                                 colorName = event.colorName,
@@ -84,6 +86,7 @@ class LiveChatRepositoryImpl
 
                         is LiveEventRaid -> {
                             LiveChatEntry.Raid(
+                                uid = 0,
                                 timeMs = event.time,
                                 targetName = event.targetName,
                                 targetUrl = event.targetUrl,
@@ -93,6 +96,7 @@ class LiveChatRepositoryImpl
 
                         is LiveEventDonation -> {
                             LiveChatEntry.Donation(
+                                uid = 0,
                                 timeMs = event.time,
                                 name = event.name,
                                 message = event.message,
@@ -108,6 +112,22 @@ class LiveChatRepositoryImpl
                         }
                     }
                 }
+            // Overlapping poll windows can redeliver events already on
+            // screen — drop duplicates (by content, before the uid is
+            // stamped, which would break equality).
+            val existing = current.entries.map { signature(it) }.toHashSet()
+            val newEntries =
+                mapped
+                    .filter { signature(it) !in existing }
+                    .map { entry ->
+                        when (entry) {
+                            is LiveChatEntry.ChatMessage -> entry.copy(uid = uidCounter.incrementAndGet())
+
+                            is LiveChatEntry.Raid -> entry.copy(uid = uidCounter.incrementAndGet())
+
+                            is LiveChatEntry.Donation -> entry.copy(uid = uidCounter.incrementAndGet())
+                        }
+                    }
             val emotes =
                 events
                     .filterIsInstance<LiveEventEmojis>()
@@ -130,6 +150,16 @@ class LiveChatRepositoryImpl
                     viewCount = viewCount,
                 )
         }
+
+        /** uid-free identity of an entry (dedupe across poll windows). */
+        private fun signature(e: LiveChatEntry): String =
+            when (e) {
+                is LiveChatEntry.ChatMessage -> "m|${e.timeMs}|${e.name}|${e.badge}|${e.text}"
+
+                is LiveChatEntry.Raid -> "r|${e.timeMs}|${e.targetName}|${e.isOutgoing}"
+
+                is LiveChatEntry.Donation -> "d|${e.timeMs}|${e.name}|${e.message}"
+            }
 
         private companion object {
             const val TAG = "LiveChatRepository"

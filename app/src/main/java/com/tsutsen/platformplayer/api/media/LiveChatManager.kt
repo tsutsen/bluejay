@@ -93,28 +93,37 @@ class LiveChatManager {
                     var nextInterval = 1000L
                     try {
                         if (!_pager.hasMorePages()) {
-                            return@launch
-                        }
-                        _pager.nextPage()
-                        val newEvents = _pager.getResults()
-                        if (_pager is JSLiveEventPager) {
-                            nextInterval = _pager.nextRequest.coerceAtLeast(800).toLong()
-                        }
-
-                        if (newEvents.size > 0) {
-                            Logger.i(
-                                TAG,
-                                "New Live Events (${newEvents.size}) [${newEvents.map { it.type.name }.joinToString(", ")}]",
-                            )
+                            // Do NOT exit: the pager can go idle temporarily
+                            // (plugin internal error, runtime being
+                            // reinstalled) and come back. Re-poll slowly
+                            // instead of killing the loop — that is what
+                            // made chat stop fetching for good.
+                            nextInterval = 5000L
                         } else {
-                            Logger.v(TAG, "No new Live Events")
-                        }
+                            _pager.nextPage()
+                            val newEvents = _pager.getResults()
+                            if (_pager is JSLiveEventPager) {
+                                // The plugin controls the poll interval; cap
+                                // it so a broken plugin can't stall chat
+                                // indefinitely.
+                                nextInterval = _pager.nextRequest.coerceIn(800, 30_000).toLong()
+                            }
 
-                        _scope.launch(Dispatchers.Main) {
-                            try {
-                                handleEvents(newEvents)
-                            } catch (e: Throwable) {
-                                Logger.e(TAG, "Failed to handle new live events.", e)
+                            if (newEvents.size > 0) {
+                                Logger.i(
+                                    TAG,
+                                    "New Live Events (${newEvents.size}) [${newEvents.map { it.type.name }.joinToString(", ")}]",
+                                )
+                            } else {
+                                Logger.v(TAG, "No new Live Events")
+                            }
+
+                            _scope.launch(Dispatchers.Main) {
+                                try {
+                                    handleEvents(newEvents)
+                                } catch (e: Throwable) {
+                                    Logger.e(TAG, "Failed to handle new live events.", e)
+                                }
                             }
                         }
                     } catch (ex: Throwable) {
