@@ -86,7 +86,8 @@ internal fun OptionsModal(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
             }
-            if (audioTracks.isNotEmpty()) {
+            // A single track is the default — nothing to select.
+            if (audioTracks.size > 1) {
                 OptionCard(title = "Audio") {
                     audioTracks.forEach { track ->
                         FilterChip(

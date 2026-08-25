@@ -265,19 +265,31 @@ class PlayerRepositoryImpl(
                         C.TRACK_TYPE_AUDIO -> {
                             for (i in 0 until group.length) {
                                 val format = group.getTrackFormat(i)
-                                // ponytail: raw language code as label ("en") —
-                                // LocaleDisplayNames is out; pretty names if
-                                // users complain.
-                                val label = format.label ?: format.language ?: "Audio ${audioTracks.size + 1}"
-                                audioTracks.add(
-                                    AudioTrackInfo(
-                                        id = "${group.mediaTrackGroup.id}:$i",
-                                        label = label,
-                                        language = format.language,
-                                    ),
-                                )
+                                // "und" (undetermined) is not a language: it
+                                // labels the chip "und" and selection by it is
+                                // a no-op.
+                                val language =
+                                    format.language
+                                        ?.takeIf { it != "und" && it != "undetermined" }
+                                // Chip key = language, else label. Tracks
+                                // sharing a key are the same choice at
+                                // different bitrates (SAB groups them in one
+                                // TrackGroup) — one chip per key. Tracks with
+                                // neither cannot be targeted via
+                                // TrackSelectionParameters — skip them.
+                                val key = language ?: format.label
+                                if (key.isNullOrBlank()) continue
                                 if (group.isTrackSelected(i) && selectedAudio == null) {
-                                    selectedAudio = label
+                                    selectedAudio = key
+                                }
+                                if (audioTracks.none { it.label == key }) {
+                                    audioTracks.add(
+                                        AudioTrackInfo(
+                                            id = "${group.mediaTrackGroup.id}:$i",
+                                            label = key,
+                                            language = language,
+                                        ),
+                                    )
                                 }
                             }
                         }
@@ -782,6 +794,7 @@ class PlayerRepositoryImpl(
             description = details.description,
             likeCount = details.likeCount,
             dislikeCount = details.dislikeCount,
+            sourceIconUrl = details.sourceIconUrl,
         )
 
     private fun createHttpDataSourceFactory(): DefaultHttpDataSource.Factory =
