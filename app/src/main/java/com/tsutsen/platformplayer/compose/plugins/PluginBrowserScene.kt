@@ -492,7 +492,12 @@ fun PluginDetailScene(
                             config = config!!,
                             settings = pluginSettings!!,
                             onSettingChanged = { variable, value ->
-                                pluginSettings?.set(variable, value)
+                                // New map reference: in-place mutation of the
+                                // remembered HashMap is invisible to Compose
+                                // (the switch would not move until the screen
+                                // recomposed for another reason).
+                                pluginSettings =
+                                    pluginSettings?.toMutableMap()?.apply { set(variable, value) }
                                 pluginSettingsChanged = true
                             },
                         )
