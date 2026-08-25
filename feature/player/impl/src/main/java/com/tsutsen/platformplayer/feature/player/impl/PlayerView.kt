@@ -694,6 +694,8 @@ fun PlayerView(
                         qualities = state.videoQualities,
                         subtitle = state.selectedSubtitle,
                         subtitles = state.subtitleLanguages,
+                        audioTracks = state.audioTracks,
+                        selectedAudioTrack = state.selectedAudioTrack,
                         loopMode = loopMode,
                         isWatchLater = savedTypes.contains(SavedVideoType.WATCH_LATER),
                         downloadState = downloadState,
@@ -705,6 +707,9 @@ fun PlayerView(
                         },
                         onSubtitleChange = { subtitle ->
                             viewModel.setSubtitle(subtitle)
+                        },
+                        onAudioChange = { track ->
+                            viewModel.setAudioTrack(track)
                         },
                         onLoopClick = { viewModel.cycleLoopMode() },
                         onWatchLaterClick = {

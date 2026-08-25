@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.TileTone
+import com.tsutsen.platformplayer.core.model.AudioTrackInfo
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import kotlinx.coroutines.flow.StateFlow
@@ -40,12 +41,15 @@ internal fun OptionsModal(
     qualities: List<Int>,
     subtitle: String,
     subtitles: List<String>,
+    audioTracks: List<AudioTrackInfo> = emptyList(),
+    selectedAudioTrack: String = "",
     loopMode: Int,
     isWatchLater: Boolean,
     downloadState: DownloadButtonState,
     onSpeedChange: (Float) -> Unit,
     onQualityChange: (String) -> Unit,
     onSubtitleChange: (String) -> Unit,
+    onAudioChange: (String) -> Unit,
     onLoopClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
     onDownload: () -> Unit,
@@ -80,6 +84,18 @@ internal fun OptionsModal(
                         label = { Text(q) },
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                }
+            }
+            if (audioTracks.isNotEmpty()) {
+                OptionCard(title = "Audio") {
+                    audioTracks.forEach { track ->
+                        FilterChip(
+                            selected = track.label == selectedAudioTrack,
+                            onClick = { onAudioChange(track.label) },
+                            label = { Text(track.label) },
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
                 }
             }
             OptionCard(title = "Subtitles") {

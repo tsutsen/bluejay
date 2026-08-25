@@ -39,6 +39,7 @@ import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.data.service.PlayerService
 import com.tsutsen.platformplayer.core.database.dao.HistoryDao
+import com.tsutsen.platformplayer.core.model.AudioTrackInfo
 import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
@@ -137,6 +138,8 @@ class PlayerRepositoryImpl(
     // via [applyTrackSelectionParameters] and re-applied to each new player.
     private var selectedQuality: String = "Auto"
     private var selectedSubtitle: String = "Off"
+    // Preferred audio track (UI label); null = engine default heuristics.
+    private var preferredAudioTrack: String? = null
 
     /** Last concretely selected track — used by [toggleSubtitles] when re-enabling. */
     private var lastExplicitSubtitle: String? = null
@@ -241,6 +244,8 @@ class PlayerRepositoryImpl(
             override fun onTracksChanged(tracks: Tracks) {
                 val heights = mutableListOf<Int>()
                 val languages = mutableListOf<String>()
+                val audioTracks = mutableListOf<AudioTrackInfo>()
+                var selectedAudio: String? = null
                 for (group in tracks.groups) {
                     when (group.mediaTrackGroup.type) {
                         C.TRACK_TYPE_VIDEO -> {
@@ -256,6 +261,26 @@ class PlayerRepositoryImpl(
                                 if (!language.isNullOrBlank()) languages.add(language)
                             }
                         }
+
+                        C.TRACK_TYPE_AUDIO -> {
+                            for (i in 0 until group.length) {
+                                val format = group.getTrackFormat(i)
+                                // ponytail: raw language code as label ("en") —
+                                // LocaleDisplayNames is out; pretty names if
+                                // users complain.
+                                val label = format.label ?: format.language ?: "Audio ${audioTracks.size + 1}"
+                                audioTracks.add(
+                                    AudioTrackInfo(
+                                        id = "${group.mediaTrackGroup.id}:$i",
+                                        label = label,
+                                        language = format.language,
+                                    ),
+                                )
+                                if (group.isTrackSelected(i) && selectedAudio == null) {
+                                    selectedAudio = label
+                                }
+                            }
+                        }
                     }
                 }
                 val qualities = heights.distinct().sortedDescending()
@@ -263,10 +288,19 @@ class PlayerRepositoryImpl(
                 // no text tracks), then player-reported text tracks (DASH).
                 val subtitles = (currentSubtitles.map { it.name } + languages).distinct()
                 _playerState.update {
-                    if (it.videoQualities == qualities && it.subtitleLanguages == subtitles) {
+                    if (it.videoQualities == qualities &&
+                        it.subtitleLanguages == subtitles &&
+                        it.audioTracks == audioTracks &&
+                        it.selectedAudioTrack == selectedAudio.orEmpty()
+                    ) {
                         it
                     } else {
-                        it.copy(videoQualities = qualities, subtitleLanguages = subtitles)
+                        it.copy(
+                            videoQualities = qualities,
+                            subtitleLanguages = subtitles,
+                            audioTracks = audioTracks,
+                            selectedAudioTrack = selectedAudio.orEmpty(),
+                        )
                     }
                 }
             }
@@ -885,6 +919,11 @@ class PlayerRepositoryImpl(
         applySubtitleSource()
     }
 
+    override suspend fun setAudioTrack(selection: String) {
+        preferredAudioTrack = selection
+        applyTrackSelectionParameters()
+    }
+
     override suspend fun toggleSubtitles() {
         val current = selectedSubtitle
         if (current != "Off" && current != "Auto") {
@@ -978,6 +1017,21 @@ class PlayerRepositoryImpl(
 
             else -> {
                 builder.setPreferredTextLanguages(selectedSubtitle)
+            }
+        }
+        // Audio: select by language when the track carries one, by label
+        // otherwise. ponytail: two tracks sharing a language resolve to the
+        // first one — per-track group/track forcing (removed from the
+        // Player API in media3 1.9) if that ever matters.
+        preferredAudioTrack?.let { label ->
+            val track = _playerState.value.audioTracks.firstOrNull { it.label == label }
+            if (track != null) {
+                val language = track.language
+                if (language != null) {
+                    builder.setPreferredAudioLanguages(language)
+                } else {
+                    builder.setPreferredAudioLabels(track.label)
+                }
             }
         }
         player.setTrackSelectionParameters(builder.build())

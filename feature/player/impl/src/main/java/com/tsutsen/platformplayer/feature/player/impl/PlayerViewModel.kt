@@ -12,6 +12,7 @@ import com.tsutsen.platformplayer.core.data.repository.LiveChatRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.model.AudioTrackInfo
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CastDevice
 import com.tsutsen.platformplayer.core.model.CastState
@@ -66,6 +67,8 @@ sealed interface PlayerUiState {
         val comments: List<CommentItem> = emptyList(),
         val videoQualities: List<Int> = emptyList(),
         val subtitleLanguages: List<String> = emptyList(),
+        val audioTracks: List<AudioTrackInfo> = emptyList(),
+        val selectedAudioTrack: String = "",
         val selectedQuality: String = "Auto",
         val selectedSubtitle: String = "Off",
         val subtitleText: String = "",
@@ -345,6 +348,8 @@ class PlayerViewModel
                                 comments = playerState.comments,
                                 videoQualities = playerState.videoQualities,
                                 subtitleLanguages = playerState.subtitleLanguages,
+                                audioTracks = playerState.audioTracks,
+                                selectedAudioTrack = playerState.selectedAudioTrack,
                                 selectedQuality = playerState.selectedQuality,
                                 selectedSubtitle = playerState.selectedSubtitle,
                                 subtitleText = playerState.subtitleText,
@@ -752,6 +757,12 @@ class PlayerViewModel
         fun setSubtitle(selection: String) {
             viewModelScope.launch {
                 playerRepository.setSubtitle(selection)
+            }
+        }
+
+        fun setAudioTrack(selection: String) {
+            viewModelScope.launch {
+                playerRepository.setAudioTrack(selection)
             }
         }
 
