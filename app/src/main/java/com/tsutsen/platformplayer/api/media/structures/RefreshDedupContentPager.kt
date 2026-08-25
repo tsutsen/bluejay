@@ -33,4 +33,6 @@ class RefreshDedupContentPager: IRefreshPager<IPlatformContent>, IPager<IPlatfor
     override fun getResults(): List<IPlatformContent> {
         return _basePager.getResults();
     }
+
+    override val pendingPagers: Int get() = _basePager.pendingPagers
 }

@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.di
 
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
+import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.FeedPage
@@ -50,16 +51,22 @@ class EngineHomeRepositoryImpl
         // in-flight call publishes the result.
         private val loadInitialInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
 
-        override suspend fun loadInitial() {
+        /** @return false when a load was already in flight (and skipped). */
+        private suspend fun tryLoadInitial(): Boolean {
             if (!loadInitialInFlight.compareAndSet(false, true)) {
                 Logger.i("EngineHomeRepository", "loadInitial already in flight, skipping")
-                return
+                return false
             }
             try {
                 doLoadInitial()
+                return true
             } finally {
                 loadInitialInFlight.set(false)
             }
+        }
+
+        override suspend fun loadInitial() {
+            tryLoadInitial()
         }
 
         private suspend fun doLoadInitial() {
@@ -111,14 +118,42 @@ class EngineHomeRepositoryImpl
 
             try {
                 val pager = StatePlatform.instance.getHomeRefresh(CoroutineScope(Dispatchers.IO))
+                val refreshPager = pager as? IRefreshPager<IPlatformContent>
                 val flow = PagerFlow(pager, EngineCardMapper::toCard, { it.id })
                 _pagerFlow = flow
+                // The engine resolves per-source pagers lazily: the first
+                // client lands first, the rest join in via onPagerChanged.
+                // Merge them into the feed as they arrive (grayjay's
+                // FeedView subscribes the same way).
+                refreshPager?.onPagerChanged?.subscribe(this) {
+                    // A refresh may have replaced _pagerFlow: a late sub-pager
+                    // from the OLD load must not clobber the new feed.
+                    if (flow !== _pagerFlow) return@subscribe
+                    val merged = flow.mergeCurrentResults()
+                    if (merged.isNotEmpty())
+                        Logger.i("EngineHomeRepository", "Merged late source: +${merged.size}, ${flow.items.size} total")
+                    _feed.update {
+                        it.copy(
+                            items = flow.items,
+                            hasMorePages = flow.hasMore,
+                            error = flow.error,
+                            isLoading = refreshPager.pendingPagers > 0,
+                        )
+                    }
+                }
                 val items = flow.loadInitial()
-                Logger.i("EngineHomeRepository", "Converted to ${items.size} cards, hasMore=${flow.hasMore}")
+                Logger.i("EngineHomeRepository", "Converted to ${items.size} cards, hasMore=${flow.hasMore}, pending=${refreshPager?.pendingPagers ?: 0}")
                 _feed.update {
+                    // flow.items (not the local): onPagerChanged may have
+                    // merged a late source's cards in between loadInitial()
+                    // and this update — the local would clobber them.
+                    // isLoading stays up while late sources are still
+                    // pending: the UI shows a spinner (filtered feeds)
+                    // instead of flashing "No content yet" until the merge
+                    // lands a couple of seconds later.
                     it.copy(
-                        isLoading = false,
-                        items = items,
+                        isLoading = refreshPager != null && refreshPager.pendingPagers > 0,
+                        items = flow.items,
                         hasMorePages = flow.hasMore,
                         error = flow.error,
                         currentPage = 1,
@@ -179,8 +214,9 @@ class EngineHomeRepositoryImpl
 
         override suspend fun refresh() {
             Logger.i("EngineHomeRepository", "refresh")
-            _pagerFlow = null
-            loadInitial()
+            // A skipped load (one already in flight) must not orphan the
+            // current pager: the in-flight run publishes the fresh results.
+            tryLoadInitial()
         }
 
         override suspend fun filterByTag(tag: String) {
