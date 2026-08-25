@@ -7,14 +7,12 @@ import android.net.Uri
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -33,12 +31,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -46,11 +46,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -66,6 +70,7 @@ import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import com.tsutsen.platformplayer.feature.player.impl.ui.CastingSheet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val TAG = "PlayerScreen"
@@ -93,14 +98,19 @@ fun PlayerView(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
 
+    // ==================== Player surface (deep geometry module) ====================
+    // All animated/measured surface state (window/container size, morph and
+    // fullscreen progress, fade, mini-player drag offsets, collapse height)
+    // lives in [surface]. The UI layers read it ONLY through frame-safe
+    // accessors (frame-level modifier lambdas, derivedStateOf gates, or
+    // call-time reads inside effects/handlers) — never bare in a body.
+    val surface = remember { PlayerSurface(coroutineScope) }
+
     // ==================== True window size (nav-bar independent) ====================
     val view = LocalView.current
-    var windowWidthPx by remember { mutableStateOf(0f) }
-    var windowHeightPx by remember { mutableStateOf(0f) }
     DisposableEffect(view) {
         fun syncWindowSize() {
-            windowWidthPx = view.width.toFloat()
-            windowHeightPx = view.height.toFloat()
+            surface.windowSize.value = Size(view.width.toFloat(), view.height.toFloat())
         }
         syncWindowSize()
         val listener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> syncWindowSize() }
@@ -114,7 +124,6 @@ fun PlayerView(
     var activeProgressIndicator by remember { mutableStateOf<GestureIndicator.Progress?>(null) }
     var badgeState by remember { mutableStateOf(GestureBadgeState()) }
     var badgeKeepAliveCounter by remember { mutableStateOf(0) }
-    var showMiniPlayerOptions by remember { mutableStateOf(false) }
     // Video options sheet (three-dot menu + long-press on queue cards): the
     // video it is bound to, or null when closed.
     var sheetVideo by remember { mutableStateOf<ContentItem?>(null) }
@@ -135,109 +144,56 @@ fun PlayerView(
     var expandedDescription by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
 
-    var miniPlayerOffsetX by remember { mutableStateOf(0f) }
-    var miniPlayerOffsetY by remember { mutableStateOf(0f) }
-    var isDraggingMiniPlayer by remember { mutableStateOf(false) }
-
-    val morphProgress =
-        remember {
-            androidx.compose.animation.core
-                .Animatable(0f)
-        }
-    var isDraggingMorph by remember { mutableStateOf(false) }
-    var isDraggingFullscreen by remember { mutableStateOf(false) }
-
-    val fullscreenProgress =
-        remember {
-            androidx.compose.animation.core
-                .Animatable(0f)
-        }
-
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableStateOf(0L) }
-
-    val animatedMiniOffsetX by animateFloatAsState(
-        targetValue = miniPlayerOffsetX,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
-        label = "animatedMiniOffsetX",
-    )
-    val animatedMiniOffsetY by animateFloatAsState(
-        targetValue = miniPlayerOffsetY,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioNoBouncy),
-        label = "animatedMiniOffsetY",
-    )
 
     val transitionSpringSpec =
         tween<Float>(
             durationMillis = 300,
             easing = FastOutSlowInEasing,
         )
-    val transitionDpSpec =
-        spring<androidx.compose.ui.unit.Dp>(
-            stiffness = Spring.StiffnessMediumLow,
-            dampingRatio = Spring.DampingRatioNoBouncy,
-        )
-
-    val isMinimizedAnim = remember { mutableStateOf(false) }
-    val isFullscreenAnim = remember { mutableStateOf(false) }
-    val playerFadeInProgress =
-        remember {
-            androidx.compose.animation.core
-                .Animatable(0f)
-        }
-
-    var containerSize by remember { mutableStateOf(Size.Zero) }
 
     val player =
         remember(uiState) {
             (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
         }
 
-    // Initialize from state on first load only (for indicator defaults).
-    // Gesture handler owns indicator state during interaction.
-    var initialized by remember { mutableStateOf(false) }
-    val loadedState = uiState as? PlayerUiState.Loaded
-    if (loadedState != null && !initialized) {
-        // Seed initial values so indicators start from current system state
-        initialized = true
-    }
-
     // ==================== Animation sync ====================
     val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
     val isFullscreenState = (uiState as? PlayerUiState.Loaded)?.isFullscreen
 
-    LaunchedEffect(isMinimizedState, isDraggingMorph) {
-        if (isDraggingMorph) return@LaunchedEffect
+    LaunchedEffect(isMinimizedState, surface.isDraggingMorph.value) {
+        if (surface.isDraggingMorph.value) return@LaunchedEffect
         val minimized = isMinimizedState ?: return@LaunchedEffect
         val target = if (minimized) 1f else 0f
-        if (kotlin.math.abs(morphProgress.value - target) > 0.01f) {
-            morphProgress.animateTo(target, transitionSpringSpec)
+        if (kotlin.math.abs(surface.morphProgress.value - target) > 0.01f) {
+            surface.morphProgress.animateTo(target, transitionSpringSpec)
         }
-        isMinimizedAnim.value = minimized
+        surface.isMinimizedAnim.value = minimized
         if (!minimized) controlsVisible = true
     }
 
-    LaunchedEffect(isFullscreenState, isDraggingFullscreen) {
+    LaunchedEffect(isFullscreenState, surface.isDraggingFullscreen.value) {
         // Don't fight the finger mid-drag: the drag callbacks own
         // fullscreenProgress until END; the commit (or cancel) that follows
         // re-enters this effect and finishes the move.
-        if (isDraggingFullscreen) return@LaunchedEffect
+        if (surface.isDraggingFullscreen.value) return@LaunchedEffect
         val fullscreen = isFullscreenState ?: return@LaunchedEffect
         val target = if (fullscreen) 1f else 0f
-        if (fullscreen && morphProgress.value < 0.5f) {
+        if (fullscreen && surface.morphProgress.value < 0.5f) {
             kotlinx.coroutines.delay(50)
         }
-        if (kotlin.math.abs(fullscreenProgress.value - target) > 0.01f) {
-            fullscreenProgress.animateTo(target, transitionSpringSpec)
+        if (kotlin.math.abs(surface.fullscreenProgress.value - target) > 0.01f) {
+            surface.fullscreenProgress.animateTo(target, transitionSpringSpec)
         }
-        isFullscreenAnim.value = fullscreen
+        surface.isFullscreenAnim.value = fullscreen
     }
 
     LaunchedEffect(uiState) {
         if (uiState is PlayerUiState.Loaded) {
-            playerFadeInProgress.animateTo(1f, tween(durationMillis = 600))
+            surface.playerFadeInProgress.animateTo(1f, tween(durationMillis = 600))
         } else {
-            playerFadeInProgress.animateTo(0f)
+            surface.playerFadeInProgress.animateTo(0f)
         }
     }
 
@@ -252,16 +208,9 @@ fun PlayerView(
                 scrubPositionMs = 0L
             }
 
-            val miniWidth = 280.dp
-            val miniHeight = miniWidth * 9f / 16f
-            val dragTravelPx = containerSize.height * 0.45f
-
             val isMinimized = state.isMinimized
             val isFullscreen = state.isFullscreen
-
-            val p = morphProgress.value
-            val cornerRadius = (12f * p).coerceAtLeast(0f).dp
-            val fullscreenP = fullscreenProgress.value
+            val density = LocalDensity.current
 
             val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             val isSmallWindow =
@@ -317,73 +266,60 @@ fun PlayerView(
             }
 
             // ==================== Auto-hide controls ====================
-            LaunchedEffect(controlsVisible, state.isPlaying, isMinimizedAnim.value, isFullscreenAnim.value, morphProgress.value) {
-                if (morphProgress.value > 0.01f && morphProgress.value < 0.99f) {
-                    hideControlsJob?.cancel()
-                    return@LaunchedEffect
-                }
-                val settled = !isMinimizedAnim.value
-                val canAutoHide = settled && state.isPlaying && controlsVisible
-                if (canAutoHide) {
-                    hideControlsJob?.cancel()
-                    hideControlsJob =
-                        launch {
-                            delay(3000)
-                            controlsVisible = false
-                        }
-                } else {
-                    hideControlsJob?.cancel()
-                }
+            // Keyed on RARELY-flipping values only (never per-frame morph
+            // progress): the effect waits internally for the morph to settle
+            // via a snapshotFlow read, so it cannot restart on every frame.
+            val isMinimizedAnim by remember(surface) {
+                derivedStateOf { surface.isMinimizedAnim.value }
+            }
+            val isFullscreenAnim by remember(surface) {
+                derivedStateOf { surface.isFullscreenAnim.value }
+            }
+            LaunchedEffect(controlsVisible, state.isPlaying, isMinimizedAnim, isFullscreenAnim) {
+                if (isMinimizedAnim || isFullscreenAnim) return@LaunchedEffect
+                // Wait (without restarting) until a morph in progress settles.
+                snapshotFlow { surface.morphProgress.value }
+                    .first { p -> p <= 0.01f || p >= 0.99f }
+                if (!controlsVisible) return@LaunchedEffect
+                hideControlsJob?.cancel()
+                hideControlsJob =
+                    launch {
+                        delay(3000)
+                        controlsVisible = false
+                    }
             }
 
             LaunchedEffect(state.isPlaying) {
                 if (!state.isPlaying) controlsVisible = true
             }
 
-            LaunchedEffect(morphProgress.value) {
-                if (morphProgress.value > 0.8f) {
-                    controlsVisible = false
-                }
+            LaunchedEffect(isMinimizedAnim) {
+                if (isMinimizedAnim) controlsVisible = false
             }
 
             // ==================== Collapsing player height ====================
             val scrollState = rememberLazyListState()
-            // The NORMAL-mode video height.
-            //  - Landscape: 70% of the window height, leaving room for the
-            //    details page below the video.
-            //  - Portrait: a width-constrained 16:9 box. 0.7 of the tall
-            //    portrait window height would make the video far too large.
-            val maxPlayerHeightPx =
-                if (isLandscape) {
-                    containerSize.height * 0.7f
-                } else {
-                    containerSize.width * 9f / 16f
-                }
-            // Scroll-collapsible lower bound (drag the video shorter).
-            val minPlayerHeightPx =
-                if (isLandscape) {
-                    containerSize.height * 0.2f
-                } else {
-                    maxPlayerHeightPx * 0.4f
-                }
-            var playerHeightPx by remember { mutableStateOf(0f) }
+            // NORMAL-mode video height and its scroll-collapsible lower bound
+            // are owned by the surface (orientation-dependent).
+            val maxPlayerHeightPx = surface.maxPlayerHeightPx(isLandscape)
+            val minPlayerHeightPx = surface.minPlayerHeightPx(isLandscape, maxPlayerHeightPx)
 
             // Reset the collapsed height the moment the state leaves the
             // floating mini (isMinimized flips false immediately), not only
             // after the 300ms morph settles (isMinimizedAnim) — otherwise the
             // player lands in COMPACT for a beat before expanding to NORMAL.
-            LaunchedEffect(isMinimized, isFullscreenAnim.value) {
-                if (!isMinimized && !isFullscreenAnim.value) {
-                    playerHeightPx = maxPlayerHeightPx
+            LaunchedEffect(isMinimized, surface.isFullscreenAnim.value) {
+                if (!isMinimized && !surface.isFullscreenAnim.value) {
+                    surface.playerHeightPx.value = surface.maxPlayerHeightPx(isLandscape)
                 }
             }
 
             LaunchedEffect(maxPlayerHeightPx, minPlayerHeightPx) {
-                playerHeightPx =
-                    if (playerHeightPx == 0f) {
+                surface.playerHeightPx.value =
+                    if (surface.playerHeightPx.value == 0f) {
                         maxPlayerHeightPx
                     } else {
-                        playerHeightPx.coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
+                        surface.playerHeightPx.value.coerceIn(minPlayerHeightPx, maxPlayerHeightPx)
                     }
             }
 
@@ -394,8 +330,19 @@ fun PlayerView(
                             available: Offset,
                             source: NestedScrollSource,
                         ): Offset {
+                            // Self-gate: playerHeightPx is NORMAL-mode state, so
+                            // only consume detail-scroll while fully settled in
+                            // normal mode. This lets the caller keep the
+                            // connection attached at all times (no per-frame
+                            // attach/detach of the modifier chain).
+                            if (
+                                surface.morphProgress.value >= MINI_SETTLED_THRESHOLD ||
+                                surface.fullscreenProgress.value >= FULLSCREEN_SETTLED_THRESHOLD
+                            ) {
+                                return Offset.Zero
+                            }
                             val delta = available.y
-                            val previousHeight = playerHeightPx
+                            val previousHeight = surface.playerHeightPx.value
                             val consumed =
                                 when {
                                     delta < 0f -> {
@@ -415,73 +362,29 @@ fun PlayerView(
                                     }
                                 }
                             if (consumed != 0f) {
-                                playerHeightPx += consumed
+                                surface.playerHeightPx.value += consumed
                             }
                             return Offset(0f, consumed)
                         }
                     }
                 }
 
-            // "Collapsed" = the video has been dragged down to (or below) half
-            // of its own maximum height. Measuring against maxPlayerHeightPx
-            // (not the window height) is orientation-independent: in portrait
-            // the 16:9 video is only ~25% of the tall window height, so a fixed
-            // 0.45 window-fraction made it read as permanently collapsed and
-            // never entered NORMAL mode.
-            val isCollapsedControls =
-                !isFullscreenAnim.value &&
-                    maxPlayerHeightPx > 0f &&
-                    (playerHeightPx / maxPlayerHeightPx) <= 0.5f
-
-            // ==================== Geometry ====================
-            val density = LocalDensity.current
-            val miniWidthPx = with(density) { miniWidth.toPx() }
-            val miniHeightPx = with(density) { miniHeight.toPx() }
-            val paddingPx = 16f * density.density
-            val floatingRestX = containerSize.width - miniWidthPx - paddingPx
-            val floatingRestY = containerSize.height - miniHeightPx - paddingPx
-
-            LaunchedEffect(containerSize, isDraggingMiniPlayer) {
-                if (containerSize == Size.Zero || isDraggingMiniPlayer) return@LaunchedEffect
-                val minOffsetX = -floatingRestX
-                val maxOffsetX = (containerSize.width - miniWidthPx) - floatingRestX
-                val minOffsetY = -floatingRestY
-                val maxOffsetY = (containerSize.height - miniHeightPx) - floatingRestY
+            // ==================== Clamp mini-player drag offsets ====================
+            LaunchedEffect(surface.containerSize.value, surface.isDraggingMiniPlayer.value) {
+                val container = surface.containerSize.value
+                if (container == Size.Zero || surface.isDraggingMiniPlayer.value) return@LaunchedEffect
+                val rest = surface.floatingRestPx(density)
+                val mini = surface.miniSizePx(density)
+                val minOffsetX = -rest.x
+                val maxOffsetX = (container.width - mini.width) - rest.x
+                val minOffsetY = -rest.y
+                val maxOffsetY = (container.height - mini.height) - rest.y
                 if (minOffsetX > maxOffsetX || minOffsetY > maxOffsetY) return@LaunchedEffect
-                val clampedX = miniPlayerOffsetX.coerceIn(minOffsetX, maxOffsetX)
-                val clampedY = miniPlayerOffsetY.coerceIn(minOffsetY, maxOffsetY)
-                if (clampedX != miniPlayerOffsetX) miniPlayerOffsetX = clampedX
-                if (clampedY != miniPlayerOffsetY) miniPlayerOffsetY = clampedY
+                val clampedX = surface.miniPlayerOffsetX.value.coerceIn(minOffsetX, maxOffsetX)
+                val clampedY = surface.miniPlayerOffsetY.value.coerceIn(minOffsetY, maxOffsetY)
+                if (clampedX != surface.miniPlayerOffsetX.value) surface.miniPlayerOffsetX.value = clampedX
+                if (clampedY != surface.miniPlayerOffsetY.value) surface.miniPlayerOffsetY.value = clampedY
             }
-
-            val layoutDragX = if (isDraggingMiniPlayer) miniPlayerOffsetX else animatedMiniOffsetX
-            val layoutDragY = if (isDraggingMiniPlayer) miniPlayerOffsetY else animatedMiniOffsetY
-
-            val videoLayout =
-                computeVideoLayout(
-                    miniProgress = morphProgress.value,
-                    fullscreenProgress = fullscreenP,
-                    containerWidth = containerSize.width,
-                    containerHeight = containerSize.height,
-                    playerHeightPx = playerHeightPx,
-                    miniWidthPx = miniWidthPx,
-                    miniHeightPx = miniHeightPx,
-                    floatingRestX = floatingRestX,
-                    floatingRestY = floatingRestY,
-                    dragOffsetX = layoutDragX,
-                    dragOffsetY = layoutDragY,
-                    fullscreenWidthPx = if (windowWidthPx > 0f) windowWidthPx else containerSize.width,
-                    fullscreenHeightPx = if (windowHeightPx > 0f) windowHeightPx else containerSize.height,
-                )
-
-            // ==================== Overlay mode ====================
-            val overlayMode =
-                when {
-                    isMinimized && !isFullscreen -> PlayerOverlayMode.FLOATING
-                    isFullscreen -> PlayerOverlayMode.FULLSCREEN
-                    isCollapsedControls -> PlayerOverlayMode.COMPACT
-                    else -> PlayerOverlayMode.NORMAL
-                }
 
             // ==================== Gesture configs (defaults, user overrides later) ====================
             val gestureConfigs =
@@ -495,7 +398,7 @@ fun PlayerView(
                 remember {
                     com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureActionHandler(
                         viewModel = viewModel,
-                        screenHeight = { containerSize.height },
+                        screenHeight = { surface.containerSize.value.height },
                         context = context,
                         activity = context as? android.app.Activity,
                         onIndicator = { indicator ->
@@ -537,23 +440,23 @@ fun PlayerView(
                             activeProgressIndicator = null
                             // Badges auto-hide via their own fade animation — don't touch badgeState here
                         },
-                        onFullscreenDragStart = { isDraggingFullscreen = true },
+                        onFullscreenDragStart = { surface.isDraggingFullscreen.value = true },
                         onFullscreenDrag = { dragY ->
-                            // Read containerSize at call time — this block is
+                            // Read the surface at call time — this block is
                             // remembered once, so no locals may be captured.
-                            val travel = containerSize.height * 0.45f
+                            val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            coroutineScope.launch { fullscreenProgress.snapTo(progress) }
+                            coroutineScope.launch { surface.fullscreenProgress.snapTo(progress) }
                         },
                         onFullscreenDragEnd = { dragY ->
-                            isDraggingFullscreen = false
-                            val travel = containerSize.height * 0.45f
+                            surface.isDraggingFullscreen.value = false
+                            val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
                             if (progress > 0.4f) {
                                 viewModel.toggleFullscreen()
                             } else {
                                 coroutineScope.launch {
-                                    fullscreenProgress.animateTo(0f, transitionSpringSpec)
+                                    surface.fullscreenProgress.animateTo(0f, transitionSpringSpec)
                                 }
                             }
                         },
@@ -561,19 +464,24 @@ fun PlayerView(
                 }
 
             // ==================== Tap handler (toggle controls) ====================
-            val onTap: () -> Unit = {
-                if (morphProgress.value !in 0.01f..0.99f) {
-                    controlsVisible = !controlsVisible
-                    hideControlsJob?.cancel()
-                    if (controlsVisible && state.isPlaying) {
-                        hideControlsJob =
-                            coroutineScope.launch {
-                                delay(3000)
-                                controlsVisible = false
+            // Stable identity (recreated only when uiState changes): lets the
+            // big child subtrees below skip recomposition.
+            val onTap: () -> Unit =
+                remember(state) {
+                    {
+                        if (surface.morphProgress.value !in 0.01f..0.99f) {
+                            controlsVisible = !controlsVisible
+                            hideControlsJob?.cancel()
+                            if (controlsVisible && state.isPlaying) {
+                                hideControlsJob =
+                                    coroutineScope.launch {
+                                        delay(3000)
+                                        controlsVisible = false
+                                    }
                             }
+                        }
                     }
                 }
-            }
 
             // ==================== Compose ====================
             Box(
@@ -581,142 +489,164 @@ fun PlayerView(
                     Modifier
                         .fillMaxSize()
                         .onGloballyPositioned { coordinates ->
-                            containerSize = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
+                            surface.containerSize.value = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
                         },
             ) {
                 Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .graphicsLayer { alpha = playerFadeInProgress.value },
+                            .graphicsLayer { alpha = surface.playerFadeInProgress.value },
                 ) {
-                    val scrimAlpha = (1f - morphProgress.value) * (1f - fullscreenP) + fullscreenP
-                    if (scrimAlpha > 0.01f) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = scrimAlpha)),
-                        )
-                    }
+                    // Black scrim that follows the video box: full page in
+                    // normal/fullscreen, shrinks with the video through the
+                    // morph, and lands exactly on the floating mini player —
+                    // its solid plate (rounded corners and all) while the
+                    // underlying layers stay visible. Frame-safe: every
+                    // per-frame value is read inside the modifier lambdas.
+                    val pageScrimModifier =
+                        remember(surface, isLandscape, density) {
+                            Modifier
+                                .offset {
+                                    val layout = surface.videoLayout(isLandscape, density)
+                                    IntOffset(
+                                        x = layout.offsetX.toInt(),
+                                        y = layout.offsetY.toInt(),
+                                    )
+                                }.layout { measurable, constraints ->
+                                    val layout = surface.videoLayout(isLandscape, density)
+                                    // Bottom edge follows the morph: full
+                                    // container height at rest, video height
+                                    // while morphing — converges on the mini
+                                    // rect exactly at p=1 (and follows the
+                                    // finger during a mini drag, since the
+                                    // video rect does too).
+                                    val p = surface.morphProgress.value
+                                    val heightPx =
+                                        (surface.containerSize.value.height * (1f - p) +
+                                            layout.heightPx * p).roundToInt()
+                                    val widthPx = layout.widthPx.roundToInt()
+                                    val placeable =
+                                        measurable.measure(
+                                            Constraints(widthPx, widthPx, heightPx, heightPx),
+                                        )
+                                    layout(placeable.width, placeable.height) {
+                                        placeable.place(0, 0)
+                                    }
+                                }.graphicsLayer {
+                                    shape =
+                                        RoundedCornerShape(
+                                            surface.videoLayout(isLandscape, density).cornerRadius,
+                                        )
+                                    clip = true
+                                }.background(Color.Black)
+                        }
+                    Box(modifier = pageScrimModifier)
 
                     PlayerContent(
                         player = player,
                         state = state,
                         positionMs = viewModel.positionMs,
-                        videoLayout = videoLayout,
-                        miniProgress = morphProgress.value,
-                        fullscreenProgress = fullscreenP,
-                        containerWidth = containerSize.width,
-                        containerHeight = containerSize.height,
-                        playerHeightPx = playerHeightPx,
-                        miniWidthPx = miniWidthPx,
-                        miniHeightPx = miniHeightPx,
-                        floatingRestX = floatingRestX,
-                        floatingRestY = floatingRestY,
-                        isCollapsedControls = isCollapsedControls,
+                        surface = surface,
+                        isLandscape = isLandscape,
                         controlsVisible = controlsVisible,
-                        showTopOverlay = controlsVisible,
-                        showBottomOverlay = controlsVisible,
                         scrollState = scrollState,
                         nestedScrollConnection = nestedScrollConnection,
-                        overlayMode = overlayMode,
                         gestureConfigs = gestureConfigs,
                         gestureHandler = gestureHandler,
                         isScrubbing = isScrubbing,
-                        isMorphDragging = isDraggingMorph,
                         onTap = onTap,
-                        isDraggingMiniPlayer = isDraggingMiniPlayer,
-                        onDragStateChanged = { isDraggingMiniPlayer = it },
-                        onOffsetChanged = { x, y ->
-                            miniPlayerOffsetX = x
-                            miniPlayerOffsetY = y
-                        },
-                        currentOffsetX = miniPlayerOffsetX,
-                        currentOffsetY = miniPlayerOffsetY,
-                        onOptions = { showOptionsModal = true },
-                        onChapters = { showChapters = !showChapters },
+                        onOptions = remember { { showOptionsModal = true } },
+                        onChapters = remember { { showChapters = !showChapters } },
                         expandedDescription = expandedDescription,
-                        onToggleDescription = { expandedDescription = !expandedDescription },
+                        onToggleDescription = remember { { expandedDescription = !expandedDescription } },
                         selectedTab = selectedTab,
                         onChannelClick = onChannelClick,
-                        onLike = { viewModel.toggleLike(state.isLiked) },
-                        onDislike = { viewModel.toggleDislike(state.isDisliked) },
-                        onMore = { sheetVideo = state.currentVideo },
+                        onLike = remember(state) { { viewModel.toggleLike(state.isLiked) } },
+                        onDislike = remember(state) { { viewModel.toggleDislike(state.isDisliked) } },
+                        onMore = remember(state) { { sheetVideo = state.currentVideo } },
                         isSubscribedChannel = state.isSubscribedChannel,
-                        onSubscribe = { viewModel.subscribeChannel() },
+                        onSubscribe = remember { { viewModel.subscribeChannel() } },
                         isLive = state.isLive,
                         liveChat = liveChat,
                         onTimestampClick = onTimestampClick,
                         onLinkClick = onLinkClick,
-                        onTabSelected = { selectedTab = it },
-                        onRecommendedClick = { video -> viewModel.play(video) },
+                        onTabSelected = remember { { selectedTab = it } },
+                        onRecommendedClick = remember(viewModel) { { video: com.tsutsen.platformplayer.core.model.VideoCard -> viewModel.play(video) } },
                         gridColumns = gridColumns,
-                        onLoadMoreComments = { viewModel.loadMoreComments(state.currentVideo?.url ?: "") },
+                        onLoadMoreComments =
+                            remember(state) { { viewModel.loadMoreComments(state.currentVideo?.url ?: "") } },
                         isLoading = state.isLoading,
                         activeProgressIndicator = activeProgressIndicator,
                         badgeState = badgeState,
-                        onBadgeSessionEnded = {
-                            badgeState = GestureBadgeState()
-                        },
+                        onBadgeSessionEnded = remember { { badgeState = GestureBadgeState() } },
                         scrubPositionMs = scrubPositionMs,
                         subtitlesOn =
                             state.selectedSubtitle != "Off" && state.selectedSubtitle != "Auto",
-                        onSubtitleToggle = {
-                            viewModel.toggleSubtitles()
-                        },
-                        onMinimize = {
-                            viewModel.minimize()
-                        },
-                        onFullscreen = {
-                            viewModel.toggleFullscreen()
-                        },
-                        onExpand = {
-                            viewModel.exitMiniPlayer()
-                        },
-                        onMorphDragStart = { isDraggingMorph = true },
-                        onMorphDrag = { dragY ->
-                            val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
-                            coroutineScope.launch { morphProgress.snapTo(progress) }
-                        },
-                        onMorphDragEnd = { dragY ->
-                            isDraggingMorph = false
-                            val progress = (dragY / dragTravelPx).coerceIn(0f, 1f)
-                            if (progress > 0.4f) {
-                                viewModel.minimize()
-                            } else {
-                                coroutineScope.launch { morphProgress.animateTo(0f, transitionSpringSpec) }
-                            }
-                        },
-                        onPlayPause = { if (state.isPlaying) viewModel.pause() else viewModel.resume() },
-                        onClose = {
-                            viewModel.close()
-                        },
+                        onSubtitleToggle = remember { { viewModel.toggleSubtitles() } },
+                        onMinimize = remember { { viewModel.minimize() } },
+                        onExpand = remember { { viewModel.exitMiniPlayer() } },
+                        onMorphDragStart = remember { { surface.isDraggingMorph.value = true } },
+                        onMorphDrag =
+                            remember {
+                                { dragY: Float ->
+                                    val progress = (dragY / surface.dragTravelPx()).coerceIn(0f, 1f)
+                                    coroutineScope.launch { surface.morphProgress.snapTo(progress) }
+                                }
+                            },
+                        onMorphDragEnd =
+                            remember {
+                                { dragY: Float ->
+                                    surface.isDraggingMorph.value = false
+                                    val progress = (dragY / surface.dragTravelPx()).coerceIn(0f, 1f)
+                                    if (progress > 0.4f) {
+                                        viewModel.minimize()
+                                    } else {
+                                        coroutineScope.launch {
+                                            surface.morphProgress.animateTo(0f, transitionSpringSpec)
+                                        }
+                                    }
+                                }
+                            },
+                        onMiniOffsetChanged =
+                            remember
+                            {
+                                { x: Float, y: Float ->
+                                    surface.miniPlayerOffsetX.value = x
+                                    surface.miniPlayerOffsetY.value = y
+                                }
+                            },
+                        onPlayPause = remember(state) { { if (state.isPlaying) viewModel.pause() else viewModel.resume() } },
+                        onClose = remember { { viewModel.close() } },
                         loopMode = loopMode,
-                        onLoopMode = { viewModel.cycleLoopMode() },
-                        onWatchLater = {
-                            viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
-                        },
+                        onLoopMode = remember { { viewModel.cycleLoopMode() } },
+                        onWatchLater =
+                            remember {
+                                {
+                                    viewModel.toggleWatchLater(savedTypes.contains(SavedVideoType.WATCH_LATER))
+                                }
+                            },
                         isWatchLater = savedTypes.contains(SavedVideoType.WATCH_LATER),
-                        onQueue = { showQueueSheet = true },
+                        onQueue = remember { { showQueueSheet = true } },
                         // Casting deferred: the fcast protocol only reaches fcast
                         // receiver apps (not Chromecast TVs), which is niche. Users
                         // can use system screen cast instead. Re-enable by
                         // restoring this line + the sheet block below.
                         // onCast = { showCastingSheet = true },
-                        onPrevious = { viewModel.skipPrevious() },
-                        onNext = { viewModel.skipNext() },
-                        onSeek = { positionMs ->
-                            scrubPositionMs = positionMs
-                            isScrubbing = true
-                            viewModel.seekTo(positionMs)
-                        },
-                        onScrubFinished = {
-                            isScrubbing = false
-                        },
-                        onMoreOptions = { showMiniPlayerOptions = true },
-                        onFullscreenToggle = { viewModel.toggleFullscreen() },
-                        onDetailsOverdrag = { viewModel.toggleFullscreen() },
+                        onPrevious = remember { { viewModel.skipPrevious() } },
+                        onNext = remember { { viewModel.skipNext() } },
+                        onSeek =
+                            remember
+                            {
+                                { positionMs: Long ->
+                                    scrubPositionMs = positionMs
+                                    isScrubbing = true
+                                    viewModel.seekTo(positionMs)
+                                }
+                            },
+                        onScrubFinished = remember { { isScrubbing = false } },
+                        onFullscreenToggle = remember { { viewModel.toggleFullscreen() } },
+                        onDetailsOverdrag = remember { { viewModel.toggleFullscreen() } },
                     )
                 }
 
