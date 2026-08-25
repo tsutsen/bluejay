@@ -1,5 +1,8 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -165,6 +169,18 @@ fun PlayerContent(
     val detailsVisible by remember(surface, isLandscape) {
         derivedStateOf { surface.detailsAlphaNow(isLandscape) > 0.01f }
     }
+    // Time-based fade-IN: the p-based alpha window (0.1-0.4) is traversed in
+    // only ~90ms of the 300ms click-to-expand tween, so the details would
+    // pop in. Multiply by a settle that runs 0->1 over 250ms whenever the
+    // details (re)appear. Fade-OUT stays p-based, so drags remain tied to
+    // the finger.
+    val detailsSettle = remember { Animatable(1f) }
+    LaunchedEffect(detailsVisible) {
+        if (detailsVisible) {
+            detailsSettle.snapTo(0f)
+            detailsSettle.animateTo(1f, tween(250, easing = FastOutSlowInEasing))
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // ==================== 1. Persistent video surface ====================
@@ -286,7 +302,8 @@ fun PlayerContent(
                         }
                         .fillMaxHeight()
                         .graphicsLayer {
-                            alpha = surface.detailsAlphaNow(isLandscape)
+                            alpha =
+                                surface.detailsAlphaNow(isLandscape) * detailsSettle.value
                             translationY = surface.detailsTranslateYNow()
                         }.nestedScroll(nestedScrollConnection),
             ) {
