@@ -650,7 +650,24 @@ private fun CompanionVideoPage(
                                 state = liveChat,
                                 modifier = Modifier.fillMaxSize(),
                                 listHeight = null,
+                                // No horizontal inset on the companion
+                                // (bottom screen) chat.
+                                horizontalPadding = 0.dp,
                             )
+                    } else if (activeTab == "comments" && comments.isEmpty()) {
+                        // Centre the empty state in the whole tab area — a
+                        // LazyRow item can't fill the (unbounded) row width.
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "No comments",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 32.dp),
+                            )
+                        }
                     } else if (activeTab == "chapters" && chapters.isEmpty()) {
                         // Centre the empty state in the whole tab area — a
                         // LazyRow item can't fill the (unbounded) row width.
@@ -672,16 +689,6 @@ private fun CompanionVideoPage(
                         contentPadding = PaddingValues(end = 8.dp),
                     ) {
                 if (activeTab == "comments") {
-                    if (comments.isEmpty()) {
-                        item(key = "no-comments") {
-                            Text(
-                                "No comments",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 24.dp),
-                            )
-                        }
-                    }
                     items(comments, key = { it.id }) { comment ->
                         CommentCardView(
                             comment = comment,

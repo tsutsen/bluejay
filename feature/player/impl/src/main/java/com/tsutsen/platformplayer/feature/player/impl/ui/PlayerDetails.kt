@@ -22,12 +22,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
@@ -35,6 +41,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.LiveChatUiState
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.feature.player.impl.ui.components.LiveChatPanel
+import kotlinx.coroutines.delay
 import kotlin.math.max
 
 /**
@@ -139,14 +146,9 @@ internal fun PlayerDetails(
                     modifier = Modifier.weight(1f),
                 )
                 if (isLive) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .background(Color(0xFFE60000), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Text("LIVE", color = Color.White, fontSize = 12.sp)
-                    }
+                    LiveElapsedPill(
+                        startMs = state.currentVideo?.publishedAt?.takeIf { it > 0 },
+                    )
                 }
             }
         }
@@ -209,6 +211,20 @@ internal fun PlayerDetails(
                     }
                     return@LazyColumn
                 }
+                if (state.comments.isEmpty()) {
+                    item(key = "no-comments") {
+                        Text(
+                            "No comments",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 32.dp),
+                        )
+                    }
+                }
                 itemsIndexed(state.comments) { index, comment ->
                     CommentCard(
                         username = comment.author,
@@ -267,4 +283,44 @@ internal fun PlayerDetails(
             }
         }
     }
+}
+
+/**
+ * Red LIVE pill; shows the stream's elapsed time ("LIVE • 1:23:45") when the
+ * source reports a start time (Twitch sets it), ticking every 30 s. Plain
+ * "LIVE" when the start time is unknown.
+ */
+@Composable
+private fun LiveElapsedPill(startMs: Long?) {
+    var elapsedSecs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(startMs) {
+        if (startMs == null) return@LaunchedEffect
+        while (true) {
+            elapsedSecs = (System.currentTimeMillis() - startMs) / 1000
+            delay(30_000)
+        }
+    }
+    val label =
+        if (startMs != null && elapsedSecs > 0) {
+            "LIVE • ${formatLiveElapsed(elapsedSecs)}"
+        } else {
+            "LIVE"
+        }
+    Box(
+        modifier =
+            Modifier
+                .background(Color(0xFFE60000), RoundedCornerShape(4.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Text(label, color = Color.White, fontSize = 12.sp)
+    }
+}
+
+/** "H:MM:SS" from an hour up, "M:SS" below. */
+private fun formatLiveElapsed(totalSeconds: Long): String {
+    val h = totalSeconds / 3600
+    val m = (totalSeconds % 3600) / 60
+    val s = totalSeconds % 60
+    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
+    else "$m:${s.toString().padStart(2, '0')}"
 }

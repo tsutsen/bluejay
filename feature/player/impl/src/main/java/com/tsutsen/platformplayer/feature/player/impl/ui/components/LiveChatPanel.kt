@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,21 +15,29 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -51,12 +58,16 @@ import kotlinx.coroutines.delay
  *
  * [listHeight] caps the message list for bounded layouts (main player);
  * null fills the parent (companion tab area).
+ *
+ * [horizontalPadding] insets the message cards (the "X watching" header
+ * stays flush, like the comments section). 0.dp on the companion screen.
  */
 @Composable
 fun LiveChatPanel(
     state: LiveChatUiState?,
     modifier: Modifier = Modifier,
     listHeight: Dp? = 380.dp,
+    horizontalPadding: Dp = 16.dp,
     onLinkClick: ((String) -> Unit)? = null,
 ) {
     Column(modifier = modifier) {
@@ -65,7 +76,8 @@ fun LiveChatPanel(
                 text = "${formatViewCount(state?.viewCount ?: 0)} watching",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 6.dp),
+                modifier =
+                    Modifier.padding(start = horizontalPadding, end = horizontalPadding, bottom = 8.dp),
             )
         }
         if (state == null) {
@@ -99,6 +111,7 @@ fun LiveChatPanel(
                 } else {
                     Modifier.fillMaxSize()
                 },
+            horizontalPadding = horizontalPadding,
             onLinkClick = onLinkClick,
         )
     }
@@ -108,6 +121,7 @@ fun LiveChatPanel(
 private fun ChatMessageList(
     state: LiveChatUiState,
     modifier: Modifier = Modifier,
+    horizontalPadding: Dp = 16.dp,
     onLinkClick: ((String) -> Unit)? = null,
 ) {
     val listState = rememberLazyListState()
@@ -124,28 +138,73 @@ private fun ChatMessageList(
             }
         }
 
+    // FOLLOWING mode: on by default. Turns off when a scroll ends away
+    // from the bottom (user reading history), back on when a scroll ends
+    // at the bottom or the jump button is pressed. Programmatic scrolls
+    // always end at the bottom, so they keep the mode on.
+    val following = remember { mutableStateOf(true) }
+    LaunchedEffect(listState) {
+        var wasScrolling = false
+        snapshotFlow { listState.isScrollInProgress }
+            .collect { scrolling ->
+                if (scrolling) {
+                    wasScrolling = true
+                    return@collect
+                }
+                if (!wasScrolling) return@collect
+                wasScrolling = false
+                // The scroll-end event fires before layoutInfo catches up;
+                // let the position settle before sampling it.
+                delay(200)
+                following.value = nearBottom.value
+            }
+    }
+
     // The size key keeps the scroll off the frame clock while chat is idle.
     LaunchedEffect(state.entries.size) {
         delay(120)
-        if (nearBottom.value && state.entries.isNotEmpty()) {
-            listState.animateScrollToItem(state.entries.size - 1)
+        if (state.entries.isEmpty() || !following.value) return@LaunchedEffect
+        val index = state.entries.size - 1
+        if (nearBottom.value) {
+            listState.animateScrollToItem(index)
+        } else {
+            listState.scrollToItem(index)
         }
     }
 
     val emotes = state.emoteUrls
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        // Same horizontal inset as the comment cards on the main screen
-        // (and the companion, which reuses this panel).
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
-    ) {
+    // Layout like the comments section: tight cards, each card carries
+    // its own horizontal inset (the header above stays flush). The
+    // go-to-bottom button floats above the last cards while the user is
+    // reading history.
+    Box(modifier = modifier) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+        if (state.entries.isEmpty()) {
+            item {
+                Text(
+                    "Welcome to the stream!\nNo messages since you joined.",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = horizontalPadding, vertical = 32.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
         items(state.entries, key = { it.uid }) { entry ->
             when (entry) {
                 is LiveChatEntry.ChatMessage ->
-                    ChatMessageCard(entry, emotes, onLinkClick)
+                    ChatMessageCard(
+                        entry,
+                        emotes,
+                        onLinkClick,
+                        Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
+                    )
 
                 is LiveChatEntry.Raid ->
                     SystemChatCard(
@@ -155,6 +214,7 @@ private fun ChatMessageList(
                             } else {
                                 "${entry.targetName} is raiding this channel"
                             },
+                        Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
                     )
 
                 is LiveChatEntry.Donation ->
@@ -165,7 +225,37 @@ private fun ChatMessageList(
                                 append(" donated: ")
                                 append(entry.message)
                             },
+                        Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
                     )
+            }
+        }
+    }
+
+    // Shown only while NOT following — it is the "enter FOLLOWING" button.
+    // The mode flag (not the live scroll position) drives visibility, so
+    // it never blinks while programmatic scrolls are in flight.
+    if (state.entries.isNotEmpty() && !following.value) {
+            Surface(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(12.dp)
+                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                IconButton(
+                    onClick = {
+                        following.value = true
+                        listState.requestScrollToItem(state.entries.size - 1)
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Follow latest messages",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
         }
     }
@@ -180,9 +270,10 @@ private fun ChatMessageCard(
     entry: LiveChatEntry.ChatMessage,
     emotes: Map<String, String>,
     onLinkClick: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(Tokens.RadiusMd),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
@@ -243,9 +334,9 @@ private fun ChatMessageCard(
 }
 
 @Composable
-private fun SystemChatCard(text: String) {
+private fun SystemChatCard(text: String, modifier: Modifier = Modifier) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(Tokens.RadiusMd),
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {

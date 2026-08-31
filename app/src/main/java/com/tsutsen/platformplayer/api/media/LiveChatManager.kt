@@ -24,6 +24,10 @@ class LiveChatManager {
     private val _scope: CoroutineScope
     private val _pager: IPager<IPlatformLiveEvent>
 
+    /** The underlying event pager (the repo watchdog re-creates it when it
+     *  dies — socket-based plugins never reconnect on their own). */
+    val pager: IPager<IPlatformLiveEvent> get() = _pager
+
     /** Emote name -> image URL (streamer emote set, refreshed over chat). */
     private val _emoteUrls: HashMap<String, String> = HashMap()
 
