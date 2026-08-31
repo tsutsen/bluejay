@@ -466,7 +466,7 @@ fun SettingsSectionScreen(
         Choice.SPEEDUP_SENSITIVITY -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Speedup gesture sensitivity",
+                    title = "Speedup gesture speed",
                     options =
                         listOf(
                             "Low" to "0.5",
@@ -779,7 +779,7 @@ private fun LazyListScope.SectionItems(
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.Speed,
-                    title = "Speedup gesture sensitivity",
+                    title = "Speedup gesture speed",
                     subtitle = "${state.speedupSensitivity}x",
                     onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
                 )

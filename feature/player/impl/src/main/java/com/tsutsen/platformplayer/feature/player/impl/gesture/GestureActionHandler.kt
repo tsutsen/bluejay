@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
  * Frame-based handler that dispatches gesture frames to the appropriate action.
@@ -92,12 +93,8 @@ class PlayerGestureActionHandler(
     private var accumulatedSeekMs: Long = 0L
 
     fun snapshotBrightness() {
-        currentBrightness =
-            if (SystemControls.canSetDeviceBrightness(context)) {
-                SystemControls.getDeviceBrightness(context) ?: 1f
-            } else {
-                activity?.let { SystemControls.getWindowBrightness(it.window) } ?: 1f
-            }
+        // Shared across screens: last user value, else device-wide setting.
+        currentBrightness = SystemControls.readBrightness(context)
     }
 
     fun snapshotVolume() {
@@ -188,11 +185,9 @@ class PlayerGestureActionHandler(
                 // instantDelta.y: negative = swipe up (brighter), positive = down (darker)
                 val delta = -frame.instantDelta.y / screenHeight()
                 currentBrightness = (currentBrightness + delta).coerceIn(0f, 1f)
-                // Device-wide when permitted (whole system follows the
-                // gesture); window-local fallback otherwise.
-                if (!SystemControls.setDeviceBrightness(context, currentBrightness)) {
-                    activity?.let { SystemControls.setWindowBrightness(it.window, currentBrightness) }
-                }
+                // All screens: device-wide when granted, plus this window
+                // (the companion window follows through SystemControls.brightness).
+                SystemControls.applyBrightness(context, currentBrightness, activity?.window)
                 onIndicator(GestureAction.BRIGHTNESS.defaultIndicator(currentBrightness))
             }
             GesturePhase.END -> {
@@ -231,6 +226,8 @@ class PlayerGestureActionHandler(
 
         /** Horizontal px to travel for one ±0.1x speed step. */
         private const val SPEED_SWIPE_STEP_PX = 200f
+        /** Below this much horizontal movement a speed gesture counts as a still hold. */
+        private const val SPEED_HOLD_DEADZONE_PX = 48f
         private const val SPEED_STEP = 0.1f
 
         /** Keep-alive interval for speed hold — keeps badge visible during still holds. */
@@ -261,9 +258,14 @@ class PlayerGestureActionHandler(
                 }
             }
             GesturePhase.ACTIVE -> {
-                // totalDelta.x: positive = swipe right (faster), negative = left (slower)
+                // totalDelta.x: positive = swipe right (faster), negative = left (slower).
+                // Deadzone: a still hold (tap/long-press slot) must never
+                // modulate speed, no matter how high the swipe speed is set —
+                // otherwise hold jitter steps the speed at high sensitivity.
+                val dx = frame.totalDelta.x
                 val steps =
-                    (frame.totalDelta.x / (SPEED_SWIPE_STEP_PX / viewModel.speedupSensitivity)).toInt()
+                    if (abs(dx) < SPEED_HOLD_DEADZONE_PX) 0
+                    else (dx / (SPEED_SWIPE_STEP_PX / viewModel.speedupSensitivity)).toInt()
                 val speed = (baseMultiplier + steps * SPEED_STEP).coerceIn(0.25f, 4f)
                 // Round to nearest 0.1 to avoid floating-point drift
                 val snapped = (speed * 10).toInt() / 10f

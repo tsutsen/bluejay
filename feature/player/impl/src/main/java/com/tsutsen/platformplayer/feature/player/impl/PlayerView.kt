@@ -11,6 +11,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -55,6 +57,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
@@ -151,7 +154,9 @@ fun PlayerView(
         }
 
     var controlsVisible by remember { mutableStateOf(true) }
-    var hideControlsJob by remember { mutableStateOf<Job?>(null) }
+    // Bumped on every pointer down anywhere in the player: the auto-hide
+    // effect is keyed on it, so any interaction restarts the 5s clock.
+    var controlsActivityTick by remember { mutableStateOf(0L) }
 
     var expandedDescription by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
@@ -457,18 +462,22 @@ fun PlayerView(
             val isFullscreenAnim by remember(surface) {
                 derivedStateOf { surface.isFullscreenAnim.value }
             }
-            LaunchedEffect(controlsVisible, state.isPlaying, isMinimizedAnim, isFullscreenAnim) {
-                if (isMinimizedAnim || isFullscreenAnim) return@LaunchedEffect
+            // Auto-hide: 5 seconds after the last interaction. The pointer
+            // observer on the root Box bumps controlsActivityTick on every
+            // pointer down, restarting this effect with a fresh clock.
+            LaunchedEffect(
+                controlsActivityTick,
+                controlsVisible,
+                state.isPlaying,
+                isMinimizedAnim,
+                isFullscreenAnim,
+            ) {
+                if (isMinimizedAnim || isFullscreenAnim || !controlsVisible) return@LaunchedEffect
                 // Wait (without restarting) until a morph in progress settles.
                 snapshotFlow { surface.morphProgress.value }
                     .first { p -> p <= 0.01f || p >= 0.99f }
-                if (!controlsVisible) return@LaunchedEffect
-                hideControlsJob?.cancel()
-                hideControlsJob =
-                    launch {
-                        delay(3000)
-                        controlsVisible = false
-                    }
+                delay(5000)
+                controlsVisible = false
             }
 
             LaunchedEffect(state.isPlaying) {
@@ -725,23 +734,37 @@ fun PlayerView(
                     {
                         if (surface.morphProgress.value !in 0.01f..0.99f) {
                             controlsVisible = !controlsVisible
-                            hideControlsJob?.cancel()
-                            if (controlsVisible && state.isPlaying) {
-                                hideControlsJob =
-                                    coroutineScope.launch {
-                                        delay(3000)
-                                        controlsVisible = false
-                                    }
-                            }
+                            // The tap's pointer down already bumped
+                            // controlsActivityTick, so the auto-hide effect
+                            // restarts its 5s clock on its own.
                         }
                     }
                 }
+
+            // Keep the display on while actively playing (multi-display
+            // devices share the same player state, so both windows follow
+            // it); cleared on pause/end.
+            LaunchedEffect(state.isPlaying) {
+                view.keepScreenOn = state.isPlaying
+            }
 
             // ==================== Compose ====================
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        .pointerInput(Unit) {
+                            // Pure observer: any pointer down in the player
+                            // (video, bars, sliders, chat) restarts the
+                            // auto-hide clock. Never consumes — it
+                            // coexists with every other handler.
+                            while (true) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    controlsActivityTick++
+                                }
+                            }
+                        }
                         .onGloballyPositioned { coordinates ->
                             surface.containerSize.value = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
                         },
