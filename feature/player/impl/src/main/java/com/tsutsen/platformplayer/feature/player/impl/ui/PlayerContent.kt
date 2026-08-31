@@ -163,8 +163,29 @@ fun PlayerContent(
             state.isFullscreen,
             surface.isCollapsedNow(isLandscape),
         )
-    val detailsVisible by remember(surface, isLandscape) {
-        derivedStateOf { surface.detailsAlphaNow(isLandscape) > 0.01f }
+    // The details panel's first layout is heavy (comments, recommendations,
+    // live chat): it must not compose while the fullscreen axis is animating,
+    // or that cost drops frames during the video's move. While IN fullscreen
+    // it stays composed only through the entry fade-out (so it never pops
+    // out mid-animation) and is dropped once settled — including during the
+    // morph-to-normal exit motion, which runs while still fullscreen.
+    // Seeded synchronously on the flip frame (remember key): an effect-seeded
+    // flag would be read stale by the derived for one frame, dropping the
+    // panel on the way into fullscreen (blink) before re-adding it.
+    val isFullscreenNow = state.isFullscreen
+    val entryFadeRemaining =
+        remember(isFullscreenNow) {
+            isFullscreenNow && surface.detailsAlphaNow(isLandscape) > 0.01f
+        }
+    val detailsVisible by remember(surface, isLandscape, isFullscreenNow) {
+        derivedStateOf {
+            if (isFullscreenNow) {
+                entryFadeRemaining && surface.detailsAlphaNow(isLandscape) > 0.01f
+            } else {
+                surface.detailsAlphaNow(isLandscape) > 0.01f &&
+                    !surface.isSettlingFullscreen.value
+            }
+        }
     }
     // Time-based fade-IN: the p-based alpha window (0.1-0.4) is traversed in
     // only ~90ms of the 300ms click-to-expand tween, so the details would
@@ -172,13 +193,17 @@ fun PlayerContent(
     // (re)appear. The 100ms wait lets the details subtree's first heavy
     // compose/measure frame land while the alpha is still 0, so the fade
     // itself runs on lighter frames. Fade-OUT stays p-based, so drags
-    // remain tied to the finger.
-    val detailsSettle = remember { Animatable(1f) }
+    // remain tied to the finger. settle stays 0 while the panel is hidden so
+    // a re-compose can never flash a full-alpha frame before the fade starts
+    // (that flash was the fullscreen->normal blink).
+    val detailsSettle = remember { Animatable(0f) }
     LaunchedEffect(detailsVisible) {
         if (detailsVisible) {
             detailsSettle.snapTo(0f)
             kotlinx.coroutines.delay(100)
             detailsSettle.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
+        } else {
+            detailsSettle.snapTo(0f)
         }
     }
 

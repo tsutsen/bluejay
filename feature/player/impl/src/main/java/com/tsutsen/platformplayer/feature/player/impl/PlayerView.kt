@@ -186,47 +186,58 @@ fun PlayerView(
         if (!minimized) controlsVisible = true
     }
 
+    // Fullscreen-axis settles are launched in the composition scope — never
+    // the sync effect's body, whose key-change restarts would cancel an
+    // in-flight animation (the state flip that usually follows a drag commit
+    // lands a few ms later and WOULD restart the effect mid-settle).
+    // isSettlingFullscreen guards the sync effect while a settle runs; the
+    // state flip is deliberately scheduled AFTER the video settles (see the
+    // drag-END callbacks), so the flip's wave of work — details panel
+    // composition, status bars re-inset, controls swap — lands on a still
+    // frame instead of during the video's move.
+    val settleScope = rememberCoroutineScope()
+
+    fun settleFullscreenTo(target: Float, after: (() -> Unit)? = null) {
+        if (surface.isSettlingFullscreen.value) return
+        if (kotlin.math.abs(surface.fullscreenProgress.value - target) <= 0.01f) {
+            after?.invoke()
+            return
+        }
+        settleScope.launch {
+            if (target == 1f && surface.morphProgress.value < 0.5f) {
+                // A minimize morph may still be running: wait for it to
+                // settle so the two axes don't fight over the video rect.
+                kotlinx.coroutines.delay(50)
+            }
+            surface.isSettlingFullscreen.value = true
+            surface.fullscreenProgress.animateTo(target, transitionSpringSpec)
+            surface.isSettlingFullscreen.value = false
+            after?.invoke()
+        }
+    }
+
     LaunchedEffect(
         isFullscreenState,
         surface.isDraggingFullscreen.value,
         surface.isDraggingShrink.value,
+        surface.isSettlingFullscreen.value,
     ) {
         // Don't fight the finger mid-drag: the drag callbacks own
-        // fullscreenProgress/shrinkProgress until END; the commit (or cancel)
-        // that follows re-enters this effect and finishes the move.
-        if (surface.isDraggingFullscreen.value || surface.isDraggingShrink.value) {
+        // fullscreenProgress/shrinkProgress until END; the settle that
+        // follows is launched in the composition scope and guarded by
+        // isSettlingFullscreen, so restarts here can neither cancel it nor
+        // double-start it.
+        if (
+            surface.isDraggingFullscreen.value ||
+            surface.isDraggingShrink.value ||
+            surface.isSettlingFullscreen.value
+        ) {
             return@LaunchedEffect
         }
         val fullscreen = isFullscreenState ?: return@LaunchedEffect
-        if (surface.fullscreenDragJustEnded) {
-            surface.fullscreenDragJustEnded = false
-            kotlinx.coroutines.delay(morphCommitGraceMs)
-        }
-        // A committed morph-to-normal: fold the shrink axis into the
-        // fullscreen axis before the exit animation, so the settle is a
-        // single-axis move (two parallel 300ms animations would compound
-        // and the surface would lag behind then dive).
-        if (!fullscreen && surface.shrinkCommitPending) {
-            surface.shrinkCommitPending = false
-            val effective =
-                surface.fullscreenProgress.value * (1f - surface.shrinkProgress.value)
-            surface.fullscreenProgress.snapTo(effective)
-            surface.shrinkProgress.snapTo(0f)
-        }
-        val target = if (fullscreen) 1f else 0f
-        if (fullscreen && surface.morphProgress.value < 0.5f) {
-            kotlinx.coroutines.delay(50)
-        }
-        if (kotlin.math.abs(surface.fullscreenProgress.value - target) > 0.01f) {
-            surface.fullscreenProgress.animateTo(target, transitionSpringSpec)
-        }
         surface.isFullscreenAnim.value = fullscreen
-        // Settle the shrink axis only after the fullscreen move: while the
-        // move is running, shrink still scales the effective progress and
-        // keeps the surface continuous from the drag position.
-        if (kotlin.math.abs(surface.shrinkProgress.value) > 0.01f) {
-            surface.shrinkProgress.animateTo(0f, transitionSpringSpec)
-        }
+        // Button / back flips move the axis to the new rest position.
+        settleFullscreenTo(if (fullscreen) 1f else 0f)
     }
 
     LaunchedEffect(uiState) {
@@ -508,15 +519,31 @@ fun PlayerView(
                         },
                         onShrinkDragEnd = { dragY ->
                             surface.isDraggingShrink.value = false
-                            surface.fullscreenDragJustEnded = true
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            // Commit: the sync effect folds the shrink axis into the
-                            // fullscreen axis, then animates a single axis to 0.
-                            // Cancel: the sync effect settles shrink to 0.
                             if (progress > 0.4f) {
-                                surface.shrinkCommitPending = true
-                                viewModel.exitFullscreen()
+                                // Committed morph-to-normal: fold the shrink axis
+                                // into the fullscreen axis (single-axis move),
+                                // then animate to normal WHILE STILL FULLSCREEN.
+                                // The state flip happens only after the video
+                                // settles, so its wave of work (details panel
+                                // composition, status bars re-inset, controls
+                                // swap) lands on a still frame, not mid-motion.
+                                // The fold must land before the settle starts;
+                                // both dispatch to the same scope in order.
+                                coroutineScope.launch {
+                                    val effective =
+                                        surface.fullscreenProgress.value *
+                                            (1f - surface.shrinkProgress.value)
+                                    surface.fullscreenProgress.snapTo(effective)
+                                    surface.shrinkProgress.snapTo(0f)
+                                }
+                                settleFullscreenTo(0f) { viewModel.exitFullscreen() }
+                            } else {
+                                // Cancel: settle the shrink axis back (no state change).
+                                coroutineScope.launch {
+                                    surface.shrinkProgress.animateTo(0f, transitionSpringSpec)
+                                }
                             }
                         },
                         onFullscreenDragStart = { surface.isDraggingFullscreen.value = true },
@@ -529,12 +556,18 @@ fun PlayerView(
                         },
                         onFullscreenDragEnd = { dragY ->
                             surface.isDraggingFullscreen.value = false
-                            surface.fullscreenDragJustEnded = true
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            // Commit: the sync effect animates to fullscreen after
-                            // its grace window. Cancel: it settles back to 0.
-                            if (progress > 0.4f) viewModel.toggleFullscreen()
+                            if (progress > 0.4f) {
+                                // Committed expand: flip state NOW (the details
+                                // fade-out and system bars key off it), then
+                                // animate to fullscreen; the settle guard keeps
+                                // the in-flight flip from restarting the move.
+                                viewModel.toggleFullscreen()
+                                settleFullscreenTo(1f)
+                            } else {
+                                settleFullscreenTo(0f)
+                            }
                         },
                     )
                 }
