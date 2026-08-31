@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -322,13 +323,32 @@ fun PlayerContent(
                     Modifier
                         .fillMaxWidth()
                         .offset {
-                            IntOffset(0, surface.videoLayout(isLandscape, density).heightPx.toInt())
+                            // roundToInt to match the video surface's exact
+                            // pixel height — floor/round mix left a 1px seam
+                            // depending on the fractional height.
+                            IntOffset(0, surface.videoLayout(isLandscape, density).heightPx.roundToInt())
                         }
                         .fillMaxHeight()
                         .graphicsLayer {
-                            alpha =
+                            val a =
                                 surface.detailsAlphaNow(isLandscape) * detailsSettle.value
-                            translationY = surface.detailsTranslateYNow()
+                            val ty = surface.detailsTranslateYNow()
+                            alpha = a
+                            translationY = ty
+                            // The details panel is the largest element on
+                            // screen (≈3/4 of the screen in portrait, 30% in
+                            // landscape). A graphicsLayer is NOT rasterized by
+                            // default: while its alpha/translation animate, the
+                            // whole details draw list is re-issued every frame
+                            // — 3.4× more draw work in portrait, which is what
+                            // made portrait morphs drop frames while landscape
+                            // survived the identical animation. Rasterize only
+                            // mid-animation: the per-frame cost becomes a cheap
+                            // bitmap composite; settled (alpha 0/1, no slide)
+                            // runs the normal on-screen path with no cache.
+                            if (a in 0.01f..0.99f || ty != 0f) {
+                                compositingStrategy = CompositingStrategy.Offscreen
+                            }
                         }.nestedScroll(nestedScrollConnection),
             ) {
                 PlayerDetails(

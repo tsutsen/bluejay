@@ -76,6 +76,12 @@ class PlayerSurface(private val scope: CoroutineScope) {
     // ==================== Measurements (fed by the screen) ====================
     /** True window size (nav-bar independent), from the decor view layout. */
     val windowSize = mutableStateOf(Size.Zero)
+    // On devices where the system bars inset the content view, the physical
+    // window is taller than the measured content by exactly the bar heights.
+    // The bottom-covering layers overhang by this much so a bar show/hide
+    // resize never exposes the window background for a frame. 0 on
+    // edge-to-edge devices (content view already fills the window).
+    val windowOverhangPx = mutableStateOf(0f)
     /** Player Box size, from onGloballyPositioned. */
     val containerSize = mutableStateOf(Size.Zero)
 

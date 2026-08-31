@@ -117,6 +117,10 @@ fun PlayerView(
     DisposableEffect(view) {
         fun syncWindowSize() {
             surface.windowSize.value = Size(view.width.toFloat(), view.height.toFloat())
+            // Decor view is always the full physical window; the delta is
+            // the vertical system-bar inset applied to the content view.
+            surface.windowOverhangPx.value =
+                (view.rootView.height - view.height).coerceAtLeast(0).toFloat()
         }
         syncWindowSize()
         val listener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> syncWindowSize() }
@@ -217,6 +221,10 @@ fun PlayerView(
             }
             surface.isSettlingFullscreen.value = true
             surface.fullscreenProgress.animateTo(target, transitionSpringSpec)
+            // Springs stop at a small residual (~0.001), leaving the video
+            // 0.5px off its nominal anchor forever and rounding layers
+            // differently; land exactly on the target.
+            surface.fullscreenProgress.snapTo(target)
             surface.isSettlingFullscreen.value = false
             after?.invoke()
         }
@@ -227,6 +235,29 @@ fun PlayerView(
     // (nested scroll, 1:1) and (b) the true overdrag zone follows the
     // finger into the fullscreen axis. detailsOverdragPendingExpandPx is
     // the (a) distance, measured at drag start; morph px = cumulative - it.
+    // ==================== System bars (fullscreen coupling) ====================
+    // The fullscreen anchor is the MEASURED window size, and hiding/showing
+    // the system bars RESIZES that window on devices where the content view
+    // is inset by the bars. So bar state must change only while the anchor
+    // is irrelevant (fullscreen progress 0 or 1), never mid-morph — otherwise
+    // the video height jumps when the resize lands mid-animation.
+    val insetsController = remember(context) {
+        (context as? Activity)?.let {
+            WindowInsetsControllerCompat(it.window, it.window.decorView)
+        }
+    }
+
+    fun hideSystemBarsNow() {
+        insetsController?.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        insetsController?.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    }
+
+    fun showSystemBarsNow() {
+        insetsController?.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        insetsController?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+    }
+
     fun startOverscrollMorph() {
         val c = surface.containerSize.value
         val isLand = c.width > c.height
@@ -234,14 +265,27 @@ fun PlayerView(
             (surface.maxPlayerHeightPx(isLand) - surface.playerHeightPx.value)
                 .coerceAtLeast(0f)
         surface.isDraggingFullscreen.value = true
+        // Hide the bars NOW, while fullscreen progress is still 0: the
+        // resize (where applicable) lands invisibly and the whole
+        // drag tracks the final window size.
+        hideSystemBarsNow()
     }
+
+    // Morph travel = the distance the video still has to GROW: full window
+    // height minus current video height. The video bottom then follows the
+    // finger 1:1, and sensitivity self-adjusts per orientation: portrait
+    // (small video, long travel) commits late, landscape (big video, short
+    // travel) commits early — matching the room actually available to drag.
+    fun fullscreenOverdragTravelPx(): Float =
+        (surface.windowSize.value.height - surface.playerHeightPx.value)
+            .coerceAtLeast(1f)
 
     fun updateOverscrollMorph(cumulativePx: Float) {
         val over =
             (cumulativePx - detailsOverdragPendingExpandPx.value)
                 .coerceAtLeast(0f)
         if (over <= 0f) return // still re-expanding the collapsed video
-        val travel = surface.dragTravelPx()
+        val travel = fullscreenOverdragTravelPx()
         val progress = if (travel > 0f) (over / travel).coerceIn(0f, 1f) else 0f
         coroutineScope.launch {
             surface.fullscreenProgress.snapTo(progress)
@@ -250,17 +294,21 @@ fun PlayerView(
 
     fun finishOverscrollMorph(cumulativePx: Float) {
         surface.isDraggingFullscreen.value = false
-        val travel = surface.dragTravelPx()
+        val travel = fullscreenOverdragTravelPx()
         val over =
             (cumulativePx - detailsOverdragPendingExpandPx.value)
                 .coerceAtLeast(0f)
         detailsOverdragPendingExpandPx.value = 0f
         if (travel > 0f && over > 0.4f * travel) {
-            // Committed: flip state first (details fade out, system bars),
+            // Committed: flip state first (details fade out),
             // then settle to full.
             viewModel.toggleFullscreen()
             settleFullscreenTo(1f)
         } else {
+            // Cancelled: the bars were hidden when the drag started — put
+            // them back (the isFullscreen effect doesn't fire: state didn't
+            // change).
+            showSystemBarsNow()
             settleFullscreenTo(0f)
         }
     }
@@ -342,7 +390,11 @@ fun PlayerView(
                 if (activity != null) {
                     val insetsController = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
                     if (isFullscreen) {
-                        kotlinx.coroutines.delay(300)
+                        // Hide immediately: fullscreen progress is 0 at this
+                        // point (drag-based commits already hid preemptively),
+                        // so the resize — on devices where hiding resizes the
+                        // window — lands invisibly and the settle spring
+                        // tracks the final window size the whole way.
                         insetsController.hide(
                             androidx.core.view.WindowInsetsCompat.Type
                                 .systemBars(),
@@ -353,6 +405,13 @@ fun PlayerView(
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                         }
                     } else {
+                        // Re-show only after the shrink has settled: the
+                        // window resize then lands at fullscreen progress 0,
+                        // where the fullscreen anchor no longer matters.
+                        // Showing mid-morph is what used to jump the video
+                        // height near the end of the transition.
+                        snapshotFlow { surface.fullscreenProgress.value }
+                            .first { it <= 0.01f }
                         insetsController.show(
                             androidx.core.view.WindowInsetsCompat.Type
                                 .systemBars(),
@@ -595,7 +654,12 @@ fun PlayerView(
                                 }
                             }
                         },
-                        onFullscreenDragStart = { surface.isDraggingFullscreen.value = true },
+                        onFullscreenDragStart = {
+                            surface.isDraggingFullscreen.value = true
+                            // Same anchor rule as overdrag: the bars hide
+                            // before the axis rises, never mid-morph.
+                            hideSystemBarsNow()
+                        },
                         onFullscreenDrag = { dragY ->
                             // Read the surface at call time — this block is
                             // remembered once, so no locals may be captured.
@@ -615,6 +679,8 @@ fun PlayerView(
                                 viewModel.toggleFullscreen()
                                 settleFullscreenTo(1f)
                             } else {
+                                // Cancelled: bars were hidden at drag start.
+                                showSystemBarsNow()
                                 settleFullscreenTo(0f)
                             }
                         },
@@ -682,7 +748,15 @@ fun PlayerView(
                                     val p = surface.morphProgress.value
                                     val heightPx =
                                         (surface.containerSize.value.height * (1f - p) +
-                                            layout.heightPx * p).roundToInt()
+                                            layout.heightPx * p).roundToInt() +
+                                            // Overhang by the system-bar inset while
+                                            // not mini: keeps the plate covering the
+                                            // physical window when a bar show/hide
+                                            // resizes the content view mid/after a
+                                            // morph (exposed window background for
+                                            // a frame otherwise).
+                                            if (p < 0.5f) surface.windowOverhangPx.value.toInt()
+                                            else 0
                                     val widthPx = layout.widthPx.roundToInt()
                                     val placeable =
                                         measurable.measure(
