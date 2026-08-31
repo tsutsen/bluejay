@@ -110,12 +110,18 @@ fun HomeScreen(
                         }
                     }
                 }
+                val noSourcesSelected =
+                    enabledSources.isNotEmpty() && enabledSources.all { it.id in hiddenSources }
                 if (visibleItems.isEmpty() && !state.isLoading && state.error == null) {
-                    EmptyState(
-                        message = "No content yet",
-                        actionLabel = "Tap to refresh",
-                        onAction = { viewModel.refresh() },
-                    )
+                    if (noSourcesSelected) {
+                        EmptyState(message = "No sources selected")
+                    } else {
+                        EmptyState(
+                            message = "No content yet",
+                            actionLabel = "Tap to refresh",
+                            onAction = { viewModel.refresh() },
+                        )
+                    }
                 } else if (state.error != null) {
                     ErrorState(
                         message = state.error,
