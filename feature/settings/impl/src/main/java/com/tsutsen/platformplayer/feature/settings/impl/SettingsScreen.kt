@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -85,6 +86,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.model.PlayerGestures
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -480,6 +483,27 @@ fun SettingsSectionScreen(
                 )
             }
         }
+        Choice.JUMP_STEP -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Time jump step",
+                    options =
+                        listOf(
+                            "1s" to "1",
+                            "3s" to "3",
+                            "5s" to "5",
+                            "10s" to "10",
+                            "30s" to "30",
+                        ),
+                    selected = it.jumpStepSeconds.toString(),
+                    onSelected = { value ->
+                        viewModel.updateGeneral("jumpStepSeconds", value.toInt())
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
         Choice.VIDEO_RESOLUTION -> {
             loaded?.let {
                 ChoiceDialog(
@@ -599,7 +623,26 @@ private fun LazyListScope.SectionItems(
                     onCheckedChange = { viewModel.updateGeneral("autoUpdatePlugins", it) },
                 )
             }
-            item { SettingsHeader("Video page") }
+            item {
+                SettingsHeader(
+                    title = "Video page",
+                    reset =
+                        if (
+                            state.showRecommendedVideos != defaults.showRecommendedVideos ||
+                            state.showComments != defaults.showComments
+                        ) {
+                            {
+                                viewModel.updateGeneral(
+                                    "showRecommendedVideos",
+                                    defaults.showRecommendedVideos,
+                                )
+                                viewModel.updateGeneral("showComments", defaults.showComments)
+                            }
+                        } else {
+                            null
+                        },
+                )
+            }
             item {
                 SettingsSwitchCard(
                     icon = Icons.Filled.VideoLibrary,
@@ -618,7 +661,17 @@ private fun LazyListScope.SectionItems(
                     onCheckedChange = { viewModel.updateGeneral("showComments", it) },
                 )
             }
-            item { SettingsHeader("Library") }
+            item {
+                SettingsHeader(
+                    title = "Library",
+                    reset =
+                        if (state.librarySectionOrder != defaults.librarySectionOrder) {
+                            { viewModel.setLibrarySectionOrder(defaults.librarySectionOrder) }
+                        } else {
+                            null
+                        },
+                )
+            }
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.VideoLibrary,
@@ -630,7 +683,25 @@ private fun LazyListScope.SectionItems(
         }
 
         "playback" -> {
-            item { SettingsHeader("Subtitles") }
+            item {
+                val subtitlesDefault = defaults.subtitle
+                SettingsHeader(
+                    title = "Subtitles",
+                    reset =
+                        if (state.subtitle != subtitlesDefault) {
+                            {
+                                viewModel.updateGeneral("subtitleFont", subtitlesDefault.font)
+                                viewModel.updateGeneral("subtitleFontSize", subtitlesDefault.size)
+                                viewModel.updateGeneral(
+                                    "subtitleBottomPadding",
+                                    subtitlesDefault.bottomPadding,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                )
+            }
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.Subtitles,
@@ -655,7 +726,29 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
                 )
             }
-            item { SettingsHeader("Quality") }
+            item {
+                SettingsHeader(
+                    title = "Quality",
+                    reset =
+                        if (
+                            state.defaultVideoResolution != defaults.defaultVideoResolution ||
+                            state.defaultDownloadResolution != defaults.defaultDownloadResolution
+                        ) {
+                            {
+                                viewModel.updateGeneral(
+                                    "defaultVideoResolution",
+                                    defaults.defaultVideoResolution,
+                                )
+                                viewModel.updateGeneral(
+                                    "defaultDownloadResolution",
+                                    defaults.defaultDownloadResolution,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                )
+            }
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.Hd,
@@ -691,14 +784,62 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
                 )
             }
-            item { SettingsHeader("Player gestures") }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Timer,
+                    title = "Time jump step",
+                    subtitle = "${state.jumpStepSeconds}s",
+                    onClick = { onChoiceSelected(Choice.JUMP_STEP) },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Fullscreen gestures",
+                    reset =
+                        if (state.playerGestures.fullscreen.isCustomized) {
+                            { viewModel.resetPlayerGestures("fullscreen") }
+                        } else {
+                            null
+                        },
+                )
+            }
             item {
                 PlayerGesturesEditor(
-                    prefs = state.playerGestures,
+                    mode = PlayerGestures.MODE_FULLSCREEN,
+                    slotSet = state.playerGestures.fullscreen,
                     onCellChange = { slot, type, action ->
-                        viewModel.setPlayerGesturesCell(slot, type, action)
+                        viewModel.setPlayerGesturesCell(
+                            PlayerGestures.MODE_FULLSCREEN,
+                            slot,
+                            type,
+                            action,
+                        )
                     },
-                    onReset = { viewModel.resetPlayerGestures() },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Normal gestures",
+                    reset =
+                        if (state.playerGestures.normal.isCustomized) {
+                            { viewModel.resetPlayerGestures("normal") }
+                        } else {
+                            null
+                        },
+                )
+            }
+            item {
+                PlayerGesturesEditor(
+                    mode = PlayerGestures.MODE_NORMAL,
+                    slotSet = state.playerGestures.normal,
+                    onCellChange = { slot, type, action ->
+                        viewModel.setPlayerGesturesCell(
+                            PlayerGestures.MODE_NORMAL,
+                            slot,
+                            type,
+                            action,
+                        )
+                    },
                 )
             }
         }
@@ -740,7 +881,25 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
                 )
             }
-            item { SettingsHeader("Video page") }
+            item {
+                SettingsHeader(
+                    title = "Video page",
+                    reset =
+                        if (
+                            state.dualScreenVideoTabs != defaults.dualScreenVideoTabs ||
+                            state.dualScreenVideoTabOrder != defaults.dualScreenVideoTabOrder
+                        ) {
+                            {
+                                viewModel.setDualScreenVideoTabs(defaults.dualScreenVideoTabs)
+                                viewModel.setDualScreenVideoTabOrder(
+                                    defaults.dualScreenVideoTabOrder,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                )
+            }
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.Chat,
@@ -765,7 +924,17 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
                 )
             }
-            item { SettingsHeader("Playlists page") }
+            item {
+                SettingsHeader(
+                    title = "Playlists page",
+                    reset =
+                        if (state.dualScreenLibrarySlots != defaults.dualScreenLibrarySlots) {
+                            { viewModel.setDualScreenLibrarySlots(defaults.dualScreenLibrarySlots) }
+                        } else {
+                            null
+                        },
+                )
+            }
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.VideoLibrary,
@@ -774,7 +943,17 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.DUAL_SLOTS) },
                 )
             }
-            item { SettingsHeader("Home page") }
+            item {
+                SettingsHeader(
+                    title = "Home page",
+                    reset =
+                        if (state.dualScreenFeedSources.isNotEmpty()) {
+                            { viewModel.setDualScreenFeedSources(emptyList()) }
+                        } else {
+                            null
+                        },
+                )
+            }
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.RssFeed,
@@ -938,6 +1117,7 @@ private enum class Choice {
     LIBRARY_SECTION_ORDER,
     PLAYBACK_SPEED,
     SPEEDUP_SENSITIVITY,
+    JUMP_STEP,
     VIDEO_RESOLUTION,
     DOWNLOAD_RESOLUTION,
 }
@@ -982,7 +1162,7 @@ private fun MultiSelectDialog(
 }
 
 @Composable
-private fun ChoiceDialog(
+internal fun ChoiceDialog(
     title: String,
     options: List<Pair<String, String>>,
     selected: String,
@@ -1139,16 +1319,39 @@ private fun List<Pair<String, String>>.swapAdjacent(
     return d
 }
 
-/** Small subsection title above a group of settings cards. */
+/**
+ * Small subsection title above a group of settings cards. Pass [reset] to
+ * show a right-aligned "Reset to defaults" action (only pass it when the
+ * subsection actually deviates from the defaults).
+ */
 @Composable
-private fun SettingsHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = Tokens.SpaceSm, start = 4.dp),
-    )
+private fun SettingsHeader(
+    title: String,
+    reset: (() -> Unit)? = null,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = Tokens.SpaceSm, start = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
+        )
+        if (reset != null) {
+            TextButton(onClick = reset) {
+                Text("Reset to defaults")
+            }
+        }
+    }
 }
+
+/** Canonical defaults — used to decide which subsections deviate. */
+private val defaults = AppPreferences()
 
 /**
  * Configure the four 2x2 second-screen library slots. Tapping a slot opens a

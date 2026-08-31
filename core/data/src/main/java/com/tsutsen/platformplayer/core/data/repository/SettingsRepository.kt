@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.core.data.repository
 
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import kotlinx.coroutines.flow.StateFlow
 
 interface SettingsRepository {
@@ -17,12 +18,10 @@ interface SettingsRepository {
     suspend fun updateDualScreenPageOrder(order: List<String>)
     suspend fun updateDualScreenFeedSources(ids: List<String>)
 
-    /** Save the full per-slot gesture assignments (Settings > Gestures). */
+    /** Save the per-mode gesture assignments (Settings > Gestures). */
     suspend fun updatePlayerGestures(
-        top: Map<String, String>,
-        bottomLeft: Map<String, String>,
-        bottomCenter: Map<String, String>,
-        bottomRight: Map<String, String>,
+        fullscreen: PlayerGestureSlotSet,
+        normal: PlayerGestureSlotSet,
     )
     suspend fun updateLibrarySectionOrder(order: List<String>)
     suspend fun resetToDefaults()

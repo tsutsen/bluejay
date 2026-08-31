@@ -173,11 +173,17 @@ fun PlayerView(
         if (!minimized) controlsVisible = true
     }
 
-    LaunchedEffect(isFullscreenState, surface.isDraggingFullscreen.value) {
+    LaunchedEffect(
+        isFullscreenState,
+        surface.isDraggingFullscreen.value,
+        surface.isDraggingShrink.value,
+    ) {
         // Don't fight the finger mid-drag: the drag callbacks own
-        // fullscreenProgress until END; the commit (or cancel) that follows
-        // re-enters this effect and finishes the move.
-        if (surface.isDraggingFullscreen.value) return@LaunchedEffect
+        // fullscreenProgress/shrinkProgress until END; the commit (or cancel)
+        // that follows re-enters this effect and finishes the move.
+        if (surface.isDraggingFullscreen.value || surface.isDraggingShrink.value) {
+            return@LaunchedEffect
+        }
         val fullscreen = isFullscreenState ?: return@LaunchedEffect
         val target = if (fullscreen) 1f else 0f
         if (fullscreen && surface.morphProgress.value < 0.5f) {
@@ -187,6 +193,12 @@ fun PlayerView(
             surface.fullscreenProgress.animateTo(target, transitionSpringSpec)
         }
         surface.isFullscreenAnim.value = fullscreen
+        // Settle the shrink axis only after the fullscreen move: while the
+        // move is running, shrink still scales the effective progress and
+        // keeps the surface continuous from the drag position.
+        if (kotlin.math.abs(surface.shrinkProgress.value) > 0.01f) {
+            surface.shrinkProgress.animateTo(0f, transitionSpringSpec)
+        }
     }
 
     LaunchedEffect(uiState) {
@@ -441,6 +453,44 @@ fun PlayerView(
                         onIndicatorEnd = {
                             activeProgressIndicator = null
                             // Badges auto-hide via their own fade animation — don't touch badgeState here
+                        },
+                        onMorphDragStart = { surface.isDraggingMorph.value = true },
+                        onMorphDrag = { dragY ->
+                            // Read the surface at call time — this block is
+                            // remembered once, so no locals may be captured.
+                            val travel = surface.dragTravelPx()
+                            val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
+                            coroutineScope.launch { surface.morphProgress.snapTo(progress) }
+                        },
+                        onMorphDragEnd = { dragY ->
+                            surface.isDraggingMorph.value = false
+                            val travel = surface.dragTravelPx()
+                            val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
+                            if (progress > 0.4f) {
+                                viewModel.minimize()
+                            } else {
+                                coroutineScope.launch {
+                                    surface.morphProgress.animateTo(0f, transitionSpringSpec)
+                                }
+                            }
+                        },
+                        onShrinkDragStart = { surface.isDraggingShrink.value = true },
+                        onShrinkDrag = { dragY ->
+                            val travel = surface.dragTravelPx()
+                            val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
+                            coroutineScope.launch { surface.shrinkProgress.snapTo(progress) }
+                        },
+                        onShrinkDragEnd = { dragY ->
+                            surface.isDraggingShrink.value = false
+                            val travel = surface.dragTravelPx()
+                            val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
+                            if (progress > 0.4f) {
+                                viewModel.exitFullscreen()
+                            } else {
+                                coroutineScope.launch {
+                                    surface.shrinkProgress.animateTo(0f, transitionSpringSpec)
+                                }
+                            }
                         },
                         onFullscreenDragStart = { surface.isDraggingFullscreen.value = true },
                         onFullscreenDrag = { dragY ->

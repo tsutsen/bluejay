@@ -39,6 +39,7 @@ sealed interface SettingsUiState {
         val showComments: Boolean,
         val autoUpdatePlugins: Boolean,
         val playerGestures: PlayerGesturePreferences,
+        val jumpStepSeconds: Int = 5,
     ) : SettingsUiState
 
     data object Loading : SettingsUiState
@@ -96,6 +97,7 @@ class SettingsViewModel
                                 showComments = prefs.showComments,
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
                                 playerGestures = prefs.playerGestures,
+                                jumpStepSeconds = prefs.jumpStepSeconds,
                             )
                     }
             }
@@ -146,44 +148,58 @@ class SettingsViewModel
             viewModelScope.launch { settingsRepository.updateDualScreenFeedSources(ids) }
         }
 
-        /** Clear all gesture customizations (back to canonical defaults). */
-        fun resetPlayerGestures() {
+        /** Clear gesture customizations for one player mode (back to defaults). */
+        fun resetPlayerGestures(mode: String) {
             viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                val empty = PlayerGestureSlotSet()
                 settingsRepository.updatePlayerGestures(
-                    top = emptyMap(),
-                    bottomLeft = emptyMap(),
-                    bottomCenter = emptyMap(),
-                    bottomRight = emptyMap(),
+                    fullscreen =
+                        if (mode == "fullscreen") empty else p.playerGestures.fullscreen,
+                    normal = if (mode == "normal") empty else p.playerGestures.normal,
                 )
             }
         }
 
         /** Save one cell of the gesture editor (Settings > Gestures). */
         fun setPlayerGesturesCell(
+            mode: String,
             slot: String,
             type: String,
             action: String,
         ) {
             viewModelScope.launch {
                 val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
-                val g = p.playerGestures
+                val set =
+                    if (mode == "normal") p.playerGestures.normal else p.playerGestures.fullscreen
                 val updated =
                     (when (slot) {
-                        "top" -> g.top
-                        "bottomLeft" -> g.bottomLeft
-                        "bottomCenter" -> g.bottomCenter
-                        "bottomRight" -> g.bottomRight
+                        "top" -> set.top
+                        "bottomLeft" -> set.bottomLeft
+                        "bottomCenter" -> set.bottomCenter
+                        "bottomRight" -> set.bottomRight
                         else -> emptyMap()
                     }).toMutableMap()
                 updated[type] = action
                 settingsRepository.updatePlayerGestures(
-                    top = if (slot == "top") updated else g.top,
-                    bottomLeft = if (slot == "bottomLeft") updated else g.bottomLeft,
-                    bottomCenter = if (slot == "bottomCenter") updated else g.bottomCenter,
-                    bottomRight = if (slot == "bottomRight") updated else g.bottomRight,
+                    fullscreen =
+                        if (mode == "fullscreen") set.updated(slot, updated) else p.playerGestures.fullscreen,
+                    normal =
+                        if (mode == "normal") set.updated(slot, updated) else p.playerGestures.normal,
                 )
             }
         }
+
+        private fun PlayerGestureSlotSet.updated(
+            slot: String,
+            map: Map<String, String>,
+        ): PlayerGestureSlotSet =
+            copy(
+                top = if (slot == "top") map else top,
+                bottomLeft = if (slot == "bottomLeft") map else bottomLeft,
+                bottomCenter = if (slot == "bottomCenter") map else bottomCenter,
+                bottomRight = if (slot == "bottomRight") map else bottomRight,
+            )
 
         fun setLibrarySectionOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateLibrarySectionOrder(order) }

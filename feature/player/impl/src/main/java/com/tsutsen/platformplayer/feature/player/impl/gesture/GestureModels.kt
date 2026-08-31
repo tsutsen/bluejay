@@ -64,6 +64,10 @@ enum class GestureAction {
     MORPH_TO_FLOATING,
     MORPH_TO_FULLSCREEN,
 
+    // Fullscreen only: shrink the surface back toward normal size
+    // (downward v-swipe, commit crosses the normal layout).
+    MORPH_TO_NORMAL,
+
     // Direction-aware vertical morph: swipe up → FULLSCREEN, swipe down → FLOATING.
     // Direction is resolved from the sign of GestureFrame.totalDelta.y in the handler.
     MORPH_VERTICAL

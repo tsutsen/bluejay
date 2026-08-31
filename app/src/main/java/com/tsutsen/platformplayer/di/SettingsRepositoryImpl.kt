@@ -5,6 +5,7 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
+import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
 import com.tsutsen.platformplayer.core.datastore.model.SubtitlePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
@@ -46,12 +47,23 @@ class SettingsRepositoryImpl
                 defaultPlaybackSpeed = s.playback.defaultPlaybackSpeed,
                 defaultSpeedup = s.playback.defaultSpeedup,
                 speedupSensitivity = s.playback.speedupSensitivity,
+                jumpStepSeconds = s.playback.jumpStepSeconds,
                 playerGestures =
                     PlayerGesturePreferences(
-                        top = s.playerGestures.top,
-                        bottomLeft = s.playerGestures.bottomLeft,
-                        bottomCenter = s.playerGestures.bottomCenter,
-                        bottomRight = s.playerGestures.bottomRight,
+                        fullscreen =
+                            PlayerGestureSlotSet(
+                                top = s.playerGestures.fullscreen.top,
+                                bottomLeft = s.playerGestures.fullscreen.bottomLeft,
+                                bottomCenter = s.playerGestures.fullscreen.bottomCenter,
+                                bottomRight = s.playerGestures.fullscreen.bottomRight,
+                            ),
+                        normal =
+                            PlayerGestureSlotSet(
+                                top = s.playerGestures.normal.top,
+                                bottomLeft = s.playerGestures.normal.bottomLeft,
+                                bottomCenter = s.playerGestures.normal.bottomCenter,
+                                bottomRight = s.playerGestures.normal.bottomRight,
+                            ),
                     ),
                 defaultVideoResolution = s.content.defaultVideoResolution,
                 defaultDownloadResolution = s.content.defaultDownloadResolution,
@@ -113,6 +125,7 @@ class SettingsRepositoryImpl
                 "defaultPlaybackSpeed" -> s.playback.defaultPlaybackSpeed = value as Float
                 "defaultSpeedup" -> s.playback.defaultSpeedup = value as Float
                 "speedupSensitivity" -> s.playback.speedupSensitivity = value as Float
+                "jumpStepSeconds" -> s.playback.jumpStepSeconds = (value as Number).toInt()
                 "defaultVideoResolution" -> s.content.defaultVideoResolution = value as String
                 "defaultDownloadResolution" -> s.content.defaultDownloadResolution = value as String
                 else -> return
@@ -157,18 +170,26 @@ class SettingsRepositoryImpl
         }
 
         override suspend fun updatePlayerGestures(
-            top: Map<String, String>,
-            bottomLeft: Map<String, String>,
-            bottomCenter: Map<String, String>,
-            bottomRight: Map<String, String>,
+            fullscreen: PlayerGestureSlotSet,
+            normal: PlayerGestureSlotSet,
         ) {
             val s = Settings.instance
             s.playerGestures =
                 Settings.PlayerGesturePreferences(
-                    top = top,
-                    bottomLeft = bottomLeft,
-                    bottomCenter = bottomCenter,
-                    bottomRight = bottomRight,
+                    fullscreen =
+                        Settings.PlayerGestureSlotSet(
+                            top = fullscreen.top,
+                            bottomLeft = fullscreen.bottomLeft,
+                            bottomCenter = fullscreen.bottomCenter,
+                            bottomRight = fullscreen.bottomRight,
+                        ),
+                    normal =
+                        Settings.PlayerGestureSlotSet(
+                            top = normal.top,
+                            bottomLeft = normal.bottomLeft,
+                            bottomCenter = normal.bottomCenter,
+                            bottomRight = normal.bottomRight,
+                        ),
                 )
             s.save()
             emit()

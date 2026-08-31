@@ -38,6 +38,9 @@ interface GestureActionHandler {
  * @property onFullscreenDragStart  called when a morph-to-fullscreen (swipe up) begins
  * @property onFullscreenDrag       called with cumulative upward drag px during fullscreen morph
  * @property onFullscreenDragEnd    called when the fullscreen morph swipe ends (commit or cancel)
+ * @property onShrinkDragStart      called when a morph-to-normal (swipe down in fullscreen) begins
+ * @property onShrinkDrag           called with cumulative downward drag px during shrink
+ * @property onShrinkDragEnd        called when the shrink swipe ends (commit or cancel)
  */
 class PlayerGestureActionHandler(
     private val viewModel: PlayerViewModel,
@@ -52,6 +55,9 @@ class PlayerGestureActionHandler(
     private val onFullscreenDragStart: () -> Unit = {},
     private val onFullscreenDrag: (dragY: Float) -> Unit = {},
     private val onFullscreenDragEnd: (dragY: Float) -> Unit = {},
+    private val onShrinkDragStart: () -> Unit = {},
+    private val onShrinkDrag: (dragY: Float) -> Unit = {},
+    private val onShrinkDragEnd: (dragY: Float) -> Unit = {},
 ) : GestureActionHandler {
 
     // --- brightness state (device-wide via SystemControls, window-local fallback) ---
@@ -112,6 +118,7 @@ class PlayerGestureActionHandler(
             GestureAction.SPEEDDOWN -> handleSpeedHold(frame, baseMultiplier = 0.5f)
             GestureAction.MORPH_TO_FLOATING -> handleMorphToFloating(frame)
             GestureAction.MORPH_TO_FULLSCREEN -> handleMorphToFullscreen(frame)
+            GestureAction.MORPH_TO_NORMAL -> handleMorphToNormal(frame)
             GestureAction.MORPH_VERTICAL -> handleMorphVertical(frame)
             // Instant actions handled via handleInstantAction
             else -> {}
@@ -124,19 +131,20 @@ class PlayerGestureActionHandler(
             GestureAction.REWIND_FORWARD -> handleAccumulatedSeek(event.action)
             GestureAction.MORPH_TO_FLOATING -> viewModel.minimize()
             GestureAction.MORPH_TO_FULLSCREEN -> viewModel.toggleFullscreen()
+            GestureAction.MORPH_TO_NORMAL -> viewModel.exitFullscreen()
             GestureAction.CONTEXT_MENU -> {} // stub
             else -> {}
         }
     }
 
     /**
-     * Applies a ±5s seek and, if the same direction was tapped again within
-     * [SEEK_ACCUMULATE_WINDOW_MS], accumulates the total so the badge shows
-     * e.g. -15s / +20s instead of always -5s / +5s.
+     * Applies a ±[jumpStepMs] seek and, if the same direction was tapped
+     * again within [SEEK_ACCUMULATE_WINDOW_MS], accumulates the total so the
+     * badge shows e.g. -15s / +20s instead of always -5s / +5s.
      */
     private fun handleAccumulatedSeek(action: GestureAction) {
         val now = System.currentTimeMillis()
-        val stepMs = if (action == GestureAction.REWIND_BACK) -SEEK_STEP_MS else SEEK_STEP_MS
+        val stepMs = if (action == GestureAction.REWIND_BACK) -jumpStepMs() else jumpStepMs()
 
         accumulatedSeekMs = if (
             action == lastSeekAction &&
@@ -208,8 +216,10 @@ class PlayerGestureActionHandler(
         }
     }
 
+    /** Jump step from the settings (Settings > Gestures > Time jump step). */
+    private fun jumpStepMs(): Long = viewModel.jumpStepSeconds * 1000L
+
     companion object {
-        private const val SEEK_STEP_MS = 5000L
         /** Window in which same-direction double-taps accumulate into one running total. */
         private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
 
@@ -285,6 +295,28 @@ class PlayerGestureActionHandler(
             }
             GesturePhase.END -> {
                 onMorphDragEnd(morphStartDelta)
+            }
+        }
+    }
+
+    // ---- Morph to normal (swipe vertical downward, fullscreen only) ----
+    //    Shrink the surface back toward normal; the surface drives the
+    //    animation through the shrink-progress callbacks.
+    private fun handleMorphToNormal(frame: GestureFrame) {
+        when (frame.phase) {
+            GesturePhase.START -> {
+                morphStartDelta = 0f
+                onShrinkDragStart()
+            }
+            GesturePhase.ACTIVE -> {
+                val dragY = frame.totalDelta.y.coerceAtLeast(0f)
+                if (dragY > 0f) {
+                    morphStartDelta = dragY
+                    onShrinkDrag(dragY)
+                }
+            }
+            GesturePhase.END -> {
+                onShrinkDragEnd(morphStartDelta)
             }
         }
     }

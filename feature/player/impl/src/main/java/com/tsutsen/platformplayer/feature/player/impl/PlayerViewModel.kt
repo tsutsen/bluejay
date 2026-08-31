@@ -172,6 +172,10 @@ class PlayerViewModel
         val speedupSensitivity: Float
             get() = settingsRepository.preferences.value.speedupSensitivity
 
+        /** Jump step (seconds) for the back/forward seek gestures. */
+        val jumpStepSeconds: Int
+            get() = settingsRepository.preferences.value.jumpStepSeconds
+
         /** Live saved types for the current video (drives like/dislike buttons). */
         @Volatile
         private var currentSavedTypes: Set<SavedVideoType> = emptySet()

@@ -7,6 +7,8 @@ data class AppPreferences(
     val defaultPlaybackSpeed: Float = 1f,
     val defaultSpeedup: Float = 2f,
     val speedupSensitivity: Float = 1f,
+    /** Jump step (seconds) for the back/forward seek gestures. */
+    val jumpStepSeconds: Int = 5,
     val playerGestures: PlayerGesturePreferences = PlayerGesturePreferences(),
     val defaultVideoResolution: String = "Auto",
     val defaultDownloadResolution: String = "480p",

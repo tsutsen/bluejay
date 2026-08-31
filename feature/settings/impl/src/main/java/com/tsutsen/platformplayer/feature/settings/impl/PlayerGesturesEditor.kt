@@ -7,15 +7,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
+import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 
 // The gesture cards are always black (mimicking the video player surface),
@@ -45,24 +41,26 @@ private val OuterRadius = 12.dp
 private val InnerRadius = 4.dp
 
 /**
- * Inline per-slot player gesture editor (Settings > Gestures).
+ * Inline per-slot player gesture editor (Settings > Gestures), one per
+ * player mode.
  *
  * Four rectangles: one wide one for the top zone (maps to the whole top
  * sector row) and three tall ones for the remaining shape (bottom-left +
  * middle-left, bottom-center + middle-center, bottom-right + middle-right).
  * Each rectangle holds four "<gesture>: <action>" buttons — hold, double
- * tap, h-swipe, v-swipe. Tapping a button opens the only popup: an action
- * picker for that cell. Unset cells show the canonical defaults.
+ * tap, h-swipe, v-swipe. Tapping a button opens the action picker for that
+ * cell (same style as the other settings pickers). Unset cells show the
+ * canonical defaults for this mode.
  */
 @Composable
 internal fun PlayerGesturesEditor(
-    prefs: PlayerGesturePreferences,
+    mode: String,
+    slotSet: PlayerGestureSlotSet,
     onCellChange: (
         slot: String,
         type: String,
         action: String,
     ) -> Unit,
-    onReset: () -> Unit,
 ) {
     // (slot, type) of the cell being picked; null = no popup.
     var picking by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -72,8 +70,9 @@ internal fun PlayerGesturesEditor(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         GestureSlotCard(
+            mode = mode,
             slot = "top",
-            slotMap = prefs.top,
+            slotMap = slotSet.top,
             onCellClick = { type -> picking = "top" to type },
             shape = RoundedCornerShape(OuterRadius, OuterRadius, InnerRadius, InnerRadius),
         )
@@ -82,92 +81,66 @@ internal fun PlayerGesturesEditor(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             GestureSlotCard(
+                mode = mode,
                 slot = "bottomLeft",
-                slotMap = prefs.bottomLeft,
+                slotMap = slotSet.bottomLeft,
                 onCellClick = { type -> picking = "bottomLeft" to type },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(InnerRadius, InnerRadius, InnerRadius, OuterRadius),
             )
             GestureSlotCard(
+                mode = mode,
                 slot = "bottomCenter",
-                slotMap = prefs.bottomCenter,
+                slotMap = slotSet.bottomCenter,
                 onCellClick = { type -> picking = "bottomCenter" to type },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(InnerRadius),
             )
             GestureSlotCard(
+                mode = mode,
                 slot = "bottomRight",
-                slotMap = prefs.bottomRight,
+                slotMap = slotSet.bottomRight,
                 onCellClick = { type -> picking = "bottomRight" to type },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(InnerRadius, InnerRadius, OuterRadius, InnerRadius),
             )
         }
-        TextButton(
-            onClick = onReset,
-            modifier = Modifier.padding(start = 4.dp),
-        ) {
-            Text("Reset to defaults")
-        }
     }
 
     // The single popup: action list for the selected cell.
-    val pick = picking
-    if (pick != null) {
-        val (slot, type) = pick
-        val slotMap =
-            when (slot) {
-                "top" -> prefs.top
-                "bottomLeft" -> prefs.bottomLeft
-                "bottomCenter" -> prefs.bottomCenter
-                "bottomRight" -> prefs.bottomRight
-                else -> emptyMap()
+    picking?.let { (slot, type) ->
+        val options =
+            PlayerGestures.optionsFor(mode, type).map { id ->
+                PlayerGestures.DISPLAY_NAMES[id].orEmpty() to id
             }
-        AlertDialog(
-            onDismissRequest = { picking = null },
-            title = {
-                Text(
-                    "${PlayerGestures.SLOT_LABELS[slot].orEmpty()} — " +
-                        "${PlayerGestures.TYPE_LABELS[type].orEmpty()}",
-                )
+        ChoiceDialog(
+            title =
+                "${PlayerGestures.SLOT_LABELS[slot].orEmpty()} — " +
+                    "${PlayerGestures.TYPE_LABELS[type].orEmpty()}",
+            options = options,
+            selected = PlayerGestures.resolve(mode, slot, type, slotSet[slot]),
+            onSelected = { action ->
+                onCellChange(slot, type, action)
+                picking = null
             },
-            text = {
-                LazyColumn {
-                    items(PlayerGestures.OPTIONS_BY_TYPE[type].orEmpty()) { id ->
-                        val selected = PlayerGestures.resolve(slot, type, slotMap) == id
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onCellChange(slot, type, id)
-                                        picking = null
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = if (selected) "✓ " else "   ",
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                text = PlayerGestures.DISPLAY_NAMES[id].orEmpty(),
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { picking = null }) { Text("Done") } },
+            onDismiss = { picking = null },
         )
     }
 }
 
+private operator fun PlayerGestureSlotSet.get(slot: String): Map<String, String> =
+    when (slot) {
+        "top" -> top
+        "bottomLeft" -> bottomLeft
+        "bottomCenter" -> bottomCenter
+        "bottomRight" -> bottomRight
+        else -> emptyMap()
+    }
+
 /** One rectangle: a slot's four "<gesture>: <action>" buttons. */
 @Composable
 private fun GestureSlotCard(
+    mode: String,
     slot: String,
     slotMap: Map<String, String>,
     onCellClick: (String) -> Unit,
@@ -192,7 +165,7 @@ private fun GestureSlotCard(
                 color = TextBright,
             )
             PlayerGestures.GESTURE_TYPES.forEach { type ->
-                val action = PlayerGestures.resolve(slot, type, slotMap)
+                val action = PlayerGestures.resolve(mode, slot, type, slotMap)
                 val isAssigned = action != PlayerGestures.NONE
                 Row(
                     modifier =
