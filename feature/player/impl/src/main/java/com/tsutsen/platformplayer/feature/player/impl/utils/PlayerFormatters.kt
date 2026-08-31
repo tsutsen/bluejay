@@ -3,7 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-internal fun formatTime(ms: Long): String {
+fun formatTime(ms: Long): String {
     val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(ms)
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60

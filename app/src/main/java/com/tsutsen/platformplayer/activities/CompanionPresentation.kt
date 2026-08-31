@@ -118,6 +118,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.formatDuration
+import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ContentItem
@@ -1807,55 +1808,127 @@ private fun CompanionControlsTab(
             hostActivity(context)?.let { a -> SystemControls.setWindowBrightness(a.window, value) }
         }
     }
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    // Fixed slot widths keep every slider the same length: time strings
+    // on the playback row, icon/percent on the others.
+    Column(modifier = Modifier.fillMaxSize()) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            shape = RoundedCornerShape(Tokens.RadiusMd),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
+        shape = RoundedCornerShape(Tokens.RadiusMd),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                Text(
-                    text =
-                        if (isLive || durationMs <= 0) "Live"
-                        else "${formatDuration(positionMs)} / ${formatDuration(durationMs)}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(8.dp))
-                Slider(
-                    value =
-                        seekDrag
-                            ?: (if (durationMs > 0)
-                                (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
-                            else 0f),
-                    onValueChange = { seekDrag = it },
-                    onValueChangeFinished = {
-                        seekDrag?.let { onSeekTo((it * durationMs).toLong()) }
-                        seekDrag = null
-                    },
-                    enabled = !isLive && durationMs > 0,
-                )
-            }
+            CompanionSliderRow(
+                leading = {
+                    Text(
+                        text =
+                            if (isLive || durationMs <= 0) "Live"
+                            else formatTime(seekDrag?.let { (it * durationMs).toLong() } ?: positionMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailing = {
+                    if (!isLive && durationMs > 0) {
+                        Text(
+                            text = formatTime(durationMs),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                value =
+                    seekDrag
+                        ?: (if (durationMs > 0)
+                            (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
+                        else 0f),
+                onValueChange = { seekDrag = it },
+                onValueChangeFinished = {
+                    seekDrag?.let { onSeekTo((it * durationMs).toLong()) }
+                    seekDrag = null
+                },
+                enabled = !isLive && durationMs > 0,
+            )
+            CompanionSliderRow(
+                leading = {
+                    Icon(
+                        imageVector = Icons.Filled.VolumeUp,
+                        contentDescription = "Volume",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailing = {
+                    Text(
+                        text = "${(volume * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                value = volume,
+                onValueChange = onVolume,
+            )
+            CompanionSliderRow(
+                leading = {
+                    Icon(
+                        imageVector = Icons.Filled.Brightness7,
+                        contentDescription = "Brightness",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailing = {
+                    Text(
+                        text = "${(brightness * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                value = brightness,
+                onValueChange = onBrightness,
+            )
         }
-        CompanionSliderCard(
-            icon = Icons.Filled.VolumeUp,
-            label = "${(volume * 100).roundToInt()}%",
-            value = volume,
-            onValueChange = onVolume,
+        }
+    }
+}
+
+@Composable
+private fun CompanionSliderRow(
+    leading: @Composable () -> Unit,
+    trailing: @Composable () -> Unit,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit = {},
+    enabled: Boolean = true,
+) {
+    // 56dp slots: wide enough for "1:23:45", fixed so every slider
+    // spans exactly the same width.
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.width(56.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            leading()
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
+            enabled = enabled,
+            modifier = Modifier.weight(1f),
         )
-        CompanionSliderCard(
-            icon = Icons.Filled.Brightness7,
-            label = "${(brightness * 100).roundToInt()}%",
-            value = brightness,
-            onValueChange = onBrightness,
-        )
+        Box(
+            modifier = Modifier.width(56.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            trailing()
+        }
     }
 }
 
@@ -1870,47 +1943,6 @@ private fun hostActivity(context: Context): Activity? {
 }
 
 @Composable
-private fun CompanionSliderCard(
-    icon: ImageVector,
-    label: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-            )
-            // Fixed width so the slider doesn't reflow while the label
-            // changes digits.
-            Box(Modifier.width(160.dp)) {
-                Slider(value = value, onValueChange = onValueChange)
-            }
-        }
-    }
-}
-
 /** The current video as an options-sheet card (three-dot menu / long-press). */
 private fun ContentItem.toCoreVideoCard(): CoreVideoCard =
     CoreVideoCard(
