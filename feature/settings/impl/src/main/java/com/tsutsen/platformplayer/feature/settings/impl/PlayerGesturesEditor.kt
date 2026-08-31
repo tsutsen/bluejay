@@ -69,7 +69,7 @@ internal fun PlayerGesturesEditor(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         GestureSlotCard(
             slot = "top",
@@ -79,7 +79,7 @@ internal fun PlayerGesturesEditor(
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             GestureSlotCard(
                 slot = "bottomLeft",

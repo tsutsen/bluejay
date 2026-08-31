@@ -63,15 +63,19 @@ object PlayerGestures {
     /** Action options per gesture type (which actions make sense for it). */
     val OPTIONS_BY_TYPE: Map<String, List<String>> =
         mapOf(
+            // MORPH_TO_FULLSCREEN is intentionally absent from the swipe
+            // lists: the swipe-up variant is an unimplemented stub (it only
+            // works as an instant double-tap action).
             "swipe_v" to
                 listOf(
                     NONE,
                     BRIGHTNESS,
                     VOLUME,
                     MORPH_TO_FLOATING,
-                    MORPH_TO_FULLSCREEN,
                     MORPH_VERTICAL,
                 ),
+            // No morph options here: morph handlers only read the vertical
+            // delta, so they can never fire on a horizontal swipe.
             "swipe_h" to
                 listOf(
                     NONE,
@@ -79,9 +83,6 @@ object PlayerGestures {
                     SPEEDDOWN,
                     REWIND_BACK,
                     REWIND_FORWARD,
-                    MORPH_TO_FLOATING,
-                    MORPH_TO_FULLSCREEN,
-                    MORPH_VERTICAL,
                 ),
             "double_tap" to
                 listOf(
