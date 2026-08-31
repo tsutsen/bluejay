@@ -35,6 +35,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PlayerView
+import com.tsutsen.platformplayer.feature.player.impl.SystemControls
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateCasting
 import dagger.hilt.android.AndroidEntryPoint
@@ -233,6 +234,14 @@ private fun BluejayMainActivity(
     playerRepository: PlayerRepository,
     settingsRepository: SettingsRepository,
 ) {
+    // Brightness changes made from the companion screen (Controls tab
+    // slider) follow through the shared flow — apply to this display.
+    LaunchedEffect(activity) {
+        SystemControls.brightness.collect { v ->
+            v?.let { SystemControls.setWindowBrightness(activity.window, it) }
+        }
+    }
+
     // Settings are live: changing theme/grid columns re-composes this tree.
     val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
     val darkTheme =

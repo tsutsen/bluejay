@@ -55,11 +55,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brightness7
-import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.BottomSheetScaffold
@@ -311,6 +311,15 @@ private fun CompanionContent(
     val queue by playbackQueueRepository.queue.collectAsState()
     val scope = rememberCoroutineScope()
     val video = playerState.currentVideo
+
+    // Brightness changes made from the other screen (gestures there apply
+    // to this display through the shared flow) follow for the whole
+    // presentation lifetime, not just while the Controls tab is composed.
+    LaunchedEffect(companionWindow) {
+        SystemControls.brightness.collect { v ->
+            if (v != null && companionWindow != null) SystemControls.setWindowBrightness(companionWindow, v)
+        }
+    }
 
     // Dual screen settings: which pages / video-page tabs / library
     // sections the second screen shows (Settings > Dual screen).
@@ -1144,7 +1153,7 @@ private fun String.companionTabLabel(): String =
         "comments" -> "Comments"
         "chapters" -> "Chapters"
         "recommended" -> "Recommended"
-        "dot" -> "·"
+        "dot" -> "Blank"
         else -> "Queue"
     }
 
@@ -1604,8 +1613,9 @@ private fun CompanionControlRow(
             modifier = tileModifier,
             showLabel = false,
         )
+        // Seek icons without the baked-in "10" digit — plain rewind/ffwd.
         OptionTileView(
-            OptionTile(label = "Back 10s", icon = Icons.Filled.Replay10, onClick = { onSeekBy(-10_000L) }),
+            OptionTile(label = "Back 10s", icon = Icons.Filled.FastRewind, onClick = { onSeekBy(-10_000L) }),
             modifier = tileModifier,
             showLabel = false,
         )
@@ -1619,7 +1629,7 @@ private fun CompanionControlRow(
             showLabel = false,
         )
         OptionTileView(
-            OptionTile(label = "Fwd 10s", icon = Icons.Filled.Forward10, onClick = { onSeekBy(10_000L) }),
+            OptionTile(label = "Fwd 10s", icon = Icons.Filled.FastForward, onClick = { onSeekBy(10_000L) }),
             modifier = tileModifier,
             showLabel = false,
         )
@@ -1639,9 +1649,9 @@ private fun CompanionVideoHeader(
     durationMs: Long,
 ) {
     Row(
-        modifier = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top,
-   ) {
+    ) {
         AsyncImage(
             url = video.thumbnailUrl,
             contentDescription = null,
@@ -1805,11 +1815,15 @@ private fun CompanionControlsTab(
     // changes made elsewhere (hardware keys, main-screen gestures) show.
     LaunchedEffect(Unit) {
         volume = SystemControls.getVolume(context)
-        brightness =
-            SystemControls.getDeviceBrightness(context)
-                ?: companionWindow?.let { SystemControls.getWindowBrightness(it) }
-                ?: hostActivity(context)?.let { SystemControls.getWindowBrightness(it.window) }
-                ?: 1f
+        brightness = SystemControls.readBrightness(context)
+        // Follow brightness changes made from the other screen (gestures
+        // there apply to this display through the shared flow).
+        SystemControls.brightness.collect { v ->
+            v?.let {
+                brightness = it
+                companionWindow?.let { w -> SystemControls.setWindowBrightness(w, it) }
+            }
+        }
     }
     val onVolume: (Float) -> Unit = {
         volume = it
@@ -1817,14 +1831,14 @@ private fun CompanionControlsTab(
     }
     val onBrightness: (Float) -> Unit = { value ->
         brightness = value
-        if (!SystemControls.setDeviceBrightness(context, value)) {
-            companionWindow?.let { w -> SystemControls.setWindowBrightness(w, value) }
-            hostActivity(context)?.let { a -> SystemControls.setWindowBrightness(a.window, value) }
-        }
+        // All screens: device-wide when granted, plus this window; the
+        // main window follows through SystemControls.brightness.
+        SystemControls.applyBrightness(context, value, companionWindow)
     }
     // Fixed slot widths keep every slider the same length: time strings
     // on the playback row, icon/percent on the others.
-    Column(modifier = Modifier.fillMaxSize()) {
+    // 8dp below the tab strip — same first-item gap as the other tabs.
+    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
