@@ -48,7 +48,7 @@ internal fun PlayerNormalBottomOverlay(
 ) {
     // Collected here — at the leaf — so the 10 Hz position ticks recompose
     // only this overlay, not the whole player screen.
-    val currentPositionMs by positionMs.collectAsState(initial = 0L)
+    val currentPositionMs by positionMs.collectAsState(initial = positionMs.value)
     val effectivePositionMs = if (isScrubbing) scrubPositionMs else currentPositionMs
 
     Column(
