@@ -224,14 +224,36 @@ private fun RowScope.ChannelName(
                 )
             }
         }
-        Text(
-            text = "125K subscribers",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        author?.subscriberCount?.takeIf { it > 0 }?.let { count ->
+            Text(
+                text = "${formatCompactCount(count)} subscribers",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
+
+private fun formatCompactCount(count: Long): String =
+    when {
+        count >= 1_000_000_000 ->
+            java.lang.String.format(java.util.Locale.US, "%.1f", count / 1_000_000_000.0)
+                .trimEnd('0', '.') +
+                "B"
+
+        count >= 1_000_000 ->
+            java.lang.String.format(java.util.Locale.US, "%.1f", count / 1_000_000.0)
+                .trimEnd('0', '.') +
+                "M"
+
+        count >= 1_000 ->
+            java.lang.String.format(java.util.Locale.US, "%.1f", count / 1_000.0)
+                .trimEnd('0', '.') +
+                "K"
+
+        else -> count.toString()
+    }
 
 @Composable
 private fun SubscribeButton(

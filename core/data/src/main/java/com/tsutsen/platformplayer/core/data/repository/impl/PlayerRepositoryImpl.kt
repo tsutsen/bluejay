@@ -831,6 +831,7 @@ class PlayerRepositoryImpl(
                         name = it,
                         url = details.authorUrl,
                         thumbnailUrl = details.authorThumbnailUrl,
+                        subscriberCount = details.authorSubscriberCount,
                     )
                 },
             thumbnailUrl = details.thumbnailUrl,

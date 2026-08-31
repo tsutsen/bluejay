@@ -27,7 +27,8 @@ data class Author(
     val id: String,
     val name: String,
     val url: String?,
-    val thumbnailUrl: String?
+    val thumbnailUrl: String?,
+    val subscriberCount: Long? = null
 ) : Parcelable
 
 enum class ContentType {

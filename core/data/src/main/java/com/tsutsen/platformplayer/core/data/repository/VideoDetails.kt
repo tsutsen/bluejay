@@ -13,6 +13,7 @@ data class VideoDetails(
     val authorName: String?,
     val authorUrl: String?,
     val authorThumbnailUrl: String?,
+    val authorSubscriberCount: Long? = null,
     val thumbnailUrl: String?,
     val description: String?,
     val durationMs: Long?,
