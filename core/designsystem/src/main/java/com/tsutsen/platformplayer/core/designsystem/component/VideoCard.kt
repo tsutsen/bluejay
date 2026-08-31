@@ -512,6 +512,155 @@ private fun ThumbnailPill(
 }
 
 /**
+ * Shorts card: vertical 9:16 thumbnail on the left, title top-aligned to
+ * its right and the channel name pinned to the bottom edge.
+ */
+@Composable
+fun VideoCardShorts(
+    card: VideoCard,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    /** 0..1 watch progress from local history; null = not started. */
+    watchProgress: Float? = null,
+    /** Shows the watched checkmark badge. */
+    isWatched: Boolean = false,
+) {
+    val title = card.title
+    val thumbnailUrl = card.thumbnailUrl
+    val durationMs = card.durationMs
+
+    Card(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        shape = RoundedCornerShape(Tokens.RadiusSm),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(Tokens.SpaceSm),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .height(120.dp)
+                        .aspectRatio(9f / 16f)
+                        .clip(RoundedCornerShape(Tokens.RadiusSm)),
+            ) {
+                AsyncImage(
+                    url = thumbnailUrl,
+                    contentDescription = title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+
+                // Completed badge (bottom-left).
+                if (isWatched) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(Tokens.SpaceXs)
+                                .height(24.dp)
+                                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                                .background(Color.Black.copy(alpha = 0.85f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = "Watched",
+                            tint = Color.White,
+                            modifier =
+                                Modifier
+                                    .size(18.dp)
+                                    .padding(horizontal = 6.dp),
+                        )
+                    }
+                }
+
+                // Duration pill (bottom-right) — shorts usually report no
+                // duration, so this stays hidden in practice.
+                if (durationMs != null && durationMs > 0) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(Tokens.SpaceXs)
+                                .height(PILL_HEIGHT)
+                                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                                .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = formatDuration(durationMs),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+
+                // Watch progress: thin bar along the bottom edge.
+                if (watchProgress != null) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(
+                                    RoundedCornerShape(
+                                        bottomStart = Tokens.RadiusSm,
+                                        bottomEnd = Tokens.RadiusSm,
+                                    ),
+                                ).background(Color.Black.copy(alpha = 0.6f)),
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
+                                    .background(MaterialTheme.colorScheme.primary),
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier =
+                    Modifier
+                        .padding(start = Tokens.SpaceMd)
+                        .fillMaxHeight()
+                        .weight(1f),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = card.author ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/**
  * Compact landscape video card (96×54 thumbnail ratio).
  */
 @Composable

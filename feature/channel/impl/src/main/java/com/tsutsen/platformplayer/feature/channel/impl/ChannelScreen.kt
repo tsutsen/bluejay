@@ -69,6 +69,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.ScrollEndReached
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
+import com.tsutsen.platformplayer.core.designsystem.component.VideoCardShorts
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.model.Card
@@ -430,6 +431,7 @@ private fun ChannelContent(
                     onCardClick = onCardClick,
                     onLoadMore = onShortsLoadMore,
                     onVideoLongClick = onVideoLongClick,
+                    isShorts = true,
                 )
             } else {
                 VideoContainer(
@@ -441,7 +443,7 @@ private fun ChannelContent(
                     onLoadMore = onShortsLoadMore,
                 ) { card ->
                     if (card is CoreVideoCard) {
-                        VideoCard(
+                        VideoCardShorts(
                             card = card,
                             onClick = { onCardClick(card) },
                             onLongClick = { onVideoLongClick(card) },
@@ -552,6 +554,7 @@ private fun WideVideoGrid(
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
+    isShorts: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     val rows = remember(items, columns) { items.chunked(columns) }
@@ -583,6 +586,7 @@ private fun WideVideoGrid(
                     modifier = Modifier.weight(1f),
                     onCardClick = onCardClick,
                     onVideoLongClick = onVideoLongClick,
+                    isShorts = isShorts,
                 )
                 if (row.size > 1) {
                     WideVideoCell(
@@ -590,6 +594,7 @@ private fun WideVideoGrid(
                         modifier = Modifier.weight(1f),
                         onCardClick = onCardClick,
                         onVideoLongClick = onVideoLongClick,
+                        isShorts = isShorts,
                     )
                 }
                 // ponytail: unrolled for the 2-4 setting values; composable calls
@@ -600,6 +605,7 @@ private fun WideVideoGrid(
                         modifier = Modifier.weight(1f),
                         onCardClick = onCardClick,
                         onVideoLongClick = onVideoLongClick,
+                        isShorts = isShorts,
                     )
                 }
                 if (row.size > 3) {
@@ -608,6 +614,7 @@ private fun WideVideoGrid(
                         modifier = Modifier.weight(1f),
                         onCardClick = onCardClick,
                         onVideoLongClick = onVideoLongClick,
+                        isShorts = isShorts,
                     )
                 }
                 if (row.size == 1) {
@@ -624,17 +631,28 @@ private fun WideVideoCell(
     modifier: Modifier = Modifier,
     onCardClick: (Card) -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
+    isShorts: Boolean = false,
 ) {
     val watchStates by androidx.hilt.navigation.compose.hiltViewModel<PlayerViewModel>().watchStates.collectAsState()
     Box(modifier) {
         if (card is CoreVideoCard) {
-            VideoCard(
-                card = card,
-                onClick = { onCardClick(card) },
-                onLongClick = { onVideoLongClick(card) },
-                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
-                isWatched = watchStates[card.url]?.isWatched ?: false,
-            )
+            if (isShorts) {
+                VideoCardShorts(
+                    card = card,
+                    onClick = { onCardClick(card) },
+                    onLongClick = { onVideoLongClick(card) },
+                    watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                    isWatched = watchStates[card.url]?.isWatched ?: false,
+                )
+            } else {
+                VideoCard(
+                    card = card,
+                    onClick = { onCardClick(card) },
+                    onLongClick = { onVideoLongClick(card) },
+                    watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                    isWatched = watchStates[card.url]?.isWatched ?: false,
+                )
+            }
         }
     }
 }
