@@ -6,8 +6,8 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.view.View
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -16,9 +16,9 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,8 +41,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -50,16 +50,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
-import kotlin.math.roundToInt
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -77,6 +76,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private const val TAG = "PlayerScreen"
 
@@ -222,12 +222,18 @@ fun PlayerView(
      */
     val snapJobs = remember { HashMap<Animatable<Float, AnimationVector1D>, Job>() }
 
-    fun snapAxis(axis: Animatable<Float, AnimationVector1D>, value: Float) {
+    fun snapAxis(
+        axis: Animatable<Float, AnimationVector1D>,
+        value: Float,
+    ) {
         snapJobs[axis]?.cancel()
         snapJobs[axis] = coroutineScope.launch { axis.snapTo(value) }
     }
 
-    fun settleFullscreenTo(target: Float, after: (() -> Unit)? = null) {
+    fun settleFullscreenTo(
+        target: Float,
+        after: (() -> Unit)? = null,
+    ) {
         if (surface.isSettlingFullscreen.value) return
         if (kotlin.math.abs(surface.fullscreenProgress.value - target) <= 0.01f) {
             after?.invoke()
@@ -267,11 +273,12 @@ fun PlayerView(
     // is inset by the bars. So bar state must change only while the anchor
     // is irrelevant (fullscreen progress 0 or 1), never mid-morph — otherwise
     // the video height jumps when the resize lands mid-animation.
-    val insetsController = remember(context) {
-        (context as? Activity)?.let {
-            WindowInsetsControllerCompat(it.window, it.window.decorView)
+    val insetsController =
+        remember(context) {
+            (context as? Activity)?.let {
+                WindowInsetsControllerCompat(it.window, it.window.decorView)
+            }
         }
-    }
 
     /**
      * System-bar policy for fullscreen. The main window is edge-to-edge
@@ -290,9 +297,11 @@ fun PlayerView(
         val isPortrait = surface.containerSize.value.width <= surface.containerSize.value.height
         val bars =
             if (isPortrait) {
-                androidx.core.view.WindowInsetsCompat.Type.statusBars()
+                androidx.core.view.WindowInsetsCompat.Type
+                    .statusBars()
             } else {
-                androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                androidx.core.view.WindowInsetsCompat.Type
+                    .systemBars()
             }
         if (fullscreen) {
             controller.hide(bars)
@@ -753,19 +762,35 @@ fun PlayerView(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) {
-                            // Pure observer: any pointer down in the player
-                            // (video, bars, sliders, chat) restarts the
-                            // auto-hide clock. Never consumes — it
-                            // coexists with every other handler.
-                            while (true) {
-                                awaitEachGesture {
-                                    awaitFirstDown(requireUnconsumed = false)
-                                    controlsActivityTick++
+                        .then(
+                            if (isMinimized) {
+                                Modifier
+                            } else {
+                                Modifier.pointerInput(Unit) {
+                                    // Pure observer: any pointer down in
+                                    // the player (video, bars, sliders,
+                                    // chat) restarts the auto-hide clock.
+                                    // Never consumes — it coexists with
+                                    // every other handler.
+                                    //
+                                    // Must NOT be attached in floating mode:
+                                    // registering pointer input on this
+                                    // full-screen box makes the whole player
+                                    // window a hit target, and Compose
+                                    // hit-testing stops at the front-most
+                                    // sibling that produced a hit — so the
+                                    // feed behind the mini player would
+                                    // never receive touches (it could not
+                                    // scroll).
+                                    while (true) {
+                                        awaitEachGesture {
+                                            awaitFirstDown(requireUnconsumed = false)
+                                            controlsActivityTick++
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                        .onGloballyPositioned { coordinates ->
+                            },
+                        ).onGloballyPositioned { coordinates ->
                             surface.containerSize.value = Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat())
                         },
             ) {
@@ -800,16 +825,21 @@ fun PlayerView(
                                     // video rect does too).
                                     val p = surface.morphProgress.value
                                     val heightPx =
-                                        (surface.containerSize.value.height * (1f - p) +
-                                            layout.heightPx * p).roundToInt() +
+                                        (
+                                            surface.containerSize.value.height * (1f - p) +
+                                                layout.heightPx * p
+                                        ).roundToInt() +
                                             // Overhang by the system-bar inset while
                                             // not mini: keeps the plate covering the
                                             // physical window when a bar show/hide
                                             // resizes the content view mid/after a
                                             // morph (exposed window background for
                                             // a frame otherwise).
-                                            if (p < 0.5f) surface.windowOverhangPx.value.toInt()
-                                            else 0
+                                            if (p < 0.5f) {
+                                                surface.windowOverhangPx.value.toInt()
+                                            } else {
+                                                0
+                                            }
                                     val widthPx = layout.widthPx.roundToInt()
                                     val placeable =
                                         measurable.measure(
@@ -857,7 +887,12 @@ fun PlayerView(
                         onTimestampClick = onTimestampClick,
                         onLinkClick = onLinkClick,
                         onTabSelected = remember { { selectedTab = it } },
-                        onRecommendedClick = remember(viewModel) { { video: com.tsutsen.platformplayer.core.model.VideoCard -> viewModel.play(video) } },
+                        onRecommendedClick =
+                            remember(viewModel) {
+                                { video: com.tsutsen.platformplayer.core.model.VideoCard ->
+                                    viewModel.play(video)
+                                }
+                            },
                         gridColumns = gridColumns,
                         onLoadMoreComments =
                             remember(state) { { viewModel.loadMoreComments(state.currentVideo?.url ?: "") } },
@@ -909,15 +944,18 @@ fun PlayerView(
                             },
                         onScrubFinished = remember { { isScrubbing = false } },
                         onFullscreenToggle = remember { { viewModel.toggleFullscreen() } },
-                        onDetailsOverdragStart = remember {
-                            { startOverscrollMorph() }
-                        },
-                        onDetailsOverdrag = remember {
-                            { px -> updateOverscrollMorph(px) }
-                        },
-                        onDetailsOverdragEnd = remember {
-                            { px -> finishOverscrollMorph(px) }
-                        },
+                        onDetailsOverdragStart =
+                            remember {
+                                { startOverscrollMorph() }
+                            },
+                        onDetailsOverdrag =
+                            remember {
+                                { px -> updateOverscrollMorph(px) }
+                            },
+                        onDetailsOverdragEnd =
+                            remember {
+                                { px -> finishOverscrollMorph(px) }
+                            },
                     )
                 }
 
