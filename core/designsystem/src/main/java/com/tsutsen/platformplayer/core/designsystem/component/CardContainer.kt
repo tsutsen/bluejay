@@ -1,6 +1,5 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -23,8 +22,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Card
 
 /**
@@ -105,6 +106,12 @@ fun VideoContainer(
                 threshold = 6,
                 onEndReached = onLoadMore,
             )
+            AutoLoadFill(
+                listState = state,
+                itemCount = items.size,
+                hasMorePages = hasMorePages,
+                onLoadMore = onLoadMore,
+            )
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 state = state,
@@ -149,6 +156,12 @@ fun VideoContainer(
                 hasMorePages = hasMorePages,
                 threshold = 6,
                 onEndReached = onLoadMore,
+            )
+            AutoLoadFill(
+                gridState = state,
+                itemCount = items.size,
+                hasMorePages = hasMorePages,
+                onLoadMore = onLoadMore,
             )
             LazyVerticalGrid(
                 modifier = modifier.fillMaxSize(),
@@ -218,6 +231,37 @@ fun VideoContainer(
                 }
             }
         }
+    }
+}
+
+/**
+ * Auto-fills the first screen: when a batch of items lands and the list
+ * can't scroll (content shorter than the viewport) while more pages exist,
+ * load the next page automatically. Mirrors grayjay's
+ * FeedView.ensureEnoughContentVisible — without it a 9-card merged home
+ * feed sits half-empty until the user scrolls.
+ */
+@Composable
+private fun AutoLoadFill(
+    listState: LazyListState? = null,
+    gridState: LazyGridState? = null,
+    itemCount: Int,
+    hasMorePages: Boolean,
+    onLoadMore: () -> Unit,
+) {
+    // Deliberately NOT gated on isLoading: while late sources are still
+    // pending the first wave is a handful of cards and the list is
+    // underfilled — the app should fill the screen straight away instead of
+    // waiting for the user to scroll. Concurrent requests are dropped by the
+    // repository's single-flight guard; the loop self-terminates once the
+    // content overflows the viewport (or pages run out).
+    LaunchedEffect(itemCount, hasMorePages) {
+        if (!hasMorePages || itemCount == 0) return@LaunchedEffect
+        // Wait one frame so the just-added items are laid out and
+        // canScrollForward reflects reality.
+        withFrameNanos { }
+        val canScroll = listState?.canScrollForward ?: gridState?.canScrollForward ?: true
+        if (!canScroll) onLoadMore()
     }
 }
 

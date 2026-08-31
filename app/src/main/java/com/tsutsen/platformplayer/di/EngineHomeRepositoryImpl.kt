@@ -1,12 +1,12 @@
 package com.tsutsen.platformplayer.di
 
+import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.FeedPage
 import com.tsutsen.platformplayer.core.model.SourceInfo
-import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
@@ -49,7 +49,23 @@ class EngineHomeRepositoryImpl
         // enable + home fetch, so overlapping calls (e.g. refresh() racing a
         // fresh init) double the work. Concurrent callers bail out; the
         // in-flight call publishes the result.
-        private val loadInitialInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val loadInitialInFlight =
+            java.util.concurrent.atomic
+                .AtomicBoolean(false)
+
+        // Single-flight: auto-fill and scroll-prefetch can both ask for the
+        // next page in the same frame; concurrent nextPage() calls on the
+        // same pager corrupt its window. Concurrent callers bail out.
+        private val loadNextPageInFlight =
+            java.util.concurrent.atomic
+                .AtomicBoolean(false)
+
+        init {
+            // Keep the source chips in sync with runtime plugin toggles.
+            StatePlatform.instance.onEnabledClientsChanged.subscribe {
+                publishEnabledSources()
+            }
+        }
 
         /** @return false when a load was already in flight (and skipped). */
         private suspend fun tryLoadInitial(): Boolean {
@@ -130,8 +146,9 @@ class EngineHomeRepositoryImpl
                     // from the OLD load must not clobber the new feed.
                     if (flow !== _pagerFlow) return@subscribe
                     val merged = flow.mergeCurrentResults()
-                    if (merged.isNotEmpty())
+                    if (merged.isNotEmpty()) {
                         Logger.i("EngineHomeRepository", "Merged late source: +${merged.size}, ${flow.items.size} total")
+                    }
                     _feed.update {
                         it.copy(
                             items = flow.items,
@@ -142,7 +159,12 @@ class EngineHomeRepositoryImpl
                     }
                 }
                 val items = flow.loadInitial()
-                Logger.i("EngineHomeRepository", "Converted to ${items.size} cards, hasMore=${flow.hasMore}, pending=${refreshPager?.pendingPagers ?: 0}")
+                // TEMP #33: how many video cards lack a thumbnail?
+                val noThumb = items.filterIsInstance<com.tsutsen.platformplayer.core.model.VideoCard>().count { it.thumbnailUrl == null }
+                Logger.i(
+                    "EngineHomeRepository",
+                    "Converted to ${items.size} cards (noThumb=$noThumb), hasMore=${flow.hasMore}, pending=${refreshPager?.pendingPagers ?: 0}",
+                )
                 _feed.update {
                     // flow.items (not the local): onPagerChanged may have
                     // merged a late source's cards in between loadInitial()
@@ -173,15 +195,19 @@ class EngineHomeRepositoryImpl
         }
 
         /** Enabled clients → display info (id, name, icon url). */
-    private fun publishEnabledSources() {
-        _enabledSources.value =
-            StatePlatform.instance
-                .getEnabledClients()
-                .map { SourceInfo(it.id, it.name, StatePlugins.instance.getPluginIconUriOrNull(it.id)) }
-                .sortedBy { it.name.lowercase() }
-    }
+        private fun publishEnabledSources() {
+            _enabledSources.value =
+                StatePlatform.instance
+                    .getEnabledClients()
+                    .map { SourceInfo(it.id, it.name, StatePlugins.instance.getPluginIconUriOrNull(it.id)) }
+                    .sortedBy { it.name.lowercase() }
+        }
 
-    override suspend fun loadNextPage() {
+        override suspend fun loadNextPage() {
+            if (!loadNextPageInFlight.compareAndSet(false, true)) {
+                Logger.i("EngineHomeRepository", "loadNextPage already in flight, skipping")
+                return
+            }
             Logger.i("EngineHomeRepository", "loadNextPage")
             _feed.update { it.copy(isLoading = true) }
 
@@ -209,6 +235,8 @@ class EngineHomeRepositoryImpl
                 _feed.update {
                     it.copy(isLoading = false, error = e.message ?: "Failed to load more")
                 }
+            } finally {
+                loadNextPageInFlight.set(false)
             }
         }
 
