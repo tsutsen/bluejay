@@ -167,26 +167,24 @@ fun PlayerContent(
             surface.isCollapsedNow(isLandscape),
         )
     // The details panel's first layout is heavy (comments, recommendations,
-    // live chat): it must not compose while the fullscreen axis is animating,
-    // or that cost drops frames during the video's move. While IN fullscreen
-    // it stays composed only through the entry fade-out (so it never pops
-    // out mid-animation) and is dropped once settled — including during the
-    // morph-to-normal exit motion, which runs while still fullscreen.
-    // Seeded synchronously on the flip frame (remember key): an effect-seeded
-    // flag would be read stale by the derived for one frame, dropping the
-    // panel on the way into fullscreen (blink) before re-adding it.
+    // live chat). Composition policy:
+    // - Normal: composed whenever its alpha is above the invisible
+    //   threshold. A cancelled settle back to normal keeps it (it is
+    //   already composed — dropping it mid-fade would pop the panel).
+    // - Fullscreen: composed while its alpha is visible AND through the
+    //   expand settle (isSettlingFullscreen): the alpha is 0 by then, so
+    //   nothing draws, and the heavy unmount lands on the still frame
+    //   after the settle instead of mid-motion at fsP 0.99.
+    // First-time composition (remount) still goes through the time-based
+    // fade-in below.
     val isFullscreenNow = state.isFullscreen
-    val entryFadeRemaining =
-        remember(isFullscreenNow) {
-            isFullscreenNow && surface.detailsAlphaNow(isLandscape) > 0.01f
-        }
     val detailsVisible by remember(surface, isLandscape, isFullscreenNow) {
         derivedStateOf {
             if (isFullscreenNow) {
-                entryFadeRemaining && surface.detailsAlphaNow(isLandscape) > 0.01f
+                surface.isSettlingFullscreen.value ||
+                    surface.detailsAlphaNow(isLandscape) > 0.01f
             } else {
-                surface.detailsAlphaNow(isLandscape) > 0.01f &&
-                    !surface.isSettlingFullscreen.value
+                surface.detailsAlphaNow(isLandscape) > 0.01f
             }
         }
     }

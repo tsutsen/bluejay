@@ -6,6 +6,8 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.view.View
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -207,23 +209,42 @@ fun PlayerView(
     // frame instead of during the video's move.
     val settleScope = rememberCoroutineScope()
 
+    /**
+     * One pending snap per axis. Each new drag frame cancels the previous
+     * frame's pending snap, and the settle/fold paths cancel the axis' pending
+     * snap before animating — a stale snapTo would otherwise cancel the
+     * in-flight tween and strand the settle flag.
+     */
+    val snapJobs = remember { HashMap<Animatable<Float, AnimationVector1D>, Job>() }
+
+    fun snapAxis(axis: Animatable<Float, AnimationVector1D>, value: Float) {
+        snapJobs[axis]?.cancel()
+        snapJobs[axis] = coroutineScope.launch { axis.snapTo(value) }
+    }
+
     fun settleFullscreenTo(target: Float, after: (() -> Unit)? = null) {
         if (surface.isSettlingFullscreen.value) return
         if (kotlin.math.abs(surface.fullscreenProgress.value - target) <= 0.01f) {
             after?.invoke()
             return
         }
+        // Set synchronously, BEFORE the launch: the sync effect below is keyed
+        // on this flag and re-enters on the drag-end / state flips that land a
+        // few ms later. If the flag were only set inside the launched
+        // coroutine, those re-entries would pass the guard and launch a second
+        // settle — each tween cancelling the other, restarting the 300ms tween
+        // from its current position on every flag flip (the visible stutter and
+        // velocity jump near the end of the morph).
+        surface.isSettlingFullscreen.value = true
         settleScope.launch {
+            snapJobs[surface.fullscreenProgress]?.cancel()
             if (target == 1f && surface.morphProgress.value < 0.5f) {
                 // A minimize morph may still be running: wait for it to
                 // settle so the two axes don't fight over the video rect.
                 kotlinx.coroutines.delay(50)
             }
-            surface.isSettlingFullscreen.value = true
             surface.fullscreenProgress.animateTo(target, transitionSpringSpec)
-            // Springs stop at a small residual (~0.001), leaving the video
-            // 0.5px off its nominal anchor forever and rounding layers
-            // differently; land exactly on the target.
+            // Land exactly on the target.
             surface.fullscreenProgress.snapTo(target)
             surface.isSettlingFullscreen.value = false
             after?.invoke()
@@ -247,15 +268,35 @@ fun PlayerView(
         }
     }
 
-    fun hideSystemBarsNow() {
-        insetsController?.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        insetsController?.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    }
-
-    fun showSystemBarsNow() {
-        insetsController?.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        insetsController?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+    /**
+     * System-bar policy for fullscreen. The main window is edge-to-edge
+     * (setDecorFitsSystemWindows(false) + LAYOUT_IN_SCREEN), so bar state
+     * never resizes the content view — hide/show is layout-neutral and safe
+     * at any point of a morph (the window that DOES resize on bar changes is
+     * the companion's presentation window, which doesn't morph).
+     *
+     * - Landscape: the video reaches every edge → hide both bars.
+     * - Portrait: the video is a letterboxed 16:9 — hide the status bar
+     *   (immersive) but keep the navigation bar (it sits below the video and
+     *   is the way back).
+     */
+    fun setFullscreenBarsNow(fullscreen: Boolean) {
+        val controller = insetsController ?: return
+        val isPortrait = surface.containerSize.value.width <= surface.containerSize.value.height
+        val bars =
+            if (isPortrait) {
+                androidx.core.view.WindowInsetsCompat.Type.statusBars()
+            } else {
+                androidx.core.view.WindowInsetsCompat.Type.systemBars()
+            }
+        if (fullscreen) {
+            controller.hide(bars)
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            controller.show(bars)
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        }
     }
 
     fun startOverscrollMorph() {
@@ -265,10 +306,8 @@ fun PlayerView(
             (surface.maxPlayerHeightPx(isLand) - surface.playerHeightPx.value)
                 .coerceAtLeast(0f)
         surface.isDraggingFullscreen.value = true
-        // Hide the bars NOW, while fullscreen progress is still 0: the
-        // resize (where applicable) lands invisibly and the whole
-        // drag tracks the final window size.
-        hideSystemBarsNow()
+        // Edge-to-edge: layout-neutral, so hiding at drag start is free.
+        setFullscreenBarsNow(true)
     }
 
     // Morph travel = the distance the video still has to GROW: full window
@@ -287,9 +326,7 @@ fun PlayerView(
         if (over <= 0f) return // still re-expanding the collapsed video
         val travel = fullscreenOverdragTravelPx()
         val progress = if (travel > 0f) (over / travel).coerceIn(0f, 1f) else 0f
-        coroutineScope.launch {
-            surface.fullscreenProgress.snapTo(progress)
-        }
+        snapAxis(surface.fullscreenProgress, progress)
     }
 
     fun finishOverscrollMorph(cumulativePx: Float) {
@@ -308,7 +345,7 @@ fun PlayerView(
             // Cancelled: the bars were hidden when the drag started — put
             // them back (the isFullscreen effect doesn't fire: state didn't
             // change).
-            showSystemBarsNow()
+            setFullscreenBarsNow(false)
             settleFullscreenTo(0f)
         }
     }
@@ -385,38 +422,24 @@ fun PlayerView(
                 }
             }
 
-            LaunchedEffect(isFullscreen, isSmallWindow) {
+            LaunchedEffect(isFullscreen, isSmallWindow, isLandscape) {
                 val activity = context as? Activity
                 if (activity != null) {
-                    val insetsController = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
                     if (isFullscreen) {
-                        // Hide immediately: fullscreen progress is 0 at this
-                        // point (drag-based commits already hid preemptively),
-                        // so the resize — on devices where hiding resizes the
-                        // window — lands invisibly and the settle spring
-                        // tracks the final window size the whole way.
-                        insetsController.hide(
-                            androidx.core.view.WindowInsetsCompat.Type
-                                .systemBars(),
-                        )
-                        insetsController.systemBarsBehavior =
-                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                         if (isSmallWindow) {
+                            // Small windows rotate to landscape when entering
+                            // fullscreen — asynchronously. Wait for the
+                            // rotation so the bars are configured for the
+                            // final orientation.
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                            snapshotFlow { surface.containerSize.value }
+                                .first { it.width > it.height }
                         }
+                        // Edge-to-edge window: bar state is layout-neutral,
+                        // so no timing relative to the settle is needed.
+                        setFullscreenBarsNow(true)
                     } else {
-                        // Re-show only after the shrink has settled: the
-                        // window resize then lands at fullscreen progress 0,
-                        // where the fullscreen anchor no longer matters.
-                        // Showing mid-morph is what used to jump the video
-                        // height near the end of the transition.
-                        snapshotFlow { surface.fullscreenProgress.value }
-                            .first { it <= 0.01f }
-                        insetsController.show(
-                            androidx.core.view.WindowInsetsCompat.Type
-                                .systemBars(),
-                        )
-                        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+                        setFullscreenBarsNow(false)
                         if (isSmallWindow) {
                             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
@@ -463,12 +486,14 @@ fun PlayerView(
             val maxPlayerHeightPx = surface.maxPlayerHeightPx(isLandscape)
             val minPlayerHeightPx = surface.minPlayerHeightPx(isLandscape, maxPlayerHeightPx)
 
-            // Reset the collapsed height the moment the state leaves the
-            // floating mini (isMinimized flips false immediately), not only
-            // after the 300ms morph settles (isMinimizedAnim) — otherwise the
-            // player lands in COMPACT for a beat before expanding to NORMAL.
-            LaunchedEffect(isMinimized, surface.isFullscreenAnim.value) {
-                if (!isMinimized && !surface.isFullscreenAnim.value) {
+            // Reset to the normal (max) height when leaving the floating
+            // mini. Keyed on isMinimized only: after a fullscreen exit the
+            // video returns to its pre-fullscreen height (which may be
+            // collapsed) — snapping it to max the moment the fullscreen
+            // flag cleared was a visible size pop right after the shrink
+            // settled.
+            LaunchedEffect(isMinimized) {
+                if (!isMinimized) {
                     surface.playerHeightPx.value = surface.maxPlayerHeightPx(isLandscape)
                 }
             }
@@ -607,7 +632,7 @@ fun PlayerView(
                             // remembered once, so no locals may be captured.
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            coroutineScope.launch { surface.morphProgress.snapTo(progress) }
+                            snapAxis(surface.morphProgress, progress)
                         },
                         onMorphDragEnd = { dragY ->
                             surface.isDraggingMorph.value = false
@@ -623,7 +648,7 @@ fun PlayerView(
                         onShrinkDrag = { dragY ->
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            coroutineScope.launch { surface.shrinkProgress.snapTo(progress) }
+                            snapAxis(surface.shrinkProgress, progress)
                         },
                         onShrinkDragEnd = { dragY ->
                             surface.isDraggingShrink.value = false
@@ -639,6 +664,10 @@ fun PlayerView(
                                 // swap) lands on a still frame, not mid-motion.
                                 // The fold must land before the settle starts;
                                 // both dispatch to the same scope in order.
+                                // Cancel the last shrink frame's pending snap
+                                // first: it could run after the fold and
+                                // re-raise shrinkProgress past 0.
+                                snapJobs[surface.shrinkProgress]?.cancel()
                                 coroutineScope.launch {
                                     val effective =
                                         surface.fullscreenProgress.value *
@@ -649,6 +678,7 @@ fun PlayerView(
                                 settleFullscreenTo(0f) { viewModel.exitFullscreen() }
                             } else {
                                 // Cancel: settle the shrink axis back (no state change).
+                                snapJobs[surface.shrinkProgress]?.cancel()
                                 coroutineScope.launch {
                                     surface.shrinkProgress.animateTo(0f, transitionSpringSpec)
                                 }
@@ -656,16 +686,16 @@ fun PlayerView(
                         },
                         onFullscreenDragStart = {
                             surface.isDraggingFullscreen.value = true
-                            // Same anchor rule as overdrag: the bars hide
-                            // before the axis rises, never mid-morph.
-                            hideSystemBarsNow()
+                            // Edge-to-edge: layout-neutral, so hiding at
+                            // drag start is free.
+                            setFullscreenBarsNow(true)
                         },
                         onFullscreenDrag = { dragY ->
                             // Read the surface at call time — this block is
                             // remembered once, so no locals may be captured.
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            coroutineScope.launch { surface.fullscreenProgress.snapTo(progress) }
+                            snapAxis(surface.fullscreenProgress, progress)
                         },
                         onFullscreenDragEnd = { dragY ->
                             surface.isDraggingFullscreen.value = false
@@ -680,7 +710,7 @@ fun PlayerView(
                                 settleFullscreenTo(1f)
                             } else {
                                 // Cancelled: bars were hidden at drag start.
-                                showSystemBarsNow()
+                                setFullscreenBarsNow(false)
                                 settleFullscreenTo(0f)
                             }
                         },
