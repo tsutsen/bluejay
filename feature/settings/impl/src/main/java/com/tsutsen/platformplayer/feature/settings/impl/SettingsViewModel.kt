@@ -2,10 +2,12 @@ package com.tsutsen.platformplayer.feature.settings.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.*
 import com.tsutsen.platformplayer.core.model.PlaylistOption
+import com.tsutsen.platformplayer.core.model.SourceInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -28,11 +30,16 @@ sealed interface SettingsUiState {
         val dualScreen: Boolean,
         val dualScreenPages: List<String>,
         val dualScreenVideoTabs: List<String>,
+        val dualScreenVideoTabOrder: List<String>,
+        val dualScreenPageOrder: List<String>,
+        val dualScreenFeedSources: List<String>,
         val dualScreenLibrarySlots: List<String>,
         val gridColumns: Int,
         val showRecommendedVideos: Boolean,
         val showComments: Boolean,
         val autoUpdatePlugins: Boolean,
+        val playerGestures: PlayerGesturePreferences,
+        val jumpStepSeconds: Int = 5,
     ) : SettingsUiState
 
     data object Loading : SettingsUiState
@@ -51,12 +58,16 @@ class SettingsViewModel
     constructor(
         private val settingsRepository: SettingsRepository,
         private val libraryRepository: LibraryRepository,
+        private val homeRepository: HomeRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
         /** User playlists, for the dual-screen library-slot picker. */
         val playlists: StateFlow<List<PlaylistOption>> = libraryRepository.playlists
+
+        /** Enabled sources, for the dual-screen feed-sources picker. */
+        val enabledSources: StateFlow<List<SourceInfo>> = homeRepository.enabledSources
 
         init {
             // Observe preferences and map to UiState
@@ -77,11 +88,16 @@ class SettingsViewModel
                                 dualScreen = prefs.dualScreen,
                                 dualScreenPages = prefs.dualScreenPages,
                                 dualScreenVideoTabs = prefs.dualScreenVideoTabs,
+                                dualScreenVideoTabOrder = prefs.dualScreenVideoTabOrder,
+                                dualScreenPageOrder = prefs.dualScreenPageOrder,
+                                dualScreenFeedSources = prefs.dualScreenFeedSources,
                                 dualScreenLibrarySlots = prefs.dualScreenLibrarySlots,
                                 gridColumns = prefs.gridColumns,
                                 showRecommendedVideos = prefs.showRecommendedVideos,
                                 showComments = prefs.showComments,
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
+                                playerGestures = prefs.playerGestures,
+                                jumpStepSeconds = prefs.jumpStepSeconds,
                             )
                     }
             }
@@ -119,6 +135,71 @@ class SettingsViewModel
         fun setDualScreenLibrarySlots(slots: List<String>) {
             viewModelScope.launch { settingsRepository.updateDualScreenLibrarySlots(slots) }
         }
+
+        fun setDualScreenVideoTabOrder(order: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenVideoTabOrder(order) }
+        }
+
+        fun setDualScreenPageOrder(order: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenPageOrder(order) }
+        }
+
+        fun setDualScreenFeedSources(ids: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenFeedSources(ids) }
+        }
+
+        /** Clear gesture customizations for one player mode (back to defaults). */
+        fun resetPlayerGestures(mode: String) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                val empty = PlayerGestureSlotSet()
+                settingsRepository.updatePlayerGestures(
+                    fullscreen =
+                        if (mode == "fullscreen") empty else p.playerGestures.fullscreen,
+                    normal = if (mode == "normal") empty else p.playerGestures.normal,
+                )
+            }
+        }
+
+        /** Save one cell of the gesture editor (Settings > Gestures). */
+        fun setPlayerGesturesCell(
+            mode: String,
+            slot: String,
+            type: String,
+            action: String,
+        ) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                val set =
+                    if (mode == "normal") p.playerGestures.normal else p.playerGestures.fullscreen
+                val updated =
+                    (when (slot) {
+                        "top" -> set.top
+                        "bottomLeft" -> set.bottomLeft
+                        "bottomCenter" -> set.bottomCenter
+                        "bottomRight" -> set.bottomRight
+                        else -> emptyMap()
+                    }).toMutableMap()
+                updated[type] = action
+                settingsRepository.updatePlayerGestures(
+                    fullscreen =
+                        if (mode == "fullscreen") set.updated(slot, updated) else p.playerGestures.fullscreen,
+                    normal =
+                        if (mode == "normal") set.updated(slot, updated) else p.playerGestures.normal,
+                )
+            }
+        }
+
+        private fun PlayerGestureSlotSet.updated(
+            slot: String,
+            map: Map<String, String>,
+        ): PlayerGestureSlotSet =
+            copy(
+                top = if (slot == "top") map else top,
+                bottomLeft = if (slot == "bottomLeft") map else bottomLeft,
+                bottomCenter = if (slot == "bottomCenter") map else bottomCenter,
+                bottomRight = if (slot == "bottomRight") map else bottomRight,
+            )
 
         fun setLibrarySectionOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateLibrarySectionOrder(order) }

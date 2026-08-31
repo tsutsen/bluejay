@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -21,9 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoCard
@@ -35,6 +39,44 @@ import kotlin.math.roundToLong
 // pill and the completed badge all use these so they line up on the
 // thumbnail corners.
 private val PILL_HEIGHT = 18.dp
+
+/**
+ * Watched badge: the duration pill's shape (same height, corner radius and
+ * background) with a thick hand-drawn check instead of text.
+ */
+@Composable
+private fun WatchedBadge(size: Dp, modifier: Modifier = Modifier) {
+    Box(
+        modifier =
+            modifier
+                .width(size)
+                .height(PILL_HEIGHT)
+                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .background(Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Bold check: the icon-font check is a thin stroke, this one is
+        // ~18% of the badge width with round caps.
+        Canvas(Modifier.size(size * 0.4f)) {
+            val w = this.size.width
+            val h = this.size.height
+            val path = Path().apply {
+                moveTo(w * 0.10f, h * 0.54f)
+                lineTo(w * 0.40f, h * 0.84f)
+                lineTo(w * 0.92f, h * 0.20f)
+            }
+            drawPath(
+                path = path,
+                color = Color.White,
+                style =
+                    Stroke(
+                        width = w * 0.18f,
+                        cap = StrokeCap.Round,
+                    ),
+            )
+        }
+    }
+}
 
 /**
  * Standard video card with fixed height layout.
@@ -156,26 +198,13 @@ fun VideoCard(
                 // Completed badge (bottom-LEFT, never drawn together with the
                 // progress pill — callers hide progress when watched).
                 if (isWatched) {
-                    Box(
+                    WatchedBadge(
+                        size = 24.dp,
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(Tokens.SpaceSm)
-                                .height(26.dp)
-                                .clip(RoundedCornerShape(Tokens.RadiusXs))
-                                .background(Color.Black.copy(alpha = 0.85f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = "Watched",
-                            tint = Color.White,
-                            modifier =
-                                Modifier
-                                    .size(22.dp)
-                                    .padding(horizontal = 8.dp),
-                        )
-                    }
+                                .padding(Tokens.SpaceSm),
+                    )
                 }
 
                 // Duration pill (bottom-right)
@@ -508,6 +537,142 @@ private fun ThumbnailPill(
                     .widthIn(max = 120.dp)
                     .padding(horizontal = 4.dp, vertical = 2.dp),
         )
+    }
+}
+
+/**
+ * Shorts card: vertical 9:16 thumbnail on the left, title top-aligned to
+ * its right and the channel name pinned to the bottom edge.
+ */
+@Composable
+fun VideoCardShorts(
+    card: VideoCard,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    /** 0..1 watch progress from local history; null = not started. */
+    watchProgress: Float? = null,
+    /** Shows the watched checkmark badge. */
+    isWatched: Boolean = false,
+) {
+    val title = card.title
+    val thumbnailUrl = card.thumbnailUrl
+    val durationMs = card.durationMs
+
+    Card(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        shape = RoundedCornerShape(Tokens.RadiusSm),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(Tokens.SpaceSm),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .height(120.dp)
+                        .aspectRatio(9f / 16f)
+                        .clip(RoundedCornerShape(Tokens.RadiusSm)),
+            ) {
+                AsyncImage(
+                    url = thumbnailUrl,
+                    contentDescription = title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+
+                // Completed badge (bottom-left).
+                if (isWatched) {
+                    WatchedBadge(
+                        size = 22.dp,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(Tokens.SpaceXs),
+                    )
+                }
+
+                // Duration pill (bottom-right) — shorts usually report no
+                // duration, so this stays hidden in practice.
+                if (durationMs != null && durationMs > 0) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(Tokens.SpaceXs)
+                                .height(PILL_HEIGHT)
+                                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                                .background(Color.Black.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = formatDuration(durationMs),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+
+                // Watch progress: thin bar along the bottom edge.
+                if (watchProgress != null) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(
+                                    RoundedCornerShape(
+                                        bottomStart = Tokens.RadiusSm,
+                                        bottomEnd = Tokens.RadiusSm,
+                                    ),
+                                ).background(Color.Black.copy(alpha = 0.6f)),
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(watchProgress.coerceIn(0f, 1f))
+                                    .background(MaterialTheme.colorScheme.primary),
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier =
+                    Modifier
+                        .padding(start = Tokens.SpaceMd)
+                        .fillMaxHeight()
+                        .weight(1f),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = card.author ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 

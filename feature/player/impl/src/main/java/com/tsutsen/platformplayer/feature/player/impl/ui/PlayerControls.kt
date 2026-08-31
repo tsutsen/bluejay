@@ -112,11 +112,25 @@ fun PlayerControls(
     val normalBarVisible by remember(surface, isLandscape) {
         derivedStateOf { surface.morphFadeNow() > 0.01f }
     }
+    // The bar contents (icon buttons, seek Slider) consume pointer events
+    // even at alpha 0 — Compose has no subtree-level hit-test switch — so
+    // they must not be composed while the controls are hidden, or the
+    // invisible bars swallow the swipes that should reach the gesture layer.
+    // The gate reads the ANIMATED alpha (not the boolean) so the 200ms hide
+    // fade still plays with the contents present; they drop only once fully
+    // invisible. Tap-to-reveal is unaffected: it lives in the gesture layer,
+    // which is never removed.
     val topBarComposed by remember(surface, isLandscape) {
-        derivedStateOf { surface.topAlphaNow(isLandscape) > 0.01f }
+        derivedStateOf {
+            surface.topAlphaNow(isLandscape) > 0.01f &&
+                controlsVisibleAlpha.value > 0.01f
+        }
     }
     val bottomBarComposed by remember(surface, isLandscape) {
-        derivedStateOf { surface.bottomAlphaNow() > 0.01f }
+        derivedStateOf {
+            surface.bottomAlphaNow() > 0.01f &&
+                controlsVisibleAlpha.value > 0.01f
+        }
     }
     val fullscreenBottomBar by remember(surface) {
         derivedStateOf { surface.fullscreenBarAlphaNow() > 0.99f }

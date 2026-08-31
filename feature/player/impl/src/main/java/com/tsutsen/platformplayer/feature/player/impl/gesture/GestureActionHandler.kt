@@ -2,17 +2,17 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 
 import android.app.Activity
 import android.content.Context
-import android.media.AudioManager
-import android.provider.Settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Replay10
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
+import com.tsutsen.platformplayer.feature.player.impl.SystemControls
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
  * Frame-based handler that dispatches gesture frames to the appropriate action.
@@ -39,6 +39,9 @@ interface GestureActionHandler {
  * @property onFullscreenDragStart  called when a morph-to-fullscreen (swipe up) begins
  * @property onFullscreenDrag       called with cumulative upward drag px during fullscreen morph
  * @property onFullscreenDragEnd    called when the fullscreen morph swipe ends (commit or cancel)
+ * @property onShrinkDragStart      called when a morph-to-normal (swipe down in fullscreen) begins
+ * @property onShrinkDrag           called with cumulative downward drag px during shrink
+ * @property onShrinkDragEnd        called when the shrink swipe ends (commit or cancel)
  */
 class PlayerGestureActionHandler(
     private val viewModel: PlayerViewModel,
@@ -53,23 +56,16 @@ class PlayerGestureActionHandler(
     private val onFullscreenDragStart: () -> Unit = {},
     private val onFullscreenDrag: (dragY: Float) -> Unit = {},
     private val onFullscreenDragEnd: (dragY: Float) -> Unit = {},
+    private val onShrinkDragStart: () -> Unit = {},
+    private val onShrinkDrag: (dragY: Float) -> Unit = {},
+    private val onShrinkDragEnd: (dragY: Float) -> Unit = {},
 ) : GestureActionHandler {
 
-    // --- brightness state ---
-    private var startBrightness = 1f
+    // --- brightness state (device-wide via SystemControls, window-local fallback) ---
     private var currentBrightness = 1f
-    /**
-     * Whether device-wide (system) brightness can be controlled. Determined once
-     * via a no-op test write: [Settings.System.putInt] on SCREEN_BRIGHTNESS throws
-     * SecurityException when WRITE_SETTINGS has not been granted by the user,
-     * in which case we fall back to window-local brightness.
-     */
-    private var systemBrightnessAvailable: Boolean? = null
 
     // --- volume state ---
-    private var audioManager: AudioManager? = null
     private var currentVolume = 1f
-    private var maxVolume = 15
 
     // --- speed state ---
     private var originalSpeed = 1f
@@ -96,37 +92,13 @@ class PlayerGestureActionHandler(
     private var lastSeekTimeMs: Long = 0L
     private var accumulatedSeekMs: Long = 0L
 
-    init {
-        audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
-    }
-
     fun snapshotBrightness() {
-        if (systemBrightnessAvailable == null) {
-            val resolver = activity?.contentResolver
-            val current = runCatching {
-                Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS)
-            }.getOrNull()
-            systemBrightnessAvailable = runCatching {
-                if (resolver != null && current != null) {
-                    Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, current)
-                }
-            }.isSuccess
-        }
-        if (systemBrightnessAvailable == true) {
-            currentBrightness = runCatching {
-                Settings.System.getInt(activity?.contentResolver, Settings.System.SCREEN_BRIGHTNESS)
-            }.getOrNull()?.let { it / 255f } ?: 1f
-        } else {
-            currentBrightness = activity?.window?.attributes?.screenBrightness ?: 1f
-            if (currentBrightness < 0f) currentBrightness = 1f // auto mode fallback
-        }
-        startBrightness = currentBrightness
+        // Shared across screens: last user value, else device-wide setting.
+        currentBrightness = SystemControls.readBrightness(context)
     }
 
     fun snapshotVolume() {
-        val current = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
-        currentVolume = current.toFloat() / maxVolume
+        currentVolume = SystemControls.getVolume(context)
     }
 
     fun snapshotSpeed() {
@@ -143,8 +115,15 @@ class PlayerGestureActionHandler(
             GestureAction.SPEEDDOWN -> handleSpeedHold(frame, baseMultiplier = 0.5f)
             GestureAction.MORPH_TO_FLOATING -> handleMorphToFloating(frame)
             GestureAction.MORPH_TO_FULLSCREEN -> handleMorphToFullscreen(frame)
+            GestureAction.MORPH_TO_NORMAL -> handleMorphToNormal(frame)
             GestureAction.MORPH_VERTICAL -> handleMorphVertical(frame)
-            // Instant actions handled via handleInstantAction
+            // Jumps assigned to a swipe or hold slot fire once at gesture
+            // start (double-tap jumps go through handleInstantAction).
+            GestureAction.REWIND_BACK,
+            GestureAction.REWIND_FORWARD ->
+                if (frame.phase == GesturePhase.START) handleAccumulatedSeek(frame.action)
+
+            // Anything else: no-op.
             else -> {}
         }
     }
@@ -155,19 +134,20 @@ class PlayerGestureActionHandler(
             GestureAction.REWIND_FORWARD -> handleAccumulatedSeek(event.action)
             GestureAction.MORPH_TO_FLOATING -> viewModel.minimize()
             GestureAction.MORPH_TO_FULLSCREEN -> viewModel.toggleFullscreen()
+            GestureAction.MORPH_TO_NORMAL -> viewModel.exitFullscreen()
             GestureAction.CONTEXT_MENU -> {} // stub
             else -> {}
         }
     }
 
     /**
-     * Applies a ±5s seek and, if the same direction was tapped again within
-     * [SEEK_ACCUMULATE_WINDOW_MS], accumulates the total so the badge shows
-     * e.g. -15s / +20s instead of always -5s / +5s.
+     * Applies a ±[jumpStepMs] seek and, if the same direction was tapped
+     * again within [SEEK_ACCUMULATE_WINDOW_MS], accumulates the total so the
+     * badge shows e.g. -15s / +20s instead of always -5s / +5s.
      */
     private fun handleAccumulatedSeek(action: GestureAction) {
         val now = System.currentTimeMillis()
-        val stepMs = if (action == GestureAction.REWIND_BACK) -SEEK_STEP_MS else SEEK_STEP_MS
+        val stepMs = if (action == GestureAction.REWIND_BACK) -jumpStepMs() else jumpStepMs()
 
         accumulatedSeekMs = if (
             action == lastSeekAction &&
@@ -205,20 +185,9 @@ class PlayerGestureActionHandler(
                 // instantDelta.y: negative = swipe up (brighter), positive = down (darker)
                 val delta = -frame.instantDelta.y / screenHeight()
                 currentBrightness = (currentBrightness + delta).coerceIn(0f, 1f)
-                if (systemBrightnessAvailable == true) {
-                    // Device-wide brightness, so the whole system follows the gesture.
-                    runCatching {
-                        Settings.System.putInt(
-                            activity?.contentResolver,
-                            Settings.System.SCREEN_BRIGHTNESS,
-                            (currentBrightness * 255).toInt().coerceIn(0, 255),
-                        )
-                    }
-                } else {
-                    activity?.window?.attributes = (activity.window.attributes).apply {
-                        screenBrightness = currentBrightness
-                    }
-                }
+                // All screens: device-wide when granted, plus this window
+                // (the companion window follows through SystemControls.brightness).
+                SystemControls.applyBrightness(context, currentBrightness, activity?.window)
                 onIndicator(GestureAction.BRIGHTNESS.defaultIndicator(currentBrightness))
             }
             GesturePhase.END -> {
@@ -238,8 +207,7 @@ class PlayerGestureActionHandler(
                 // instantDelta.y: negative = swipe up (louder), positive = down (quieter)
                 val delta = -frame.instantDelta.y / screenHeight()
                 currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
-                val index = (currentVolume * maxVolume).toInt().coerceIn(0, maxVolume)
-                audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
+                SystemControls.setVolume(context, currentVolume)
                 onIndicator(GestureAction.VOLUME.defaultIndicator(currentVolume))
             }
             GesturePhase.END -> {
@@ -249,13 +217,17 @@ class PlayerGestureActionHandler(
         }
     }
 
+    /** Jump step from the settings (Settings > Gestures > Time jump step). */
+    private fun jumpStepMs(): Long = viewModel.jumpStepSeconds * 1000L
+
     companion object {
-        private const val SEEK_STEP_MS = 5000L
         /** Window in which same-direction double-taps accumulate into one running total. */
         private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
 
         /** Horizontal px to travel for one ±0.1x speed step. */
         private const val SPEED_SWIPE_STEP_PX = 200f
+        /** Below this much horizontal movement a speed gesture counts as a still hold. */
+        private const val SPEED_HOLD_DEADZONE_PX = 48f
         private const val SPEED_STEP = 0.1f
 
         /** Keep-alive interval for speed hold — keeps badge visible during still holds. */
@@ -286,9 +258,14 @@ class PlayerGestureActionHandler(
                 }
             }
             GesturePhase.ACTIVE -> {
-                // totalDelta.x: positive = swipe right (faster), negative = left (slower)
+                // totalDelta.x: positive = swipe right (faster), negative = left (slower).
+                // Deadzone: a still hold (tap/long-press slot) must never
+                // modulate speed, no matter how high the swipe speed is set —
+                // otherwise hold jitter steps the speed at high sensitivity.
+                val dx = frame.totalDelta.x
                 val steps =
-                    (frame.totalDelta.x / (SPEED_SWIPE_STEP_PX / viewModel.speedupSensitivity)).toInt()
+                    if (abs(dx) < SPEED_HOLD_DEADZONE_PX) 0
+                    else (dx / (SPEED_SWIPE_STEP_PX / viewModel.speedupSensitivity)).toInt()
                 val speed = (baseMultiplier + steps * SPEED_STEP).coerceIn(0.25f, 4f)
                 // Round to nearest 0.1 to avoid floating-point drift
                 val snapped = (speed * 10).toInt() / 10f
@@ -326,6 +303,28 @@ class PlayerGestureActionHandler(
             }
             GesturePhase.END -> {
                 onMorphDragEnd(morphStartDelta)
+            }
+        }
+    }
+
+    // ---- Morph to normal (swipe vertical downward, fullscreen only) ----
+    //    Shrink the surface back toward normal; the surface drives the
+    //    animation through the shrink-progress callbacks.
+    private fun handleMorphToNormal(frame: GestureFrame) {
+        when (frame.phase) {
+            GesturePhase.START -> {
+                morphStartDelta = 0f
+                onShrinkDragStart()
+            }
+            GesturePhase.ACTIVE -> {
+                val dragY = frame.totalDelta.y.coerceAtLeast(0f)
+                if (dragY > 0f) {
+                    morphStartDelta = dragY
+                    onShrinkDrag(dragY)
+                }
+            }
+            GesturePhase.END -> {
+                onShrinkDragEnd(morphStartDelta)
             }
         }
     }

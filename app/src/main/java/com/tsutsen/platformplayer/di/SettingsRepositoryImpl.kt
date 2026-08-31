@@ -4,6 +4,8 @@ import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
+import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
+import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
 import com.tsutsen.platformplayer.core.datastore.model.SubtitlePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
@@ -45,15 +47,37 @@ class SettingsRepositoryImpl
                 defaultPlaybackSpeed = s.playback.defaultPlaybackSpeed,
                 defaultSpeedup = s.playback.defaultSpeedup,
                 speedupSensitivity = s.playback.speedupSensitivity,
+                jumpStepSeconds = s.playback.jumpStepSeconds,
+                playerGestures =
+                    PlayerGesturePreferences(
+                        fullscreen =
+                            PlayerGestureSlotSet(
+                                top = s.playerGestures.fullscreen.top,
+                                bottomLeft = s.playerGestures.fullscreen.bottomLeft,
+                                bottomCenter = s.playerGestures.fullscreen.bottomCenter,
+                                bottomRight = s.playerGestures.fullscreen.bottomRight,
+                            ),
+                        normal =
+                            PlayerGestureSlotSet(
+                                top = s.playerGestures.normal.top,
+                                bottomLeft = s.playerGestures.normal.bottomLeft,
+                                bottomCenter = s.playerGestures.normal.bottomCenter,
+                                bottomRight = s.playerGestures.normal.bottomRight,
+                            ),
+                    ),
                 defaultVideoResolution = s.content.defaultVideoResolution,
                 defaultDownloadResolution = s.content.defaultDownloadResolution,
                 enableDeveloperOptions = s.advancedSettings,
                 dualScreen = s.dualScreen,
                 dualScreenPages = s.dualScreenPages,
                 dualScreenVideoTabs = s.dualScreenVideoTabs,
+                dualScreenVideoTabOrder = s.dualScreenVideoTabOrder,
+                dualScreenPageOrder = s.dualScreenPageOrder,
+                dualScreenFeedSources = s.dualScreenFeedSources,
                 dualScreenLibrarySlots = s.dualScreenLibrarySlots,
                 librarySectionOrder = s.librarySectionOrder,
                 gridColumns = s.feed.gridColumns,
+                homeHiddenSources = s.feed.hiddenSources,
                 searchHistory = s.search.history,
                 showRecommendedVideos = s.content.showRecommendedVideos,
                 showComments = s.content.showComments,
@@ -90,6 +114,7 @@ class SettingsRepositoryImpl
                 "dualScreen" -> s.dualScreen = value as Boolean
                 "dynamicColor" -> s.appearance.dynamicColor = value as Boolean
                 "gridColumns" -> s.feed.gridColumns = value as Int
+                "homeHiddenSources" -> s.feed.hiddenSources = value as List<String>
                 "searchHistory" -> s.search.history = value as List<String>
                 "showRecommendedVideos" -> s.content.showRecommendedVideos = value as Boolean
                 "showComments" -> s.content.showComments = value as Boolean
@@ -100,6 +125,7 @@ class SettingsRepositoryImpl
                 "defaultPlaybackSpeed" -> s.playback.defaultPlaybackSpeed = value as Float
                 "defaultSpeedup" -> s.playback.defaultSpeedup = value as Float
                 "speedupSensitivity" -> s.playback.speedupSensitivity = value as Float
+                "jumpStepSeconds" -> s.playback.jumpStepSeconds = (value as Number).toInt()
                 "defaultVideoResolution" -> s.content.defaultVideoResolution = value as String
                 "defaultDownloadResolution" -> s.content.defaultDownloadResolution = value as String
                 else -> return
@@ -129,6 +155,53 @@ class SettingsRepositoryImpl
             emit()
         }
 
+        override suspend fun updateDualScreenVideoTabOrder(order: List<String>) {
+            val s = Settings.instance
+            s.dualScreenVideoTabOrder = order
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateDualScreenPageOrder(order: List<String>) {
+            val s = Settings.instance
+            s.dualScreenPageOrder = order
+            s.save()
+            emit()
+        }
+
+        override suspend fun updatePlayerGestures(
+            fullscreen: PlayerGestureSlotSet,
+            normal: PlayerGestureSlotSet,
+        ) {
+            val s = Settings.instance
+            s.playerGestures =
+                Settings.PlayerGesturePreferences(
+                    fullscreen =
+                        Settings.PlayerGestureSlotSet(
+                            top = fullscreen.top,
+                            bottomLeft = fullscreen.bottomLeft,
+                            bottomCenter = fullscreen.bottomCenter,
+                            bottomRight = fullscreen.bottomRight,
+                        ),
+                    normal =
+                        Settings.PlayerGestureSlotSet(
+                            top = normal.top,
+                            bottomLeft = normal.bottomLeft,
+                            bottomCenter = normal.bottomCenter,
+                            bottomRight = normal.bottomRight,
+                        ),
+                )
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateDualScreenFeedSources(ids: List<String>) {
+            val s = Settings.instance
+            s.dualScreenFeedSources = ids
+            s.save()
+            emit()
+        }
+
         override suspend fun updateLibrarySectionOrder(order: List<String>) {
             val s = Settings.instance
             s.librarySectionOrder = order
@@ -144,7 +217,11 @@ class SettingsRepositoryImpl
             s.dualScreen = false
             s.dualScreenPages = listOf("video", "library", "home")
             s.dualScreenVideoTabs =
-                listOf("comments", "chapters", "recommended", "queue")
+                listOf("info", "controls", "comments", "chapters", "recommended", "queue")
+            s.dualScreenVideoTabOrder =
+                listOf("info", "controls", "comments", "chapters", "recommended", "queue")
+            s.dualScreenPageOrder = listOf("controls", "video", "tabs")
+            s.dualScreenFeedSources = emptyList()
             s.dualScreenLibrarySlots =
                 listOf("watch_later", "liked", "favourite", "history")
             s.librarySectionOrder =

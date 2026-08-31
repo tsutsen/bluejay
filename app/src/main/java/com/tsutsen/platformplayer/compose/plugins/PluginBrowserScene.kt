@@ -187,6 +187,8 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
+            // Same card rhythm as the other settings sections.
+            verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
         ) {
             items(plugins, key = { it.id }) { plugin ->
                 SettingsSwitchOptionCard(
@@ -1018,8 +1020,14 @@ private fun PluginSettingsSection(
             if (setting.isAdvanced == true && !showAdvanced) return@forEach
             when (setting.type) {
                 "Header" -> {
-                    // Section headers are plain text, not cards.
-                    Text(setting.name, style = MaterialTheme.typography.titleMedium)
+                    // Same look as the app settings' subsection titles
+                    // (labelLarge, primary, slight start offset) — not cards.
+                    Text(
+                        setting.name,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = Tokens.SpaceSm, start = 4.dp),
+                    )
                 }
 
                 "Boolean" -> {

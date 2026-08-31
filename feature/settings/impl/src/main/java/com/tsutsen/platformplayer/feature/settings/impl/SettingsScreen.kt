@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,20 +32,27 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Hd
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,21 +69,39 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.model.PlayerGestures
 import com.tsutsen.platformplayer.core.model.PlaylistOption
+import com.tsutsen.platformplayer.core.model.SourceInfo
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
+import com.tsutsen.platformplayer.core.designsystem.component.QueueMoveButton
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
+import com.tsutsen.platformplayer.core.designsystem.reorder.FlipItem
+import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.core.navigation.Navigator
 
+private fun writeSettingsGranted(context: android.content.Context): Boolean =
+    runCatching { Settings.System.canWrite(context) }.getOrDefault(false)
 /**
  * Settings master page: one row per section (Appearance, Gestures, Content,
  * Playback, General). Tapping a row opens the section detail page
@@ -130,8 +159,16 @@ fun SettingsScreen(
                         SettingsOptionCard(
                             icon = Icons.Filled.PlayArrow,
                             title = "Playback",
-                            subtitle = "Subtitles, default speed",
+                            subtitle = "Subtitles, quality",
                             onClick = { navigator.navigateToSettingsFragment("playback") },
+                        )
+                    }
+                    item {
+                        SettingsOptionCard(
+                            icon = Icons.Filled.TouchApp,
+                            title = "Gestures",
+                            subtitle = "Speed, per-slot gesture actions",
+                            onClick = { navigator.navigateToSettingsFragment("gestures") },
                         )
                     }
                     item {
@@ -162,6 +199,7 @@ fun SettingsSectionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val playlists by viewModel.playlists.collectAsState(initial = emptyList())
+    val enabledSources by viewModel.enabledSources.collectAsState(initial = emptyList())
     var selectedChoice by remember { mutableStateOf<Choice?>(null) }
     val state = uiState as? SettingsUiState.Loaded
 
@@ -182,6 +220,7 @@ fun SettingsSectionScreen(
                     state = loaded,
                     viewModel = viewModel,
                     playlists = playlists,
+                    enabledSources = enabledSources,
                     onChoiceSelected = { selectedChoice = it },
                     onPluginsClick = onPluginsClick,
                 )
@@ -326,6 +365,40 @@ fun SettingsSectionScreen(
             }
         }
 
+        Choice.DUAL_TAB_ORDER -> {
+            loaded?.let {
+                ReorderDialog(
+                    title = "Video tab order",
+                    items =
+                        it.dualScreenVideoTabOrder
+                            .map { id -> id to (dualTabNames[id] ?: id) },
+                    onChange = { newOrder -> viewModel.setDualScreenVideoTabOrder(newOrder) },
+                    onDismiss = { selectedChoice = null },
+                    // One popup for both order and visibility: the checkbox
+                    // toggles the tab's enabled state.
+                    enabledIds = it.dualScreenVideoTabs,
+                    onToggleEnabled = { key, checked ->
+                        viewModel.setDualScreenVideoTabs(
+                            if (checked) it.dualScreenVideoTabs + key else it.dualScreenVideoTabs - key,
+                        )
+                    },
+                )
+            }
+        }
+
+        Choice.DUAL_PAGE_ORDER -> {
+            loaded?.let {
+                ReorderDialog(
+                    title = "Main page order",
+                    items =
+                        it.dualScreenPageOrder
+                            .map { id -> id to (dualPageOrderNames[id] ?: id) },
+                    onChange = { newOrder -> viewModel.setDualScreenPageOrder(newOrder) },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
         Choice.DUAL_SLOTS -> {
             loaded?.let {
                 SlotsDialog(
@@ -337,6 +410,22 @@ fun SettingsSectionScreen(
                         val newList = (0 until 4).map { i -> current.getOrNull(i) ?: "watch_later" }.toMutableList()
                         newList[index] = value
                         viewModel.setDualScreenLibrarySlots(newList)
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DUAL_FEED_SOURCES -> {
+            loaded?.let {
+                MultiSelectDialog(
+                    title = "Feed sources",
+                    options = enabledSources.map { it.name to it.id },
+                    selected = it.dualScreenFeedSources,
+                    onToggle = { id, checked ->
+                        viewModel.setDualScreenFeedSources(
+                            if (checked) it.dualScreenFeedSources + id else it.dualScreenFeedSources - id,
+                        )
                     },
                     onDismiss = { selectedChoice = null },
                 )
@@ -377,7 +466,7 @@ fun SettingsSectionScreen(
         Choice.SPEEDUP_SENSITIVITY -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Speedup gesture sensitivity",
+                    title = "Speedup gesture speed",
                     options =
                         listOf(
                             "Low" to "0.5",
@@ -388,6 +477,27 @@ fun SettingsSectionScreen(
                     selected = it.speedupSensitivity.toString(),
                     onSelected = { value ->
                         viewModel.updateGeneral("speedupSensitivity", value.toFloat())
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+        Choice.JUMP_STEP -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Time jump step",
+                    options =
+                        listOf(
+                            "1s" to "1",
+                            "3s" to "3",
+                            "5s" to "5",
+                            "10s" to "10",
+                            "30s" to "30",
+                        ),
+                    selected = it.jumpStepSeconds.toString(),
+                    onSelected = { value ->
+                        viewModel.updateGeneral("jumpStepSeconds", value.toInt())
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -456,6 +566,7 @@ private fun LazyListScope.SectionItems(
     state: SettingsUiState.Loaded,
     viewModel: SettingsViewModel,
     playlists: List<PlaylistOption>,
+    enabledSources: List<SourceInfo>,
     onChoiceSelected: (Choice) -> Unit,
     onPluginsClick: () -> Unit,
 ) {
@@ -494,6 +605,7 @@ private fun LazyListScope.SectionItems(
         }
 
         "content" -> {
+            item { SettingsHeader("Plugins") }
             item {
                 SettingsOptionCard(
                     icon = Icons.Filled.Extension,
@@ -509,6 +621,26 @@ private fun LazyListScope.SectionItems(
                     subtitle = "Check for and install plugin updates on launch",
                     checked = state.autoUpdatePlugins,
                     onCheckedChange = { viewModel.updateGeneral("autoUpdatePlugins", it) },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Video page",
+                    reset =
+                        if (
+                            state.showRecommendedVideos != defaults.showRecommendedVideos ||
+                            state.showComments != defaults.showComments
+                        ) {
+                            {
+                                viewModel.updateGeneral(
+                                    "showRecommendedVideos",
+                                    defaults.showRecommendedVideos,
+                                )
+                                viewModel.updateGeneral("showComments", defaults.showComments)
+                            }
+                        } else {
+                            null
+                        },
                 )
             }
             item {
@@ -530,6 +662,17 @@ private fun LazyListScope.SectionItems(
                 )
             }
             item {
+                SettingsHeader(
+                    title = "Library",
+                    reset =
+                        if (state.librarySectionOrder != defaults.librarySectionOrder) {
+                            { viewModel.setLibrarySectionOrder(defaults.librarySectionOrder) }
+                        } else {
+                            null
+                        },
+                )
+            }
+            item {
                 SettingsOptionCard(
                     icon = Icons.Filled.VideoLibrary,
                     title = "Library sections",
@@ -537,39 +680,26 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
                 )
             }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Hd,
-                    title = "Default video resolution",
-                    subtitle = state.defaultVideoResolution,
-                    onClick = { onChoiceSelected(Choice.VIDEO_RESOLUTION) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Download,
-                    title = "Default download resolution",
-                    subtitle = state.defaultDownloadResolution,
-                    onClick = { onChoiceSelected(Choice.DOWNLOAD_RESOLUTION) },
-                )
-            }
         }
 
         "playback" -> {
             item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Speed,
-                    title = "Default playback speedup",
-                    subtitle = "${state.defaultSpeedup}x",
-                    onClick = { onChoiceSelected(Choice.PLAYBACK_SPEED) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Speed,
-                    title = "Speedup gesture sensitivity",
-                    subtitle = "${state.speedupSensitivity}x",
-                    onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
+                val subtitlesDefault = defaults.subtitle
+                SettingsHeader(
+                    title = "Subtitles",
+                    reset =
+                        if (state.subtitle != subtitlesDefault) {
+                            {
+                                viewModel.updateGeneral("subtitleFont", subtitlesDefault.font)
+                                viewModel.updateGeneral("subtitleFontSize", subtitlesDefault.size)
+                                viewModel.updateGeneral(
+                                    "subtitleBottomPadding",
+                                    subtitlesDefault.bottomPadding,
+                                )
+                            }
+                        } else {
+                            null
+                        },
                 )
             }
             item {
@@ -596,16 +726,151 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
                 )
             }
+            item {
+                SettingsHeader(
+                    title = "Quality",
+                    reset =
+                        if (
+                            state.defaultVideoResolution != defaults.defaultVideoResolution ||
+                            state.defaultDownloadResolution != defaults.defaultDownloadResolution
+                        ) {
+                            {
+                                viewModel.updateGeneral(
+                                    "defaultVideoResolution",
+                                    defaults.defaultVideoResolution,
+                                )
+                                viewModel.updateGeneral(
+                                    "defaultDownloadResolution",
+                                    defaults.defaultDownloadResolution,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Hd,
+                    title = "Default video resolution",
+                    subtitle = state.defaultVideoResolution,
+                    onClick = { onChoiceSelected(Choice.VIDEO_RESOLUTION) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Download,
+                    title = "Default download resolution",
+                    subtitle = state.defaultDownloadResolution,
+                    onClick = { onChoiceSelected(Choice.DOWNLOAD_RESOLUTION) },
+                )
+            }
+        }
+
+        "gestures" -> {
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Speed,
+                    title = "Default playback speedup",
+                    subtitle = "${state.defaultSpeedup}x",
+                    onClick = { onChoiceSelected(Choice.PLAYBACK_SPEED) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Speed,
+                    title = "Speedup gesture speed",
+                    subtitle = "${state.speedupSensitivity}x",
+                    onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Timer,
+                    title = "Time jump step",
+                    subtitle = "${state.jumpStepSeconds}s",
+                    onClick = { onChoiceSelected(Choice.JUMP_STEP) },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Fullscreen gestures",
+                    reset =
+                        if (state.playerGestures.fullscreen.isCustomized) {
+                            { viewModel.resetPlayerGestures("fullscreen") }
+                        } else {
+                            null
+                        },
+                )
+            }
+            item {
+                PlayerGesturesEditor(
+                    mode = PlayerGestures.MODE_FULLSCREEN,
+                    slotSet = state.playerGestures.fullscreen,
+                    onCellChange = { slot, type, action ->
+                        viewModel.setPlayerGesturesCell(
+                            PlayerGestures.MODE_FULLSCREEN,
+                            slot,
+                            type,
+                            action,
+                        )
+                    },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Normal gestures",
+                    reset =
+                        if (state.playerGestures.normal.isCustomized) {
+                            { viewModel.resetPlayerGestures("normal") }
+                        } else {
+                            null
+                        },
+                )
+            }
+            item {
+                PlayerGesturesEditor(
+                    mode = PlayerGestures.MODE_NORMAL,
+                    slotSet = state.playerGestures.normal,
+                    onCellChange = { slot, type, action ->
+                        viewModel.setPlayerGesturesCell(
+                            PlayerGestures.MODE_NORMAL,
+                            slot,
+                            type,
+                            action,
+                        )
+                    },
+                )
+            }
         }
 
         "dual" -> {
+            item { SettingsHeader("General") }
             item {
+                val settingsContext = LocalContext.current
+                val writeSettingsLauncher =
+                    rememberLauncherForActivityResult(
+                        ActivityResultContracts.StartActivityForResult(),
+                    ) { }
                 SettingsSwitchCard(
                     icon = Icons.Filled.DisplaySettings,
                     title = "Dual screen",
                     subtitle = "Show video controls on the second screen",
                     checked = state.dualScreen,
-                    onCheckedChange = { viewModel.updateGeneral("dualScreen", it) },
+                    onCheckedChange = { enabled ->
+                        viewModel.updateGeneral("dualScreen", enabled)
+                        // Device-wide brightness (both screens) needs the
+                        // WRITE_SETTINGS grant — ask once when the feature
+                        // is turned on.
+                        if (enabled && !writeSettingsGranted(settingsContext)) {
+                            writeSettingsLauncher.launch(
+                                Intent(
+                                    Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                    Uri.parse("package:${settingsContext.packageName}"),
+                                ),
+                            )
+                        }
+                    },
                 )
             }
             item {
@@ -614,6 +879,25 @@ private fun LazyListScope.SectionItems(
                     title = "Pages",
                     subtitle = dualListLabel(state.dualScreenPages, dualPageNames),
                     onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Video page",
+                    reset =
+                        if (
+                            state.dualScreenVideoTabs != defaults.dualScreenVideoTabs ||
+                            state.dualScreenVideoTabOrder != defaults.dualScreenVideoTabOrder
+                        ) {
+                            {
+                                viewModel.setDualScreenVideoTabs(defaults.dualScreenVideoTabs)
+                                viewModel.setDualScreenVideoTabOrder(
+                                    defaults.dualScreenVideoTabOrder,
+                                )
+                            }
+                        } else {
+                            null
+                        },
                 )
             }
             item {
@@ -626,10 +910,63 @@ private fun LazyListScope.SectionItems(
             }
             item {
                 SettingsOptionCard(
+                    icon = Icons.Filled.Reorder,
+                    title = "Video tab order",
+                    subtitle = dualOrderLabel(state.dualScreenVideoTabOrder, dualTabNames),
+                    onClick = { onChoiceSelected(Choice.DUAL_TAB_ORDER) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.FormatListBulleted,
+                    title = "Main page order",
+                    subtitle = dualOrderLabel(state.dualScreenPageOrder, dualPageOrderNames),
+                    onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Playlists page",
+                    reset =
+                        if (state.dualScreenLibrarySlots != defaults.dualScreenLibrarySlots) {
+                            { viewModel.setDualScreenLibrarySlots(defaults.dualScreenLibrarySlots) }
+                        } else {
+                            null
+                        },
+                )
+            }
+            item {
+                SettingsOptionCard(
                     icon = Icons.Filled.VideoLibrary,
                     title = "Library slots",
                     subtitle = slotListLabel(state.dualScreenLibrarySlots, playlists),
                     onClick = { onChoiceSelected(Choice.DUAL_SLOTS) },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Home page",
+                    reset =
+                        if (state.dualScreenFeedSources.isNotEmpty()) {
+                            { viewModel.setDualScreenFeedSources(emptyList()) }
+                        } else {
+                            null
+                        },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.RssFeed,
+                    title = "Feed sources",
+                    subtitle =
+                        if (state.dualScreenFeedSources.isEmpty()) {
+                            "All sources"
+                        } else {
+                            state.dualScreenFeedSources.joinToString(", ") { id ->
+                                enabledSources.firstOrNull { it.id == id }?.name ?: id
+                            }
+                        },
+                    onClick = { onChoiceSelected(Choice.DUAL_FEED_SOURCES) },
                 )
             }
         }
@@ -645,10 +982,20 @@ private val dualPageNames =
 
 private val dualTabNames =
     mapOf(
+        "info" to "Info",
+        "controls" to "Controls",
         "comments" to "Comments",
         "chapters" to "Chapters",
         "recommended" to "Recommended",
         "queue" to "Queue",
+        "dot" to "·",
+    )
+
+private val dualPageOrderNames =
+    mapOf(
+        "controls" to "Controls",
+        "video" to "Video",
+        "tabs" to "Tabs",
     )
 
 private val librarySectionNames =
@@ -693,11 +1040,16 @@ private fun dualListLabel(keys: List<String>, names: Map<String, String>): Strin
     }
 }
 
+/** Subtitle for order settings: the actual order, comma separated. */
+private fun dualOrderLabel(order: List<String>, names: Map<String, String>): String =
+    order.joinToString(", ") { names[it] ?: it }
+
 private fun sectionTitle(category: String): String =
     when (category) {
         "appearance" -> "Appearance"
         "content" -> "Content"
         "playback" -> "Playback"
+        "gestures" -> "Gestures"
         "dual" -> "Dual screen"
         else -> "Settings"
     }
@@ -758,10 +1110,14 @@ private enum class Choice {
     SUBTITLE_PADDING,
     DUAL_PAGES,
     DUAL_TABS,
+    DUAL_TAB_ORDER,
+    DUAL_PAGE_ORDER,
     DUAL_SLOTS,
+    DUAL_FEED_SOURCES,
     LIBRARY_SECTION_ORDER,
     PLAYBACK_SPEED,
     SPEEDUP_SENSITIVITY,
+    JUMP_STEP,
     VIDEO_RESOLUTION,
     DOWNLOAD_RESOLUTION,
 }
@@ -806,7 +1162,7 @@ private fun MultiSelectDialog(
 }
 
 @Composable
-private fun ChoiceDialog(
+internal fun ChoiceDialog(
     title: String,
     options: List<Pair<String, String>>,
     selected: String,
@@ -849,9 +1205,13 @@ private fun ChoiceDialog(
 }
 
 /**
- * Reorder a list of items (up/down per row). Live-updates on each move.
- * [items] is (id, label) in the current order; [onChange] receives the new
- * ordered ids.
+ * Reorder a list of items (up/down per row) with animated moves
+ * (queue-style FLIP) and queue-style arrow pills. Live-updates on each
+ * move. [items] is (id, label) in the current order; [onChange] receives
+ * the new ordered ids.
+ *
+ * Pass [enabledIds] + [onToggleEnabled] to also show an enable/disable
+ * checkbox per row — order and visibility in one popup.
  */
 @Composable
 private fun ReorderDialog(
@@ -859,73 +1219,83 @@ private fun ReorderDialog(
     items: List<Pair<String, String>>,
     onChange: (List<String>) -> Unit,
     onDismiss: () -> Unit,
+    enabledIds: List<String>? = null,
+    onToggleEnabled: ((String, Boolean) -> Unit)? = null,
 ) {
     var draft by remember { mutableStateOf(items) }
+    val scope = rememberCoroutineScope()
+
+    // FLIP for swaps: the move buttons only ever swap adjacent rows, so the
+    // delta is known at the press. Rows are all the same height — measured
+    // via onSizeChanged as the first row lays out.
+    val flipAnims = remember { mutableMapOf<String, Animatable<Offset, *>>() }
+    val rowHeightPx = remember { mutableStateOf(44f) }
+
+    /** Displace [id] by [steps] row slots and slide it back to rest. */
+    fun slide(id: String, steps: Int) {
+        val anim = flipAnims.getOrPut(id) { Animatable(Offset.Zero, Offset.VectorConverter) }
+        scope.launch {
+            anim.snapTo(Offset(0f, -steps * rowHeightPx.value))
+            anim.animateTo(
+                Offset.Zero,
+                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+            )
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 draft.forEachIndexed { index, (id, label) ->
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(
-                            onClick = {
-                                if (index > 0) {
-                                    val d = draft.toMutableList()
-                                    val t = d[index]
-                                    d[index] = d[index - 1]
-                                    d[index - 1] = t
-                                    draft = d
-                                    onChange(d.map { it.first })
+                    key(id) {
+                        val flip = flipAnims.getOrPut(id) { Animatable(Offset.Zero, Offset.VectorConverter) }
+                        FlipItem(flip) {
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .onSizeChanged { if (it.height > 0) rowHeightPx.value = it.height.toFloat() }
+                                        .padding(vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (onToggleEnabled != null) {
+                                    Checkbox(
+                                        checked = id in (enabledIds ?: emptyList()),
+                                        onCheckedChange = { onToggleEnabled(id, it) },
+                                    )
                                 }
-                            },
-                            enabled = index > 0,
-                            modifier =
-                                Modifier
-                                    .size(30.dp)
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                        ) {
-                            Icon(
-                                Icons.Filled.ExpandLess,
-                                contentDescription = "Move up",
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                        IconButton(
-                            onClick = {
-                                if (index < draft.size - 1) {
-                                    val d = draft.toMutableList()
-                                    val t = d[index]
-                                    d[index] = d[index + 1]
-                                    d[index + 1] = t
-                                    draft = d
-                                    onChange(d.map { it.first })
-                                }
-                            },
-                            enabled = index < draft.size - 1,
-                            modifier =
-                                Modifier
-                                    .size(30.dp)
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                        ) {
-                            Icon(
-                                Icons.Filled.ExpandMore,
-                                contentDescription = "Move down",
-                                modifier = Modifier.size(18.dp),
-                            )
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                QueueMoveButton(
+                                    imageVector = Icons.Outlined.ExpandLess,
+                                    contentDescription = "Move up",
+                                    enabled = index > 0,
+                                    onClick = {
+                                        draft.swapAdjacent(index, -1)?.let { d ->
+                                            draft = d
+                                            slide(id, -1)
+                                            onChange(d.map { it.first })
+                                        }
+                                    },
+                                )
+                                QueueMoveButton(
+                                    imageVector = Icons.Outlined.ExpandMore,
+                                    contentDescription = "Move down",
+                                    enabled = index < draft.size - 1,
+                                    onClick = {
+                                        draft.swapAdjacent(index, 1)?.let { d ->
+                                            draft = d
+                                            slide(id, 1)
+                                            onChange(d.map { it.first })
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -934,6 +1304,54 @@ private fun ReorderDialog(
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
     )
 }
+
+/** Swap two adjacent rows; null when the swap would leave the list. */
+private fun List<Pair<String, String>>.swapAdjacent(
+    from: Int,
+    delta: Int,
+): List<Pair<String, String>>? {
+    val to = from + delta
+    if (to < 0 || to >= size) return null
+    val d = toMutableList()
+    val t = d[from]
+    d[from] = d[to]
+    d[to] = t
+    return d
+}
+
+/**
+ * Small subsection title above a group of settings cards. Pass [reset] to
+ * show a right-aligned "Reset to defaults" action (only pass it when the
+ * subsection actually deviates from the defaults).
+ */
+@Composable
+private fun SettingsHeader(
+    title: String,
+    reset: (() -> Unit)? = null,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = Tokens.SpaceSm, start = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
+        )
+        if (reset != null) {
+            TextButton(onClick = reset) {
+                Text("Reset to defaults")
+            }
+        }
+    }
+}
+
+/** Canonical defaults — used to decide which subsections deviate. */
+private val defaults = AppPreferences()
 
 /**
  * Configure the four 2x2 second-screen library slots. Tapping a slot opens a

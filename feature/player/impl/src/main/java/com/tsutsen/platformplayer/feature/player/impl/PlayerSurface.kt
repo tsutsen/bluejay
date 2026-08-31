@@ -76,6 +76,12 @@ class PlayerSurface(private val scope: CoroutineScope) {
     // ==================== Measurements (fed by the screen) ====================
     /** True window size (nav-bar independent), from the decor view layout. */
     val windowSize = mutableStateOf(Size.Zero)
+    // On devices where the system bars inset the content view, the physical
+    // window is taller than the measured content by exactly the bar heights.
+    // The bottom-covering layers overhang by this much so a bar show/hide
+    // resize never exposes the window background for a frame. 0 on
+    // edge-to-edge devices (content view already fills the window).
+    val windowOverhangPx = mutableStateOf(0f)
     /** Player Box size, from onGloballyPositioned. */
     val containerSize = mutableStateOf(Size.Zero)
 
@@ -84,6 +90,12 @@ class PlayerSurface(private val scope: CoroutineScope) {
     val morphProgress = Animatable(0f)
     /** 0 = NORMAL, 1 = FULLSCREEN. */
     val fullscreenProgress = Animatable(0f)
+    /**
+     * Shrink axis for the morph-to-normal gesture: 0 = still fullscreen,
+     * 1 = fully normal. Only meaningful while in fullscreen; the effective
+     * fullscreen progress is [fullscreenProgress] × (1 − this).
+     */
+    val shrinkProgress = Animatable(0f)
     /** 0 = hidden, 1 = visible (per-player fade-in). */
     val playerFadeInProgress = Animatable(0f)
     /** Set by the sync LaunchedEffects once the morph settles. */
@@ -93,7 +105,29 @@ class PlayerSurface(private val scope: CoroutineScope) {
     // ==================== Drag state ====================
     val isDraggingMorph = mutableStateOf(false)
     val isDraggingFullscreen = mutableStateOf(false)
+    val isDraggingShrink = mutableStateOf(false)
     val isDraggingMiniPlayer = mutableStateOf(false)
+
+    /**
+     * Set by the morph drag-END callback (minimize path only). The sync
+     * effect consumes it to wait a short grace window before settling:
+     * the committed flip lands a few frames after the callback (async VM
+     * call), and settling to the opposite target in the meantime would dip
+     * and reverse.
+     */
+    var morphDragJustEnded = false
+
+    /**
+     * True while a fullscreen-axis settle animation is in flight. Settle
+     * animations are launched in the composition scope (never the sync
+     * effect's body, whose restarts would cancel them); this flag guards
+     * the sync effect meanwhile and is a key of it, so the effect
+     * re-enters to finish the bookkeeping once the settle completes.
+     *
+     * The details panel also reads it: its first layout is heavy (comments,
+     * recommendations, live chat) and must not compose mid-motion.
+     */
+    val isSettlingFullscreen = mutableStateOf(false)
     val miniPlayerOffsetX = mutableStateOf(0f)
     val miniPlayerOffsetY = mutableStateOf(0f)
 
@@ -215,6 +249,14 @@ class PlayerSurface(private val scope: CoroutineScope) {
     // All of these are meant to be called from frame-level modifier lambdas
     // (or derivedStateOf for the booleans). They are allocation-free.
 
+    /**
+     * Effective fullscreen progress after the shrink axis: dragging
+     * morph-to-normal in fullscreen lowers this toward 0, driving both the
+     * surface geometry and the bar cross-fade.
+     */
+    fun effectiveFullscreenNow(): Float =
+        fullscreenProgress.value * (1f - shrinkProgress.value)
+
     /** Current video rect (position + size + corner) for the given orientation. */
     fun videoLayout(isLandscape: Boolean, density: Density): VideoLayout {
         val container = containerSize.value
@@ -224,7 +266,7 @@ class PlayerSurface(private val scope: CoroutineScope) {
         val drag = miniOffsetNow()
         return computeVideoLayout(
             miniProgress = morphProgress.value,
-            fullscreenProgress = fullscreenProgress.value,
+            fullscreenProgress = effectiveFullscreenNow(),
             containerWidth = container.width,
             containerHeight = container.height,
             playerHeightPx = playerHeightPx.value,
@@ -243,15 +285,15 @@ class PlayerSurface(private val scope: CoroutineScope) {
 
     fun normalBarAlphaNow(isLandscape: Boolean): Float =
         (1f - morphProgress.value) *
-            (1f - fullscreenProgress.value) *
+            (1f - effectiveFullscreenNow()) *
             (if (isCollapsedNow(isLandscape)) 0f else 1f)
 
     fun compactBarAlphaNow(isLandscape: Boolean): Float =
         (1f - morphProgress.value) *
-            (1f - fullscreenProgress.value) *
+            (1f - effectiveFullscreenNow()) *
             (if (isCollapsedNow(isLandscape)) 1f else 0f)
 
-    fun fullscreenBarAlphaNow(): Float = fullscreenProgress.value * (1f - morphProgress.value)
+    fun fullscreenBarAlphaNow(): Float = effectiveFullscreenNow() * (1f - morphProgress.value)
 
     /** Morph-position fade of the normal controls: 1 at p<=START, 0 at p>=END. */
     fun morphFadeNow(): Float {
@@ -285,11 +327,15 @@ class PlayerSurface(private val scope: CoroutineScope) {
                 p >= DETAILS_FADE_END -> 0f
                 else -> (DETAILS_FADE_END - p) / (DETAILS_FADE_END - DETAILS_FADE_START)
             }.coerceAtLeast(0f)
-        return ((1f - p) * (1f - fullscreenProgress.value) * detailsFade).coerceAtLeast(0f)
+        return ((1f - p) * (1f - effectiveFullscreenNow()) * detailsFade).coerceAtLeast(0f)
     }
 
     fun detailsTranslateYNow(): Float =
-        lerp(0f, containerSize.value.height * 0.3f, maxOf(morphProgress.value, fullscreenProgress.value))
+        lerp(
+            0f,
+            containerSize.value.height * 0.3f,
+            maxOf(morphProgress.value, effectiveFullscreenNow()),
+        )
 
     // ==================== Collapsed (scroll) mode ====================
 
@@ -311,7 +357,7 @@ class PlayerSurface(private val scope: CoroutineScope) {
     // ==================== Resolved scaffold bar visibility ====================
 
     private fun fullscreenSettledNow(): Boolean {
-        val fsP = fullscreenProgress.value
+        val fsP = effectiveFullscreenNow()
         return fsP < FULLSCREEN_SETTLED_THRESHOLD || fsP > (1f - FULLSCREEN_SETTLED_THRESHOLD)
     }
 
@@ -326,7 +372,7 @@ class PlayerSurface(private val scope: CoroutineScope) {
      */
     fun resolvedShowTopBarNow(isLandscape: Boolean): Boolean {
         val p = morphProgress.value
-        val fsP = fullscreenProgress.value
+        val fsP = effectiveFullscreenNow()
         val isCollapsed = isCollapsedNow(isLandscape)
         val miniMorphAlpha = (1f - p).coerceIn(0f, 1f)
         return when {
@@ -346,7 +392,7 @@ class PlayerSurface(private val scope: CoroutineScope) {
 
     fun resolvedShowBottomBarNow(isLandscape: Boolean): Boolean {
         val p = morphProgress.value
-        val fsP = fullscreenProgress.value
+        val fsP = effectiveFullscreenNow()
         val miniMorphAlpha = (1f - p).coerceIn(0f, 1f)
         return when {
             p > MINI_SETTLED_THRESHOLD -> {

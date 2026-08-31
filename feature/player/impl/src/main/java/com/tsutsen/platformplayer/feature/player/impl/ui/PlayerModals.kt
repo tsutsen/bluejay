@@ -216,7 +216,7 @@ internal fun ChaptersPanel(
     onDismiss: () -> Unit,
 ) {
     // Collected here — the panel is only composed while open.
-    val currentPositionMs by positionMs.collectAsState(initial = 0L)
+    val currentPositionMs by positionMs.collectAsState(initial = positionMs.value)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
     ) {

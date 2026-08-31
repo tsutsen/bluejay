@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -95,9 +96,6 @@ fun PlayerContent(
     onSubtitleToggle: () -> Unit,
     onMinimize: () -> Unit,
     onExpand: () -> Unit,
-    onMorphDragStart: () -> Unit,
-    onMorphDrag: (dragY: Float) -> Unit,
-    onMorphDragEnd: (dragY: Float) -> Unit,
     onPlayPause: () -> Unit,
     onClose: () -> Unit,
     isLive: Boolean = false,
@@ -112,7 +110,9 @@ fun PlayerContent(
     onSeek: (Long) -> Unit,
     onScrubFinished: () -> Unit = {},
     onFullscreenToggle: () -> Unit,
-    onDetailsOverdrag: () -> Unit = {},
+    onDetailsOverdragStart: () -> Unit = {},
+    onDetailsOverdrag: (overdragPx: Float) -> Unit = {},
+    onDetailsOverdragEnd: (overdragPx: Float) -> Unit = {},
 ) {
     val density = LocalDensity.current
 
@@ -166,8 +166,27 @@ fun PlayerContent(
             state.isFullscreen,
             surface.isCollapsedNow(isLandscape),
         )
-    val detailsVisible by remember(surface, isLandscape) {
-        derivedStateOf { surface.detailsAlphaNow(isLandscape) > 0.01f }
+    // The details panel's first layout is heavy (comments, recommendations,
+    // live chat). Composition policy:
+    // - Normal: composed whenever its alpha is above the invisible
+    //   threshold. A cancelled settle back to normal keeps it (it is
+    //   already composed — dropping it mid-fade would pop the panel).
+    // - Fullscreen: composed while its alpha is visible AND through the
+    //   expand settle (isSettlingFullscreen): the alpha is 0 by then, so
+    //   nothing draws, and the heavy unmount lands on the still frame
+    //   after the settle instead of mid-motion at fsP 0.99.
+    // First-time composition (remount) still goes through the time-based
+    // fade-in below.
+    val isFullscreenNow = state.isFullscreen
+    val detailsVisible by remember(surface, isLandscape, isFullscreenNow) {
+        derivedStateOf {
+            if (isFullscreenNow) {
+                surface.isSettlingFullscreen.value ||
+                    surface.detailsAlphaNow(isLandscape) > 0.01f
+            } else {
+                surface.detailsAlphaNow(isLandscape) > 0.01f
+            }
+        }
     }
     // Time-based fade-IN: the p-based alpha window (0.1-0.4) is traversed in
     // only ~90ms of the 300ms click-to-expand tween, so the details would
@@ -175,13 +194,17 @@ fun PlayerContent(
     // (re)appear. The 100ms wait lets the details subtree's first heavy
     // compose/measure frame land while the alpha is still 0, so the fade
     // itself runs on lighter frames. Fade-OUT stays p-based, so drags
-    // remain tied to the finger.
-    val detailsSettle = remember { Animatable(1f) }
+    // remain tied to the finger. settle stays 0 while the panel is hidden so
+    // a re-compose can never flash a full-alpha frame before the fade starts
+    // (that flash was the fullscreen->normal blink).
+    val detailsSettle = remember { Animatable(0f) }
     LaunchedEffect(detailsVisible) {
         if (detailsVisible) {
             detailsSettle.snapTo(0f)
             kotlinx.coroutines.delay(100)
             detailsSettle.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
+        } else {
+            detailsSettle.snapTo(0f)
         }
     }
 
@@ -276,9 +299,6 @@ fun PlayerContent(
             handler = gestureHandler,
             isScrubbing = isScrubbing,
             onTap = onTap,
-            onMorphDragStart = onMorphDragStart,
-            onMorphDrag = onMorphDrag,
-            onMorphDragEnd = onMorphDragEnd,
             // Floating mode
             onOffsetChanged = onMiniOffsetChanged,
             onExpand = onExpand,
@@ -301,13 +321,32 @@ fun PlayerContent(
                     Modifier
                         .fillMaxWidth()
                         .offset {
-                            IntOffset(0, surface.videoLayout(isLandscape, density).heightPx.toInt())
+                            // roundToInt to match the video surface's exact
+                            // pixel height — floor/round mix left a 1px seam
+                            // depending on the fractional height.
+                            IntOffset(0, surface.videoLayout(isLandscape, density).heightPx.roundToInt())
                         }
                         .fillMaxHeight()
                         .graphicsLayer {
-                            alpha =
+                            val a =
                                 surface.detailsAlphaNow(isLandscape) * detailsSettle.value
-                            translationY = surface.detailsTranslateYNow()
+                            val ty = surface.detailsTranslateYNow()
+                            alpha = a
+                            translationY = ty
+                            // The details panel is the largest element on
+                            // screen (≈3/4 of the screen in portrait, 30% in
+                            // landscape). A graphicsLayer is NOT rasterized by
+                            // default: while its alpha/translation animate, the
+                            // whole details draw list is re-issued every frame
+                            // — 3.4× more draw work in portrait, which is what
+                            // made portrait morphs drop frames while landscape
+                            // survived the identical animation. Rasterize only
+                            // mid-animation: the per-frame cost becomes a cheap
+                            // bitmap composite; settled (alpha 0/1, no slide)
+                            // runs the normal on-screen path with no cache.
+                            if (a in 0.01f..0.99f || ty != 0f) {
+                                compositingStrategy = CompositingStrategy.Offscreen
+                            }
                         }.nestedScroll(nestedScrollConnection),
             ) {
                 PlayerDetails(
@@ -330,7 +369,9 @@ fun PlayerContent(
                     liveChat = liveChat,
                     onTimestampClick = onTimestampClick,
                     onLinkClick = onLinkClick,
-                    onOverdragTop = onDetailsOverdrag,
+                    onOverdragStart = onDetailsOverdragStart,
+                    onOverdrag = onDetailsOverdrag,
+                    onOverdragEnd = onDetailsOverdragEnd,
                 )
             }
         }

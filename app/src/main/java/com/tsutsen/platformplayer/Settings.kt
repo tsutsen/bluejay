@@ -9,6 +9,8 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import java.time.OffsetDateTime
@@ -97,7 +99,21 @@ class Settings {
     var dualScreen: Boolean = false
     var dualScreenPages: List<String> = listOf("video", "library", "home")
     var dualScreenVideoTabs: List<String> =
-        listOf("comments", "chapters", "recommended", "queue")
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
+    // Second-screen video page: display order of the enabled tabs.
+    var dualScreenVideoTabOrder: List<String> =
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
+    // Second-screen video page: order of the elements (controls row, video
+    // header, tab strip).
+    var dualScreenPageOrder: List<String> = listOf("controls", "video", "tabs")
+    // Second screen home page: which sources to fetch from (empty = all enabled).
+    var dualScreenFeedSources: List<String> = emptyList()
+
+    // Player gesture assignments per player mode and surface slot
+    // (see PlayerGesturePreferences). Each map: gesture type
+    // ("swipe_v"|"swipe_h"|"double_tap"|"hold") → action id.
+    // Empty = shipped defaults for that slot.
+    var playerGestures: PlayerGesturePreferences = PlayerGesturePreferences()
     // Second-screen library: the four 2x2 slots. Each entry is a section id
     // or a "playlist:<id>" reference (see Settings > Dual screen).
     var dualScreenLibrarySlots: List<String> =
@@ -107,6 +123,20 @@ class Settings {
             LibraryRepositoryImpl.FAVOURITE_ID,
             LibraryRepositoryImpl.HISTORY_ID,
         )
+
+    @Serializable
+    class PlayerGestureSlotSet(
+        var top: Map<String, String> = emptyMap(),
+        var bottomLeft: Map<String, String> = emptyMap(),
+        var bottomCenter: Map<String, String> = emptyMap(),
+        var bottomRight: Map<String, String> = emptyMap(),
+    )
+
+    @Serializable
+    class PlayerGesturePreferences(
+        var fullscreen: PlayerGestureSlotSet = PlayerGestureSlotSet(),
+        var normal: PlayerGestureSlotSet = PlayerGestureSlotSet(),
+    )
 
     @Serializable
     class AutoUpdateSettings {
@@ -143,6 +173,9 @@ class Settings {
         // Horizontal-swipe sensitivity of the speed-up/slow-down hold:
         // 1.0 = default, higher = less movement per speed step.
         var speedupSensitivity: Float = 1f
+
+        // Jump step (seconds) for the back/forward seek gestures.
+        var jumpStepSeconds: Int = 5
 
         // Subtitle appearance: font (default|sans|serif|mono),
         // size (small|standard|large), bottom padding (tight|standard|wide).
@@ -213,6 +246,9 @@ class Settings {
     @Serializable
     class FeedSettings {
         var gridColumns: Int = 3
+
+        // Hidden home source-chip ids (persisted filter selection).
+        var hiddenSources: List<String> = emptyList()
     }
 
     @Serializable
@@ -346,7 +382,47 @@ class Settings {
                     .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .getString(KEY_SETTINGS, null)
                     ?: return null
-            return runCatching { settingsJson.decodeFromString(Settings.serializer(), json) }.getOrNull()
+            return runCatching {
+                    settingsJson.decodeFromString(Settings.serializer(), migrateJson(json))
+                }
+                .getOrNull()
+                ?.also {
+                    // Pre-0.2.3 installs predate the info/controls tabs —
+                    // enable them so the new tabs appear without a manual
+                    // settings round-trip (user order is preserved).
+                    val canonical =
+                        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
+                    it.dualScreenVideoTabs += canonical.filter { key -> key !in it.dualScreenVideoTabs }
+                }
+        }
+
+        /**
+         * Migrate the pre-split gesture settings: installs saved a single
+         * flat slot map (unified mode) under [playerGestures] with the slot
+         * keys directly inside. Wrap it into both the new fullscreen and
+         * normal sections so the user's customizations survive the split.
+         */
+        private fun migrateJson(raw: String): String {
+            return try {
+                val root = Json.parseToJsonElement(raw).jsonObject
+                val pg = root["playerGestures"]?.jsonObject
+                if (pg != null && pg.containsKey("top") && !pg.containsKey("fullscreen")) {
+                    val wrapped =
+                        JsonObject(
+                            mapOf(
+                                "fullscreen" to pg,
+                                "normal" to pg,
+                            ),
+                        )
+                    val updated = root.toMutableMap()
+                    updated["playerGestures"] = wrapped
+                    return JsonObject(updated).toString()
+                } else {
+                    raw
+                }
+            } catch (e: Exception) {
+                raw
+            }
         }
     }
 

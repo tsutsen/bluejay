@@ -94,7 +94,6 @@ class PlayerGestureRecognizerTest {
         down(r, x = 400f, y = 250f) // FULLSCREEN middle row
         val move = r.onMove(400f, 290f, 1050L) // 40 px down > 30 threshold
         val slide = move as PlayerGestureRecognizer.MoveResult.SlideStart
-        assertFalse(slide.morphDrag) // fullscreen, not top row
         assertEquals(GesturePhase.START, slide.startFrame!!.phase)
         assertEquals(GestureAction.VOLUME, slide.startFrame!!.action)
 
@@ -127,7 +126,6 @@ class PlayerGestureRecognizerTest {
         down(r, config = noneCfg)
         val move = r.onMove(400f, 290f, 1050L)
         val slide = move as PlayerGestureRecognizer.MoveResult.SlideStart
-        assertFalse(slide.morphDrag)
         assertNull(slide.startFrame)
         assertNull(r.onSlideMove(400f, 310f, 1080L))
         assertNull(r.onSlideEnd(1100L))
@@ -139,7 +137,6 @@ class PlayerGestureRecognizerTest {
         down(r)
         val move = r.onMove(440f, 250f, 1050L) // 40 px right
         val slide = move as PlayerGestureRecognizer.MoveResult.SlideStart
-        assertFalse(slide.morphDrag)
         assertEquals(GestureType.SWIPE_HORIZONTAL, slide.startFrame!!.gestureType)
         assertEquals(GestureAction.BRIGHTNESS, slide.startFrame!!.action)
     }
@@ -147,32 +144,13 @@ class PlayerGestureRecognizerTest {
     // ---- morph drag resolution ----
 
     @Test
-    fun downwardVerticalSlideInNormalModeIsMorphDrag() {
-        val r = PlayerGestureRecognizer()
-        down(r, mode = PlayerOverlayMode.NORMAL)
-        val move = r.onMove(400f, 290f, 1050L)
-        val slide = move as PlayerGestureRecognizer.MoveResult.SlideStart
-        assertTrue(slide.morphDrag)
-        assertNull(slide.startFrame) // callbacks, not frames
-    }
-
-    @Test
-    fun upwardVerticalSlideInNormalModeIsNotMorphDrag() {
+    fun upwardVerticalSlideInNormalModeEmitsAssignedAction() {
         val r = PlayerGestureRecognizer()
         down(r, mode = PlayerOverlayMode.NORMAL, config = cfg)
         val move = r.onMove(400f, 190f, 1050L) // 60 px up
         val slide = move as PlayerGestureRecognizer.MoveResult.SlideStart
-        assertFalse(slide.morphDrag)
         assertEquals(GesturePhase.START, slide.startFrame!!.phase)
-    }
-
-    @Test
-    fun fullscreenMorphDragOnlyFromTopRow() {
-        val r = PlayerGestureRecognizer()
-        down(r, x = 400f, y = 50f) // top row
-        val move = r.onMove(400f, 90f, 1050L)
-        val slide = move as PlayerGestureRecognizer.MoveResult.SlideStart
-        assertTrue(slide.morphDrag)
+        assertEquals(GestureAction.VOLUME, slide.startFrame!!.action)
     }
 
     // ---- hold ----
@@ -242,7 +220,6 @@ class PlayerGestureRecognizerTest {
         // 45 px vertical — slide wins.
         val move = r.onMove(400f, 295f, 1550L)
         val slide = move as PlayerGestureRecognizer.MoveResult.SlideStart
-        assertFalse(slide.morphDrag)
         assertEquals(GesturePhase.START, slide.startFrame!!.phase)
         // The hold got its END frame before the slide started.
         val holdEnd = slide.frames.single()
@@ -281,6 +258,68 @@ class PlayerGestureRecognizerTest {
         down(r)
         r.onUp(1050L)
         assertNull(r.cancel(1051L))
+    }
+
+    // ---- config decides what a v-swipe slide does (regression: morph used
+    // to be hard-coded per mode/direction, swallowing user assignments) ----
+
+    @Test
+    fun normalModeDownSwipeWithVolumeAssignmentEmitsVolumeFrames() {
+        val r = PlayerGestureRecognizer()
+        val volumeCfg = GestureConfig().withSector(
+            GestureSector.MIDDLE_CENTER,
+            GestureSlotConfig(swipeVertical = GestureAction.VOLUME),
+        )
+        down(r, mode = PlayerOverlayMode.NORMAL, config = volumeCfg)
+        // Downward v-swipe in normal mode — previously always a morph drag.
+        val start = r.onMove(400f, 290f, 1050L)
+        assertTrue(start is PlayerGestureRecognizer.MoveResult.SlideStart)
+        assertEquals(GestureAction.VOLUME, (start as PlayerGestureRecognizer.MoveResult.SlideStart).startFrame!!.action)
+        val active = r.onSlideMove(400f, 330f, 1080L)
+        assertEquals(GestureAction.VOLUME, active!!.action)
+        assertEquals(GesturePhase.ACTIVE, active.phase)
+    }
+
+    @Test
+    fun fullscreenTopDownSwipeWithMorphToNormalAssignmentEmitsMorphFrames() {
+        val r = PlayerGestureRecognizer()
+        val cfg2 = GestureConfig().withSector(
+            GestureSector.TOP_CENTER,
+            GestureSlotConfig(swipeVertical = GestureAction.MORPH_TO_NORMAL),
+        )
+        // TOP_CENTER sector: top row, center column.
+        down(r, x = 400f, y = 50f, mode = PlayerOverlayMode.FULLSCREEN, config = cfg2)
+        val start = r.onMove(400f, 120f, 1050L)
+        assertTrue(start is PlayerGestureRecognizer.MoveResult.SlideStart)
+        assertEquals(GestureAction.MORPH_TO_NORMAL, (start as PlayerGestureRecognizer.MoveResult.SlideStart).startFrame!!.action)
+    }
+
+    @Test
+    fun morphVerticalAssignmentStillEmitsMorphFramesBothDirections() {
+        val r = PlayerGestureRecognizer()
+        val cfg2 = GestureConfig().withSector(
+            GestureSector.MIDDLE_CENTER,
+            GestureSlotConfig(swipeVertical = GestureAction.MORPH_VERTICAL),
+        )
+        down(r, mode = PlayerOverlayMode.NORMAL, config = cfg2)
+        val up = r.onMove(400f, 160f, 1050L) // swipe up
+        assertTrue(up is PlayerGestureRecognizer.MoveResult.SlideStart)
+        assertEquals(GestureAction.MORPH_VERTICAL, (up as PlayerGestureRecognizer.MoveResult.SlideStart).startFrame!!.action)
+
+        val r2 = PlayerGestureRecognizer()
+        down(r2, mode = PlayerOverlayMode.NORMAL, config = cfg2)
+        val downResult = r2.onMove(400f, 290f, 1050L) // swipe down
+        assertTrue(downResult is PlayerGestureRecognizer.MoveResult.SlideStart)
+        assertEquals(GestureAction.MORPH_VERTICAL, (downResult as PlayerGestureRecognizer.MoveResult.SlideStart).startFrame!!.action)
+    }
+
+    @Test
+    fun unboundVSwipeStillDrainsWithoutFrames() {
+        val r = PlayerGestureRecognizer()
+        down(r, mode = PlayerOverlayMode.NORMAL, config = noneCfg)
+        val start = r.onMove(400f, 290f, 1050L)
+        assertTrue(start is PlayerGestureRecognizer.MoveResult.SlideStart)
+        assertNull((start as PlayerGestureRecognizer.MoveResult.SlideStart).startFrame)
     }
 
     @Test

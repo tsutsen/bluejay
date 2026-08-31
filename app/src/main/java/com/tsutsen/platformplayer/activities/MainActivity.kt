@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
+import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
@@ -34,6 +35,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PlayerView
+import com.tsutsen.platformplayer.feature.player.impl.SystemControls
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateCasting
 import dagger.hilt.android.AndroidEntryPoint
@@ -75,6 +77,9 @@ class MainActivity :
 
     @Inject
     lateinit var liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository
+
+    @Inject
+    lateinit var channelRepository: ChannelRepository
 
     private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
@@ -144,6 +149,10 @@ class MainActivity :
                 downloadsRepository = downloadsRepository,
                 playbackQueueRepository = playbackQueueRepository,
                 liveChatRepository = liveChatRepository,
+                channelRepository = channelRepository,
+                // Tapping the channel badge on the second screen navigates
+                // the main screen to the channel page.
+                onChannelClick = { url -> navigator.navigateToChannel(url) },
             ).also { it.show() }
     }
 
@@ -225,6 +234,14 @@ private fun BluejayMainActivity(
     playerRepository: PlayerRepository,
     settingsRepository: SettingsRepository,
 ) {
+    // Brightness changes made from the companion screen (Controls tab
+    // slider) follow through the shared flow — apply to this display.
+    LaunchedEffect(activity) {
+        SystemControls.brightness.collect { v ->
+            v?.let { SystemControls.setWindowBrightness(activity.window, it) }
+        }
+    }
+
     // Settings are live: changing theme/grid columns re-composes this tree.
     val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
     val darkTheme =

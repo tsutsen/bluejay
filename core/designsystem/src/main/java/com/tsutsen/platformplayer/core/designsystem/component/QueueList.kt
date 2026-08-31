@@ -294,7 +294,7 @@ private fun QueueRow(
  * so the row visibly "arms" as it moves.
  */
 @Composable
-private fun QueueMoveButton(
+fun QueueMoveButton(
     imageVector: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
     enabled: Boolean,

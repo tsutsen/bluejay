@@ -243,10 +243,7 @@ class EngineVideoUrlResolver
                 audioTracks = unmuxedAudioTracks(details),
                 activeAudioTrack = unmuxedAudioTracks(details).firstOrNull()?.label,
                 videoStreamUrl = (details.video as? JSUnMuxVideoSourceDescriptor)
-                    ?.videoSources
-                    ?.filterIsInstance<IVideoUrlSource>()
-                    ?.firstOrNull()
-                    ?.getVideoUrl(),
+                    ?.let { pickUnmuxedVideoSource(it)?.getVideoUrl() },
                 videoStreams = unmuxedVideoStreams(details),
                 subtitles =
                     details.subtitles.map { source ->
@@ -286,6 +283,29 @@ class EngineVideoUrlResolver
                         original = source.original,
                     )
                 }
+        }
+
+        /**
+         * The video source [resolveUnmuxedVideoSource] actually loads: the
+         * one closest to the configured default resolution ("Auto" = the
+         * plugin's first/best). Distance ties go to the lower height (never
+         * silently exceed the default), then original dubs, then bitrate.
+         */
+        private fun pickUnmuxedVideoSource(video: JSUnMuxVideoSourceDescriptor): IVideoUrlSource? {
+            val sources =
+                video.videoSources
+                    .filterIsInstance<IVideoUrlSource>()
+                    .filter { it.height > 0 && it.getVideoUrl().isNotBlank() }
+            if (sources.isEmpty()) return null
+            val defaultHeight =
+                Settings.instance.content.defaultVideoResolution.removeSuffix("p").toIntOrNull()
+            if (defaultHeight == null) return sources.first()
+            return sources.minWith(
+                compareBy<IVideoUrlSource> { kotlin.math.abs(it.height - defaultHeight) }
+                    .thenBy { it.height }
+                    .thenByDescending { it.original }
+                    .thenByDescending { it.bitrate },
+            )
         }
 
         /**
@@ -446,11 +466,20 @@ class EngineVideoUrlResolver
 
             Log.i(TAG, "Unmuxed: ${videoSources.size} video sources, ${audioSources.size} audio sources")
 
-            // Find a working video-only MediaSource
+            // Load the source closest to the configured default resolution —
+            // for unmuxed streams the loaded file IS the quality (no ABR to
+            // correct the initial pick later), so this must honor the setting.
+            val defaultResolution = Settings.instance.content.defaultVideoResolution
             val videoMediaSource =
-                videoSources.firstNotNullOfOrNull { videoSource ->
-                    Log.i(TAG, "Trying video source: ${videoSource.javaClass.simpleName}")
-                    createMediaSourceFromSource(videoSource, httpDataSourceFactory, contentUrl)
+                pickUnmuxedVideoSource(video)?.let { chosen ->
+                    Log.i(TAG, "Unmuxed: loading ${chosen.height}p source (default: $defaultResolution)")
+                    createMediaSourceFromSource(chosen, httpDataSourceFactory, contentUrl)
+                } ?: run {
+                    // Fallback: any source that builds.
+                    videoSources.firstNotNullOfOrNull { videoSource ->
+                        Log.i(TAG, "Trying video source: ${videoSource.javaClass.simpleName}")
+                        createMediaSourceFromSource(videoSource, httpDataSourceFactory, contentUrl)
+                    }
                 }
 
             if (videoMediaSource == null) {

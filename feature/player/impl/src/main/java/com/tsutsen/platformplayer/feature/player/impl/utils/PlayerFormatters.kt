@@ -3,7 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-internal fun formatTime(ms: Long): String {
+fun formatTime(ms: Long): String {
     val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(ms)
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
@@ -15,7 +15,7 @@ internal fun formatTime(ms: Long): String {
     }
 }
 
-internal fun formatViewCount(viewCount: Long): String {
+fun formatViewCount(viewCount: Long): String {
     return when {
         viewCount >= 1_000_000 -> "${String.format(Locale.getDefault(), "%.1f", viewCount / 1_000_000.0)}M"
         viewCount >= 1_000 -> "${String.format(Locale.getDefault(), "%.1f", viewCount / 1_000.0)}K"
@@ -23,7 +23,7 @@ internal fun formatViewCount(viewCount: Long): String {
     }
 }
 
-internal fun formatRelativeTime(publishedAt: Long?): String {
+fun formatRelativeTime(publishedAt: Long?): String {
     if (publishedAt == null) return ""
     val now = System.currentTimeMillis()
     val diffMs = now - publishedAt

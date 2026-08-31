@@ -41,7 +41,7 @@ internal fun PlayerFloatingOverlay(
 ) {
     // Collected here — at the leaf — so the 10 Hz position ticks recompose
     // only this overlay, not the whole player screen.
-    val currentPositionMs by positionMs.collectAsState(initial = 0L)
+    val currentPositionMs by positionMs.collectAsState(initial = positionMs.value)
     Column(modifier = Modifier.fillMaxWidth()) {
         // Play/pause + Close row (top)
         Row(

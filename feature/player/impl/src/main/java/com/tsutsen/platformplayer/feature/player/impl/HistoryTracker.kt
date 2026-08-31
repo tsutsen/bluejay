@@ -33,6 +33,10 @@ class HistoryTracker
             withContext(Dispatchers.IO) {
                 val existing = historyDao.getByUrl(contentUrl)
                 if (existing != null) {
+                    // A position-less call (play start) refreshes metadata only —
+                    // never clobber the stored resume position, which the
+                    // repository's resume lookup and the card progress bars read.
+                    val hasPosition = currentPositionMs > 0L || totalDurationMs > 0L
                     // Update existing entry (don't clobber a stored channel URL
                     // with a null from a details-less call)
                     historyDao.update(
@@ -41,8 +45,8 @@ class HistoryTracker
                             author = author,
                             authorUrl = authorUrl ?: existing.authorUrl,
                             thumbnailUrl = thumbnailUrl,
-                            lastPositionMs = currentPositionMs,
-                            totalDurationMs = totalDurationMs,
+                            lastPositionMs = if (hasPosition) currentPositionMs else existing.lastPositionMs,
+                            totalDurationMs = if (hasPosition) totalDurationMs else existing.totalDurationMs,
                             watchedAt = System.currentTimeMillis(),
                             viewedAt = System.currentTimeMillis(),
                             viewCount = viewCount ?: existing.viewCount,

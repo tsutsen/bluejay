@@ -74,7 +74,8 @@ fun HomeScreen(
             // One chip per enabled source, shown only with >1 source. Each
             // chip is an independent toggle (all on by default, like the
             // Subs filters): cards from a hidden source drop out of the feed.
-            var hiddenSources by remember { mutableStateOf(setOf<String>()) }
+            // Persisted across app restarts (Settings > home source chips).
+            var hiddenSources by remember { mutableStateOf(viewModel.hiddenSources.value) }
             val visibleItems =
                 if (hiddenSources.isEmpty()) {
                     state.items
@@ -104,6 +105,7 @@ fun HomeScreen(
                                         } else {
                                             hiddenSources + source.id
                                         }
+                                    viewModel.setHomeHiddenSources(hiddenSources)
                                 },
                                 label = { Text(source.name) },
                             )

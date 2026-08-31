@@ -1,6 +1,9 @@
 package com.tsutsen.platformplayer.activities
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.view.Window
 import android.content.Intent
 import android.app.Presentation
 import android.net.Uri
@@ -34,6 +37,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -50,10 +54,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.BottomSheetScaffold
@@ -64,6 +70,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -86,12 +93,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
+import com.tsutsen.platformplayer.feature.player.impl.SystemControls
+import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
+import com.tsutsen.platformplayer.feature.player.impl.formatViewCount
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
@@ -105,6 +118,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.formatDuration
+import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ContentItem
@@ -116,7 +130,12 @@ import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
+import com.tsutsen.platformplayer.feature.player.impl.ChannelRow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 /**
  * The second-screen UI, hosted in a Presentation window on the rear display
@@ -146,6 +165,8 @@ class CompanionPresentation(
     private val downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
     private val playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
     private val liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
+    private val channelRepository: ChannelRepository,
+    private val onChannelClick: (String) -> Unit,
 ) : Presentation(context, display) {
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -195,6 +216,9 @@ class CompanionPresentation(
                     playbackQueueRepository = playbackQueueRepository,
                     settingsRepository = settingsRepository,
                     liveChatRepository = liveChatRepository,
+                    channelRepository = channelRepository,
+                    companionWindow = window,
+                    onChannelClick = onChannelClick,
                 )
             }
         }
@@ -278,6 +302,9 @@ private fun CompanionContent(
     playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
     settingsRepository: SettingsRepository,
     liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
+    channelRepository: ChannelRepository,
+    companionWindow: Window?,
+    onChannelClick: (String) -> Unit,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
     val liveChat by liveChatRepository.state.collectAsState()
@@ -285,13 +312,29 @@ private fun CompanionContent(
     val scope = rememberCoroutineScope()
     val video = playerState.currentVideo
 
+    // Brightness changes made from the other screen (gestures there apply
+    // to this display through the shared flow) follow for the whole
+    // presentation lifetime, not just while the Controls tab is composed.
+    LaunchedEffect(companionWindow) {
+        SystemControls.brightness.collect { v ->
+            if (v != null && companionWindow != null) SystemControls.setWindowBrightness(companionWindow, v)
+        }
+    }
+
     // Dual screen settings: which pages / video-page tabs / library
     // sections the second screen shows (Settings > Dual screen).
     val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
     val pageKeys = listOf("video", "library", "home").filter { it in prefs.dualScreenPages }
+    // Configured order wins; canonical keys appended as fallback (older
+    // saves predate info/controls), then filtered to the enabled set.
+    val allVideoTabKeys =
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
     val videoTabKeys =
-        listOf("comments", "chapters", "recommended", "queue")
+        (prefs.dualScreenVideoTabOrder + allVideoTabKeys)
+            .distinct()
             .filter { it in prefs.dualScreenVideoTabs }
+    val pageOrder =
+        (prefs.dualScreenPageOrder + listOf("controls", "video", "tabs")).distinct()
     val librarySlotValues = prefs.dualScreenLibrarySlots
 
     // Same data the main screen shows: the PlayerViewModel fetches comments
@@ -308,6 +351,16 @@ private fun CompanionContent(
     // Live library + home data (shared repositories — updates propagate).
     val sections by libraryRepository.sections.collectAsState()
     val home by homeRepository.feed.collectAsState()
+    // Second-screen home feed: which sources to show (empty = all).
+    // Filtered here, not in the repository — the main screen's home page
+    // shares the same feed and has its own (chip-based) filter.
+    val dualFeedSources = prefs.dualScreenFeedSources
+    val dualHomeItems =
+        if (dualFeedSources.isEmpty()) {
+            home.items
+        } else {
+            home.items.filter { it.sourceId == null || it.sourceId in dualFeedSources }
+        }
     // NOTE: deliberately no loadInitial() here — the main app triggers the
     // home load. A second concurrent call would re-run JS-client init and
     // deadlocks the V8 busy lock (see PackageHttp.autoParallelPool).
@@ -315,11 +368,8 @@ private fun CompanionContent(
     var selectedTab by remember { mutableIntStateOf(0) }
     // Settings can shrink the tab list while the page is up — reset the
     // selection to the first tab.
-    LaunchedEffect(prefs.dualScreenVideoTabs) {
-        val enabled =
-            listOf("comments", "chapters", "recommended", "queue")
-                .filter { it in prefs.dualScreenVideoTabs }
-        if (enabled.isNotEmpty() && selectedTab >= enabled.size) {
+    LaunchedEffect(videoTabKeys) {
+        if (videoTabKeys.isNotEmpty() && selectedTab >= videoTabKeys.size) {
             selectedTab = 0
         }
     }
@@ -328,6 +378,42 @@ private fun CompanionContent(
 
     val onPlay: (String) -> Unit = { url -> scope.launch { playerRepository.play(url) } }
     val onLongClick: (CoreVideoCard) -> Unit = { card -> optionsCard = card }
+
+    // Info tab: like/dislike state from the library, subscribe state from
+    // the channel repository (same actions as the main player row).
+    val videoUrl = video?.url
+    val savedTypesFlow: kotlinx.coroutines.flow.Flow<Set<SavedVideoType>> =
+        remember(videoUrl) {
+            videoUrl?.let { libraryRepository.observeSavedTypes(it) }
+                ?: flowOf(emptySet())
+        }
+    val savedTypes by savedTypesFlow.collectAsState(initial = emptySet())
+    val channelUrl = video?.author?.url
+    var isSubscribed by remember { mutableStateOf(false) }
+    LaunchedEffect(channelUrl) {
+        val url = channelUrl
+        isSubscribed =
+            if (url.isNullOrEmpty()) false
+            else withContext(Dispatchers.IO) { channelRepository.isSubscribed(url) }
+    }
+    val currentVideoCard = video?.toCoreVideoCard()
+    val onSubscribe: () -> Unit = {
+        channelUrl?.let { url ->
+            scope.launch { isSubscribed = channelRepository.toggleSubscription(url) }
+        }
+    }
+    val onVideoLike: () -> Unit = {
+        currentVideoCard?.let { card ->
+            scope.launch { toggleSaveType(libraryRepository, savedTypes, card, SavedVideoType.LIKED) }
+        }
+    }
+    val onVideoDislike: () -> Unit = {
+        currentVideoCard?.let { card ->
+            scope.launch {
+                toggleSaveType(libraryRepository, savedTypes, card, SavedVideoType.DISLIKED)
+            }
+        }
+    }
 
     val pagerState = rememberPagerState(pageCount = { pageKeys.size })
     // Settings can shrink the page list while the screen is up — snap back
@@ -463,6 +549,15 @@ private fun CompanionContent(
                     onQueueRemove = { url -> playbackQueueRepository.remove(url) },
                     onQueueMove = { from, to -> playbackQueueRepository.move(from, to) },
                     videoTabKeys = videoTabKeys,
+                    pageOrder = pageOrder,
+                    savedTypes = savedTypes,
+                    isSubscribed = isSubscribed,
+                    onSubscribe = onSubscribe,
+                    onLike = onVideoLike,
+                    onDislike = onVideoDislike,
+                    onMore = { currentVideoCard?.let { optionsCard = it } },
+                    companionWindow = companionWindow,
+                    onChannelClick = onChannelClick,
                 )
 
                 "library" ->
@@ -476,7 +571,7 @@ private fun CompanionContent(
 
                 "home" ->
                     CompanionHomePage(
-                        items = home.items,
+                        items = dualHomeItems,
                         onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
                         onPlay = onPlay,
                         onLongClick = onLongClick,
@@ -558,7 +653,16 @@ private fun CompanionVideoPage(
     onQueueRemove: (String) -> Unit,
     onQueueMove: (Int, Int) -> Unit,
     videoTabKeys: List<String> =
-        listOf("comments", "chapters", "recommended", "queue"),
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue"),
+    pageOrder: List<String> = listOf("controls", "video", "tabs"),
+    savedTypes: Set<SavedVideoType> = emptySet(),
+    isSubscribed: Boolean = false,
+    onSubscribe: () -> Unit = {},
+    onLike: () -> Unit = {},
+    onDislike: () -> Unit = {},
+    onMore: () -> Unit = {},
+    companionWindow: Window?,
+    onChannelClick: (String) -> Unit,
 ) {
     val context = LocalContext.current
     Column(
@@ -567,51 +671,182 @@ private fun CompanionVideoPage(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CompanionControlRow(
-            isPlaying = playerState.isPlaying,
-            onPlayPause = onPlayPause,
-            onSeekBy = onSeekBy,
-            onPrevious = onPrevious,
-            onNext = onNext,
-        )
-        if (video != null) {
-            CompanionVideoHeader(
-                video = video,
-                positionMs = playerState.currentPositionMs,
-                durationMs = playerState.durationMs,
-            )
-            val chapters = playerState.chapters
-            // One scroll state per (enabled) tab — switching tabs never
-            // shares or resets a strip's position.
-            val tabStates = remember(videoTabKeys) { videoTabKeys.map { LazyListState() } }
-            val activeTab = videoTabKeys.getOrNull(selectedTab)
-            val currentChapterIndex =
-                chapters.indexOfLast { it.startTimeMs <= playerState.currentPositionMs }
-            // Follow the playhead: while on the chapters tab, a chapter
-            // change scrolls the strip to the newly active chapter.
-            LaunchedEffect(currentChapterIndex) {
-                if (activeTab == "chapters" && currentChapterIndex >= 0) {
-                    tabStates.getOrNull(selectedTab)?.animateScrollToItem(currentChapterIndex)
-                }
+        for (element in pageOrder) {
+            when (element) {
+                "controls" ->
+                    CompanionControlRow(
+                        isPlaying = playerState.isPlaying,
+                        onPlayPause = onPlayPause,
+                        onSeekBy = onSeekBy,
+                        onPrevious = onPrevious,
+                        onNext = onNext,
+                    )
+
+                "video" ->
+                    video?.let {
+                        CompanionVideoHeader(
+                            video = it,
+                            positionMs = playerState.currentPositionMs,
+                            durationMs = playerState.durationMs,
+                        )
+                    }
+
+                "tabs" ->
+                    if (video != null) {
+                        VideoPageTabs(
+                            video = video,
+                            videoTabKeys = videoTabKeys,
+                            selectedTab = selectedTab,
+                            onTabSelected = onTabSelected,
+                            comments = comments,
+                            isLive = isLive,
+                            liveChat = liveChat,
+                            recommendations = recommendations,
+                            queue = queue,
+                            positionMs = playerState.currentPositionMs,
+                            durationMs = playerState.durationMs,
+                            chapters = playerState.chapters,
+                            savedTypes = savedTypes,
+                            isSubscribed = isSubscribed,
+                            onSubscribe = onSubscribe,
+                            onLike = onLike,
+                            onDislike = onDislike,
+                            onMore = onMore,
+                            onSeekTo = onSeekTo,
+                            onPlay = onPlay,
+                            onLongClick = onLongClick,
+                            onQueuePlay = onQueuePlay,
+                            onQueueRemove = onQueueRemove,
+                            onQueueMove = onQueueMove,
+                            context = context,
+                            currentVideo = video,
+                            isPlaying = playerState.isPlaying,
+                            onPlayPause = onPlayPause,
+                            companionWindow = companionWindow,
+                            // Tabs take the leftover height so any element
+                            // order works — fillMaxSize here would swallow
+                            // everything below when tabs isn't last.
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            onChannelClick = onChannelClick,
+                        )
+                    }
             }
-            PillTabs(
-                labels =
-                    videoTabKeys.map {
-                        if (isLive && it == "comments") "Live chat" else it.companionTabLabel()
-                    },
-                selected = selectedTab,
-                onSelect = onTabSelected,
-            )
+        }
+        if (video == null) {
             Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center,
             ) {
-                key(selectedTab) {
+                Text(
+                    "Nothing playing",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The tab strip + its content area (the "tabs" element of the video page).
+ * One scroll state per (enabled) tab — switching tabs never shares or
+ * resets a strip's position.
+ */
+@Composable
+private fun VideoPageTabs(
+    video: ContentItem,
+    videoTabKeys: List<String>,
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    comments: List<CommentItem>,
+    isLive: Boolean,
+    liveChat: com.tsutsen.platformplayer.core.model.LiveChatUiState?,
+    recommendations: List<CoreVideoCard>,
+    queue: List<ContentItem>,
+    positionMs: Long,
+    durationMs: Long,
+    chapters: List<com.tsutsen.platformplayer.core.model.VideoChapter>,
+    savedTypes: Set<SavedVideoType>,
+    isSubscribed: Boolean,
+    onSubscribe: () -> Unit,
+    onLike: () -> Unit,
+    onDislike: () -> Unit,
+    onMore: () -> Unit,
+    onSeekTo: (Long) -> Unit,
+    onPlay: (String) -> Unit,
+    onLongClick: (CoreVideoCard) -> Unit,
+    onQueuePlay: (Int) -> Unit,
+    onQueueRemove: (String) -> Unit,
+    onQueueMove: (Int, Int) -> Unit,
+    context: android.content.Context,
+    currentVideo: ContentItem?,
+    isPlaying: Boolean,
+    onPlayPause: () -> Unit,
+    companionWindow: Window?,
+    modifier: Modifier = Modifier.fillMaxSize(),
+    onChannelClick: (String) -> Unit,
+) {
+    val tabStates = remember(videoTabKeys) { videoTabKeys.map { LazyListState() } }
+    val activeTab = videoTabKeys.getOrNull(selectedTab)
+    val currentChapterIndex =
+        chapters.indexOfLast { it.startTimeMs <= positionMs }
+    // Follow the playhead: while on the chapters tab, a chapter
+    // change scrolls the strip to the newly active chapter.
+    LaunchedEffect(currentChapterIndex) {
+        if (activeTab == "chapters" && currentChapterIndex >= 0) {
+            tabStates.getOrNull(selectedTab)?.animateScrollToItem(currentChapterIndex)
+        }
+    }
+    Column(
+        modifier = modifier,
+        // The old layout spaced these 12dp apart; keep the gap below the
+        // tab strip so the content doesn't hug it.
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        PillTabs(
+            labels =
+                videoTabKeys.map {
+                    if (isLive && it == "comments") "Live chat" else it.companionTabLabel()
+                },
+            selected = selectedTab,
+            onSelect = onTabSelected,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+        ) {
+            key(selectedTab) {
                     if (activeTab == null) {
                         // No tabs enabled — nothing to show in the strip.
                         Unit
+                    } else if (activeTab == "info") {
+                        // Info tab: the main player's channel row (icon-only
+                        // subscribe) + a scrollable description card.
+                        CompanionInfoTab(
+                            video = video,
+                            savedTypes = savedTypes,
+                            isSubscribed = isSubscribed,
+                            onSubscribe = onSubscribe,
+                            onLike = onLike,
+                            onDislike = onDislike,
+                            onMore = onMore,
+                            durationMs = durationMs,
+                            onSeekTo = onSeekTo,
+                            onChannelClick = onChannelClick,
+                        )
+                    } else if (activeTab == "controls") {
+                        // Controls tab: playback, volume and brightness
+                        // sliders.
+                        CompanionControlsTab(
+                            positionMs = positionMs,
+                            durationMs = durationMs,
+                            isLive = isLive,
+                            onSeekTo = onSeekTo,
+                            companionWindow = companionWindow,
+                        )
                     } else if (activeTab == "queue") {
                         // Queue tab: the playing video pinned on top, then
                         // the pending queue (tap = play, drag = reorder,
@@ -619,8 +854,8 @@ private fun CompanionVideoPage(
                         // tabs' horizontal strips.
                         CompanionQueueTabContent(
                             queue = queue,
-                            current = playerState.currentVideo,
-                            isPlaying = playerState.isPlaying,
+                            current = currentVideo,
+                            isPlaying = isPlaying,
                             onPlayItem = onQueuePlay,
                             onRemove = onQueueRemove,
                             onMove = onQueueMove,
@@ -641,6 +876,9 @@ private fun CompanionVideoPage(
                                 )
                             },
                         )
+                    } else if (activeTab == "dot") {
+                        // The distraction-free tab: just the video.
+                        Unit
                     } else if (activeTab == "comments" && isLive) {
                         // Live stream: the comments slot becomes the live
                         // chat, same as the main player. Vertical, fills the
@@ -693,7 +931,7 @@ private fun CompanionVideoPage(
                         CommentCardView(
                             comment = comment,
                             onTimestampClick = { ms ->
-                                val dur = playerState.durationMs
+                                val dur = durationMs
                                 val target =
                                     if (dur > 0) ms.coerceIn(0, dur - 500) else ms.coerceAtLeast(0)
                                 onSeekTo(target)
@@ -802,23 +1040,12 @@ private fun CompanionVideoPage(
                     }
                 }
             }
-        } else {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "Nothing playing",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
-}
 
 /**
- * Page 1: the library as four corner slots (2x2). Each slot is a section
+ * Page 1: the library as four corner slots (2x2).
+ * Each slot is a section
  * header + a horizontal pager of that section's cards — swipe left/right
  * inside a slot to page through its list.
  */
@@ -921,9 +1148,12 @@ private fun PlaylistSlotPager(
 
 private fun String.companionTabLabel(): String =
     when (this) {
+        "info" -> "Info"
+        "controls" -> "Controls"
         "comments" -> "Comments"
         "chapters" -> "Chapters"
         "recommended" -> "Recommended"
+        "dot" -> "Blank"
         else -> "Queue"
     }
 
@@ -1372,15 +1602,20 @@ private fun CompanionControlRow(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
 ) {
-    Row(modifier = Modifier.fillMaxWidth()) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+    ) {
         val tileModifier: Modifier = Modifier.weight(1f).height(80.dp)
         OptionTileView(
             OptionTile(label = "Previous", icon = Icons.Filled.SkipPrevious, onClick = onPrevious),
             modifier = tileModifier,
             showLabel = false,
+            outerPadding = 0.dp
         )
+        // Seek icons without the baked-in "10" digit — plain rewind/ffwd.
         OptionTileView(
-            OptionTile(label = "Back 10s", icon = Icons.Filled.Replay10, onClick = { onSeekBy(-10_000L) }),
+            OptionTile(label = "Back 10s", icon = Icons.Filled.FastRewind, onClick = { onSeekBy(-10_000L) }),
             modifier = tileModifier,
             showLabel = false,
         )
@@ -1394,7 +1629,7 @@ private fun CompanionControlRow(
             showLabel = false,
         )
         OptionTileView(
-            OptionTile(label = "Fwd 10s", icon = Icons.Filled.Forward10, onClick = { onSeekBy(10_000L) }),
+            OptionTile(label = "Fwd 10s", icon = Icons.Filled.FastForward, onClick = { onSeekBy(10_000L) }),
             modifier = tileModifier,
             showLabel = false,
         )
@@ -1413,7 +1648,10 @@ private fun CompanionVideoHeader(
     positionMs: Long,
     durationMs: Long,
 ) {
-    Row(verticalAlignment = Alignment.Top) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+    ) {
         AsyncImage(
             url = video.thumbnailUrl,
             contentDescription = null,
@@ -1449,4 +1687,303 @@ private fun CompanionVideoHeader(
         }
     }
 }
+
+/**
+ * Info tab: the main player's channel row (icon-only subscribe button) +
+ * a scrollable description card.
+ */
+@Composable
+private fun CompanionInfoTab(
+    video: ContentItem,
+    savedTypes: Set<SavedVideoType>,
+    isSubscribed: Boolean,
+    onSubscribe: () -> Unit,
+    onLike: () -> Unit,
+    onDislike: () -> Unit,
+    onMore: () -> Unit,
+    durationMs: Long,
+    onSeekTo: (Long) -> Unit,
+    onChannelClick: (String) -> Unit,
+) {
+    val context = LocalContext.current
+    val stats =
+        buildList {
+            video.viewCount?.let { add("${formatViewCount(it)} views") }
+            video.publishedAt?.let { if (it > 0) add(formatRelativeTime(it)) }
+        }.joinToString(" • ")
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ChannelRow(
+            author = video.author,
+            viewCount = video.viewCount,
+            publishedAt = video.publishedAt,
+            likeCount = video.likeCount,
+            isLiked = SavedVideoType.LIKED in savedTypes,
+            dislikeCount = video.dislikeCount,
+            isDisliked = SavedVideoType.DISLIKED in savedTypes,
+            isSubscribed = isSubscribed,
+            onSubscribe = onSubscribe,
+            onLike = onLike,
+            onDislike = onDislike,
+            onMore = onMore,
+            onChannelClick = onChannelClick,
+            subscribeIconOnly = true,
+            startPadding = 0.dp,
+        )
+        // Same card format as the main player's description: stats first
+        // line, linkified text (timestamps + links), always expanded
+        // (the card scrolls, no Show more/less on the second screen).
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            shape = RoundedCornerShape(Tokens.RadiusMd),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+        ) {
+            val description = video.description.orEmpty()
+            Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                if (stats.isNotEmpty()) {
+                    Text(
+                        text = stats,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (description.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinkifiedText(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        onTimestampClick = { ms -> onSeekTo(ms.coerceIn(0L, durationMs.coerceAtLeast(0L))) },
+                        onLinkClick = { url ->
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(url)),
+                                )
+                            }
+                        },
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "No description available",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Controls tab: playback, volume and brightness sliders. The playback
+ * slider expands to fill the page; the two device sliders sit below it.
+ *
+ * Volume and brightness drive the SYSTEM (same knobs as the player's
+ * gestures, via SystemControls): music stream volume, and device-wide
+ * brightness when WRITE_SETTINGS is granted. Without the grant the
+ * brightness falls back to window-local, applied to this Presentation
+ * window AND the host activity window so both screens follow.
+ */
+@Composable
+private fun CompanionControlsTab(
+    positionMs: Long,
+    durationMs: Long,
+    isLive: Boolean,
+    onSeekTo: (Long) -> Unit,
+    companionWindow: Window?,
+) {
+    val context = LocalContext.current
+    // Dragged seek position — the slider follows the finger, the player
+    // only seeks on release.
+    var seekDrag by remember { mutableStateOf<Float?>(null) }
+    var volume by remember { mutableStateOf(1f) }
+    var brightness by remember { mutableStateOf(1f) }
+    // Resample each time the tab is composed (it is keyed per tab), so
+    // changes made elsewhere (hardware keys, main-screen gestures) show.
+    LaunchedEffect(Unit) {
+        volume = SystemControls.getVolume(context)
+        brightness = SystemControls.readBrightness(context)
+        // Follow brightness changes made from the other screen (gestures
+        // there apply to this display through the shared flow).
+        SystemControls.brightness.collect { v ->
+            v?.let {
+                brightness = it
+                companionWindow?.let { w -> SystemControls.setWindowBrightness(w, it) }
+            }
+        }
+    }
+    val onVolume: (Float) -> Unit = {
+        volume = it
+        SystemControls.setVolume(context, it)
+    }
+    val onBrightness: (Float) -> Unit = { value ->
+        brightness = value
+        // All screens: device-wide when granted, plus this window; the
+        // main window follows through SystemControls.brightness.
+        SystemControls.applyBrightness(context, value, companionWindow)
+    }
+    // Fixed slot widths keep every slider the same length: time strings
+    // on the playback row, icon/percent on the others.
+    // 8dp below the tab strip — same first-item gap as the other tabs.
+    Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+        shape = RoundedCornerShape(Tokens.RadiusMd),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+            // Distribute the three rows across the card height —
+            // spacedBy left a dead zone below them.
+            verticalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            CompanionSliderRow(
+                leading = {
+                    Text(
+                        text =
+                            if (isLive || durationMs <= 0) "Live"
+                            else formatTime(seekDrag?.let { (it * durationMs).toLong() } ?: positionMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailing = {
+                    if (!isLive && durationMs > 0) {
+                        Text(
+                            text = formatTime(durationMs),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                value =
+                    seekDrag
+                        ?: (if (durationMs > 0)
+                            (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
+                        else 0f),
+                onValueChange = { seekDrag = it },
+                onValueChangeFinished = {
+                    seekDrag?.let { onSeekTo((it * durationMs).toLong()) }
+                    seekDrag = null
+                },
+                enabled = !isLive && durationMs > 0,
+            )
+            CompanionSliderRow(
+                leading = {
+                    Icon(
+                        imageVector = Icons.Filled.VolumeUp,
+                        contentDescription = "Volume",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailing = {
+                    Text(
+                        text = "${(volume * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                value = volume,
+                onValueChange = onVolume,
+            )
+            CompanionSliderRow(
+                leading = {
+                    Icon(
+                        imageVector = Icons.Filled.Brightness7,
+                        contentDescription = "Brightness",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailing = {
+                    Text(
+                        text = "${(brightness * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                value = brightness,
+                onValueChange = onBrightness,
+            )
+        }
+        }
+    }
+}
+
+@Composable
+private fun CompanionSliderRow(
+    leading: @Composable () -> Unit,
+    trailing: @Composable () -> Unit,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit = {},
+    enabled: Boolean = true,
+) {
+    // 56dp slots: wide enough for "1:23:45", fixed so every slider
+    // spans exactly the same width.
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.width(56.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            leading()
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
+            enabled = enabled,
+            modifier = Modifier.weight(1f),
+        )
+        Box(
+            modifier = Modifier.width(56.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            trailing()
+        }
+    }
+}
+
+/** Unwrap ContextWrappers to the host activity (null if none). */
+private fun hostActivity(context: Context): Activity? {
+    var c: Context = context
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
+}
+
+@Composable
+/** The current video as an options-sheet card (three-dot menu / long-press). */
+private fun ContentItem.toCoreVideoCard(): CoreVideoCard =
+    CoreVideoCard(
+        id = id,
+        title = title,
+        thumbnailUrl = thumbnailUrl,
+        author = author?.name,
+        authorUrl = author?.url,
+        durationMs = durationMs,
+        viewCount = viewCount,
+        publishedAt = publishedAt,
+        url = url,
+    )
 

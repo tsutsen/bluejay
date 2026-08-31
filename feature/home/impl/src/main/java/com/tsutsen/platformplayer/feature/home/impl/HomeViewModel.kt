@@ -56,6 +56,22 @@ class HomeViewModel
         /** Enabled sources (id, name, icon) for the source filter chips. */
         val enabledSources: StateFlow<List<SourceInfo>> = homeRepository.enabledSources
 
+        /** Persisted hidden source-chip ids — restored after app restarts. */
+        val hiddenSources: StateFlow<Set<String>> =
+            settingsRepository.preferences
+                .map { it.homeHiddenSources.toSet() }
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.Lazily,
+                    settingsRepository.preferences.value.homeHiddenSources.toSet(),
+                )
+
+        fun setHomeHiddenSources(ids: Set<String>) {
+            viewModelScope.launch {
+                settingsRepository.updateGeneral("homeHiddenSources", ids.toList())
+            }
+        }
+
         private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Initial)
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
