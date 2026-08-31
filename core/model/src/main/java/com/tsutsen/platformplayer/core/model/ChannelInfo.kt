@@ -18,4 +18,6 @@ data class ChannelInfo(
      * app has a single enabled source (the badge is pointless then).
      */
     val sourceIconUrl: String? = null,
+    /** The source plugin exposes a Shorts content tab for this channel. */
+    val hasShorts: Boolean = false,
 )

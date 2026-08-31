@@ -17,6 +17,13 @@ data class ChannelContentPage(
  * Implementations bridge to the engine (app module) and reuse the shared
  * card mapper + pager flow.
  */
+/**
+ * Channel content types for type-specific tabs. Values mirror the engine's
+ * ResultCapabilities type constants (kept as strings so core/data doesn't
+ * depend on the app module).
+ */
+const val CHANNEL_TYPE_SHORTS = "SHORTS"
+
 interface ChannelRepository {
     /** Resolves and returns channel info. Throws if the url has no client. */
     suspend fun getChannel(url: String): ChannelInfo
@@ -32,11 +39,15 @@ interface ChannelRepository {
     /** Toggles new-video notifications. Returns the new state. */
     suspend fun toggleNotifications(url: String): Boolean
 
-    /** Loads the first page of the channel's contents (newest first). */
-    suspend fun loadInitialContents(url: String): ChannelContentPage
+    /**
+     * Loads the first page of the channel's contents (newest first).
+     * [type] selects a content type tab (e.g. [CHANNEL_TYPE_SHORTS]);
+     * null = the channel's default/mixed contents.
+     */
+    suspend fun loadInitialContents(url: String, type: String? = null): ChannelContentPage
 
     /** Loads the next page; [ChannelContentPage.cards] is the full accumulated list. */
-    suspend fun loadNextPage(url: String): ChannelContentPage
+    suspend fun loadNextPage(url: String, type: String? = null): ChannelContentPage
 
     /** Loads the channel's playlists. */
     suspend fun loadPlaylists(url: String): List<Card>

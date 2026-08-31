@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.ShortText
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -243,6 +244,17 @@ fun ChannelScreen(
                         else -> Unit
                     }
                 }
+                // Shorts tab is capability-gated: tab indices shift when it
+                // is present (Videos=0, Shorts=1?, Playlists, About).
+                val tabs =
+                    buildList {
+                        add(ChannelTab("Videos", Icons.Filled.VideoCall))
+                        if (state.hasShorts) add(ChannelTab("Shorts", Icons.Filled.ShortText))
+                        add(ChannelTab("Playlists", Icons.Filled.PlaylistPlay))
+                        add(ChannelTab("About", Icons.Filled.Description))
+                    }
+                val tabPlaylists = tabs.indexOfFirst { it.label == "Playlists" }
+                val tabShorts = tabs.indexOfFirst { it.label == "Shorts" }
                 Row(modifier = Modifier.fillMaxSize()) {
                     Column(
                         modifier =
@@ -262,22 +274,25 @@ fun ChannelScreen(
                                         ChannelContent(
                                             state = state,
                                             selectedTab = selectedTab,
+                                            tabShorts = tabShorts,
                                             isWide = true,
                                             gridColumns = gridColumns,
                                             onCardClick = onCardClick,
                                             onLoadMore = { viewModel.loadNextPage() },
+                                            onShortsLoadMore = { viewModel.loadShortsNextPage() },
                                             onRetryContent = { viewModel.loadInitialContents() },
                                             onVideoLongClick = { optionsCard = it },
                                         )
                                     } else {
                                         TabRow(selectedTabIndex = selectedTab) {
-                                            TABS.forEachIndexed { index, tab ->
+                                            tabs.forEachIndexed { index, tab ->
                                                 Tab(
                                                     selected = selectedTab == index,
                                                     onClick = {
                                                         selectedTab = index
-                                                        if (index == TAB_PLAYLISTS) {
-                                                            viewModel.loadPlaylists()
+                                                        when (index) {
+                                                            tabPlaylists -> viewModel.loadPlaylists()
+                                                            tabShorts -> viewModel.loadShortsInitial()
                                                         }
                                                     },
                                                     text = { Text(tab.label) },
@@ -287,10 +302,12 @@ fun ChannelScreen(
                                         ChannelContent(
                                             state = state,
                                             selectedTab = selectedTab,
+                                            tabShorts = tabShorts,
                                             isWide = false,
                                             gridColumns = gridColumns,
                                             onCardClick = onCardClick,
                                             onLoadMore = { viewModel.loadNextPage() },
+                                            onShortsLoadMore = { viewModel.loadShortsNextPage() },
                                             onRetryContent = { viewModel.loadInitialContents() },
                                             onVideoLongClick = { optionsCard = it },
                                         )
@@ -301,10 +318,14 @@ fun ChannelScreen(
                     }
 
                     if (isWide) {
-                        ChannelIconRail(selectedTab = selectedTab) { index ->
+                        ChannelIconRail(
+                            tabs = tabs,
+                            selectedTab = selectedTab,
+                        ) { index ->
                             selectedTab = index
-                            if (index == TAB_PLAYLISTS) {
-                                viewModel.loadPlaylists()
+                            when (index) {
+                                tabPlaylists -> viewModel.loadPlaylists()
+                                tabShorts -> viewModel.loadShortsInitial()
                             }
                         }
                     }
@@ -328,31 +349,28 @@ private data class ChannelTab(
     val icon: ImageVector,
 )
 
-private val TABS =
-    listOf(
-        ChannelTab("Videos", Icons.Filled.VideoCall),
-        ChannelTab("Playlists", Icons.Filled.PlaylistPlay),
-        ChannelTab("About", Icons.Filled.Description),
-    )
-
 private const val TAB_VIDEOS = 0
-private const val TAB_PLAYLISTS = 1
-private const val TAB_ABOUT = 2
 
 @Composable
 private fun ChannelContent(
     state: ChannelViewModel.ChannelUiState.Loaded,
     selectedTab: Int,
+    tabShorts: Int,
     isWide: Boolean,
     gridColumns: Int,
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
+    onShortsLoadMore: () -> Unit,
     onRetryContent: () -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
     val watchStates by hiltViewModel<PlayerViewModel>().watchStates.collectAsState()
+    // Indices shift when the Shorts tab is present:
+    // Videos=0, [Shorts=1], Playlists, About.
+    val tabPlaylists = if (state.hasShorts) 2 else 1
+    val tabAbout = tabPlaylists + 1
     when (selectedTab) {
-        TAB_ABOUT -> {
+        tabAbout -> {
             Column(
                 modifier =
                     Modifier
@@ -386,7 +404,58 @@ private fun ChannelContent(
             }
         }
 
-        TAB_PLAYLISTS -> {
+        tabShorts -> {
+            if (state.shortsCards.isEmpty()) {
+                val shortsError = state.shortsError
+                if (state.shortsLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (shortsError != null) {
+                    ErrorState(
+                        message = shortsError,
+                        onRetry = { onShortsLoadMore() },
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize())
+                }
+            } else if (isWide) {
+                WideVideoGrid(
+                    items = state.shortsCards,
+                    hasMore = state.shortsHasMore,
+                    columns = gridColumns,
+                    onCardClick = onCardClick,
+                    onLoadMore = onShortsLoadMore,
+                    onVideoLongClick = onVideoLongClick,
+                )
+            } else {
+                VideoContainer(
+                    items = state.shortsCards,
+                    layout = ContainerLayout.List,
+                    isLoading = false,
+                    hasMorePages = state.shortsHasMore,
+                    onCardClick = onCardClick,
+                    onLoadMore = onShortsLoadMore,
+                ) { card ->
+                    if (card is CoreVideoCard) {
+                        VideoCard(
+                            card = card,
+                            onClick = { onCardClick(card) },
+                            onLongClick = { onVideoLongClick(card) },
+                            watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
+                            isWatched = watchStates[card.url]?.isWatched ?: false,
+                        )
+                    } else {
+                        Box(Modifier.height(1.dp))
+                    }
+                }
+            }
+        }
+
+        tabPlaylists -> {
             if (state.playlists.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -441,7 +510,8 @@ private fun ChannelContent(
                 }
             } else if (isWide) {
                 WideVideoGrid(
-                    state = state,
+                    items = state.cards,
+                    hasMore = state.hasMore,
                     columns = gridColumns,
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
@@ -476,20 +546,21 @@ private fun ChannelContent(
 /** Wide-mode videos: card rows in a single LazyColumn. */
 @Composable
 private fun WideVideoGrid(
-    state: ChannelViewModel.ChannelUiState.Loaded,
+    items: List<Card>,
+    hasMore: Boolean,
     columns: Int,
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     onVideoLongClick: (CoreVideoCard) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val rows = remember(state.cards, columns) { state.cards.chunked(columns) }
+    val rows = remember(items, columns) { items.chunked(columns) }
     ScrollEndReached(
         listState = listState,
         gridState = null,
-        itemCount = state.cards.size,
+        itemCount = items.size,
         isLoading = false,
-        hasMorePages = state.hasMore,
+        hasMorePages = hasMore,
         threshold = 3,
         onEndReached = onLoadMore,
     )
@@ -570,6 +641,7 @@ private fun WideVideoCell(
 
 @Composable
 private fun ChannelIconRail(
+    tabs: List<ChannelTab>,
     selectedTab: Int,
     onSelect: (Int) -> Unit,
 ) {
@@ -581,7 +653,7 @@ private fun ChannelIconRail(
                 .padding(vertical = Tokens.SpaceMd),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        TABS.forEachIndexed { index, tab ->
+        tabs.forEachIndexed { index, tab ->
             IconButton(
                 onClick = { onSelect(index) },
                 modifier = Modifier.padding(vertical = 8.dp),

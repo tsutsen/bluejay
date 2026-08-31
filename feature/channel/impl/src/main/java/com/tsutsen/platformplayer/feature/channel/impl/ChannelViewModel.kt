@@ -2,6 +2,8 @@ package com.tsutsen.platformplayer.feature.channel.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.data.repository.CHANNEL_TYPE_SHORTS
+import com.tsutsen.platformplayer.core.data.repository.ChannelContentPage
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.Card
@@ -54,6 +56,12 @@ class ChannelViewModel
                 val isSubscribed: Boolean = false,
                 val notifyEnabled: Boolean = false,
                 val isRefreshing: Boolean = false,
+                /** Shorts tab (capability-gated by the source plugin). */
+                val shortsCards: List<Card> = emptyList(),
+                val shortsHasMore: Boolean = false,
+                val shortsLoading: Boolean = false,
+                val shortsError: String? = null,
+                val hasShorts: Boolean = false,
             ) : ChannelUiState
         }
 
@@ -77,6 +85,7 @@ class ChannelViewModel
                                 isSubscribed = info.isSubscribed,
                                 notifyEnabled = info.notifyEnabled,
                                 contentLoading = true,
+                                hasShorts = info.hasShorts,
                             )
                         loadInitialContents()
                     }.onFailure { e ->
@@ -153,7 +162,51 @@ class ChannelViewModel
             }
         }
 
-        fun loadPlaylists(force: Boolean = false) {
+        /** Shorts tab first load — called when the tab is selected. */
+    fun loadShortsInitial() {
+        val state = uiState.value as? ChannelUiState.Loaded ?: return
+        if (state.shortsCards.isNotEmpty() || state.shortsLoading) return
+        val url = state.channel.url
+        viewModelScope.launch {
+            _uiState.update { if (it is ChannelUiState.Loaded) it.copy(shortsLoading = true) else it }
+            val page = runCatching { channelRepository.loadInitialContents(url, CHANNEL_TYPE_SHORTS) }
+                .getOrElse { e ->
+                    ChannelContentPage(emptyList(), hasMore = false, error = e.message ?: "Failed to load shorts")
+                }
+            _uiState.update {
+                if (it is ChannelUiState.Loaded) {
+                    it.copy(
+                        shortsCards = page.cards,
+                        shortsHasMore = page.hasMore,
+                        shortsLoading = false,
+                        shortsError = page.error,
+                    )
+                } else it
+            }
+        }
+    }
+
+    fun loadShortsNextPage() {
+        val state = uiState.value as? ChannelUiState.Loaded ?: return
+        if (state.shortsLoading || !state.shortsHasMore) return
+        val url = state.channel.url
+        viewModelScope.launch {
+            _uiState.update { if (it is ChannelUiState.Loaded) it.copy(shortsLoading = true) else it }
+            val page = channelRepository.loadNextPage(url, CHANNEL_TYPE_SHORTS)
+            _uiState.update {
+                if (it is ChannelUiState.Loaded) {
+                    it.copy(
+                        shortsCards = page.cards,
+                        shortsHasMore = page.hasMore,
+                        shortsLoading = false,
+                        shortsError = page.error,
+                    )
+                } else it
+            }
+        }
+    }
+
+    fun loadPlaylists(force: Boolean = false) {
             val state = uiState.value as? ChannelUiState.Loaded ?: return
             if (state.playlists.isNotEmpty() && !force) return
             val url = state.channel.url
@@ -182,6 +235,7 @@ class ChannelViewModel
                                     channel = info,
                                     isSubscribed = info.isSubscribed,
                                     notifyEnabled = info.notifyEnabled,
+                                    hasShorts = info.hasShorts,
                                 )
                             } else {
                                 it
