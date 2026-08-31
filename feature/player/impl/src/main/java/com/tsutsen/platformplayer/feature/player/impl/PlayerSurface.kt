@@ -101,6 +101,24 @@ class PlayerSurface(private val scope: CoroutineScope) {
     val isDraggingFullscreen = mutableStateOf(false)
     val isDraggingShrink = mutableStateOf(false)
     val isDraggingMiniPlayer = mutableStateOf(false)
+
+    /**
+     * Set by the morph/shrink/fullscreen drag-END callbacks. The sync
+     * effects consume it to wait a short grace window before settling:
+     * a committed state flip (minimize / fullscreen / exit) lands a few
+     * frames after the callback (async VM call), and settling to the
+     * opposite target in the meantime would dip and reverse.
+     */
+    var morphDragJustEnded = false
+    var fullscreenDragJustEnded = false
+
+    /**
+     * A morph-to-normal drag committed (release past the threshold).
+     * The fullscreen sync effect folds the shrink axis into the
+     * fullscreen axis on the exit re-run, so the settle is a single-axis
+     * move instead of two parallel animations compounding.
+     */
+    var shrinkCommitPending = false
     val miniPlayerOffsetX = mutableStateOf(0f)
     val miniPlayerOffsetY = mutableStateOf(0f)
 

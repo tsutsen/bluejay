@@ -153,6 +153,15 @@ fun PlayerView(
             easing = FastOutSlowInEasing,
         )
 
+    /**
+     * Grace window between a drag-end callback and the settle animation.
+     * A committed flip (minimize / enter / exit fullscreen) is dispatched
+     * through a viewModelScope.launch, so it lands a few frames after the
+     * callback; without the window the settle would start toward the
+     * opposite target and dip before reversing.
+     */
+    val morphCommitGraceMs = 150L
+
     val player =
         remember(uiState) {
             (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
@@ -165,6 +174,10 @@ fun PlayerView(
     LaunchedEffect(isMinimizedState, surface.isDraggingMorph.value) {
         if (surface.isDraggingMorph.value) return@LaunchedEffect
         val minimized = isMinimizedState ?: return@LaunchedEffect
+        if (surface.morphDragJustEnded) {
+            surface.morphDragJustEnded = false
+            kotlinx.coroutines.delay(morphCommitGraceMs)
+        }
         val target = if (minimized) 1f else 0f
         if (kotlin.math.abs(surface.morphProgress.value - target) > 0.01f) {
             surface.morphProgress.animateTo(target, transitionSpringSpec)
@@ -185,6 +198,21 @@ fun PlayerView(
             return@LaunchedEffect
         }
         val fullscreen = isFullscreenState ?: return@LaunchedEffect
+        if (surface.fullscreenDragJustEnded) {
+            surface.fullscreenDragJustEnded = false
+            kotlinx.coroutines.delay(morphCommitGraceMs)
+        }
+        // A committed morph-to-normal: fold the shrink axis into the
+        // fullscreen axis before the exit animation, so the settle is a
+        // single-axis move (two parallel 300ms animations would compound
+        // and the surface would lag behind then dive).
+        if (!fullscreen && surface.shrinkCommitPending) {
+            surface.shrinkCommitPending = false
+            val effective =
+                surface.fullscreenProgress.value * (1f - surface.shrinkProgress.value)
+            surface.fullscreenProgress.snapTo(effective)
+            surface.shrinkProgress.snapTo(0f)
+        }
         val target = if (fullscreen) 1f else 0f
         if (fullscreen && surface.morphProgress.value < 0.5f) {
             kotlinx.coroutines.delay(50)
@@ -464,15 +492,13 @@ fun PlayerView(
                         },
                         onMorphDragEnd = { dragY ->
                             surface.isDraggingMorph.value = false
+                            surface.morphDragJustEnded = true
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            if (progress > 0.4f) {
-                                viewModel.minimize()
-                            } else {
-                                coroutineScope.launch {
-                                    surface.morphProgress.animateTo(0f, transitionSpringSpec)
-                                }
-                            }
+                            // Commit: the flip lands async — the sync effect animates
+                            // the axis after its grace window. Cancel: the sync
+                            // effect settles the axis back to 0.
+                            if (progress > 0.4f) viewModel.minimize()
                         },
                         onShrinkDragStart = { surface.isDraggingShrink.value = true },
                         onShrinkDrag = { dragY ->
@@ -482,14 +508,15 @@ fun PlayerView(
                         },
                         onShrinkDragEnd = { dragY ->
                             surface.isDraggingShrink.value = false
+                            surface.fullscreenDragJustEnded = true
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
+                            // Commit: the sync effect folds the shrink axis into the
+                            // fullscreen axis, then animates a single axis to 0.
+                            // Cancel: the sync effect settles shrink to 0.
                             if (progress > 0.4f) {
+                                surface.shrinkCommitPending = true
                                 viewModel.exitFullscreen()
-                            } else {
-                                coroutineScope.launch {
-                                    surface.shrinkProgress.animateTo(0f, transitionSpringSpec)
-                                }
                             }
                         },
                         onFullscreenDragStart = { surface.isDraggingFullscreen.value = true },
@@ -502,15 +529,12 @@ fun PlayerView(
                         },
                         onFullscreenDragEnd = { dragY ->
                             surface.isDraggingFullscreen.value = false
+                            surface.fullscreenDragJustEnded = true
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            if (progress > 0.4f) {
-                                viewModel.toggleFullscreen()
-                            } else {
-                                coroutineScope.launch {
-                                    surface.fullscreenProgress.animateTo(0f, transitionSpringSpec)
-                                }
-                            }
+                            // Commit: the sync effect animates to fullscreen after
+                            // its grace window. Cancel: it settles back to 0.
+                            if (progress > 0.4f) viewModel.toggleFullscreen()
                         },
                     )
                 }
@@ -638,28 +662,6 @@ fun PlayerView(
                         onSubtitleToggle = remember { { viewModel.toggleSubtitles() } },
                         onMinimize = remember { { viewModel.minimize() } },
                         onExpand = remember { { viewModel.exitMiniPlayer() } },
-                        onMorphDragStart = remember { { surface.isDraggingMorph.value = true } },
-                        onMorphDrag =
-                            remember {
-                                { dragY: Float ->
-                                    val progress = (dragY / surface.dragTravelPx()).coerceIn(0f, 1f)
-                                    coroutineScope.launch { surface.morphProgress.snapTo(progress) }
-                                }
-                            },
-                        onMorphDragEnd =
-                            remember {
-                                { dragY: Float ->
-                                    surface.isDraggingMorph.value = false
-                                    val progress = (dragY / surface.dragTravelPx()).coerceIn(0f, 1f)
-                                    if (progress > 0.4f) {
-                                        viewModel.minimize()
-                                    } else {
-                                        coroutineScope.launch {
-                                            surface.morphProgress.animateTo(0f, transitionSpringSpec)
-                                        }
-                                    }
-                                }
-                            },
                         onMiniOffsetChanged =
                             remember
                             {

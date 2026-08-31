@@ -55,13 +55,13 @@ class PlayerGestureRecognizer(
      * [frames] are hold frames to emit (an END frame when a hold hands
      * over to a slide, ACTIVE frames while a hold modulates).
      * [SlideStart] means the decision phase resolved: take over with
-     * the matching execution loop — a live morph drag, a frame-driven
-     * slide ([startFrame] != null), or a plain drain (unbound slot).
+     * the frame-driven execution loop ([startFrame] != null) or a
+     * plain drain (unbound slot). Morph slides ride the same frame
+     * path — the handler routes their frames to the drag callbacks.
      */
     sealed interface MoveResult {
         data class Idle(val frames: List<GestureFrame> = emptyList()) : MoveResult
         data class SlideStart(
-            val morphDrag: Boolean,
             val startFrame: GestureFrame?,
             val frames: List<GestureFrame> = emptyList()
         ) : MoveResult
@@ -87,11 +87,9 @@ class PlayerGestureRecognizer(
     private var downPos = Offset.Zero
     private var sector = GestureSector.MIDDLE_CENTER
     private var cfg: GestureConfig? = null
-    private var mode: PlayerOverlayMode? = null
 
     private var decisionIsSlide = false
     private var slideType = GestureType.SWIPE_VERTICAL
-    private var slideDownward = false
     private var holdFired = false
     // Once a speed-hold's drift goes horizontal, that decision is
     // locked — a later vertical drift must not intercept it.
@@ -124,7 +122,6 @@ class PlayerGestureRecognizer(
         downPos = Offset(x, y)
         sector = GestureSector.fromPosition(x, y, widthPx, heightPx)
         this.cfg = cfg
-        this.mode = overlayMode
 
         val dx = x - lastTapPos.x
         val dy = y - lastTapPos.y
@@ -178,9 +175,7 @@ class PlayerGestureRecognizer(
                 decisionIsSlide = true
                 slideType = if (isHorizontal) GestureType.SWIPE_HORIZONTAL
                 else GestureType.SWIPE_VERTICAL
-                slideDownward = !isHorizontal && dy > 0
                 return MoveResult.SlideStart(
-                    morphDrag = isMorphDrag(),
                     startFrame = beginSlide(timeMs),
                     frames = frames
                 )
@@ -294,10 +289,8 @@ class PlayerGestureRecognizer(
         downPos = Offset.Zero
         sector = GestureSector.MIDDLE_CENTER
         cfg = null
-        mode = null
         decisionIsSlide = false
         slideType = GestureType.SWIPE_VERTICAL
-        slideDownward = false
         holdFired = false
         holdHorizontalLocked = false
         maxDist = 0f
@@ -328,26 +321,13 @@ class PlayerGestureRecognizer(
     }
 
     /**
-     * A downward vertical slide from the top row (fullscreen) or from any
-     * sector in normal/compact mode is a live morph-to-floating drag.
-     */
-    private fun isMorphDrag(): Boolean {
-        val m = mode ?: return false
-        val isTopRow = sector.row == 0
-        return (m == PlayerOverlayMode.NORMAL ||
-            m == PlayerOverlayMode.COMPACT ||
-            (m == PlayerOverlayMode.FULLSCREEN && isTopRow)) &&
-            slideType == GestureType.SWIPE_VERTICAL &&
-            slideDownward
-    }
-
-    /**
-     * Resolve the slide's action and emit its START frame.
-     * Returns null for morph drags and unbound slots.
+     * Resolve the slide's action and emit its START frame. Returns null
+     * for unbound slots. Morph actions emit frames like any other — the
+     * handler routes them to the drag callbacks, so the user's per-slot
+     * assignment always decides what a slide does.
      */
     private fun beginSlide(timeMs: Long): GestureFrame? {
         val cfg = cfg ?: return null
-        if (isMorphDrag()) return null
         val action = cfg.resolve(sector, slideType)
         if (action == GestureAction.NONE) return null
         activeAction = action

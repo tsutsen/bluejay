@@ -56,9 +56,10 @@ private enum class Decision { TAP, SLIDE }
  *      event stream is the decision itself); the finger lifts → single tap.
  *   3. **Execution phase** — the recognised gesture runs to pointer-up:
  *      continuous gestures emit START → ACTIVE… → END frames through
- *      [handler]. END is dispatched exactly once (try/finally), even if
- *      the player leaves composition mid-gesture, so indicators and
- *      playback speed can never stick.
+ *      [handler] (morph slides included — the handler routes their
+ *      frames to the drag callbacks). END is dispatched exactly once
+ *      (try/finally), even if the player leaves composition mid-gesture,
+ *      so indicators and playback speed can never stick.
  *
  * The pointerInput is never restarted on mode / scrub changes — those
  * are read per gesture through [rememberUpdatedState] — so a
@@ -79,9 +80,6 @@ fun PlayerGestureSystem(
     handler: GestureActionHandler,
     isScrubbing: Boolean,
     onTap: () -> Unit,
-    onMorphDragStart: () -> Unit,
-    onMorphDrag: (dragY: Float) -> Unit,
-    onMorphDragEnd: (dragY: Float) -> Unit,
     // Floating-mode drag params (only used when overlayMode == FLOATING)
     onOffsetChanged: (Float, Float) -> Unit = { _, _ -> },
     onExpand: () -> Unit = {},
@@ -99,9 +97,6 @@ fun PlayerGestureSystem(
     val currentOverlayMode by rememberUpdatedState(overlayMode)
     val currentIsScrubbing by rememberUpdatedState(isScrubbing)
     val currentOnTap by rememberUpdatedState(onTap)
-    val currentOnMorphDragStart by rememberUpdatedState(onMorphDragStart)
-    val currentOnMorphDrag by rememberUpdatedState(onMorphDrag)
-    val currentOnMorphDragEnd by rememberUpdatedState(onMorphDragEnd)
     val currentOnExpand by rememberUpdatedState(onExpand)
     val currentOnOffsetChanged by rememberUpdatedState(onOffsetChanged)
     val currentDoubleTapSlopPx by rememberUpdatedState(with(density) { DOUBLE_TAP_SLOP_DP.dp.toPx() })
@@ -200,7 +195,6 @@ fun PlayerGestureSystem(
                                 val downPos = down.position
                                 val downTime = System.currentTimeMillis()
                                 val pointerId = down.id
-                                val downY = downPos.y
 
                                 // A new down cancels any pending deferred single-tap.
                                 pendingTapJob?.cancel()
@@ -304,27 +298,12 @@ fun PlayerGestureSystem(
                                     }
 
                                     // ---- 3. Execution phase ----
-                                    if (slide != null) {
-                                        if (slide.morphDrag) {
-                                            // Live morph-to-floating drag: callbacks, no frames.
-                                            currentOnMorphDragStart()
-                                            while (true) {
-                                                val event = awaitPointerEvent()
-                                                val change = event.changes.lastOrNull { it.id == pointerId } ?: continue
-                                                if (!change.pressed) {
-                                                    currentOnMorphDragEnd(
-                                                        (change.position.y - downY).coerceAtLeast(0f)
-                                                    )
-                                                    recognizer.onSlideEnd(System.currentTimeMillis())
-                                                        ?.let { currentHandler.handleGestureFrame(it) }
-                                                    break
-                                                }
-                                                change.consume()
-                                                currentOnMorphDrag(
-                                                    (change.position.y - downY).coerceAtLeast(0f)
-                                                )
-                                            }
-                                        } else if (slide.startFrame != null) {
+                                    // Morph slides use the same frame path as every
+                                    // other slide: the START/ACTIVE/END frames carry
+                                    // the resolved action, and the handler routes
+                                    // morph frames to the onMorphDrag*/onShrinkDrag*/
+                                    // onFullscreenDrag* callbacks.
+                                    if (slide != null && slide.startFrame != null) {
                                             currentHandler.handleGestureFrame(slide.startFrame)
                                             while (true) {
                                                 val event = awaitPointerEvent()
@@ -350,7 +329,6 @@ fun PlayerGestureSystem(
                                                 change.consume()
                                             }
                                         }
-                                    }
                                 } finally {
                                     holdWatchdog.cancel()
                                     recognizer.cancel(System.currentTimeMillis())

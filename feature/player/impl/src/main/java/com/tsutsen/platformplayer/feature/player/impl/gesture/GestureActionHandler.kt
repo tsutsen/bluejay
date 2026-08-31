@@ -120,7 +120,13 @@ class PlayerGestureActionHandler(
             GestureAction.MORPH_TO_FULLSCREEN -> handleMorphToFullscreen(frame)
             GestureAction.MORPH_TO_NORMAL -> handleMorphToNormal(frame)
             GestureAction.MORPH_VERTICAL -> handleMorphVertical(frame)
-            // Instant actions handled via handleInstantAction
+            // Jumps assigned to a swipe or hold slot fire once at gesture
+            // start (double-tap jumps go through handleInstantAction).
+            GestureAction.REWIND_BACK,
+            GestureAction.REWIND_FORWARD ->
+                if (frame.phase == GesturePhase.START) handleAccumulatedSeek(frame.action)
+
+            // Anything else: no-op.
             else -> {}
         }
     }
