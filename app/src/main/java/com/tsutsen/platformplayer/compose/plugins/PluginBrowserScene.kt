@@ -40,6 +40,7 @@ import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginDialog
 import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
+import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchOptionCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
@@ -216,6 +217,28 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                                 if (isEnabled) {
                                     Logger.i(TAG, "Enabling ${plugin.name}")
                                     StatePlatform.instance.enableClient(listOf(plugin.id))
+                                    // Launch auto-update only checks plugins that
+                                    // are already enabled — a freshly enabled
+                                    // plugin would stay on its old version. Update
+                                    // it here, when it becomes relevant.
+                                    if (Settings.instance.plugins.autoUpdatePlugins) {
+                                        installedPlugins.value
+                                            .find { it.id == plugin.id }
+                                            ?.let { cfg ->
+                                                StatePlugins.instance
+                                                    .checkForUpdates(cfg)
+                                                    ?.sourceUrl
+                                                    ?.let { url ->
+                                                        Logger.i(TAG, "Installing update for newly enabled ${plugin.name}")
+                                                        StatePlugins.instance.installPlugins(
+                                                            context,
+                                                            coroutineScope,
+                                                            listOf(url),
+                                                            assumeReinstall = true,
+                                                        )
+                                                    }
+                                            }
+                                    }
                                 } else {
                                     Logger.i(TAG, "Disabling ${plugin.name}")
                                     val newEnabled =
@@ -388,6 +411,21 @@ fun PluginDetailScene(
                             .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    // Action-button state — the buttons themselves are
+                    // rendered at the top, right under the description card.
+                    val descriptor = StatePlugins.instance.getPlugin(config!!.id)
+                    val hasAuth = descriptor?.getAuth() != null
+                    var showImportSheet by remember { mutableStateOf(false) }
+                    var importType by remember { mutableStateOf<String?>(null) }
+                    var importGeneration by remember { mutableIntStateOf(0) }
+                    var importTotal by remember { mutableIntStateOf(-1) }
+                    var importItems by remember { mutableStateOf<List<ImportItem>>(emptyList()) }
+                    var importSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
+                    var importResolving by remember { mutableStateOf(false) }
+                    var importError by remember { mutableStateOf<String?>(null) }
+                    var isImporting by remember { mutableStateOf(false) }
+                    var importedCount by remember { mutableIntStateOf(0) }
+
                     // Header card: name, description, and one secondary
                     // row with version, author and the (clickable)
                     // source URL.
@@ -486,23 +524,6 @@ fun PluginDetailScene(
                         Text("Check for Updates")
                     }
 
-                    // Plugin settings
-                    if (isPluginInstalled && pluginSettings != null) {
-                        PluginSettingsSection(
-                            config = config!!,
-                            settings = pluginSettings!!,
-                            onSettingChanged = { variable, value ->
-                                // New map reference: in-place mutation of the
-                                // remembered HashMap is invisible to Compose
-                                // (the switch would not move until the screen
-                                // recomposed for another reason).
-                                pluginSettings =
-                                    pluginSettings?.toMutableMap()?.apply { set(variable, value) }
-                                pluginSettingsChanged = true
-                            },
-                        )
-                    }
-
                     // Authentication buttons
                     if (config!!.authentication != null) {
                         val context = LocalContext.current
@@ -578,20 +599,7 @@ fun PluginDetailScene(
                     }
 
                     // Import buttons (shown when plugin has auth)
-                    val descriptor = StatePlugins.instance.getPlugin(config!!.id)
-                    val hasAuth = descriptor?.getAuth() != null
                     if (hasAuth) {
-                        var showImportSheet by remember { mutableStateOf(false) }
-                        var importType by remember { mutableStateOf<String?>(null) }
-                        var importGeneration by remember { mutableIntStateOf(0) }
-                        var importTotal by remember { mutableIntStateOf(-1) }
-                        var importItems by remember { mutableStateOf<List<ImportItem>>(emptyList()) }
-                        var importSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
-                        var importResolving by remember { mutableStateOf(false) }
-                        var importError by remember { mutableStateOf<String?>(null) }
-                        var isImporting by remember { mutableStateOf(false) }
-                        var importedCount by remember { mutableIntStateOf(0) }
-
                         Button(
                             onClick = {
                                 importType = "subscriptions"
@@ -639,11 +647,46 @@ fun PluginDetailScene(
                         ) {
                             Text("Import Playlists")
                         }
+                    }
 
-                        // Import sheet — resolves each URL one by one (channel name +
-                        // thumbnail, playlist name + video count) and shows live
-                        // "loaded/total" progress, like the legacy app.
-                        if (showImportSheet) {
+                    // Uninstall button
+                    OutlinedButton(
+                        onClick = {
+                            Logger.i(TAG, "Uninstall button clicked")
+                            // TODO: Implement uninstall functionality
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                        colors =
+                            ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error,
+                            ),
+                    ) {
+                        Text("Uninstall")
+                    }
+
+                    // Plugin settings
+                    if (isPluginInstalled && pluginSettings != null) {
+                        PluginSettingsSection(
+                            config = config!!,
+                            settings = pluginSettings!!,
+                            onSettingChanged = { variable, value ->
+                                // New map reference: in-place mutation of the
+                                // remembered HashMap is invisible to Compose
+                                // (the switch would not move until the screen
+                                // recomposed for another reason).
+                                pluginSettings =
+                                    pluginSettings?.toMutableMap()?.apply { set(variable, value) }
+                                pluginSettingsChanged = true
+                            },
+                        )
+                    }
+
+                    // Import sheet (overlay — its buttons live with the other
+                    // actions at the top of the screen).
+                    if (hasAuth && showImportSheet) {
                             val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                             ModalBottomSheet(
                                 onDismissRequest = { showImportSheet = false },
@@ -928,25 +971,6 @@ fun PluginDetailScene(
                                 }
                             }
                         }
-                    }
-
-                    // Uninstall button
-                    OutlinedButton(
-                        onClick = {
-                            Logger.i(TAG, "Uninstall button clicked")
-                            // TODO: Implement uninstall functionality
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                        colors =
-                            ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error,
-                            ),
-                    ) {
-                        Text("Uninstall")
-                    }
                 }
             }
         }

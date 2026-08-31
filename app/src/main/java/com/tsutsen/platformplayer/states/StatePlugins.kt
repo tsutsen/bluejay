@@ -108,12 +108,13 @@ class StatePlugins {
     suspend fun checkForUpdates(): List<Pair<SourcePluginConfig, SourcePluginConfig>> = withContext(Dispatchers.IO) {
         var configs = mutableListOf<Pair<SourcePluginConfig, SourcePluginConfig>>()
         val updatesAvailableFor = hashSetOf<String>()
-        for (availableClient in StatePlatform.instance.getAvailableClients().filter { it is JSClient && it.descriptor.appSettings.checkForUpdates }) {
+        // Only ENABLED plugins: updating a disabled plugin wastes network
+        // and tears down/installs a runtime nobody is using. Disabled
+        // plugins get checked when they are enabled (PluginBrowserScene).
+        for (availableClient in StatePlatform.instance.getEnabledClients().filter { it is JSClient && it.descriptor.appSettings.checkForUpdates }) {
             if (availableClient !is JSClient) {
                 continue
             }
-            if(!Settings.instance.plugins.checkDisabledPluginsForUpdates && !StatePlatform.instance.isClientEnabled(availableClient.id))
-                continue;
 
             val newConfig = checkForUpdates(availableClient.config);
             if (newConfig != null) {
