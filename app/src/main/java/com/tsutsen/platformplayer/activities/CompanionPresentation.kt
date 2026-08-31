@@ -1604,14 +1604,14 @@ private fun CompanionControlRow(
 ) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+            .fillMaxWidth(),
     ) {
         val tileModifier: Modifier = Modifier.weight(1f).height(80.dp)
         OptionTileView(
             OptionTile(label = "Previous", icon = Icons.Filled.SkipPrevious, onClick = onPrevious),
             modifier = tileModifier,
             showLabel = false,
+            outerPadding = 0.dp
         )
         // Seek icons without the baked-in "10" digit — plain rewind/ffwd.
         OptionTileView(
