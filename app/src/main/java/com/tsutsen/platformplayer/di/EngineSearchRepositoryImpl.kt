@@ -40,6 +40,12 @@ class EngineSearchRepositoryImpl
 
         init {
             publishEnabledSources()
+            // The enabled set changes at runtime (plugin toggles, auto
+            // updates) — keep the dropdown's source list live instead of
+            // requiring an app restart.
+            StatePlatform.instance.onEnabledClientsChanged.subscribe {
+                publishEnabledSources()
+            }
         }
 
         private fun publishEnabledSources() {

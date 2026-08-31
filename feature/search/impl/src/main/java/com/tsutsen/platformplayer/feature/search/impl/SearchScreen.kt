@@ -13,6 +13,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -426,9 +427,11 @@ fun SearchScreen(
                                     },
                                     multiSelect = true,
                                     onPick = { source ->
+                                        // Tap toggles ONLY this item (empty
+                                        // selection = everything checked).
                                         val next =
                                             if (selectedSources.isEmpty()) {
-                                                setOf(source.id)
+                                                allSourceIds - source.id
                                             } else if (source.id in selectedSources) {
                                                 selectedSources - source.id
                                             } else {
@@ -438,6 +441,10 @@ fun SearchScreen(
                                         viewModel.setSelectedSources(
                                             if (next == allSourceIds) emptySet() else next,
                                         )
+                                    },
+                                    onLongPick = { source ->
+                                        // Long-press: select only this one.
+                                        viewModel.setSelectedSources(setOf(source.id))
                                     },
                                 )
                             }
@@ -834,6 +841,9 @@ private fun SwipeToDeleteRow(
  * Dropdown content with the selection element (radio / checkbox) to the
  * right of the label. Radio variant: the caller closes the menu on pick.
  * Checkbox variant ([multiSelect]): the menu stays open after a pick.
+ *
+ * [onLongPick] (optional): long-pressing an item calls this instead of
+ * [onPick] — used for "select only this one" in multiselect menus.
  */
 @Composable
 private fun <T> SelectionDropdownItems(
@@ -842,6 +852,7 @@ private fun <T> SelectionDropdownItems(
     isSelected: (T) -> Boolean,
     multiSelect: Boolean,
     onPick: (T) -> Unit,
+    onLongPick: ((T) -> Unit)? = null,
 ) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         items.forEach { item ->
@@ -849,7 +860,12 @@ private fun <T> SelectionDropdownItems(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .clickable { onPick(item) }
+                        .pointerInput(item) {
+                            detectTapGestures(
+                                onTap = { onPick(item) },
+                                onLongPress = { onLongPick?.invoke(item) },
+                            )
+                        }
                         .padding(horizontal = Tokens.SpaceMd, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
