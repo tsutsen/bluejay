@@ -187,6 +187,8 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
+            // Same card rhythm as the other settings sections.
+            verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
         ) {
             items(plugins, key = { it.id }) { plugin ->
                 SettingsSwitchOptionCard(
@@ -200,7 +202,6 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                             plugin.description
                         },
                     checked = plugin.isEnabled,
-                    verticalGap = 0.dp,
                     onCheckedChange = { isEnabled ->
                         Logger.i(TAG, "Toggle ${plugin.name}: $isEnabled")
                         // Optimistic: flip the switch immediately, run the slow V8

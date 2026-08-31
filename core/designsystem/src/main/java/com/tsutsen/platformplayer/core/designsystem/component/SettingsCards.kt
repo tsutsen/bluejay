@@ -28,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -173,15 +172,13 @@ fun SettingsSwitchOptionCard(
     onCheckedChange: (Boolean) -> Unit,
     onClick: () -> Unit,
     iconUrl: String? = null,
-    /** Half-gap above and below the card; adjacent cards gap by 2× this. */
-    verticalGap: Dp = 2.dp,
 ) {
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(vertical = verticalGap),
+                .padding(vertical = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
