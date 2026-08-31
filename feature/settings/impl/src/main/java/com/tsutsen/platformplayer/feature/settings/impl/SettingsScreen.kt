@@ -721,6 +721,7 @@ private val dualTabNames =
         "chapters" to "Chapters",
         "recommended" to "Recommended",
         "queue" to "Queue",
+        "dot" to "·",
     )
 
 private val dualPageOrderNames =

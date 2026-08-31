@@ -15,10 +15,10 @@ data class AppPreferences(
     val dualScreen: Boolean = false,
     val dualScreenPages: List<String> = listOf("video", "library", "home"),
     val dualScreenVideoTabs: List<String> =
-        listOf("info", "controls", "comments", "chapters", "recommended", "queue"),
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot"),
     /** Display order of the enabled video-page tabs (Settings > Dual screen). */
     val dualScreenVideoTabOrder: List<String> =
-        listOf("info", "controls", "comments", "chapters", "recommended", "queue"),
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot"),
     /** Order of the elements on the second screen's video page. */
     val dualScreenPageOrder: List<String> = listOf("controls", "video", "tabs"),
     val dualScreenLibrarySlots: List<String> =

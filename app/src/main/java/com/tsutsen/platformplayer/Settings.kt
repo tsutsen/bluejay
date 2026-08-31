@@ -97,10 +97,10 @@ class Settings {
     var dualScreen: Boolean = false
     var dualScreenPages: List<String> = listOf("video", "library", "home")
     var dualScreenVideoTabs: List<String> =
-        listOf("info", "controls", "comments", "chapters", "recommended", "queue")
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
     // Second-screen video page: display order of the enabled tabs.
     var dualScreenVideoTabOrder: List<String> =
-        listOf("info", "controls", "comments", "chapters", "recommended", "queue")
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
     // Second-screen video page: order of the elements (controls row, video
     // header, tab strip).
     var dualScreenPageOrder: List<String> = listOf("controls", "video", "tabs")
@@ -362,7 +362,7 @@ class Settings {
                     // enable them so the new tabs appear without a manual
                     // settings round-trip (user order is preserved).
                     val canonical =
-                        listOf("info", "controls", "comments", "chapters", "recommended", "queue")
+                        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
                     it.dualScreenVideoTabs += canonical.filter { key -> key !in it.dualScreenVideoTabs }
                 }
         }

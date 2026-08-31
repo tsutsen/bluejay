@@ -319,7 +319,7 @@ private fun CompanionContent(
     // Configured order wins; canonical keys appended as fallback (older
     // saves predate info/controls), then filtered to the enabled set.
     val allVideoTabKeys =
-        listOf("info", "controls", "comments", "chapters", "recommended", "queue")
+        listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
     val videoTabKeys =
         (prefs.dualScreenVideoTabOrder + allVideoTabKeys)
             .distinct()
@@ -857,6 +857,9 @@ private fun VideoPageTabs(
                                 )
                             },
                         )
+                    } else if (activeTab == "dot") {
+                        // The distraction-free tab: just the video.
+                        Unit
                     } else if (activeTab == "comments" && isLive) {
                         // Live stream: the comments slot becomes the live
                         // chat, same as the main player. Vertical, fills the
@@ -1131,6 +1134,7 @@ private fun String.companionTabLabel(): String =
         "comments" -> "Comments"
         "chapters" -> "Chapters"
         "recommended" -> "Recommended"
+        "dot" -> "·"
         else -> "Queue"
     }
 
@@ -1830,7 +1834,9 @@ private fun CompanionControlsTab(
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            // Distribute the three rows across the card height —
+            // spacedBy left a dead zone below them.
+            verticalArrangement = Arrangement.SpaceEvenly,
         ) {
             CompanionSliderRow(
                 leading = {
