@@ -13,4 +13,11 @@ data class ChannelInfo(
     val links: Map<String, String>,
     val isSubscribed: Boolean,
     val notifyEnabled: Boolean = false,
+    /**
+     * Icon of the source (plugin) this channel comes from — null when the
+     * app has a single enabled source (the badge is pointless then).
+     */
+    val sourceIconUrl: String? = null,
+    /** The source plugin exposes a Shorts content tab for this channel. */
+    val hasShorts: Boolean = false,
 )

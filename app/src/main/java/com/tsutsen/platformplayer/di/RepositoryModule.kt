@@ -5,6 +5,7 @@ import com.tsutsen.platformplayer.core.data.repository.CastingRepository
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
+import com.tsutsen.platformplayer.core.data.repository.LiveChatRepository
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
@@ -37,6 +38,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindChannelRepository(impl: EngineChannelRepositoryImpl): ChannelRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLiveChatRepository(impl: LiveChatRepositoryImpl): LiveChatRepository
 
     @Binds
     @Singleton

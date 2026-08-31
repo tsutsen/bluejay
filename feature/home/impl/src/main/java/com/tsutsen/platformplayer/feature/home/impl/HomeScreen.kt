@@ -1,10 +1,18 @@
 package com.tsutsen.platformplayer.feature.home.impl
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -49,6 +57,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val gridColumns by viewModel.gridColumns.collectAsState()
+    val enabledSources by viewModel.enabledSources.collectAsState()
     // Paused while this keep-alive tab is hidden (LocalTabActive).
     val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())
     val isWide = rememberIsWide()
@@ -62,37 +71,84 @@ fun HomeScreen(
         }
 
         is HomeUiState.Loaded -> {
-            if (state.items.isEmpty() && !state.isLoading && state.error == null) {
-                EmptyState(
-                    message = "No content yet",
-                    actionLabel = "Tap to refresh",
-                    onAction = { viewModel.refresh() },
-                )
-            } else if (state.error != null) {
-                ErrorState(
-                    message = state.error,
-                    onRetry = { viewModel.retry() },
-                )
-            } else {
-                HomeFeedContent(
-                    cards = state.items,
-                    isLoading = state.isLoading,
-                    hasMorePages = state.hasMorePages,
-                    isWide = isWide,
-                    gridColumns = gridColumns,
-                    watchStates = watchStates,
-                    isRefreshing = state.isRefreshing,
-                    onCardClick = { card ->
-                        when (card) {
-                            is VideoCard -> playerViewModel.play(card)
-                            is ChannelCard -> navigator.navigateToChannel(card.url)
-                            else -> Unit
+            // One chip per enabled source, shown only with >1 source. Each
+            // chip is an independent toggle (all on by default, like the
+            // Subs filters): cards from a hidden source drop out of the feed.
+            var hiddenSources by remember { mutableStateOf(setOf<String>()) }
+            val visibleItems =
+                if (hiddenSources.isEmpty()) {
+                    state.items
+                } else {
+                    state.items.filter { it.sourceId == null || it.sourceId !in hiddenSources }
+                }
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (enabledSources.size > 1) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(
+                                    horizontal = Tokens.SpaceLg,
+                                    vertical = Tokens.SpaceXs,
+                                ),
+                        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+                    ) {
+                        enabledSources.forEach { source ->
+                            FilterChip(
+                                selected = source.id !in hiddenSources,
+                                onClick = {
+                                    hiddenSources =
+                                        if (source.id in hiddenSources) {
+                                            hiddenSources - source.id
+                                        } else {
+                                            hiddenSources + source.id
+                                        }
+                                },
+                                label = { Text(source.name) },
+                            )
                         }
-                    },
-                    onVideoLongClick = { optionsCard = it },
-                    onLoadMore = { viewModel.loadNextPage() },
-                    onRefresh = { viewModel.refresh() },
-                )
+                    }
+                }
+                val noSourcesSelected =
+                    enabledSources.isNotEmpty() && enabledSources.all { it.id in hiddenSources }
+                if (visibleItems.isEmpty() && !state.isLoading && state.error == null) {
+                    if (noSourcesSelected) {
+                        EmptyState(message = "No sources selected")
+                    } else {
+                        EmptyState(
+                            message = "No content yet",
+                            actionLabel = "Tap to refresh",
+                            onAction = { viewModel.refresh() },
+                        )
+                    }
+                } else if (state.error != null) {
+                    ErrorState(
+                        message = state.error,
+                        onRetry = { viewModel.retry() },
+                    )
+                } else {
+                    HomeFeedContent(
+                        cards = visibleItems,
+                        isLoading = state.isLoading,
+                        hasMorePages = state.hasMorePages,
+                        isWide = isWide,
+                        gridColumns = gridColumns,
+                        watchStates = watchStates,
+                        isRefreshing = state.isRefreshing,
+                        onCardClick = { card ->
+                            when (card) {
+                                is VideoCard -> playerViewModel.play(card)
+                                is ChannelCard -> navigator.navigateToChannel(card.url)
+                                else -> Unit
+                            }
+                        },
+                        onVideoLongClick = { optionsCard = it },
+                        onLoadMore = { viewModel.loadNextPage() },
+                        onRefresh = { viewModel.refresh() },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
 

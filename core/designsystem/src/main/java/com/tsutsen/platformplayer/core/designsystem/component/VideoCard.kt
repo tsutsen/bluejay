@@ -92,6 +92,13 @@ fun VideoCard(
                     contentScale = ContentScale.Crop,
                 )
 
+                // LIVE badge (top-left) — same red pill as the player header.
+                if (card.isLive) {
+                    LiveBadge(modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
+                } else if (card.isClip) {
+                    ClipBadge(modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
+                }
+
                 // In-progress download: percentage + bar across the bottom
                 if (downloadProgress != null) {
                     Column(
@@ -306,7 +313,12 @@ fun VideoCardPills(
                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(Tokens.RadiusSm)),
                     contentScale = ContentScale.Crop,
                 )
-                if (author != null) {
+                if (card.isLive) {
+                    LiveBadge(modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
+                } else if (card.isClip) {
+                    ClipBadge(modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
+                }
+                if (author != null && !card.isLive && !card.isClip) {
                     ThumbnailPill(text = author, modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
                 }
                 if (viewCount != null) {
@@ -421,6 +433,56 @@ fun VideoCardFull(
                 }
             }
         }
+    }
+}
+
+/** Red LIVE pill, top-left of live-stream thumbnails (matches the player). */
+@Composable
+private fun LiveBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .background(Color(0xFFE60000))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color.White),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "LIVE",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+/** Grey CLIP pill, top-left of clip thumbnails (Twitch clips are ~30 s). */
+@Composable
+private fun ClipBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .background(Color(0xCC202124))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "CLIP",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

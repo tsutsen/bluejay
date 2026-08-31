@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
@@ -271,44 +272,54 @@ private fun QueueRow(
         Spacer(modifier = Modifier.width(4.dp))
         // Move buttons where the drag dots were: up/down in the queue.
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            IconButton(
-                onClick = onMoveUp,
+            QueueMoveButton(
+                imageVector = Icons.Outlined.ExpandLess,
+                contentDescription = "Move up in queue",
                 enabled = canMoveUp,
-                shape = RoundedCornerShape(10.dp),
-                modifier =
-                    Modifier
-                        .size(34.dp)
-                        .background(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            RoundedCornerShape(10.dp),
-                        ),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.ExpandLess,
-                    contentDescription = "Move up in queue",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            IconButton(
-                onClick = onMoveDown,
+                onClick = onMoveUp,
+            )
+            QueueMoveButton(
+                imageVector = Icons.Outlined.ExpandMore,
+                contentDescription = "Move down in queue",
                 enabled = canMoveDown,
-                shape = RoundedCornerShape(10.dp),
-                modifier =
-                    Modifier
-                        .size(34.dp)
-                        .background(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            RoundedCornerShape(10.dp),
-                        ),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.ExpandMore,
-                    contentDescription = "Move down in queue",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
+                onClick = onMoveDown,
+            )
         }
+    }
+}
+
+/**
+ * Up/down queue-move arrow. Allowed: primary container. Not allowed: dimmed
+ * surface — the color cross-fades (both directions) when enabledness flips,
+ * so the row visibly "arms" as it moves.
+ */
+@Composable
+private fun QueueMoveButton(
+    imageVector: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val targetBg = if (enabled) scheme.primaryContainer else scheme.surfaceVariant
+    val targetTint = if (enabled) scheme.onPrimaryContainer else scheme.onSurfaceVariant
+    val bg by animateColorAsState(targetBg, animationSpec = tween(200), label = "moveBg")
+    val tint by animateColorAsState(targetTint, animationSpec = tween(200), label = "moveTint")
+
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(10.dp),
+        modifier =
+            Modifier
+                .size(34.dp)
+                .background(bg, RoundedCornerShape(10.dp)),
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }

@@ -110,6 +110,8 @@ public class ReusableRefreshPager<T>: INestedPager<T>, IReusablePager<T> {
     val onPagerChanged = Event1<IPager<T>>()
     val onPagerError = Event1<Throwable>()
 
+    val pendingPagers: Int get() = _pager.pendingPagers
+
     constructor(subPager: IRefreshPager<T>) {
         this._pager = subPager;
         _currentPage = this;
@@ -166,6 +168,8 @@ public class ReusableRefreshPager<T>: INestedPager<T>, IReusablePager<T> {
 
         override val onPagerChanged = Event1<IPager<T>>();
         override val onPagerError = Event1<Throwable>();
+
+        override val pendingPagers: Int get() = _parent.pendingPagers
 
 
         override fun getCurrentPager(): IPager<T> {

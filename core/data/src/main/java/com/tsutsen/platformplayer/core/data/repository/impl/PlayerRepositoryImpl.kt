@@ -35,10 +35,13 @@ import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
+import com.tsutsen.platformplayer.core.data.repository.VideoAudioTrack
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
+import com.tsutsen.platformplayer.core.data.repository.VideoStreamOption
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.data.service.PlayerService
 import com.tsutsen.platformplayer.core.database.dao.HistoryDao
+import com.tsutsen.platformplayer.core.model.AudioTrackInfo
 import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
@@ -137,6 +140,8 @@ class PlayerRepositoryImpl(
     // via [applyTrackSelectionParameters] and re-applied to each new player.
     private var selectedQuality: String = "Auto"
     private var selectedSubtitle: String = "Off"
+    // Preferred audio track (UI label); null = engine default heuristics.
+    private var preferredAudioTrack: String? = null
 
     /** Last concretely selected track — used by [toggleSubtitles] when re-enabling. */
     private var lastExplicitSubtitle: String? = null
@@ -176,6 +181,14 @@ class PlayerRepositoryImpl(
     // (SAB streams carry no text tracks of their own).
     private var currentPrimarySource: MediaSource? = null
     private var currentSubtitles: List<SubtitleSource> = emptyList()
+
+    // Unmuxed (separate video + audio URL) streams: the selectable audio
+    // tracks come from the resolver, not ExoPlayer's track groups (the
+    // merged progressive source exposes only one group). Swapping a track
+    // rebuilds the merged media source around the chosen audio URL.
+    private var currentAudioTracks: List<VideoAudioTrack> = emptyList()
+    private var currentVideoStreams: List<VideoStreamOption> = emptyList()
+    private var currentVideoStreamUrl: String? = null
 
     private val playerListener =
         object : Player.Listener {
@@ -239,8 +252,15 @@ class PlayerRepositoryImpl(
             }
 
             override fun onTracksChanged(tracks: Tracks) {
+                // Unmuxed streams expose exactly one merged audio group; the
+                // options were seeded from the resolver instead.
+                val unmuxedAudio = currentAudioTracks.isNotEmpty()
                 val heights = mutableListOf<Int>()
                 val languages = mutableListOf<String>()
+                val audioTracks: MutableList<AudioTrackInfo> =
+                    if (unmuxedAudio) _playerState.value.audioTracks.toMutableList()
+                    else mutableListOf()
+                var selectedAudio: String? = null
                 for (group in tracks.groups) {
                     when (group.mediaTrackGroup.type) {
                         C.TRACK_TYPE_VIDEO -> {
@@ -256,20 +276,70 @@ class PlayerRepositoryImpl(
                                 if (!language.isNullOrBlank()) languages.add(language)
                             }
                         }
+
+                        C.TRACK_TYPE_AUDIO -> {
+                            if (unmuxedAudio) {
+                                selectedAudio = _playerState.value.selectedAudioTrack
+                            } else {
+                                for (i in 0 until group.length) {
+                                    val format = group.getTrackFormat(i)
+                                    // "und" (undetermined) is not a language: it
+                                    // labels the chip "und" and selection by it is
+                                    // a no-op.
+                                    val language =
+                                        format.language
+                                            ?.takeIf { it != "und" && it != "undetermined" }
+                                    // Chip key = language, else label. Tracks
+                                    // sharing a key are the same choice at
+                                    // different bitrates (SAB groups them in one
+                                    // TrackGroup) — one chip per key. Tracks with
+                                    // neither cannot be targeted via
+                                    // TrackSelectionParameters — skip them.
+                                    val key = language ?: format.label
+                                    if (key.isNullOrBlank()) continue
+                                    if (group.isTrackSelected(i) && selectedAudio == null) {
+                                        selectedAudio = key
+                                    }
+                                    if (audioTracks.none { it.label == key }) {
+                                        audioTracks.add(
+                                            AudioTrackInfo(
+                                                id = "${group.mediaTrackGroup.id}:$i",
+                                                label = key,
+                                                language = language,
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-                val qualities = heights.distinct().sortedDescending()
+                // Unmuxed streams report only the one loaded file; the real
+                // options were seeded from the resolver.
+                val qualities =
+                    if (currentVideoStreams.isNotEmpty()) _playerState.value.videoQualities
+                    else heights.distinct().sortedDescending()
                 // Engine-provided subtitle tracks first (SAB streams carry
                 // no text tracks), then player-reported text tracks (DASH).
                 val subtitles = (currentSubtitles.map { it.name } + languages).distinct()
                 _playerState.update {
-                    if (it.videoQualities == qualities && it.subtitleLanguages == subtitles) {
+                    if (it.videoQualities == qualities &&
+                        it.subtitleLanguages == subtitles &&
+                        it.audioTracks == audioTracks &&
+                        it.selectedAudioTrack == selectedAudio.orEmpty()
+                    ) {
                         it
                     } else {
-                        it.copy(videoQualities = qualities, subtitleLanguages = subtitles)
+                        it.copy(
+                            videoQualities = qualities,
+                            subtitleLanguages = subtitles,
+                            audioTracks = audioTracks,
+                            selectedAudioTrack = selectedAudio.orEmpty(),
+                        )
                     }
                 }
             }
+
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 Log.e(TAG, "Player error: ${error.errorCodeName}, message: ${error.message}", error)
@@ -583,10 +653,35 @@ class PlayerRepositoryImpl(
 
                 currentPrimarySource = resolution.mediaSource
                 currentSubtitles = resolution.videoDetails?.subtitles ?: emptyList()
+                currentAudioTracks = resolution.videoDetails?.audioTracks ?: emptyList()
+                currentVideoStreams = resolution.videoDetails?.videoStreams ?: emptyList()
+                currentVideoStreamUrl = resolution.videoDetails?.videoStreamUrl
+                // Unmuxed streams: the loaded file IS the quality — seed the
+                // options and highlight the actually-loaded resolution
+                // (overrides the prefs default, which ABR-only streams use).
+                val activeHeight =
+                    currentVideoStreams.firstOrNull { it.url == currentVideoStreamUrl }?.height
+                        ?: currentVideoStreams.firstOrNull()?.height
+                val unmuxedQuality = activeHeight?.let { "${it}p" }
+                if (unmuxedQuality != null) selectedQuality = unmuxedQuality
                 _playerState.update {
                     it.copy(
                         subtitleLanguages = currentSubtitles.map { subtitle -> subtitle.name },
                         subtitleText = "",
+                        audioTracks = currentAudioTracks.map { track ->
+                            AudioTrackInfo(track.id, track.label, track.language)
+                        },
+                        selectedAudioTrack =
+                            resolution.videoDetails?.activeAudioTrack.orEmpty(),
+                        videoQualities =
+                            if (currentVideoStreams.isEmpty()) {
+                                it.videoQualities
+                            } else {
+                                currentVideoStreams.map { option -> option.height }
+                                    .distinct()
+                                    .sortedDescending()
+                            },
+                        selectedQuality = unmuxedQuality ?: it.selectedQuality,
                     )
                 }
 
@@ -736,16 +831,20 @@ class PlayerRepositoryImpl(
                         name = it,
                         url = details.authorUrl,
                         thumbnailUrl = details.authorThumbnailUrl,
+                        subscriberCount = details.authorSubscriberCount,
                     )
                 },
             thumbnailUrl = details.thumbnailUrl,
-            contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+            contentType =
+                if (details.isLive) com.tsutsen.platformplayer.core.model.ContentType.LIVE
+                else com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
             publishedAt = details.publishedAtMs,
             durationMs = details.durationMs,
             viewCount = details.viewCount,
             description = details.description,
             likeCount = details.likeCount,
             dislikeCount = details.dislikeCount,
+            sourceIconUrl = details.sourceIconUrl,
         )
 
     private fun createHttpDataSourceFactory(): DefaultHttpDataSource.Factory =
@@ -868,6 +967,19 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun setVideoQuality(quality: String) {
+        // Unmuxed streams: a resolution is a URL swap, not an ABR band.
+        if (currentVideoStreams.isNotEmpty()) {
+            val height = quality.removeSuffix("p").toIntOrNull()
+            val option =
+                if (height == null) currentVideoStreams.firstOrNull() // "Auto" = best
+                else currentVideoStreams.firstOrNull { it.height == height }
+            selectedQuality = quality
+            _playerState.update { it.copy(selectedQuality = quality) }
+            if (option != null && option.url != currentVideoStreamUrl) {
+                rebuildUnmuxedSource(videoUrl = option.url)
+            }
+            return
+        }
         selectedQuality = quality
         applyTrackSelectionParameters()
         _playerState.update { it.copy(selectedQuality = quality) }
@@ -881,6 +993,68 @@ class PlayerRepositoryImpl(
         applyTrackSelectionParameters()
         _playerState.update { it.copy(selectedSubtitle = selection) }
         applySubtitleSource()
+    }
+
+    override suspend fun setAudioTrack(selection: String) {
+        // Unmuxed streams: the track list came from the resolver, so a
+        // selection swaps the audio URL and rebuilds the merged source.
+        val track = currentAudioTracks.firstOrNull { it.label == selection }
+        if (track != null) {
+            if (selection != _playerState.value.selectedAudioTrack) {
+                preferredAudioTrack = selection
+                rebuildUnmuxedSource(audioLabel = selection)
+            }
+            return
+        }
+        preferredAudioTrack = selection
+        applyTrackSelectionParameters()
+    }
+
+    /**
+     * Rebuilds the player's merged media source around the given video
+     * URL / audio track (defaults: whatever is currently loaded), keeping
+     * the current position. Unmuxed streams only — progressive files have
+     * no in-stream track selection.
+     */
+    private suspend fun rebuildUnmuxedSource(
+        videoUrl: String? = null,
+        audioLabel: String? = null,
+    ) {
+        val swapped =
+            withContext(Dispatchers.Main) {
+                val player = _exoPlayer ?: return@withContext null
+                val vUrl = videoUrl ?: currentVideoStreamUrl ?: return@withContext null
+                val audio =
+                    audioLabel?.let { label -> currentAudioTracks.firstOrNull { it.label == label } }
+                        ?: currentAudioTracks.firstOrNull() ?: return@withContext null
+                val positionBefore = player.currentPosition
+                val wasReady = player.playWhenReady
+                val videoSource =
+                    ProgressiveMediaSource
+                        .Factory(createHttpDataSourceFactory())
+                        .createMediaSource(MediaItem.fromUri(Uri.parse(vUrl)))
+                val audioSource =
+                    ProgressiveMediaSource
+                        .Factory(createHttpDataSourceFactory())
+                        .createMediaSource(MediaItem.fromUri(Uri.parse(audio.url)))
+                val base = MergingMediaSource(true, videoSource, audioSource)
+                // Subtitle toggles rebuild from the primary source — point it
+                // at the new merge so the choices survive.
+                currentPrimarySource = base
+                val subtitleSource = buildSubtitleMediaSource()
+                player.setMediaSource(
+                    if (subtitleSource != null) MergingMediaSource(true, base, subtitleSource)
+                    else base,
+                )
+                player.prepare()
+                player.playWhenReady = wasReady
+                if (positionBefore > 0) player.seekTo(positionBefore)
+                vUrl to audio.label
+            }
+        if (swapped != null) {
+            currentVideoStreamUrl = swapped.first
+            _playerState.update { it.copy(selectedAudioTrack = swapped.second) }
+        }
     }
 
     override suspend fun toggleSubtitles() {
@@ -976,6 +1150,21 @@ class PlayerRepositoryImpl(
 
             else -> {
                 builder.setPreferredTextLanguages(selectedSubtitle)
+            }
+        }
+        // Audio: select by language when the track carries one, by label
+        // otherwise. ponytail: two tracks sharing a language resolve to the
+        // first one — per-track group/track forcing (removed from the
+        // Player API in media3 1.9) if that ever matters.
+        preferredAudioTrack?.let { label ->
+            val track = _playerState.value.audioTracks.firstOrNull { it.label == label }
+            if (track != null) {
+                val language = track.language
+                if (language != null) {
+                    builder.setPreferredAudioLanguages(language)
+                } else {
+                    builder.setPreferredAudioLabels(track.label)
+                }
             }
         }
         player.setTrackSelectionParameters(builder.build())

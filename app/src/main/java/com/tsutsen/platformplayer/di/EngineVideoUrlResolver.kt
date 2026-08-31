@@ -15,6 +15,7 @@ import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikes
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IDashManifestSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioUrlSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoUrlSource
 import com.tsutsen.platformplayer.api.media.models.subtitles.ISubtitleSource
@@ -34,12 +35,15 @@ import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoS
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlSource
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
+import com.tsutsen.platformplayer.core.data.repository.VideoAudioTrack
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
+import com.tsutsen.platformplayer.core.data.repository.VideoStreamOption
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.downloads.VideoLocal
 import com.tsutsen.platformplayer.sabr.media3.SabrMediaSource
 import com.tsutsen.platformplayer.states.StateDownloads
 import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -191,6 +195,7 @@ class EngineVideoUrlResolver
                     authorName = author?.name,
                     authorUrl = author?.url?.takeIf { it.isNotEmpty() },
                     authorThumbnailUrl = author?.thumbnail,
+                    authorSubscriberCount = author?.subscribers,
                     thumbnailUrl = local.thumbnails?.getHQThumbnail(),
                     description = local.description,
                     durationMs = if (local.duration > 0) local.duration else null,
@@ -225,6 +230,7 @@ class EngineVideoUrlResolver
                 authorName = author?.name,
                 authorUrl = author?.url?.takeIf { it.isNotEmpty() },
                 authorThumbnailUrl = author?.thumbnail,
+                authorSubscriberCount = author?.subscribers,
                 thumbnailUrl = details.thumbnails?.getHQThumbnail(),
                 description = details.description,
                 durationMs = if (details.duration > 0) details.duration else null,
@@ -232,6 +238,16 @@ class EngineVideoUrlResolver
                 publishedAtMs = details.datetime?.toInstant()?.toEpochMilli(),
                 likeCount = likeCount,
                 dislikeCount = dislikeCount,
+                isLive = details.isLive || details.live != null,
+                sourceIconUrl = resolveSourceIcon(details.id.pluginId),
+                audioTracks = unmuxedAudioTracks(details),
+                activeAudioTrack = unmuxedAudioTracks(details).firstOrNull()?.label,
+                videoStreamUrl = (details.video as? JSUnMuxVideoSourceDescriptor)
+                    ?.videoSources
+                    ?.filterIsInstance<IVideoUrlSource>()
+                    ?.firstOrNull()
+                    ?.getVideoUrl(),
+                videoStreams = unmuxedVideoStreams(details),
                 subtitles =
                     details.subtitles.map { source ->
                         SubtitleSource(
@@ -241,6 +257,84 @@ class EngineVideoUrlResolver
                         )
                     },
             )
+        }
+
+        /**
+         * Audio track list for unmuxed (separate video + audio) streams —
+         * the only way these videos get audio selection: ExoPlayer sees a
+         * single merged track, so the options come from the descriptor's
+         * audio sources. One entry per (language, original) group, keeping
+         * the group's highest-bitrate source; original first.
+         */
+        private fun unmuxedAudioTracks(details: IPlatformVideoDetails): List<VideoAudioTrack> {
+            val descriptor = details.video as? JSUnMuxVideoSourceDescriptor ?: return emptyList()
+            val sources = orderedUnmuxedAudioSources(descriptor.audioSources)
+            return sources
+                .groupBy { Pair(it.language, it.original) }
+                .values
+                .mapNotNull { group -> group.maxByOrNull { it.bitrate } }
+                .mapIndexed { index, source ->
+                    VideoAudioTrack(
+                        id = "unmuxed-$index",
+                        label = unmuxedAudioLabel(source),
+                        language = source.language.takeIf {
+                            it.isNotBlank() &&
+                                !it.equals("Unknown", true) &&
+                                !it.equals("und", true)
+                        },
+                        url = source.getAudioUrl(),
+                        original = source.original,
+                    )
+                }
+        }
+
+        /**
+         * Resolutions for an unmuxed stream: one entry per distinct height
+         * (original sources first, then highest bitrate), highest first.
+         */
+        private fun unmuxedVideoStreams(details: IPlatformVideoDetails): List<VideoStreamOption> {
+            val descriptor = details.video as? JSUnMuxVideoSourceDescriptor ?: return emptyList()
+            return descriptor.videoSources
+                .filterIsInstance<IVideoUrlSource>()
+                .filter { it.height > 0 && it.getVideoUrl().isNotBlank() }
+                .groupBy { it.height }
+                .values
+                .mapNotNull { sources ->
+                    sources
+                        .sortedWith(
+                            compareByDescending<IVideoSource> { it.original }
+                                .thenByDescending { it.bitrate },
+                        )
+                        .first()
+                        .let { VideoStreamOption(it.height, it.width, it.getVideoUrl()) }
+                }
+                .sortedByDescending { it.height }
+        }
+
+        private fun orderedUnmuxedAudioSources(
+            sources: Array<IAudioSource>,
+        ): List<IAudioUrlSource> =
+            sources
+                .filterIsInstance<IAudioUrlSource>()
+                .sortedWith(
+                    compareByDescending<IAudioSource> { it.original }
+                        .thenByDescending { it.bitrate },
+                )
+
+        private fun unmuxedAudioLabel(source: IAudioSource): String =
+            source.name.replace(" [Normalized]", "").ifBlank {
+                source.language.ifBlank { "Audio" }
+            }
+
+        /**
+         * Source badge for the channel row: the plugin's stored icon, only
+         * when more than one source is enabled (single-source makes the
+         * badge pointless).
+         */
+        private fun resolveSourceIcon(pluginId: String?): String? {
+            if (pluginId.isNullOrEmpty()) return null
+            if (StatePlatform.instance.getEnabledClients().size <= 1) return null
+            return StatePlugins.instance.getPluginIconUriOrNull(pluginId)
         }
 
         /**
@@ -364,9 +458,11 @@ class EngineVideoUrlResolver
                 return null
             }
 
-            // Try to merge video + audio, but fall back to video-only if audio fails
+            // Try to merge video + audio, but fall back to video-only if audio
+            // fails. Original (non-dubbed) audio first, then bitrate: mirrors
+            // the resolver's initial pick so the UI highlights the right chip.
             val audioMediaSource =
-                audioSources.firstNotNullOfOrNull { audioSource ->
+                orderedUnmuxedAudioSources(audioSources).firstNotNullOfOrNull { audioSource ->
                     Log.i(TAG, "Trying audio source: ${audioSource.javaClass.simpleName}")
                     try {
                         val source = createMediaSourceFromSource(audioSource, httpDataSourceFactory)

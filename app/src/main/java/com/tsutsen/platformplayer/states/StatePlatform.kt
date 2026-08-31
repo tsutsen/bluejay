@@ -108,6 +108,9 @@ class StatePlatform {
 
     val onSourceDisabled = Event1<IPlatformClient>();
 
+    /** Emitted after the set of enabled clients changes (selectClients). */
+    val onEnabledClientsChanged = Event0();
+
     val onDevSourceChanged = Event0();
 
     //TODO: Remove after verifying that enabled clients are already in persistent order
@@ -472,6 +475,7 @@ class StatePlatform {
                 afterLoad?.invoke();
             }
         };
+        onEnabledClientsChanged.emit();
     }
 
     fun getHome(): IPager<IPlatformContent> {

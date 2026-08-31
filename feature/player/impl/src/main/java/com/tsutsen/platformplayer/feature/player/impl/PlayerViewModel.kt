@@ -8,18 +8,22 @@ import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.data.repository.LiveChatRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.model.AudioTrackInfo
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CastDevice
 import com.tsutsen.platformplayer.core.model.CastState
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.ContentType
 import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlayerState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
+import com.tsutsen.platformplayer.core.model.LiveChatUiState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.model.VideoChapter
@@ -63,6 +67,8 @@ sealed interface PlayerUiState {
         val comments: List<CommentItem> = emptyList(),
         val videoQualities: List<Int> = emptyList(),
         val subtitleLanguages: List<String> = emptyList(),
+        val audioTracks: List<AudioTrackInfo> = emptyList(),
+        val selectedAudioTrack: String = "",
         val selectedQuality: String = "Auto",
         val selectedSubtitle: String = "Off",
         val subtitleText: String = "",
@@ -75,6 +81,7 @@ sealed interface PlayerUiState {
         val isSubscribedChannel: Boolean = false,
         val isCasting: Boolean = false,
         val castDeviceName: String? = null,
+        val isLive: Boolean = false,
     ) : PlayerUiState
 
     data object Initial : PlayerUiState
@@ -101,6 +108,7 @@ class PlayerViewModel
         private val downloadsRepository: DownloadsRepository,
         private val playbackQueueRepository: PlaybackQueueRepository,
         private val castingRepository: CastingRepository,
+        private val liveChatRepository: LiveChatRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
 
@@ -122,6 +130,10 @@ class PlayerViewModel
         @Volatile
         private var lastHistorySavedUrl: String? = null
 
+        /** Job running live chat start for the current video. */
+        @Volatile
+        private var liveChatJob: Job? = null
+
         init {
             // Subtitle appearance follows the settings live (font, size,
             // bottom padding).
@@ -137,6 +149,11 @@ class PlayerViewModel
         }
 
         val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+        /** Live chat session for the current video (null when not live).
+         * Kept OUT of [uiState] on purpose: chat bursts must not rebuild
+         * the whole player state on every tick. */
+        val liveChat: StateFlow<LiveChatUiState?> = liveChatRepository.state
 
         /** Speed multiplier reached after holding the speed-up side. */
         val defaultSpeedup: Float
@@ -331,6 +348,8 @@ class PlayerViewModel
                                 comments = playerState.comments,
                                 videoQualities = playerState.videoQualities,
                                 subtitleLanguages = playerState.subtitleLanguages,
+                                audioTracks = playerState.audioTracks,
+                                selectedAudioTrack = playerState.selectedAudioTrack,
                                 selectedQuality = playerState.selectedQuality,
                                 selectedSubtitle = playerState.selectedSubtitle,
                                 subtitleText = playerState.subtitleText,
@@ -348,7 +367,26 @@ class PlayerViewModel
                                         .showRecommendedVideos,
                                 isCasting = playerState.isCasting,
                                 castDeviceName = playerState.castDeviceName,
+                                isLive =
+                                    playerState.currentVideo?.contentType ==
+                                    ContentType.LIVE,
                             )
+
+                        // Live chat follows the current video: start for live
+                        // streams, stop for everything else.
+                        val liveVideo =
+                            playerState.currentVideo
+                                ?.takeIf { it.contentType == ContentType.LIVE }
+                        if (liveVideo != null) {
+                            liveChatJob?.cancel()
+                            liveChatJob =
+                                viewModelScope.launch {
+                                    liveChatRepository.start(liveVideo.url)
+                                }
+                        } else {
+                            liveChatJob?.cancel()
+                            liveChatRepository.stop()
+                        }
 
                         // Track playback history. The player's real duration
                         // backfills history + library rows that stored none,
@@ -722,6 +760,12 @@ class PlayerViewModel
             }
         }
 
+        fun setAudioTrack(selection: String) {
+            viewModelScope.launch {
+                playerRepository.setAudioTrack(selection)
+            }
+        }
+
         fun toggleSubtitles() {
             viewModelScope.launch {
                 playerRepository.toggleSubtitles()
@@ -753,6 +797,14 @@ class PlayerViewModel
         }
 
         fun close() {
+            // A closed player session consumes the current video — drop it
+            // from the queue so it doesn't linger at the head afterwards.
+            // (playerRepository.close() nulls currentVideo, so the queue's
+            // "current stays first" collector won't re-add it.)
+            val current = playerRepository.playerState.value.currentVideo
+            if (current != null) {
+                playbackQueueRepository.remove(current.url)
+            }
             viewModelScope.launch {
                 playerRepository.close()
             }

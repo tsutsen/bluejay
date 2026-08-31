@@ -35,6 +35,13 @@ interface PlayerRepository {
     suspend fun setSubtitle(selection: String)
 
     /**
+     * Select the audio track with UI label [selection] (as listed in
+     * [PlayerState.audioTracks]); the engine re-selects on the next
+     * track change.
+     */
+    suspend fun setAudioTrack(selection: String)
+
+    /**
      * Toggles subtitles for the current video: turns them off when a concrete
      * track is active, otherwise activates the last explicitly selected track
      * (or the first available one).

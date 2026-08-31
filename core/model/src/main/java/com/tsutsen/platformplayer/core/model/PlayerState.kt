@@ -28,6 +28,13 @@ data class PlayerState(
     val selectedQuality: String = "Auto",
     /** UI label of the selected subtitle ("Auto", "Off" or a language code). */
     val selectedSubtitle: String = "Off",
+    /** Audio tracks of the current media, in manifest order (empty when none). */
+    val audioTracks: List<AudioTrackInfo> = emptyList(),
+    /**
+     * Label of the audio track the engine is currently playing (empty when
+     * nothing is selected yet).
+     */
+    val selectedAudioTrack: String = "",
     /** Text of the currently active subtitle cues (empty when none). */
     val subtitleText: String = "",
     /** True while playback is being mirrored to a cast receiver. */

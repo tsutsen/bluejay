@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -51,7 +52,13 @@ fun PlayerUIScaffold(
     callbacks: PlayerGestureCallbacks,
     disableVerticalDragGestures: Boolean = false,
     disableTapGestures: Boolean = false,
-    gradientAlpha: Float = 1f,
+    /** Composition gate for the gradient + bar blocks (rarely flips). */
+    gradientsVisible: Boolean = true,
+    /**
+     * Per-frame gradient alpha — read frame-safely (the lambda is re-evaluated
+     * when its underlying state changes, without recomposing this scaffold).
+     */
+    gradientAlpha: () -> Float = { 1f },
     topBar: @Composable () -> Unit,
     bottomBar: @Composable () -> Unit
 ) {
@@ -99,7 +106,7 @@ fun PlayerUIScaffold(
         }
 
         // ==================== Top gradient + bar ====================
-        if (showTopBar && gradientAlpha > 0.01f) {
+        if (showTopBar && gradientsVisible) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 Box(
                     modifier = Modifier
@@ -108,16 +115,16 @@ fun PlayerUIScaffold(
                         .align(Alignment.TopCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Black.copy(alpha = 0.7f * gradientAlpha), Color.Transparent)
+                                colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
                             )
-                        )
+                        ).graphicsLayer { alpha = gradientAlpha() }
                 )
                 topBar()
             }
         }
 
         // ==================== Bottom gradient + bar ====================
-        if (showBottomBar && gradientAlpha > 0.01f) {
+        if (showBottomBar && gradientsVisible) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                 Box(
                     modifier = Modifier
@@ -126,9 +133,9 @@ fun PlayerUIScaffold(
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f * gradientAlpha))
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
                             )
-                        )
+                        ).graphicsLayer { alpha = gradientAlpha() }
                 )
                 bottomBar()
             }

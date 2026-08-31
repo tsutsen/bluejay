@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.di
 
+import com.tsutsen.platformplayer.api.media.models.ResultCapabilities
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.playlists.IPlatformPlaylist
 import com.tsutsen.platformplayer.core.data.repository.ChannelContentPage
@@ -8,6 +9,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelInfo
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,11 +25,22 @@ import javax.inject.Singleton
 class EngineChannelRepositoryImpl
     @Inject
     constructor() : ChannelRepository {
+        // Keyed by url+type: a channel's Shorts tab and Videos tab each own
+        // their own pager/flow (same url, different content type).
         private val contentFlows = mutableMapOf<String, PagerFlow<IPlatformContent, Card>>()
         private val playlistFlows = mutableMapOf<String, PagerFlow<IPlatformPlaylist, Card>>()
 
         override suspend fun getChannel(url: String): ChannelInfo {
             val channel = StatePlatform.instance.getChannel(url).await()
+            // Source badge only earns its place with >1 enabled source.
+            val client = StatePlatform.instance.getClientOrNullByUrl(url)
+            val multiSource = StatePlatform.instance.getEnabledClients().size > 1
+            // Shorts tab: only if the plugin's channel capabilities include it
+            // (YouTube does; most plugins don't implement the call at all).
+            val hasShorts =
+                runCatching {
+                    client?.getChannelCapabilities()?.types?.contains(ResultCapabilities.TYPE_SHORTS)
+                }.getOrNull() == true
             return ChannelInfo(
                 url = channel.url,
                 name = channel.name,
@@ -38,6 +51,9 @@ class EngineChannelRepositoryImpl
                 links = channel.links,
                 isSubscribed = StateSubscriptions.instance.isSubscribed(channel.url),
                 notifyEnabled = StateSubscriptions.instance.getSubscription(channel.url)?.doNotifications == true,
+                sourceIconUrl =
+                    if (multiSource && client != null) StatePlugins.instance.getPluginIconUriOrNull(client.id) else null,
+                hasShorts = hasShorts,
             )
         }
 
@@ -73,12 +89,12 @@ class EngineChannelRepositoryImpl
         // Pager construction and page loads execute source-plugin JS, which
         // the V8 engine refuses to run on the main thread — so every engine
         // call here is dispatched to IO ("Cannot run on main thread").
-        override suspend fun loadInitialContents(url: String): ChannelContentPage =
+        override suspend fun loadInitialContents(url: String, type: String?): ChannelContentPage =
             withContext(Dispatchers.IO) {
                 // Fresh flow per open: a cached flow keeps the previous
                 // visit's pager position and would start mid-window.
                 val flow = try {
-                    newContentFlow(url).also { contentFlows[url] = it }
+                    newContentFlow(url, type).also { contentFlows[flowKey(url, type)] = it }
                 } catch (e: Exception) {
                     // The engine throws ScriptException when the source
                     // plugin's HTTP call fails (e.g. network stall -> 408).
@@ -90,9 +106,9 @@ class EngineChannelRepositoryImpl
                 ChannelContentPage(cards, flow.hasMore, flow.error)
             }
 
-        override suspend fun loadNextPage(url: String): ChannelContentPage =
+        override suspend fun loadNextPage(url: String, type: String?): ChannelContentPage =
             withContext(Dispatchers.IO) {
-                val flow = contentFlowFor(url)
+                val flow = contentFlowFor(url, type)
                 flow.loadNextPage()
                 ChannelContentPage(flow.items, flow.hasMore, flow.error)
             }
@@ -109,14 +125,17 @@ class EngineChannelRepositoryImpl
                 flow.items
             }
 
-        private fun contentFlowFor(url: String): PagerFlow<IPlatformContent, Card> = contentFlows.getOrPut(url) { newContentFlow(url) }
+        private fun flowKey(url: String, type: String?): String = "$url|${type ?: ""}"
 
-        private fun newContentFlow(url: String): PagerFlow<IPlatformContent, Card> {
+        private fun contentFlowFor(url: String, type: String?): PagerFlow<IPlatformContent, Card> =
+            contentFlows.getOrPut(flowKey(url, type)) { newContentFlow(url, type) }
+
+        private fun newContentFlow(url: String, type: String?): PagerFlow<IPlatformContent, Card> {
             val client =
                 StatePlatform.instance.getClientOrNullByUrl(url)
                     ?: throw IllegalStateException("No client found for channel url: $url")
             return PagerFlow(
-                StatePlatform.instance.getChannelContent(client, url),
+                StatePlatform.instance.getChannelContent(client, url, type),
                 { content -> EngineCardMapper.toCard(content) },
                 { it.id },
             )

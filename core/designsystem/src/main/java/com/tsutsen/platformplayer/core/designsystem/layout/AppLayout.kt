@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
 
@@ -178,11 +179,16 @@ fun AppNavigationRail(
                     )
                 },
                 // Alpha (not visibility) so the item height never reflows
-                // while the rail fades in/out of fullscreen.
+                // while the rail fades in/out of fullscreen. maxLines=1 +
+                // clip: while the rail shrinks around the morphing player,
+                // labels must clip, never wrap to a second line.
                 label = {
                     Text(
                         text = item.label,
                         modifier = Modifier.alpha(labelAlpha),
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
                     )
                 },
             )
@@ -218,11 +224,16 @@ fun AppNavigationBar(
                     )
                 },
                 // Alpha (not visibility) so the bar height never reflows
-                // while the bar fades in/out of fullscreen.
+                // while the bar fades in/out of fullscreen. maxLines=1 +
+                // clip: while the bar shrinks around the morphing player,
+                // labels must clip, never wrap to a second line.
                 label = {
                     Text(
                         text = item.label,
                         modifier = Modifier.alpha(labelAlpha),
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
                     )
                 },
             )

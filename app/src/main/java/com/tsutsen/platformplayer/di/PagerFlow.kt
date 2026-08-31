@@ -59,6 +59,22 @@ class PagerFlow<T, R>(
         }
     }
 
+    /**
+     * Merges the pager's current window into [items] without advancing the
+     * page. Used by refresh pagers that absorb late sub-pagers (other
+     * sources) after the first results were already delivered.
+     */
+    fun mergeCurrentResults(): List<R> {
+        return try {
+            error = null
+            append(pager.getResults().mapNotNull(map))
+        } catch (e: Exception) {
+            Logger.w("PagerFlow", "mergeCurrentResults failed", e)
+            error = e.message
+            emptyList()
+        }
+    }
+
     private fun append(delta: List<R>): List<R> {
         val fresh = delta.filter { seenKeys.add(key(it)) }
         if (fresh.isNotEmpty()) _items += fresh

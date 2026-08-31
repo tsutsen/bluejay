@@ -13,6 +13,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,18 +34,18 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -130,6 +131,8 @@ fun SearchScreen(
     val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())
     val searchType by viewModel.searchType.collectAsState()
     val sort by viewModel.sort.collectAsState()
+    val enabledSources by viewModel.enabledSources.collectAsState()
+    val selectedSources by viewModel.selectedSources.collectAsState()
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
     val searchQuery by viewModel.query.collectAsState()
     val hasSearched = searchQuery.isNotBlank()
@@ -374,16 +377,84 @@ fun SearchScreen(
                     )
                 }
 
-                // Sorting is only supported for media search: a pill that
-                // opens the sort menu from itself.
-                if (searchType == SearchType.MEDIA) {
-                    val sortMenuExpanded = remember { mutableStateOf(false) }
-                    // Pushed to the right, separate from the type chips; the
-                    // menu anchors to the pill itself.
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
+                // Pushed to the right, separate from the type chips; the
+                // menus anchor to their pills.
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                ) {
+                    // Source filter — only when more than one source is
+                    // enabled. Empty selection means "all sources".
+                    if (enabledSources.size > 1) {
+                        val sourceMenuExpanded = remember { mutableStateOf(false) }
+                        val allSourceIds = enabledSources.map { it.id }.toSet()
+                        Box {
+                            FilterChip(
+                                selected = selectedSources.isNotEmpty(),
+                                onClick = { sourceMenuExpanded.value = true },
+                                label = {
+                                    Text(
+                                        when {
+                                            selectedSources.isEmpty() -> "All sources"
+                                            selectedSources.size == 1 ->
+                                                enabledSources.firstOrNull {
+                                                    it.id in selectedSources
+                                                }?.name ?: "Sources"
+
+                                            else -> "${selectedSources.size} sources"
+                                        },
+                                    )
+                                },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(Tokens.IconSm),
+                                    )
+                                },
+                            )
+                            DropdownMenu(
+                                expanded = sourceMenuExpanded.value,
+                                onDismissRequest = { sourceMenuExpanded.value = false },
+                            ) {
+                                // Checkbox variant: the menu stays open after a
+                                // pick so several sources can be toggled.
+                                SelectionDropdownItems(
+                                    items = enabledSources,
+                                    label = { it.name },
+                                    isSelected = {
+                                        selectedSources.isEmpty() || it.id in selectedSources
+                                    },
+                                    multiSelect = true,
+                                    onPick = { source ->
+                                        // Tap toggles ONLY this item (empty
+                                        // selection = everything checked).
+                                        val next =
+                                            if (selectedSources.isEmpty()) {
+                                                allSourceIds - source.id
+                                            } else if (source.id in selectedSources) {
+                                                selectedSources - source.id
+                                            } else {
+                                                selectedSources + source.id
+                                            }
+                                        // All checked collapses back to "all".
+                                        viewModel.setSelectedSources(
+                                            if (next == allSourceIds) emptySet() else next,
+                                        )
+                                    },
+                                    onLongPick = { source ->
+                                        // Long-press: select only this one.
+                                        viewModel.setSelectedSources(setOf(source.id))
+                                    },
+                                )
+                            }
+                        }
+                    }
+
+                    // Sorting is only supported for media search: a pill that
+                    // opens the sort menu from itself.
+                    if (searchType == SearchType.MEDIA) {
+                        val sortMenuExpanded = remember { mutableStateOf(false) }
                         Box {
                             FilterChip(
                                 selected = sort != SearchSort.RELEVANCE,
@@ -401,20 +472,16 @@ fun SearchScreen(
                                 expanded = sortMenuExpanded.value,
                                 onDismissRequest = { sortMenuExpanded.value = false },
                             ) {
-                                SearchSort.entries.forEach { s ->
-                                    DropdownMenuItem(
-                                        leadingIcon = {
-                                            if (s == sort) {
-                                                Icon(Icons.Default.Check, contentDescription = null)
-                                            }
-                                        },
-                                        text = { Text(s.label) },
-                                        onClick = {
-                                            sortMenuExpanded.value = false
-                                            viewModel.setSort(s)
-                                        },
-                                    )
-                                }
+                                SelectionDropdownItems(
+                                    items = SearchSort.entries,
+                                    label = { it.label },
+                                    isSelected = { it == sort },
+                                    multiSelect = false,
+                                    onPick = { s ->
+                                        sortMenuExpanded.value = false
+                                        viewModel.setSort(s)
+                                    },
+                                )
                             }
                         }
                     }
@@ -766,6 +833,55 @@ private fun SwipeToDeleteRow(
     ) {
         Box(modifier = Modifier.offset { IntOffset(offsetAnim.value.roundToInt(), 0) }) {
             content()
+        }
+    }
+}
+
+/**
+ * Dropdown content with the selection element (radio / checkbox) to the
+ * right of the label. Radio variant: the caller closes the menu on pick.
+ * Checkbox variant ([multiSelect]): the menu stays open after a pick.
+ *
+ * [onLongPick] (optional): long-pressing an item calls this instead of
+ * [onPick] — used for "select only this one" in multiselect menus.
+ */
+@Composable
+private fun <T> SelectionDropdownItems(
+    items: List<T>,
+    label: (T) -> String,
+    isSelected: (T) -> Boolean,
+    multiSelect: Boolean,
+    onPick: (T) -> Unit,
+    onLongPick: ((T) -> Unit)? = null,
+) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        items.forEach { item ->
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .pointerInput(item) {
+                            detectTapGestures(
+                                onTap = { onPick(item) },
+                                onLongPress = { onLongPick?.invoke(item) },
+                            )
+                        }
+                        .padding(horizontal = Tokens.SpaceMd, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label(item),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(Tokens.SpaceSm))
+                if (multiSelect) {
+                    Checkbox(checked = isSelected(item), onCheckedChange = { onPick(item) })
+                } else {
+                    RadioButton(selected = isSelected(item), onClick = { onPick(item) })
+                }
+            }
         }
     }
 }

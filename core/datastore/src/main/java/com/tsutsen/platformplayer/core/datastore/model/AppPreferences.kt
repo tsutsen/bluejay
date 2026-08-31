@@ -21,6 +21,7 @@ data class AppPreferences(
     val searchHistory: List<String> = emptyList(),
     val showRecommendedVideos: Boolean = true,
     val showComments: Boolean = true,
+    val autoUpdatePlugins: Boolean = true,
 )
 
 /**

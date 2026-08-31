@@ -1,6 +1,8 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import android.util.Log
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -8,11 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -22,7 +25,9 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -33,55 +38,35 @@ import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureActionHandl
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs
 import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureSystem
 import kotlinx.coroutines.flow.StateFlow
-
-private const val TAG = "PlayerContent"
-
-const val MINI_DRAG_THRESHOLD = 0.98f
-const val MINI_SETTLED_THRESHOLD = 0.01f
-const val MORPH_TRANSITION_START = 0.3f // When morph transition begins
-const val MORPH_TRANSITION_END = 0.7f // When morph transition completes
-const val DETAILS_FADE_START = 0.1f // Details start fading out earlier
-const val DETAILS_FADE_END = 0.4f // Details fully faded before controls complete
-const val FULLSCREEN_SETTLED_THRESHOLD = 0.01f
+import kotlin.math.roundToInt
 
 /**
- * Unified player content composable. Computes derived alpha weights, resolved visibility,
- * and video geometry, then delegates to GestureLayer, ControlsLayer, and DetailsPanel.
+ * Unified player content composable. Delegates to GestureLayer, ControlsLayer, and
+ * DetailsPanel.
  *
  * The [PlayerVideoSurface] never leaves composition across mode changes — it is positioned
- * and sized via the [videoLayout] geometry computed by the caller.
+ * and sized via frame-level `offset/width/height` lambdas that read
+ * [PlayerSurface.videoLayout] (see the recomposition contract on [PlayerSurface]).
+ *
+ * **This composable body must only read surface state that flips rarely** (via
+ * `derivedStateOf` booleans or layout-level measurements like [PlayerSurface.containerSize]).
+ * Per-frame values (video rect, alphas) flow through modifier lambdas, so the heavy
+ * subtrees (details list, comments, live chat) never recompose on animation frames.
  */
 @Composable
 fun PlayerContent(
     player: ExoPlayer?,
     state: PlayerUiState.Loaded,
     positionMs: StateFlow<Long>,
-    videoLayout: VideoLayout,
-    miniProgress: Float,
-    fullscreenProgress: Float,
-    containerWidth: Float,
-    containerHeight: Float,
-    playerHeightPx: Float,
-    miniWidthPx: Float,
-    miniHeightPx: Float,
-    floatingRestX: Float,
-    floatingRestY: Float,
-    isCollapsedControls: Boolean,
+    surface: PlayerSurface,
+    isLandscape: Boolean,
     controlsVisible: Boolean,
-    showTopOverlay: Boolean,
-    showBottomOverlay: Boolean,
     scrollState: LazyListState,
     nestedScrollConnection: NestedScrollConnection,
-    overlayMode: com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode,
     gestureConfigs: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs,
     gestureHandler: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureActionHandler,
     isScrubbing: Boolean,
-    isMorphDragging: Boolean,
-    isDraggingMiniPlayer: Boolean,
-    onDragStateChanged: (Boolean) -> Unit,
-    onOffsetChanged: (x: Float, y: Float) -> Unit,
-    currentOffsetX: Float,
-    currentOffsetY: Float,
+    onMiniOffsetChanged: (x: Float, y: Float) -> Unit,
     onTap: () -> Unit,
     onOptions: () -> Unit,
     onCast: (() -> Unit)? = null,
@@ -109,13 +94,14 @@ fun PlayerContent(
     subtitlesOn: Boolean,
     onSubtitleToggle: () -> Unit,
     onMinimize: () -> Unit,
-    onFullscreen: () -> Unit,
     onExpand: () -> Unit,
     onMorphDragStart: () -> Unit,
     onMorphDrag: (dragY: Float) -> Unit,
     onMorphDragEnd: (dragY: Float) -> Unit,
     onPlayPause: () -> Unit,
     onClose: () -> Unit,
+    isLive: Boolean = false,
+    liveChat: com.tsutsen.platformplayer.core.model.LiveChatUiState? = null,
     loopMode: Int,
     onLoopMode: () -> Unit,
     onWatchLater: () -> Unit,
@@ -125,122 +111,86 @@ fun PlayerContent(
     onNext: () -> Unit,
     onSeek: (Long) -> Unit,
     onScrubFinished: () -> Unit = {},
-    onMoreOptions: () -> Unit,
     onFullscreenToggle: () -> Unit,
     onDetailsOverdrag: () -> Unit = {},
 ) {
     val density = LocalDensity.current
 
-    // ==================== Derived alpha weights for control cross-fade ====================
-    val normalBarAlpha =
-        (1f - miniProgress) * (1f - fullscreenProgress) *
-            (if (isCollapsedControls) 0f else 1f)
-    val compactBarAlpha =
-        (1f - miniProgress) * (1f - fullscreenProgress) *
-            (if (isCollapsedControls) 1f else 0f)
-    val miniControlsAlpha = miniProgress
-    val fullscreenBarAlpha = fullscreenProgress * (1f - miniProgress)
-
-    // ==================== Details panel fade/translate ====================
-    val detailsAlpha = (1f - miniProgress) * (1f - fullscreenProgress)
-    val detailsTranslateY =
-        lerp(
-            0f,
-            containerHeight * 0.3f,
-            maxOf(miniProgress, fullscreenProgress),
-        )
-
-    // ==================== Scaffold bar visibility ====================
-    val miniMorphAlpha = (1f - miniProgress).coerceIn(0f, 1f)
-
-    val resolvedShowTopBar =
-        when {
-            // NOTE: must mirror the `else` (idle) branch's `!isCollapsedControls` check.
-            // Without it, starting a drag while controls were collapsed flips this from
-            // false -> true on the very first pixel of drag movement, while gradientAlpha
-            // (normalAlpha) is still ~1.0 (it doesn't start fading until MORPH_TRANSITION_START),
-            // so the top scrim pops in at full opacity instead of fading in with everything else.
-            //
-            // Deliberately NOT gated on showTopOverlay (raw controlsVisible) here: that's an
-            // un-animated boolean, so gating composition on it directly cuts the top bar (and its
-            // fade+slide graphicsLayer) out of composition the instant controls should hide, before
-            // gradientAlpha's 200ms tween gets a single frame to render. Hiding due to
-            // controlsVisible is handled entirely by the animated gradientAlpha downstream in
-            // PlayerControls.kt / PlayerUIScaffold.kt - this only decides structural applicability.
-            miniProgress > MINI_SETTLED_THRESHOLD -> {
-                miniMorphAlpha > 0.01f && !isCollapsedControls &&
-                    (
-                        fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
-                            fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD)
-                    )
-            }
-
-            fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> {
-                true
-            }
-
-            else -> {
-                !isCollapsedControls
-            }
-        }
-
-    val resolvedShowBottomBar =
-        when {
-            miniProgress > MINI_SETTLED_THRESHOLD -> {
-                miniMorphAlpha > 0.01f &&
-                    (
-                        fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD ||
-                            fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD)
-                    )
-            }
-
-            fullscreenProgress > (1f - FULLSCREEN_SETTLED_THRESHOLD) -> {
-                true
-            }
-
-            else -> {
-                true
-            }
-        }
-
-    // ==================== Nested scroll connection ====================
-    val nestedScrollModifier =
-        remember(nestedScrollConnection, miniProgress, fullscreenProgress) {
-            if (miniProgress < MINI_SETTLED_THRESHOLD && fullscreenProgress < FULLSCREEN_SETTLED_THRESHOLD) {
-                Modifier.nestedScroll(nestedScrollConnection)
-            } else {
-                Modifier
-            }
-        }
-
     // ==================== Shared video modifier ====================
+    // Per-frame values are read INSIDE the lambdas: the framework re-runs them
+    // when the underlying surface state changes, without recomposing anything.
+    // (computeVideoLayout is a small pure function; calling it once per lambda
+    // per frame is negligible.)
     val videoModifier =
-        remember(videoLayout) {
+        remember(surface, isLandscape, density) {
             Modifier
                 .offset {
+                    val layout = surface.videoLayout(isLandscape, density)
                     IntOffset(
-                        x = videoLayout.offsetX.toInt(),
-                        y = videoLayout.offsetY.toInt(),
+                        x = layout.offsetX.toInt(),
+                        y = layout.offsetY.toInt(),
                     )
-                }.size(
-                    width = with(density) { videoLayout.widthPx.toDp() },
-                    height = with(density) { videoLayout.heightPx.toDp() },
-                ).graphicsLayer {
+                }.layout { measurable, constraints ->
+                    // Frame-safe sizing: snapshot reads here trigger re-LAYOUT,
+                    // never recomposition.
+                    val layout = surface.videoLayout(isLandscape, density)
+                    val placeable =
+                        measurable.measure(
+                            Constraints(layout.widthPx.roundToInt(), layout.widthPx.roundToInt(), layout.heightPx.roundToInt(), layout.heightPx.roundToInt()),
+                        )
+                    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                }.graphicsLayer {
                     shape =
                         androidx.compose.foundation.shape
-                            .RoundedCornerShape(videoLayout.cornerRadius)
+                            .RoundedCornerShape(surface.videoLayout(isLandscape, density).cornerRadius)
                     clip = true
                 }
         }
 
-    Log.d(
-        TAG,
-        "PlayerContent compose: miniProgress=$miniProgress, fullscreenProgress=$fullscreenProgress, " +
-            "layout=(${videoLayout.widthPx.toInt()}x${videoLayout.heightPx.toInt()} @ ${videoLayout.offsetX.toInt()},${videoLayout.offsetY.toInt()})",
-    )
+    // Rarely-flipping composition gates: derivedStateOf re-computes when its
+    // inputs change but only recomposes when the derived boolean flips — never
+    // per animation frame.
+    val showSubtitles by remember(surface) {
+        derivedStateOf { surface.morphProgress.value < MINI_SETTLED_THRESHOLD }
+    }
+    // Computed directly in the body, NOT in a derivedStateOf: `state` is a
+    // plain data class (not snapshot-observable), so a derivedStateOf would
+    // capture the first `state` instance forever and never see
+    // minimize/fullscreen flips — the gesture layer would stay in NORMAL
+    // mode forever (no mini-drag, no fullscreen volume/brightness).
+    // isCollapsedNow only flips on scroll-collapse/layout changes, so this
+    // read costs no per-frame recompositions.
+    val overlayMode =
+        computePlayerOverlayMode(
+            state.isMinimized,
+            state.isFullscreen,
+            surface.isCollapsedNow(isLandscape),
+        )
+    val detailsVisible by remember(surface, isLandscape) {
+        derivedStateOf { surface.detailsAlphaNow(isLandscape) > 0.01f }
+    }
+    // Time-based fade-IN: the p-based alpha window (0.1-0.4) is traversed in
+    // only ~90ms of the 300ms click-to-expand tween, so the details would
+    // pop in. Multiply by a settle that runs 0->1 whenever the details
+    // (re)appear. The 100ms wait lets the details subtree's first heavy
+    // compose/measure frame land while the alpha is still 0, so the fade
+    // itself runs on lighter frames. Fade-OUT stays p-based, so drags
+    // remain tied to the finger.
+    val detailsSettle = remember { Animatable(1f) }
+    LaunchedEffect(detailsVisible) {
+        if (detailsVisible) {
+            detailsSettle.snapTo(0f)
+            kotlinx.coroutines.delay(100)
+            detailsSettle.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // ==================== 1. Persistent video surface ====================
+        // The black plate behind the floating mini player is the page scrim
+        // in PlayerView — it follows the video box through the morph and
+        // lands exactly on the mini rect, so no separate scrim is needed
+        // here.
         PlayerVideoSurface(player = player, modifier = Modifier.then(videoModifier))
 
         // ==================== 1b. Subtitle overlay ====================
@@ -248,7 +198,7 @@ fun PlayerContent(
         // captions follow the surface across morph/fullscreen transitions.
         // Constant font size regardless of surface size - see SubtitleStyle.
         // Hidden in floating (mini) mode: the surface is too small for them.
-        if (state.subtitleText.isNotBlank() && miniProgress < MINI_SETTLED_THRESHOLD) {
+        if (state.subtitleText.isNotBlank() && showSubtitles) {
             val subtitleTextStyle =
                 MaterialTheme.typography.bodyLarge.copy(
                     fontFamily = SubtitleStyle.fontFamily,
@@ -260,8 +210,7 @@ fun PlayerContent(
                 )
             // Crisp glyph outline: a 3x3 ring of offset copies (no spread
             // radius in compose 1.10's Shadow, so fake it the classic way).
-            val halfOutlinePx =
-                with(density) { (SubtitleStyle.outlineWidth / 2f).dp.roundToPx() }
+            val halfOutlinePx = (SubtitleStyle.outlineWidth / 2f * density.density).roundToInt()
             val outlineOffsets =
                 if (halfOutlinePx > 0) {
                     buildList {
@@ -316,30 +265,23 @@ fun PlayerContent(
         }
 
         // ==================== 2. GestureLayer ====================
+        // containerSize only changes on layout changes (rare); isDraggingMiniPlayer
+        // only flips on drag start/end — both safe as direct body reads.
         PlayerGestureSystem(
             modifier = Modifier.fillMaxSize(),
+            surface = surface,
             overlayMode = overlayMode,
+            isLandscape = isLandscape,
             gestureConfigs = gestureConfigs,
             handler = gestureHandler,
             isScrubbing = isScrubbing,
-            containerWidth = containerWidth,
-            containerHeight = containerHeight,
             onTap = onTap,
             onMorphDragStart = onMorphDragStart,
             onMorphDrag = onMorphDrag,
             onMorphDragEnd = onMorphDragEnd,
             // Floating mode
-            floatingVideoLayout = videoLayout,
-            isDraggingMiniPlayer = isDraggingMiniPlayer,
-            onDragStateChanged = onDragStateChanged,
-            onOffsetChanged = onOffsetChanged,
+            onOffsetChanged = onMiniOffsetChanged,
             onExpand = onExpand,
-            floatingRestX = floatingRestX,
-            floatingRestY = floatingRestY,
-            currentOffsetX = currentOffsetX,
-            currentOffsetY = currentOffsetY,
-            miniWidthPx = miniWidthPx,
-            miniHeightPx = miniHeightPx,
         )
 
         // ==================== 3. Details panel (LazyColumn) ====================
@@ -348,30 +290,25 @@ fun PlayerContent(
         // during fullscreen exit and morph transitions. Once fully faded (alpha < 0.01),
         // it is removed from composition so the LazyColumn no longer intercepts pointer
         // events, allowing the feed behind the floating mini player to be scrolled.
-        val detailsOffsetY = with(density) { videoLayout.heightPx.toDp() }
-        // Fade out details earlier than controls for a cascading effect
-        val detailsFadeAlpha =
-            if (miniProgress <= DETAILS_FADE_START) {
-                1f
-            } else if (miniProgress >= DETAILS_FADE_END) {
-                0f
-            } else {
-                (DETAILS_FADE_END - miniProgress) / (DETAILS_FADE_END - DETAILS_FADE_START)
-            }.coerceAtLeast(0f)
-        val detailsAlphaFinal = detailsAlpha * detailsFadeAlpha
-
-        // Keep panel in composition while visible (alpha > 0.01), remove when fully faded
-        if (detailsAlphaFinal > 0.01f) {
+        //
+        // The video height (offset), cascade alpha, and slide are per-frame values —
+        // they are read inside modifier lambdas so the LazyColumn subtree below
+        // never recomposes while they animate. The nested scroll connection is always
+        // attached; it self-gates to NORMAL mode at scroll time (see PlayerView).
+        if (detailsVisible) {
             Box(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .offset(y = detailsOffsetY)
+                        .offset {
+                            IntOffset(0, surface.videoLayout(isLandscape, density).heightPx.toInt())
+                        }
                         .fillMaxHeight()
                         .graphicsLayer {
-                            alpha = detailsAlphaFinal
-                            translationY = detailsTranslateY
-                        }.then(nestedScrollModifier),
+                            alpha =
+                                surface.detailsAlphaNow(isLandscape) * detailsSettle.value
+                            translationY = surface.detailsTranslateYNow()
+                        }.nestedScroll(nestedScrollConnection),
             ) {
                 PlayerDetails(
                     state = state,
@@ -389,6 +326,8 @@ fun PlayerContent(
                     onMore = onMore,
                     isSubscribedChannel = isSubscribedChannel,
                     onSubscribe = onSubscribe,
+                    isLive = isLive,
+                    liveChat = liveChat,
                     onTimestampClick = onTimestampClick,
                     onLinkClick = onLinkClick,
                     onOverdragTop = onDetailsOverdrag,
@@ -399,32 +338,18 @@ fun PlayerContent(
         // ==================== 4. ControlsLayer ====================
         PlayerControls(
             modifier = Modifier.fillMaxSize(),
-            videoLayout = videoLayout,
-            miniProgress = miniProgress,
-            fullscreenProgress = fullscreenProgress,
-            normalBarAlpha = normalBarAlpha,
-            compactBarAlpha = compactBarAlpha,
-            fullscreenBarAlpha = fullscreenBarAlpha,
-            isCollapsedControls = isCollapsedControls,
+            surface = surface,
+            isLandscape = isLandscape,
             controlsVisible = controlsVisible,
-            showTopOverlay = showTopOverlay,
-            showBottomOverlay = showBottomOverlay,
-            resolvedShowTopBar = resolvedShowTopBar,
-            resolvedShowBottomBar = resolvedShowBottomBar,
             isLoading = isLoading,
             activeProgressIndicator = activeProgressIndicator,
             badgeState = badgeState,
             onBadgeSessionEnded = onBadgeSessionEnded,
             state = state,
             positionMs = positionMs,
-            player = player,
             subtitlesOn = subtitlesOn,
             isScrubbing = isScrubbing,
             scrubPositionMs = scrubPositionMs,
-            expandedDescription = expandedDescription,
-            selectedTab = selectedTab,
-            onToggleDescription = onToggleDescription,
-            onTabSelected = onTabSelected,
             onSubtitleToggle = onSubtitleToggle,
             onPlayPause = onPlayPause,
             onPrevious = onPrevious,
@@ -432,9 +357,7 @@ fun PlayerContent(
             onChapters = onChapters,
             onFullscreenToggle = onFullscreenToggle,
             onMinimize = onMinimize,
-            onExpand = onExpand,
             onClose = onClose,
-            onMoreOptions = onMoreOptions,
             onWatchLater = onWatchLater,
             isWatchLater = isWatchLater,
             loopMode = loopMode,
@@ -444,10 +367,6 @@ fun PlayerContent(
             onCast = onCast,
             onSeek = onSeek,
             onScrubFinished = onScrubFinished,
-            isMorphDragging = isMorphDragging,
-            onMorphDragStart = onMorphDragStart,
-            onMorphDrag = onMorphDrag,
-            onMorphDragEnd = onMorphDragEnd,
         )
     }
 }

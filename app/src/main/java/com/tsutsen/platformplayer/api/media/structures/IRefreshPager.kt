@@ -10,5 +10,8 @@ interface IRefreshPager<T>: IPager<T> {
     val onPagerChanged: Event1<IPager<T>>;
     val onPagerError: Event1<Throwable>;
 
+    /** Promised sub-pagers that have not resolved yet (0 = settled). */
+    val pendingPagers: Int
+
     fun getCurrentPager(): IPager<T>;
 }

@@ -145,6 +145,7 @@ class CompanionPresentation(
     private val settingsRepository: SettingsRepository,
     private val downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
     private val playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
+    private val liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
 ) : Presentation(context, display) {
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -193,6 +194,7 @@ class CompanionPresentation(
                     downloadsRepository = downloadsRepository,
                     playbackQueueRepository = playbackQueueRepository,
                     settingsRepository = settingsRepository,
+                    liveChatRepository = liveChatRepository,
                 )
             }
         }
@@ -275,8 +277,10 @@ private fun CompanionContent(
     downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
     playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
     settingsRepository: SettingsRepository,
+    liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
+    val liveChat by liveChatRepository.state.collectAsState()
     val queue by playbackQueueRepository.queue.collectAsState()
     val scope = rememberCoroutineScope()
     val video = playerState.currentVideo
@@ -295,6 +299,7 @@ private fun CompanionContent(
     // player state — the companion just reads them. No second fetch, no
     // polling, no thread juggling.
     val comments = playerState.comments
+    val isLive = video?.contentType == com.tsutsen.platformplayer.core.model.ContentType.LIVE
     // distinctBy: duplicate urls from the engine crash the strip's keying.
     val recommendations = playerState.recommendations
         .filterIsInstance<CoreVideoCard>()
@@ -422,6 +427,8 @@ private fun CompanionContent(
                 playerState = playerState,
                 video = video,
                 comments = comments,
+                isLive = isLive,
+                liveChat = liveChat,
                 recommendations = recommendations,
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
@@ -534,6 +541,8 @@ private fun CompanionVideoPage(
     playerState: com.tsutsen.platformplayer.core.model.PlayerState,
     video: ContentItem?,
     comments: List<CommentItem>,
+    isLive: Boolean = false,
+    liveChat: com.tsutsen.platformplayer.core.model.LiveChatUiState? = null,
     recommendations: List<CoreVideoCard>,
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
@@ -586,7 +595,10 @@ private fun CompanionVideoPage(
                 }
             }
             PillTabs(
-                labels = videoTabKeys.map { it.companionTabLabel() },
+                labels =
+                    videoTabKeys.map {
+                        if (isLive && it == "comments") "Live chat" else it.companionTabLabel()
+                    },
                 selected = selectedTab,
                 onSelect = onTabSelected,
             )
@@ -629,6 +641,33 @@ private fun CompanionVideoPage(
                                 )
                             },
                         )
+                    } else if (activeTab == "comments" && isLive) {
+                        // Live stream: the comments slot becomes the live
+                        // chat, same as the main player. Vertical, fills the
+                        // tab area.
+                        com.tsutsen.platformplayer.feature.player.impl.ui.components
+                            .LiveChatPanel(
+                                state = liveChat,
+                                modifier = Modifier.fillMaxSize(),
+                                listHeight = null,
+                                // No horizontal inset on the companion
+                                // (bottom screen) chat.
+                                horizontalPadding = 0.dp,
+                            )
+                    } else if (activeTab == "comments" && comments.isEmpty()) {
+                        // Centre the empty state in the whole tab area — a
+                        // LazyRow item can't fill the (unbounded) row width.
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "No comments",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 32.dp),
+                            )
+                        }
                     } else if (activeTab == "chapters" && chapters.isEmpty()) {
                         // Centre the empty state in the whole tab area — a
                         // LazyRow item can't fill the (unbounded) row width.
@@ -650,16 +689,6 @@ private fun CompanionVideoPage(
                         contentPadding = PaddingValues(end = 8.dp),
                     ) {
                 if (activeTab == "comments") {
-                    if (comments.isEmpty()) {
-                        item(key = "no-comments") {
-                            Text(
-                                "No comments",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 24.dp),
-                            )
-                        }
-                    }
                     items(comments, key = { it.id }) { comment ->
                         CommentCardView(
                             comment = comment,

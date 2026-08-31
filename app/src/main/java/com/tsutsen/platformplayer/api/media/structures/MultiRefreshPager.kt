@@ -18,6 +18,8 @@ abstract class MultiRefreshPager<T>: IRefreshPager<T>, IPager<T> {
     override val onPagerChanged: Event1<IPager<T>> = Event1();
     override val onPagerError: Event1<Throwable> = Event1();
 
+    override val pendingPagers: Int get() = synchronized(_pending) { _pending.size }
+
     private val _pagersReusable: MutableList<ReusablePager<T>>;
     private var _currentPager: IPager<T>;
     private val _addPlaceholders = false;

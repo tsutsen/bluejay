@@ -16,6 +16,8 @@ import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PostCard
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import java.time.OffsetDateTime
 
 /**
@@ -50,6 +52,8 @@ object EngineCardMapper {
                     thumbnailUrl = content.thumbnail,
                     subscriberCount = content.subscribers?.takeIf { it > 0 },
                     url = content.url,
+                    sourceId = content.id.pluginId,
+                    sourceIconUrl = sourceIcon(content.id.pluginId),
                 )
             }
 
@@ -61,6 +65,7 @@ object EngineCardMapper {
                     videoCount = content.videoCount.takeIf { it > 0 },
                     author = content.author.name,
                     url = content.url,
+                    sourceId = content.id.pluginId,
                 )
             }
 
@@ -72,6 +77,7 @@ object EngineCardMapper {
                     author = content.author.name,
                     publishedAt = epochMs(content.datetime),
                     url = content.url,
+                    sourceId = content.id.pluginId,
                 )
             }
 
@@ -85,6 +91,7 @@ object EngineCardMapper {
                     publishedAt = epochMs(content.datetime),
                     url = content.url,
                     authorUrl = content.author.url,
+                    sourceId = content.id.pluginId,
                 )
             }
 
@@ -113,10 +120,14 @@ object EngineCardMapper {
             thumbnailUrl = video.thumbnails.getHQThumbnail() ?: video.thumbnails.getLQThumbnail(),
             author = video.author.name,
             durationMs = if (video.duration > 0) video.duration * 1000 else null,
+            isLive = video.isLive,
+            // Twitch clips live under https://www.twitch.tv/<login>/clip/<slug>
+            isClip = video.url.contains("/clip/"),
             viewCount = video.viewCount.takeIf { it > 0 },
             publishedAt = epochMs(video.playbackDate ?: video.datetime),
             url = video.url,
             authorUrl = video.author.url,
+            sourceId = video.id.pluginId,
         )
 
     private fun contentThumbnails(content: IPlatformContent): Thumbnails? =
@@ -127,4 +138,14 @@ object EngineCardMapper {
         }
 
     private fun epochMs(datetime: OffsetDateTime?): Long? = datetime?.toInstant()?.toEpochMilli()
+
+    /**
+     * Source badge for channel cards: the plugin's stored icon, only when
+     * more than one source is enabled (single-source makes it pointless).
+     */
+    private fun sourceIcon(pluginId: String?): String? {
+        if (pluginId.isNullOrEmpty()) return null
+        if (StatePlatform.instance.getEnabledClients().size <= 1) return null
+        return StatePlugins.instance.getPluginIconUriOrNull(pluginId)
+    }
 }
