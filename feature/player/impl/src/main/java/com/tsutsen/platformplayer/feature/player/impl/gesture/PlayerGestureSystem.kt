@@ -303,7 +303,16 @@ fun PlayerGestureSystem(
                                     // the resolved action, and the handler routes
                                     // morph frames to the onMorphDrag*/onShrinkDrag*/
                                     // onFullscreenDrag* callbacks.
-                                    if (slide != null && slide.startFrame != null) {
+                                    // Only slides reach here with the finger still
+                                    // down (the decision loop breaks on release for
+                                    // taps and hold-ends), so only slides drain.
+                                    // A tap or hold-end must end the block
+                                    // immediately — waiting for more events from an
+                                    // already released pointer hangs this block
+                                    // forever and deafens the whole layer until the
+                                    // Box is recomposed (e.g. a floating round trip).
+                                    if (slide != null) {
+                                        if (slide.startFrame != null) {
                                             currentHandler.handleGestureFrame(slide.startFrame)
                                             while (true) {
                                                 val event = awaitPointerEvent()
@@ -320,7 +329,8 @@ fun PlayerGestureSystem(
                                                 )?.let { currentHandler.handleGestureFrame(it) }
                                             }
                                         } else {
-                                            // No action: just wait for release.
+                                            // Unbound slide: no action — drain until
+                                            // release so the next gesture starts clean.
                                             while (true) {
                                                 val event = awaitPointerEvent()
                                                 val change =
@@ -329,6 +339,7 @@ fun PlayerGestureSystem(
                                                 change.consume()
                                             }
                                         }
+                                    }
                                 } finally {
                                     holdWatchdog.cancel()
                                     recognizer.cancel(System.currentTimeMillis())
@@ -342,6 +353,19 @@ fun PlayerGestureSystem(
                                     ?.let { currentHandler.handleGestureFrame(it) }
                                 Log.d("GESTURE", "gesture iteration CANCELLED")
                                 throw e
+                            } catch (e: Throwable) {
+                                // Never let a handler exception deafen the layer:
+                                // log it, flush the recognizer's END frame, and
+                                // keep listening for the next gesture.
+                                Log.w("GESTURE", "gesture iteration failed (recovering)", e)
+                                runCatching { recognizer.cancel(System.currentTimeMillis()) }
+                                    .getOrNull()
+                                    ?.let {
+                                        runCatching { currentHandler.handleGestureFrame(it) }
+                                            .onFailure { err ->
+                                                Log.w("GESTURE", "end-frame dispatch failed", err)
+                                            }
+                                    }
                             }
                         }
                     }
