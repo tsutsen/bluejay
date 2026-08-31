@@ -1,6 +1,9 @@
 package com.tsutsen.platformplayer.activities
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.view.Window
 import android.content.Intent
 import android.app.Presentation
 import android.net.Uri
@@ -98,6 +101,7 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.feature.player.impl.SystemControls
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
@@ -208,6 +212,7 @@ class CompanionPresentation(
                     settingsRepository = settingsRepository,
                     liveChatRepository = liveChatRepository,
                     channelRepository = channelRepository,
+                    companionWindow = window,
                 )
             }
         }
@@ -292,6 +297,7 @@ private fun CompanionContent(
     settingsRepository: SettingsRepository,
     liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     channelRepository: ChannelRepository,
+    companionWindow: Window?,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
     val liveChat by liveChatRepository.state.collectAsState()
@@ -524,8 +530,7 @@ private fun CompanionContent(
                     onLike = onVideoLike,
                     onDislike = onVideoDislike,
                     onMore = { currentVideoCard?.let { optionsCard = it } },
-                    onVolumeChange = { v -> scope.launch { playerRepository.setVolume(v) } },
-                    onBrightnessChange = { v -> scope.launch { playerRepository.setBrightness(v) } },
+                    companionWindow = companionWindow,
                 )
 
                 "library" ->
@@ -629,8 +634,7 @@ private fun CompanionVideoPage(
     onLike: () -> Unit = {},
     onDislike: () -> Unit = {},
     onMore: () -> Unit = {},
-    onVolumeChange: (Float) -> Unit = {},
-    onBrightnessChange: (Float) -> Unit = {},
+    companionWindow: Window?,
 ) {
     val context = LocalContext.current
     Column(
@@ -686,14 +690,11 @@ private fun CompanionVideoPage(
                             onQueuePlay = onQueuePlay,
                             onQueueRemove = onQueueRemove,
                             onQueueMove = onQueueMove,
-                            onVolumeChange = onVolumeChange,
-                            onBrightnessChange = onBrightnessChange,
                             context = context,
                             currentVideo = video,
                             isPlaying = playerState.isPlaying,
                             onPlayPause = onPlayPause,
-                            volume = playerState.volume,
-                            brightness = playerState.brightness,
+                            companionWindow = companionWindow,
                         )
                     }
             }
@@ -746,14 +747,11 @@ private fun VideoPageTabs(
     onQueuePlay: (Int) -> Unit,
     onQueueRemove: (String) -> Unit,
     onQueueMove: (Int, Int) -> Unit,
-    onVolumeChange: (Float) -> Unit,
-    onBrightnessChange: (Float) -> Unit,
     context: android.content.Context,
     currentVideo: ContentItem?,
     isPlaying: Boolean,
     onPlayPause: () -> Unit,
-    volume: Float,
-    brightness: Float,
+    companionWindow: Window?,
 ) {
     val tabStates = remember(videoTabKeys) { videoTabKeys.map { LazyListState() } }
     val activeTab = videoTabKeys.getOrNull(selectedTab)
@@ -803,11 +801,8 @@ private fun VideoPageTabs(
                             positionMs = positionMs,
                             durationMs = durationMs,
                             isLive = isLive,
-                            volume = volume,
-                            brightness = brightness,
                             onSeekTo = onSeekTo,
-                            onVolumeChange = onVolumeChange,
-                            onBrightnessChange = onBrightnessChange,
+                            companionWindow = companionWindow,
                         )
                     } else if (activeTab == "queue") {
                         // Queue tab: the playing video pinned on top, then
@@ -1712,21 +1707,48 @@ private fun CompanionInfoTab(
 /**
  * Controls tab: playback, volume and brightness sliders. The playback
  * slider expands to fill the page; the two device sliders sit below it.
+ *
+ * Volume and brightness drive the SYSTEM (same knobs as the player's
+ * gestures, via SystemControls): music stream volume, and device-wide
+ * brightness when WRITE_SETTINGS is granted. Without the grant the
+ * brightness falls back to window-local, applied to this Presentation
+ * window AND the host activity window so both screens follow.
  */
 @Composable
 private fun CompanionControlsTab(
     positionMs: Long,
     durationMs: Long,
     isLive: Boolean,
-    volume: Float,
-    brightness: Float,
     onSeekTo: (Long) -> Unit,
-    onVolumeChange: (Float) -> Unit,
-    onBrightnessChange: (Float) -> Unit,
+    companionWindow: Window?,
 ) {
+    val context = LocalContext.current
     // Dragged seek position — the slider follows the finger, the player
     // only seeks on release.
     var seekDrag by remember { mutableStateOf<Float?>(null) }
+    var volume by remember { mutableStateOf(1f) }
+    var brightness by remember { mutableStateOf(1f) }
+    // Resample each time the tab is composed (it is keyed per tab), so
+    // changes made elsewhere (hardware keys, main-screen gestures) show.
+    LaunchedEffect(Unit) {
+        volume = SystemControls.getVolume(context)
+        brightness =
+            SystemControls.getDeviceBrightness(context)
+                ?: companionWindow?.let { SystemControls.getWindowBrightness(it) }
+                ?: hostActivity(context)?.let { SystemControls.getWindowBrightness(it.window) }
+                ?: 1f
+    }
+    val onVolume: (Float) -> Unit = {
+        volume = it
+        SystemControls.setVolume(context, it)
+    }
+    val onBrightness: (Float) -> Unit = { value ->
+        brightness = value
+        if (!SystemControls.setDeviceBrightness(context, value)) {
+            companionWindow?.let { w -> SystemControls.setWindowBrightness(w, value) }
+            hostActivity(context)?.let { a -> SystemControls.setWindowBrightness(a.window, value) }
+        }
+    }
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1768,15 +1790,25 @@ private fun CompanionControlsTab(
             icon = Icons.Filled.VolumeUp,
             label = "${(volume * 100).roundToInt()}%",
             value = volume,
-            onValueChange = onVolumeChange,
+            onValueChange = onVolume,
         )
         CompanionSliderCard(
             icon = Icons.Filled.Brightness7,
             label = "${(brightness * 100).roundToInt()}%",
             value = brightness,
-            onValueChange = onBrightnessChange,
+            onValueChange = onBrightness,
         )
     }
+}
+
+/** Unwrap ContextWrappers to the host activity (null if none). */
+private fun hostActivity(context: Context): Activity? {
+    var c: Context = context
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
 }
 
 @Composable

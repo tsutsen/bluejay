@@ -3,12 +3,14 @@ package com.tsutsen.platformplayer.core.designsystem.component
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,6 +45,9 @@ fun PillTabs(
     // recomposition so the pill appears as soon as the first layout pass
     // measures the tabs (no tap required).
     val tabSizes = remember { List(n) { mutableStateOf(0 to 0) } }
+    // Horizontal scroll: with more tabs than fit (e.g. the second screen's
+    // six), the strip scrolls instead of wrapping labels onto extra lines.
+    val scrollState = rememberScrollState()
 
     // Tabs are adjacent, so a tab's x-offset is the running sum of the
     // widths of the tabs before it.
@@ -56,18 +61,22 @@ fun PillTabs(
     val targetX = if (n > 0) tabX[sel].toFloat() else 0f
     val targetW = if (n > 0) tabSizes[sel].value.first.toFloat() else 0f
     val targetH = tabSizes.maxOfOrNull { it.value.second }?.toFloat() ?: 0f
+    // Read in the body (not the layout lambda) so scroll updates
+    // recompose and re-offset the pill.
+    val scrollX = scrollState.value
 
     val pillX by animateFloatAsState(targetValue = targetX, label = "pillX")
     val pillW by animateFloatAsState(targetValue = targetW, label = "pillW")
     val pillH by animateFloatAsState(targetValue = targetH, label = "pillH")
 
     Box(modifier) {
-        // The pill (drawn first, so it sits behind the tab labels).
+        // The pill (drawn first, so it sits behind the tab labels). The
+        // Row scrolls but the pill doesn't, so shift by the scroll offset.
         if (pillW > 1f) {
             Box(
                 modifier =
                     Modifier
-                        .offset { IntOffset(pillX.roundToInt(), 0) }
+                        .offset { IntOffset((pillX - scrollX).roundToInt(), 0) }
                         .width(with(density) { pillW.toDp() })
                         .height(with(density) { pillH.toDp() })
                         .background(
@@ -76,7 +85,7 @@ fun PillTabs(
                         ),
             )
         }
-        Row {
+        Row(modifier = Modifier.horizontalScroll(scrollState)) {
             labels.forEachIndexed { i, label ->
                 Box(
                     modifier =

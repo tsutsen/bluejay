@@ -61,9 +61,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,6 +81,8 @@ import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 
+private fun writeSettingsGranted(context: android.content.Context): Boolean =
+    runCatching { Settings.System.canWrite(context) }.getOrDefault(false)
 /**
  * Settings master page: one row per section (Appearance, Gestures, Content,
  * Playback, General). Tapping a row opens the section detail page
@@ -628,12 +636,30 @@ private fun LazyListScope.SectionItems(
 
         "dual" -> {
             item {
+                val settingsContext = LocalContext.current
+                val writeSettingsLauncher =
+                    rememberLauncherForActivityResult(
+                        ActivityResultContracts.StartActivityForResult(),
+                    ) { }
                 SettingsSwitchCard(
                     icon = Icons.Filled.DisplaySettings,
                     title = "Dual screen",
                     subtitle = "Show video controls on the second screen",
                     checked = state.dualScreen,
-                    onCheckedChange = { viewModel.updateGeneral("dualScreen", it) },
+                    onCheckedChange = { enabled ->
+                        viewModel.updateGeneral("dualScreen", enabled)
+                        // Device-wide brightness (both screens) needs the
+                        // WRITE_SETTINGS grant — ask once when the feature
+                        // is turned on.
+                        if (enabled && !writeSettingsGranted(settingsContext)) {
+                            writeSettingsLauncher.launch(
+                                Intent(
+                                    Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                    Uri.parse("package:${settingsContext.packageName}"),
+                                ),
+                            )
+                        }
+                    },
                 )
             }
             item {

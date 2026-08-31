@@ -2,12 +2,11 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 
 import android.app.Activity
 import android.content.Context
-import android.media.AudioManager
-import android.provider.Settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Replay10
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
+import com.tsutsen.platformplayer.feature.player.impl.SystemControls
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -55,21 +54,11 @@ class PlayerGestureActionHandler(
     private val onFullscreenDragEnd: (dragY: Float) -> Unit = {},
 ) : GestureActionHandler {
 
-    // --- brightness state ---
-    private var startBrightness = 1f
+    // --- brightness state (device-wide via SystemControls, window-local fallback) ---
     private var currentBrightness = 1f
-    /**
-     * Whether device-wide (system) brightness can be controlled. Determined once
-     * via a no-op test write: [Settings.System.putInt] on SCREEN_BRIGHTNESS throws
-     * SecurityException when WRITE_SETTINGS has not been granted by the user,
-     * in which case we fall back to window-local brightness.
-     */
-    private var systemBrightnessAvailable: Boolean? = null
 
     // --- volume state ---
-    private var audioManager: AudioManager? = null
     private var currentVolume = 1f
-    private var maxVolume = 15
 
     // --- speed state ---
     private var originalSpeed = 1f
@@ -96,37 +85,17 @@ class PlayerGestureActionHandler(
     private var lastSeekTimeMs: Long = 0L
     private var accumulatedSeekMs: Long = 0L
 
-    init {
-        audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
-    }
-
     fun snapshotBrightness() {
-        if (systemBrightnessAvailable == null) {
-            val resolver = activity?.contentResolver
-            val current = runCatching {
-                Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS)
-            }.getOrNull()
-            systemBrightnessAvailable = runCatching {
-                if (resolver != null && current != null) {
-                    Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, current)
-                }
-            }.isSuccess
-        }
-        if (systemBrightnessAvailable == true) {
-            currentBrightness = runCatching {
-                Settings.System.getInt(activity?.contentResolver, Settings.System.SCREEN_BRIGHTNESS)
-            }.getOrNull()?.let { it / 255f } ?: 1f
-        } else {
-            currentBrightness = activity?.window?.attributes?.screenBrightness ?: 1f
-            if (currentBrightness < 0f) currentBrightness = 1f // auto mode fallback
-        }
-        startBrightness = currentBrightness
+        currentBrightness =
+            if (SystemControls.canSetDeviceBrightness(context)) {
+                SystemControls.getDeviceBrightness(context) ?: 1f
+            } else {
+                activity?.let { SystemControls.getWindowBrightness(it.window) } ?: 1f
+            }
     }
 
     fun snapshotVolume() {
-        val current = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
-        currentVolume = current.toFloat() / maxVolume
+        currentVolume = SystemControls.getVolume(context)
     }
 
     fun snapshotSpeed() {
@@ -205,19 +174,10 @@ class PlayerGestureActionHandler(
                 // instantDelta.y: negative = swipe up (brighter), positive = down (darker)
                 val delta = -frame.instantDelta.y / screenHeight()
                 currentBrightness = (currentBrightness + delta).coerceIn(0f, 1f)
-                if (systemBrightnessAvailable == true) {
-                    // Device-wide brightness, so the whole system follows the gesture.
-                    runCatching {
-                        Settings.System.putInt(
-                            activity?.contentResolver,
-                            Settings.System.SCREEN_BRIGHTNESS,
-                            (currentBrightness * 255).toInt().coerceIn(0, 255),
-                        )
-                    }
-                } else {
-                    activity?.window?.attributes = (activity.window.attributes).apply {
-                        screenBrightness = currentBrightness
-                    }
+                // Device-wide when permitted (whole system follows the
+                // gesture); window-local fallback otherwise.
+                if (!SystemControls.setDeviceBrightness(context, currentBrightness)) {
+                    activity?.let { SystemControls.setWindowBrightness(it.window, currentBrightness) }
                 }
                 onIndicator(GestureAction.BRIGHTNESS.defaultIndicator(currentBrightness))
             }
@@ -238,8 +198,7 @@ class PlayerGestureActionHandler(
                 // instantDelta.y: negative = swipe up (louder), positive = down (quieter)
                 val delta = -frame.instantDelta.y / screenHeight()
                 currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
-                val index = (currentVolume * maxVolume).toInt().coerceIn(0, maxVolume)
-                audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
+                SystemControls.setVolume(context, currentVolume)
                 onIndicator(GestureAction.VOLUME.defaultIndicator(currentVolume))
             }
             GesturePhase.END -> {
