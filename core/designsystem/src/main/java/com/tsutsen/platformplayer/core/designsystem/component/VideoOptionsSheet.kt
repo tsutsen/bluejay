@@ -1,12 +1,11 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -21,13 +20,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HistoryEdu
 import androidx.compose.material.icons.filled.PlayArrow
@@ -37,6 +35,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -59,8 +58,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.LocalSemanticColors
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlaylistOption
@@ -240,7 +241,9 @@ fun VideoOptionsSheet(
                         onLongClick =
                             if (downloadState is DownloadButtonState.Idle && onDownloadWithQuality != null) {
                                 { showQualityDialog = true }
-                            } else null,
+                            } else {
+                                null
+                            },
                     ),
                 )
                 add(
@@ -346,8 +349,11 @@ fun VideoOptionsSheet(
                         checked = playlist.id in checkedIds,
                         onCheckedChange = { checked ->
                             checkedIds =
-                                if (checked) checkedIds + playlist.id
-                                else checkedIds - playlist.id
+                                if (checked) {
+                                    checkedIds + playlist.id
+                                } else {
+                                    checkedIds - playlist.id
+                                }
                             onTogglePlaylist(playlist.id, checked)
                         },
                     )
@@ -451,9 +457,9 @@ private fun optionTileRow(
     }
 }
 
-@Composable
 // Public: PlaylistOptionsSheet and the companion (second screen) activity
 // reuse the same tile.
+@Composable
 fun OptionTileView(
     tile: OptionTile,
     modifier: Modifier = Modifier,
@@ -463,6 +469,7 @@ fun OptionTileView(
     // false = icon only (e.g. the second screen's playback controls, where
     // the icon alone is self-evident).
     showLabel: Boolean = true,
+    outerPadding: Dp = Tokens.SpaceXs,
 ) {
     val scheme = MaterialTheme.colorScheme
     val semantic = LocalSemanticColors.current
@@ -513,7 +520,7 @@ fun OptionTileView(
     Column(
         modifier =
             modifier
-                .padding(Tokens.SpaceXs)
+                .padding(outerPadding)
                 .clip(
                     RoundedCornerShape(Tokens.RadiusMd),
                 ).background(
