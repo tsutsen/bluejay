@@ -146,6 +146,18 @@ class SettingsViewModel
             viewModelScope.launch { settingsRepository.updateDualScreenFeedSources(ids) }
         }
 
+        /** Clear all gesture customizations (back to canonical defaults). */
+        fun resetPlayerGestures() {
+            viewModelScope.launch {
+                settingsRepository.updatePlayerGestures(
+                    top = emptyMap(),
+                    bottomLeft = emptyMap(),
+                    bottomCenter = emptyMap(),
+                    bottomRight = emptyMap(),
+                )
+            }
+        }
+
         /** Save one cell of the gesture editor (Settings > Gestures). */
         fun setPlayerGesturesCell(
             slot: String,

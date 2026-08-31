@@ -24,11 +24,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
 import com.tsutsen.platformplayer.core.model.PlayerGestures
+
+// The gesture cards are always black (mimicking the video player surface),
+// so the inner colors are fixed instead of theme-derived.
+private val PlayerBackground = Color.Black
+private val TileAssigned = Color(0xFF2B2B2B)
+private val TileUnassigned = Color(0xFF191919)
+private val TextBright = Color(0xFFF2F2F2)
+private val TextDim = Color(0xFF9A9A9A)
+
+// Corners: the 4 outer corners of the combined shape stay rounded, the
+// inner corners (facing the gaps) are barely rounded.
+private val OuterRadius = 12.dp
+private val InnerRadius = 3.dp
 
 /**
  * Inline per-slot player gesture editor (Settings > Gestures).
@@ -48,6 +62,7 @@ internal fun PlayerGesturesEditor(
         type: String,
         action: String,
     ) -> Unit,
+    onReset: () -> Unit,
 ) {
     // (slot, type) of the cell being picked; null = no popup.
     var picking by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -60,6 +75,7 @@ internal fun PlayerGesturesEditor(
             slot = "top",
             slotMap = prefs.top,
             onCellClick = { type -> picking = "top" to type },
+            shape = RoundedCornerShape(OuterRadius, OuterRadius, InnerRadius, InnerRadius),
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -70,19 +86,28 @@ internal fun PlayerGesturesEditor(
                 slotMap = prefs.bottomLeft,
                 onCellClick = { type -> picking = "bottomLeft" to type },
                 modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(InnerRadius, InnerRadius, InnerRadius, OuterRadius),
             )
             GestureSlotCard(
                 slot = "bottomCenter",
                 slotMap = prefs.bottomCenter,
                 onCellClick = { type -> picking = "bottomCenter" to type },
                 modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(InnerRadius),
             )
             GestureSlotCard(
                 slot = "bottomRight",
                 slotMap = prefs.bottomRight,
                 onCellClick = { type -> picking = "bottomRight" to type },
                 modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(InnerRadius, InnerRadius, OuterRadius, InnerRadius),
             )
+        }
+        TextButton(
+            onClick = onReset,
+            modifier = Modifier.padding(start = 4.dp),
+        ) {
+            Text("Reset to defaults")
         }
     }
 
@@ -147,12 +172,14 @@ private fun GestureSlotCard(
     slotMap: Map<String, String>,
     onCellClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    shape: RoundedCornerShape,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = shape,
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                containerColor = PlayerBackground,
             ),
     ) {
         Column(
@@ -162,7 +189,7 @@ private fun GestureSlotCard(
             Text(
                 text = PlayerGestures.SLOT_LABELS[slot].orEmpty(),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = TextBright,
             )
             PlayerGestures.GESTURE_TYPES.forEach { type ->
                 val action = PlayerGestures.resolve(slot, type, slotMap)
@@ -173,11 +200,7 @@ private fun GestureSlotCard(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .background(
-                                if (isAssigned) {
-                                    MaterialTheme.colorScheme.surfaceContainerHigh
-                                } else {
-                                    MaterialTheme.colorScheme.surface
-                                },
+                                if (isAssigned) TileAssigned else TileUnassigned,
                             )
                             .clickable { onCellClick(type) }
                             .padding(horizontal = 10.dp, vertical = 8.dp),
@@ -186,7 +209,7 @@ private fun GestureSlotCard(
                     Text(
                         text = "${PlayerGestures.TYPE_LABELS[type].orEmpty()}:",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = TextDim,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
@@ -194,12 +217,7 @@ private fun GestureSlotCard(
                     Text(
                         text = PlayerGestures.DISPLAY_NAMES[action].orEmpty(),
                         style = MaterialTheme.typography.labelMedium,
-                        color =
-                            if (isAssigned) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                        color = if (isAssigned) TextBright else TextDim,
                         textAlign = TextAlign.End,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

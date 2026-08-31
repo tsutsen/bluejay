@@ -698,6 +698,7 @@ private fun LazyListScope.SectionItems(
                     onCellChange = { slot, type, action ->
                         viewModel.setPlayerGesturesCell(slot, type, action)
                     },
+                    onReset = { viewModel.resetPlayerGestures() },
                 )
             }
         }
