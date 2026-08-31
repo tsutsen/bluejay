@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
+import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
@@ -75,6 +76,9 @@ class MainActivity :
 
     @Inject
     lateinit var liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository
+
+    @Inject
+    lateinit var channelRepository: ChannelRepository
 
     private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
@@ -144,6 +148,7 @@ class MainActivity :
                 downloadsRepository = downloadsRepository,
                 playbackQueueRepository = playbackQueueRepository,
                 liveChatRepository = liveChatRepository,
+                channelRepository = channelRepository,
             ).also { it.show() }
     }
 

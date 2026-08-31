@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -30,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
@@ -46,7 +49,7 @@ import com.tsutsen.platformplayer.core.model.Author
  *   row 2 — like/dislike pill, view count + published time
  */
 @Composable
-internal fun ChannelRow(
+fun ChannelRow(
     author: Author?,
     viewCount: Long?,
     publishedAt: Long?,
@@ -61,6 +64,10 @@ internal fun ChannelRow(
     onMore: () -> Unit,
     onChannelClick: ((String) -> Unit)? = null,
     sourceIconUrl: String? = null,
+    /** Icon-only subscribe (second screen) instead of the labelled button. */
+    subscribeIconOnly: Boolean = false,
+    /** Leading padding (0 on hosts that already inset the row). */
+    startPadding: Dp = 16.dp,
 ) {
     val isWide = rememberIsWide()
     // Tapping the avatar or name opens the channel page.
@@ -84,14 +91,14 @@ internal fun ChannelRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, top = 4.dp, bottom = 8.dp),
+                    .padding(start = startPadding, top = 4.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ChannelAvatar(author, channelClick)
             Spacer(modifier = Modifier.width(12.dp))
             ChannelName(author, channelClick, sourceIconUrl)
             Spacer(modifier = Modifier.width(8.dp))
-            SubscribeButton(isSubscribed, onSubscribe)
+            SubscribeButton(isSubscribed, onSubscribe, iconOnly = subscribeIconOnly)
             Spacer(modifier = Modifier.width(12.dp))
             LikeDislikePill(
                 likeCount = likeCount,
@@ -118,14 +125,14 @@ internal fun ChannelRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, top = 4.dp, bottom = 8.dp),
+                    .padding(start = startPadding, top = 4.dp, bottom = 8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ChannelAvatar(author, channelClick)
                 Spacer(modifier = Modifier.width(12.dp))
                 ChannelName(author, channelClick, sourceIconUrl)
                 Spacer(modifier = Modifier.width(8.dp))
-                SubscribeButton(isSubscribed, onSubscribe)
+                SubscribeButton(isSubscribed, onSubscribe, iconOnly = subscribeIconOnly)
                 MoreButton(onMore)
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -259,7 +266,19 @@ private fun formatCompactCount(count: Long): String =
 private fun SubscribeButton(
     isSubscribed: Boolean,
     onSubscribe: () -> Unit,
+    iconOnly: Boolean = false,
 ) {
+    if (iconOnly) {
+        IconButton(onClick = onSubscribe) {
+            Icon(
+                imageVector =
+                    if (isSubscribed) Icons.Filled.Check else Icons.Filled.Favorite,
+                contentDescription = if (isSubscribed) "Subscribed" else "Subscribe",
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        return
+    }
     // Subscribed state is visibly different: tonal outline vs filled.
     if (isSubscribed) {
         OutlinedButton(

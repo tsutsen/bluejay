@@ -28,6 +28,8 @@ sealed interface SettingsUiState {
         val dualScreen: Boolean,
         val dualScreenPages: List<String>,
         val dualScreenVideoTabs: List<String>,
+        val dualScreenVideoTabOrder: List<String>,
+        val dualScreenPageOrder: List<String>,
         val dualScreenLibrarySlots: List<String>,
         val gridColumns: Int,
         val showRecommendedVideos: Boolean,
@@ -77,6 +79,8 @@ class SettingsViewModel
                                 dualScreen = prefs.dualScreen,
                                 dualScreenPages = prefs.dualScreenPages,
                                 dualScreenVideoTabs = prefs.dualScreenVideoTabs,
+                                dualScreenVideoTabOrder = prefs.dualScreenVideoTabOrder,
+                                dualScreenPageOrder = prefs.dualScreenPageOrder,
                                 dualScreenLibrarySlots = prefs.dualScreenLibrarySlots,
                                 gridColumns = prefs.gridColumns,
                                 showRecommendedVideos = prefs.showRecommendedVideos,
@@ -118,6 +122,14 @@ class SettingsViewModel
 
         fun setDualScreenLibrarySlots(slots: List<String>) {
             viewModelScope.launch { settingsRepository.updateDualScreenLibrarySlots(slots) }
+        }
+
+        fun setDualScreenVideoTabOrder(order: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenVideoTabOrder(order) }
+        }
+
+        fun setDualScreenPageOrder(order: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenPageOrder(order) }
         }
 
         fun setLibrarySectionOrder(order: List<String>) {

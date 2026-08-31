@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Download
@@ -321,6 +323,32 @@ fun SettingsSectionScreen(
                             if (checked) it.dualScreenVideoTabs + key else it.dualScreenVideoTabs - key,
                         )
                     },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DUAL_TAB_ORDER -> {
+            loaded?.let {
+                ReorderDialog(
+                    title = "Video tab order",
+                    items =
+                        it.dualScreenVideoTabOrder
+                            .map { id -> id to (dualTabNames[id] ?: id) },
+                    onChange = { newOrder -> viewModel.setDualScreenVideoTabOrder(newOrder) },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DUAL_PAGE_ORDER -> {
+            loaded?.let {
+                ReorderDialog(
+                    title = "Main page order",
+                    items =
+                        it.dualScreenPageOrder
+                            .map { id -> id to (dualPageOrderNames[id] ?: id) },
+                    onChange = { newOrder -> viewModel.setDualScreenPageOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
                 )
             }
@@ -626,6 +654,22 @@ private fun LazyListScope.SectionItems(
             }
             item {
                 SettingsOptionCard(
+                    icon = Icons.Filled.Reorder,
+                    title = "Video tab order",
+                    subtitle = dualListLabel(state.dualScreenVideoTabOrder, dualTabNames),
+                    onClick = { onChoiceSelected(Choice.DUAL_TAB_ORDER) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.FormatListBulleted,
+                    title = "Main page order",
+                    subtitle = dualListLabel(state.dualScreenPageOrder, dualPageOrderNames),
+                    onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
+                )
+            }
+            item {
+                SettingsOptionCard(
                     icon = Icons.Filled.VideoLibrary,
                     title = "Library slots",
                     subtitle = slotListLabel(state.dualScreenLibrarySlots, playlists),
@@ -645,10 +689,19 @@ private val dualPageNames =
 
 private val dualTabNames =
     mapOf(
+        "info" to "Info",
+        "controls" to "Controls",
         "comments" to "Comments",
         "chapters" to "Chapters",
         "recommended" to "Recommended",
         "queue" to "Queue",
+    )
+
+private val dualPageOrderNames =
+    mapOf(
+        "controls" to "Controls",
+        "video" to "Video",
+        "tabs" to "Tabs",
     )
 
 private val librarySectionNames =
@@ -758,6 +811,8 @@ private enum class Choice {
     SUBTITLE_PADDING,
     DUAL_PAGES,
     DUAL_TABS,
+    DUAL_TAB_ORDER,
+    DUAL_PAGE_ORDER,
     DUAL_SLOTS,
     LIBRARY_SECTION_ORDER,
     PLAYBACK_SPEED,
