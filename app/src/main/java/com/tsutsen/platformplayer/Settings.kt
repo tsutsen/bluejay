@@ -219,6 +219,9 @@ class Settings {
     @Serializable
     class FeedSettings {
         var gridColumns: Int = 3
+
+        // Hidden home source-chip ids (persisted filter selection).
+        var hiddenSources: List<String> = emptyList()
     }
 
     @Serializable

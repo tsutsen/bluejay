@@ -166,6 +166,7 @@ class CompanionPresentation(
     private val playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
     private val liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     private val channelRepository: ChannelRepository,
+    private val onChannelClick: (String) -> Unit,
 ) : Presentation(context, display) {
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -217,6 +218,7 @@ class CompanionPresentation(
                     liveChatRepository = liveChatRepository,
                     channelRepository = channelRepository,
                     companionWindow = window,
+                    onChannelClick = onChannelClick,
                 )
             }
         }
@@ -302,6 +304,7 @@ private fun CompanionContent(
     liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     channelRepository: ChannelRepository,
     companionWindow: Window?,
+    onChannelClick: (String) -> Unit,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
     val liveChat by liveChatRepository.state.collectAsState()
@@ -535,6 +538,7 @@ private fun CompanionContent(
                     onDislike = onVideoDislike,
                     onMore = { currentVideoCard?.let { optionsCard = it } },
                     companionWindow = companionWindow,
+                    onChannelClick = onChannelClick,
                 )
 
                 "library" ->
@@ -639,6 +643,7 @@ private fun CompanionVideoPage(
     onDislike: () -> Unit = {},
     onMore: () -> Unit = {},
     companionWindow: Window?,
+    onChannelClick: (String) -> Unit,
 ) {
     val context = LocalContext.current
     Column(
@@ -703,6 +708,7 @@ private fun CompanionVideoPage(
                             // order works — fillMaxSize here would swallow
                             // everything below when tabs isn't last.
                             modifier = Modifier.fillMaxWidth().weight(1f),
+                            onChannelClick = onChannelClick,
                         )
                     }
             }
@@ -761,6 +767,7 @@ private fun VideoPageTabs(
     onPlayPause: () -> Unit,
     companionWindow: Window?,
     modifier: Modifier = Modifier.fillMaxSize(),
+    onChannelClick: (String) -> Unit,
 ) {
     val tabStates = remember(videoTabKeys) { videoTabKeys.map { LazyListState() } }
     val activeTab = videoTabKeys.getOrNull(selectedTab)
@@ -809,6 +816,7 @@ private fun VideoPageTabs(
                             onMore = onMore,
                             durationMs = durationMs,
                             onSeekTo = onSeekTo,
+                            onChannelClick = onChannelClick,
                         )
                     } else if (activeTab == "controls") {
                         // Controls tab: playback, volume and brightness
@@ -1664,6 +1672,7 @@ private fun CompanionInfoTab(
     onMore: () -> Unit,
     durationMs: Long,
     onSeekTo: (Long) -> Unit,
+    onChannelClick: (String) -> Unit,
 ) {
     val context = LocalContext.current
     var expanded by remember(video.url) { mutableStateOf(false) }
@@ -1690,8 +1699,7 @@ private fun CompanionInfoTab(
             onLike = onLike,
             onDislike = onDislike,
             onMore = onMore,
-            // No navigation on the second screen.
-            onChannelClick = null,
+            onChannelClick = onChannelClick,
             subscribeIconOnly = true,
             startPadding = 0.dp,
         )

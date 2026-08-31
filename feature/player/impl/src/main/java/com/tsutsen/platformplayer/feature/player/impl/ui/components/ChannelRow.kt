@@ -100,8 +100,6 @@ fun ChannelRow(
             Spacer(modifier = Modifier.width(12.dp))
             ChannelName(author, channelClick, sourceIconUrl)
             Spacer(modifier = Modifier.width(8.dp))
-            SubscribeButton(isSubscribed, onSubscribe, iconOnly = true)
-            Spacer(modifier = Modifier.width(8.dp))
             LikeDislikePill(
                 likeCount = likeCount,
                 isLiked = isLiked,

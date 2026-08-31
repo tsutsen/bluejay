@@ -24,6 +24,7 @@ data class AppPreferences(
     val dualScreenLibrarySlots: List<String> =
         listOf("watch_later", "liked", "favourite", "history"),
     val gridColumns: Int = 3,
+    val homeHiddenSources: List<String> = emptyList(),
     val searchHistory: List<String> = emptyList(),
     val showRecommendedVideos: Boolean = true,
     val showComments: Boolean = true,

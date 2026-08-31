@@ -149,6 +149,9 @@ class MainActivity :
                 playbackQueueRepository = playbackQueueRepository,
                 liveChatRepository = liveChatRepository,
                 channelRepository = channelRepository,
+                // Tapping the channel badge on the second screen navigates
+                // the main screen to the channel page.
+                onChannelClick = { url -> navigator.navigateToChannel(url) },
             ).also { it.show() }
     }
 

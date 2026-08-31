@@ -56,6 +56,7 @@ class SettingsRepositoryImpl
                 dualScreenLibrarySlots = s.dualScreenLibrarySlots,
                 librarySectionOrder = s.librarySectionOrder,
                 gridColumns = s.feed.gridColumns,
+                homeHiddenSources = s.feed.hiddenSources,
                 searchHistory = s.search.history,
                 showRecommendedVideos = s.content.showRecommendedVideos,
                 showComments = s.content.showComments,
@@ -92,6 +93,7 @@ class SettingsRepositoryImpl
                 "dualScreen" -> s.dualScreen = value as Boolean
                 "dynamicColor" -> s.appearance.dynamicColor = value as Boolean
                 "gridColumns" -> s.feed.gridColumns = value as Int
+                "homeHiddenSources" -> s.feed.hiddenSources = value as List<String>
                 "searchHistory" -> s.search.history = value as List<String>
                 "showRecommendedVideos" -> s.content.showRecommendedVideos = value as Boolean
                 "showComments" -> s.content.showComments = value as Boolean
