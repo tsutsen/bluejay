@@ -42,7 +42,7 @@ private val TextDim = Color(0xFF9A9A9A)
 // Corners: the 4 outer corners of the combined shape stay rounded, the
 // inner corners (facing the gaps) are barely rounded.
 private val OuterRadius = 12.dp
-private val InnerRadius = 3.dp
+private val InnerRadius = 4.dp
 
 /**
  * Inline per-slot player gesture editor (Settings > Gestures).
@@ -69,7 +69,7 @@ internal fun PlayerGesturesEditor(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         GestureSlotCard(
             slot = "top",
@@ -79,7 +79,7 @@ internal fun PlayerGesturesEditor(
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             GestureSlotCard(
                 slot = "bottomLeft",
