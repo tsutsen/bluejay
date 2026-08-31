@@ -95,6 +95,12 @@ fun PlayerView(
         viewModel.exitFullscreen()
     }
     val coroutineScope = rememberCoroutineScope()
+
+    // Details overdrag: part of a downward drag may re-expand a collapsed
+    // video (nested scroll, 1:1) before the true overdrag zone begins.
+    // Holds that pending-expand distance, measured at drag start; morph px
+    // = cumulative drag px - this.
+    val detailsOverdragPendingExpandPx = remember { mutableStateOf(0f) }
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
 
@@ -213,6 +219,49 @@ fun PlayerView(
             surface.fullscreenProgress.animateTo(target, transitionSpringSpec)
             surface.isSettlingFullscreen.value = false
             after?.invoke()
+        }
+    }
+
+    // ---- Details overdrag morph -----------------------------------------
+    // The list is pinned at the top while (a) a collapsed video re-expands
+    // (nested scroll, 1:1) and (b) the true overdrag zone follows the
+    // finger into the fullscreen axis. detailsOverdragPendingExpandPx is
+    // the (a) distance, measured at drag start; morph px = cumulative - it.
+    fun startOverscrollMorph() {
+        val c = surface.containerSize.value
+        val isLand = c.width > c.height
+        detailsOverdragPendingExpandPx.value =
+            (surface.maxPlayerHeightPx(isLand) - surface.playerHeightPx.value)
+                .coerceAtLeast(0f)
+        surface.isDraggingFullscreen.value = true
+    }
+
+    fun updateOverscrollMorph(cumulativePx: Float) {
+        val over =
+            (cumulativePx - detailsOverdragPendingExpandPx.value)
+                .coerceAtLeast(0f)
+        if (over <= 0f) return // still re-expanding the collapsed video
+        val travel = surface.dragTravelPx()
+        val progress = if (travel > 0f) (over / travel).coerceIn(0f, 1f) else 0f
+        coroutineScope.launch {
+            surface.fullscreenProgress.snapTo(progress)
+        }
+    }
+
+    fun finishOverscrollMorph(cumulativePx: Float) {
+        surface.isDraggingFullscreen.value = false
+        val travel = surface.dragTravelPx()
+        val over =
+            (cumulativePx - detailsOverdragPendingExpandPx.value)
+                .coerceAtLeast(0f)
+        detailsOverdragPendingExpandPx.value = 0f
+        if (travel > 0f && over > 0.4f * travel) {
+            // Committed: flip state first (details fade out, system bars),
+            // then settle to full.
+            viewModel.toggleFullscreen()
+            settleFullscreenTo(1f)
+        } else {
+            settleFullscreenTo(0f)
         }
     }
 
@@ -733,7 +782,15 @@ fun PlayerView(
                             },
                         onScrubFinished = remember { { isScrubbing = false } },
                         onFullscreenToggle = remember { { viewModel.toggleFullscreen() } },
-                        onDetailsOverdrag = remember { { viewModel.toggleFullscreen() } },
+                        onDetailsOverdragStart = remember {
+                            { startOverscrollMorph() }
+                        },
+                        onDetailsOverdrag = remember {
+                            { px -> updateOverscrollMorph(px) }
+                        },
+                        onDetailsOverdragEnd = remember {
+                            { px -> finishOverscrollMorph(px) }
+                        },
                     )
                 }
 

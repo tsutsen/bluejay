@@ -1,7 +1,8 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -69,8 +70,15 @@ internal fun PlayerDetails(
     liveChat: LiveChatUiState? = null,
     onTimestampClick: (Long) -> Unit = {},
     onLinkClick: (String) -> Unit = {},
-    /** Fired when the list is dragged down past the threshold while at the top. */
-    onOverdragTop: () -> Unit = {},
+    /**
+     * Overdrag morph: while the list is pinned at the top, further
+     * downward drags are reported live ([onOverdrag] with the cumulative px)
+     * so the parent can morph toward fullscreen. [onOverdragEnd] receives
+     * the final total (0f when the drag was cancelled or scrolled away).
+     */
+    onOverdragStart: () -> Unit = {},
+    onOverdrag: (overdragPx: Float) -> Unit = {},
+    onOverdragEnd: (overdragPx: Float) -> Unit = {},
 ) {
     val density = LocalDensity.current
     val systemBottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
@@ -87,49 +95,70 @@ internal fun PlayerDetails(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface)
                 // Overdrag-to-fullscreen: when the list is already at the top
-                // and the user keeps dragging DOWN, accumulate the overscroll.
-                // Past the threshold, trigger the parent's fullscreen morph.
-                // We never consume the change (we can't from this callback),
-                // which is fine: at the top the LazyColumn has nothing to
-                // scroll, so there is no competing scroll to steal the drag.
+                // and the user keeps dragging DOWN, report the accumulated
+                // overscroll live so the parent can morph toward fullscreen
+                // with the finger. At the top the LazyColumn has nothing to
+                // scroll backward, so consuming the frames is safe.
                 .pointerInput(Unit) {
-                    val thresholdPx = with(density) { 120.dp.toPx() }
+                    // Overdrag-to-fullscreen: OBSERVE the pointer directly
+                    // instead of using detectDragGestures — the LazyColumn's
+                    // own scroll handler is attached outside this modifier and
+                    // claims vertical drags first (consuming the change before
+                    // our slop is exceeded), so detectDragGestures cancelled
+                    // almost every pure-vertical drag. Observing (never
+                    // consuming) races nothing: the list keeps scrolling and
+                    // edge-effecting as usual, and we mirror the amounts while
+                    // it is pinned at the top.
                     var topOverscrollPx = 0f
-                    var fired = false
-                    detectDragGestures(
-                        onDragStart = {
-                            topOverscrollPx = 0f
-                            fired = false
-                        },
-                        onDrag = { change, amount ->
-                            if (!scrollState.canScrollBackward) {
-                                when {
-                                    // Dragging down while at the top: accumulate.
-                                    amount.y > 0f && !fired -> {
-                                        topOverscrollPx += amount.y
-                                        if (topOverscrollPx >= thresholdPx) {
-                                            fired = true
-                                            change.consume()
-                                            onOverdragTop()
-                                        }
-                                    }
+                    var overscrollActive = false
 
-                                    // Dragging up while at the top: reset.
-                                    amount.y < 0f -> topOverscrollPx = 0f
-                                }
-                            } else {
-                                topOverscrollPx = 0f
+                    fun endOverscroll(totalPx: Float) {
+                        if (!overscrollActive) return
+                        overscrollActive = false
+                        onOverdragEnd(totalPx)
+                    }
+
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        topOverscrollPx = 0f
+                        overscrollActive = false
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change =
+                                event.changes.firstOrNull { it.id == down.id }
+                                    ?: continue
+                            if (!change.pressed) {
+                                endOverscroll(topOverscrollPx)
+                                break
                             }
-                        },
-                        onDragEnd = {
-                            topOverscrollPx = 0f
-                            fired = false
-                        },
-                        onDragCancel = {
-                            topOverscrollPx = 0f
-                            fired = false
-                        },
-                    )
+                            val amount = change.position - change.previousPosition
+                            when {
+                                // List scrolled away from the top: abandon.
+                                scrollState.canScrollBackward -> {
+                                    topOverscrollPx = 0f
+                                    endOverscroll(0f)
+                                }
+
+                                // Dragging down while pinned at the top:
+                                // accumulate.
+                                amount.y > 0f -> {
+                                    topOverscrollPx += amount.y
+                                    if (!overscrollActive) {
+                                        overscrollActive = true
+                                        onOverdragStart()
+                                    }
+                                    onOverdrag(topOverscrollPx)
+                                }
+
+                                // Dragging up: the list will scroll away —
+                                // abandon.
+                                amount.y < 0f -> {
+                                    topOverscrollPx = 0f
+                                    endOverscroll(0f)
+                                }
+                            }
+                        }
+                    }
                 },
     ) {
         item {

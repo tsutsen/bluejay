@@ -109,7 +109,9 @@ fun PlayerContent(
     onSeek: (Long) -> Unit,
     onScrubFinished: () -> Unit = {},
     onFullscreenToggle: () -> Unit,
-    onDetailsOverdrag: () -> Unit = {},
+    onDetailsOverdragStart: () -> Unit = {},
+    onDetailsOverdrag: (overdragPx: Float) -> Unit = {},
+    onDetailsOverdragEnd: (overdragPx: Float) -> Unit = {},
 ) {
     val density = LocalDensity.current
 
@@ -349,7 +351,9 @@ fun PlayerContent(
                     liveChat = liveChat,
                     onTimestampClick = onTimestampClick,
                     onLinkClick = onLinkClick,
-                    onOverdragTop = onDetailsOverdrag,
+                    onOverdragStart = onDetailsOverdragStart,
+                    onOverdrag = onDetailsOverdrag,
+                    onOverdragEnd = onDetailsOverdragEnd,
                 )
             }
         }
