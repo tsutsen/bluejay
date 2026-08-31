@@ -7,6 +7,7 @@ data class AppPreferences(
     val defaultPlaybackSpeed: Float = 1f,
     val defaultSpeedup: Float = 2f,
     val speedupSensitivity: Float = 1f,
+    val playerGestures: PlayerGesturePreferences = PlayerGesturePreferences(),
     val defaultVideoResolution: String = "Auto",
     val defaultDownloadResolution: String = "480p",
     val enableDeveloperOptions: Boolean = false,
@@ -21,6 +22,7 @@ data class AppPreferences(
         listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot"),
     /** Order of the elements on the second screen's video page. */
     val dualScreenPageOrder: List<String> = listOf("controls", "video", "tabs"),
+    val dualScreenFeedSources: List<String> = emptyList(),
     val dualScreenLibrarySlots: List<String> =
         listOf("watch_later", "liked", "favourite", "history"),
     val gridColumns: Int = 3,

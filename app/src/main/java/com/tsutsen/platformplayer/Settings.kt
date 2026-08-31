@@ -104,6 +104,13 @@ class Settings {
     // Second-screen video page: order of the elements (controls row, video
     // header, tab strip).
     var dualScreenPageOrder: List<String> = listOf("controls", "video", "tabs")
+    // Second screen home page: which sources to fetch from (empty = all enabled).
+    var dualScreenFeedSources: List<String> = emptyList()
+
+    // Player gesture assignments per surface slot (see PlayerGesturePreferences).
+    // Each map: gesture type ("swipe_v"|"swipe_h"|"double_tap"|"hold") → action id.
+    // Empty = shipped defaults for that slot.
+    var playerGestures: PlayerGesturePreferences = PlayerGesturePreferences()
     // Second-screen library: the four 2x2 slots. Each entry is a section id
     // or a "playlist:<id>" reference (see Settings > Dual screen).
     var dualScreenLibrarySlots: List<String> =
@@ -113,6 +120,14 @@ class Settings {
             LibraryRepositoryImpl.FAVOURITE_ID,
             LibraryRepositoryImpl.HISTORY_ID,
         )
+
+    @Serializable
+    class PlayerGesturePreferences(
+        var top: Map<String, String> = emptyMap(),
+        var bottomLeft: Map<String, String> = emptyMap(),
+        var bottomCenter: Map<String, String> = emptyMap(),
+        var bottomRight: Map<String, String> = emptyMap(),
+    )
 
     @Serializable
     class AutoUpdateSettings {

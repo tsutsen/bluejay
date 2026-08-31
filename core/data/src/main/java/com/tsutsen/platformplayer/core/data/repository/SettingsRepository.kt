@@ -15,6 +15,15 @@ interface SettingsRepository {
     suspend fun updateDualScreenLibrarySlots(slots: List<String>)
     suspend fun updateDualScreenVideoTabOrder(order: List<String>)
     suspend fun updateDualScreenPageOrder(order: List<String>)
+    suspend fun updateDualScreenFeedSources(ids: List<String>)
+
+    /** Save the full per-slot gesture assignments (Settings > Gestures). */
+    suspend fun updatePlayerGestures(
+        top: Map<String, String>,
+        bottomLeft: Map<String, String>,
+        bottomCenter: Map<String, String>,
+        bottomRight: Map<String, String>,
+    )
     suspend fun updateLibrarySectionOrder(order: List<String>)
     suspend fun resetToDefaults()
 }

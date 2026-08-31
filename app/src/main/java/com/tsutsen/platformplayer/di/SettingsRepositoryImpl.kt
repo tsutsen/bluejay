@@ -4,6 +4,7 @@ import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
+import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
 import com.tsutsen.platformplayer.core.datastore.model.SubtitlePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
@@ -45,6 +46,13 @@ class SettingsRepositoryImpl
                 defaultPlaybackSpeed = s.playback.defaultPlaybackSpeed,
                 defaultSpeedup = s.playback.defaultSpeedup,
                 speedupSensitivity = s.playback.speedupSensitivity,
+                playerGestures =
+                    PlayerGesturePreferences(
+                        top = s.playerGestures.top,
+                        bottomLeft = s.playerGestures.bottomLeft,
+                        bottomCenter = s.playerGestures.bottomCenter,
+                        bottomRight = s.playerGestures.bottomRight,
+                    ),
                 defaultVideoResolution = s.content.defaultVideoResolution,
                 defaultDownloadResolution = s.content.defaultDownloadResolution,
                 enableDeveloperOptions = s.advancedSettings,
@@ -53,6 +61,7 @@ class SettingsRepositoryImpl
                 dualScreenVideoTabs = s.dualScreenVideoTabs,
                 dualScreenVideoTabOrder = s.dualScreenVideoTabOrder,
                 dualScreenPageOrder = s.dualScreenPageOrder,
+                dualScreenFeedSources = s.dualScreenFeedSources,
                 dualScreenLibrarySlots = s.dualScreenLibrarySlots,
                 librarySectionOrder = s.librarySectionOrder,
                 gridColumns = s.feed.gridColumns,
@@ -147,6 +156,31 @@ class SettingsRepositoryImpl
             emit()
         }
 
+        override suspend fun updatePlayerGestures(
+            top: Map<String, String>,
+            bottomLeft: Map<String, String>,
+            bottomCenter: Map<String, String>,
+            bottomRight: Map<String, String>,
+        ) {
+            val s = Settings.instance
+            s.playerGestures =
+                Settings.PlayerGesturePreferences(
+                    top = top,
+                    bottomLeft = bottomLeft,
+                    bottomCenter = bottomCenter,
+                    bottomRight = bottomRight,
+                )
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateDualScreenFeedSources(ids: List<String>) {
+            val s = Settings.instance
+            s.dualScreenFeedSources = ids
+            s.save()
+            emit()
+        }
+
         override suspend fun updateLibrarySectionOrder(order: List<String>) {
             val s = Settings.instance
             s.librarySectionOrder = order
@@ -166,6 +200,7 @@ class SettingsRepositoryImpl
             s.dualScreenVideoTabOrder =
                 listOf("info", "controls", "comments", "chapters", "recommended", "queue")
             s.dualScreenPageOrder = listOf("controls", "video", "tabs")
+            s.dualScreenFeedSources = emptyList()
             s.dualScreenLibrarySlots =
                 listOf("watch_later", "liked", "favourite", "history")
             s.librarySectionOrder =

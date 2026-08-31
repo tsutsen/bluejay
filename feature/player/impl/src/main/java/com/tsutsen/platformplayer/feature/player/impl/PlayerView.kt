@@ -386,11 +386,13 @@ fun PlayerView(
                 if (clampedY != surface.miniPlayerOffsetY.value) surface.miniPlayerOffsetY.value = clampedY
             }
 
-            // ==================== Gesture configs (defaults, user overrides later) ====================
+            // ==================== Gesture configs (defaults + user overrides) ====================
+            // Rebuilt when the user edits Settings > Gestures.
+            val gesturePrefs by viewModel.gesturePrefs.collectAsState()
             val gestureConfigs =
-                remember {
+                remember(gesturePrefs) {
                     com.tsutsen.platformplayer.feature.player.impl.gesture
-                        .buildDefaultGestureConfigs()
+                        .buildGestureConfigs(gesturePrefs)
                 }
 
             // ==================== Gesture action handler ====================

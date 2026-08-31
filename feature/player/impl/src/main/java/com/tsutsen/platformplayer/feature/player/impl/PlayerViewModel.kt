@@ -134,6 +134,15 @@ class PlayerViewModel
         @Volatile
         private var liveChatJob: Job? = null
 
+        /** Per-slot gesture assignments (Settings > Gestures); live flow.
+         *  The player surface builds its gesture configs from this on (re)composition. */
+        val gesturePrefs: StateFlow<com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences> =
+            settingsRepository.preferences.map { it.playerGestures }.stateIn(
+                viewModelScope,
+                kotlinx.coroutines.flow.SharingStarted.Eagerly,
+                com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences(),
+            )
+
         init {
             // Subtitle appearance follows the settings live (font, size,
             // bottom padding).

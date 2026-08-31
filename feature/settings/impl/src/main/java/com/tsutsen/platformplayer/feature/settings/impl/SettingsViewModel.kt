@@ -2,10 +2,12 @@ package com.tsutsen.platformplayer.feature.settings.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.*
 import com.tsutsen.platformplayer.core.model.PlaylistOption
+import com.tsutsen.platformplayer.core.model.SourceInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -30,11 +32,13 @@ sealed interface SettingsUiState {
         val dualScreenVideoTabs: List<String>,
         val dualScreenVideoTabOrder: List<String>,
         val dualScreenPageOrder: List<String>,
+        val dualScreenFeedSources: List<String>,
         val dualScreenLibrarySlots: List<String>,
         val gridColumns: Int,
         val showRecommendedVideos: Boolean,
         val showComments: Boolean,
         val autoUpdatePlugins: Boolean,
+        val playerGestures: PlayerGesturePreferences,
     ) : SettingsUiState
 
     data object Loading : SettingsUiState
@@ -53,12 +57,16 @@ class SettingsViewModel
     constructor(
         private val settingsRepository: SettingsRepository,
         private val libraryRepository: LibraryRepository,
+        private val homeRepository: HomeRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
         /** User playlists, for the dual-screen library-slot picker. */
         val playlists: StateFlow<List<PlaylistOption>> = libraryRepository.playlists
+
+        /** Enabled sources, for the dual-screen feed-sources picker. */
+        val enabledSources: StateFlow<List<SourceInfo>> = homeRepository.enabledSources
 
         init {
             // Observe preferences and map to UiState
@@ -81,11 +89,13 @@ class SettingsViewModel
                                 dualScreenVideoTabs = prefs.dualScreenVideoTabs,
                                 dualScreenVideoTabOrder = prefs.dualScreenVideoTabOrder,
                                 dualScreenPageOrder = prefs.dualScreenPageOrder,
+                                dualScreenFeedSources = prefs.dualScreenFeedSources,
                                 dualScreenLibrarySlots = prefs.dualScreenLibrarySlots,
                                 gridColumns = prefs.gridColumns,
                                 showRecommendedVideos = prefs.showRecommendedVideos,
                                 showComments = prefs.showComments,
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
+                                playerGestures = prefs.playerGestures,
                             )
                     }
             }
@@ -130,6 +140,23 @@ class SettingsViewModel
 
         fun setDualScreenPageOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateDualScreenPageOrder(order) }
+        }
+
+        fun setDualScreenFeedSources(ids: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenFeedSources(ids) }
+        }
+
+        /** Save one slot's gesture assignments (Settings > Gestures editor). */
+        fun setPlayerGesturesSlot(slot: String, assignments: Map<String, String>) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                val g = p.playerGestures
+                val newTop = if (slot == "top") assignments else g.top
+                val newBl = if (slot == "bottomLeft") assignments else g.bottomLeft
+                val newBc = if (slot == "bottomCenter") assignments else g.bottomCenter
+                val newBr = if (slot == "bottomRight") assignments else g.bottomRight
+                settingsRepository.updatePlayerGestures(newTop, newBl, newBc, newBr)
+            }
         }
 
         fun setLibrarySectionOrder(order: List<String>) {
