@@ -26,6 +26,10 @@ data class VideoCard(
     val viewCount: Long? = null,
     val publishedAt: Long? = null,
     val url: String,
+    /** Live stream — draws the red LIVE badge (elapsed time from publishedAt) on the thumbnail. */
+    val isLive: Boolean = false,
+    /** Twitch clip — draws a CLIP badge on the thumbnail (clips are short, ~30 s). */
+    val isClip: Boolean = false,
     /** In-progress download (0..1); null when not downloading. */
     val downloadProgress: Float? = null,
     override val sourceId: String? = null,

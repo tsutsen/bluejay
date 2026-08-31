@@ -120,6 +120,9 @@ object EngineCardMapper {
             thumbnailUrl = video.thumbnails.getHQThumbnail() ?: video.thumbnails.getLQThumbnail(),
             author = video.author.name,
             durationMs = if (video.duration > 0) video.duration * 1000 else null,
+            isLive = video.isLive,
+            // Twitch clips live under https://www.twitch.tv/<login>/clip/<slug>
+            isClip = video.url.contains("/clip/"),
             viewCount = video.viewCount.takeIf { it > 0 },
             publishedAt = epochMs(video.playbackDate ?: video.datetime),
             url = video.url,
