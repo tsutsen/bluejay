@@ -342,6 +342,16 @@ private fun CompanionContent(
     // Live library + home data (shared repositories — updates propagate).
     val sections by libraryRepository.sections.collectAsState()
     val home by homeRepository.feed.collectAsState()
+    // Second-screen home feed: which sources to show (empty = all).
+    // Filtered here, not in the repository — the main screen's home page
+    // shares the same feed and has its own (chip-based) filter.
+    val dualFeedSources = prefs.dualScreenFeedSources
+    val dualHomeItems =
+        if (dualFeedSources.isEmpty()) {
+            home.items
+        } else {
+            home.items.filter { it.sourceId == null || it.sourceId in dualFeedSources }
+        }
     // NOTE: deliberately no loadInitial() here — the main app triggers the
     // home load. A second concurrent call would re-run JS-client init and
     // deadlocks the V8 busy lock (see PackageHttp.autoParallelPool).
@@ -552,7 +562,7 @@ private fun CompanionContent(
 
                 "home" ->
                     CompanionHomePage(
-                        items = home.items,
+                        items = dualHomeItems,
                         onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
                         onPlay = onPlay,
                         onLongClick = onLongClick,
@@ -1583,7 +1593,11 @@ private fun CompanionControlRow(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
 ) {
-    Row(modifier = Modifier.fillMaxWidth()) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+    ) {
         val tileModifier: Modifier = Modifier.weight(1f).height(80.dp)
         OptionTileView(
             OptionTile(label = "Previous", icon = Icons.Filled.SkipPrevious, onClick = onPrevious),
@@ -1624,7 +1638,10 @@ private fun CompanionVideoHeader(
     positionMs: Long,
     durationMs: Long,
 ) {
-    Row(verticalAlignment = Alignment.Top) {
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.Top,
+   ) {
         AsyncImage(
             url = video.thumbnailUrl,
             contentDescription = null,
@@ -1679,7 +1696,6 @@ private fun CompanionInfoTab(
     onChannelClick: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    var expanded by remember(video.url) { mutableStateOf(false) }
     val stats =
         buildList {
             video.viewCount?.let { add("${formatViewCount(it)} views") }
@@ -1708,12 +1724,12 @@ private fun CompanionInfoTab(
             startPadding = 0.dp,
         )
         // Same card format as the main player's description: stats first
-        // line, linkified text (timestamps + links), Show more/less.
+        // line, linkified text (timestamps + links), always expanded
+        // (the card scrolls, no Show more/less on the second screen).
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .clickable { expanded = !expanded },
+                .weight(1f),
             shape = RoundedCornerShape(Tokens.RadiusMd),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -1734,14 +1750,7 @@ private fun CompanionInfoTab(
                         text = description,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = if (expanded) Int.MAX_VALUE else 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier =
-                            if (expanded) {
-                                Modifier.verticalScroll(rememberScrollState())
-                            } else {
-                                Modifier
-                            },
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
                         onTimestampClick = { ms -> onSeekTo(ms.coerceIn(0L, durationMs.coerceAtLeast(0L))) },
                         onLinkClick = { url ->
                             runCatching {
@@ -1750,13 +1759,6 @@ private fun CompanionInfoTab(
                                 )
                             }
                         },
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (expanded) "Show less" else "Show more",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
                     )
                 } else {
                     Box(
