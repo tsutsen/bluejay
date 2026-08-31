@@ -40,20 +40,24 @@ import kotlin.math.roundToLong
 // thumbnail corners.
 private val PILL_HEIGHT = 18.dp
 
-/** Watched badge: a round chip with a thick hand-drawn check. */
+/**
+ * Watched badge: the duration pill's shape (same height, corner radius and
+ * background) with a thick hand-drawn check instead of text.
+ */
 @Composable
 private fun WatchedBadge(size: Dp, modifier: Modifier = Modifier) {
     Box(
         modifier =
             modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.85f)),
+                .width(size)
+                .height(PILL_HEIGHT)
+                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .background(Color.Black.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
         // Bold check: the icon-font check is a thin stroke, this one is
-        // ~16% of the badge diameter with round caps.
-        Canvas(Modifier.size(size * 0.66f)) {
+        // ~18% of the badge width with round caps.
+        Canvas(Modifier.size(size * 0.62f)) {
             val w = this.size.width
             val h = this.size.height
             val path = Path().apply {
