@@ -143,7 +143,6 @@ fun PlayerView(
     // video it is bound to, or null when closed.
     var sheetVideo by remember { mutableStateOf<ContentItem?>(null) }
     var showQueueSheet by remember { mutableStateOf(false) }
-    var showCastingSheet by remember { mutableStateOf(false) }
     // Stable callbacks — captured once per text by LinkifiedText's remember.
     val onTimestampClick: (Long) -> Unit = remember { { ms -> viewModel.seekToClamped(ms) } }
     val onLinkClick: (String) -> Unit =
@@ -474,6 +473,10 @@ fun PlayerView(
             // Auto-hide: 5 seconds after the last interaction. The pointer
             // observer on the root Box bumps controlsActivityTick on every
             // pointer down, restarting this effect with a fresh clock.
+            // Fullscreen is NOT excluded: the clock runs there too, so the
+            // bars hide 5s after the last touch (a tap brings them back).
+            // isFullscreenAnim is kept as a key only, so entering/leaving
+            // fullscreen starts a fresh clock.
             LaunchedEffect(
                 controlsActivityTick,
                 controlsVisible,
@@ -481,7 +484,7 @@ fun PlayerView(
                 isMinimizedAnim,
                 isFullscreenAnim,
             ) {
-                if (isMinimizedAnim || isFullscreenAnim || !controlsVisible) return@LaunchedEffect
+                if (isMinimizedAnim || !controlsVisible) return@LaunchedEffect
                 // Wait (without restarting) until a morph in progress settles.
                 snapshotFlow { surface.morphProgress.value }
                     .first { p -> p <= 0.01f || p >= 0.99f }
@@ -815,7 +818,7 @@ fun PlayerView(
                                         x = layout.offsetX.toInt(),
                                         y = layout.offsetY.toInt(),
                                     )
-                                }.layout { measurable, constraints ->
+                                }.layout { measurable, _ ->
                                     val layout = surface.videoLayout(isLandscape, density)
                                     // Bottom edge follows the morph: full
                                     // container height at rest, video height
