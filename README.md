@@ -6,7 +6,7 @@
 <p></p>
 Follow your favorite creators! Now in dual screen.
 
-_Grab the app in [releases](https://github.com/tsutsen/bluejay/releases/tag/v0.1.0)_
+_Grab the app in [releases](https://github.com/tsutsen/bluejay/releases)_
 
 </div>
 
