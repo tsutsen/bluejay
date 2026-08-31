@@ -79,6 +79,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.view.OnApplyWindowInsetsListener
@@ -315,8 +316,10 @@ fun SearchScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.End,
                     ) {
+                        // isNotBlank (not isNotEmpty): a whitespace-only
+                        // field looks empty, so the clear button goes too.
                         AnimatedVisibility(
-                            visible = searchQuery.isNotEmpty(),
+                            visible = searchQuery.isNotBlank(),
                             enter = fadeIn(tween(120)) + expandHorizontally(tween(120)),
                             exit = fadeOut(tween(120)) + shrinkHorizontally(tween(120)),
                         ) {
@@ -874,6 +877,8 @@ private fun <T> SelectionDropdownItems(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.width(Tokens.SpaceSm))
                 if (multiSelect) {
