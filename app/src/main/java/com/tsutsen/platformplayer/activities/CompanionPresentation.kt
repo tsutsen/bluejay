@@ -101,7 +101,10 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
 import com.tsutsen.platformplayer.feature.player.impl.SystemControls
+import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
+import com.tsutsen.platformplayer.feature.player.impl.formatViewCount
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
@@ -695,6 +698,10 @@ private fun CompanionVideoPage(
                             isPlaying = playerState.isPlaying,
                             onPlayPause = onPlayPause,
                             companionWindow = companionWindow,
+                            // Tabs take the leftover height so any element
+                            // order works — fillMaxSize here would swallow
+                            // everything below when tabs isn't last.
+                            modifier = Modifier.fillMaxWidth().weight(1f),
                         )
                     }
             }
@@ -752,6 +759,7 @@ private fun VideoPageTabs(
     isPlaying: Boolean,
     onPlayPause: () -> Unit,
     companionWindow: Window?,
+    modifier: Modifier = Modifier.fillMaxSize(),
 ) {
     val tabStates = remember(videoTabKeys) { videoTabKeys.map { LazyListState() } }
     val activeTab = videoTabKeys.getOrNull(selectedTab)
@@ -764,7 +772,12 @@ private fun VideoPageTabs(
             tabStates.getOrNull(selectedTab)?.animateScrollToItem(currentChapterIndex)
         }
     }
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier,
+        // The old layout spaced these 12dp apart; keep the gap below the
+        // tab strip so the content doesn't hug it.
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         PillTabs(
             labels =
                 videoTabKeys.map {
@@ -793,6 +806,8 @@ private fun VideoPageTabs(
                             onLike = onLike,
                             onDislike = onDislike,
                             onMore = onMore,
+                            durationMs = durationMs,
+                            onSeekTo = onSeekTo,
                         )
                     } else if (activeTab == "controls") {
                         // Controls tab: playback, volume and brightness
@@ -1646,7 +1661,17 @@ private fun CompanionInfoTab(
     onLike: () -> Unit,
     onDislike: () -> Unit,
     onMore: () -> Unit,
+    durationMs: Long,
+    onSeekTo: (Long) -> Unit,
 ) {
+    val context = LocalContext.current
+    var expanded by remember(video.url) { mutableStateOf(false) }
+    val stats =
+        buildList {
+            video.viewCount?.let { add("${formatViewCount(it)} views") }
+            video.publishedAt?.let { if (it > 0) add(formatRelativeTime(it)) }
+        }.joinToString(" • ")
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1669,23 +1694,56 @@ private fun CompanionInfoTab(
             subscribeIconOnly = true,
             startPadding = 0.dp,
         )
+        // Same card format as the main player's description: stats first
+        // line, linkified text (timestamps + links), Show more/less.
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(1f)
+                .clickable { expanded = !expanded },
             shape = RoundedCornerShape(Tokens.RadiusMd),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ),
         ) {
-            val description = video.description
+            val description = video.description.orEmpty()
             Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-                if (!description.isNullOrBlank()) {
+                if (stats.isNotEmpty()) {
                     Text(
+                        text = stats,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (description.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinkifiedText(
                         text = description,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        maxLines = if (expanded) Int.MAX_VALUE else 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier =
+                            if (expanded) {
+                                Modifier.verticalScroll(rememberScrollState())
+                            } else {
+                                Modifier
+                            },
+                        onTimestampClick = { ms -> onSeekTo(ms.coerceIn(0L, durationMs.coerceAtLeast(0L))) },
+                        onLinkClick = { url ->
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(url)),
+                                )
+                            }
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (expanded) "Show less" else "Show more",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
                     )
                 } else {
                     Box(

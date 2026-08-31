@@ -17,8 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -85,6 +85,35 @@ fun ChannelRow(
             val ago = formatRelativeTime(publishedAt)
             if (ago.isNotEmpty()) add(ago)
         }.joinToString(" • ")
+
+    if (subscribeIconOnly) {
+        // Second screen: one row — avatar, name, subscribe, like/dislike,
+        // more. Stats live in the description card, not here.
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = startPadding, top = 4.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ChannelAvatar(author, channelClick)
+            Spacer(modifier = Modifier.width(12.dp))
+            ChannelName(author, channelClick, sourceIconUrl)
+            Spacer(modifier = Modifier.width(8.dp))
+            SubscribeButton(isSubscribed, onSubscribe, iconOnly = true)
+            Spacer(modifier = Modifier.width(8.dp))
+            LikeDislikePill(
+                likeCount = likeCount,
+                isLiked = isLiked,
+                onLike = onLike,
+                dislikeCount = dislikeCount,
+                isDisliked = isDisliked,
+                onDislike = onDislike,
+            )
+            MoreButton(onMore)
+        }
+        return
+    }
 
     if (isWide) {
         Row(
@@ -272,7 +301,7 @@ private fun SubscribeButton(
         IconButton(onClick = onSubscribe) {
             Icon(
                 imageVector =
-                    if (isSubscribed) Icons.Filled.Check else Icons.Filled.Favorite,
+                    if (isSubscribed) Icons.Filled.Check else Icons.Filled.ThumbUp,
                 contentDescription = if (isSubscribed) "Subscribed" else "Subscribe",
                 tint = MaterialTheme.colorScheme.primary,
             )
