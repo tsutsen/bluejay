@@ -57,7 +57,7 @@ private fun WatchedBadge(size: Dp, modifier: Modifier = Modifier) {
     ) {
         // Bold check: the icon-font check is a thin stroke, this one is
         // ~18% of the badge width with round caps.
-        Canvas(Modifier.size(size * 0.48f)) {
+        Canvas(Modifier.size(size * 0.4f)) {
             val w = this.size.width
             val h = this.size.height
             val path = Path().apply {
