@@ -4,70 +4,65 @@ import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 
 /**
- * Build gesture configs from the user's per-slot assignments.
+ * Build the gesture configs from the user's per-slot assignments.
  *
- * User settings are mode-independent and slot-based: 4 slots (top /
- * bottom-left / bottom-center / bottom-right) × 4 gesture types. The engine
- * works on a 9-sector grid, so each slot owns a column of sectors:
+ * The user config is mode-independent: 4 slots × 4 gesture types, where each
+ * slot owns a column of the engine's 9-sector grid:
  *   top          → the whole top row
  *   bottomLeft   → left column, middle + bottom rows
  *   bottomCenter → center column, middle + bottom rows
  *   bottomRight  → right column, middle + bottom rows
  *
- * Everything else stays on the shipped defaults: the sector slot's base
- * behaviour (double-tap seek, hold speed, horizontal scrub) is preserved and
- * each user assignment replaces the corresponding gesture-type action.
- *
- * @param prefs the saved assignments (all-empty maps = pure defaults).
+ * Each cell resolves to the user's assignment when set, else the canonical
+ * [PlayerGestures.DEFAULT_SLOTS] default. The same config drives fullscreen,
+ * normal and compact; the floating mini surface stays gesture-free.
  */
 fun buildGestureConfigs(prefs: PlayerGesturePreferences): GestureConfigs {
-    val defaults = buildDefaultGestureConfigs()
-
-    // sector -> (slot assignments)
-    val assignmentsFor: Map<GestureSector, Map<String, String>> =
+    val slotMaps: Map<String, Map<String, String>> =
         mapOf(
-            GestureSector.TOP_LEFT to prefs.top,
-            GestureSector.TOP_CENTER to prefs.top,
-            GestureSector.TOP_RIGHT to prefs.top,
-            GestureSector.MIDDLE_LEFT to prefs.bottomLeft,
-            GestureSector.MIDDLE_CENTER to prefs.bottomCenter,
-            GestureSector.MIDDLE_RIGHT to prefs.bottomRight,
-            GestureSector.BOTTOM_LEFT to prefs.bottomLeft,
-            GestureSector.BOTTOM_CENTER to prefs.bottomCenter,
-            GestureSector.BOTTOM_RIGHT to prefs.bottomRight,
+            "top" to prefs.top,
+            "bottomLeft" to prefs.bottomLeft,
+            "bottomCenter" to prefs.bottomCenter,
+            "bottomRight" to prefs.bottomRight,
         )
 
-    fun applyUser(
-        slot: GestureSlotConfig,
-        assignments: Map<String, String>,
-    ): GestureSlotConfig {
-        var result = slot
-        assignments.forEach { (type, actionId) ->
-            val action = actionId.toEngineAction()
-            result = when (type) {
-                "swipe_v" -> result.copy(swipeVertical = action)
-                "swipe_h" -> result.copy(swipeHorizontal = action)
-                "double_tap" -> result.copy(doubleTap = action)
-                "hold" -> result.copy(hold = action)
-                else -> result
-            }
-        }
-        return result
-    }
+    val slotFor: Map<GestureSector, String> =
+        mapOf(
+            GestureSector.TOP_LEFT to "top",
+            GestureSector.TOP_CENTER to "top",
+            GestureSector.TOP_RIGHT to "top",
+            GestureSector.MIDDLE_LEFT to "bottomLeft",
+            GestureSector.MIDDLE_CENTER to "bottomCenter",
+            GestureSector.MIDDLE_RIGHT to "bottomRight",
+            GestureSector.BOTTOM_LEFT to "bottomLeft",
+            GestureSector.BOTTOM_CENTER to "bottomCenter",
+            GestureSector.BOTTOM_RIGHT to "bottomRight",
+        )
 
-    fun remap(config: GestureConfig): GestureConfig =
+    val unified =
         GestureConfig().withSectors(
             GestureSector.entries.associate { sector ->
-                sector to applyUser(config.sectors[sector] ?: GestureSlotConfig(), assignmentsFor[sector].orEmpty())
+                val slot = slotFor[sector] ?: "top"
+                val map = slotMaps[slot].orEmpty()
+                sector to
+                    GestureSlotConfig(
+                        swipeVertical =
+                            PlayerGestures.resolve(slot, "swipe_v", map).toEngineAction(),
+                        swipeHorizontal =
+                            PlayerGestures.resolve(slot, "swipe_h", map).toEngineAction(),
+                        doubleTap =
+                            PlayerGestures.resolve(slot, "double_tap", map).toEngineAction(),
+                        hold = PlayerGestures.resolve(slot, "hold", map).toEngineAction(),
+                    )
             },
         )
 
-    // FLOATING stays all-NONE (no gestures on the mini player surface).
     return GestureConfigs(
-        fullscreen = remap(defaults.fullscreen),
-        normal = remap(defaults.normal),
-        compact = remap(defaults.compact),
-        floating = defaults.floating,
+        fullscreen = unified,
+        normal = unified,
+        compact = unified,
+        // No gestures on the mini player surface.
+        floating = GestureConfig(),
     )
 }
 

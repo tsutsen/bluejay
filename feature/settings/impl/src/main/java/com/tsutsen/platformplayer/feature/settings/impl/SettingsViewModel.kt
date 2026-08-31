@@ -146,16 +146,30 @@ class SettingsViewModel
             viewModelScope.launch { settingsRepository.updateDualScreenFeedSources(ids) }
         }
 
-        /** Save one slot's gesture assignments (Settings > Gestures editor). */
-        fun setPlayerGesturesSlot(slot: String, assignments: Map<String, String>) {
+        /** Save one cell of the gesture editor (Settings > Gestures). */
+        fun setPlayerGesturesCell(
+            slot: String,
+            type: String,
+            action: String,
+        ) {
             viewModelScope.launch {
                 val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
                 val g = p.playerGestures
-                val newTop = if (slot == "top") assignments else g.top
-                val newBl = if (slot == "bottomLeft") assignments else g.bottomLeft
-                val newBc = if (slot == "bottomCenter") assignments else g.bottomCenter
-                val newBr = if (slot == "bottomRight") assignments else g.bottomRight
-                settingsRepository.updatePlayerGestures(newTop, newBl, newBc, newBr)
+                val updated =
+                    (when (slot) {
+                        "top" -> g.top
+                        "bottomLeft" -> g.bottomLeft
+                        "bottomCenter" -> g.bottomCenter
+                        "bottomRight" -> g.bottomRight
+                        else -> emptyMap()
+                    }).toMutableMap()
+                updated[type] = action
+                settingsRepository.updatePlayerGestures(
+                    top = if (slot == "top") updated else g.top,
+                    bottomLeft = if (slot == "bottomLeft") updated else g.bottomLeft,
+                    bottomCenter = if (slot == "bottomCenter") updated else g.bottomCenter,
+                    bottomRight = if (slot == "bottomRight") updated else g.bottomRight,
+                )
             }
         }
 

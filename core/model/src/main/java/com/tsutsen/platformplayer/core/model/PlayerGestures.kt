@@ -22,8 +22,8 @@ object PlayerGestures {
     const val MORPH_TO_FULLSCREEN = "morph_fullscreen"
     const val MORPH_VERTICAL = "morph_vertical"
 
-    /** The four gesture types each slot can bind. */
-    val GESTURE_TYPES = listOf("swipe_v", "swipe_h", "double_tap", "hold")
+    /** The four gesture types each slot can bind, in display order. */
+    val GESTURE_TYPES = listOf("hold", "double_tap", "swipe_h", "swipe_v")
 
     val DISPLAY_NAMES: Map<String, String> =
         mapOf(
@@ -40,13 +40,13 @@ object PlayerGestures {
             MORPH_VERTICAL to "Morph (up/down)",
         )
 
-    /** Display labels for the gesture types (column headers in the editor). */
+    /** Display labels for the gesture types. */
     val TYPE_LABELS: Map<String, String> =
         mapOf(
-            "swipe_v" to "Swipe",
-            "swipe_h" to "S. swipe",
-            "double_tap" to "Double-tap",
             "hold" to "Hold",
+            "double_tap" to "Double tap",
+            "swipe_h" to "H-swipe",
+            "swipe_v" to "V-swipe",
         )
 
     /** Slot keys, in display order. */
@@ -103,4 +103,48 @@ object PlayerGestures {
                     BRIGHTNESS,
                 ),
         )
+
+    /**
+     * Canonical per-slot defaults — what each button shows before the user
+     * customizes it, and what the player uses when a cell is unset.
+     * Mirrors the shipped gesture behaviour.
+     */
+    val DEFAULT_SLOTS: Map<String, Map<String, String>> =
+        mapOf(
+            "top" to
+                mapOf(
+                    "hold" to SPEEDUP,
+                    "double_tap" to NONE,
+                    "swipe_h" to SPEEDUP,
+                    "swipe_v" to MORPH_VERTICAL,
+                ),
+            "bottomLeft" to
+                mapOf(
+                    "hold" to SPEEDUP,
+                    "double_tap" to REWIND_BACK,
+                    "swipe_h" to SPEEDUP,
+                    "swipe_v" to BRIGHTNESS,
+                ),
+            "bottomCenter" to
+                mapOf(
+                    "hold" to NONE,
+                    "double_tap" to NONE,
+                    "swipe_h" to NONE,
+                    "swipe_v" to NONE,
+                ),
+            "bottomRight" to
+                mapOf(
+                    "hold" to SPEEDUP,
+                    "double_tap" to REWIND_FORWARD,
+                    "swipe_h" to SPEEDUP,
+                    "swipe_v" to VOLUME,
+                ),
+        )
+
+    /** Effective action for one cell: the user's override, else the default. */
+    fun resolve(
+        slot: String,
+        type: String,
+        userSlot: Map<String, String>,
+    ): String = userSlot[type] ?: DEFAULT_SLOTS[slot]?.get(type) ?: NONE
 }

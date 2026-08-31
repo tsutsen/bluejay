@@ -413,18 +413,6 @@ fun SettingsSectionScreen(
             }
         }
 
-        Choice.PLAYER_GESTURES -> {
-            loaded?.let { state ->
-                PlayerGesturesDialog(
-                    prefs = state.playerGestures,
-                    onSlotChange = { slot, assignments ->
-                        viewModel.setPlayerGesturesSlot(slot, assignments)
-                    },
-                    onDismiss = { selectedChoice = null },
-                )
-            }
-        }
-
         Choice.DUAL_FEED_SOURCES -> {
             loaded?.let {
                 MultiSelectDialog(
@@ -703,17 +691,13 @@ private fun LazyListScope.SectionItems(
                     onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
                 )
             }
+            item { SettingsHeader("Player gestures") }
             item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.TouchApp,
-                    title = "Player gestures",
-                    subtitle =
-                        state.playerGestures.let { g ->
-                            val assigned =
-                                (g.top.size + g.bottomLeft.size + g.bottomCenter.size + g.bottomRight.size)
-                            if (assigned == 0) "Defaults" else "$assigned custom"
-                        },
-                    onClick = { onChoiceSelected(Choice.PLAYER_GESTURES) },
+                PlayerGesturesEditor(
+                    prefs = state.playerGestures,
+                    onCellChange = { slot, type, action ->
+                        viewModel.setPlayerGesturesCell(slot, type, action)
+                    },
                 )
             }
         }
@@ -950,7 +934,6 @@ private enum class Choice {
     DUAL_PAGE_ORDER,
     DUAL_SLOTS,
     DUAL_FEED_SOURCES,
-    PLAYER_GESTURES,
     LIBRARY_SECTION_ORDER,
     PLAYBACK_SPEED,
     SPEEDUP_SENSITIVITY,
