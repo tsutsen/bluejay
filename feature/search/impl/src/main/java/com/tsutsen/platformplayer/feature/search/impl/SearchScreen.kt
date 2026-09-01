@@ -90,6 +90,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
+import com.tsutsen.platformplayer.core.designsystem.component.SegmentedGroup
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
@@ -367,24 +368,24 @@ fun SearchScreen(
                         .fillMaxWidth()
                         .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                SearchType.entries.forEach { type ->
-                    FilterChip(
-                        selected = type == searchType,
-                        onClick = {
-                            // Switching the type tab releases the field's
-                            // focus (and the keyboard).
-                            focusManager.clearFocus()
-                            viewModel.setSearchType(type)
-                        },
-                        label = { Text(searchTypeLabel(type)) },
-                    )
-                }
-
-                // Pushed to the right, separate from the type chips; the
-                // menus anchor to their pills.
-                Row(
+                SegmentedGroup(
+                    options = SearchType.entries,
+                    selectedIndex = SearchType.entries.indexOf(searchType),
+                    onSelected = { i ->
+                        // Switching the type releases the field's focus
+                        // (and the keyboard).
+                        focusManager.clearFocus()
+                        viewModel.setSearchType(SearchType.entries[i])
+                    },
+                    label = { searchTypeLabel(it) },
                     modifier = Modifier.weight(1f),
+                )
+
+                // Source/sort menus pinned to the right; the menus anchor
+                // to their pills.
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 ) {
                     // Source filter — only when more than one source is
