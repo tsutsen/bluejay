@@ -98,8 +98,6 @@ import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import com.tsutsen.platformplayer.feature.player.impl.PlayerEvent
-import com.tsutsen.platformplayer.feature.player.impl.PlayerEventBus
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
@@ -113,6 +111,8 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.formatDuration
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
@@ -123,6 +123,8 @@ import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
 import com.tsutsen.platformplayer.feature.player.impl.ChannelRow
+import com.tsutsen.platformplayer.feature.player.impl.PlayerEvent
+import com.tsutsen.platformplayer.feature.player.impl.PlayerEventBus
 import com.tsutsen.platformplayer.feature.player.impl.SystemControls
 import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
@@ -210,7 +212,22 @@ class CompanionPresentation(
                     ThemeMode.DARK -> true
                     ThemeMode.AUTO -> isSystemInDarkTheme()
                 }
-            BluejayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
+            val appearance = prefs.appearance
+            val activeTheme =
+                appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
+            val customSchemes =
+                remember(activeTheme) {
+                    activeTheme?.let {
+                        ThemeEngine.generate(it.primary, it.secondary, it.tertiary, it.paletteStyle)
+                    }
+                }
+
+            BluejayTheme(
+                darkTheme = darkTheme,
+                dynamicColor = appearance.dynamicColor,
+                uiRounding = appearance.uiRounding,
+                colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
+            ) {
                 CompanionContent(
                     playerRepository = playerRepository,
                     libraryRepository = libraryRepository,
@@ -550,7 +567,7 @@ private fun CompanionContent(
                                         // Publish to the player event bus so the main
                                         // screen shows the same feedback as its own actions.
                                         PlayerEventBus.emit(
-                                            PlayerEvent.PlayPauseToggled(isPlaying = !playerState.isPlaying)
+                                            PlayerEvent.PlayPauseToggled(isPlaying = !playerState.isPlaying),
                                         )
                                         scope.launch {
                                             if (playerState.isPlaying) {
@@ -1039,7 +1056,7 @@ private fun VideoPageTabs(
                                             .width(240.dp)
                                             .fillMaxHeight()
                                             .combinedClickable(onClick = { onSeekTo(chapter.startTimeMs) }),
-                                    shape = RoundedCornerShape(Tokens.RadiusMd),
+                                    shape = RoundedCornerShape(BluejayTokens().radius.md),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                                     colors =
                                         CardDefaults.cardColors(
@@ -1263,7 +1280,7 @@ private fun LibrarySlotPager(
     val currentPage = remember(title) { mutableIntStateOf(1) }
     Card(
         modifier = modifier.padding(4.dp),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
     ) {
@@ -1296,7 +1313,7 @@ private fun LibrarySlotPager(
                         Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .clip(RoundedCornerShape(Tokens.RadiusMd))
+                            .clip(RoundedCornerShape(BluejayTokens().radius.md))
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -1460,7 +1477,7 @@ private fun HomeGridPage(
     // not four separate cells.
     Card(
         modifier = Modifier.fillMaxSize().padding(4.dp),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -1678,7 +1695,7 @@ private fun PagerCard(
                             Modifier
                                 .width(cardWidth)
                                 .aspectRatio(16f / 9f)
-                                .clip(RoundedCornerShape(Tokens.RadiusSm))
+                                .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
                 }
@@ -1760,7 +1777,7 @@ private fun CompanionVideoHeader(
                 Modifier
                     .width(96.dp)
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                    .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
             contentScale = ContentScale.Crop,
         )
         Column(modifier = Modifier.padding(start = 12.dp)) {
@@ -1843,7 +1860,7 @@ private fun CompanionInfoTab(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
-            shape = RoundedCornerShape(Tokens.RadiusMd),
+            shape = RoundedCornerShape(BluejayTokens().radius.md),
             colors =
                 CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -1951,7 +1968,7 @@ private fun CompanionControlsTab(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
-            shape = RoundedCornerShape(Tokens.RadiusMd),
+            shape = RoundedCornerShape(BluejayTokens().radius.md),
             colors =
                 CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,

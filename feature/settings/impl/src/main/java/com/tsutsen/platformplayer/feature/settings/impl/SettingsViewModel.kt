@@ -111,6 +111,21 @@ class SettingsViewModel
             }
         }
 
+        /** Save or update a custom theme (Settings > Appearance > Custom themes). */
+        fun saveTheme(theme: CustomTheme) {
+            viewModelScope.launch { settingsRepository.saveCustomTheme(theme) }
+        }
+
+        /** Delete a custom theme (clears it if it is the active theme). */
+        fun deleteTheme(id: String) {
+            viewModelScope.launch { settingsRepository.deleteCustomTheme(id) }
+        }
+
+        /** Set the active custom theme, or null for the default theme. */
+        fun setActiveTheme(id: String?) {
+            viewModelScope.launch { settingsRepository.setActiveThemeId(id) }
+        }
+
         fun updatePlayback(prefs: PlaybackPreferences) {
             viewModelScope.launch {
                 settingsRepository.updatePlayback(prefs)

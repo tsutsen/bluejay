@@ -5,6 +5,7 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
+import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
@@ -37,6 +38,9 @@ class SettingsRepositoryImpl
                             runCatching { ThemeMode.valueOf(s.appearance.themeMode) }
                                 .getOrDefault(ThemeMode.AUTO),
                         dynamicColor = s.appearance.dynamicColor,
+                        uiRounding = s.appearance.uiRounding,
+                        customThemes = s.appearance.customThemes,
+                        activeThemeId = s.appearance.activeThemeId,
                     ),
                 playback = PlaybackPreferences(autoPlay = s.playback.autoplay),
                 subtitle =
@@ -101,6 +105,7 @@ class SettingsRepositoryImpl
             val s = Settings.instance
             s.appearance.themeMode = prefs.themeMode.name
             s.appearance.dynamicColor = prefs.dynamicColor
+            s.appearance.uiRounding = prefs.uiRounding
             s.save()
             emit()
         }
@@ -121,6 +126,7 @@ class SettingsRepositoryImpl
                 "enableDeveloperOptions" -> s.advancedSettings = value as Boolean
                 "dualScreen" -> s.dualScreen = value as Boolean
                 "dynamicColor" -> s.appearance.dynamicColor = value as Boolean
+                "uiRounding" -> s.appearance.uiRounding = (value as Number).toInt()
                 "gridColumns" -> s.feed.gridColumns = value as Int
                 "homeHiddenSources" -> s.feed.hiddenSources = value as List<String>
                 "searchHistory" -> s.search.history = value as List<String>
@@ -213,7 +219,29 @@ class SettingsRepositoryImpl
             emit()
         }
 
-        override suspend fun updateDualScreenFeedSources(ids: List<String>) {
+        override suspend fun saveCustomTheme(theme: CustomTheme) {
+        val s = Settings.instance
+        s.appearance.customThemes = s.appearance.customThemes.filter { it.id != theme.id } + theme
+        s.save()
+        emit()
+    }
+
+    override suspend fun deleteCustomTheme(id: String) {
+        val s = Settings.instance
+        s.appearance.customThemes = s.appearance.customThemes.filterNot { it.id == id }
+        if (s.appearance.activeThemeId == id) s.appearance.activeThemeId = null
+        s.save()
+        emit()
+    }
+
+    override suspend fun setActiveThemeId(id: String?) {
+        val s = Settings.instance
+        s.appearance.activeThemeId = id
+        s.save()
+        emit()
+    }
+
+    override suspend fun updateDualScreenFeedSources(ids: List<String>) {
             val s = Settings.instance
             s.dualScreenFeedSources = ids
             s.save()
@@ -231,6 +259,7 @@ class SettingsRepositoryImpl
             val s = Settings.instance
             s.appearance.themeMode = "AUTO"
             s.appearance.dynamicColor = true
+            s.appearance.uiRounding = 100
             s.advancedSettings = false
             s.dualScreen = false
             s.dualScreenPages = listOf("video", "library", "home")

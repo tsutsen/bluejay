@@ -1,19 +1,23 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,10 +25,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,29 +36,30 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DisplaySettings
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Games
-import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Reorder
-import androidx.compose.material.icons.filled.SystemUpdateAlt
-import androidx.compose.material.icons.filled.DisplaySettings
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Hd
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.RssFeed
-import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Reorder
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.RoundedCorner
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -77,46 +82,46 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
-import androidx.compose.ui.graphics.Color
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
+import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
+import com.tsutsen.platformplayer.core.designsystem.component.QueueMoveButton
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsSliderCard
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
+import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.designsystem.reorder.FlipItem
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SourceInfo
-import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
-import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
-import com.tsutsen.platformplayer.core.designsystem.component.QueueMoveButton
-import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
-import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
-import com.tsutsen.platformplayer.core.designsystem.reorder.FlipItem
-import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.core.navigation.Navigator
+import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private fun writeSettingsGranted(context: android.content.Context): Boolean =
     runCatching { Settings.System.canWrite(context) }.getOrDefault(false)
+
 /**
  * Settings master page: one row per section (Appearance, Gestures, Content,
  * Playback, General). Tapping a row opens the section detail page
@@ -503,6 +508,7 @@ fun SettingsSectionScreen(
                 )
             }
         }
+
         Choice.SPEEDUP_SENSITIVITY -> {
             loaded?.let {
                 ChoiceDialog(
@@ -523,6 +529,7 @@ fun SettingsSectionScreen(
                 )
             }
         }
+
         Choice.JUMP_STEP -> {
             loaded?.let {
                 ChoiceDialog(
@@ -544,6 +551,7 @@ fun SettingsSectionScreen(
                 )
             }
         }
+
         Choice.VIDEO_RESOLUTION -> {
             loaded?.let {
                 ChoiceDialog(
@@ -566,6 +574,7 @@ fun SettingsSectionScreen(
                 )
             }
         }
+
         Choice.CONTROLLER_SEEK_BACK -> {
             loaded?.let {
                 ChoiceDialog(
@@ -844,12 +853,36 @@ private fun LazyListScope.SectionItems(
                 )
             }
             item {
+                SettingsSliderCard(
+                    icon = Icons.Filled.RoundedCorner,
+                    title = "UI rounding",
+                    subtitle = "Corner radius across the app",
+                    value = state.appearance.uiRounding.toFloat(),
+                    onValueChange = {
+                        // ponytail: persists on every tick; fine for a small
+                        // JSON settings file, batch if it ever chugs.
+                        viewModel.updateGeneral("uiRounding", it.roundToInt())
+                    },
+                )
+            }
+            item {
                 SettingsOptionCard(
                     icon = Icons.Filled.GridOn,
                     title = "Grid columns",
                     subtitle = "${state.gridColumns} columns",
                     onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
                 )
+            }
+            item {
+                Text(
+                    text = "Custom themes",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = Tokens.SpaceSm, bottom = 4.dp),
+                )
+            }
+            item {
+                ThemesSection(state.appearance, viewModel)
             }
         }
 
@@ -1335,7 +1368,10 @@ private fun slotListLabel(
         slotLabel(slots.getOrNull(it) ?: "", librarySectionNames, playlists)
     }
 
-private fun dualListLabel(keys: List<String>, names: Map<String, String>): String {
+private fun dualListLabel(
+    keys: List<String>,
+    names: Map<String, String>,
+): String {
     val all = names.keys.filter { it in keys }
     return when {
         all.isEmpty() -> "None"
@@ -1345,8 +1381,10 @@ private fun dualListLabel(keys: List<String>, names: Map<String, String>): Strin
 }
 
 /** Subtitle for order settings: the actual order, comma separated. */
-private fun dualOrderLabel(order: List<String>, names: Map<String, String>): String =
-    order.joinToString(", ") { names[it] ?: it }
+private fun dualOrderLabel(
+    order: List<String>,
+    names: Map<String, String>,
+): String = order.joinToString(", ") { names[it] ?: it }
 
 private fun sectionTitle(category: String): String =
     when (category) {
@@ -1539,7 +1577,10 @@ private fun ReorderDialog(
     val rowHeightPx = remember { mutableStateOf(44f) }
 
     /** Displace [id] by [steps] row slots and slide it back to rest. */
-    fun slide(id: String, steps: Int) {
+    fun slide(
+        id: String,
+        steps: Int,
+    ) {
         val anim = flipAnims.getOrPut(id) { Animatable(Offset.Zero, Offset.VectorConverter) }
         scope.launch {
             anim.snapTo(Offset(0f, -steps * rowHeightPx.value))
@@ -1684,7 +1725,7 @@ private fun SlotsDialog(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(Tokens.RadiusMd))
+                                    .clip(RoundedCornerShape(BluejayTokens().radius.md))
                                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                     .clickable { editing = index }
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -1713,7 +1754,10 @@ private fun SlotsDialog(
                         SlotPickRow(
                             name = name,
                             selected = slots.getOrNull(editing!!) == id,
-                            onClick = { onSetSlot(editing!!, id); editing = null },
+                            onClick = {
+                                onSetSlot(editing!!, id)
+                                editing = null
+                            },
                         )
                     }
                     if (playlists.isNotEmpty()) {
@@ -1729,7 +1773,10 @@ private fun SlotsDialog(
                         SlotPickRow(
                             name = p.name,
                             selected = slots.getOrNull(editing!!) == value,
-                            onClick = { onSetSlot(editing!!, value); editing = null },
+                            onClick = {
+                                onSetSlot(editing!!, value)
+                                editing = null
+                            },
                         )
                     }
                 }

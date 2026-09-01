@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer
 import android.content.Context
 import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
+import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -253,6 +254,15 @@ class Settings {
 
         // Material You (wallpaper) color scheme
         var dynamicColor: Boolean = true
+
+        // UI rounding as a percent (100 = shipped radii, 0 = sharp)
+        var uiRounding: Int = 100
+
+        // User-created themes (key colors → generated scheme)
+        var customThemes: List<CustomTheme> = emptyList()
+
+        // Active custom theme id (null = default theming)
+        var activeThemeId: String? = null
     }
 
     @Serializable

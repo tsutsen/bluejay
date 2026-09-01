@@ -38,6 +38,7 @@ import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
 import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
 import com.tsutsen.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
+import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PlayerView
@@ -323,7 +324,22 @@ private fun BluejayMainActivity(
     // chrome (expanding the PiP flips this back to the full app UI).
     val pip by activity.pipActive.collectAsState(initial = false)
 
-    BluejayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
+    val appearance = prefs.appearance
+    // Active custom theme (if any): key colors → generated light/dark schemes.
+    val activeTheme = appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
+    val customSchemes =
+        remember(activeTheme) {
+            activeTheme?.let {
+                ThemeEngine.generate(it.primary, it.secondary, it.tertiary, it.paletteStyle)
+            }
+        }
+
+    BluejayTheme(
+        darkTheme = darkTheme,
+        dynamicColor = appearance.dynamicColor,
+        uiRounding = appearance.uiRounding,
+        colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
+    ) {
         if (pip) {
             PlayerView(isPip = true)
         } else {

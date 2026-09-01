@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.LocalSemanticColors
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
@@ -399,7 +400,7 @@ private fun DownloadQualityDialog(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(Tokens.RadiusMd))
+                                .clip(RoundedCornerShape(BluejayTokens().radius.md))
                                 .clickable { selected = q }
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -523,7 +524,7 @@ fun OptionTileView(
             modifier
                 .padding(vertical = outerVPadding, horizontal = outerHPadding)
                 .clip(
-                    RoundedCornerShape(Tokens.RadiusMd),
+                    RoundedCornerShape(BluejayTokens().radius.md),
                 ).background(
                     bg,
                 ).then(clickModifier)
@@ -613,7 +614,7 @@ private fun playlistRow(
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 2.dp)
-                .clip(RoundedCornerShape(Tokens.RadiusMd))
+                .clip(RoundedCornerShape(BluejayTokens().radius.md))
                 .background(MaterialTheme.colorScheme.surfaceContainer)
                 .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,

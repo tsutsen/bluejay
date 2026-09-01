@@ -19,7 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.model.ArticleCard
 import com.tsutsen.platformplayer.core.model.PostCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -29,7 +29,11 @@ import com.tsutsen.platformplayer.core.ui.RelativeTime
  * Text-forward card for a post (thumbnail optional, right-aligned).
  */
 @Composable
-fun PostCardView(card: PostCard, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PostCardView(
+    card: PostCard,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     TextContentCard(card.title, card.thumbnailUrl, card.author, card.publishedAt, onClick, modifier)
 }
 
@@ -37,7 +41,11 @@ fun PostCardView(card: PostCard, onClick: () -> Unit, modifier: Modifier = Modif
  * Text-forward card for an article/web page (thumbnail optional, right-aligned).
  */
 @Composable
-fun ArticleCardView(card: ArticleCard, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ArticleCardView(
+    card: ArticleCard,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     TextContentCard(card.title, card.thumbnailUrl, card.author, card.publishedAt, onClick, modifier)
 }
 
@@ -51,16 +59,18 @@ private fun TextContentCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -71,13 +81,14 @@ private fun TextContentCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val meta = buildString {
-                    author?.let { append(it) }
-                    publishedAt?.let {
-                        if (isNotEmpty()) append(" • ")
-                        append(RelativeTime.format(it))
+                val meta =
+                    buildString {
+                        author?.let { append(it) }
+                        publishedAt?.let {
+                            if (isNotEmpty()) append(" • ")
+                            append(RelativeTime.format(it))
+                        }
                     }
-                }
                 if (meta.isNotEmpty()) {
                     Text(
                         text = meta,
@@ -92,9 +103,10 @@ private fun TextContentCard(
                 AsyncImage(
                     url = it,
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(96.dp, 54.dp)
-                        .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                    modifier =
+                        Modifier
+                            .size(96.dp, 54.dp)
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                     contentScale = ContentScale.Crop,
                 )
             }

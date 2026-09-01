@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.core.data.repository
 
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
+import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import kotlinx.coroutines.flow.StateFlow
 
@@ -27,6 +28,16 @@ interface SettingsRepository {
 
     /** Save the controller (gamepad) settings (Settings > Controller). */
     suspend fun updateControllerSettings(prefs: ControllerPreferences)
+
+    /** Upsert a user theme (same id = update, new id = add). */
+    suspend fun saveCustomTheme(theme: CustomTheme)
+
+    /** Delete a user theme; clears it if it was active. */
+    suspend fun deleteCustomTheme(id: String)
+
+    /** Set the active custom theme (null = default theming). */
+    suspend fun setActiveThemeId(id: String?)
+
     suspend fun updateLibrarySectionOrder(order: List<String>)
     suspend fun resetToDefaults()
 }

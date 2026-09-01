@@ -3,9 +3,9 @@ package com.tsutsen.platformplayer.core.designsystem.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,7 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.core.ui.RelativeTime
@@ -50,7 +50,7 @@ fun CommentCardView(
     // all comment cards are the same height regardless of text length.
     Card(
         modifier = modifier.width(COMMENT_CARD_WIDTH).fillMaxHeight(),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -77,14 +77,19 @@ fun CommentCardView(
                         AsyncImage(
                             url = comment.authorThumbnailUrl,
                             contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
                             contentScale = ContentScale.Crop,
                         )
                     } else {
                         Text(
-                            text = comment.author.first().toString().uppercase(),
+                            text =
+                                comment.author
+                                    .first()
+                                    .toString()
+                                    .uppercase(),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )

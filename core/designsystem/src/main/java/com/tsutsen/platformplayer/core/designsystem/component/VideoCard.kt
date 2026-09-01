@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -45,13 +46,16 @@ private val PILL_HEIGHT = 18.dp
  * background) with a thick hand-drawn check instead of text.
  */
 @Composable
-private fun WatchedBadge(size: Dp, modifier: Modifier = Modifier) {
+private fun WatchedBadge(
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier =
             modifier
                 .width(size)
                 .height(PILL_HEIGHT)
-                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                 .background(Color.Black.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
@@ -60,11 +64,12 @@ private fun WatchedBadge(size: Dp, modifier: Modifier = Modifier) {
         Canvas(Modifier.size(size * 0.4f)) {
             val w = this.size.width
             val h = this.size.height
-            val path = Path().apply {
-                moveTo(w * 0.10f, h * 0.54f)
-                lineTo(w * 0.40f, h * 0.84f)
-                lineTo(w * 0.92f, h * 0.20f)
-            }
+            val path =
+                Path().apply {
+                    moveTo(w * 0.10f, h * 0.54f)
+                    lineTo(w * 0.40f, h * 0.84f)
+                    lineTo(w * 0.92f, h * 0.20f)
+                }
             drawPath(
                 path = path,
                 color = Color.White,
@@ -107,7 +112,7 @@ fun VideoCard(
             modifier
                 .fillMaxWidth()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(Tokens.RadiusSm),
+        shape = RoundedCornerShape(BluejayTokens().radius.sm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -130,7 +135,7 @@ fun VideoCard(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                     contentScale = ContentScale.Crop,
                 )
 
@@ -180,8 +185,8 @@ fun VideoCard(
                                 .height(4.dp)
                                 .clip(
                                     RoundedCornerShape(
-                                        bottomStart = Tokens.RadiusSm,
-                                        bottomEnd = Tokens.RadiusSm,
+                                        bottomStart = BluejayTokens().radius.sm,
+                                        bottomEnd = BluejayTokens().radius.sm,
                                     ),
                                 ).background(Color.Black.copy(alpha = 0.6f)),
                     ) {
@@ -215,7 +220,7 @@ fun VideoCard(
                                 .align(Alignment.BottomEnd)
                                 .padding(Tokens.SpaceSm)
                                 .height(PILL_HEIGHT)
-                                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                                 .background(Color.Black.copy(alpha = 0.7f)),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -330,7 +335,7 @@ fun VideoCardPills(
     // follows from 16:9 + the title), never the thumbnail's ratio.
     Card(
         modifier = modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(Tokens.RadiusSm),
+        shape = RoundedCornerShape(BluejayTokens().radius.sm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
@@ -339,7 +344,7 @@ fun VideoCardPills(
                 AsyncImage(
                     url = thumbnailUrl,
                     contentDescription = title,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(Tokens.RadiusSm)),
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                     contentScale = ContentScale.Crop,
                 )
                 if (card.isLive) {
@@ -400,7 +405,7 @@ fun VideoCardFull(
             modifier
                 .fillMaxHeight()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -422,7 +427,7 @@ fun VideoCardFull(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                     contentScale = ContentScale.Crop,
                 )
             }
@@ -471,7 +476,7 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
     Box(
         modifier =
             modifier
-                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                 .background(Color(0xFFE60000))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
@@ -501,7 +506,7 @@ private fun ClipBadge(modifier: Modifier = Modifier) {
     Box(
         modifier =
             modifier
-                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                 .background(Color(0xCC202124))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
@@ -523,7 +528,7 @@ private fun ThumbnailPill(
     Surface(
         modifier = modifier,
         color = Color.Black.copy(alpha = 0.7f),
-        shape = RoundedCornerShape(Tokens.RadiusXs),
+        shape = RoundedCornerShape(BluejayTokens().radius.xs),
     ) {
         Text(
             text = text,
@@ -564,7 +569,7 @@ fun VideoCardShorts(
             modifier
                 .fillMaxWidth()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(Tokens.RadiusSm),
+        shape = RoundedCornerShape(BluejayTokens().radius.sm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -579,7 +584,7 @@ fun VideoCardShorts(
                     Modifier
                         .height(120.dp)
                         .aspectRatio(9f / 16f)
-                        .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                        .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
             ) {
                 AsyncImage(
                     url = thumbnailUrl,
@@ -608,7 +613,7 @@ fun VideoCardShorts(
                                 .align(Alignment.BottomEnd)
                                 .padding(Tokens.SpaceXs)
                                 .height(PILL_HEIGHT)
-                                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                                 .background(Color.Black.copy(alpha = 0.7f)),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -632,8 +637,8 @@ fun VideoCardShorts(
                                 .height(4.dp)
                                 .clip(
                                     RoundedCornerShape(
-                                        bottomStart = Tokens.RadiusSm,
-                                        bottomEnd = Tokens.RadiusSm,
+                                        bottomStart = BluejayTokens().radius.sm,
+                                        bottomEnd = BluejayTokens().radius.sm,
                                     ),
                                 ).background(Color.Black.copy(alpha = 0.6f)),
                     ) {

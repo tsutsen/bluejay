@@ -52,6 +52,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsShe
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
@@ -308,7 +309,7 @@ private fun LibraryCard(
                     Modifier
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(Tokens.RadiusSm))
+                        .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
             )
         }
@@ -335,7 +336,7 @@ fun PlaylistCardView(
                     onClick = onClick,
                     onLongClick = onLongClick,
                 ),
-        shape = RoundedCornerShape(Tokens.RadiusSm),
+        shape = RoundedCornerShape(BluejayTokens().radius.sm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -408,7 +409,7 @@ private fun AllCard(
             Modifier
                 .width(STRIP_CARD_WIDTH)
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(Tokens.RadiusSm))
+                .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,

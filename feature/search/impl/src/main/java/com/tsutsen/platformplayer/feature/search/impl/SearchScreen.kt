@@ -95,6 +95,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.PlaylistCard
@@ -340,7 +341,7 @@ fun SearchScreen(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(Tokens.RadiusMd),
+                shape = RoundedCornerShape(BluejayTokens().radius.md),
                 colors =
                     TextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -398,13 +399,20 @@ fun SearchScreen(
                                 label = {
                                     Text(
                                         when {
-                                            selectedSources.isEmpty() -> "All sources"
-                                            selectedSources.size == 1 ->
-                                                enabledSources.firstOrNull {
-                                                    it.id in selectedSources
-                                                }?.name ?: "Sources"
+                                            selectedSources.isEmpty() -> {
+                                                "All sources"
+                                            }
 
-                                            else -> "${selectedSources.size} sources"
+                                            selectedSources.size == 1 -> {
+                                                enabledSources
+                                                    .firstOrNull {
+                                                        it.id in selectedSources
+                                                    }?.name ?: "Sources"
+                                            }
+
+                                            else -> {
+                                                "${selectedSources.size} sources"
+                                            }
                                         },
                                     )
                                 },
@@ -504,7 +512,7 @@ fun SearchScreen(
                             .padding(horizontal = Tokens.SpaceLg)
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                RoundedCornerShape(Tokens.RadiusMd),
+                                RoundedCornerShape(BluejayTokens().radius.md),
                             ).padding(Tokens.SpaceMd),
                 ) {
                     RecentSearches(
@@ -763,7 +771,7 @@ private fun SearchFieldButton(
         modifier =
             Modifier
                 .size(26.dp)
-                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                 .background(MaterialTheme.colorScheme.primary)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -868,8 +876,7 @@ private fun <T> SelectionDropdownItems(
                                 onTap = { onPick(item) },
                                 onLongPress = { onLongPick?.invoke(item) },
                             )
-                        }
-                        .padding(horizontal = Tokens.SpaceMd, vertical = 6.dp),
+                        }.padding(horizontal = Tokens.SpaceMd, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
