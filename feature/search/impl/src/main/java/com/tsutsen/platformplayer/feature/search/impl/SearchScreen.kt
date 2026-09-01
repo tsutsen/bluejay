@@ -2,11 +2,9 @@ package com.tsutsen.platformplayer.feature.search.impl
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,8 +26,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
@@ -42,10 +38,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -66,7 +60,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -76,8 +69,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -90,7 +81,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
-import com.tsutsen.platformplayer.core.designsystem.component.SegmentedGroup
+import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
@@ -297,68 +288,22 @@ fun SearchScreen(
                 },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. Search field: one pill with the search button embedded in
-            // the field (no leading icon, no button next to it).
-            OutlinedTextField(
+            // 1. Search field: PixelPlayer-style docked bar (leading icon,
+            // translucent container, clear button). Submits via the IME
+            // search action.
+            SearchBarField(
                 value = searchQuery,
                 onValueChange = { viewModel.setQuery(it) },
+                onSearch = { performSearch() },
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         // First element of the tab: on the shared 42dp content line.
-                        .padding(start = 16.dp, top = TabContentTopPadding, end = 16.dp)
+                        .padding(start = 16.dp, top = TabContentTopPadding, end = 16.dp),
+                fieldModifier =
+                    Modifier
                         .focusRequester(focusRequester)
                         .onFocusChanged { isSearchFocused = it.isFocused },
-                placeholder = { Text("Search") },
-                trailingIcon = {
-                    // Search button pins to the field's right edge; the clear
-                    // button slides in to its left when there's text. Buttons
-                    // are fixed-size, so nothing squishes.
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        // isNotBlank (not isNotEmpty): a whitespace-only
-                        // field looks empty, so the clear button goes too.
-                        AnimatedVisibility(
-                            visible = searchQuery.isNotBlank(),
-                            enter = fadeIn(motion.stateSpec<Float>()) + expandHorizontally(motion.stateSpec<IntSize>()),
-                            exit = fadeOut(motion.stateSpec<Float>()) + shrinkHorizontally(motion.stateSpec<IntSize>())
-                        ) {
-                            Row {
-                                SearchFieldButton(
-                                    icon = Icons.Default.Close,
-                                    contentDescription = "Clear",
-                                    onClick = { viewModel.setQuery("") },
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                            }
-                        }
-                        SearchFieldButton(
-                            icon = Icons.Default.Search,
-                            contentDescription = "Search",
-                            onClick = { performSearch() },
-                        )
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(BluejayTokens().radius.md),
-                colors =
-                    TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        focusedTrailingIconColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
-                    ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions =
-                    KeyboardActions(
-                        onSearch = { performSearch() },
-                    ),
-                textStyle = MaterialTheme.typography.bodyMedium,
             )
 
             // Which kind of content to search for.
@@ -370,16 +315,16 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SegmentedGroup(
-                    options = SearchType.entries,
-                    selectedIndex = SearchType.entries.indexOf(searchType),
-                    onSelected = { i ->
+                // Same tab style as the companion's main page.
+                PillTabs(
+                    labels = SearchType.entries.map { searchTypeLabel(it) },
+                    selected = SearchType.entries.indexOf(searchType),
+                    onSelect = { i ->
                         // Switching the type releases the field's focus
                         // (and the keyboard).
                         focusManager.clearFocus()
                         viewModel.setSearchType(SearchType.entries[i])
                     },
-                    label = { searchTypeLabel(it) },
                     modifier = Modifier.weight(1f),
                 )
 
@@ -755,34 +700,6 @@ private fun RecentSearches(
                 }
             }
         }
-    }
-}
-
-/**
- * Small rounded-rectangle action button embedded in the search field:
- * primary fill, 26dp square, 16dp icon.
- */
-@Composable
-private fun SearchFieldButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier =
-            Modifier
-                .size(26.dp)
-                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
-                .background(MaterialTheme.colorScheme.primary)
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onPrimary,
-        )
     }
 }
 

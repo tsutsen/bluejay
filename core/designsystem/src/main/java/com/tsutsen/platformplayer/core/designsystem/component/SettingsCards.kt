@@ -30,27 +30,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Shape
 import kotlin.math.roundToInt
 import kotlin.ranges.ClosedFloatingPointRange
 
-/**
- * Position of a settings card inside a vertical group. Consecutive
- * First/Middle/Last cards read as one connected block: outer corners are
- * rounded (following the app's rounding setting), inner corners square.
- */
-enum class CardGroupPosition { Single, First, Middle, Last }
+/** Group members stack flush; only solo cards keep the 2.dp breathing inset. */
+private fun groupPad(position: GroupPosition): Dp =
+    if (position == GroupPosition.Single) 2.dp else 0.dp
 
 @Composable
-private fun groupShape(position: CardGroupPosition): Shape {
+private fun groupShape(position: GroupPosition): Shape {
     val r = BluejayTokens().radius
     return when (position) {
-        CardGroupPosition.Single -> RoundedCornerShape(r.md)
-        CardGroupPosition.First -> RoundedCornerShape(topStart = r.md, topEnd = r.md)
-        CardGroupPosition.Middle -> RoundedCornerShape(0.dp)
-        CardGroupPosition.Last -> RoundedCornerShape(bottomStart = r.md, bottomEnd = r.md)
+        GroupPosition.Single -> RoundedCornerShape(r.md)
+        GroupPosition.First -> RoundedCornerShape(topStart = r.md, topEnd = r.md)
+        GroupPosition.Middle -> RoundedCornerShape(0.dp)
+        GroupPosition.Last -> RoundedCornerShape(bottomStart = r.md, bottomEnd = r.md)
     }
 }
 
@@ -66,14 +64,14 @@ fun SettingsOptionCard(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    groupPosition: CardGroupPosition = CardGroupPosition.Single,
+    groupPosition: GroupPosition = GroupPosition.Single,
 ) {
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(vertical = 2.dp),
+                .padding(vertical = groupPad(groupPosition)),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -134,13 +132,13 @@ fun SettingsSwitchCard(
     subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    groupPosition: CardGroupPosition = CardGroupPosition.Single,
+    groupPosition: GroupPosition = GroupPosition.Single,
 ) {
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 2.dp),
+                .padding(vertical = groupPad(groupPosition)),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -203,10 +201,10 @@ fun SettingsSliderCard(
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     steps: Int = 0,
     onValueChange: (Float) -> Unit,
-    groupPosition: CardGroupPosition = CardGroupPosition.Single,
+    groupPosition: GroupPosition = GroupPosition.Single,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = groupPad(groupPosition)),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -276,14 +274,14 @@ fun SettingsSwitchOptionCard(
     onCheckedChange: (Boolean) -> Unit,
     onClick: () -> Unit,
     iconUrl: String? = null,
-    groupPosition: CardGroupPosition = CardGroupPosition.Single,
+    groupPosition: GroupPosition = GroupPosition.Single,
 ) {
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(vertical = 2.dp),
+                .padding(vertical = groupPad(groupPosition)),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
