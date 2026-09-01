@@ -12,19 +12,28 @@ import android.view.KeyEvent
  */
 object PlayerControllerActions {
     /**
-     * Synthesized keycodes for the right stick, which the framework exposes
-     * only as motion axes (no real keycodes exist). High values keep them
-     * clear of real keycodes; GamepadKeyBus emits them as press edges.
+     * Synthesized keycodes for the sticks, which the framework exposes only
+     * as motion axes (no real keycodes exist). High values keep them clear
+     * of real keycodes; GamepadKeyBus emits them as press edges.
+     *
+     * The right stick may arrive on AXIS_RX/RY (standard) or AXIS_Z/RZ
+     * (some uinput drivers map it there — measured on a real controller);
+     * both pairs produce these same keys.
      */
     const val KEY_RIGHT_STICK_UP = 0x10001
     const val KEY_RIGHT_STICK_DOWN = 0x10002
     const val KEY_RIGHT_STICK_LEFT = 0x10003
     const val KEY_RIGHT_STICK_RIGHT = 0x10004
+    const val KEY_LEFT_STICK_UP = 0x10005
+    const val KEY_LEFT_STICK_DOWN = 0x10006
+    const val KEY_LEFT_STICK_LEFT = 0x10007
+    const val KEY_LEFT_STICK_RIGHT = 0x10008
 
     const val PLAY_PAUSE = "play_pause"
     const val SEEK_BACK = "seek_back"
     const val SEEK_FORWARD = "seek_forward"
-    const val SPEED = "speed"
+    const val SPEED_UP = "speed_up"
+    const val SPEED_DOWN = "speed_down"
     const val NEXT = "next"
     const val PREVIOUS = "previous"
     const val CLOSE = "close"
@@ -44,7 +53,8 @@ object PlayerControllerActions {
             Action(PLAY_PAUSE, "Play / pause", KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE),
             Action(SEEK_BACK, "Jump backwards", KeyEvent.KEYCODE_MEDIA_REWIND),
             Action(SEEK_FORWARD, "Jump forwards", KeyEvent.KEYCODE_MEDIA_FAST_FORWARD),
-            Action(SPEED, "Playback speed", KeyEvent.KEYCODE_BUTTON_L1),
+            Action(SPEED_UP, "Speed up (hold)", KeyEvent.KEYCODE_BUTTON_L2),
+            Action(SPEED_DOWN, "Speed down (hold)", KeyEvent.KEYCODE_BUTTON_R2),
             Action(NEXT, "Next video", KeyEvent.KEYCODE_MEDIA_NEXT),
             Action(PREVIOUS, "Previous video", KeyEvent.KEYCODE_MEDIA_PREVIOUS),
             Action(CLOSE, "Close video", KeyEvent.KEYCODE_BACK),
@@ -61,6 +71,14 @@ object PlayerControllerActions {
             KEY_RIGHT_STICK_DOWN -> "Right stick down"
             KEY_RIGHT_STICK_LEFT -> "Right stick left"
             KEY_RIGHT_STICK_RIGHT -> "Right stick right"
+            KEY_LEFT_STICK_UP -> "Left stick up"
+            KEY_LEFT_STICK_DOWN -> "Left stick down"
+            KEY_LEFT_STICK_LEFT -> "Left stick left"
+            KEY_LEFT_STICK_RIGHT -> "Left stick right"
+            KeyEvent.KEYCODE_DPAD_UP -> "D-pad up"
+            KeyEvent.KEYCODE_DPAD_DOWN -> "D-pad down"
+            KeyEvent.KEYCODE_DPAD_LEFT -> "D-pad left"
+            KeyEvent.KEYCODE_DPAD_RIGHT -> "D-pad right"
             else -> KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_").replace('_', ' ')
         }
 }

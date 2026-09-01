@@ -745,7 +745,11 @@ private fun ControllerBindingPopup(
     LaunchedEffect(Unit) {
         GamepadKeyBus.beginCapture()
         try {
-            GamepadKeyBus.events.collect { (keyCode, name) -> onBound(keyCode, name) }
+            GamepadKeyBus.events.collect { event ->
+                // Bind on press edges only; a stray release from a button
+                // held before the popup opened must not consume the slot.
+                if (event.isPress) onBound(event.keyCode, event.deviceName)
+            }
         } finally {
             GamepadKeyBus.endCapture()
         }
@@ -774,7 +778,7 @@ private fun ControllerBindingPopup(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Bind ${action.label}", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "Press a button on your controller or remote.",
+                        text = "Press a button, d-pad direction, or push a stick fully.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

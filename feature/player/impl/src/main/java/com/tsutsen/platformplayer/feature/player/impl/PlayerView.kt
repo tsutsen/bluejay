@@ -107,7 +107,7 @@ fun PlayerView(
         remember {
             object : (GamepadKeyBus.GamepadEvent) -> Boolean {
                 override fun invoke(event: GamepadKeyBus.GamepadEvent) =
-                    viewModel.handleControllerKey(event.keyCode)
+                    viewModel.handleControllerKey(event)
             }
         }
     DisposableEffect(Unit) {

@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.CastingRepository
+import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
@@ -795,59 +796,84 @@ class PlayerViewModel
             }
         }
 
+        /** Speed in effect before a speed-hold started (restored on release). */
+        private var speedBeforeHold: Float? = null
+
         /**
-         * Handle a gamepad/remote key-down. Looks up the bound action in the
-         * user's mapping (falling back to each action's default key) and
-         * performs it.
+         * Handle a gamepad/remote press or release edge. Looks up the bound
+         * action in the user's mapping (falling back to each action's
+         * default key) and performs it.
          *
-         * @return true when a key was handled.
+         * Speed actions are *hold* actions: while the button is held the
+         * playback runs at 2x (up) / 0.5x (down), and releasing restores the
+         * speed from before the hold. All other actions fire on press only.
+         *
+         * @return true when the key is mapped (press *and* release are
+         *   consumed so they don't leak to system handling).
          */
-        fun handleControllerKey(keyCode: Int): Boolean {
+        fun handleControllerKey(event: GamepadKeyBus.GamepadEvent): Boolean {
             val prefs = controllerPrefs.value
             if (!prefs.enabled) return false
             val action =
-                prefs.mappings.entries.firstOrNull { it.value.keyCode == keyCode }?.key
-                    ?: PlayerControllerActions.ALL.firstOrNull { it.defaultKeyCode == keyCode }?.id
+                prefs.mappings.entries.firstOrNull { it.value.keyCode == event.keyCode }?.key
+                    ?: PlayerControllerActions.ALL.firstOrNull { it.defaultKeyCode == event.keyCode }?.id
                     ?: return false
             val state = _uiState.value as? PlayerUiState.Loaded ?: return false
             when (action) {
-                PlayerControllerActions.PLAY_PAUSE ->
-                    if (state.isPlaying) pause() else resume()
+                PlayerControllerActions.SPEED_UP ->
+                    if (event.isPress) {
+                        if (speedBeforeHold == null) speedBeforeHold = state.playbackSpeed
+                        setPlaybackSpeed(2f)
+                    } else {
+                        speedBeforeHold?.let { setPlaybackSpeed(it) }
+                        speedBeforeHold = null
+                    }
 
-                PlayerControllerActions.SEEK_BACK -> seekBy(-prefs.seekBackSeconds * 1000L)
+                PlayerControllerActions.SPEED_DOWN ->
+                    if (event.isPress) {
+                        if (speedBeforeHold == null) speedBeforeHold = state.playbackSpeed
+                        setPlaybackSpeed(0.5f)
+                    } else {
+                        speedBeforeHold?.let { setPlaybackSpeed(it) }
+                        speedBeforeHold = null
+                    }
 
-                PlayerControllerActions.SEEK_FORWARD -> seekBy(prefs.seekForwardSeconds * 1000L)
+                else ->
+                    if (event.isPress) {
+                        when (action) {
+                            PlayerControllerActions.PLAY_PAUSE ->
+                                if (state.isPlaying) pause() else resume()
 
-                // Cycle 1x → 2x → 0.5x → 1x
-                PlayerControllerActions.SPEED ->
-                    setPlaybackSpeed(
-                        when {
-                            state.playbackSpeed <= 1f -> 2f
-                            state.playbackSpeed >= 2f -> 0.5f
-                            else -> 1f
+                            PlayerControllerActions.SEEK_BACK ->
+                                seekBy(-prefs.seekBackSeconds * 1000L)
+
+                            PlayerControllerActions.SEEK_FORWARD ->
+                                seekBy(prefs.seekForwardSeconds * 1000L)
+
+                            PlayerControllerActions.NEXT -> skipNext()
+                            PlayerControllerActions.PREVIOUS -> skipPrevious()
+
+                            // Back-style key in fullscreen exits fullscreen
+                            // first (same as the app's back handler);
+                            // otherwise it closes the player.
+                            PlayerControllerActions.CLOSE ->
+                                if (state.isFullscreen) exitFullscreen() else close()
+
+                            PlayerControllerActions.BRIGHTNESS_UP ->
+                                setBrightness((state.brightness + 0.1f).coerceIn(0f, 1f))
+
+                            PlayerControllerActions.BRIGHTNESS_DOWN ->
+                                setBrightness((state.brightness - 0.1f).coerceIn(0f, 1f))
+
+                            PlayerControllerActions.VOLUME_UP ->
+                                setVolume((state.volume + 0.1f).coerceIn(0f, 1f))
+
+                            PlayerControllerActions.VOLUME_DOWN ->
+                                setVolume((state.volume - 0.1f).coerceIn(0f, 1f))
+
+                            else -> {}
                         }
-                    )
-
-                PlayerControllerActions.NEXT -> skipNext()
-                PlayerControllerActions.PREVIOUS -> skipPrevious()
-
-                // Back-style key in fullscreen exits fullscreen first (same
-                // as the app's back handler); otherwise it closes the player.
-                PlayerControllerActions.CLOSE ->
-                    if (state.isFullscreen) exitFullscreen() else close()
-
-                PlayerControllerActions.BRIGHTNESS_UP ->
-                    setBrightness((state.brightness + 0.1f).coerceIn(0f, 1f))
-
-                PlayerControllerActions.BRIGHTNESS_DOWN ->
-                    setBrightness((state.brightness - 0.1f).coerceIn(0f, 1f))
-
-                PlayerControllerActions.VOLUME_UP -> setVolume((state.volume + 0.1f).coerceIn(0f, 1f))
-
-                PlayerControllerActions.VOLUME_DOWN ->
-                    setVolume((state.volume - 0.1f).coerceIn(0f, 1f))
-
-                else -> return false
+                    }
             }
             return true
         }

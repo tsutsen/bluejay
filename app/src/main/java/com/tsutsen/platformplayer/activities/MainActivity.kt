@@ -230,44 +230,25 @@ class MainActivity :
     }
 
     /**
-     * Controller key events (Cemu GamepadInputSource pattern): every
-     * press-edge goes to [GamepadKeyBus.events]. While the settings binding
-     * popup is capturing, the activity consumes everything (it keeps input
-     * focus — the popup is a non-focusable window). Otherwise only
-     * player-mapped keys are consumed; unbound keys fall through to normal
-     * handling (navigation, system keys, ...).
+     * Controller key events (Cemu GamepadInputSource pattern): the bus
+     * turns every key-edge into a [GamepadKeyBus.events] event and decides
+     * consumption — while the settings binding popup is capturing everything
+     * is consumed (the popup is non-focusable, the activity keeps input
+     * focus); otherwise only player-mapped keys are consumed, so unbound
+     * keys keep normal behavior (navigation, system keys, ...).
      */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-            val gamepadEvent = GamepadKeyBus.GamepadEvent(event.keyCode, event.device?.name)
-            GamepadKeyBus.emit(gamepadEvent)
-            if (GamepadKeyBus.isCapturing || GamepadKeyBus.consumeIfPlayer(gamepadEvent)) {
-                return true
-            }
-        }
-        return super.dispatchKeyEvent(event)
-    }
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        GamepadKeyBus.onKeyEvent(event) || super.dispatchKeyEvent(event)
 
     /**
-     * Controller *analog* input (triggers, right stick) arrives as generic
+     * Controller *analog* input (sticks, HAT d-pads) arrives as generic
      * motion events with a gamepad/joystick source — never as touch events
-     * and never as keys. Same capture/consume rules as [dispatchKeyEvent].
+     * and (on most drivers) never as keys. Same capture/consume rules as
+     * [dispatchKeyEvent]; real touch input has no gamepad source and passes
+     * through untouched.
      */
-    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        if (!GamepadKeyBus.isControllerMotion(event)) {
-            return super.dispatchGenericMotionEvent(event)
-        }
-        val edges = GamepadKeyBus.motionEdges(event)
-        if (GamepadKeyBus.isCapturing) {
-            edges.forEach { GamepadKeyBus.emit(it) }
-            return true
-        }
-        for (edge in edges) {
-            GamepadKeyBus.emit(edge)
-            if (GamepadKeyBus.consumeIfPlayer(edge)) return true
-        }
-        return false
-    }
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
+        GamepadKeyBus.onMotionEvent(event) || super.dispatchGenericMotionEvent(event)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
