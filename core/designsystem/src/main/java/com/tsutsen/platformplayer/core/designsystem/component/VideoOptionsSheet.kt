@@ -469,7 +469,8 @@ fun OptionTileView(
     // false = icon only (e.g. the second screen's playback controls, where
     // the icon alone is self-evident).
     showLabel: Boolean = true,
-    outerPadding: Dp = Tokens.SpaceXs,
+    outerHPadding: Dp = Tokens.SpaceXs,
+    outerVPadding: Dp = Tokens.SpaceXs,
 ) {
     val scheme = MaterialTheme.colorScheme
     val semantic = LocalSemanticColors.current
@@ -520,7 +521,7 @@ fun OptionTileView(
     Column(
         modifier =
             modifier
-                .padding(outerPadding)
+                .padding(vertical = outerVPadding, horizontal = outerHPadding)
                 .clip(
                     RoundedCornerShape(Tokens.RadiusMd),
                 ).background(

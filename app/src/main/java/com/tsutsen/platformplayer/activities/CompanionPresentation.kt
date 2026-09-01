@@ -1,37 +1,31 @@
 package com.tsutsen.platformplayer.activities
 
 import android.app.Activity
+import android.app.Presentation
 import android.content.Context
 import android.content.ContextWrapper
-import android.view.Window
 import android.content.Intent
-import android.app.Presentation
 import android.net.Uri
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
-import android.view.ViewGroup
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.setViewTreeLifecycleOwner
-import com.tsutsen.platformplayer.logging.Logger
-import kotlinx.coroutines.flow.distinctUntilChanged
-import java.lang.reflect.Proxy
 import android.os.Bundle
 import android.view.Display
+import android.view.ViewGroup
+import android.view.Window
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,9 +33,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -56,12 +47,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brightness7
 import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -79,15 +70,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,21 +84,24 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.setViewTreeLifecycleOwner
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
-import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
-import com.tsutsen.platformplayer.feature.player.impl.SystemControls
-import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
-import com.tsutsen.platformplayer.feature.player.impl.formatViewCount
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
-import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
+import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
+import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
@@ -118,24 +110,30 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.formatDuration
-import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
-import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.CommentItem
+import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
-import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
-import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
 import com.tsutsen.platformplayer.feature.player.impl.ChannelRow
+import com.tsutsen.platformplayer.feature.player.impl.SystemControls
+import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
+import com.tsutsen.platformplayer.feature.player.impl.formatTime
+import com.tsutsen.platformplayer.feature.player.impl.formatViewCount
+import com.tsutsen.platformplayer.logging.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.lang.reflect.Proxy
 import kotlin.math.roundToInt
+import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 
 /**
  * The second-screen UI, hosted in a Presentation window on the rear display
@@ -168,7 +166,6 @@ class CompanionPresentation(
     private val channelRepository: ChannelRepository,
     private val onChannelClick: (String) -> Unit,
 ) : Presentation(context, display) {
-
     @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -184,7 +181,11 @@ class CompanionPresentation(
         val lifecycleOwner =
             (context as? LifecycleOwner) ?: object : LifecycleOwner {
                 private val registry = LifecycleRegistry(this)
-                init { registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME) }
+
+                init {
+                    registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+                }
+
                 override val lifecycle: Lifecycle
                     get() = registry
             }
@@ -235,36 +236,53 @@ class CompanionPresentation(
         // while the owner is still in its initialization stage (like
         // ComponentActivity does in onCreate), so it must start INITIALIZED
         // and never be advanced.
-        val savedStateLifecycle = object : LifecycleOwner {
-            private val registry = LifecycleRegistry(this)
-            override val lifecycle: Lifecycle
-                get() = registry
-        }
+        val savedStateLifecycle =
+            object : LifecycleOwner {
+                private val registry = LifecycleRegistry(this)
+                override val lifecycle: Lifecycle
+                    get() = registry
+            }
         try {
             val ownerItf = Class.forName("androidx.savedstate.SavedStateRegistryOwner")
             val controllerCls = Class.forName("androidx.savedstate.SavedStateRegistryController")
             val companion = controllerCls.getField("Companion").get(null)
             val create = controllerCls.getMethod("create", ownerItf)
             var controller: Any? = null
-            val owner = Proxy.newProxyInstance(
-                ownerItf.classLoader,
-                arrayOf(ownerItf),
-            ) { proxy, method, args ->
-                when (method.name) {
-                    "getLifecycle" -> savedStateLifecycle.lifecycle
-                    "getSavedStateRegistry" -> {
-                        if (controller == null) controller = create.invoke(companion, proxy)
-                        controller!!
-                            .javaClass
-                            .getMethod("getSavedStateRegistry")
-                            .invoke(controller)
+            val owner =
+                Proxy.newProxyInstance(
+                    ownerItf.classLoader,
+                    arrayOf(ownerItf),
+                ) { proxy, method, args ->
+                    when (method.name) {
+                        "getLifecycle" -> {
+                            savedStateLifecycle.lifecycle
+                        }
+
+                        "getSavedStateRegistry" -> {
+                            if (controller == null) controller = create.invoke(companion, proxy)
+                            controller!!
+                                .javaClass
+                                .getMethod("getSavedStateRegistry")
+                                .invoke(controller)
+                        }
+
+                        "hashCode" -> {
+                            System.identityHashCode(proxy)
+                        }
+
+                        "equals" -> {
+                            proxy === args?.getOrNull(0)
+                        }
+
+                        "toString" -> {
+                            "CompanionSavedStateOwner"
+                        }
+
+                        else -> {
+                            throw UnsupportedOperationException(method.name)
+                        }
                     }
-                    "hashCode" -> System.identityHashCode(proxy)
-                    "equals" -> proxy === args?.getOrNull(0)
-                    "toString" -> "CompanionSavedStateOwner"
-                    else -> throw UnsupportedOperationException(method.name)
                 }
-            }
             // create() only calls getLifecycle() (not getSavedStateRegistry),
             // so this cannot recurse.
             controller = create.invoke(companion, owner)
@@ -272,8 +290,10 @@ class CompanionPresentation(
                 .javaClass
                 .getMethod("performRestore", android.os.Bundle::class.java)
                 .invoke(controller, null)
-            val set = Class.forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
-                .getMethod("set", android.view.View::class.java, ownerItf)
+            val set =
+                Class
+                    .forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
+                    .getMethod("set", android.view.View::class.java, ownerItf)
             set.invoke(null, view, owner)
         } catch (t: Throwable) {
             var root: Throwable? = t
@@ -344,9 +364,10 @@ private fun CompanionContent(
     val comments = playerState.comments
     val isLive = video?.contentType == com.tsutsen.platformplayer.core.model.ContentType.LIVE
     // distinctBy: duplicate urls from the engine crash the strip's keying.
-    val recommendations = playerState.recommendations
-        .filterIsInstance<CoreVideoCard>()
-        .distinctBy { it.url }
+    val recommendations =
+        playerState.recommendations
+            .filterIsInstance<CoreVideoCard>()
+            .distinctBy { it.url }
 
     // Live library + home data (shared repositories — updates propagate).
     val sections by libraryRepository.sections.collectAsState()
@@ -393,8 +414,11 @@ private fun CompanionContent(
     LaunchedEffect(channelUrl) {
         val url = channelUrl
         isSubscribed =
-            if (url.isNullOrEmpty()) false
-            else withContext(Dispatchers.IO) { channelRepository.isSubscribed(url) }
+            if (url.isNullOrEmpty()) {
+                false
+            } else {
+                withContext(Dispatchers.IO) { channelRepository.isSubscribed(url) }
+            }
     }
     val currentVideoCard = video?.toCoreVideoCard()
     val onSubscribe: () -> Unit = {
@@ -487,107 +511,117 @@ private fun CompanionContent(
             }
         },
         content = { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-        if (pageKeys.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding),
             ) {
-                Text(
-                    "No pages enabled",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-        VerticalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-        ) { page ->
-        when (pageKeys.getOrNull(page)) {
-            "video" -> CompanionVideoPage(
-                playerState = playerState,
-                video = video,
-                comments = comments,
-                isLive = isLive,
-                liveChat = liveChat,
-                recommendations = recommendations,
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
-                onPlayPause = {
-                    scope.launch {
-                        if (playerState.isPlaying) playerRepository.pause()
-                        else playerRepository.resume()
+                if (pageKeys.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No pages enabled",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                },
-                onSeekBy = { deltaMs ->
-                    val target = (playerState.currentPositionMs + deltaMs)
-                        .coerceIn(0L, if (playerState.durationMs > 0) playerState.durationMs else Long.MAX_VALUE)
-                    scope.launch { playerRepository.seekTo(target) }
-                },
-                onPrevious = {
-                    val index = playerState.selectedIndex
-                    if (playerState.queue.isNotEmpty() && index > 0) {
-                        scope.launch { playerRepository.play(playerState.queue[index - 1].id) }
-                    }
-                },
-                onNext = {
-                    val index = playerState.selectedIndex
-                    if (playerState.queue.isNotEmpty() && index + 1 < playerState.queue.size) {
-                        scope.launch { playerRepository.play(playerState.queue[index + 1].id) }
-                    }
-                },
-                onSeekTo = { ms -> scope.launch { playerRepository.seekTo(ms) } },
-                    onPlay = onPlay,
-                    onLongClick = onLongClick,
-                    queue = queue,
-                    onQueuePlay = { index -> playbackQueueRepository.playAt(index) },
-                    onQueueRemove = { url -> playbackQueueRepository.remove(url) },
-                    onQueueMove = { from, to -> playbackQueueRepository.move(from, to) },
-                    videoTabKeys = videoTabKeys,
-                    pageOrder = pageOrder,
-                    savedTypes = savedTypes,
-                    isSubscribed = isSubscribed,
-                    onSubscribe = onSubscribe,
-                    onLike = onVideoLike,
-                    onDislike = onVideoDislike,
-                    onMore = { currentVideoCard?.let { optionsCard = it } },
-                    companionWindow = companionWindow,
-                    onChannelClick = onChannelClick,
-                )
+                } else {
+                    VerticalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { page ->
+                        when (pageKeys.getOrNull(page)) {
+                            "video" -> {
+                                CompanionVideoPage(
+                                    playerState = playerState,
+                                    video = video,
+                                    comments = comments,
+                                    isLive = isLive,
+                                    liveChat = liveChat,
+                                    recommendations = recommendations,
+                                    selectedTab = selectedTab,
+                                    onTabSelected = { selectedTab = it },
+                                    onPlayPause = {
+                                        scope.launch {
+                                            if (playerState.isPlaying) {
+                                                playerRepository.pause()
+                                            } else {
+                                                playerRepository.resume()
+                                            }
+                                        }
+                                    },
+                                    onSeekBy = { deltaMs ->
+                                        val target =
+                                            (playerState.currentPositionMs + deltaMs)
+                                                .coerceIn(0L, if (playerState.durationMs > 0) playerState.durationMs else Long.MAX_VALUE)
+                                        scope.launch { playerRepository.seekTo(target) }
+                                    },
+                                    onPrevious = {
+                                        val index = playerState.selectedIndex
+                                        if (playerState.queue.isNotEmpty() && index > 0) {
+                                            scope.launch { playerRepository.play(playerState.queue[index - 1].id) }
+                                        }
+                                    },
+                                    onNext = {
+                                        val index = playerState.selectedIndex
+                                        if (playerState.queue.isNotEmpty() && index + 1 < playerState.queue.size) {
+                                            scope.launch { playerRepository.play(playerState.queue[index + 1].id) }
+                                        }
+                                    },
+                                    onSeekTo = { ms -> scope.launch { playerRepository.seekTo(ms) } },
+                                    onPlay = onPlay,
+                                    onLongClick = onLongClick,
+                                    queue = queue,
+                                    onQueuePlay = { index -> playbackQueueRepository.playAt(index) },
+                                    onQueueRemove = { url -> playbackQueueRepository.remove(url) },
+                                    onQueueMove = { from, to -> playbackQueueRepository.move(from, to) },
+                                    videoTabKeys = videoTabKeys,
+                                    pageOrder = pageOrder,
+                                    savedTypes = savedTypes,
+                                    isSubscribed = isSubscribed,
+                                    onSubscribe = onSubscribe,
+                                    onLike = onVideoLike,
+                                    onDislike = onVideoDislike,
+                                    onMore = { currentVideoCard?.let { optionsCard = it } },
+                                    companionWindow = companionWindow,
+                                    onChannelClick = onChannelClick,
+                                )
+                            }
 
-                "library" ->
-                    CompanionLibraryPage(
-                        sections = sections,
-                        slots = librarySlotValues,
-                        libraryRepository = libraryRepository,
-                        onPlay = onPlay,
-                        onLongClick = onLongClick,
-                    )
+                            "library" -> {
+                                CompanionLibraryPage(
+                                    sections = sections,
+                                    slots = librarySlotValues,
+                                    libraryRepository = libraryRepository,
+                                    onPlay = onPlay,
+                                    onLongClick = onLongClick,
+                                )
+                            }
 
-                "home" ->
-                    CompanionHomePage(
-                        items = dualHomeItems,
-                        onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
-                        onPlay = onPlay,
-                        onLongClick = onLongClick,
+                            "home" -> {
+                                CompanionHomePage(
+                                    items = dualHomeItems,
+                                    onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
+                                    onPlay = onPlay,
+                                    onLongClick = onLongClick,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (scrimAlpha > 0.001f) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = scrimAlpha))
+                                .clickable { scope.launch { sheetState.hide() } },
                     )
+                }
             }
-        }
-        }
-        if (scrimAlpha > 0.001f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = scrimAlpha))
-                    .clickable { scope.launch { sheetState.hide() } },
-            )
-        }
-        }
         },
     )
 }
@@ -596,6 +630,7 @@ private fun CompanionContent(
  * Page 0: the currently playing video. Controls aligned to the top, then
  * the title block, then the comments/recommended tabs + horizontal strip.
  */
+
 /**
  * Second-screen Queue tab: the pending queue (tap = play, hold the dots to
  * reorder, X = remove). The same horizontal strip component as the Feed
@@ -666,14 +701,15 @@ private fun CompanionVideoPage(
 ) {
     val context = LocalContext.current
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         for (element in pageOrder) {
             when (element) {
-                "controls" ->
+                "controls" -> {
                     CompanionControlRow(
                         isPlaying = playerState.isPlaying,
                         onPlayPause = onPlayPause,
@@ -681,8 +717,9 @@ private fun CompanionVideoPage(
                         onPrevious = onPrevious,
                         onNext = onNext,
                     )
+                }
 
-                "video" ->
+                "video" -> {
                     video?.let {
                         CompanionVideoHeader(
                             video = it,
@@ -690,8 +727,9 @@ private fun CompanionVideoPage(
                             durationMs = playerState.durationMs,
                         )
                     }
+                }
 
-                "tabs" ->
+                "tabs" -> {
                     if (video != null) {
                         VideoPageTabs(
                             video = video,
@@ -730,13 +768,15 @@ private fun CompanionVideoPage(
                             onChannelClick = onChannelClick,
                         )
                     }
+                }
             }
         }
         if (video == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -814,234 +854,242 @@ private fun VideoPageTabs(
             onSelect = onTabSelected,
         )
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
         ) {
             key(selectedTab) {
-                    if (activeTab == null) {
-                        // No tabs enabled — nothing to show in the strip.
-                        Unit
-                    } else if (activeTab == "info") {
-                        // Info tab: the main player's channel row (icon-only
-                        // subscribe) + a scrollable description card.
-                        CompanionInfoTab(
-                            video = video,
-                            savedTypes = savedTypes,
-                            isSubscribed = isSubscribed,
-                            onSubscribe = onSubscribe,
-                            onLike = onLike,
-                            onDislike = onDislike,
-                            onMore = onMore,
-                            durationMs = durationMs,
-                            onSeekTo = onSeekTo,
-                            onChannelClick = onChannelClick,
-                        )
-                    } else if (activeTab == "controls") {
-                        // Controls tab: playback, volume and brightness
-                        // sliders.
-                        CompanionControlsTab(
-                            positionMs = positionMs,
-                            durationMs = durationMs,
-                            isLive = isLive,
-                            onSeekTo = onSeekTo,
-                            companionWindow = companionWindow,
-                        )
-                    } else if (activeTab == "queue") {
-                        // Queue tab: the playing video pinned on top, then
-                        // the pending queue (tap = play, drag = reorder,
-                        // X = remove). The same horizontal strip as the
-                        // tabs' horizontal strips.
-                        CompanionQueueTabContent(
-                            queue = queue,
-                            current = currentVideo,
-                            isPlaying = isPlaying,
-                            onPlayItem = onQueuePlay,
-                            onRemove = onQueueRemove,
-                            onMove = onQueueMove,
-                            onPlayPause = onPlayPause,
-                            onLongClick = { item ->
-                                onLongClick(
-                                    CoreVideoCard(
-                                        id = item.id,
-                                        title = item.title,
-                                        thumbnailUrl = item.thumbnailUrl,
-                                        author = item.author?.name,
-                                        authorUrl = item.author?.url,
-                                        durationMs = item.durationMs,
-                                        viewCount = item.viewCount,
-                                        publishedAt = item.publishedAt,
-                                        url = item.url,
-                                    ),
-                                )
-                            },
-                        )
-                    } else if (activeTab == "dot") {
-                        // The distraction-free tab: just the video.
-                        Unit
-                    } else if (activeTab == "comments" && isLive) {
-                        // Live stream: the comments slot becomes the live
-                        // chat, same as the main player. Vertical, fills the
-                        // tab area.
-                        com.tsutsen.platformplayer.feature.player.impl.ui.components
-                            .LiveChatPanel(
-                                state = liveChat,
-                                modifier = Modifier.fillMaxSize(),
-                                listHeight = null,
-                                // No horizontal inset on the companion
-                                // (bottom screen) chat.
-                                horizontalPadding = 0.dp,
+                if (activeTab == null) {
+                    // No tabs enabled — nothing to show in the strip.
+                    Unit
+                } else if (activeTab == "info") {
+                    // Info tab: the main player's channel row (icon-only
+                    // subscribe) + a scrollable description card.
+                    CompanionInfoTab(
+                        video = video,
+                        savedTypes = savedTypes,
+                        isSubscribed = isSubscribed,
+                        onSubscribe = onSubscribe,
+                        onLike = onLike,
+                        onDislike = onDislike,
+                        onMore = onMore,
+                        durationMs = durationMs,
+                        onSeekTo = onSeekTo,
+                        onChannelClick = onChannelClick,
+                    )
+                } else if (activeTab == "controls") {
+                    // Controls tab: playback, volume and brightness
+                    // sliders.
+                    CompanionControlsTab(
+                        positionMs = positionMs,
+                        durationMs = durationMs,
+                        isLive = isLive,
+                        onSeekTo = onSeekTo,
+                        companionWindow = companionWindow,
+                    )
+                } else if (activeTab == "queue") {
+                    // Queue tab: the playing video pinned on top, then
+                    // the pending queue (tap = play, drag = reorder,
+                    // X = remove). The same horizontal strip as the
+                    // tabs' horizontal strips.
+                    CompanionQueueTabContent(
+                        queue = queue,
+                        current = currentVideo,
+                        isPlaying = isPlaying,
+                        onPlayItem = onQueuePlay,
+                        onRemove = onQueueRemove,
+                        onMove = onQueueMove,
+                        onPlayPause = onPlayPause,
+                        onLongClick = { item ->
+                            onLongClick(
+                                CoreVideoCard(
+                                    id = item.id,
+                                    title = item.title,
+                                    thumbnailUrl = item.thumbnailUrl,
+                                    author = item.author?.name,
+                                    authorUrl = item.author?.url,
+                                    durationMs = item.durationMs,
+                                    viewCount = item.viewCount,
+                                    publishedAt = item.publishedAt,
+                                    url = item.url,
+                                ),
                             )
-                    } else if (activeTab == "comments" && comments.isEmpty()) {
-                        // Centre the empty state in the whole tab area — a
-                        // LazyRow item can't fill the (unbounded) row width.
-                        Box(
+                        },
+                    )
+                } else if (activeTab == "dot") {
+                    // The distraction-free tab: just the video.
+                    Unit
+                } else if (activeTab == "comments" && isLive) {
+                    // Live stream: the comments slot becomes the live
+                    // chat, same as the main player. Vertical, fills the
+                    // tab area.
+                    com.tsutsen.platformplayer.feature.player.impl.ui.components
+                        .LiveChatPanel(
+                            state = liveChat,
                             modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "No comments",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 32.dp),
-                            )
-                        }
-                    } else if (activeTab == "chapters" && chapters.isEmpty()) {
-                        // Centre the empty state in the whole tab area — a
-                        // LazyRow item can't fill the (unbounded) row width.
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "No chapters",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else {
+                            listHeight = null,
+                            // No horizontal inset on the companion
+                            // (bottom screen) chat.
+                            horizontalPadding = 0.dp,
+                        )
+                } else if (activeTab == "comments" && comments.isEmpty()) {
+                    // Centre the empty state in the whole tab area — a
+                    // LazyRow item can't fill the (unbounded) row width.
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No comments",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 32.dp),
+                        )
+                    }
+                } else if (activeTab == "chapters" && chapters.isEmpty()) {
+                    // Centre the empty state in the whole tab area — a
+                    // LazyRow item can't fill the (unbounded) row width.
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No chapters",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
                     LazyRow(
                         state = tabStates[selectedTab],
                         modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(end = 8.dp),
                     ) {
-                if (activeTab == "comments") {
-                    items(comments, key = { it.id }) { comment ->
-                        CommentCardView(
-                            comment = comment,
-                            onTimestampClick = { ms ->
-                                val dur = durationMs
-                                val target =
-                                    if (dur > 0) ms.coerceIn(0, dur - 500) else ms.coerceAtLeast(0)
-                                onSeekTo(target)
-                            },
-                            onLinkClick = { url ->
-                                runCatching {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        if (activeTab == "comments") {
+                            items(comments, key = { it.id }) { comment ->
+                                CommentCardView(
+                                    comment = comment,
+                                    onTimestampClick = { ms ->
+                                        val dur = durationMs
+                                        val target =
+                                            if (dur > 0) ms.coerceIn(0, dur - 500) else ms.coerceAtLeast(0)
+                                        onSeekTo(target)
+                                    },
+                                    onLinkClick = { url ->
+                                        runCatching {
+                                            context.startActivity(
+                                                Intent(Intent.ACTION_VIEW, Uri.parse(url)),
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        } else if (activeTab == "chapters") {
+                            if (chapters.isEmpty()) {
+                                item(key = "no-chapters") {
+                                    Text(
+                                        "No chapters",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 24.dp),
                                     )
                                 }
-                            },
-                        )
-                    }
-                } else if (activeTab == "chapters") {
-                    if (chapters.isEmpty()) {
-                        item(key = "no-chapters") {
-                            Text(
-                                "No chapters",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 24.dp),
-                            )
-                        }
-                    }
-                    itemsIndexed(chapters, key = { _, c -> c.startTimeMs }) { index, chapter ->
-                        // Same card chrome as the comment cards; the chapter
-                        // containing the current playhead is highlighted.
-                        val scheme = MaterialTheme.colorScheme
-                        val isCurrent = index == currentChapterIndex
-                        // Animated highlight: the active chapter eases in.
-                        val containerColor by animateColorAsState(
-                            targetValue =
-                                if (isCurrent) scheme.primaryContainer
-                                else scheme.surfaceContainer,
-                            animationSpec = tween(300),
-                            label = "chapterBg",
-                        )
-                        val cardFg by animateColorAsState(
-                            targetValue =
-                                if (isCurrent) scheme.onPrimaryContainer
-                                else scheme.onSurface,
-                            animationSpec = tween(300),
-                            label = "chapterFg",
-                        )
-                        Card(
-                            modifier =
-                                Modifier
-                                    .width(240.dp)
-                                    .fillMaxHeight()
-                                    .combinedClickable(onClick = { onSeekTo(chapter.startTimeMs) }),
-                            shape = RoundedCornerShape(Tokens.RadiusMd),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            colors =
-                                CardDefaults.cardColors(
-                                    containerColor = containerColor,
-                                ),
-                        ) {
-                            Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                            }
+                            itemsIndexed(chapters, key = { _, c -> c.startTimeMs }) { index, chapter ->
+                                // Same card chrome as the comment cards; the chapter
+                                // containing the current playhead is highlighted.
+                                val scheme = MaterialTheme.colorScheme
+                                val isCurrent = index == currentChapterIndex
+                                // Animated highlight: the active chapter eases in.
+                                val containerColor by animateColorAsState(
+                                    targetValue =
+                                        if (isCurrent) {
+                                            scheme.primaryContainer
+                                        } else {
+                                            scheme.surfaceContainer
+                                        },
+                                    animationSpec = tween(300),
+                                    label = "chapterBg",
+                                )
+                                val cardFg by animateColorAsState(
+                                    targetValue =
+                                        if (isCurrent) {
+                                            scheme.onPrimaryContainer
+                                        } else {
+                                            scheme.onSurface
+                                        },
+                                    animationSpec = tween(300),
+                                    label = "chapterFg",
+                                )
+                                Card(
+                                    modifier =
+                                        Modifier
+                                            .width(240.dp)
+                                            .fillMaxHeight()
+                                            .combinedClickable(onClick = { onSeekTo(chapter.startTimeMs) }),
+                                    shape = RoundedCornerShape(Tokens.RadiusMd),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                    colors =
+                                        CardDefaults.cardColors(
+                                            containerColor = containerColor,
+                                        ),
+                                ) {
+                                    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "${index + 1}",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = cardFg,
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                text = formatDuration(chapter.startTimeMs),
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = cardFg,
+                                            )
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = chapter.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = cardFg,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            if (recommendations.isEmpty()) {
+                                item(key = "no-recs") {
                                     Text(
-                                        text = "${index + 1}",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = cardFg,
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = formatDuration(chapter.startTimeMs),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = cardFg,
+                                        "No recommendations",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 24.dp),
                                     )
                                 }
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = chapter.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = cardFg,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
+                            }
+                            items(recommendations, key = { it.url }) { card ->
+                                VideoCardFull(
+                                    card = card,
+                                    onClick = { onPlay(card.url) },
+                                    onLongClick = { onLongClick(card) },
+                                    modifier =
+                                        Modifier
+                                            .width(240.dp)
+                                            .padding(horizontal = 2.dp),
                                 )
                             }
                         }
-                    }
-                } else {
-                    if (recommendations.isEmpty()) {
-                        item(key = "no-recs") {
-                            Text(
-                                "No recommendations",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 24.dp),
-                            )
-                        }
-                    }
-                    items(recommendations, key = { it.url }) { card ->
-                        VideoCardFull(
-                            card = card,
-                            onClick = { onPlay(card.url) },
-                            onLongClick = { onLongClick(card) },
-                            modifier = Modifier
-                                .width(240.dp)
-                                .padding(horizontal = 2.dp),
-                        )
-                    }
-                }
-                    }
                     }
                 }
             }
         }
     }
+}
 
 /**
  * Page 1: the library as four corner slots (2x2).
@@ -1059,9 +1107,10 @@ private fun CompanionLibraryPage(
     onLongClick: (CoreVideoCard) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
@@ -1074,12 +1123,40 @@ private fun CompanionLibraryPage(
         // "playlist:<id>" reference (Settings > Dual screen > Library slots).
         val slotValues = (0 until 4).map { slots.getOrNull(it) }
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            LibrarySlotCell(value = slotValues.getOrNull(0), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            LibrarySlotCell(value = slotValues.getOrNull(1), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(
+                value = slotValues.getOrNull(0),
+                sections = sections,
+                libraryRepository = libraryRepository,
+                onPlay = onPlay,
+                onLongClick = onLongClick,
+                modifier = Modifier.weight(1f),
+            )
+            LibrarySlotCell(
+                value = slotValues.getOrNull(1),
+                sections = sections,
+                libraryRepository = libraryRepository,
+                onPlay = onPlay,
+                onLongClick = onLongClick,
+                modifier = Modifier.weight(1f),
+            )
         }
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            LibrarySlotCell(value = slotValues.getOrNull(2), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            LibrarySlotCell(value = slotValues.getOrNull(3), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(
+                value = slotValues.getOrNull(2),
+                sections = sections,
+                libraryRepository = libraryRepository,
+                onPlay = onPlay,
+                onLongClick = onLongClick,
+                modifier = Modifier.weight(1f),
+            )
+            LibrarySlotCell(
+                value = slotValues.getOrNull(3),
+                sections = sections,
+                libraryRepository = libraryRepository,
+                onPlay = onPlay,
+                onLongClick = onLongClick,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -1260,9 +1337,9 @@ private fun LibrarySlotPager(
                                             listOf(
                                                 cardColor,
                                                 cardColor.copy(alpha = 0f),
-                                            )
-                                    )
-                                )
+                                            ),
+                                    ),
+                                ),
                     )
                     Box(
                         modifier =
@@ -1276,9 +1353,9 @@ private fun LibrarySlotPager(
                                             listOf(
                                                 cardColor.copy(alpha = 0f),
                                                 cardColor,
-                                            )
-                                    )
-                                )
+                                            ),
+                                    ),
+                                ),
                     )
                 }
             }
@@ -1299,9 +1376,10 @@ private fun CompanionHomePage(
     onLongClick: (CoreVideoCard) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
@@ -1324,10 +1402,11 @@ private fun CompanionHomePage(
             val pageCount = (feedItems.value.size + 3) / 4
             val lastPage = remember { mutableIntStateOf(0) }
             key(pageCount) {
-                val state = rememberPagerState(
-                    initialPage = lastPage.value.coerceIn(0, (pageCount - 1).coerceAtLeast(0)),
-                    pageCount = { pageCount },
-                )
+                val state =
+                    rememberPagerState(
+                        initialPage = lastPage.value.coerceIn(0, (pageCount - 1).coerceAtLeast(0)),
+                        pageCount = { pageCount },
+                    )
                 // Reach the last page -> fetch more. The repository no-ops
                 // once the feed is exhausted, so extra triggers are harmless.
                 LaunchedEffect(state) {
@@ -1346,7 +1425,11 @@ private fun CompanionHomePage(
                     pageSpacing = 8.dp,
                 ) { pageIndex ->
                     HomeGridPage(
-                        pageItems = feedItems.value.chunked(4).getOrNull(pageIndex).orEmpty(),
+                        pageItems =
+                            feedItems.value
+                                .chunked(4)
+                                .getOrNull(pageIndex)
+                                .orEmpty(),
                         onPlay = onPlay,
                         onLongClick = onLongClick,
                     )
@@ -1378,14 +1461,14 @@ private fun HomeGridPage(
             modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            HomeGridCell(pageItems.getOrNull(0), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            HomeGridCell(pageItems.getOrNull(1), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-        }
-        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            HomeGridCell(pageItems.getOrNull(2), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            HomeGridCell(pageItems.getOrNull(3), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-        }
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                HomeGridCell(pageItems.getOrNull(0), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+                HomeGridCell(pageItems.getOrNull(1), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            }
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                HomeGridCell(pageItems.getOrNull(2), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+                HomeGridCell(pageItems.getOrNull(3), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            }
         }
     }
 }
@@ -1512,14 +1595,15 @@ private fun CoreVideoCard.toContentItem() =
         id = id,
         url = url,
         title = title,
-        author = author?.let { name ->
-            com.tsutsen.platformplayer.core.model.Author(
-                id = id,
-                name = name,
-                url = authorUrl,
-                thumbnailUrl = null,
-            )
-        },
+        author =
+            author?.let { name ->
+                com.tsutsen.platformplayer.core.model.Author(
+                    id = id,
+                    name = name,
+                    url = authorUrl,
+                    thumbnailUrl = null,
+                )
+            },
         thumbnailUrl = thumbnailUrl,
         contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
         durationMs = durationMs,
@@ -1560,7 +1644,7 @@ private fun PagerCard(
             contentAlignment = Alignment.Center,
         ) {
             when (card) {
-                is CoreVideoCard ->
+                is CoreVideoCard -> {
                     // Pill variant: all meta on the thumbnail, no meta row,
                     // so the card stays short and nothing clips in tight slots.
                     VideoCardPills(
@@ -1569,12 +1653,14 @@ private fun PagerCard(
                         onLongClick = { onLongClick(card) },
                         modifier = Modifier.width(cardWidth),
                     )
+                }
 
-                is PlaylistCard ->
-                // No navigation on the second screen.
-                PlaylistCardView(card = card, onClick = {})
+                is PlaylistCard -> {
+                    // No navigation on the second screen.
+                    PlaylistCardView(card = card, onClick = {})
+                }
 
-                else ->
+                else -> {
                     // Channels and other card types: no navigation on the second
                     // screen.
                     Box(
@@ -1585,6 +1671,7 @@ private fun PagerCard(
                                 .clip(RoundedCornerShape(Tokens.RadiusSm))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
+                }
             }
         }
     }
@@ -1603,21 +1690,22 @@ private fun CompanionControlRow(
     onNext: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
         val tileModifier: Modifier = Modifier.weight(1f).height(80.dp)
         OptionTileView(
             OptionTile(label = "Previous", icon = Icons.Filled.SkipPrevious, onClick = onPrevious),
             modifier = tileModifier,
             showLabel = false,
-            outerPadding = 0.dp
+            outerHPadding = 0.dp,
         )
         // Seek icons without the baked-in "10" digit — plain rewind/ffwd.
         OptionTileView(
             OptionTile(label = "Back 10s", icon = Icons.Filled.FastRewind, onClick = { onSeekBy(-10_000L) }),
             modifier = tileModifier,
             showLabel = false,
+            outerHPadding = 0.dp,
         )
         OptionTileView(
             OptionTile(
@@ -1627,16 +1715,19 @@ private fun CompanionControlRow(
             ),
             modifier = tileModifier,
             showLabel = false,
+            outerHPadding = 0.dp,
         )
         OptionTileView(
             OptionTile(label = "Fwd 10s", icon = Icons.Filled.FastForward, onClick = { onSeekBy(10_000L) }),
             modifier = tileModifier,
             showLabel = false,
+            outerHPadding = 0.dp,
         )
         OptionTileView(
             OptionTile(label = "Next", icon = Icons.Filled.SkipNext, onClick = onNext),
             modifier = tileModifier,
             showLabel = false,
+            outerHPadding = 0.dp,
         )
     }
 }
@@ -1672,13 +1763,14 @@ private fun CompanionVideoHeader(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = buildString {
-                    video.author?.let { append(it.name) }
-                    if (durationMs > 0) {
-                        if (isNotEmpty()) append("  •  ")
-                        append("${formatDuration(positionMs)} / ${formatDuration(durationMs)}")
-                    }
-                },
+                text =
+                    buildString {
+                        video.author?.let { append(it.name) }
+                        if (durationMs > 0) {
+                            if (isNotEmpty()) append("  •  ")
+                            append("${formatDuration(positionMs)} / ${formatDuration(durationMs)}")
+                        }
+                    },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -1737,13 +1829,15 @@ private fun CompanionInfoTab(
         // line, linkified text (timestamps + links), always expanded
         // (the card scrolls, no Show more/less on the second screen).
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
             shape = RoundedCornerShape(Tokens.RadiusMd),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
         ) {
             val description = video.description.orEmpty()
             Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
@@ -1840,90 +1934,99 @@ private fun CompanionControlsTab(
     // 8dp below the tab strip — same first-item gap as the other tabs.
     Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
-            // Distribute the three rows across the card height —
-            // spacedBy left a dead zone below them.
-            verticalArrangement = Arrangement.SpaceEvenly,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            shape = RoundedCornerShape(Tokens.RadiusMd),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
         ) {
-            CompanionSliderRow(
-                leading = {
-                    Text(
-                        text =
-                            if (isLive || durationMs <= 0) "Live"
-                            else formatTime(seekDrag?.let { (it * durationMs).toLong() } ?: positionMs),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                trailing = {
-                    if (!isLive && durationMs > 0) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+                // Distribute the three rows across the card height —
+                // spacedBy left a dead zone below them.
+                verticalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                CompanionSliderRow(
+                    leading = {
                         Text(
-                            text = formatTime(durationMs),
+                            text =
+                                if (isLive || durationMs <= 0) {
+                                    "Live"
+                                } else {
+                                    formatTime(seekDrag?.let { (it * durationMs).toLong() } ?: positionMs)
+                                },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                },
-                value =
-                    seekDrag
-                        ?: (if (durationMs > 0)
-                            (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
-                        else 0f),
-                onValueChange = { seekDrag = it },
-                onValueChangeFinished = {
-                    seekDrag?.let { onSeekTo((it * durationMs).toLong()) }
-                    seekDrag = null
-                },
-                enabled = !isLive && durationMs > 0,
-            )
-            CompanionSliderRow(
-                leading = {
-                    Icon(
-                        imageVector = Icons.Filled.VolumeUp,
-                        contentDescription = "Volume",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                trailing = {
-                    Text(
-                        text = "${(volume * 100).roundToInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                value = volume,
-                onValueChange = onVolume,
-            )
-            CompanionSliderRow(
-                leading = {
-                    Icon(
-                        imageVector = Icons.Filled.Brightness7,
-                        contentDescription = "Brightness",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                trailing = {
-                    Text(
-                        text = "${(brightness * 100).roundToInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                value = brightness,
-                onValueChange = onBrightness,
-            )
-        }
+                    },
+                    trailing = {
+                        if (!isLive && durationMs > 0) {
+                            Text(
+                                text = formatTime(durationMs),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    value =
+                        seekDrag
+                            ?: (
+                                if (durationMs > 0) {
+                                    (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                }
+                            ),
+                    onValueChange = { seekDrag = it },
+                    onValueChangeFinished = {
+                        seekDrag?.let { onSeekTo((it * durationMs).toLong()) }
+                        seekDrag = null
+                    },
+                    enabled = !isLive && durationMs > 0,
+                )
+                CompanionSliderRow(
+                    leading = {
+                        Icon(
+                            imageVector = Icons.Filled.VolumeUp,
+                            contentDescription = "Volume",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    trailing = {
+                        Text(
+                            text = "${(volume * 100).roundToInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    value = volume,
+                    onValueChange = onVolume,
+                )
+                CompanionSliderRow(
+                    leading = {
+                        Icon(
+                            imageVector = Icons.Filled.Brightness7,
+                            contentDescription = "Brightness",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    trailing = {
+                        Text(
+                            text = "${(brightness * 100).roundToInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    value = brightness,
+                    onValueChange = onBrightness,
+                )
+            }
         }
     }
 }
@@ -1986,4 +2089,3 @@ private fun ContentItem.toCoreVideoCard(): CoreVideoCard =
         publishedAt = publishedAt,
         url = url,
     )
-
