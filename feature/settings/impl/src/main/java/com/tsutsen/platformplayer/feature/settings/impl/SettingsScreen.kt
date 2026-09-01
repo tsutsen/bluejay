@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Hd
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Palette
@@ -177,6 +178,21 @@ fun SettingsScreen(
                             title = "Dual screen",
                             subtitle = "Second display pages, tabs, sections",
                             onClick = { navigator.navigateToSettingsFragment("dual") },
+                        )
+                    }
+                    item {
+                        val aboutContext = LocalContext.current
+                        SettingsOptionCard(
+                            icon = Icons.Filled.Info,
+                            title = "About & support",
+                            subtitle = "Bluejay is based on Grayjay/FUTO — support the original",
+                            onClick = {
+                                runCatching {
+                                    aboutContext.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://grayjay.app")),
+                                    )
+                                }
+                            },
                         )
                     }
                 }
