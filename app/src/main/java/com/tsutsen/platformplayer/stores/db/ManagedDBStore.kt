@@ -272,11 +272,11 @@ class ManagedDBStore<I: ManagedDBIndex<T>, T, D: ManagedDBDatabase<T, I, DA>, DA
     fun queryLikePage(field: KProperty<*>, obj: String, page: Int, pageSize: Int): List<I> = queryLikePage(validateFieldName(field), obj, page, pageSize);
     fun queryLikePage(field: String, obj: String, page: Int, pageSize: Int): List<I> {
         val queryStr = "SELECT * FROM ${descriptor.table_name} WHERE ${field} LIKE ? ${_orderSQL} LIMIT ? OFFSET ?";
-        val query = SimpleSQLiteQuery(queryStr, arrayOf(obj, pageSize, page * pageSize));
+        val query = SimpleSQLiteQuery(queryStr, arrayOf<Any>(obj, pageSize, page * pageSize));
         return deserializeIndexes(dbDaoBase.getMultiple(query));
     }fun queryLike2Page(field: String, field2: String, obj: String, page: Int, pageSize: Int): List<I> {
         val queryStr = "SELECT * FROM ${descriptor.table_name} WHERE ${field} LIKE ? OR ${field2} LIKE ? ${_orderSQL} LIMIT ? OFFSET ?";
-        val query = SimpleSQLiteQuery(queryStr, arrayOf(obj, obj, pageSize, page * pageSize));
+        val query = SimpleSQLiteQuery(queryStr, arrayOf<Any>(obj, obj, pageSize, page * pageSize));
         return deserializeIndexes(dbDaoBase.getMultiple(query));
     }
     fun queryLikeObjectPage(field: String, obj: String, page: Int, pageSize: Int): List<T> {
@@ -304,7 +304,7 @@ class ManagedDBStore<I: ManagedDBIndex<T>, T, D: ManagedDBDatabase<T, I, DA>, DA
     fun queryInPage(field: KProperty<*>, obj: List<String>, page: Int, pageSize: Int): List<I> = queryInPage(validateFieldName(field), obj, page, pageSize);
     fun queryInPage(field: String, obj: List<String>, page: Int, pageSize: Int): List<I> {
         val queryStr = "SELECT * FROM ${descriptor.table_name} WHERE ${field} IN (${obj.joinToString(",") { "?" }}) ${_orderSQL} LIMIT ? OFFSET ?";
-        val query = SimpleSQLiteQuery(queryStr, (obj + arrayOf(pageSize, page * pageSize)).toTypedArray());
+        val query = SimpleSQLiteQuery(queryStr, (obj + arrayOf<Int>(pageSize, page * pageSize)).toTypedArray<Any>());
         return deserializeIndexes(dbDaoBase.getMultiple(query));
     }
     fun queryInObjectPage(field: String, obj: List<String>, page: Int, pageSize: Int): List<T> {
@@ -466,7 +466,7 @@ class ManagedDBStore<I: ManagedDBIndex<T>, T, D: ManagedDBDatabase<T, I, DA>, DA
 
     companion object {
         inline fun <reified T, I: ManagedDBIndex<T>, D:  ManagedDBDatabase<T, I, DA>, DA: ManagedDBDAOBase<T, I>> create(name: String, descriptor: ManagedDBDescriptor<T, I, D, DA>, serializer: KSerializer<T>? = null)
-            = ManagedDBStore(name, descriptor, kotlin.reflect.typeOf<T>(), JsonStoreSerializer.create(serializer));
+            = ManagedDBStore(name, descriptor, kotlin.reflect.typeOf<T>(), JsonStoreSerializer.create<T>(serializer));
     }
 
     //Pair<(I)->Any, ConcurrentMap<Any, I>>

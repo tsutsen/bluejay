@@ -1,6 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
-import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -66,10 +66,9 @@ fun PillTabs(
     // recompose and re-offset the pill.
     val scrollX = scrollState.value
 
-    val motion = BluejayTokens().motion
-    val pillX by animateFloatAsState(targetValue = targetX, animationSpec = motion.stateSpec<Float>(), label = "pillX")
-    val pillW by animateFloatAsState(targetValue = targetW, animationSpec = motion.stateSpec<Float>(), label = "pillW")
-    val pillH by animateFloatAsState(targetValue = targetH, animationSpec = motion.stateSpec<Float>(), label = "pillH")
+    val pillX by animateFloatAsState(targetValue = targetX, animationSpec = spatialSpec<Float>(), label = "pillX")
+    val pillW by animateFloatAsState(targetValue = targetW, animationSpec = spatialSpec<Float>(), label = "pillW")
+    val pillH by animateFloatAsState(targetValue = targetH, animationSpec = spatialSpec<Float>(), label = "pillH")
 
     Box(modifier) {
         // The pill (drawn first, so it sits behind the tab labels). The

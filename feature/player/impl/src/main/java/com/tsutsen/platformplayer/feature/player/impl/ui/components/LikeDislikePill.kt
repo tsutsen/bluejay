@@ -1,35 +1,30 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
-import com.tsutsen.platformplayer.core.designsystem.component.GroupedButton
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import java.util.Locale
 
 /**
- * Two-part button group: like | dislike. Two [GroupedButton]s (asymmetric
- * outer rounding) meeting on a flat thin divider, so the junction is a
- * straight seam rather than two overlapping pills.
+ * Like | dislike action group — a native M3 Expressive [ButtonGroup]
+ * (standard style: separated, fully-rounded buttons) with the icon and
+ * count on each button. Active votes are tinted with the primary color.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun LikeDislikePill(
     likeCount: Long?,
@@ -41,69 +36,54 @@ internal fun LikeDislikePill(
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        GroupedButton(
-            position = GroupPosition.First,
+    ButtonGroup(
+        overflowIndicator = {},
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+    ) {
+        clickableItem(
             onClick = onLike,
-        ) {
-            PillHalf(
-                icon = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                count = likeCount,
-                active = isLiked,
-                contentDescription = if (isLiked) "Unlike" else "Like",
-            )
-        }
-        Box(
-            modifier =
-                Modifier
-                    .width(1.dp)
-                    .height(16.dp)
-                    .background(scheme.onSurfaceVariant.copy(alpha = 0.25f)),
+            label = likeCount?.let(::formatCount) ?: "",
+            icon = {
+                ThumbIcon(
+                    icon = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                    active = isLiked,
+                    activeDescription = "Unlike",
+                    idleDescription = "Like",
+                    tint = if (isLiked) scheme.primary else scheme.onSurfaceVariant,
+                )
+            },
         )
-        GroupedButton(
-            position = GroupPosition.Last,
+        clickableItem(
             onClick = onDislike,
-        ) {
-            PillHalf(
-                icon = if (isDisliked) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown,
-                count = dislikeCount,
-                active = isDisliked,
-                contentDescription = if (isDisliked) "Remove dislike" else "Dislike",
-            )
-        }
+            label = dislikeCount?.let(::formatCount) ?: "",
+            icon = {
+                ThumbIcon(
+                    icon = if (isDisliked) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown,
+                    active = isDisliked,
+                    activeDescription = "Remove dislike",
+                    idleDescription = "Dislike",
+                    tint = if (isDisliked) scheme.primary else scheme.onSurfaceVariant,
+                )
+            },
+        )
     }
 }
 
 @Composable
-private fun PillHalf(
+private fun ThumbIcon(
     icon: ImageVector,
-    count: Long?,
     active: Boolean,
-    contentDescription: String,
+    activeDescription: String,
+    idleDescription: String,
+    tint: Color,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        modifier =
-            Modifier
-                .height(36.dp)
-                .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = if (active) scheme.primary else scheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
-        )
-        if (count != null) {
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = formatCount(count),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (active) scheme.primary else scheme.onSurfaceVariant,
-            )
-        }
-    }
+    Icon(
+        imageVector = icon,
+        contentDescription = if (active) activeDescription else idleDescription,
+        tint = tint,
+        modifier = Modifier.size(16.dp),
+    )
 }
 
 private fun formatCount(count: Long): String {

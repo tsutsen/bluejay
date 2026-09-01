@@ -1,12 +1,12 @@
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android' version '2.2.21'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '2.2.21'
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.2.21'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '2.4.0'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.4.0'
     id 'org.ajoberstar.grgit' version '5.3.3'
     id 'com.google.protobuf'
     id 'kotlin-parcelize'
-    id 'com.google.dagger.hilt.android' version '2.58'
+    id 'com.google.dagger.hilt.android' version '2.60.1'
     id 'com.google.devtools.ksp'
 }
 
@@ -46,7 +46,7 @@ protobuf {
 
 android {
     namespace 'com.tsutsen.platformplayer'
-    compileSdk 36
+    compileSdk 37
     flavorDimensions "buildType"
     productFlavors {
         stable {
@@ -73,32 +73,6 @@ android {
             buildConfigField "boolean", "IS_PLAYSTORE_BUILD", "true"
             resValue "string", "app_name", "Bluejay"
             resValue "string", "authority", "com.tsutsen.platformplayer.playstore"
-        }
-    }
-
-    android.applicationVariants.all { variant ->
-        if (variant.flavorName == "unstable") {
-            variant.preBuildProvider.configure {
-                doFirst {
-                    println("UNSTABLE BUILD")
-                }
-            }
-        }
-
-        if (variant.flavorName == "stable") {
-            variant.preBuildProvider.configure {
-                doFirst {
-                    println("STABLE BUILD")
-                }
-            }
-        }
-
-        if (variant.flavorName == "playstore") {
-            variant.preBuildProvider.configure {
-                doFirst {
-                    println("PLAYSTORE BUILD")
-                }
-            }
         }
     }
 
@@ -132,11 +106,13 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = '1.8'
+    kotlin {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        }
     }
 
     splits {
@@ -165,8 +141,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.13.0'
 
     //Hilt Dependency Injection
-    implementation 'com.google.dagger:hilt-android:2.58'
-    ksp 'com.google.dagger:hilt-android-compiler:2.58'
+    implementation 'com.google.dagger:hilt-android:2.60.1'
+    ksp 'com.google.dagger:hilt-android-compiler:2.60.1'
     implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
 
     //Core Modules
@@ -252,7 +228,7 @@ dependencies {
     implementation 'androidx.compose.ui:ui-geometry'
     implementation 'androidx.compose.ui:ui-graphics'
     implementation 'androidx.compose.ui:ui-text'
-    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material3:material3:1.5.0-alpha27'
     implementation 'androidx.compose.material3.adaptive:adaptive'
     implementation 'androidx.compose.material3.adaptive:adaptive-layout'
     implementation 'androidx.compose.material3.adaptive:adaptive-navigation'
@@ -265,7 +241,7 @@ dependencies {
     implementation 'androidx.compose.material:material-icons-extended'
     implementation 'androidx.compose.runtime:runtime-livedata'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose'
-    implementation 'androidx.activity:activity-compose'
+    implementation 'androidx.activity:activity-compose:1.13.0'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     debugImplementation 'androidx.compose.ui:ui-tooling'
     // material3-android provides PlatformTheme for reading host Activity XML themes

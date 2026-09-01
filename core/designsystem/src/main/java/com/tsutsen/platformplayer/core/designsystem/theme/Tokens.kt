@@ -1,11 +1,7 @@
 package com.tsutsen.platformplayer.core.designsystem.theme
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.SpringSpec
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.Dp
@@ -18,9 +14,10 @@ import kotlin.math.roundToInt
  * here so the whole app can be re-themed/retuned from one place.
  *
  * Static values (spacing, icons, avatars) never change per-user.
- * Parameterized values (radius, motion) flow through [LocalBluejayTokens]
- * so [BluejayTheme] can derive them from user preferences — e.g. the
- * "UI rounding" slider rescales every radius in the app.
+ * The radius scale flows through [LocalBluejayTokens] so [BluejayTheme]
+ * can derive it from user preferences — the "UI rounding" slider rescales
+ * every radius in the app. Motion specs come from the theme's
+ * [androidx.compose.material3.MotionScheme] via [spatialSpec]/[effectsSpec].
  */
 object Tokens {
     // Spacing
@@ -78,36 +75,26 @@ data class RadiusScale(
 }
 
 /**
- * Motion recipe. Three specs cover the app: [state] for small interactive
- * feedback (press, color, size of one element), [content] for larger
- * transitions (content swap, reveal), [spring] for big physical moves.
- * Every animation site uses these instead of ad-hoc durations so smoothness
- * is tuned in one place.
+ * Motion specs pulled from the theme's [androidx.compose.material3.MotionScheme]
+ * (M3 expressive motion physics — the token-based replacement for ad-hoc
+ * tweens/springs). Every animation site uses these so the whole app moves
+ * as one and retunes from the theme:
+ *
+ * - [spatialSpec]: position / size / shape / offset changes
+ * - [effectsSpec]: opacity / color / blur changes
  */
-data class Motion(
-    val state: Int = 200, // ms
-    val content: Int = 300, // ms
-    val springDampingRatio: Float = Spring.DampingRatioMediumBouncy,
-    val springStiffness: Float = Spring.StiffnessMedium,
-) {
-    /** Small interactive feedback (press, one-element color/size). */
-    fun <T> stateSpec(): FiniteAnimationSpec<T> = tween(state, easing = FastOutSlowInEasing)
+@Composable
+fun <T> spatialSpec(): FiniteAnimationSpec<T> = MaterialTheme.motionScheme.defaultSpatialSpec()
 
-    /** Larger transitions (content swap, reveal). */
-    fun <T> contentSpec(): FiniteAnimationSpec<T> = tween(content, easing = FastOutSlowInEasing)
-
-    /** Big physical moves. */
-    fun <T> springSpec(): SpringSpec<T> =
-        spring(dampingRatio = springDampingRatio, stiffness = springStiffness)
-}
+@Composable
+fun <T> effectsSpec(): FiniteAnimationSpec<T> = MaterialTheme.motionScheme.defaultEffectsSpec()
 
 /** The full token set for the current user preferences. */
 data class BluejayTokens(
     val radius: RadiusScale,
-    val motion: Motion,
 ) {
     companion object {
-        val Default = BluejayTokens(RadiusScale.Default, Motion())
+        val Default = BluejayTokens(RadiusScale.Default)
     }
 }
 

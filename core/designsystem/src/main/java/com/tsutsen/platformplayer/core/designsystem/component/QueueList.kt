@@ -2,7 +2,8 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.effectsSpec
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.expandVertically
@@ -98,7 +99,7 @@ fun QueueList(
     val removing = remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
     val viewportPx = remember { mutableStateOf(0) }
-    val motion = BluejayTokens().motion
+    val offsetSpec = spatialSpec<Offset>()
 
     // FLIP for swaps: the move buttons only ever swap adjacent rows, so
     // the delta is known at the press — no order diffing. Rows are all
@@ -112,7 +113,7 @@ fun QueueList(
         val anim = flipAnims.getOrPut(url) { Animatable(Offset.Zero, Offset.VectorConverter) }
         scope.launch {
             anim.snapTo(Offset(0f, -steps * stepPx))
-            anim.animateTo(Offset.Zero, motion.springSpec<Offset>())
+            anim.animateTo(Offset.Zero, offsetSpec)
         }
     }
 
@@ -144,8 +145,8 @@ fun QueueList(
 
             AnimatedVisibility(
                 visible = hasAppeared && item.url !in removing.value,
-                enter = fadeIn(motion.stateSpec<Float>()) + expandVertically(motion.stateSpec<IntSize>()),
-                exit = fadeOut(motion.stateSpec<Float>()) + shrinkVertically(motion.stateSpec<IntSize>())
+                enter = fadeIn(effectsSpec<Float>()) + expandVertically(spatialSpec<IntSize>()),
+                exit = fadeOut(effectsSpec<Float>()) + shrinkVertically(spatialSpec<IntSize>())
             ) {
                 FlipItem(
                     flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
@@ -300,9 +301,9 @@ fun QueueMoveButton(
     val scheme = MaterialTheme.colorScheme
     val targetBg = if (enabled) scheme.primaryContainer else scheme.surfaceVariant
     val targetTint = if (enabled) scheme.onPrimaryContainer else scheme.onSurfaceVariant
-    val motion = BluejayTokens().motion
-    val bg by animateColorAsState(targetBg, animationSpec = motion.stateSpec<Color>(), label = "moveBg")
-    val tint by animateColorAsState(targetTint, animationSpec = motion.stateSpec<Color>(), label = "moveTint")
+    val colorSpec = effectsSpec<Color>()
+    val bg by animateColorAsState(targetBg, animationSpec = colorSpec, label = "moveBg")
+    val tint by animateColorAsState(targetTint, animationSpec = colorSpec, label = "moveTint")
 
     IconButton(
         onClick = onClick,

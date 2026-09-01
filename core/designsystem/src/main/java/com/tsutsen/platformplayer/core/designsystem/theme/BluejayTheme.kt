@@ -36,13 +36,13 @@ fun BluejayTheme(
     typography: Typography = BluejayTypography,
     /** 0..100 — user's UI rounding preference (Settings > Appearance). */
     uiRounding: Int = 100,
-    motion: Motion = Motion(),
+    /** M3 expressive motion physics for every animation in the app. */
+    motionScheme: MotionScheme = MotionScheme.expressive(),
     content: @Composable () -> Unit,
 ) {
-    val tokens =
-        remember(uiRounding, motion) {
-            BluejayTokens(radius = RadiusScale.fromRounding(uiRounding), motion = motion)
-        }
+    val tokens = remember(uiRounding) {
+        BluejayTokens(radius = RadiusScale.fromRounding(uiRounding))
+    }
     val view = LocalView.current
     val resolvedScheme =
         colorScheme
@@ -64,6 +64,8 @@ fun BluejayTheme(
 
     MaterialTheme(
         colorScheme = resolvedScheme,
+        motionScheme = motionScheme,
+        shapes = Shapes(),
         typography = typography,
         content = {
             CompositionLocalProvider(

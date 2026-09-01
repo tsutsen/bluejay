@@ -2,7 +2,7 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -160,7 +160,7 @@ private fun QueuedCardStrip(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val viewportPx = remember { mutableStateOf(0) }
-    val motion = BluejayTokens().motion
+    val flipSpec = spatialSpec<Offset>()
     // The now-playing card's position: items can't move in front of it.
     val currentIndex = items.indexOfFirst { it.url == current?.url }
 
@@ -227,7 +227,7 @@ private fun QueuedCardStrip(
                 val flipProgress = remember(index) { Animatable(Offset.Zero, Offset.VectorConverter) }
                 LaunchedEffect(index) {
                     if (flipDelta != 0f) {
-                        flipProgress.animateTo(Offset(1f, 0f), motion.stateSpec<Offset>())
+                        flipProgress.animateTo(Offset(1f, 0f), flipSpec)
                     }
                 }
                 Box(
@@ -288,7 +288,7 @@ private fun QueueStripItem(
     val swipe = remember { Animatable(0f) }
     val swipeScope = rememberCoroutineScope()
     val swipeJob = remember { mutableStateOf<Job?>(null) }
-    val motion = BluejayTokens().motion
+    val swipeSpec = spatialSpec<Float>()
     val swipeThresholdPx = remember { with(density) { 80.dp.toPx() } }
     val swipeFlyPx = remember { with(density) { 280.dp.toPx() } }
     // Arrow tiles: rounded on the left edge only — the square right edge
@@ -344,21 +344,18 @@ private fun QueueStripItem(
                                                 // Fly out in the direction it
                                                 // was dragged, then remove.
                                                 val dir = if (v > 0f) 1f else -1f
-                                                swipe.animateTo(
-                                                    dir * swipeFlyPx,
-                                                    motion.stateSpec<Float>(),
-                                                )
+                                                swipe.animateTo(dir * swipeFlyPx, swipeSpec)
                                                 onRemove()
                                             } else {
                                                 // Snap back home.
-                                                swipe.animateTo(0f, motion.springSpec<Float>())
+                                                swipe.animateTo(0f, swipeSpec)
                                             }
                                         }
                                 },
                                 onDragCancel = {
                                     swipeJob.value =
                                         swipeScope.launch {
-                                            swipe.animateTo(0f, motion.springSpec<Float>())
+                                            swipe.animateTo(0f, swipeSpec)
                                         }
                                 },
                             )
