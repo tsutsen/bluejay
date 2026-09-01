@@ -11,6 +11,16 @@ import android.view.KeyEvent
  * remote; the user can remap any action to any key.
  */
 object PlayerControllerActions {
+    /**
+     * Synthesized keycodes for the right stick, which the framework exposes
+     * only as motion axes (no real keycodes exist). High values keep them
+     * clear of real keycodes; GamepadKeyBus emits them as press edges.
+     */
+    const val KEY_RIGHT_STICK_UP = 0x10001
+    const val KEY_RIGHT_STICK_DOWN = 0x10002
+    const val KEY_RIGHT_STICK_LEFT = 0x10003
+    const val KEY_RIGHT_STICK_RIGHT = 0x10004
+
     const val PLAY_PAUSE = "play_pause"
     const val SEEK_BACK = "seek_back"
     const val SEEK_FORWARD = "seek_forward"
@@ -46,5 +56,11 @@ object PlayerControllerActions {
 
     /** "KEYCODE_MEDIA_PLAY_PAUSE" → "Media play pause". */
     fun labelFor(keyCode: Int): String =
-        KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_").replace('_', ' ')
+        when (keyCode) {
+            KEY_RIGHT_STICK_UP -> "Right stick up"
+            KEY_RIGHT_STICK_DOWN -> "Right stick down"
+            KEY_RIGHT_STICK_LEFT -> "Right stick left"
+            KEY_RIGHT_STICK_RIGHT -> "Right stick right"
+            else -> KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_").replace('_', ' ')
+        }
 }

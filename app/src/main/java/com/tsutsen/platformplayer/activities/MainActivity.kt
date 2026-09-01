@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.util.Rational
 import android.view.Display
 import android.view.KeyEvent
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -231,7 +232,13 @@ class MainActivity :
     /** Route gamepad/remote key events through [GamepadKeyBus] (controller
      *  button mapping, Settings > Controller) before normal handling. */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean =
-        GamepadKeyBus.dispatch(event) || super.dispatchKeyEvent(event)
+        GamepadKeyBus.dispatchKey(event) || super.dispatchKeyEvent(event)
+
+    /** Gamepad "motion" events (buttons/triggers/sticks, see
+     *  [GamepadKeyBus.motionEdges]) also arrive as touch-sourced events and
+     *  must be consumed, or they produce phantom taps on the UI. */
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean =
+        GamepadKeyBus.dispatchMotion(event) || super.dispatchTouchEvent(event)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

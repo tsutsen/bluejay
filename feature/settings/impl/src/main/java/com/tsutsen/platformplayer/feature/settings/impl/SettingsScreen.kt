@@ -72,7 +72,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,9 +87,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -99,12 +96,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import android.view.KeyEvent
+import android.view.View
+import androidx.compose.ui.platform.LocalView
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SourceInfo
+import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
@@ -738,24 +738,47 @@ private fun ControllerBindingDialog(
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    // The Compose dialog is its own Android window: key/motion events for
+    // gamepads and remotes reach that window's root view, never the
+    // activity's dispatchKeyEvent / dispatchTouchEvent. Catch them at the
+    // view level — OnKeyListener is the first stop for every key in the
+    // window, so the very first press binds (no focus race) and back
+    // cannot exit mid-capture.
+    val root = LocalView.current.rootView
+    DisposableEffect(root) {
+        val keyListener =
+            View.OnKeyListener { _, _, e ->
+                if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount == 0) {
+                    onBound(e.keyCode, e.device?.name)
+                    true
+                } else {
+                    false
+                }
+            }
+        // Analog inputs (triggers, right stick) arrive only as controller
+        // motion events (see GamepadKeyBus.motionEdges); consume all of them
+        // so they can't reach the dialog UI as phantom touches.
+        val touchListener =
+            View.OnTouchListener { _, ev ->
+                if (!GamepadKeyBus.isControllerMotion(ev)) return@OnTouchListener false
+                GamepadKeyBus.motionEdges(ev).firstOrNull()?.let { (keyCode, name) ->
+                    onBound(keyCode, name)
+                }
+                true
+            }
+        root.setOnKeyListener(keyListener)
+        root.setOnTouchListener(touchListener)
+        onDispose {
+            root.setOnKeyListener(null)
+            root.setOnTouchListener(null)
+        }
+    }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Card(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    .onKeyEvent { keyEvent ->
-                        val native = keyEvent.nativeKeyEvent
-                        if (native.action == KeyEvent.ACTION_DOWN && native.repeatCount == 0) {
-                            onBound(native.keyCode, native.device.name)
-                        }
-                        true
-                    },
+            modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {

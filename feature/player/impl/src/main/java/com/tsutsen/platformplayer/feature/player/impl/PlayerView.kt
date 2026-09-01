@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
-import android.view.KeyEvent
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -106,10 +105,9 @@ fun PlayerView(
     // view model while this screen is composed (Settings > Controller).
     val controllerKeyHandler =
         remember {
-            object : (KeyEvent) -> Boolean {
-                override fun invoke(event: KeyEvent) =
-                    event.action == KeyEvent.ACTION_DOWN &&
-                        viewModel.handleControllerKey(event.keyCode)
+            object : (GamepadKeyBus.GamepadEvent) -> Boolean {
+                override fun invoke(event: GamepadKeyBus.GamepadEvent) =
+                    viewModel.handleControllerKey(event.keyCode)
             }
         }
     DisposableEffect(Unit) {
