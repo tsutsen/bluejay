@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.core.designsystem.layout
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.animation.AnimatedVisibility
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -33,6 +34,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -174,10 +176,12 @@ fun AppNavigationRail(
                 selected = item.key == currentDestination,
                 onClick = { onTabSelected(item.key) },
                 icon = {
-                    Icon(
-                        imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
-                        contentDescription = item.label,
-                    )
+                    PulseOnSelect(selected = item.key == currentDestination) {
+                        Icon(
+                            imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
+                            contentDescription = item.label,
+                        )
+                    }
                 },
                 // Alpha (not visibility) so the item height never reflows
                 // while the rail fades in/out of fullscreen. maxLines=1 +
@@ -219,10 +223,12 @@ fun AppNavigationBar(
                 selected = item.key == currentDestination,
                 onClick = { onTabSelected(item.key) },
                 icon = {
-                    Icon(
-                        imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
-                        contentDescription = item.label,
-                    )
+                    PulseOnSelect(selected = item.key == currentDestination) {
+                        Icon(
+                            imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
+                            contentDescription = item.label,
+                        )
+                    }
                 },
                 // Alpha (not visibility) so the bar height never reflows
                 // while the bar fades in/out of fullscreen. maxLines=1 +
@@ -239,6 +245,29 @@ fun AppNavigationBar(
                 },
             )
         }
+    }
+}
+
+/**
+ * Scales a nav icon 1 → 1.06 → 1 when it becomes selected (the borrowed
+ * "pill pulse"). Applied to the icon only — the keep-alive content layer
+ * never slides, so tab persistence is untouched.
+ */
+@Composable
+private fun PulseOnSelect(
+    selected: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val pulse = remember { Animatable(1f) }
+    val spec = BluejayTokens().motion.stateSpec<Float>()
+    LaunchedEffect(selected) {
+        if (selected) {
+            pulse.animateTo(1.06f, spec)
+            pulse.animateTo(1f, spec)
+        }
+    }
+    Box(modifier = Modifier.graphicsLayer { scaleX = pulse.value; scaleY = pulse.value }) {
+        content()
     }
 }
 
