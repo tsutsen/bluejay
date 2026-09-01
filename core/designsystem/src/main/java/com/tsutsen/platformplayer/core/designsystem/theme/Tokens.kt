@@ -1,7 +1,7 @@
 package com.tsutsen.platformplayer.core.designsystem.theme
 
-import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
@@ -91,10 +91,10 @@ data class Motion(
     val springStiffness: Float = Spring.StiffnessMedium,
 ) {
     /** Small interactive feedback (press, one-element color/size). */
-    fun <T> stateSpec(): AnimationSpec<T> = tween(state, easing = FastOutSlowInEasing)
+    fun <T> stateSpec(): FiniteAnimationSpec<T> = tween(state, easing = FastOutSlowInEasing)
 
     /** Larger transitions (content swap, reveal). */
-    fun <T> contentSpec(): AnimationSpec<T> = tween(content, easing = FastOutSlowInEasing)
+    fun <T> contentSpec(): FiniteAnimationSpec<T> = tween(content, easing = FastOutSlowInEasing)
 
     /** Big physical moves. */
     fun <T> springSpec(): SpringSpec<T> =

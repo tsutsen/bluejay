@@ -2,11 +2,8 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -72,7 +69,6 @@ import kotlin.math.abs
 private val CARD_W = 240.dp
 private val CARD_H = 160.dp
 private val STRIP_GAP = 12.dp
-private val ANIM = 180
 // Right-hand move-button column: its own zone so the arrows never overlap
 // the thumbnail or the text, and pressing them never triggers the card
 // swipe.
@@ -164,6 +160,7 @@ private fun QueuedCardStrip(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val viewportPx = remember { mutableStateOf(0) }
+    val motion = BluejayTokens().motion
     // The now-playing card's position: items can't move in front of it.
     val currentIndex = items.indexOfFirst { it.url == current?.url }
 
@@ -230,7 +227,7 @@ private fun QueuedCardStrip(
                 val flipProgress = remember(index) { Animatable(Offset.Zero, Offset.VectorConverter) }
                 LaunchedEffect(index) {
                     if (flipDelta != 0f) {
-                        flipProgress.animateTo(Offset(1f, 0f), tween(ANIM, easing = FastOutSlowInEasing))
+                        flipProgress.animateTo(Offset(1f, 0f), motion.stateSpec<Offset>())
                     }
                 }
                 Box(
@@ -291,6 +288,7 @@ private fun QueueStripItem(
     val swipe = remember { Animatable(0f) }
     val swipeScope = rememberCoroutineScope()
     val swipeJob = remember { mutableStateOf<Job?>(null) }
+    val motion = BluejayTokens().motion
     val swipeThresholdPx = remember { with(density) { 80.dp.toPx() } }
     val swipeFlyPx = remember { with(density) { 280.dp.toPx() } }
     // Arrow tiles: rounded on the left edge only — the square right edge
@@ -348,33 +346,19 @@ private fun QueueStripItem(
                                                 val dir = if (v > 0f) 1f else -1f
                                                 swipe.animateTo(
                                                     dir * swipeFlyPx,
-                                                    tween(160, easing = FastOutSlowInEasing),
+                                                    motion.stateSpec<Float>(),
                                                 )
                                                 onRemove()
                                             } else {
                                                 // Snap back home.
-                                                swipe.animateTo(
-                                                    0f,
-                                                    spring(
-                                                        dampingRatio =
-                                                            Spring.DampingRatioMediumBouncy,
-                                                        stiffness = Spring.StiffnessMedium,
-                                                    ),
-                                                )
+                                                swipe.animateTo(0f, motion.springSpec<Float>())
                                             }
                                         }
                                 },
                                 onDragCancel = {
                                     swipeJob.value =
                                         swipeScope.launch {
-                                            swipe.animateTo(
-                                                0f,
-                                                spring(
-                                                    dampingRatio =
-                                                        Spring.DampingRatioMediumBouncy,
-                                                    stiffness = Spring.StiffnessMedium,
-                                                ),
-                                            )
+                                            swipe.animateTo(0f, motion.springSpec<Float>())
                                         }
                                 },
                             )

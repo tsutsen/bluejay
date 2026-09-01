@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.core.designsystem.layout
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.animation.AnimatedVisibility
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -268,7 +269,7 @@ private val PortraitNavPadV = 4.dp
 private fun animatedCorner(rounded: Boolean, label: String): Dp =
     animateDpAsState(
         targetValue = if (rounded) NavSurfaceCorner else 0.dp,
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        animationSpec = BluejayTokens().motion.contentSpec<Dp>(),
         label = label,
     ).value
 
@@ -361,28 +362,29 @@ private fun NavigationRailSurface(
             val b = columnWidthPx.intValue + NavSurfacePadH.toPx() * 2
             if (c <= 0 || b <= 0 || b >= c) 0f else (c - b) / 2f
         }
+    val motion = BluejayTokens().motion
     val vTop by
         animateDpAsState(
             targetValue = if (navMorphed) topInset else with(density) { verticalGapPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = motion.contentSpec<Dp>(),
             label = "navRailGapTop",
         )
     val vBottom by
         animateDpAsState(
             targetValue = if (navMorphed) bottomInset else with(density) { verticalGapPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = motion.contentSpec<Dp>(),
             label = "navRailGapBottom",
         )
     val hStart by
         animateDpAsState(
             targetValue = if (navMorphed) startInset else with(density) { horizontalGapPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = motion.contentSpec<Dp>(),
             label = "navRailGapStart",
         )
     val hEnd by
         animateDpAsState(
             targetValue = if (navMorphed) endInset else with(density) { horizontalGapPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = motion.contentSpec<Dp>(),
             label = "navRailGapEnd",
         )
     // Morphed: fully flat rectangle (all corners 0). Shrunken: the rail's
@@ -493,10 +495,11 @@ fun AppLayout(
     // the content and the nav share one top line.
     val density = LocalDensity.current
     val statusBarTop = with(density) { WindowInsets.systemBars.getTop(density).toDp() }
+    val motion = BluejayTokens().motion
     val topInset by
         animateDpAsState(
             targetValue = if (config.showNavigation) statusBarTop else 0.dp,
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = motion.contentSpec<Dp>(),
             label = "appContentTopInset",
         )
 
@@ -509,13 +512,13 @@ fun AppLayout(
             val railWidth by
                 animateDpAsState(
                     targetValue = if (config.showNavigation) AppNavigationRailWidth else 0.dp,
-                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                    animationSpec = motion.contentSpec<Dp>(),
                     label = "navRailWidth",
                 )
             val railAlpha by
                 animateFloatAsState(
                     targetValue = if (config.showNavigation) 1f else 0f,
-                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                    animationSpec = motion.contentSpec<Float>(),
                     label = "navRailAlpha",
                 )
             Row(modifier = Modifier.fillMaxSize()) {
@@ -543,8 +546,8 @@ fun AppLayout(
                 }
                 AnimatedVisibility(
                     visible = config.showNavigation,
-                    enter = fadeIn(animationSpec = tween(300)),
-                    exit = fadeOut(animationSpec = tween(300)),
+                    enter = fadeIn(animationSpec = motion.contentSpec<Float>()),
+                    exit = fadeOut(animationSpec = motion.contentSpec<Float>()),
                 ) {
                     NavigationBarSurface(navMorphed = navMorphed) {
                         navigationContent()
