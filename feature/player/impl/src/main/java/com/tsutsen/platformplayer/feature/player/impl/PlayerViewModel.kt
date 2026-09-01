@@ -729,12 +729,14 @@ class PlayerViewModel
         fun getPlayer() = playerRepository
 
         fun pause() {
+            PlayerEventBus.emit(PlayerEvent.PlayPauseToggled(isPlaying = false))
             viewModelScope.launch {
                 playerRepository.pause()
             }
         }
 
         fun resume() {
+            PlayerEventBus.emit(PlayerEvent.PlayPauseToggled(isPlaying = true))
             viewModelScope.launch {
                 playerRepository.resume()
             }
@@ -749,24 +751,28 @@ class PlayerViewModel
         /** Seek relative to current ExoPlayer position (avoids stale UI state). */
         fun seekBy(deltaMs: Long) {
             val current = playerRepository.exoPlayer?.currentPosition ?: return
+            PlayerEventBus.emit(PlayerEvent.Seek(deltaMs))
             viewModelScope.launch {
                 playerRepository.seekTo((current + deltaMs).coerceIn(0, playerRepository.exoPlayer?.duration ?: Long.MAX_VALUE))
             }
         }
 
         fun setVolume(volume: Float) {
+            PlayerEventBus.emit(PlayerEvent.VolumeChanged(volume))
             viewModelScope.launch {
                 playerRepository.setVolume(volume)
             }
         }
 
         fun setBrightness(brightness: Float) {
+            PlayerEventBus.emit(PlayerEvent.BrightnessChanged(brightness))
             viewModelScope.launch {
                 playerRepository.setBrightness(brightness)
             }
         }
 
         fun setPlaybackSpeed(speed: Float) {
+            PlayerEventBus.emit(PlayerEvent.PlaybackSpeedChanged(speed))
             viewModelScope.launch {
                 playerRepository.setPlaybackSpeed(speed)
             }
@@ -903,6 +909,7 @@ class PlayerViewModel
         }
 
         fun close() {
+            PlayerEventBus.emit(PlayerEvent.Closed)
             // A closed player session consumes the current video — drop it
             // from the queue so it doesn't linger at the head afterwards.
             // (playerRepository.close() nulls currentVideo, so the queue's
@@ -917,10 +924,12 @@ class PlayerViewModel
         }
 
         fun skipNext() {
+            PlayerEventBus.emit(PlayerEvent.NextRequested)
             playbackQueueRepository.playNext()
         }
 
         fun skipPrevious() {
+            PlayerEventBus.emit(PlayerEvent.PreviousRequested)
             viewModelScope.launch {
                 // TODO: Implement queue navigation
             }

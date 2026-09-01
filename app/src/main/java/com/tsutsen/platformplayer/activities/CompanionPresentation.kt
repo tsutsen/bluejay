@@ -98,6 +98,8 @@ import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.feature.player.impl.PlayerEvent
+import com.tsutsen.platformplayer.feature.player.impl.PlayerEventBus
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
@@ -545,6 +547,11 @@ private fun CompanionContent(
                                     selectedTab = selectedTab,
                                     onTabSelected = { selectedTab = it },
                                     onPlayPause = {
+                                        // Publish to the player event bus so the main
+                                        // screen shows the same feedback as its own actions.
+                                        PlayerEventBus.emit(
+                                            PlayerEvent.PlayPauseToggled(isPlaying = !playerState.isPlaying)
+                                        )
                                         scope.launch {
                                             if (playerState.isPlaying) {
                                                 playerRepository.pause()
@@ -554,6 +561,7 @@ private fun CompanionContent(
                                         }
                                     },
                                     onSeekBy = { deltaMs ->
+                                        PlayerEventBus.emit(PlayerEvent.Seek(deltaMs))
                                         val target =
                                             (playerState.currentPositionMs + deltaMs)
                                                 .coerceIn(0L, if (playerState.durationMs > 0) playerState.durationMs else Long.MAX_VALUE)
@@ -562,12 +570,14 @@ private fun CompanionContent(
                                     onPrevious = {
                                         val index = playerState.selectedIndex
                                         if (playerState.queue.isNotEmpty() && index > 0) {
+                                            PlayerEventBus.emit(PlayerEvent.PreviousRequested)
                                             scope.launch { playerRepository.play(playerState.queue[index - 1].id) }
                                         }
                                     },
                                     onNext = {
                                         val index = playerState.selectedIndex
                                         if (playerState.queue.isNotEmpty() && index + 1 < playerState.queue.size) {
+                                            PlayerEventBus.emit(PlayerEvent.NextRequested)
                                             scope.launch { playerRepository.play(playerState.queue[index + 1].id) }
                                         }
                                     },
@@ -1922,12 +1932,15 @@ private fun CompanionControlsTab(
     val onVolume: (Float) -> Unit = {
         volume = it
         SystemControls.setVolume(context, it)
+        // Bus event so the main screen shows the volume badge like its own actions.
+        PlayerEventBus.emit(PlayerEvent.VolumeChanged(it))
     }
     val onBrightness: (Float) -> Unit = { value ->
         brightness = value
         // All screens: device-wide when granted, plus this window; the
         // main window follows through SystemControls.brightness.
         SystemControls.applyBrightness(context, value, companionWindow)
+        PlayerEventBus.emit(PlayerEvent.BrightnessChanged(value))
     }
     // Fixed slot widths keep every slider the same length: time strings
     // on the playback row, icon/percent on the others.

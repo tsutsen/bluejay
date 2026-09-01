@@ -24,7 +24,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +76,8 @@ import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
+import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import com.tsutsen.platformplayer.feature.player.impl.ui.CastingSheet
 import kotlinx.coroutines.Job
@@ -80,6 +87,9 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private const val TAG = "PlayerScreen"
+
+/** Window in which same-direction seeks accumulate into one running badge total. */
+private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
 
 @Composable
 fun PlayerView(
@@ -626,6 +636,80 @@ fun PlayerView(
                         .buildGestureConfigs(gesturePrefs)
                 }
 
+            // ==================== Action badges (PlayerEventBus) ====================
+            // Badges are driven by the player event bus, not the gesture
+            // handler, so the same badges show for actions from the
+            // controller, the companion screen, etc. — not just gestures.
+            LaunchedEffect(Unit) {
+                // Consecutive same-direction seeks within the window accumulate
+                // into one running total (double-tap -5s -5s -> "-10s").
+                var seekTotalMs = 0L
+                var seekDir = 0
+                var seekTime = 0L
+                var capsuleJob: Job? = null
+
+                fun showCapsule(key: String, level: Float, icon: ImageVector) {
+                    activeProgressIndicator =
+                        GestureIndicator.Progress(key = key, value = level, icon = icon)
+                    capsuleJob?.cancel()
+                    capsuleJob = launch {
+                        delay(GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS)
+                        if (activeProgressIndicator?.key == key) activeProgressIndicator = null
+                    }
+                }
+
+                PlayerEventBus.events.collect { event ->
+                    when (event) {
+                        is PlayerEvent.Seek -> {
+                            val now = System.currentTimeMillis()
+                            val dir = if (event.deltaMs < 0) -1 else 1
+                            seekTotalMs =
+                                if (dir == seekDir && now - seekTime < SEEK_ACCUMULATE_WINDOW_MS)
+                                    seekTotalMs + event.deltaMs
+                                else event.deltaMs
+                            seekDir = dir
+                            seekTime = now
+                            val seconds = seekTotalMs / 1000
+                            badgeKeepAliveCounter++
+                            badgeState =
+                                GestureBadgeState(
+                                    key = if (dir < 0) "rewind_back" else "rewind_forward",
+                                    label = if (seconds > 0) "+${seconds}s" else "${seconds}s",
+                                    icon =
+                                        if (dir < 0)
+                                            Icons.Default.Replay10
+                                        else Icons.Default.Forward10,
+                                    visible = true,
+                                    keepAlive = badgeKeepAliveCounter,
+                                )
+                        }
+
+                        is PlayerEvent.PlaybackSpeedChanged -> {
+                            badgeKeepAliveCounter++
+                            badgeState =
+                                GestureBadgeState(
+                                    key = "speed",
+                                    label = "%.2fx".format(event.speed),
+                                    icon = Icons.Outlined.Speed,
+                                    visible = true,
+                                    keepAlive = badgeKeepAliveCounter,
+                                )
+                        }
+
+                        is PlayerEvent.BrightnessChanged ->
+                            showCapsule("brightness", event.level, Icons.Default.BrightnessHigh)
+
+                        is PlayerEvent.VolumeChanged ->
+                            showCapsule("volume", event.level, Icons.Default.VolumeUp)
+
+                        // PlayPauseToggled / NextRequested / PreviousRequested /
+                        // Closed: no badge yet — they still pass through the bus
+                        // for future consumers.
+                        else -> Unit
+                    }
+                }
+            }
+
             // ==================== Gesture action handler ====================
             val gestureHandler =
                 remember {
@@ -634,45 +718,6 @@ fun PlayerView(
                         screenHeight = { surface.containerSize.value.height },
                         context = context,
                         activity = context as? android.app.Activity,
-                        onIndicator = { indicator ->
-                            when (indicator) {
-                                is GestureIndicator.Progress -> {
-                                    activeProgressIndicator = indicator
-                                }
-
-                                is GestureIndicator.TextBadge -> {
-                                    badgeKeepAliveCounter++
-                                    badgeState =
-                                        GestureBadgeState(
-                                            key = indicator.key,
-                                            label = indicator.label,
-                                            icon = indicator.icon,
-                                            visible = true,
-                                            keepAlive = badgeKeepAliveCounter,
-                                        )
-                                }
-
-                                is GestureIndicator.Badge -> {
-                                    badgeKeepAliveCounter++
-                                    badgeState =
-                                        GestureBadgeState(
-                                            key = indicator.key,
-                                            label = indicator.format(indicator.value),
-                                            icon = indicator.icon,
-                                            visible = true,
-                                            keepAlive = badgeKeepAliveCounter,
-                                        )
-                                }
-
-                                else -> {
-                                    Unit
-                                }
-                            }
-                        },
-                        onIndicatorEnd = {
-                            activeProgressIndicator = null
-                            // Badges auto-hide via their own fade animation — don't touch badgeState here
-                        },
                         onMorphDragStart = { surface.isDraggingMorph.value = true },
                         onMorphDrag = { dragY ->
                             // Read the surface at call time — this block is
