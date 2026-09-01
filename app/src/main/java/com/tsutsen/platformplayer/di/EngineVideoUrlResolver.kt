@@ -6,6 +6,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.FileDataSource
 import androidx.media3.exoplayer.dash.DashMediaSource
+import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
+import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
+import androidx.media3.exoplayer.drm.MediaDrmCallback
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
@@ -13,26 +16,33 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikeDislikes
 import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikes
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IDashManifestSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IDashManifestWidevineSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IHLSManifestSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioUrlSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioUrlWidevineSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoSource
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoUrlSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IVideoUrlWidevineSource
+import com.tsutsen.platformplayer.api.media.models.streams.sources.IWidevineSource
 import com.tsutsen.platformplayer.api.media.models.subtitles.ISubtitleSource
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateCasting
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideoDetails
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlSource
+import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSAudioUrlWidevineSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawAudioSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSDashManifestRawSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSDashManifestSource
+import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSDashManifestWidevineSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSHLSManifestAudioSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSHLSManifestSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSUMPSource
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSUnMuxVideoSourceDescriptor
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoSourceDescriptor
 import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlSource
+import com.tsutsen.platformplayer.api.media.platforms.js.models.sources.JSVideoUrlWidevineSource
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
 import com.tsutsen.platformplayer.core.data.repository.VideoAudioTrack
@@ -528,6 +538,32 @@ class EngineVideoUrlResolver
             contentUrl: String,
         ): MediaSource? =
             when (source) {
+                // Widevine DASH (must precede the plain DASH/URL branches: the
+                // Widevine variants also implement IDashManifestSource/IVideoUrlSource)
+                is JSDashManifestWidevineSource,
+                is IDashManifestWidevineSource,
+                -> {
+                    Log.i(TAG, "Creating DASH MediaSource (Widevine DRM) for URL: ${source.url}")
+                    val drmCallback = buildDrmCallback(source, httpDataSourceFactory)
+                    DashMediaSource
+                        .Factory(httpDataSourceFactory)
+                        .setDrmSessionManagerProvider { DefaultDrmSessionManager.Builder().setMultiSession(true).build(drmCallback) }
+                        .createMediaSource(MediaItem.fromUri(Uri.parse(source.url)))
+                }
+
+                // Widevine progressive
+                is JSVideoUrlWidevineSource,
+                is IVideoUrlWidevineSource,
+                -> {
+                    val videoUrl = source.getVideoUrl()
+                    Log.i(TAG, "Creating Progressive MediaSource (Widevine DRM) for URL: $videoUrl")
+                    val drmCallback = buildDrmCallback(source, httpDataSourceFactory)
+                    ProgressiveMediaSource
+                        .Factory(httpDataSourceFactory)
+                        .setDrmSessionManagerProvider { DefaultDrmSessionManager.Builder().setMultiSession(true).build(drmCallback) }
+                        .createMediaSource(MediaItem.fromUri(Uri.parse(videoUrl)))
+                }
+
                 // UMP/Sabr protocol
                 is JSUMPSource -> {
                     Log.i(TAG, "Creating SabrMediaSource for UMP source")
@@ -630,11 +666,36 @@ class EngineVideoUrlResolver
                 }
             }
 
+        private fun buildDrmCallback(
+            source: IWidevineSource,
+            httpDataSourceFactory: DefaultHttpDataSource.Factory,
+        ): MediaDrmCallback {
+            val base = HttpMediaDrmCallback(source.licenseUri, httpDataSourceFactory)
+            return if (source.hasLicenseRequestExecutor) {
+                PluginMediaDrmCallback(base, source.getLicenseRequestExecutor()!!, source.licenseUri)
+            } else {
+                base
+            }
+        }
+
         private fun createMediaSourceFromSource(
             source: com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioSource,
             httpDataSourceFactory: DefaultHttpDataSource.Factory,
         ): MediaSource? =
             when (source) {
+                // Widevine audio (must precede the plain audio branches)
+                is JSAudioUrlWidevineSource,
+                is IAudioUrlWidevineSource,
+                -> {
+                    val audioUrl = source.getAudioUrl()
+                    Log.i(TAG, "Creating Progressive MediaSource (Widevine DRM) for audio URL: $audioUrl")
+                    val drmCallback = buildDrmCallback(source, httpDataSourceFactory)
+                    ProgressiveMediaSource
+                        .Factory(httpDataSourceFactory)
+                        .setDrmSessionManagerProvider { DefaultDrmSessionManager.Builder().setMultiSession(true).build(drmCallback) }
+                        .createMediaSource(MediaItem.fromUri(Uri.parse(audioUrl)))
+                }
+
                 // Audio URL source
                 is JSAudioUrlSource,
                 is com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioUrlSource,
