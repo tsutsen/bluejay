@@ -48,6 +48,14 @@ object PlayerControllerActions {
         val defaultKeyCode: Int,
     )
 
+    /**
+     * Note on L2/R2: some controllers report a trigger's digital half under
+     * the *shoulder* key (e.g. a measured "Odin" controller sends its right
+     * trigger as KEYCODE_BUTTON_R1, never KEYCODE_BUTTON_R2). The defaults
+     * below cover the standard layout; anything else is handled by the
+     * binding UI (Settings > Controller), which binds what the device
+     * actually sends.
+     */
     val ALL: List<Action> =
         listOf(
             Action(PLAY_PAUSE, "Play / pause", KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE),

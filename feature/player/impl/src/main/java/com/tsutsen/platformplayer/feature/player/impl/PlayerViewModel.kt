@@ -52,6 +52,14 @@ private const val HISTORY_SAVE_INTERVAL_MS = 5_000L
 /**
  * MVI state for the Video Player screen.
  */
+/** Speed clamp for controller speed-up/down (same range the gesture steps use). */
+private const val MIN_SPEED = 0.25f
+private const val MAX_SPEED = 4f
+
+/** Action ids that exist now — bindings saved for removed/renamed actions
+ * (e.g. the old combined "speed" action) must not shadow their keycode. */
+private val KNOWN_ACTION_IDS = PlayerControllerActions.ALL.mapTo(HashSet()) { it.id }
+
 sealed interface PlayerUiState {
     data class Loaded(
         val isPlaying: Boolean,
@@ -136,6 +144,11 @@ class PlayerViewModel
         /** Job running live chat start for the current video. */
         @Volatile
         private var liveChatJob: Job? = null
+
+        /** Speed in effect before a controller speed-hold started (restored
+         *  on release). Class-level: the speed action handler is local to
+         *  [onLoad] but [close] must be able to reset a stuck hold. */
+        private var speedBeforeHold: Float? = null
 
         /** Per-slot gesture assignments (Settings > Gestures); live flow.
          *  The player surface builds its gesture configs from this on (re)composition. */
@@ -802,17 +815,17 @@ class PlayerViewModel
             }
         }
 
-        /** Speed in effect before a speed-hold started (restored on release). */
-        private var speedBeforeHold: Float? = null
-
         /**
          * Handle a gamepad/remote press or release edge. Looks up the bound
          * action in the user's mapping (falling back to each action's
-         * default key) and performs it.
+         * default key) and performs it. Bindings saved for removed actions
+         * (e.g. the old combined "speed") are ignored so they don't shadow
+         * their keycode.
          *
-         * Speed actions are *hold* actions: while the button is held the
-         * playback runs at 2x (up) / 0.5x (down), and releasing restores the
-         * speed from before the hold. All other actions fire on press only.
+         * Speed actions are *hold* actions: while held, playback runs at
+         * the *current* speed multiplied by 2 (up) / divided by 2 (down),
+         * clamped to [MIN_SPEED]..[MAX_SPEED]; releasing restores the speed
+         * from before the hold. All other actions fire on press only.
          *
          * @return true when the key is mapped (press *and* release are
          *   consumed so they don't leak to system handling).
@@ -821,7 +834,9 @@ class PlayerViewModel
             val prefs = controllerPrefs.value
             if (!prefs.enabled) return false
             val action =
-                prefs.mappings.entries.firstOrNull { it.value.keyCode == event.keyCode }?.key
+                prefs.mappings.entries.firstOrNull {
+                    it.key in KNOWN_ACTION_IDS && it.value.keyCode == event.keyCode
+                }?.key
                     ?: PlayerControllerActions.ALL.firstOrNull { it.defaultKeyCode == event.keyCode }?.id
                     ?: return false
             val state = _uiState.value as? PlayerUiState.Loaded ?: return false
@@ -829,7 +844,7 @@ class PlayerViewModel
                 PlayerControllerActions.SPEED_UP ->
                     if (event.isPress) {
                         if (speedBeforeHold == null) speedBeforeHold = state.playbackSpeed
-                        setPlaybackSpeed(2f)
+                        setPlaybackSpeed((state.playbackSpeed * 2f).coerceIn(MIN_SPEED, MAX_SPEED))
                     } else {
                         speedBeforeHold?.let { setPlaybackSpeed(it) }
                         speedBeforeHold = null
@@ -838,7 +853,7 @@ class PlayerViewModel
                 PlayerControllerActions.SPEED_DOWN ->
                     if (event.isPress) {
                         if (speedBeforeHold == null) speedBeforeHold = state.playbackSpeed
-                        setPlaybackSpeed(0.5f)
+                        setPlaybackSpeed((state.playbackSpeed / 2f).coerceIn(MIN_SPEED, MAX_SPEED))
                     } else {
                         speedBeforeHold?.let { setPlaybackSpeed(it) }
                         speedBeforeHold = null
@@ -909,6 +924,7 @@ class PlayerViewModel
         }
 
         fun close() {
+            speedBeforeHold = null
             PlayerEventBus.emit(PlayerEvent.Closed)
             // A closed player session consumes the current video — drop it
             // from the queue so it doesn't linger at the head afterwards.
