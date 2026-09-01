@@ -4,67 +4,73 @@ import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlin.math.abs
 
 /**
- * Gamepad/controller input bus.
+ * Gamepad/controller input bus — Cemu's `GamepadInputSource` design.
  *
  * Android delivers controller input on two channels (the same split Cemu's
  * InputMapper uses):
  *  - [KeyEvent]s for every *digital* button (A/B/X/Y, shoulders L1/R1,
  *    start, select) and the left stick (the driver auto-maps stick
  *    deflection to DPAD keys);
- *  - [MotionEvent]s (gamepad/joystick source) for the *analog* parts that
- *    never become keys: triggers (AXIS_LTRIGGER/RTRIGGER → L2/R2) and the
- *    right stick (AXIS_RX/RY/RZ, which has no keycodes at all).
+ *  - generic [MotionEvent]s (gamepad/joystick source) for the *analog*
+ *    parts that never become keys: triggers (AXIS_LTRIGGER/RTRIGGER →
+ *    L2/R2) and the right stick (AXIS_RX/RY/RZ, which has no keycodes at
+ *    all). Controller motion arrives via `dispatchGenericMotionEvent`,
+ *    NOT `dispatchTouchEvent`.
  *
- * Both channels funnel press-edges into [dispatch] as [GamepadEvent].
- * Handlers must only be registered while the input is meant for them (e.g.
- * the player screen while composed, the settings binding dialog via a
- * view-level OnKeyListener/OnTouchListener — see SettingsScreen).
- *
- * Events are handled by whichever window has focus: the activity
- * (dispatchKeyEvent / dispatchTouchEvent) normally, or the dialog's own
- * window while a dialog is open — a dialog's key/motion events never
- * reach the activity.
+ * The activity feeds both channels into [events] (press-edges only).
+ * Two kinds of consumers:
+ *  - the **player** registers a [setPlayerHandler] while composed; the
+ *    activity consumes a key only when that handler handles it, so
+ *    unbound keys keep working with normal UI navigation;
+ *  - the **settings binding popup** is a non-focusable Compose `Popup`,
+ *    so the activity keeps input focus; it calls [beginCapture] and
+ *    collects [events] — the activity then consumes *everything*
+ *    (Cemu's `hasSubscribers` rule), which is why the very first press
+ *    binds and BACK cannot dismiss the popup mid-capture.
  */
 object GamepadKeyBus {
 
     data class GamepadEvent(val keyCode: Int, val deviceName: String?)
 
-    private val handlers = mutableListOf<(GamepadEvent) -> Boolean>()
+    private val _events = MutableSharedFlow<GamepadEvent>(extraBufferCapacity = 64)
+    val events: SharedFlow<GamepadEvent> = _events.asSharedFlow()
 
-    fun addHandler(handler: (GamepadEvent) -> Boolean) {
-        handlers += handler
+    fun emit(event: GamepadEvent) {
+        _events.tryEmit(event)
     }
 
-    fun removeHandler(handler: (GamepadEvent) -> Boolean) {
-        handlers -= handler
+    // ----- capture (settings binding popup) -----
+
+    @Volatile
+    private var capturing = false
+
+    val isCapturing: Boolean
+        get() = capturing
+
+    fun beginCapture() {
+        capturing = true
     }
 
-    private fun dispatch(event: GamepadEvent): Boolean {
-        if (handlers.isEmpty()) return false
-        return handlers.any { it(event) }
+    fun endCapture() {
+        capturing = false
     }
 
-    /** Feed from `Activity.dispatchKeyEvent`. */
-    fun dispatchKey(event: KeyEvent): Boolean {
-        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount > 0) return false
-        return dispatch(GamepadEvent(event.keyCode, event.device?.name))
+    // ----- player handler -----
+
+    private var playerHandler: ((GamepadEvent) -> Boolean)? = null
+
+    fun setPlayerHandler(handler: ((GamepadEvent) -> Boolean)?) {
+        playerHandler = handler
     }
 
-    /**
-     * Feed from `Activity.dispatchTouchEvent`. Returns true when the event
-     * is controller button/axis motion and should be consumed (so it never
-     * reaches the UI as a phantom touch).
-     */
-    fun dispatchMotion(event: MotionEvent): Boolean {
-        if (!isControllerMotion(event)) return false
-        if (event.action == MotionEvent.ACTION_BUTTON_PRESS) {
-            motionEdges(event).forEach { dispatch(it) }
-        }
-        return true
-    }
+    fun consumeIfPlayer(event: GamepadEvent): Boolean =
+        playerHandler?.invoke(event) ?: false
 
     // -----------------------------------------------------------------
     // Analog axes (Cemu InputMapper pattern: threshold + press edges)
@@ -77,10 +83,13 @@ object GamepadKeyBus {
 
     private val pressedAxes = HashSet<Int>()
 
+    fun isControllerMotion(event: MotionEvent): Boolean =
+        (event.source and (InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_JOYSTICK)) != 0
+
     /**
      * Axis press-edges in [event] (rising edges only: an axis crossing
      * [MIN_AXIS] yields one event; it clears when the axis returns to
-     * rest). Usable by both the activity and the binding dialog.
+     * rest).
      */
     fun motionEdges(event: MotionEvent): List<GamepadEvent> {
         if (!isControllerMotion(event)) return emptyList()
@@ -100,7 +109,6 @@ object GamepadKeyBus {
 
         // Right stick: two-directional (-1..1), each direction its own key
         for (axis in AXIS_STICK_RIGHT) {
-            // two-directional (-1..1): each direction is its own key
             val value = event.getAxisValue(axis)
             if (value > MIN_AXIS) {
                 if (markPressed(deviceId, axis, 1)) edges += GamepadEvent(rightStickKey(axis, positive = true), name)
@@ -122,9 +130,6 @@ object GamepadKeyBus {
                 if (positive) PlayerControllerActions.KEY_RIGHT_STICK_DOWN else PlayerControllerActions.KEY_RIGHT_STICK_UP
             else -> -1
         }
-
-    fun isControllerMotion(event: MotionEvent): Boolean =
-        (event.source and (InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_JOYSTICK)) != 0
 
     private fun stateKey(deviceId: Int, axis: Int, sign: Int) = deviceId * 10000 + axis * 2 + sign
 

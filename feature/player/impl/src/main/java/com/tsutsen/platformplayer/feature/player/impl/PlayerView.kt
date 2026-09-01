@@ -111,8 +111,8 @@ fun PlayerView(
             }
         }
     DisposableEffect(Unit) {
-        GamepadKeyBus.addHandler(controllerKeyHandler)
-        onDispose { GamepadKeyBus.removeHandler(controllerKeyHandler) }
+        GamepadKeyBus.setPlayerHandler(controllerKeyHandler)
+        onDispose { GamepadKeyBus.setPlayerHandler(null) }
     }
     val coroutineScope = rememberCoroutineScope()
 

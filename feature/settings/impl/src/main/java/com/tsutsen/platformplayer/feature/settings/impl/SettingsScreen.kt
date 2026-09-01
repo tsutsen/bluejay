@@ -4,6 +4,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
@@ -72,7 +74,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,10 +96,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import android.view.KeyEvent
-import android.view.View
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.graphics.Color
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
@@ -640,7 +640,7 @@ fun SettingsSectionScreen(
     // Controller button binding capture (Settings > Controller)
     val binding = bindingAction?.let { id -> PlayerControllerActions.ALL.firstOrNull { it.id == id } }
     if (category == "controller" && binding != null) {
-        ControllerBindingDialog(
+        ControllerBindingPopup(
             action = binding,
             onBound = { keyCode, deviceName ->
                 (uiState as? SettingsUiState.Loaded)?.let { current ->
@@ -722,82 +722,72 @@ private fun ControllerBindingRow(
 }
 
 /**
- * Binding capture dialog: the first key pressed on a controller/remote is
+ * Binding capture popup: the first controller/remote input that arrives is
  * bound to the action.
  *
- * The Compose [Dialog] is its own Android window, so key events reach its
- * view hierarchy — not [android.app.Activity.dispatchKeyEvent] (where
- * [com.tsutsen.platformplayer.core.ui.GamepadKeyBus] listens). We capture
- * locally on a focused node and consume every key so presses cannot leak
- * to the screen behind (e.g. back exiting settings mid-capture).
+ * Cemu's design (InputBindingPopup): a non-focusable Compose [Popup], not a
+ * [Dialog] — the activity window keeps input focus the whole time, so
+ * controller keys and generic motion events keep flowing through
+ * `Activity.dispatchKeyEvent` / `dispatchGenericMotionEvent` into
+ * [GamepadKeyBus.events] (a [Dialog] steals focus and the first press is
+ * lost in the window-focus transition). While [GamepadKeyBus.beginCapture]
+ * is active the activity consumes every input (Cemu's `hasSubscribers`
+ * rule): nothing leaks to the screen behind and BACK cannot dismiss this
+ * mid-capture.
  */
 @Composable
-private fun ControllerBindingDialog(
+private fun ControllerBindingPopup(
     action: PlayerControllerActions.Action,
     onBound: (keyCode: Int, deviceName: String?) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // The Compose dialog is its own Android window: key/motion events for
-    // gamepads and remotes reach that window's root view, never the
-    // activity's dispatchKeyEvent / dispatchTouchEvent. Catch them at the
-    // view level — OnKeyListener is the first stop for every key in the
-    // window, so the very first press binds (no focus race) and back
-    // cannot exit mid-capture.
-    val root = LocalView.current.rootView
-    DisposableEffect(root) {
-        val keyListener =
-            View.OnKeyListener { _, _, e ->
-                if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount == 0) {
-                    onBound(e.keyCode, e.device?.name)
-                    true
-                } else {
-                    false
-                }
-            }
-        // Analog inputs (triggers, right stick) arrive only as controller
-        // motion events (see GamepadKeyBus.motionEdges); consume all of them
-        // so they can't reach the dialog UI as phantom touches.
-        val touchListener =
-            View.OnTouchListener { _, ev ->
-                if (!GamepadKeyBus.isControllerMotion(ev)) return@OnTouchListener false
-                GamepadKeyBus.motionEdges(ev).firstOrNull()?.let { (keyCode, name) ->
-                    onBound(keyCode, name)
-                }
-                true
-            }
-        root.setOnKeyListener(keyListener)
-        root.setOnTouchListener(touchListener)
-        onDispose {
-            root.setOnKeyListener(null)
-            root.setOnTouchListener(null)
+    LaunchedEffect(Unit) {
+        GamepadKeyBus.beginCapture()
+        try {
+            GamepadKeyBus.events.collect { (keyCode, name) -> onBound(keyCode, name) }
+        } finally {
+            GamepadKeyBus.endCapture()
         }
     }
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+    Popup(alignment = Alignment.Center) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onDismiss,
+                    ),
+            contentAlignment = Alignment.Center,
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Bind ${action.label}", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = "Press a button on your controller or remote.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(onClick = onClear) { Text("Clear") }
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+            Card(
+                modifier =
+                    Modifier
+                        .sizeIn(maxWidth = 560.dp, maxHeight = 560.dp)
+                        .padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Bind ${action.label}", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "Press a button on your controller or remote.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(onClick = onClear) { Text("Clear") }
+                        TextButton(onClick = onDismiss) { Text("Cancel") }
+                    }
                 }
             }
         }
