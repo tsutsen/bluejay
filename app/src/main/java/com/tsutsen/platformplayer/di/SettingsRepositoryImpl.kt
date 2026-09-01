@@ -4,6 +4,7 @@ import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
+import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
@@ -48,7 +49,14 @@ class SettingsRepositoryImpl
                 defaultSpeedup = s.playback.defaultSpeedup,
                 speedupSensitivity = s.playback.speedupSensitivity,
                 jumpStepSeconds = s.playback.jumpStepSeconds,
-                playerGestures =
+                controller =
+                    ControllerPreferences(
+                        enabled = s.controller.enabled,
+                        mappings = s.controller.mappings,
+                        seekBackSeconds = s.controller.seekBackSeconds,
+                        seekForwardSeconds = s.controller.seekForwardSeconds,
+                    ),
+                playerGestures=
                     PlayerGesturePreferences(
                         fullscreen =
                             PlayerGestureSlotSet(
@@ -191,6 +199,16 @@ class SettingsRepositoryImpl
                             bottomRight = normal.bottomRight,
                         ),
                 )
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateControllerSettings(prefs: ControllerPreferences) {
+            val s = Settings.instance
+            s.controller.enabled = prefs.enabled
+            s.controller.mappings = prefs.mappings
+            s.controller.seekBackSeconds = prefs.seekBackSeconds
+            s.controller.seekForwardSeconds = prefs.seekForwardSeconds
             s.save()
             emit()
         }

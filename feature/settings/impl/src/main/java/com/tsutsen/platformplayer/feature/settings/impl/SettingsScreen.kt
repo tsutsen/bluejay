@@ -33,6 +33,9 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.Forward30
+import androidx.compose.material.icons.filled.Games
+import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Reorder
@@ -55,6 +58,8 @@ import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +72,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,10 +93,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SourceInfo
+import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
@@ -174,6 +184,14 @@ fun SettingsScreen(
                     }
                     item {
                         SettingsOptionCard(
+                            icon = Icons.Filled.Games,
+                            title = "Controller",
+                            subtitle = "Gamepad / remote button mapping",
+                            onClick = { navigator.navigateToSettingsFragment("controller") },
+                        )
+                    }
+                    item {
+                        SettingsOptionCard(
                             icon = Icons.Filled.DisplaySettings,
                             title = "Dual screen",
                             subtitle = "Second display pages, tabs, sections",
@@ -217,6 +235,7 @@ fun SettingsSectionScreen(
     val playlists by viewModel.playlists.collectAsState(initial = emptyList())
     val enabledSources by viewModel.enabledSources.collectAsState(initial = emptyList())
     var selectedChoice by remember { mutableStateOf<Choice?>(null) }
+    var bindingAction by remember { mutableStateOf<String?>(null) }
     val state = uiState as? SettingsUiState.Loaded
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -238,6 +257,7 @@ fun SettingsSectionScreen(
                     playlists = playlists,
                     enabledSources = enabledSources,
                     onChoiceSelected = { selectedChoice = it },
+                    onBindRequested = { bindingAction = it },
                     onPluginsClick = onPluginsClick,
                 )
             }
@@ -542,6 +562,54 @@ fun SettingsSectionScreen(
                 )
             }
         }
+        Choice.CONTROLLER_SEEK_BACK -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Backwards jump step",
+                    options =
+                        listOf(
+                            "5s" to "5",
+                            "10s" to "10",
+                            "15s" to "15",
+                            "20s" to "20",
+                            "30s" to "30",
+                            "45s" to "45",
+                            "60s" to "60",
+                        ),
+                    selected = it.controller.seekBackSeconds.toString(),
+                    onSelected = { value ->
+                        viewModel.setController(it.controller.copy(seekBackSeconds = value.toInt()))
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.CONTROLLER_SEEK_FORWARD -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Forwards jump step",
+                    options =
+                        listOf(
+                            "5s" to "5",
+                            "10s" to "10",
+                            "15s" to "15",
+                            "20s" to "20",
+                            "30s" to "30",
+                            "45s" to "45",
+                            "60s" to "60",
+                        ),
+                    selected = it.controller.seekForwardSeconds.toString(),
+                    onSelected = { value ->
+                        viewModel.setController(it.controller.copy(seekForwardSeconds = value.toInt()))
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
         Choice.DOWNLOAD_RESOLUTION -> {
             loaded?.let {
                 ChoiceDialog(
@@ -561,6 +629,128 @@ fun SettingsSectionScreen(
                     },
                     onDismiss = { selectedChoice = null },
                 )
+            }
+        }
+    }
+
+    // Controller button binding capture (Settings > Controller)
+    val binding = bindingAction?.let { id -> PlayerControllerActions.ALL.firstOrNull { it.id == id } }
+    if (category == "controller" && binding != null) {
+        ControllerBindingDialog(
+            action = binding,
+            onBound = { keyCode ->
+                (uiState as? SettingsUiState.Loaded)?.let { current ->
+                    viewModel.setController(
+                        current.controller.copy(mappings = current.controller.mappings + (binding.id to keyCode)),
+                    )
+                }
+                bindingAction = null
+            },
+            onClear = {
+                (uiState as? SettingsUiState.Loaded)?.let { current ->
+                    viewModel.setController(
+                        current.controller.copy(mappings = current.controller.mappings - binding.id),
+                    )
+                }
+                bindingAction = null
+            },
+            onDismiss = { bindingAction = null },
+        )
+    }
+}
+
+/**
+ * One controller action: shows the bound key. Tap to bind a new key,
+ * long-press to clear the custom binding (back to the default key).
+ */
+@Composable
+private fun ControllerBindingRow(
+    action: PlayerControllerActions.Action,
+    keyCode: Int,
+    isDefault: Boolean,
+    onCapture: () -> Unit,
+    onClear: () -> Unit,
+) {
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onCapture)
+                .padding(vertical = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(action.label, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text =
+                        if (isDefault) {
+                            "${PlayerControllerActions.labelFor(keyCode)} (default)"
+                        } else {
+                            PlayerControllerActions.labelFor(keyCode)
+                        },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (!isDefault) {
+                TextButton(onClick = onClear) { Text("Clear") }
+            }
+            Text("Tap to bind", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+/**
+ * Binding capture dialog: the first key pressed on a controller/remote is
+ * bound to the action. While open, [GamepadKeyBus.capture] swallows every
+ * key-down so presses cannot leak to the app (e.g. back exiting the screen).
+ */
+@Composable
+private fun ControllerBindingDialog(
+    action: PlayerControllerActions.Action,
+    onBound: (Int) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    DisposableEffect(action.id) {
+        GamepadKeyBus.capture = { event -> onBound(event.keyCode) }
+        onDispose { GamepadKeyBus.capture = null }
+    }
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Bind ${action.label}", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Press a button on your controller or remote.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = onClear) { Text("Clear") }
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                }
             }
         }
     }
@@ -584,6 +774,7 @@ private fun LazyListScope.SectionItems(
     playlists: List<PlaylistOption>,
     enabledSources: List<SourceInfo>,
     onChoiceSelected: (Choice) -> Unit,
+    onBindRequested: (String) -> Unit,
     onPluginsClick: () -> Unit,
 ) {
     when (category) {
@@ -986,6 +1177,62 @@ private fun LazyListScope.SectionItems(
                 )
             }
         }
+
+        "controller" -> {
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Filled.Games,
+                    title = "Use controller",
+                    subtitle = "Control playback with a gamepad or TV remote",
+                    checked = state.controller.enabled,
+                    onCheckedChange = { enabled ->
+                        viewModel.setController(state.controller.copy(enabled = enabled))
+                    },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Replay10,
+                    title = "Backwards jump step",
+                    subtitle = "${state.controller.seekBackSeconds}s",
+                    onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_BACK) },
+                )
+            }
+            item {
+                SettingsOptionCard(
+                    icon = Icons.Filled.Forward30,
+                    title = "Forwards jump step",
+                    subtitle = "${state.controller.seekForwardSeconds}s",
+                    onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_FORWARD) },
+                )
+            }
+            item {
+                SettingsHeader(
+                    title = "Buttons",
+                    reset =
+                        if (state.controller.mappings.isNotEmpty()) {
+                            { viewModel.setController(state.controller.copy(mappings = emptyMap())) }
+                        } else {
+                            null
+                        },
+                )
+            }
+            PlayerControllerActions.ALL.forEach { action ->
+                item {
+                    ControllerBindingRow(
+                        action = action,
+                        keyCode = state.controller.mappings[action.id] ?: action.defaultKeyCode,
+                        isDefault = action.id !in state.controller.mappings,
+                        onCapture = { onBindRequested(action.id) },
+                        onClear = {
+                            viewModel.setController(
+                                state.controller.copy(mappings = state.controller.mappings - action.id),
+                            )
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1066,6 +1313,7 @@ private fun sectionTitle(category: String): String =
         "content" -> "Content"
         "playback" -> "Playback"
         "gestures" -> "Gestures"
+        "controller" -> "Controller"
         "dual" -> "Dual screen"
         else -> "Settings"
     }
@@ -1134,6 +1382,8 @@ private enum class Choice {
     PLAYBACK_SPEED,
     SPEEDUP_SENSITIVITY,
     JUMP_STEP,
+    CONTROLLER_SEEK_BACK,
+    CONTROLLER_SEEK_FORWARD,
     VIDEO_RESOLUTION,
     DOWNLOAD_RESOLUTION,
 }

@@ -27,6 +27,8 @@ import com.tsutsen.platformplayer.core.model.LiveChatUiState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.model.VideoChapter
+import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
+import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.core.model.WatchState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -141,6 +143,14 @@ class PlayerViewModel
                 viewModelScope,
                 kotlinx.coroutines.flow.SharingStarted.Eagerly,
                 com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences(),
+            )
+
+        /** Controller (gamepad/remote) settings (Settings > Controller); live flow. */
+        val controllerPrefs: StateFlow<ControllerPreferences> =
+            settingsRepository.preferences.map { it.controller }.stateIn(
+                viewModelScope,
+                kotlinx.coroutines.flow.SharingStarted.Eagerly,
+                ControllerPreferences(),
             )
 
         init {
@@ -783,6 +793,63 @@ class PlayerViewModel
             viewModelScope.launch {
                 playerRepository.toggleSubtitles()
             }
+        }
+
+        /**
+         * Handle a gamepad/remote key-down. Looks up the bound action in the
+         * user's mapping (falling back to each action's default key) and
+         * performs it.
+         *
+         * @return true when a key was handled.
+         */
+        fun handleControllerKey(keyCode: Int): Boolean {
+            val prefs = controllerPrefs.value
+            if (!prefs.enabled) return false
+            val action =
+                prefs.mappings.entries.firstOrNull { it.value == keyCode }?.key
+                    ?: PlayerControllerActions.ALL.firstOrNull { it.defaultKeyCode == keyCode }?.id
+                    ?: return false
+            val state = _uiState.value as? PlayerUiState.Loaded ?: return false
+            when (action) {
+                PlayerControllerActions.PLAY_PAUSE ->
+                    if (state.isPlaying) pause() else resume()
+
+                PlayerControllerActions.SEEK_BACK -> seekBy(-prefs.seekBackSeconds * 1000L)
+
+                PlayerControllerActions.SEEK_FORWARD -> seekBy(prefs.seekForwardSeconds * 1000L)
+
+                // Cycle 1x → 2x → 0.5x → 1x
+                PlayerControllerActions.SPEED ->
+                    setPlaybackSpeed(
+                        when {
+                            state.playbackSpeed <= 1f -> 2f
+                            state.playbackSpeed >= 2f -> 0.5f
+                            else -> 1f
+                        }
+                    )
+
+                PlayerControllerActions.NEXT -> skipNext()
+                PlayerControllerActions.PREVIOUS -> skipPrevious()
+
+                // Back-style key in fullscreen exits fullscreen first (same
+                // as the app's back handler); otherwise it closes the player.
+                PlayerControllerActions.CLOSE ->
+                    if (state.isFullscreen) exitFullscreen() else close()
+
+                PlayerControllerActions.BRIGHTNESS_UP ->
+                    setBrightness((state.brightness + 0.1f).coerceIn(0f, 1f))
+
+                PlayerControllerActions.BRIGHTNESS_DOWN ->
+                    setBrightness((state.brightness - 0.1f).coerceIn(0f, 1f))
+
+                PlayerControllerActions.VOLUME_UP -> setVolume((state.volume + 0.1f).coerceIn(0f, 1f))
+
+                PlayerControllerActions.VOLUME_DOWN ->
+                    setVolume((state.volume - 0.1f).coerceIn(0f, 1f))
+
+                else -> return false
+            }
+            return true
         }
 
         fun toggleFullscreen() {

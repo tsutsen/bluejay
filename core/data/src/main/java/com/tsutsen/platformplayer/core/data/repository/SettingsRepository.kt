@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.core.data.repository
 
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import kotlinx.coroutines.flow.StateFlow
 
@@ -23,6 +24,9 @@ interface SettingsRepository {
         fullscreen: PlayerGestureSlotSet,
         normal: PlayerGestureSlotSet,
     )
+
+    /** Save the controller (gamepad) settings (Settings > Controller). */
+    suspend fun updateControllerSettings(prefs: ControllerPreferences)
     suspend fun updateLibrarySectionOrder(order: List<String>)
     suspend fun resetToDefaults()
 }

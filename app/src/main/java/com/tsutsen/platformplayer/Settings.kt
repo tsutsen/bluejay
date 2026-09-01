@@ -114,6 +114,17 @@ class Settings {
     // ("swipe_v"|"swipe_h"|"double_tap"|"hold") → action id.
     // Empty = shipped defaults for that slot.
     var playerGestures: PlayerGesturePreferences = PlayerGesturePreferences()
+
+    // Controller (gamepad / TV remote) button mapping (Settings > Controller)
+    var controller: ControllerSettings = ControllerSettings()
+
+    @Serializable
+    class ControllerSettings(
+        var enabled: Boolean = false,
+        var mappings: Map<String, Int> = emptyMap(),
+        var seekBackSeconds: Int = 10,
+        var seekForwardSeconds: Int = 30,
+    )
     // Second-screen library: the four 2x2 slots. Each entry is a section id
     // or a "playlist:<id>" reference (see Settings > Dual screen).
     var dualScreenLibrarySlots: List<String> =

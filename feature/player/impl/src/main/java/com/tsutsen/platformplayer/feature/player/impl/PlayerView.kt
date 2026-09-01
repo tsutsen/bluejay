@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
+import android.view.KeyEvent
 import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -66,6 +67,7 @@ import androidx.media3.common.Player
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.QueueList
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
+import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
@@ -99,6 +101,20 @@ fun PlayerView(
     // composed later), so it wins while enabled.
     BackHandler(enabled = (uiState as? PlayerUiState.Loaded)?.isFullscreen == true) {
         viewModel.exitFullscreen()
+    }
+    // Controller (gamepad / TV remote) key handling: route key-downs to the
+    // view model while this screen is composed (Settings > Controller).
+    val controllerKeyHandler =
+        remember {
+            object : (KeyEvent) -> Boolean {
+                override fun invoke(event: KeyEvent) =
+                    event.action == KeyEvent.ACTION_DOWN &&
+                        viewModel.handleControllerKey(event.keyCode)
+            }
+        }
+    DisposableEffect(Unit) {
+        GamepadKeyBus.addHandler(controllerKeyHandler)
+        onDispose { GamepadKeyBus.removeHandler(controllerKeyHandler) }
     }
     val coroutineScope = rememberCoroutineScope()
 

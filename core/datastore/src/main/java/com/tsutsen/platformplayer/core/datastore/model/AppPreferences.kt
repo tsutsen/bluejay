@@ -10,6 +10,7 @@ data class AppPreferences(
     /** Jump step (seconds) for the back/forward seek gestures. */
     val jumpStepSeconds: Int = 5,
     val playerGestures: PlayerGesturePreferences = PlayerGesturePreferences(),
+    val controller: ControllerPreferences = ControllerPreferences(),
     val defaultVideoResolution: String = "Auto",
     val defaultDownloadResolution: String = "480p",
     val enableDeveloperOptions: Boolean = false,

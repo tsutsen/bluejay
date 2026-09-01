@@ -40,6 +40,7 @@ sealed interface SettingsUiState {
         val autoUpdatePlugins: Boolean,
         val playerGestures: PlayerGesturePreferences,
         val jumpStepSeconds: Int = 5,
+        val controller: ControllerPreferences = ControllerPreferences(),
     ) : SettingsUiState
 
     data object Loading : SettingsUiState
@@ -98,6 +99,7 @@ class SettingsViewModel
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
                                 playerGestures = prefs.playerGestures,
                                 jumpStepSeconds = prefs.jumpStepSeconds,
+                                controller = prefs.controller,
                             )
                     }
             }
@@ -146,6 +148,11 @@ class SettingsViewModel
 
         fun setDualScreenFeedSources(ids: List<String>) {
             viewModelScope.launch { settingsRepository.updateDualScreenFeedSources(ids) }
+        }
+
+        /** Save the controller (gamepad) settings (Settings > Controller). */
+        fun setController(prefs: ControllerPreferences) {
+            viewModelScope.launch { settingsRepository.updateControllerSettings(prefs) }
         }
 
         /** Clear gesture customizations for one player mode (back to defaults). */
