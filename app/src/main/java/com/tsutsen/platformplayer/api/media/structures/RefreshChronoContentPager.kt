@@ -13,7 +13,5 @@ class RefreshChronoContentPager(pagers: List<IPager<IPlatformContent>>, pendingP
 
     override fun recreatePager(pagers: List<IPager<IPlatformContent>>): IPager<IPlatformContent> {
         return MultiChronoContentPager(pagers);
-        //return MultiChronoContentParallelPager(pagers);
-        //return MultiDistributionContentPager(pagers.associateWith { 1f });
     }
 }

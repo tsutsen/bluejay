@@ -1,14 +1,5 @@
 package com.tsutsen.platformplayer
 
-import android.text.Html
-import android.text.Spanned
-import androidx.core.text.HtmlCompat
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Attributes
-import org.jsoup.nodes.Element
-import org.jsoup.nodes.Node
-import org.jsoup.nodes.TextNode
-import org.jsoup.parser.Tag
 import java.lang.IllegalStateException
 import java.text.DecimalFormat
 import java.time.OffsetDateTime
@@ -244,107 +235,6 @@ fun Long.toHumanDuration(isMs: Boolean): String {
     ).filterNotNull().joinToString(" ");
 }
 
-
-//TODO: Determine if below stuff should have its own proper class, seems a bit too complex for a utility method
-fun String.fixHtmlWhitespace(): Spanned {
-    return Html.fromHtml(replace("\n", "<br />"), HtmlCompat.FROM_HTML_MODE_LEGACY);
-}
-
-fun String.fixHtmlLinks(): Spanned {
-    //TODO: Properly fix whitespace handling.
-    val doc = Jsoup.parse(replace("\n", "<br />"));
-    for (n in doc.body().childNodes()) {
-        replaceLinks(n);
-    }
-    for (n in doc.body().childNodes()) {
-        replaceTimestamps(n);
-    }
-
-    val modifiedDoc = doc.body().toString();
-    return HtmlCompat.fromHtml(modifiedDoc, HtmlCompat.FROM_HTML_MODE_LEGACY);
-}
-
-val timestampRegex = Regex("\\d+:\\d+(?::\\d+)?");
-private val urlRegex = Regex("https?://\\S+");
-private val linkTag = Tag.valueOf("a");
-private fun replaceTimestamps(node: Node) {
-    for (n in node.childNodes()) {
-        replaceTimestamps(n);
-    }
-
-    if (node is TextNode) {
-        val text = node.text();
-        var lastOffset = 0;
-        var lastNode = node;
-
-        val matches = timestampRegex.findAll(text).toList();
-        for (i in matches.indices) {
-            val match = matches[i];
-
-            val textBeforeNode = TextNode(text.substring(lastOffset, match.range.first));
-            lastNode.after(textBeforeNode);
-            lastNode = textBeforeNode;
-
-            val attributes = Attributes();
-            attributes.add("href", match.value);
-            val linkNode = Element(linkTag, null, attributes);
-            linkNode.text(match.value);
-            lastNode.after(linkNode);
-            lastNode = linkNode;
-
-            lastOffset = match.range.last + 1;
-        }
-
-        if (lastOffset > 0) {
-            if (lastOffset < text.length) {
-                lastNode.after(TextNode(text.substring(lastOffset)));
-            }
-
-            node.remove();
-        }
-    }
-}
-private fun replaceLinks(node: Node) {
-    for (n in node.childNodes()) {
-        replaceLinks(n);
-    }
-
-    if (node is Element && node.tag() == linkTag) {
-        node.text(node.text().trim());
-    }
-
-    if (node is TextNode) {
-        val text = node.text();
-        var lastOffset = 0;
-        var lastNode = node;
-
-        val matches = urlRegex.findAll(text).toList();
-        for (i in matches.indices) {
-            val match = matches[i];
-
-            val textBeforeNode = TextNode(text.substring(lastOffset, match.range.first));
-            lastNode.after(textBeforeNode);
-            lastNode = textBeforeNode;
-
-            val attributes = Attributes();
-            attributes.add("href", match.value);
-            val linkNode = Element(linkTag, null, attributes);
-            linkNode.text(match.value);
-            lastNode.after(linkNode);
-            lastNode = linkNode;
-
-            lastOffset = match.range.last + 1;
-        }
-
-        if (lastOffset > 0) {
-            if (lastOffset < text.length) {
-                lastNode.after(TextNode(text.substring(lastOffset)));
-            }
-
-            node.remove();
-        }
-    }
-}
 
 fun ByteArray.toHexString(): String {
     return this.joinToString("") { "%02x".format(it) }

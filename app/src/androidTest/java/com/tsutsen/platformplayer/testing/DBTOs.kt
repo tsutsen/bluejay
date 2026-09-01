@@ -14,34 +14,35 @@ import java.util.UUID
 
 class DBTOs {
     @Dao
-    interface DBDAO: ManagedDBDAOBase<TestObject, TestIndex> {}
-    @Database(entities = [TestIndex::class], version = 3)
-    abstract class DB: ManagedDBDatabase<TestObject, TestIndex, DBDAO>() {
-        abstract override fun base(): DBDAO;
-    }
+    interface DBDAO : ManagedDBDAOBase<TestObject, TestIndex>
 
+    @Database(entities = [TestIndex::class], version = 3)
+    abstract class DB : ManagedDBDatabase<TestObject, TestIndex, DBDAO>() {
+        abstract override fun base(): DBDAO
+    }
 
     @Entity("testing")
-    class TestIndex(): ManagedDBIndex<TestObject>() {
-
+    class TestIndex() : ManagedDBIndex<TestObject>() {
         @ColumnIndex
-        var someString: String = "";
+        var someString: String = ""
+
         @ColumnIndex
         @ColumnOrdered(0)
-        var someNum: Int = 0;
+        var someNum: Int = 0
 
         constructor(obj: TestObject, customInt: Int? = null) : this() {
-            someString = obj.someStr;
-            someNum = customInt ?: obj.someNum;
+            someString = obj.someStr
+            someNum = customInt ?: obj.someNum
         }
     }
+
     @Serializable
     class TestObject {
-        var someStr = UUID.randomUUID().toString();
-        var someNum = random.nextInt();
+        var someStr = UUID.randomUUID().toString()
+        var someNum = random.nextInt()
     }
 
     companion object {
-        val random = Random();
+        val random = Random()
     }
 }

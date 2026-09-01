@@ -181,10 +181,6 @@
             android:screenOrientation="sensorPortrait"
             android:theme="@style/Theme.App.NoActionBar"
             />
-        <activity
-            android:name=".activities.QRCaptureActivity"
-            android:screenOrientation="sensorPortrait"
-            />
         <service
             android:name=".UpdateDownloadService"
             android:exported="false"

@@ -162,7 +162,6 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.test:monitor:1.8.0'
     implementation 'com.google.android.material:material:1.13.0'
 
     //Hilt Dependency Injection
@@ -221,8 +220,6 @@ dependencies {
     implementation 'androidx.media3:media3-ui:1.9.0'
     implementation 'androidx.media3:media3-ui-compose:1.9.0'
     implementation 'androidx.media3:media3-exoplayer-hls:1.9.0'
-    implementation 'androidx.media3:media3-exoplayer-rtsp:1.9.0'
-    implementation 'androidx.media3:media3-exoplayer-smoothstreaming:1.9.0'
     implementation 'androidx.media3:media3-datasource:1.9.0'
     implementation 'androidx.media:media:1.7.1' // legacy NotificationCompat.MediaStyle (MediaPlaybackService)
 
@@ -231,10 +228,7 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
     implementation fileTree(dir: 'aar', include: ['*.aar'])
-    implementation 'com.arthenica:smart-exception-java:0.2.1'
     implementation 'org.jetbrains.kotlin:kotlin-reflect:2.2.0'
-    implementation 'com.google.zxing:core:3.5.3'
-    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation 'androidx.webkit:webkit:1.15.0'
 
     //Protobuf

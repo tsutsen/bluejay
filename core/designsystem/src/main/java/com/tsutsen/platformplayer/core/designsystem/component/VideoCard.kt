@@ -677,62 +677,6 @@ fun VideoCardShorts(
 }
 
 /**
- * Compact landscape video card (96×54 thumbnail ratio).
- */
-@Composable
-fun CompactVideoCard(
-    card: VideoCard,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val title = card.title
-    val author = card.author
-    val thumbnailUrl = card.thumbnailUrl
-
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(72.dp)
-                .clickable(onClick = onClick)
-                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AsyncImage(
-            url = thumbnailUrl,
-            contentDescription = title,
-            modifier =
-                Modifier
-                    .size(128.dp, 72.dp)
-                    .clip(RoundedCornerShape(Tokens.RadiusSm)),
-            contentScale = ContentScale.Crop,
-        )
-        Column(
-            modifier =
-                Modifier
-                    .padding(start = Tokens.SpaceMd)
-                    .weight(1f),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (author != null) {
-                Text(
-                    text = author,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-/**
  * "1.2M" / "340K" view counts.
  * Hand-rolled 1-decimal formatting: String.format pulls in locale machinery
  * and this runs on every recomposition of every visible card.

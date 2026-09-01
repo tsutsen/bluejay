@@ -36,17 +36,6 @@ data class VideoCard(
 ) : Card
 
 @Parcelize
-data class ShortCard(
-    override val id: String,
-    override val title: String,
-    override val thumbnailUrl: String?,
-    val author: String?,
-    val viewCount: Long? = null,
-    val url: String,
-    override val sourceId: String? = null,
-) : Card
-
-@Parcelize
 data class PlaylistCard(
     override val id: String,
     override val title: String,
