@@ -15,6 +15,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,20 +24,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
+import com.tsutsen.platformplayer.core.designsystem.component.ArticleCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
+import com.tsutsen.platformplayer.core.designsystem.component.PostCardView
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.model.ArticleCard
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelCard
+import com.tsutsen.platformplayer.core.model.PostCard
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.model.WatchState
 import com.tsutsen.platformplayer.core.navigation.Navigator
@@ -61,7 +68,12 @@ fun HomeScreen(
     // Paused while this keep-alive tab is hidden (LocalTabActive).
     val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())
     val isWide = rememberIsWide()
+    val context = LocalContext.current
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
+
+    fun openUrl(url: String) {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
 
     when (val state = uiState) {
         is HomeUiState.Initial,
@@ -142,6 +154,9 @@ fun HomeScreen(
                             when (card) {
                                 is VideoCard -> playerViewModel.play(card)
                                 is ChannelCard -> navigator.navigateToChannel(card.url)
+                                // Posts/articles/web pages: no in-app detail screen yet — open in browser
+                                is PostCard -> openUrl(card.url)
+                                is ArticleCard -> openUrl(card.url)
                                 else -> Unit
                             }
                         },
@@ -231,6 +246,20 @@ private fun HomeFeedContent(
 
                         is ChannelCard -> {
                             ChannelCardView(
+                                card = card,
+                                onClick = { onCardClick(card) },
+                            )
+                        }
+
+                        is PostCard -> {
+                            PostCardView(
+                                card = card,
+                                onClick = { onCardClick(card) },
+                            )
+                        }
+
+                        is ArticleCard -> {
+                            ArticleCardView(
                                 card = card,
                                 onClick = { onCardClick(card) },
                             )
