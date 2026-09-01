@@ -1,12 +1,15 @@
 package com.tsutsen.platformplayer.activities
 
 import android.Manifest
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import android.view.Display
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -40,6 +43,7 @@ import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateCasting
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -80,6 +84,9 @@ class MainActivity :
 
     @Inject
     lateinit var channelRepository: ChannelRepository
+
+    /** System picture-in-picture active (video-only window). */
+    internal val pipActive = MutableStateFlow(false)
 
     private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
@@ -172,6 +179,36 @@ class MainActivity :
         if (hasFocus) ensureCompanion()
     }
 
+    /**
+     * System picture-in-picture: leaving the app (home) while a video is
+     * playing moves playback into the floating PiP window instead of just
+     * minimizing the app.
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (pipActive.value) return
+        val st = playerRepository.playerState.value
+        if (st.currentVideo == null || !st.isPlaying || st.isCasting) return
+        val builder = PictureInPictureParams.Builder()
+        playerRepository.exoPlayer?.videoSize?.let { size ->
+            if (size.width > 0 && size.height > 0) {
+                // Deprecated API 33+ (Rational form) — the only overload
+                // visible to this SDK stub; behaves identically on 36.
+                @Suppress("DEPRECATION")
+                builder.setAspectRatio(Rational(size.width, size.height))
+            }
+        }
+        enterPictureInPictureMode(builder.build())
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPipMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPipMode, newConfig)
+        pipActive.value = isInPipMode
+    }
+
     override fun onStop() {
         super.onStop()
         // The companion only makes sense while the app is in the
@@ -258,12 +295,20 @@ private fun BluejayMainActivity(
         activity.ensureCompanion()
     }
 
+    // PiP mode: the window is the video itself — render video only, no app
+    // chrome (expanding the PiP flips this back to the full app UI).
+    val pip by activity.pipActive.collectAsState(initial = false)
+
     BluejayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
-        bluejayMainActivityContent(
-            activity,
-            navigator,
-            playerRepository,
-        )
+        if (pip) {
+            PlayerView(isPip = true)
+        } else {
+            bluejayMainActivityContent(
+                activity,
+                navigator,
+                playerRepository,
+            )
+        }
     }
 }
 

@@ -84,6 +84,7 @@ private const val TAG = "PlayerScreen"
 fun PlayerView(
     viewModel: PlayerViewModel = hiltViewModel(),
     onChannelClick: (String) -> Unit = {},
+    isPip: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val liveChat by viewModel.liveChat.collectAsState()
@@ -182,6 +183,17 @@ fun PlayerView(
         remember(uiState) {
             (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
         }
+
+    // System picture-in-picture: the PiP window is the video itself — no
+    // chrome, controls, or gestures. (SurfaceView composites correctly in
+    // the PiP window on API 10+; if a device shows a black PiP frame the
+    // upgrade path is a TextureView wired via setVideoTextureView.)
+    if (isPip) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            PlayerVideoSurface(player = player)
+        }
+        return
+    }
 
     // ==================== Animation sync ====================
     val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
