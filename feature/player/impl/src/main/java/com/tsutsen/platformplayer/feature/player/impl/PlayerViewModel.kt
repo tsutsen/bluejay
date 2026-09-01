@@ -806,7 +806,7 @@ class PlayerViewModel
             val prefs = controllerPrefs.value
             if (!prefs.enabled) return false
             val action =
-                prefs.mappings.entries.firstOrNull { it.value == keyCode }?.key
+                prefs.mappings.entries.firstOrNull { it.value.keyCode == keyCode }?.key
                     ?: PlayerControllerActions.ALL.firstOrNull { it.defaultKeyCode == keyCode }?.id
                     ?: return false
             val state = _uiState.value as? PlayerUiState.Loaded ?: return false

@@ -3,20 +3,18 @@ package com.tsutsen.platformplayer.core.ui
 import android.view.KeyEvent
 
 /**
- * Routes raw Android key events (gamepads, TV remotes) to interested parties.
+ * Routes raw Android key events (gamepads, TV remotes) to long-lived
+ * consumers.
  *
- * [dispatch] is called from the activity's [android.app.Activity.dispatchKeyEvent].
+ * [dispatch] is called from the activity's
+ * [android.app.Activity.dispatchKeyEvent], so it sees every key event for
+ * the main window. (Key events for child windows — e.g. a Compose Dialog —
+ * never pass through here; such UI captures keys locally instead.)
  *
- * - [capture]: at most one binding-capture listener (the Settings controller
- *   page). While set, it swallows every key-down so a keypress cannot leak
- *   through to the app (e.g. back exiting the screen mid-capture).
- * - handler list: long-lived consumers (the player screen registers one).
- *   A handler returns true to consume the event.
+ * Handlers are registered by long-lived screens (the player registers one
+ * while composed). A handler returns true to consume the event.
  */
 object GamepadKeyBus {
-
-    @Volatile
-    var capture: ((KeyEvent) -> Unit)? = null
 
     private val handlers = mutableListOf<(KeyEvent) -> Boolean>()
 
@@ -30,11 +28,6 @@ object GamepadKeyBus {
 
     /** @return true when the event was consumed by the bus. */
     fun dispatch(event: KeyEvent): Boolean {
-        val c = capture
-        if (c != null && event.action == KeyEvent.ACTION_DOWN) {
-            c(event)
-            return true
-        }
         for (h in handlers.toList()) {
             if (h(event)) return true
         }

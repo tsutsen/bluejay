@@ -72,7 +72,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +87,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -95,12 +98,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import android.view.KeyEvent
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SourceInfo
-import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
@@ -638,10 +642,14 @@ fun SettingsSectionScreen(
     if (category == "controller" && binding != null) {
         ControllerBindingDialog(
             action = binding,
-            onBound = { keyCode ->
+            onBound = { keyCode, deviceName ->
                 (uiState as? SettingsUiState.Loaded)?.let { current ->
                     viewModel.setController(
-                        current.controller.copy(mappings = current.controller.mappings + (binding.id to keyCode)),
+                        current.controller.copy(
+                            mappings =
+                                current.controller.mappings +
+                                    (binding.id to ControllerBinding(keyCode = keyCode, deviceName = deviceName)),
+                        ),
                     )
                 }
                 bindingAction = null
@@ -660,14 +668,14 @@ fun SettingsSectionScreen(
 }
 
 /**
- * One controller action: shows the bound key. Tap to bind a new key,
- * long-press to clear the custom binding (back to the default key).
+ * One controller action: shows the bound key (and the device it was bound
+ * with). Tap to bind a new key; Clear removes the custom binding (back to
+ * the default key).
  */
 @Composable
 private fun ControllerBindingRow(
     action: PlayerControllerActions.Action,
-    keyCode: Int,
-    isDefault: Boolean,
+    binding: ControllerBinding?,
     onCapture: () -> Unit,
     onClear: () -> Unit,
 ) {
@@ -690,18 +698,22 @@ private fun ControllerBindingRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(action.label, style = MaterialTheme.typography.titleSmall)
+                val b = binding
                 Text(
                     text =
-                        if (isDefault) {
-                            "${PlayerControllerActions.labelFor(keyCode)} (default)"
+                        if (b == null) {
+                            "${PlayerControllerActions.labelFor(action.defaultKeyCode)} (default)"
                         } else {
-                            PlayerControllerActions.labelFor(keyCode)
+                            buildString {
+                                append(PlayerControllerActions.labelFor(b.keyCode))
+                                b.deviceName?.let { append("  ·  ").append(it) }
+                            }
                         },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (!isDefault) {
+            if (binding != null) {
                 TextButton(onClick = onClear) { Text("Clear") }
             }
             Text("Tap to bind", style = MaterialTheme.typography.bodySmall)
@@ -711,26 +723,39 @@ private fun ControllerBindingRow(
 
 /**
  * Binding capture dialog: the first key pressed on a controller/remote is
- * bound to the action. While open, [GamepadKeyBus.capture] swallows every
- * key-down so presses cannot leak to the app (e.g. back exiting the screen).
+ * bound to the action.
+ *
+ * The Compose [Dialog] is its own Android window, so key events reach its
+ * view hierarchy — not [android.app.Activity.dispatchKeyEvent] (where
+ * [com.tsutsen.platformplayer.core.ui.GamepadKeyBus] listens). We capture
+ * locally on a focused node and consume every key so presses cannot leak
+ * to the screen behind (e.g. back exiting settings mid-capture).
  */
 @Composable
 private fun ControllerBindingDialog(
     action: PlayerControllerActions.Action,
-    onBound: (Int) -> Unit,
+    onBound: (keyCode: Int, deviceName: String?) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    DisposableEffect(action.id) {
-        GamepadKeyBus.capture = { event -> onBound(event.keyCode) }
-        onDispose { GamepadKeyBus.capture = null }
-    }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onKeyEvent { keyEvent ->
+                        val native = keyEvent.nativeKeyEvent
+                        if (native.action == KeyEvent.ACTION_DOWN && native.repeatCount == 0) {
+                            onBound(native.keyCode, native.device.name)
+                        }
+                        true
+                    },
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         ) {
@@ -1221,8 +1246,7 @@ private fun LazyListScope.SectionItems(
                 item {
                     ControllerBindingRow(
                         action = action,
-                        keyCode = state.controller.mappings[action.id] ?: action.defaultKeyCode,
-                        isDefault = action.id !in state.controller.mappings,
+                        binding = state.controller.mappings[action.id],
                         onCapture = { onBindRequested(action.id) },
                         onClear = {
                             viewModel.setController(

@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer
 
 import android.content.Context
 import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
+import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -121,7 +122,7 @@ class Settings {
     @Serializable
     class ControllerSettings(
         var enabled: Boolean = false,
-        var mappings: Map<String, Int> = emptyMap(),
+        var mappings: Map<String, ControllerBinding> = emptyMap(),
         var seekBackSeconds: Int = 10,
         var seekForwardSeconds: Int = 30,
     )
