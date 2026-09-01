@@ -45,8 +45,8 @@ class SettingsRepositoryImplTest {
             assertTrue(prefs.playback.autoPlay)
             assertEquals(1f, prefs.defaultPlaybackSpeed)
             assertEquals("default", prefs.subtitle.font)
-            assertEquals("standard", prefs.subtitle.size)
-            assertEquals("standard", prefs.subtitle.bottomPadding)
+            assertEquals(16, prefs.subtitle.size)
+            assertEquals(20, prefs.subtitle.bottomPadding)
             assertFalse(prefs.enableDeveloperOptions)
             assertEquals(3, prefs.gridColumns)
         }
