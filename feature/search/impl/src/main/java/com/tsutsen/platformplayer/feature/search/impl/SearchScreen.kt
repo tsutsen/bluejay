@@ -2,8 +2,6 @@ package com.tsutsen.platformplayer.feature.search.impl
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -79,6 +77,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -138,6 +137,7 @@ fun SearchScreen(
     var optionsCard by remember { mutableStateOf<VideoCard?>(null) }
     val searchQuery by viewModel.query.collectAsState()
     val hasSearched = searchQuery.isNotBlank()
+    val motion = BluejayTokens().motion
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     var isSearchFocused by remember { mutableStateOf(false) }
@@ -321,8 +321,8 @@ fun SearchScreen(
                         // field looks empty, so the clear button goes too.
                         AnimatedVisibility(
                             visible = searchQuery.isNotBlank(),
-                            enter = fadeIn(tween(120)) + expandHorizontally(tween(120)),
-                            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(120)),
+                            enter = fadeIn(motion.stateSpec<Float>()) + expandHorizontally(motion.stateSpec<IntSize>()),
+                            exit = fadeOut(motion.stateSpec<Float>()) + shrinkHorizontally(motion.stateSpec<IntSize>())
                         ) {
                             Row {
                                 SearchFieldButton(
@@ -798,6 +798,7 @@ private fun SwipeToDeleteRow(
 ) {
     val scope = rememberCoroutineScope()
     val rowWidthPx = remember { mutableIntStateOf(0) }
+    val motion = BluejayTokens().motion
     val offsetAnim = remember { Animatable(0f) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
     val thresholdPx = with(LocalDensity.current) { 80.dp.toPx() }
@@ -829,15 +830,15 @@ private fun SwipeToDeleteRow(
                                         val target =
                                             (if (offsetAnim.value > 0f) 1f else -1f) *
                                                 (rowWidthPx.value + 60f)
-                                        offsetAnim.animateTo(target, spring())
+                                        offsetAnim.animateTo(target, motion.springSpec<Float>())
                                         onSwipedAway()
                                     } else {
-                                        offsetAnim.animateTo(0f, spring())
+                                        offsetAnim.animateTo(0f, motion.springSpec<Float>())
                                     }
                                 }
                         },
                         onDragCancel = {
-                            settleJob = scope.launch { offsetAnim.animateTo(0f, spring()) }
+                            settleJob = scope.launch { offsetAnim.animateTo(0f, motion.springSpec<Float>()) }
                         },
                     )
                 },
