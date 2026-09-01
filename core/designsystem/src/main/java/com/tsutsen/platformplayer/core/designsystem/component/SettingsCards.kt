@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -30,8 +31,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Shape
 import kotlin.math.roundToInt
 import kotlin.ranges.ClosedFloatingPointRange
+
+/**
+ * Position of a settings card inside a vertical group. Consecutive
+ * First/Middle/Last cards read as one connected block: outer corners are
+ * rounded (following the app's rounding setting), inner corners square.
+ */
+enum class CardGroupPosition { Single, First, Middle, Last }
+
+@Composable
+private fun groupShape(position: CardGroupPosition): Shape {
+    val r = BluejayTokens().radius
+    return when (position) {
+        CardGroupPosition.Single -> RoundedCornerShape(r.md)
+        CardGroupPosition.First -> RoundedCornerShape(topStart = r.md, topEnd = r.md)
+        CardGroupPosition.Middle -> RoundedCornerShape(0.dp)
+        CardGroupPosition.Last -> RoundedCornerShape(bottomStart = r.md, bottomEnd = r.md)
+    }
+}
+
+@Composable
+private fun iconTileShape() = RoundedCornerShape(BluejayTokens().radius.sm)
 
 /**
  * Settings card that opens a sub-screen or dialog.
@@ -42,6 +66,7 @@ fun SettingsOptionCard(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
+    groupPosition: CardGroupPosition = CardGroupPosition.Single,
 ) {
     Card(
         modifier =
@@ -49,6 +74,7 @@ fun SettingsOptionCard(
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
                 .padding(vertical = 2.dp),
+        shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
@@ -66,7 +92,7 @@ fun SettingsOptionCard(
                         .size(Tokens.AvatarMd)
                         .background(
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = MaterialTheme.shapes.small,
+                            shape = iconTileShape(),
                         ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -108,12 +134,14 @@ fun SettingsSwitchCard(
     subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    groupPosition: CardGroupPosition = CardGroupPosition.Single,
 ) {
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 2.dp),
+        shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
@@ -131,7 +159,7 @@ fun SettingsSwitchCard(
                         .size(Tokens.AvatarMd)
                         .background(
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = MaterialTheme.shapes.small,
+                            shape = iconTileShape(),
                         ),
                 contentAlignment = Alignment.Center,
             ) {
@@ -175,9 +203,11 @@ fun SettingsSliderCard(
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     steps: Int = 0,
     onValueChange: (Float) -> Unit,
+    groupPosition: CardGroupPosition = CardGroupPosition.Single,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
@@ -193,7 +223,7 @@ fun SettingsSliderCard(
                             .size(Tokens.AvatarMd)
                             .background(
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = MaterialTheme.shapes.small,
+                                shape = iconTileShape(),
                             ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -246,6 +276,7 @@ fun SettingsSwitchOptionCard(
     onCheckedChange: (Boolean) -> Unit,
     onClick: () -> Unit,
     iconUrl: String? = null,
+    groupPosition: CardGroupPosition = CardGroupPosition.Single,
 ) {
     Card(
         modifier =
@@ -253,6 +284,7 @@ fun SettingsSwitchOptionCard(
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
                 .padding(vertical = 2.dp),
+        shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
@@ -270,7 +302,7 @@ fun SettingsSwitchOptionCard(
                         .size(Tokens.AvatarMd)
                         .background(
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = MaterialTheme.shapes.small,
+                            shape = iconTileShape(),
                         ),
                 contentAlignment = Alignment.Center,
             ) {

@@ -103,6 +103,7 @@ import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.QueueMoveButton
+import com.tsutsen.platformplayer.core.designsystem.component.CardGroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSliderCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
@@ -165,6 +166,7 @@ fun SettingsScreen(
                             title = "Appearance",
                             subtitle = "Theme, dynamic color, contrast",
                             onClick = { navigator.navigateToSettingsFragment("appearance") },
+                            groupPosition = CardGroupPosition.First,
                         )
                     }
                     item {
@@ -173,6 +175,7 @@ fun SettingsScreen(
                             title = "Content",
                             subtitle = "Plugins, video page sections",
                             onClick = { navigator.navigateToSettingsFragment("content") },
+                            groupPosition = CardGroupPosition.Middle,
                         )
                     }
                     item {
@@ -181,6 +184,7 @@ fun SettingsScreen(
                             title = "Playback",
                             subtitle = "Subtitles, quality",
                             onClick = { navigator.navigateToSettingsFragment("playback") },
+                            groupPosition = CardGroupPosition.Middle,
                         )
                     }
                     item {
@@ -189,6 +193,7 @@ fun SettingsScreen(
                             title = "Gestures",
                             subtitle = "Speed, per-slot gesture actions",
                             onClick = { navigator.navigateToSettingsFragment("gestures") },
+                            groupPosition = CardGroupPosition.Middle,
                         )
                     }
                     item {
@@ -197,6 +202,7 @@ fun SettingsScreen(
                             title = "Controller",
                             subtitle = "Gamepad / remote button mapping",
                             onClick = { navigator.navigateToSettingsFragment("controller") },
+                            groupPosition = CardGroupPosition.Middle,
                         )
                     }
                     item {
@@ -205,6 +211,7 @@ fun SettingsScreen(
                             title = "Dual screen",
                             subtitle = "Second display pages, tabs, sections",
                             onClick = { navigator.navigateToSettingsFragment("dual") },
+                            groupPosition = CardGroupPosition.Middle,
                         )
                     }
                     item {
@@ -220,6 +227,7 @@ fun SettingsScreen(
                                     )
                                 }
                             },
+                            groupPosition = CardGroupPosition.Last,
                         )
                     }
                 }
