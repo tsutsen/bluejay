@@ -2,7 +2,6 @@ package com.tsutsen.platformplayer.feature.library.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,15 +39,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
-import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
@@ -59,7 +54,6 @@ import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PlaylistStats
 import com.tsutsen.platformplayer.core.navigation.Navigator
-import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import kotlinx.coroutines.launch
@@ -81,7 +75,6 @@ fun LibraryScreen(
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
     var optionsPlaylist by remember { mutableStateOf<PlaylistCard?>(null) }
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
-    var newPlaylistName by remember { mutableStateOf("") }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (sections.isEmpty()) {
@@ -139,48 +132,10 @@ fun LibraryScreen(
 
     if (showNewPlaylistDialog) {
         NewPlaylistDialog(
-            name = newPlaylistName,
-            onNameChange = { newPlaylistName = it },
-            onCreate = {
-                viewModel.createPlaylist(newPlaylistName.trim())
-                newPlaylistName = ""
-                showNewPlaylistDialog = false
-            },
+            onCreate = { viewModel.createPlaylist(it.trim()) },
             onDismiss = { showNewPlaylistDialog = false },
         )
     }
-}
-
-@Composable
-private fun NewPlaylistDialog(
-    name: String,
-    onNameChange: (String) -> Unit,
-    onCreate: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New playlist") },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = onNameChange,
-                label = { Text("Name") },
-                singleLine = true,
-            )
-        },
-        confirmButton = {
-            TextButton(
-                enabled = name.isNotBlank(),
-                onClick = onCreate,
-            ) {
-                Text("Create")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
 }
 
 @Composable
@@ -275,126 +230,6 @@ private fun LibrarySectionRow(
     }
 }
 
-@Composable
-private fun LibraryCard(
-    card: Card,
-    onClick: () -> Unit,
-    onVideoLongClick: (CoreVideoCard) -> Unit,
-    onPlaylistLongClick: (PlaylistCard) -> Unit,
-) {
-    // Paused while this keep-alive tab is hidden (LocalTabActive).
-    val watchStates by hiltViewModel<PlayerViewModel>().watchStates.collectAsActiveState(emptyMap())
-    when (card) {
-        is CoreVideoCard -> {
-            VideoCard(
-                card = card,
-                onClick = onClick,
-                onLongClick = { onVideoLongClick(card) },
-                watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
-                isWatched = watchStates[card.url]?.isWatched ?: false,
-            )
-        }
-
-        is PlaylistCard -> {
-            PlaylistCardView(
-                card = card,
-                onClick = onClick,
-                onLongClick = { onPlaylistLongClick(card) },
-            )
-        }
-
-        else -> {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(BluejayTokens().radius.sm))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-            )
-        }
-    }
-}
-
-/**
- * Playlist card: thumbnail + name + video count.
- */
-@Composable
-fun PlaylistCardView(
-    card: PlaylistCard,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit = {},
-) {
-    // Video-card shape: 16:9 cover on top, title + count below. A missing
-    // cover shows a placeholder icon (AsyncImage would spin forever on a
-    // null url).
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = onLongClick,
-                ),
-        shape = RoundedCornerShape(BluejayTokens().radius.sm),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (card.thumbnailUrl != null) {
-                    AsyncImage(
-                        url = card.thumbnailUrl,
-                        contentDescription = card.title,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.PlaylistPlay,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Column(
-                modifier =
-                    Modifier
-                        .padding(12.dp)
-                        .fillMaxWidth(),
-            ) {
-                Text(
-                    text = card.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (card.videoCount != null) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = "${card.videoCount} videos",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-}
 
 /**
  * Trailing "All (n)" card for strips longer than the section limit.
