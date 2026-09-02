@@ -41,6 +41,11 @@ object Tokens {
     // Buttons & touch
     val TouchTarget: Dp = 48.dp // minimum touchable area (icon buttons, chips)
     val ButtonSm: Dp = 36.dp // compact action buttons (Subscribe, like/dislike)
+    val ControlSm: Dp = 34.dp // small queue move buttons
+
+    // Queue strip cards
+    val QueueCardW: Dp = 240.dp
+    val QueueCardH: Dp = 160.dp
 
     // Color swatches (theme editor, previews)
     val SwatchXs: Dp = 20.dp
@@ -77,10 +82,11 @@ data class RadiusScale(
         val Default = RadiusScale(XS.dp, SM.dp, MD.dp, LG.dp)
 
         /**
-         * @param rounding 0..100 — 100 is the shipped look, 0 is sharp.
+         * @param rounding 0..200 — 100 is the shipped look, 0 is sharp,
+         * above 100 rounds further (200 = double the shipped radii).
          */
         fun fromRounding(rounding: Int): RadiusScale {
-            val f = (rounding / 100f).coerceIn(0f, 1f)
+            val f = (rounding / 100f).coerceIn(0f, 2f)
             return RadiusScale(
                 xs = (XS * f).roundToInt().dp,
                 sm = (SM * f).roundToInt().dp,

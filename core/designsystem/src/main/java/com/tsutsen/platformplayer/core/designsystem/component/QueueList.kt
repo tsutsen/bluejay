@@ -2,6 +2,8 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.theme.effectsSpec
 import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.Animatable
@@ -305,20 +307,21 @@ fun QueueMoveButton(
     val bg by animateColorAsState(targetBg, animationSpec = colorSpec, label = "moveBg")
     val tint by animateColorAsState(targetTint, animationSpec = colorSpec, label = "moveTint")
 
+    val shape = RoundedCornerShape(BluejayTokens().radius.sm)
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(10.dp),
+        shape = shape,
         modifier =
             Modifier
-                .size(34.dp)
-                .background(bg, RoundedCornerShape(10.dp)),
+                .size(Tokens.ControlSm)
+                .background(bg, shape),
     ) {
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(Tokens.IconMd),
         )
     }
 }

@@ -160,6 +160,14 @@ private fun voteShapes(
     position: GroupPosition,
     radius: RadiusScale,
 ): ToggleButtonShapes {
+    // Rounding ≈ 0: every state takes the same percent pill. With zero Dp
+    // radii the checked morph (square → pill) would spring from a 0 base
+    // and overshoot into negative corners; a uniform pill has no morph at
+    // all and percent corners can't go negative.
+    if (radius.lg.value < 1f) {
+        val flat = RoundedCornerShape(CornerSize(100))
+        return ToggleButtonShapes(flat, flat, flat)
+    }
     val outer = radius.lg
     val inner = radius.sm
     val pressedInner = radius.xs

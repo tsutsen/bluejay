@@ -98,7 +98,6 @@ import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
 import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
@@ -205,7 +204,11 @@ class CompanionPresentation(
         composeView.setContent {
             // Follow the user's theme settings — same computation as
             // MainActivity, so the second screen matches the main app.
-            val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
+            // Gated on the real prefs: a default initial would render one
+            // frame of default tokens, then the radius springs would animate
+            // default→saved and overshoot into negative corner radii.
+            val prefsState by settingsRepository.preferences.collectAsState(initial = null)
+            val prefs = prefsState ?: return@setContent
             val darkTheme =
                 when (prefs.appearance.themeMode) {
                     ThemeMode.LIGHT -> false
@@ -369,7 +372,8 @@ private fun CompanionContent(
 
     // Dual screen settings: which pages / video-page tabs / library
     // sections the second screen shows (Settings > Dual screen).
-    val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
+    val prefsState by settingsRepository.preferences.collectAsState(initial = null)
+    val prefs = prefsState ?: return
     val pageKeys = listOf("video", "library", "home").filter { it in prefs.dualScreenPages }
     // Configured order wins; canonical keys appended as fallback (older
     // saves predate info/controls), then filtered to the enabled set.

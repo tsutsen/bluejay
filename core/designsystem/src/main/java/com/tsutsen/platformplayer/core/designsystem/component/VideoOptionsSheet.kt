@@ -20,13 +20,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -54,9 +53,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -387,6 +383,14 @@ private fun optionTileRow(
     }
 }
 
+/**
+ * Corner treatment for tiles joined into a connected group (the M3 split
+ * button): [ConnectedLeading] squares the END (inner) corners, [ConnectedTrailing]
+ * squares the START (inner) corners, so two tiles side by side read as one
+ * component with a seam. Outer corners keep the full animated rounding.
+ */
+enum class TileConnection { Standalone, ConnectedLeading, ConnectedTrailing }
+
 // Public: PlaylistOptionsSheet and the companion (second screen) activity
 // reuse the same tile.
 @Composable
@@ -401,6 +405,7 @@ fun OptionTileView(
     showLabel: Boolean = true,
     outerHPadding: Dp = Tokens.SpaceXs,
     outerVPadding: Dp = Tokens.SpaceXs,
+    connection: TileConnection = TileConnection.Standalone,
 ) {
     val scheme = MaterialTheme.colorScheme
     val semantic = LocalSemanticColors.current
@@ -463,7 +468,30 @@ fun OptionTileView(
             animationSpec = spatialSpec<Float>(),
             label = "tile-corner",
         )
-    val corner = cornerPx.dp
+    // Clamped: the spring overshoots below 0 when the radius scale
+    // collapses (rounding 0), and a negative corner is fatal.
+    val cornerDp = cornerPx.coerceAtLeast(0f).dp
+    val corner =
+        when (connection) {
+            TileConnection.Standalone -> RoundedCornerShape(cornerDp)
+
+            // Inner (facing) corners stay square — they form the seam.
+            TileConnection.ConnectedLeading ->
+                RoundedCornerShape(
+                    topStart = cornerDp,
+                    topEnd = 0.dp,
+                    bottomEnd = 0.dp,
+                    bottomStart = cornerDp,
+                )
+
+            TileConnection.ConnectedTrailing ->
+                RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = cornerDp,
+                    bottomEnd = cornerDp,
+                    bottomStart = 0.dp,
+                )
+        }
     val bgAnim by
         animateColorAsState(
             targetValue = if (pressed && enabled) pressBg else bg,
@@ -497,7 +525,7 @@ fun OptionTileView(
             modifier
                 .padding(vertical = outerVPadding, horizontal = outerHPadding)
                 .scale(scale)
-                .clip(RoundedCornerShape(corner))
+                .clip(corner)
                 .background(bgAnim)
                 .then(click)
                 .padding(vertical = Tokens.SpaceMd),
@@ -511,7 +539,7 @@ fun OptionTileView(
             tint = iconAnim,
         )
         if (showLabel) {
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(Tokens.SpaceSm))
             Text(
                 text = tile.label,
                 style = MaterialTheme.typography.labelSmall,
@@ -640,11 +668,12 @@ enum class TileTone {
 private val tileColorSpec = tween<Color>(200, easing = FastOutSlowInEasing)
 
 /**
- * Download control for the options sheets (the M3 split button): the main
- * segment starts a download at the default quality, the split segment
- * opens the quality picker. While downloading (or done) the control
- * collapses to a single full-width segment carrying the status (the
- * progress bar) or the delete action.
+ * Download control for the options sheets. Built from plain [OptionTileView]
+ * tiles so it has exactly the same size, colors, and press/(de)rounding
+ * animations as the other actions in the sheet: idle = a "Download" tile
+ * (default quality) next to a "Quality" tile (opens the quality picker);
+ * while downloading (or done) it collapses to a single full-width tile
+ * carrying the status (the progress bar) or the delete action.
  *
  * [onDownload] is state-aware (the host switches on the current state),
  * so it doubles as cancel (while downloading) and delete (when done).
@@ -656,39 +685,41 @@ fun DownloadSection(
     onDownloadWithQuality: ((DownloadQuality) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    val semantic = LocalSemanticColors.current
     var showQualityDialog by remember { mutableStateOf(false) }
-    // The collapsed (single-segment) states are a full pill in every
-    // shape state — percent-based, so the spring morph can never go
-    // negative (see LikeDislikePill's crash notes).
-    val pill = RoundedCornerShape(CornerSize(100))
-    val fullSegmentShapes = ToggleButtonShapes(pill, pill, pill)
-
     when (state) {
         is DownloadButtonState.Idle -> {
+            // The M3 split button: a "Download" button connected to an
+            // icon-only quality button. IntrinsicSize keeps both segments
+            // the height of the taller one; the 2dp seam is M3's own
+            // connected-group spacing.
             Row(
-                modifier = modifier.fillMaxWidth(),
-                horizontalArrangement =
-                    Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
             ) {
-                DownloadSegment(
-                    label = "Download",
-                    icon = Icons.Filled.Download,
-                    container = scheme.surfaceContainer,
-                    contentColor = scheme.onSurfaceVariant,
-                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                    modifier = Modifier.weight(1f),
-                    onClick = onDownload,
+                OptionTileView(
+                    tile =
+                        OptionTile(
+                            label = "Download",
+                            icon = Icons.Filled.Download,
+                            onClick = onDownload,
+                        ),
+                    modifier = Modifier.weight(1f).height(IntrinsicSize.Min),
+                    connection = TileConnection.ConnectedLeading,
                 )
                 if (onDownloadWithQuality != null) {
-                    DownloadSegment(
-                        label = null,
-                        icon = Icons.Filled.ArrowDropDown,
-                        container = scheme.surfaceContainer,
-                        contentColor = scheme.onSurfaceVariant,
-                        shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                        onClick = { showQualityDialog = true },
+                    OptionTileView(
+                        tile =
+                            OptionTile(
+                                label = "Quality",
+                                icon = Icons.Filled.ArrowDropDown,
+                                onClick = { showQualityDialog = true },
+                            ),
+                        modifier = Modifier.weight(1f).height(IntrinsicSize.Min),
+                        showLabel = false,
+                        connection = TileConnection.ConnectedTrailing,
                     )
                 }
             }
@@ -704,113 +735,43 @@ fun DownloadSection(
         }
 
         is DownloadButtonState.Downloading ->
-            DownloadSegment(
-                label = "Stop download",
-                icon = Icons.Filled.Stop,
-                container = semantic.warning,
-                contentColor = semantic.onWarning,
-                shapes = fullSegmentShapes,
+            OptionTileView(
+                tile =
+                    OptionTile(
+                        label = "Stop download",
+                        icon = Icons.Filled.Stop,
+                        tone = TileTone.Warning,
+                        progress = state.progress,
+                        onClick = onDownload,
+                    ),
                 modifier = modifier.fillMaxWidth(),
-                onClick = onDownload,
-                progress = state.progress,
             )
 
         is DownloadButtonState.Starting ->
-            DownloadSegment(
-                label = "Starting...",
-                icon = Icons.Filled.Download,
-                container = scheme.primaryContainer,
-                contentColor = scheme.onPrimaryContainer,
-                shapes = fullSegmentShapes,
+            OptionTileView(
+                tile =
+                    OptionTile(
+                        label = "Starting...",
+                        icon = Icons.Filled.Download,
+                        tone = TileTone.Highlight,
+                        indeterminate = true,
+                        // no action while the engine connects
+                        onClick = {},
+                    ),
                 modifier = modifier.fillMaxWidth(),
-                indeterminate = true,
             )
 
         is DownloadButtonState.Downloaded ->
-            DownloadSegment(
-                label = "Delete",
-                icon = Icons.Filled.Delete,
-                container = scheme.errorContainer,
-                contentColor = scheme.onErrorContainer,
-                shapes = fullSegmentShapes,
+            OptionTileView(
+                tile =
+                    OptionTile(
+                        label = "Delete",
+                        icon = Icons.Filled.Delete,
+                        tone = TileTone.Danger,
+                        onClick = onDownload,
+                    ),
                 modifier = modifier.fillMaxWidth(),
-                onClick = onDownload,
             )
-    }
-}
-
-/**
- * One segment of the [DownloadSection] split button. [label] null = icon
- * only (the split/arrow segment). [progress] / [indeterminate] draw the
- * status bar under the label, full width (the downloading state).
- */
-@Composable
-private fun DownloadSegment(
-    label: String?,
-    icon: ImageVector,
-    container: Color,
-    contentColor: Color,
-    shapes: ToggleButtonShapes,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {},
-    progress: Float? = null,
-    indeterminate: Boolean = false,
-) {
-    val hasBar = progress != null || indeterminate
-    ToggleButton(
-        checked = false,
-        onCheckedChange = { onClick() },
-        modifier = modifier,
-        shapes = shapes,
-        colors =
-            ToggleButtonDefaults.colors(
-                containerColor = container,
-                contentColor = contentColor,
-                // never checked, but keep the checked variant identical so
-                // no state can flash a different color
-                checkedContainerColor = container,
-                checkedContentColor = contentColor,
-            ),
-    ) {
-        if (hasBar) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = icon, contentDescription = label)
-                    if (label != null) {
-                        Spacer(modifier = Modifier.size(ToggleButtonDefaults.IconSpacing))
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                val bar = Modifier.fillMaxWidth().padding(top = Tokens.SpaceXs)
-                if (progress != null) {
-                    LinearProgressIndicator(
-                        progress = { progress.coerceIn(0f, 1f) },
-                        modifier = bar,
-                    )
-                } else {
-                    LinearProgressIndicator(modifier = bar)
-                }
-            }
-        } else {
-            Icon(imageVector = icon, contentDescription = label)
-            if (label != null) {
-                Spacer(modifier = Modifier.size(ToggleButtonDefaults.IconSpacing))
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
     }
 }
 

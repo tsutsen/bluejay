@@ -32,7 +32,6 @@ import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
-import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
 import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
@@ -305,9 +304,15 @@ private fun BluejayMainActivity(
     }
 
     // Settings are live: changing theme/grid columns re-composes this tree.
-    val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
+    // Gate on the real prefs instead of a default initial: with defaults the
+    // first frame would render 100%-rounding tokens and the saved values
+    // (e.g. rounding 0) would arrive a frame later — every radius spring
+    // then animates default→saved and overshoots into negative corner
+    // radii, which is fatal ("Corner size in Px can't be negative").
+    val prefs by settingsRepository.preferences.collectAsState(initial = null)
+    val p = prefs ?: return
     val darkTheme =
-        when (prefs.appearance.themeMode) {
+        when (p.appearance.themeMode) {
             ThemeMode.LIGHT -> false
             ThemeMode.DARK -> true
             ThemeMode.AUTO -> isSystemInDarkTheme()
@@ -316,7 +321,7 @@ private fun BluejayMainActivity(
     // Second display: follow the "dual screen" toggle. ensureCompanion is a
     // no-op when nothing changes and dismisses the presentation when the
     // toggle turns off.
-    LaunchedEffect(prefs.dualScreen) {
+    LaunchedEffect(p.dualScreen) {
         activity.ensureCompanion()
     }
 
@@ -324,7 +329,7 @@ private fun BluejayMainActivity(
     // chrome (expanding the PiP flips this back to the full app UI).
     val pip by activity.pipActive.collectAsState(initial = false)
 
-    val appearance = prefs.appearance
+    val appearance = p.appearance
     // Active custom theme (if any): key colors → generated light/dark schemes.
     val activeTheme = appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
     val customSchemes =

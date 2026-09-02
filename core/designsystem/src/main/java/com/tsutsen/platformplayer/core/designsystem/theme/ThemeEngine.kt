@@ -83,13 +83,20 @@ object ThemeEngine {
     }
 
     /**
-     * Per-style tonal palette construction, following the material-
-     * color-utilities 2021 spec.
+     * Per-style tonal palette construction.
      *
      * The user's picked colors are always respected verbatim ([TonalPalette.
      * fromInt]); the style only decides how the *unpicked* palettes
      * (secondary, tertiary, neutral, neutralVariant) are derived from the
      * primary. This is what makes the four styles visually distinct.
+     *
+     * Hues follow the material-color-utilities 2021 spec (rotation tables,
+     * hue offsets), but the derived *chromas* are amplified above the spec's
+     * 16-36: at the key tone (40) the spec's values all converge to muted
+     * mid-tones, so four styles built strictly to spec look nearly identical
+     * — unusable for a user-facing style picker. Amplifying the chromas
+     * keeps each style's hue character (analogous-muted, rotated-vivid,
+     * salad) while making them read as distinct palettes.
      */
     private data class Palettes(
         val primary: TonalPalette,
@@ -112,7 +119,9 @@ object ThemeEngine {
 
         val secondaryTonal =
             when (style) {
-                PaletteStyle.TONAL_SPOT -> TonalPalette.fromHueAndChroma(hue, 16.0)
+                // spec chroma 16 -> 24
+                PaletteStyle.TONAL_SPOT -> TonalPalette.fromHueAndChroma(hue, 24.0)
+                // spec chroma 24 -> 40 (vibrant = the saturated sibling)
                 PaletteStyle.VIBRANT ->
                     TonalPalette.fromHueAndChroma(
                         DynamicScheme.getRotatedHue(
@@ -120,8 +129,9 @@ object ThemeEngine {
                             doubleArrayOf(0.0, 41.0, 61.0, 101.0, 131.0, 181.0, 251.0, 301.0, 360.0),
                             doubleArrayOf(18.0, 15.0, 10.0, 12.0, 15.0, 18.0, 15.0, 12.0, 12.0),
                         ),
-                        24.0,
+                        40.0,
                     )
+                // spec chroma 24 -> 32
                 PaletteStyle.EXPRESSIVE ->
                     TonalPalette.fromHueAndChroma(
                         DynamicScheme.getRotatedHue(
@@ -129,16 +139,19 @@ object ThemeEngine {
                             doubleArrayOf(0.0, 21.0, 51.0, 121.0, 151.0, 191.0, 271.0, 321.0, 360.0),
                             doubleArrayOf(45.0, 95.0, 45.0, 20.0, 45.0, 90.0, 45.0, 45.0, 45.0),
                         ),
-                        24.0,
+                        32.0,
                     )
+                // spec chroma 36 -> 40
                 PaletteStyle.FRUIT_SALAD ->
-                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 50.0), 36.0)
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 50.0), 40.0)
             }
 
         val tertiaryTonal =
             when (style) {
+                // spec chroma 24 -> 32
                 PaletteStyle.TONAL_SPOT ->
-                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue + 60.0), 24.0)
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue + 60.0), 32.0)
+                // spec chroma 32 -> 48
                 PaletteStyle.VIBRANT ->
                     TonalPalette.fromHueAndChroma(
                         DynamicScheme.getRotatedHue(
@@ -146,8 +159,9 @@ object ThemeEngine {
                             doubleArrayOf(0.0, 41.0, 61.0, 101.0, 131.0, 181.0, 251.0, 301.0, 360.0),
                             doubleArrayOf(35.0, 30.0, 20.0, 25.0, 30.0, 35.0, 30.0, 25.0, 25.0),
                         ),
-                        32.0,
+                        48.0,
                     )
+                // spec chroma 32 -> 40
                 PaletteStyle.EXPRESSIVE ->
                     TonalPalette.fromHueAndChroma(
                         DynamicScheme.getRotatedHue(
@@ -155,9 +169,13 @@ object ThemeEngine {
                             doubleArrayOf(0.0, 21.0, 51.0, 121.0, 151.0, 191.0, 271.0, 321.0, 360.0),
                             doubleArrayOf(120.0, 120.0, 20.0, 45.0, 20.0, 15.0, 20.0, 120.0, 120.0),
                         ),
-                        32.0,
+                        40.0,
                     )
-                PaletteStyle.FRUIT_SALAD -> TonalPalette.fromHueAndChroma(hue, 36.0)
+                // Spec uses (hue, 36) — a clone of the pinned primary hue,
+                // which reads as "same color as primary" here. A second jump
+                // keeps the salad character: (hue - 100, 40).
+                PaletteStyle.FRUIT_SALAD ->
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 100.0), 40.0)
             }
 
         val neutralChroma: Double

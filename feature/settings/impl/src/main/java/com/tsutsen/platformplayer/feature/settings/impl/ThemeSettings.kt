@@ -1,14 +1,16 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,6 +39,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +47,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +65,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.groupShape
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -434,8 +440,10 @@ private fun ThemeEditor(
 }
 
 /**
- * One key color as a tappable swatch: 48dp circle, label under it, and a
- * small clear badge for the optional slots.
+ * One key color as a tappable swatch: circle + label under it. A filled
+ * optional slot clears on tap — the color fades away as an X turns in; an
+ * empty slot shows the X and opens the picker, and the picked color fades
+ * back in over it. The required (primary) slot always opens the picker.
  */
 @Composable
 private fun ThemeColorSlot(
@@ -446,6 +454,29 @@ private fun ThemeColorSlot(
     onPick: () -> Unit,
     onClear: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    // Keeps the last filled color so the fade-out has something to fade.
+    var shownColor by remember { mutableStateOf(color) }
+    LaunchedEffect(color) { color?.let { shownColor = it } }
+    val filled = color != null
+    val fillAlpha by
+        animateFloatAsState(
+            targetValue = if (filled) 1f else 0f,
+            animationSpec = spatialSpec<Float>(),
+            label = "slot-fill",
+        )
+    val xScale by
+        animateFloatAsState(
+            targetValue = if (filled) 0f else 1f,
+            animationSpec = spatialSpec<Float>(),
+            label = "slot-x-scale",
+        )
+    val xRotation by
+        animateFloatAsState(
+            targetValue = if (filled) 90f else 0f,
+            animationSpec = spatialSpec<Float>(),
+            label = "slot-x-rotation",
+        )
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -455,50 +486,41 @@ private fun ThemeColorSlot(
             modifier =
                 Modifier
                     .size(Tokens.SwatchLg)
-                    .expressiveClickable(onClick = onPick)
+                    .expressiveClickable(
+                        onClick = { if (filled && optional) onClear() else onPick() },
+                    )
                     .clip(CircleShape)
-                    .background(color?.toColor() ?: MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .background(scheme.surfaceContainerHighest)
+                    .background((shownColor?.toColor() ?: Color.Transparent).copy(alpha = fillAlpha)),
             contentAlignment = Alignment.Center,
         ) {
-            if (color == null) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Pick $label color",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        if (optional && color != null) {
-            Box(
+            Icon(
+                imageVector = Icons.Outlined.Close,
+                contentDescription = if (filled) "Remove $label color" else "Pick $label color",
+                tint = scheme.onSurfaceVariant,
                 modifier =
                     Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .size(Tokens.SwatchSm)
-                        .expressiveClickable(onClick = onClear)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Outlined.Close,
-                    contentDescription = "Clear $label",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(Tokens.IconXs),
-                )
-            }
+                        .size(Tokens.IconMd)
+                        .scale(xScale)
+                        .rotate(xRotation),
+            )
         }
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = scheme.onSurfaceVariant,
         )
     }
 }
 
 /**
- * Swatch square for the palette style selector (PixelPlayer style): a 2x2
- * grid of the scheme's key colors. Selected = squarer corners + primary
- * border, unselected = circular.
+ * Swatch square for the palette style selector: a 2x2 grid of the colors
+ * each style derives from the user's key colors — secondary/tertiary plus
+ * their containers, the cells that actually differ between styles (primary
+ * is user-pinned and identical in every square). The swatches fill the
+ * square edge to edge; selection grows a 2dp primary ring INTO the square
+ * (the ring is the padding, so no background peeks behind it) while the
+ * corner rounding morphs.
  */
 @Composable
 private fun PaletteSwatchSquare(
@@ -508,63 +530,78 @@ private fun PaletteSwatchSquare(
     modifier: Modifier = Modifier,
 ) {
     val r = BluejayTokens().radius
-    val outerCorner =
-        if (selected) r.md else r.lg
-    // The selection border is concentric: same rectangle as the shape, but
-    // with its corner radius shrunk by the stroke width so the outline
-    // follows the outer rounding instead of sitting slightly outside it.
-    val borderCorner =
-        if (selected) r.md - Tokens.StrokeEmphasized else r.lg
+    val ring by
+        animateFloatAsState(
+            targetValue = if (selected) Tokens.StrokeEmphasized.value else 0f,
+            animationSpec = spatialSpec<Float>(),
+            label = "swatch-ring",
+        )
+    val outerCorner by
+        animateFloatAsState(
+            targetValue = if (selected) r.md.value else r.lg.value,
+            animationSpec = spatialSpec<Float>(),
+            label = "swatch-corner",
+        )
+    val ringColor by
+        animateColorAsState(
+            targetValue =
+                if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                },
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "swatch-ring-color",
+        )
     Box(
         modifier =
             modifier
                 .aspectRatio(1f)
                 .expressiveClickable(onClick = onClick)
-                .clip(RoundedCornerShape(outerCorner))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .border(
-                    width = if (selected) Tokens.StrokeEmphasized else 0.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(borderCorner),
-                ),
+                // spring overshoot: corner/padding must stay non-negative
+                .clip(RoundedCornerShape(outerCorner.coerceAtLeast(0f).dp))
+                .background(ringColor)
+                .padding(ring.coerceAtLeast(0f).dp),
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(if (selected) Tokens.SpaceXs else Tokens.SpaceXxs),
+                    .clip(RoundedCornerShape((outerCorner - ring).coerceAtLeast(0f).dp)),
         ) {
-            Row(modifier = Modifier.weight(1f)) {
-                Box(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .background(scheme.primary),
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .background(scheme.secondary),
-                )
-            }
-            Row(modifier = Modifier.weight(1f)) {
-                Box(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .background(scheme.tertiary),
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .background(scheme.surfaceContainerHighest),
-                )
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(scheme.secondary),
+                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(scheme.tertiary),
+                    )
+                }
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(scheme.secondaryContainer),
+                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(scheme.tertiaryContainer),
+                    )
+                }
             }
         }
     }

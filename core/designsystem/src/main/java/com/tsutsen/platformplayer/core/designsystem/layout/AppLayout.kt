@@ -276,10 +276,8 @@ private fun PulseOnSelect(
 /**
  * Padding between the nav card edge and the nav items.
  */
-private val NavSurfacePadH = 16.dp
-private val NavSurfacePadV = 12.dp
-
-private val NavSurfaceCorner = 24.dp
+private val NavSurfacePadH = Tokens.SpaceLg
+private val NavSurfacePadV = Tokens.SpaceMd
 
 /**
  * Vertical padding for the PORTRAIT bottom bar. Reduced from [NavSurfacePadV]
@@ -301,7 +299,7 @@ private val PortraitNavPadV = 4.dp
 // corner squares off, and a negative radius is invalid.
 private fun animatedCorner(rounded: Boolean, label: String): Dp =
     animateDpAsState(
-        targetValue = if (rounded) NavSurfaceCorner else 0.dp,
+        targetValue = if (rounded) BluejayTokens().radius.lg else 0.dp,
         animationSpec = spatialSpec<Dp>(),
         label = label,
     ).value.coerceAtLeast(0.dp)
