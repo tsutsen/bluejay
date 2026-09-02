@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CornerSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
@@ -28,9 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import com.tsutsen.platformplayer.core.designsystem.component.GroupCornerShapes
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
+import com.tsutsen.platformplayer.core.designsystem.component.connectedGroupShapes
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
-import com.tsutsen.platformplayer.core.designsystem.theme.RadiusScale
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 
 /**
@@ -74,7 +73,7 @@ fun LikeDislikePill(
             activeIcon = Icons.Filled.ThumbUp,
             inactiveIcon = Icons.Outlined.ThumbUp,
             description = if (isLiked) "Unlike" else "Like",
-            shapes = voteShapes(GroupPosition.First, radius),
+            shapes = connectedGroupShapes(GroupPosition.First, radius),
             interactionSource = likeSource,
         )
         VoteItem(
@@ -84,7 +83,7 @@ fun LikeDislikePill(
             activeIcon = Icons.Filled.ThumbDown,
             inactiveIcon = Icons.Outlined.ThumbDown,
             description = if (isDisliked) "Remove dislike" else "Dislike",
-            shapes = voteShapes(GroupPosition.Last, radius),
+            shapes = connectedGroupShapes(GroupPosition.Last, radius),
             interactionSource = dislikeSource,
         )
     }
@@ -103,7 +102,7 @@ private fun ButtonGroupScope.VoteItem(
     activeIcon: ImageVector,
     inactiveIcon: ImageVector,
     description: String,
-    shapes: ToggleButtonShapes,
+    shapes: GroupCornerShapes,
     interactionSource: MutableInteractionSource,
 ) {
     customItem(
@@ -112,7 +111,7 @@ private fun ButtonGroupScope.VoteItem(
             ToggleButton(
                 checked = checked,
                 onCheckedChange = { onCheckedChange() },
-                shapes = shapes,
+                shapes = ToggleButtonShapes(shapes.shape, shapes.pressedShape, shapes.checkedShape),
                 modifier =
                     Modifier
                         .height(Tokens.ButtonSm)
@@ -148,65 +147,6 @@ private fun ButtonGroupScope.VoteItem(
         },
         menuContent = {},
     )
-}
-
-/**
- * Connected-group shapes for a vote button: the outer corners follow the
- * user's largest radius, the inner (shared) corners stay small, and a
- * checked button becomes a full pill — per the M3 Expressive
- * connected-button spec, derived from the user's rounding tokens.
- */
-private fun voteShapes(
-    position: GroupPosition,
-    radius: RadiusScale,
-): ToggleButtonShapes {
-    // Rounding ≈ 0: every state takes the same percent pill. With zero Dp
-    // radii the checked morph (square → pill) would spring from a 0 base
-    // and overshoot into negative corners; a uniform pill has no morph at
-    // all and percent corners can't go negative.
-    if (radius.lg.value < 1f) {
-        val flat = RoundedCornerShape(CornerSize(100))
-        return ToggleButtonShapes(flat, flat, flat)
-    }
-    val outer = radius.lg
-    val inner = radius.sm
-    val pressedInner = radius.xs
-    // Percent-based full pill, exactly like M3's own
-    // [androidx.compose.material3.tokens.ShapeTokens.CornerFull]. A Dp-based
-    // "500dp" pill would crash here: ToggleButton morphs between shapes with
-    // a spring that overshoots, and the corner lerp extrapolates past the
-    // target — with 500dp deltas that lands on negative corner radii
-    // ("Corner size in Px can't be negative"). Percent corners resolve to
-    // half the button's shorter side at outline time, keeping the lerp
-    // bounded no matter how far the spring bounces.
-    val pill = RoundedCornerShape(CornerSize(100))
-    return when (position) {
-        // First (like, left side): left corners rounded, right corners small.
-        GroupPosition.First -> {
-            ToggleButtonShapes(
-                shape = RoundedCornerShape(outer, inner, inner, outer),
-                pressedShape = RoundedCornerShape(outer, pressedInner, pressedInner, outer),
-                checkedShape = pill,
-            )
-        }
-
-        // Last (dislike, right side): right corners rounded, left corners small.
-        GroupPosition.Last -> {
-            ToggleButtonShapes(
-                shape = RoundedCornerShape(inner, outer, outer, inner),
-                pressedShape = RoundedCornerShape(pressedInner, outer, outer, pressedInner),
-                checkedShape = pill,
-            )
-        }
-
-        GroupPosition.Single, GroupPosition.Middle -> {
-            ToggleButtonShapes(
-                shape = RoundedCornerShape(outer),
-                pressedShape = RoundedCornerShape(pressedInner),
-                checkedShape = pill,
-            )
-        }
-    }
 }
 
 private fun formatCount(count: Long): String =

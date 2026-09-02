@@ -147,14 +147,25 @@ internal fun OptionsModal(
                         ),
                     modifier = Modifier.weight(1f),
                 )
+                // The download group takes the remaining slot in the
+                // tile's shape: the tile's outer gap around it, and its
+                // natural height (the segments mirror the tile's content
+                // stack) makes it exactly one tile tall.
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .padding(Tokens.SpaceXs)
+                            .height(IntrinsicSize.Min),
+                ) {
+                    DownloadSection(
+                        state = downloadState,
+                        onDownload = onDownload,
+                        onDownloadWithQuality = onDownloadWithQuality,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
-            // Segmented download-quality control — same component as the
-            // video card's options sheet.
-            DownloadSection(
-                state = downloadState,
-                onDownload = onDownload,
-                onDownloadWithQuality = onDownloadWithQuality,
-            )
         }
     }
 }

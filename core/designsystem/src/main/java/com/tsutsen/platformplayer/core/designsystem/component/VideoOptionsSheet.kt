@@ -19,7 +19,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -45,15 +49,23 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupMenuState
+import androidx.compose.material3.ButtonGroupScope
+import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,8 +82,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.LocalSemanticColors
@@ -299,14 +309,44 @@ fun VideoOptionsSheet(
         ) {
             optionTileRow(tiles, 0)
             optionTileRow(tiles, 3)
-            optionTileRow(tiles, 6)
+            // Last row: the remaining tiles, then the download group takes
+            // the rest of the row and matches the tiles' height, so it reads
+            // as part of the grid instead of a lone row underneath.
             // ponytail: 3 unrolled rows cap the grid at 9 tiles; add a row
             // here if a 10th action is ever added.
-            DownloadSection(
-                state = downloadState,
-                onDownload = onDownload,
-                onDownloadWithQuality = onDownloadWithQuality,
-            )
+            val remainingTiles = (tiles.size - 6).coerceIn(0, 2)
+            Row(modifier = Modifier.fillMaxWidth()) {
+                if (tiles.size > 6) {
+                    OptionTileView(
+                        tile = tiles[6],
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (tiles.size > 7) {
+                    OptionTileView(
+                        tile = tiles[7],
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                // The group sits in the same slot a tile occupies: the
+                // tile's outer gap around it, and its natural height (the
+                // segments mirror the tile's content stack) makes it
+                // exactly one tile tall — no measurement needed.
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(3f - remainingTiles)
+                            .padding(Tokens.SpaceXs)
+                            .height(IntrinsicSize.Min),
+                ) {
+                    DownloadSection(
+                        state = downloadState,
+                        onDownload = onDownload,
+                        onDownloadWithQuality = onDownloadWithQuality,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
 
         // Playlist picker: revealed by the "Add to playlist" tile. Toggles
@@ -671,16 +711,121 @@ enum class TileTone {
 private val tileColorSpec = tween<Color>(200, easing = FastOutSlowInEasing)
 
 /**
- * Download control for the options sheets. Idle = the native M3 split
- * button ([SplitButtonLayout]: connected segments, 2dp seam, height sync)
- * built from the sheet's own [OptionTileView] tiles, so it has exactly the
- * same size, rounding, colors, and press morph as the other options: the
- * leading "Download" action takes the remaining width, the trailing
- * icon-only quality toggle shrinks to its content. While the quality menu
- * is open the trailing takes the toggled-tile treatment (highlight tone +
- * big corner rounding). While downloading (or done) it collapses to a
- * single full-width tile carrying the status (the progress bar) or the
- * delete action.
+ * Registers the leading "Download" action in the download group. A plain
+ * [Button] (it's an action, not a state) with [ButtonGroupScope.weight] 1f:
+ * it takes all the horizontal space left after the unweighted chevron
+ * toggle is measured, so the two segments are deliberately unequal while
+ * the group still spans its slot. The content stacks icon over label with
+ * the sheet's own tile spacing, so the segment reads as one of the grid.
+ *
+ * Non-composable on purpose: the ButtonGroup scope itself is not a
+ * composable context, only the item's content lambda is.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ButtonGroupScope.downloadLeadingItem(
+    onDownload: () -> Unit,
+    position: GroupPosition,
+    shapes: GroupCornerShapes,
+    interactionSource: MutableInteractionSource,
+) {
+    customItem(
+        buttonGroupContent = {
+            val scheme = MaterialTheme.colorScheme
+            Button(
+                onClick = onDownload,
+                shapes = ButtonShapes(shapes.shape, shapes.pressedShape),
+                modifier =
+                    Modifier
+                        .fillMaxHeight()
+                        .weight(1f)
+                        .animateWidth(interactionSource),
+                // Same vertical padding as the sheet's tiles (their inner
+                // SpaceMd), so the segment's natural height equals a tile's.
+                contentPadding = PaddingValues(all = Tokens.SpaceMd),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = scheme.surfaceContainerHigh,
+                        contentColor = scheme.onSurfaceVariant,
+                    ),
+                interactionSource = interactionSource,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Filled.Download,
+                        contentDescription = null,
+                        modifier = Modifier.size(Tokens.IconMd),
+                    )
+                    Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+                    Text(
+                        text = "Download",
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        },
+        menuContent = {},
+    )
+}
+
+/**
+ * Registers the trailing icon-only quality toggle in the download group.
+ * Unweighted: it shrinks to its content, so the group stays unequal.
+ * Non-composable on purpose, see [downloadLeadingItem].
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ButtonGroupScope.downloadQualityItem(
+    checked: Boolean,
+    onCheck: () -> Unit,
+    position: GroupPosition,
+    shapes: GroupCornerShapes,
+    interactionSource: MutableInteractionSource,
+) {
+    customItem(
+        buttonGroupContent = {
+            val scheme = MaterialTheme.colorScheme
+            ToggleButton(
+                checked = checked,
+                onCheckedChange = { if (it) onCheck() },
+                shapes = ToggleButtonShapes(shapes.shape, shapes.pressedShape, shapes.checkedShape),
+                modifier =
+                    Modifier
+                        .fillMaxHeight()
+                        .animateWidth(interactionSource),
+                // Same vertical padding as the sheet's tiles, see the
+                // leading item.
+                contentPadding = PaddingValues(all = Tokens.SpaceMd),
+                colors =
+                    ToggleButtonDefaults.colors(
+                        containerColor = scheme.surfaceContainerHigh,
+                        contentColor = scheme.onSurfaceVariant,
+                        checkedContainerColor = scheme.primaryContainer,
+                        checkedContentColor = scheme.onPrimaryContainer,
+                    ),
+                interactionSource = interactionSource,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = "Download quality",
+                    modifier = Modifier.size(Tokens.IconMd),
+                )
+            }
+        },
+        menuContent = {},
+    )
+}
+
+/**
+ * Download control for the options sheets. Idle = the native M3
+ * [ButtonGroup] in the app's connected-group language (the same corner
+ * recipe, colors, and expressive width animation as the like/dislike
+ * pill), with deliberately unequal segments: the leading "Download" action
+ * takes the remaining width, the trailing icon-only quality toggle shrinks
+ * to its content. While downloading (or done) it collapses to a single
+ * full-width [OptionTileView] carrying the status (the progress bar) or
+ * the delete action.
  *
  * [onDownload] is state-aware (the host switches on the current state),
  * so it doubles as cancel (while downloading) and delete (when done).
@@ -694,39 +839,31 @@ fun DownloadSection(
     modifier: Modifier = Modifier,
 ) {
     var showQualityDialog by remember { mutableStateOf(false) }
+    val downloadSource = remember { MutableInteractionSource() }
+    val qualitySource = remember { MutableInteractionSource() }
+    val radius = BluejayTokens().radius
     when (state) {
         is DownloadButtonState.Idle -> {
             if (onDownloadWithQuality != null) {
-                SplitButtonLayout(
+                ButtonGroup(
+                    overflowIndicator = { _ -> },
                     modifier = modifier,
-                    leadingButton = {
-                        OptionTileView(
-                            tile =
-                                OptionTile(
-                                    label = "Download",
-                                    icon = Icons.Filled.Download,
-                                    onClick = onDownload,
-                                ),
-                            modifier = Modifier.fillMaxWidth(),
-                            connection = TileConnection.ConnectedLeading,
-                        )
-                    },
-                    trailingButton = {
-                        OptionTileView(
-                            tile =
-                                OptionTile(
-                                    label = "Download quality",
-                                    icon = Icons.Filled.ArrowDropDown,
-                                    onClick = { showQualityDialog = true },
-                                    selected = showQualityDialog,
-                                ),
-                            modifier =
-                                Modifier.semantics { contentDescription = "Download quality" },
-                            showLabel = false,
-                            connection = TileConnection.ConnectedTrailing,
-                        )
-                    },
-                )
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
+                ) {
+                    downloadLeadingItem(
+                        onDownload = onDownload,
+                        position = GroupPosition.First,
+                        shapes = connectedGroupShapes(GroupPosition.First, radius),
+                        interactionSource = downloadSource,
+                    )
+                    downloadQualityItem(
+                        checked = showQualityDialog,
+                        onCheck = { showQualityDialog = true },
+                        position = GroupPosition.Last,
+                        shapes = connectedGroupShapes(GroupPosition.Last, radius),
+                        interactionSource = qualitySource,
+                    )
+                }
             } else {
                 OptionTileView(
                     tile =

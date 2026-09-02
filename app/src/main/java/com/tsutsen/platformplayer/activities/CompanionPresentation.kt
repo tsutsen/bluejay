@@ -17,6 +17,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,12 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupMenuState
+import androidx.compose.material3.ButtonGroupScope
+import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -101,13 +108,14 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
 import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
-import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
-import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
+import com.tsutsen.platformplayer.core.designsystem.component.GroupCornerShapes
+import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
+import com.tsutsen.platformplayer.core.designsystem.component.connectedGroupShapes
 import com.tsutsen.platformplayer.core.designsystem.component.formatDuration
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
@@ -1716,10 +1724,56 @@ private fun PagerCard(
 }
 
 /**
- * Playback controls as large tiles — same look as the main player's video
- * options sheet buttons (icon + label in a rounded box).
+ * Registers one icon-only playback control in the companion control group.
+ * Non-composable on purpose: the ButtonGroup scope itself is not a
+ * composable context, only the item's content lambda is.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ButtonGroupScope.controlItem(
+    icon: ImageVector,
+    description: String,
+    shapes: GroupCornerShapes,
+    interactionSource: MutableInteractionSource,
+    onClick: () -> Unit,
+) {
+    customItem(
+        buttonGroupContent = {
+            val scheme = MaterialTheme.colorScheme
+            Button(
+                onClick = onClick,
+                shapes = ButtonShapes(shapes.shape, shapes.pressedShape),
+                modifier =
+                    Modifier
+                        .height(Tokens.ControlLg)
+                        .weight(1f)
+                        .animateWidth(interactionSource),
+                contentPadding = PaddingValues(all = Tokens.SpaceMd),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = scheme.surfaceContainer,
+                        contentColor = scheme.onSurfaceVariant,
+                    ),
+                interactionSource = interactionSource,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = description,
+                    modifier = Modifier.size(Tokens.IconMd),
+                )
+            }
+        },
+        menuContent = {},
+    )
+}
+
+/**
+ * Playback controls as a native M3 [ButtonGroup] in the app's
+ * connected-group language (the same corner recipe as the like/dislike
+ * pill): on press the button expands, its neighbours compress, and its
+ * shape and color morph.
  */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun CompanionControlRow(
     isPlaying: Boolean,
     onPlayPause: () -> Unit,
@@ -1727,45 +1781,52 @@ private fun CompanionControlRow(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
 ) {
-    Row(
+    val radius = BluejayTokens().radius
+    val previousSource = remember { MutableInteractionSource() }
+    val rewindSource = remember { MutableInteractionSource() }
+    val playPauseSource = remember { MutableInteractionSource() }
+    val forwardSource = remember { MutableInteractionSource() }
+    val nextSource = remember { MutableInteractionSource() }
+    ButtonGroup(
+        overflowIndicator = { _ -> },
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
-        val tileModifier: Modifier = Modifier.weight(1f).height(80.dp)
-        OptionTileView(
-            OptionTile(label = "Previous", icon = Icons.Filled.SkipPrevious, onClick = onPrevious),
-            modifier = tileModifier,
-            showLabel = false,
-            outerHPadding = 0.dp,
+        controlItem(
+            icon = Icons.Filled.SkipPrevious,
+            description = "Previous",
+            shapes = connectedGroupShapes(GroupPosition.First, radius),
+            interactionSource = previousSource,
+            onClick = onPrevious,
         )
         // Seek icons without the baked-in "10" digit — plain rewind/ffwd.
-        OptionTileView(
-            OptionTile(label = "Back 10s", icon = Icons.Filled.FastRewind, onClick = { onSeekBy(-10_000L) }),
-            modifier = tileModifier,
-            showLabel = false,
-            outerHPadding = 0.dp,
+        controlItem(
+            icon = Icons.Filled.FastRewind,
+            description = "Back 10 seconds",
+            shapes = connectedGroupShapes(GroupPosition.Middle, radius),
+            interactionSource = rewindSource,
+            onClick = { onSeekBy(-10_000L) },
         )
-        OptionTileView(
-            OptionTile(
-                label = if (isPlaying) "Pause" else "Play",
-                icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                onClick = onPlayPause,
-            ),
-            modifier = tileModifier,
-            showLabel = false,
-            outerHPadding = 0.dp,
+        controlItem(
+            icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            description = if (isPlaying) "Pause" else "Play",
+            shapes = connectedGroupShapes(GroupPosition.Middle, radius),
+            interactionSource = playPauseSource,
+            onClick = onPlayPause,
         )
-        OptionTileView(
-            OptionTile(label = "Fwd 10s", icon = Icons.Filled.FastForward, onClick = { onSeekBy(10_000L) }),
-            modifier = tileModifier,
-            showLabel = false,
-            outerHPadding = 0.dp,
+        controlItem(
+            icon = Icons.Filled.FastForward,
+            description = "Forward 10 seconds",
+            shapes = connectedGroupShapes(GroupPosition.Middle, radius),
+            interactionSource = forwardSource,
+            onClick = { onSeekBy(10_000L) },
         )
-        OptionTileView(
-            OptionTile(label = "Next", icon = Icons.Filled.SkipNext, onClick = onNext),
-            modifier = tileModifier,
-            showLabel = false,
-            outerHPadding = 0.dp,
+        controlItem(
+            icon = Icons.Filled.SkipNext,
+            description = "Next",
+            shapes = connectedGroupShapes(GroupPosition.Last, radius),
+            interactionSource = nextSource,
+            onClick = onNext,
         )
     }
 }

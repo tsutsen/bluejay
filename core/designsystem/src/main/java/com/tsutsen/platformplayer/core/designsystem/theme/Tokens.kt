@@ -42,6 +42,7 @@ object Tokens {
     val TouchTarget: Dp = 48.dp // minimum touchable area (icon buttons, chips)
     val ButtonSm: Dp = 36.dp // compact action buttons (Subscribe, like/dislike)
     val ControlSm: Dp = 34.dp // small queue move buttons
+    val ControlLg: Dp = 80.dp // companion (second screen) playback control row
 
     // Queue strip cards
     val QueueCardW: Dp = 240.dp
