@@ -297,12 +297,14 @@ private val PortraitNavPadV = 4.dp
  * finally crosses zero.
  */
 @Composable
+// Clamped: the spatial spring overshoots past its 0.dp target when a
+// corner squares off, and a negative radius is invalid.
 private fun animatedCorner(rounded: Boolean, label: String): Dp =
     animateDpAsState(
         targetValue = if (rounded) NavSurfaceCorner else 0.dp,
         animationSpec = spatialSpec<Dp>(),
         label = label,
-    ).value
+    ).value.coerceAtLeast(0.dp)
 
 /**
  * Surface behind the portrait bottom navigation bar.
@@ -443,7 +445,14 @@ private fun NavigationRailSurface(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(top = vTop, bottom = vBottom, start = hStart, end = hEnd)
+                    // Clamped: springs overshoot past 0 when an edge inset is 0
+                    // (gesture bar / screen edge) — negative padding is fatal.
+                    .padding(
+                        top = vTop.coerceAtLeast(0.dp),
+                        bottom = vBottom.coerceAtLeast(0.dp),
+                        start = hStart.coerceAtLeast(0.dp),
+                        end = hEnd.coerceAtLeast(0.dp),
+                    )
                     .clip(
                         RoundedCornerShape(
                             topStart = topStart,
@@ -563,14 +572,16 @@ fun AppLayout(
                         }
                     }
                 }
-                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset)) {
+                // Clamped: the spring overshoots below 0 when the player goes
+                // fullscreen (inset target is 0) — negative padding is fatal.
+                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset.coerceAtLeast(0.dp))) {
                     content()
                 }
             }
         } else {
             // Portrait: Content + NavigationBar at bottom
             Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset)) {
+                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset.coerceAtLeast(0.dp))) {
                     content()
                 }
                 AnimatedVisibility(
