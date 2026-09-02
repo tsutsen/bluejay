@@ -4,13 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Author
 
 /**
@@ -271,22 +272,30 @@ private fun RowScope.ChannelName(
 
 private fun formatCompactCount(count: Long): String =
     when {
-        count >= 1_000_000_000 ->
-            java.lang.String.format(java.util.Locale.US, "%.1f", count / 1_000_000_000.0)
+        count >= 1_000_000_000 -> {
+            java.lang.String
+                .format(java.util.Locale.US, "%.1f", count / 1_000_000_000.0)
                 .trimEnd('0', '.') +
                 "B"
+        }
 
-        count >= 1_000_000 ->
-            java.lang.String.format(java.util.Locale.US, "%.1f", count / 1_000_000.0)
+        count >= 1_000_000 -> {
+            java.lang.String
+                .format(java.util.Locale.US, "%.1f", count / 1_000_000.0)
                 .trimEnd('0', '.') +
                 "M"
+        }
 
-        count >= 1_000 ->
-            java.lang.String.format(java.util.Locale.US, "%.1f", count / 1_000.0)
+        count >= 1_000 -> {
+            java.lang.String
+                .format(java.util.Locale.US, "%.1f", count / 1_000.0)
                 .trimEnd('0', '.') +
                 "K"
+        }
 
-        else -> count.toString()
+        else -> {
+            count.toString()
+        }
     }
 
 @Composable
@@ -307,19 +316,20 @@ private fun SubscribeButton(
         return
     }
     // Subscribed state is visibly different: tonal outline vs filled.
+    // Height is shared with the like/dislike pill (Tokens.ButtonSm).
     if (isSubscribed) {
         OutlinedButton(
             onClick = onSubscribe,
-            modifier = Modifier.height(36.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            modifier = Modifier.height(Tokens.ButtonSm),
+            contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
         ) {
             Text(text = "Subscribed", style = MaterialTheme.typography.labelMedium)
         }
     } else {
         Button(
             onClick = onSubscribe,
-            modifier = Modifier.height(36.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            modifier = Modifier.height(Tokens.ButtonSm),
+            contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
         ) {
             Text(text = "Subscribe", style = MaterialTheme.typography.labelMedium)
         }

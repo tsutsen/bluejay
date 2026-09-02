@@ -338,10 +338,10 @@ private fun LiveElapsedPill(startMs: Long?) {
     Box(
         modifier =
             Modifier
-                .background(Color(0xFFE60000), RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.error, RoundedCornerShape(4.dp))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        Text(label, color = Color.White, fontSize = 12.sp)
+        Text(label, color = MaterialTheme.colorScheme.onError, fontSize = 12.sp)
     }
 }
 

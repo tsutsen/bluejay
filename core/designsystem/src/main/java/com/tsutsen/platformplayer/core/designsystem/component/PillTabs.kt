@@ -1,6 +1,5 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
-import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +24,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import kotlin.math.roundToInt
 
 /**
@@ -93,7 +94,7 @@ fun PillTabs(
                         Modifier
                             .clickable { onSelect(i) }
                             .onSizeChanged { tabSizes[i].value = it.width to it.height }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm),
                 ) {
                     Text(
                         text = label,

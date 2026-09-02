@@ -450,7 +450,7 @@ private fun QueueStripItem(
                             .background(
                                 if (earlierEnabled)
                                     MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
+                                else MaterialTheme.colorScheme.surfaceContainerHighest,
                                 arrowShape,
                             ),
                 ) {
@@ -475,7 +475,7 @@ private fun QueueStripItem(
                             .background(
                                 if (laterEnabled)
                                     MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
+                                else MaterialTheme.colorScheme.surfaceContainerHighest,
                                 arrowShape,
                             ),
                 ) {

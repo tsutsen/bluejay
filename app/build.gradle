@@ -3,7 +3,6 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.serialization' version '2.4.0'
     id 'org.jetbrains.kotlin.plugin.compose' version '2.4.0'
-    id 'org.ajoberstar.grgit' version '5.3.3'
     id 'com.google.protobuf'
     id 'kotlin-parcelize'
     id 'com.google.dagger.hilt.android' version '2.60.1'
@@ -11,7 +10,19 @@ plugins {
 }
 
 ext {
-    gitVersionName = grgit.describe()
+    // Version = latest semver tag in the repo (the release log) + distance
+    // from it. Release tags live on master and are NOT ancestors of dev
+    // branches, so plain `git describe` would report v0.1.0 (the only tag
+    // reachable from dev) even after 0.3.0 shipped.
+    def git = { String cmd -> cmd.execute(null, rootProject.projectDir).text.trim() }
+    def tagList = git('git tag --sort=-v:refname').readLines()
+    def latestTag = (tagList && tagList[0].matches(/v\d+\.\d+\.\d+/)) ? tagList[0] : ''
+    if (latestTag.isEmpty()) {
+        gitVersionName = 'unversioned'
+    } else {
+        def count = git("git rev-list --count ${latestTag}..HEAD").toInteger()
+        gitVersionName = count > 0 ? "${latestTag}-${count}-g${git('git rev-parse --short HEAD')}" : latestTag
+    }
     // Semver tags (v0.1.0) → store versionCode via major*1e6 + minor*1e3 + patch,
     // so 0.1.0 → 1000 (above legacy's max 389, keeps store updates monotonic).
     // Unparseable (e.g. no tag yet) falls back to 1.

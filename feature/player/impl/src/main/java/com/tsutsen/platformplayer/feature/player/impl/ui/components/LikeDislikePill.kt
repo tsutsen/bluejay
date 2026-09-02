@@ -1,32 +1,53 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ButtonGroup
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ButtonGroupMenuState
+import androidx.compose.material3.ButtonGroupScope
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
+import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.RadiusScale
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
-import java.util.Locale
 
 /**
- * Like | dislike action group — a native M3 Expressive [ButtonGroup]
- * (standard style: separated, fully-rounded buttons) with the icon and
- * count on each button. Active votes are tinted with the primary color.
+ * Like/dislike vote group, built on the native M3 [ButtonGroup] so it gets the
+ * expressive connected-group behaviour for free: on press the pressed button
+ * expands while the neighbour compresses ([ToggleButton] inside a
+ * `customItem` + [androidx.compose.material3.ButtonGroupScope.animateWidth]).
+ *
+ * Container colors follow the M3 connected-button semantics: the active
+ * button is filled (primaryContainer), the inactive one a neutral tonal
+ * container — so the state change is visible on the button, not just the
+ * icon. The icon itself inherits the content color (primary / onSurface
+ * tints), never a fixed color.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun LikeDislikePill(
+fun LikeDislikePill(
     likeCount: Long?,
     isLiked: Boolean,
     onLike: () -> Unit,
@@ -35,63 +56,154 @@ internal fun LikeDislikePill(
     onDislike: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scheme = MaterialTheme.colorScheme
+    val radius = BluejayTokens().radius
+    // The ButtonGroup scope is not a composable context, so everything a
+    // composable call needs is computed here and passed into the item.
+    val likeSource = remember { MutableInteractionSource() }
+    val dislikeSource = remember { MutableInteractionSource() }
+
     ButtonGroup(
-        overflowIndicator = {},
+        overflowIndicator = { _: ButtonGroupMenuState -> },
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
     ) {
-        clickableItem(
-            onClick = onLike,
-            label = likeCount?.let(::formatCount) ?: "",
-            icon = {
-                ThumbIcon(
-                    icon = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                    active = isLiked,
-                    activeDescription = "Unlike",
-                    idleDescription = "Like",
-                    tint = if (isLiked) scheme.primary else scheme.onSurfaceVariant,
-                )
-            },
+        VoteItem(
+            checked = isLiked,
+            count = likeCount,
+            onCheckedChange = onLike,
+            activeIcon = Icons.Filled.ThumbUp,
+            inactiveIcon = Icons.Outlined.ThumbUp,
+            description = if (isLiked) "Unlike" else "Like",
+            shapes = voteShapes(GroupPosition.First, radius),
+            interactionSource = likeSource,
         )
-        clickableItem(
-            onClick = onDislike,
-            label = dislikeCount?.let(::formatCount) ?: "",
-            icon = {
-                ThumbIcon(
-                    icon = if (isDisliked) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown,
-                    active = isDisliked,
-                    activeDescription = "Remove dislike",
-                    idleDescription = "Dislike",
-                    tint = if (isDisliked) scheme.primary else scheme.onSurfaceVariant,
-                )
-            },
+        VoteItem(
+            checked = isDisliked,
+            count = dislikeCount,
+            onCheckedChange = onDislike,
+            activeIcon = Icons.Filled.ThumbDown,
+            inactiveIcon = Icons.Outlined.ThumbDown,
+            description = if (isDisliked) "Remove dislike" else "Dislike",
+            shapes = voteShapes(GroupPosition.Last, radius),
+            interactionSource = dislikeSource,
         )
     }
 }
 
-@Composable
-private fun ThumbIcon(
-    icon: ImageVector,
-    active: Boolean,
-    activeDescription: String,
-    idleDescription: String,
-    tint: Color,
+/**
+ * Registers one connected toggle button in the group. Non-composable on
+ * purpose: the ButtonGroup scope itself is not a composable context, only
+ * the item's content lambda is.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ButtonGroupScope.VoteItem(
+    checked: Boolean,
+    count: Long?,
+    onCheckedChange: () -> Unit,
+    activeIcon: ImageVector,
+    inactiveIcon: ImageVector,
+    description: String,
+    shapes: ToggleButtonShapes,
+    interactionSource: MutableInteractionSource,
 ) {
-    Icon(
-        imageVector = icon,
-        contentDescription = if (active) activeDescription else idleDescription,
-        tint = tint,
-        modifier = Modifier.size(16.dp),
+    customItem(
+        buttonGroupContent = {
+            val scheme = MaterialTheme.colorScheme
+            ToggleButton(
+                checked = checked,
+                onCheckedChange = { onCheckedChange() },
+                shapes = shapes,
+                modifier =
+                    Modifier
+                        .height(Tokens.ButtonSm)
+                        .animateWidth(interactionSource),
+                contentPadding =
+                    PaddingValues(horizontal = Tokens.SpaceLg),
+                colors =
+                    ToggleButtonDefaults.colors(
+                        containerColor = scheme.surfaceContainerHigh,
+                        contentColor = scheme.onSurfaceVariant,
+                        checkedContainerColor = scheme.primaryContainer,
+                        checkedContentColor = scheme.onPrimaryContainer,
+                    ),
+                interactionSource = interactionSource,
+            ) {
+                Icon(
+                    imageVector = if (checked) activeIcon else inactiveIcon,
+                    contentDescription = description,
+                    modifier = Modifier.size(Tokens.IconXs),
+                )
+                val countText = count?.let(::formatCount)
+                if (countText != null) {
+                    Spacer(modifier = Modifier.size(ToggleButtonDefaults.IconSpacing))
+                    Text(
+                        text = countText,
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Visible,
+                    )
+                }
+            }
+        },
+        menuContent = {},
     )
 }
 
-private fun formatCount(count: Long): String {
-    return when {
-        count >= 1_000_000 ->
-            String.format(Locale.getDefault(), "%.1fM", count / 1_000_000.0)
-        count >= 1_000 ->
-            String.format(Locale.getDefault(), "%.1fK", count / 1_000.0)
-        else -> count.toString()
+/**
+ * Connected-group shapes for a vote button: the outer corners follow the
+ * user's largest radius, the inner (shared) corners stay small, and a
+ * checked button becomes a full pill — per the M3 Expressive
+ * connected-button spec, derived from the user's rounding tokens.
+ */
+private fun voteShapes(
+    position: GroupPosition,
+    radius: RadiusScale,
+): ToggleButtonShapes {
+    val outer = radius.lg
+    val inner = radius.sm
+    val pressedInner = radius.xs
+    // Percent-based full pill, exactly like M3's own
+    // [androidx.compose.material3.tokens.ShapeTokens.CornerFull]. A Dp-based
+    // "500dp" pill would crash here: ToggleButton morphs between shapes with
+    // a spring that overshoots, and the corner lerp extrapolates past the
+    // target — with 500dp deltas that lands on negative corner radii
+    // ("Corner size in Px can't be negative"). Percent corners resolve to
+    // half the button's shorter side at outline time, keeping the lerp
+    // bounded no matter how far the spring bounces.
+    val pill = RoundedCornerShape(CornerSize(100))
+    return when (position) {
+        // First (like, left side): left corners rounded, right corners small.
+        GroupPosition.First -> {
+            ToggleButtonShapes(
+                shape = RoundedCornerShape(outer, inner, inner, outer),
+                pressedShape = RoundedCornerShape(outer, pressedInner, pressedInner, outer),
+                checkedShape = pill,
+            )
+        }
+
+        // Last (dislike, right side): right corners rounded, left corners small.
+        GroupPosition.Last -> {
+            ToggleButtonShapes(
+                shape = RoundedCornerShape(inner, outer, outer, inner),
+                pressedShape = RoundedCornerShape(pressedInner, outer, outer, pressedInner),
+                checkedShape = pill,
+            )
+        }
+
+        GroupPosition.Single, GroupPosition.Middle -> {
+            ToggleButtonShapes(
+                shape = RoundedCornerShape(outer),
+                pressedShape = RoundedCornerShape(pressedInner),
+                checkedShape = pill,
+            )
+        }
     }
 }
+
+private fun formatCount(count: Long): String =
+    when {
+        count >= 1_000_000 -> "${(count / 1_000_000.0).let { String.format("%.1f", it).trimEnd('0').trimEnd('.') }}M"
+        count >= 1_000 -> "${count / 1_000}K"
+        else -> count.toString()
+    }

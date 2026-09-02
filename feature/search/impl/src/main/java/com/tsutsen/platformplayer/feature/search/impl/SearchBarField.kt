@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 
 /**
  * Search field for [SearchScreen] — a verbatim port of PixelPlayer's
@@ -76,7 +77,7 @@ fun SearchBarField(
                         imageVector = Icons.Rounded.Search,
                         contentDescription = "Search",
                         tint = scheme.primary,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(Tokens.IconMd),
                     )
                 },
                 trailingIcon = {
@@ -85,7 +86,7 @@ fun SearchBarField(
                             onClick = { onValueChange("") },
                             modifier =
                                 Modifier
-                                    .size(48.dp)
+                                    .size(Tokens.TouchTarget)
                                     .clip(CircleShape)
                                     .background(scheme.primaryContainer.copy(alpha = 0.2f)),
                         ) {

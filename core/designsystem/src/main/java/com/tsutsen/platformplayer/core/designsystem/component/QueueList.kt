@@ -299,7 +299,7 @@ fun QueueMoveButton(
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val targetBg = if (enabled) scheme.primaryContainer else scheme.surfaceVariant
+    val targetBg = if (enabled) scheme.primaryContainer else scheme.surfaceContainerHighest
     val targetTint = if (enabled) scheme.onPrimaryContainer else scheme.onSurfaceVariant
     val colorSpec = effectsSpec<Color>()
     val bg by animateColorAsState(targetBg, animationSpec = colorSpec, label = "moveBg")

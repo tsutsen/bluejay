@@ -348,15 +348,36 @@ fun PlayerView(
         }
     }
 
+    val isLandscapeNow: () -> Boolean =
+        { surface.containerSize.value.width > surface.containerSize.value.height }
+
+    /**
+     * Begin the overdrag-to-fullscreen morph: remember how much of the
+     * drag still has to re-expand the video, claim the fullscreen axis,
+     * and hide the system bars (edge-to-edge: layout-neutral, so hiding
+     * at drag start is free).
+     */
+    fun beginOverscrollMorph(pendingExpandPx: Float) {
+        detailsOverdragPendingExpandPx.value = pendingExpandPx
+        surface.isDraggingFullscreen.value = true
+        setFullscreenBarsNow(true)
+    }
+
+    /**
+     * Overdrag-to-fullscreen is only allowed from NORMAL. A drag that
+     * starts in COMPACT re-expands the video via the normal nested scroll
+     * first — starting the morph (and hiding the system bars) there fired
+     * both transitions in one gesture and flashed the bars on cancel.
+     * Such a drag lazy-starts in [updateOverscrollMorph] once the video is
+     * fully expanded and the drag continues.
+     */
     fun startOverscrollMorph() {
-        val c = surface.containerSize.value
-        val isLand = c.width > c.height
-        detailsOverdragPendingExpandPx.value =
+        val isLand = isLandscapeNow()
+        if (surface.isCollapsedNow(isLand)) return
+        val pending =
             (surface.maxPlayerHeightPx(isLand) - surface.playerHeightPx.value)
                 .coerceAtLeast(0f)
-        surface.isDraggingFullscreen.value = true
-        // Edge-to-edge: layout-neutral, so hiding at drag start is free.
-        setFullscreenBarsNow(true)
+        beginOverscrollMorph(pending)
     }
 
     // Morph travel = the distance the video still has to GROW: full window
@@ -369,6 +390,18 @@ fun PlayerView(
             .coerceAtLeast(1f)
 
     fun updateOverscrollMorph(cumulativePx: Float) {
+        if (!surface.isDraggingFullscreen.value) {
+            // Lazy start: a drag that began in COMPACT consumed its px via
+            // the nested-scroll re-expansion. Engage the fullscreen morph
+            // only once the video is fully expanded and the drag continues
+            // past the top — counting all px accumulated so far as the
+            // re-expansion distance so the morph starts from 0.
+            if (cumulativePx > 0f && !surface.isCollapsedNow(isLandscapeNow())) {
+                beginOverscrollMorph(cumulativePx)
+            } else {
+                return
+            }
+        }
         val over =
             (cumulativePx - detailsOverdragPendingExpandPx.value)
                 .coerceAtLeast(0f)
@@ -379,6 +412,7 @@ fun PlayerView(
     }
 
     fun finishOverscrollMorph(cumulativePx: Float) {
+        if (!surface.isDraggingFullscreen.value) return // never started (COMPACT drag)
         surface.isDraggingFullscreen.value = false
         val travel = fullscreenOverdragTravelPx()
         val over =

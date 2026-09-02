@@ -4,10 +4,10 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import com.google.android.material.color.utilities.DynamicScheme
 import com.google.android.material.color.utilities.Hct
+import com.google.android.material.color.utilities.MathUtils
 import com.google.android.material.color.utilities.TonalPalette
 import com.google.android.material.color.utilities.Variant
 import com.tsutsen.platformplayer.core.datastore.model.PaletteStyle
-import kotlin.math.min
 
 /**
  * Theme engine — turns a few key colors into a full Material 3 theme pair.
@@ -38,76 +38,145 @@ object ThemeEngine {
         tertiary: Int?,
         style: PaletteStyle,
     ): Schemes {
+        val palettes = buildPalettes(primary, secondary, tertiary, style)
         val source = Hct.fromInt(primary)
-        val secondaryColor = secondary ?: primary
-        val tertiaryColor = tertiary ?: secondary ?: primary
 
-        val primaryPalette = TonalPalette.fromInt(primary)
-        val secondaryPalette = TonalPalette.fromInt(secondaryColor)
-        val tertiaryPalette = TonalPalette.fromInt(tertiaryColor)
-        // Neutrals keep the primary's hue; neutral is fully achromatic,
-        // neutralVariant carries a little of the primary's chroma.
-        val neutralPalette = TonalPalette.fromHueAndChroma(source.hue, 0.0)
-        val neutralVariantPalette =
-            TonalPalette.fromHueAndChroma(source.hue, min(source.chroma * 0.4, 12.0))
-
+        // The material 1.13.0-bundled DynamicScheme ignores `variant` when
+        // given explicit palettes (its role tones are variant-agnostic), so
+        // the style's behavior lives in [buildPalettes], not here.
         val variant = variantFor(style)
         return Schemes(
             light =
-                scheme(
+                DynamicScheme(
                     source,
                     variant,
-                    isDark = false,
-                    primary,
-                    secondaryColor,
-                    tertiaryColor,
-                    primaryPalette,
-                    secondaryPalette,
-                    tertiaryPalette,
-                    neutralPalette,
-                    neutralVariantPalette,
+                    false,
+                    0.0,
+                    palettes.primary,
+                    palettes.secondary,
+                    palettes.tertiary,
+                    palettes.neutral,
+                    palettes.neutralVariant,
                 ).toComposeColorScheme(),
             dark =
-                scheme(
+                DynamicScheme(
                     source,
                     variant,
-                    isDark = true,
-                    primary,
-                    secondaryColor,
-                    tertiaryColor,
-                    primaryPalette,
-                    secondaryPalette,
-                    tertiaryPalette,
-                    neutralPalette,
-                    neutralVariantPalette,
+                    true,
+                    0.0,
+                    palettes.primary,
+                    palettes.secondary,
+                    palettes.tertiary,
+                    palettes.neutral,
+                    palettes.neutralVariant,
                 ).toComposeColorScheme(),
         )
     }
 
-    private fun scheme(
-        source: Hct,
-        variant: Variant,
-        isDark: Boolean,
+    /**
+     * Per-style tonal palette construction, following the material-
+     * color-utilities 2021 spec.
+     *
+     * The user's picked colors are always respected verbatim ([TonalPalette.
+     * fromInt]); the style only decides how the *unpicked* palettes
+     * (secondary, tertiary, neutral, neutralVariant) are derived from the
+     * primary. This is what makes the four styles visually distinct.
+     */
+    private data class Palettes(
+        val primary: TonalPalette,
+        val secondary: TonalPalette,
+        val tertiary: TonalPalette,
+        val neutral: TonalPalette,
+        val neutralVariant: TonalPalette,
+    )
+
+    private fun buildPalettes(
         primary: Int,
-        secondary: Int,
-        tertiary: Int,
-        primaryPalette: TonalPalette,
-        secondaryPalette: TonalPalette,
-        tertiaryPalette: TonalPalette,
-        neutralPalette: TonalPalette,
-        neutralVariantPalette: TonalPalette,
-    ): DynamicScheme =
-        DynamicScheme(
-            source,
-            variant,
-            isDark,
-            0.0,
-            primaryPalette,
-            secondaryPalette,
-            tertiaryPalette,
-            neutralPalette,
-            neutralVariantPalette,
+        secondary: Int?,
+        tertiary: Int?,
+        style: PaletteStyle,
+    ): Palettes {
+        val source = Hct.fromInt(primary)
+        val hue = source.hue
+        val picked = { argb: Int? -> argb?.let { TonalPalette.fromInt(it) } }
+
+        val secondaryTonal =
+            when (style) {
+                PaletteStyle.TONAL_SPOT -> TonalPalette.fromHueAndChroma(hue, 16.0)
+                PaletteStyle.VIBRANT ->
+                    TonalPalette.fromHueAndChroma(
+                        DynamicScheme.getRotatedHue(
+                            source,
+                            doubleArrayOf(0.0, 41.0, 61.0, 101.0, 131.0, 181.0, 251.0, 301.0, 360.0),
+                            doubleArrayOf(18.0, 15.0, 10.0, 12.0, 15.0, 18.0, 15.0, 12.0, 12.0),
+                        ),
+                        24.0,
+                    )
+                PaletteStyle.EXPRESSIVE ->
+                    TonalPalette.fromHueAndChroma(
+                        DynamicScheme.getRotatedHue(
+                            source,
+                            doubleArrayOf(0.0, 21.0, 51.0, 121.0, 151.0, 191.0, 271.0, 321.0, 360.0),
+                            doubleArrayOf(45.0, 95.0, 45.0, 20.0, 45.0, 90.0, 45.0, 45.0, 45.0),
+                        ),
+                        24.0,
+                    )
+                PaletteStyle.FRUIT_SALAD ->
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 50.0), 36.0)
+            }
+
+        val tertiaryTonal =
+            when (style) {
+                PaletteStyle.TONAL_SPOT ->
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue + 60.0), 24.0)
+                PaletteStyle.VIBRANT ->
+                    TonalPalette.fromHueAndChroma(
+                        DynamicScheme.getRotatedHue(
+                            source,
+                            doubleArrayOf(0.0, 41.0, 61.0, 101.0, 131.0, 181.0, 251.0, 301.0, 360.0),
+                            doubleArrayOf(35.0, 30.0, 20.0, 25.0, 30.0, 35.0, 30.0, 25.0, 25.0),
+                        ),
+                        32.0,
+                    )
+                PaletteStyle.EXPRESSIVE ->
+                    TonalPalette.fromHueAndChroma(
+                        DynamicScheme.getRotatedHue(
+                            source,
+                            doubleArrayOf(0.0, 21.0, 51.0, 121.0, 151.0, 191.0, 271.0, 321.0, 360.0),
+                            doubleArrayOf(120.0, 120.0, 20.0, 45.0, 20.0, 15.0, 20.0, 120.0, 120.0),
+                        ),
+                        32.0,
+                    )
+                PaletteStyle.FRUIT_SALAD -> TonalPalette.fromHueAndChroma(hue, 36.0)
+            }
+
+        val neutralChroma: Double
+        val neutralVariantChroma: Double
+        val neutralHueShift: Double
+        when (style) {
+            PaletteStyle.TONAL_SPOT -> {
+                neutralChroma = 6.0; neutralVariantChroma = 8.0; neutralHueShift = 0.0
+            }
+            PaletteStyle.VIBRANT -> {
+                neutralChroma = 10.0; neutralVariantChroma = 12.0; neutralHueShift = 0.0
+            }
+            PaletteStyle.EXPRESSIVE -> {
+                neutralChroma = 8.0; neutralVariantChroma = 12.0; neutralHueShift = 15.0
+            }
+            PaletteStyle.FRUIT_SALAD -> {
+                neutralChroma = 10.0; neutralVariantChroma = 16.0; neutralHueShift = 0.0
+            }
+        }
+        val neutralHue = MathUtils.sanitizeDegreesDouble(hue + neutralHueShift)
+
+        return Palettes(
+            primary = TonalPalette.fromInt(primary),
+            secondary = picked(secondary) ?: secondaryTonal,
+            tertiary = picked(tertiary) ?: tertiaryTonal,
+            neutral = TonalPalette.fromHueAndChroma(neutralHue, neutralChroma),
+            neutralVariant = TonalPalette.fromHueAndChroma(neutralHue, neutralVariantChroma),
         )
+    }
 
     private fun variantFor(style: PaletteStyle): Variant =
         when (style) {

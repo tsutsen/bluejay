@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -102,11 +101,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
-import com.tsutsen.platformplayer.core.designsystem.component.QueueMoveButton
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
+import com.tsutsen.platformplayer.core.designsystem.component.QueueMoveButton
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSliderCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
+import com.tsutsen.platformplayer.core.designsystem.component.groupShape
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.reorder.FlipItem
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
@@ -160,7 +160,7 @@ fun SettingsScreen(
                     contentPadding = PaddingValues(start = Tokens.SpaceLg, end = Tokens.SpaceLg, bottom = Tokens.SpaceLg),
                     // 4.dp gap: every item here is a GroupPosition
                     // member, so the spacing reads as one stacked group.
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
                 ) {
                     item {
                         SettingsOptionCard(
@@ -264,10 +264,16 @@ fun SettingsSectionScreen(
         )
         val loaded = state
         if (loaded != null) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = Tokens.SpaceLg, end = Tokens.SpaceLg, bottom = Tokens.SpaceLg),
-                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            start = Tokens.SpaceLg,
+                            end = Tokens.SpaceLg,
+                            bottom = Tokens.SpaceLg,
+                        ),
             ) {
                 SectionItems(
                     category = category,
@@ -697,22 +703,23 @@ private fun ControllerBindingRow(
     binding: ControllerBinding?,
     onCapture: () -> Unit,
     onClear: () -> Unit,
+    groupPosition: GroupPosition = GroupPosition.Single,
 ) {
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onCapture)
-                .padding(vertical = 2.dp),
+                .clickable(onClick = onCapture),
+        shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -828,7 +835,8 @@ private fun BackIconButton(onBack: () -> Unit) {
 }
 
 /** The cards belonging to one section. */
-private fun LazyListScope.SectionItems(
+@Composable
+private fun SectionItems(
     category: String,
     state: SettingsUiState.Loaded,
     viewModel: SettingsViewModel,
@@ -838,482 +846,461 @@ private fun LazyListScope.SectionItems(
     onBindRequested: (String) -> Unit,
     onPluginsClick: () -> Unit,
 ) {
-    when (category) {
-        "appearance" -> {
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.BrightnessAuto,
-                    title = "Theme",
-                    subtitle =
-                        when (state.appearance.themeMode) {
-                            ThemeMode.AUTO -> "Follow system"
-                            ThemeMode.LIGHT -> "Light"
-                            ThemeMode.DARK -> "Dark"
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
+        when (category) {
+            "appearance" -> {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsOptionCard(
+                        icon = Icons.Filled.BrightnessAuto,
+                        title = "Theme",
+                        subtitle =
+                            when (state.appearance.themeMode) {
+                                ThemeMode.AUTO -> "Follow system"
+                                ThemeMode.LIGHT -> "Light"
+                                ThemeMode.DARK -> "Dark"
+                            },
+                        onClick = { onChoiceSelected(Choice.THEME) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.Palette,
+                        title = "Dynamic color",
+                        subtitle = "Material You colors from wallpaper",
+                        checked = state.appearance.dynamicColor,
+                        onCheckedChange = { viewModel.updateGeneral("dynamicColor", it) },
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsSliderCard(
+                        icon = Icons.Filled.RoundedCorner,
+                        title = "UI rounding",
+                        subtitle = "Corner radius across the app",
+                        value = state.appearance.uiRounding.toFloat(),
+                        onValueChange = {
+                            // ponytail: persists on every tick; fine for a small
+                            // JSON settings file, batch if it ever chugs.
+                            viewModel.updateGeneral("uiRounding", it.roundToInt())
                         },
-                    onClick = { onChoiceSelected(Choice.THEME) },
-                )
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.GridOn,
+                        title = "Grid columns",
+                        subtitle = "${state.gridColumns} columns",
+                        onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader("Custom themes")
+                    ThemesSection(state.appearance, viewModel)
+                }
             }
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.Palette,
-                    title = "Dynamic color",
-                    subtitle = "Material You colors from wallpaper",
-                    checked = state.appearance.dynamicColor,
-                    onCheckedChange = { viewModel.updateGeneral("dynamicColor", it) },
-                )
-            }
-            item {
-                SettingsSliderCard(
-                    icon = Icons.Filled.RoundedCorner,
-                    title = "UI rounding",
-                    subtitle = "Corner radius across the app",
-                    value = state.appearance.uiRounding.toFloat(),
-                    onValueChange = {
-                        // ponytail: persists on every tick; fine for a small
-                        // JSON settings file, batch if it ever chugs.
-                        viewModel.updateGeneral("uiRounding", it.roundToInt())
-                    },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.GridOn,
-                    title = "Grid columns",
-                    subtitle = "${state.gridColumns} columns",
-                    onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
-                )
-            }
-            item {
-                Text(
-                    text = "Custom themes",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = Tokens.SpaceSm, bottom = 4.dp),
-                )
-            }
-            item {
-                ThemesSection(state.appearance, viewModel)
-            }
-        }
 
-        "content" -> {
-            item { SettingsHeader("Plugins") }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Extension,
-                    title = "Plugins",
-                    subtitle = "Manage installed source plugins",
-                    onClick = onPluginsClick,
-                )
+            "content" -> {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader("Plugins")
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Extension,
+                        title = "Plugins",
+                        subtitle = "Manage installed source plugins",
+                        onClick = onPluginsClick,
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.SystemUpdateAlt,
+                        title = "Auto-update plugins",
+                        subtitle = "Check for and install plugin updates on launch",
+                        checked = state.autoUpdatePlugins,
+                        onCheckedChange = { viewModel.updateGeneral("autoUpdatePlugins", it) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Video page",
+                        reset =
+                            if (
+                                state.showRecommendedVideos != defaults.showRecommendedVideos ||
+                                state.showComments != defaults.showComments
+                            ) {
+                                {
+                                    viewModel.updateGeneral(
+                                        "showRecommendedVideos",
+                                        defaults.showRecommendedVideos,
+                                    )
+                                    viewModel.updateGeneral("showComments", defaults.showComments)
+                                }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.VideoLibrary,
+                        title = "Show recommended videos",
+                        subtitle = "Recommended tab on the video page",
+                        checked = state.showRecommendedVideos,
+                        onCheckedChange = { viewModel.updateGeneral("showRecommendedVideos", it) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.Chat,
+                        title = "Show comments",
+                        subtitle = "Comments tab on the video page",
+                        checked = state.showComments,
+                        onCheckedChange = { viewModel.updateGeneral("showComments", it) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Library",
+                        reset =
+                            if (state.librarySectionOrder != defaults.librarySectionOrder) {
+                                { viewModel.setLibrarySectionOrder(defaults.librarySectionOrder) }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.VideoLibrary,
+                        title = "Library sections",
+                        subtitle = "Order of sections on the library screen",
+                        onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
+                    )
+                }
             }
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.SystemUpdateAlt,
-                    title = "Auto-update plugins",
-                    subtitle = "Check for and install plugin updates on launch",
-                    checked = state.autoUpdatePlugins,
-                    onCheckedChange = { viewModel.updateGeneral("autoUpdatePlugins", it) },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Video page",
-                    reset =
-                        if (
-                            state.showRecommendedVideos != defaults.showRecommendedVideos ||
-                            state.showComments != defaults.showComments
-                        ) {
-                            {
-                                viewModel.updateGeneral(
-                                    "showRecommendedVideos",
-                                    defaults.showRecommendedVideos,
-                                )
-                                viewModel.updateGeneral("showComments", defaults.showComments)
-                            }
-                        } else {
-                            null
-                        },
-                )
-            }
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.VideoLibrary,
-                    title = "Show recommended videos",
-                    subtitle = "Recommended tab on the video page",
-                    checked = state.showRecommendedVideos,
-                    onCheckedChange = { viewModel.updateGeneral("showRecommendedVideos", it) },
-                )
-            }
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.Chat,
-                    title = "Show comments",
-                    subtitle = "Comments tab on the video page",
-                    checked = state.showComments,
-                    onCheckedChange = { viewModel.updateGeneral("showComments", it) },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Library",
-                    reset =
-                        if (state.librarySectionOrder != defaults.librarySectionOrder) {
-                            { viewModel.setLibrarySectionOrder(defaults.librarySectionOrder) }
-                        } else {
-                            null
-                        },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.VideoLibrary,
-                    title = "Library sections",
-                    subtitle = "Order of sections on the library screen",
-                    onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
-                )
-            }
-        }
 
-        "playback" -> {
-            item {
+            "playback" -> {
                 val subtitlesDefault = defaults.subtitle
-                SettingsHeader(
-                    title = "Subtitles",
-                    reset =
-                        if (state.subtitle != subtitlesDefault) {
-                            {
-                                viewModel.updateGeneral("subtitleFont", subtitlesDefault.font)
-                                viewModel.updateGeneral("subtitleFontSize", subtitlesDefault.size)
-                                viewModel.updateGeneral(
-                                    "subtitleBottomPadding",
-                                    subtitlesDefault.bottomPadding,
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Subtitles",
+                        reset =
+                            if (state.subtitle != subtitlesDefault) {
+                                {
+                                    viewModel.updateGeneral("subtitleFont", subtitlesDefault.font)
+                                    viewModel.updateGeneral(
+                                        "subtitleFontSize",
+                                        subtitlesDefault.size,
+                                    )
+                                    viewModel.updateGeneral(
+                                        "subtitleBottomPadding",
+                                        subtitlesDefault.bottomPadding,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Subtitles,
+                        title = "Subtitle font",
+                        subtitle = subtitleFontLabel(state.subtitle.font),
+                        onClick = { onChoiceSelected(Choice.SUBTITLE_FONT) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.TextFields,
+                        title = "Subtitle size",
+                        subtitle = "${state.subtitle.size} pt",
+                        onClick = { onChoiceSelected(Choice.SUBTITLE_SIZE) },
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.VerticalAlignBottom,
+                        title = "Subtitle bottom padding",
+                        subtitle = "${state.subtitle.bottomPadding} dp",
+                        onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Quality",
+                        reset =
+                            if (
+                                state.defaultVideoResolution != defaults.defaultVideoResolution ||
+                                state.defaultDownloadResolution != defaults.defaultDownloadResolution
+                            ) {
+                                {
+                                    viewModel.updateGeneral(
+                                        "defaultVideoResolution",
+                                        defaults.defaultVideoResolution,
+                                    )
+                                    viewModel.updateGeneral(
+                                        "defaultDownloadResolution",
+                                        defaults.defaultDownloadResolution,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Hd,
+                        title = "Default video resolution",
+                        subtitle = state.defaultVideoResolution,
+                        onClick = { onChoiceSelected(Choice.VIDEO_RESOLUTION) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Download,
+                        title = "Default download resolution",
+                        subtitle = state.defaultDownloadResolution,
+                        onClick = { onChoiceSelected(Choice.DOWNLOAD_RESOLUTION) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
             }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Subtitles,
-                    title = "Subtitle font",
-                    subtitle = subtitleFontLabel(state.subtitle.font),
-                    onClick = { onChoiceSelected(Choice.SUBTITLE_FONT) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.TextFields,
-                    title = "Subtitle size",
-                    subtitle = "${state.subtitle.size} pt",
-                    onClick = { onChoiceSelected(Choice.SUBTITLE_SIZE) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.VerticalAlignBottom,
-                    title = "Subtitle bottom padding",
-                    subtitle = "${state.subtitle.bottomPadding} dp",
-                    onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Quality",
-                    reset =
-                        if (
-                            state.defaultVideoResolution != defaults.defaultVideoResolution ||
-                            state.defaultDownloadResolution != defaults.defaultDownloadResolution
-                        ) {
-                            {
-                                viewModel.updateGeneral(
-                                    "defaultVideoResolution",
-                                    defaults.defaultVideoResolution,
-                                )
-                                viewModel.updateGeneral(
-                                    "defaultDownloadResolution",
-                                    defaults.defaultDownloadResolution,
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Hd,
-                    title = "Default video resolution",
-                    subtitle = state.defaultVideoResolution,
-                    onClick = { onChoiceSelected(Choice.VIDEO_RESOLUTION) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Download,
-                    title = "Default download resolution",
-                    subtitle = state.defaultDownloadResolution,
-                    onClick = { onChoiceSelected(Choice.DOWNLOAD_RESOLUTION) },
-                )
-            }
-        }
 
-        "gestures" -> {
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Speed,
-                    title = "Default playback speedup",
-                    subtitle = "${state.defaultSpeedup}x",
-                    onClick = { onChoiceSelected(Choice.PLAYBACK_SPEED) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Speed,
-                    title = "Speedup gesture speed",
-                    subtitle = "${state.speedupSensitivity}x",
-                    onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Timer,
-                    title = "Time jump step",
-                    subtitle = "${state.jumpStepSeconds}s",
-                    onClick = { onChoiceSelected(Choice.JUMP_STEP) },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Fullscreen gestures",
-                    reset =
-                        if (state.playerGestures.fullscreen.isCustomized) {
-                            { viewModel.resetPlayerGestures("fullscreen") }
-                        } else {
-                            null
+            "gestures" -> {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Speed,
+                        title = "Default playback speedup",
+                        subtitle = "${state.defaultSpeedup}x",
+                        onClick = { onChoiceSelected(Choice.PLAYBACK_SPEED) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Speed,
+                        title = "Speedup gesture speed",
+                        subtitle = "${state.speedupSensitivity}x",
+                        onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Timer,
+                        title = "Time jump step",
+                        subtitle = "${state.jumpStepSeconds}s",
+                        onClick = { onChoiceSelected(Choice.JUMP_STEP) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Fullscreen gestures",
+                        reset =
+                            if (state.playerGestures.fullscreen.isCustomized) {
+                                { viewModel.resetPlayerGestures("fullscreen") }
+                            } else {
+                                null
+                            },
+                    )
+                    PlayerGesturesEditor(
+                        mode = PlayerGestures.MODE_FULLSCREEN,
+                        slotSet = state.playerGestures.fullscreen,
+                        onCellChange = { slot, type, action ->
+                            viewModel.setPlayerGesturesCell(
+                                PlayerGestures.MODE_FULLSCREEN,
+                                slot,
+                                type,
+                                action,
+                            )
                         },
-                )
-            }
-            item {
-                PlayerGesturesEditor(
-                    mode = PlayerGestures.MODE_FULLSCREEN,
-                    slotSet = state.playerGestures.fullscreen,
-                    onCellChange = { slot, type, action ->
-                        viewModel.setPlayerGesturesCell(
-                            PlayerGestures.MODE_FULLSCREEN,
-                            slot,
-                            type,
-                            action,
-                        )
-                    },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Normal gestures",
-                    reset =
-                        if (state.playerGestures.normal.isCustomized) {
-                            { viewModel.resetPlayerGestures("normal") }
-                        } else {
-                            null
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Normal gestures",
+                        reset =
+                            if (state.playerGestures.normal.isCustomized) {
+                                { viewModel.resetPlayerGestures("normal") }
+                            } else {
+                                null
+                            },
+                    )
+                    PlayerGesturesEditor(
+                        mode = PlayerGestures.MODE_NORMAL,
+                        slotSet = state.playerGestures.normal,
+                        onCellChange = { slot, type, action ->
+                            viewModel.setPlayerGesturesCell(
+                                PlayerGestures.MODE_NORMAL,
+                                slot,
+                                type,
+                                action,
+                            )
                         },
-                )
+                    )
+                }
             }
-            item {
-                PlayerGesturesEditor(
-                    mode = PlayerGestures.MODE_NORMAL,
-                    slotSet = state.playerGestures.normal,
-                    onCellChange = { slot, type, action ->
-                        viewModel.setPlayerGesturesCell(
-                            PlayerGestures.MODE_NORMAL,
-                            slot,
-                            type,
-                            action,
-                        )
-                    },
-                )
-            }
-        }
 
-        "dual" -> {
-            item { SettingsHeader("General") }
-            item {
+            "dual" -> {
                 val settingsContext = LocalContext.current
                 val writeSettingsLauncher =
                     rememberLauncherForActivityResult(
                         ActivityResultContracts.StartActivityForResult(),
                     ) { }
-                SettingsSwitchCard(
-                    icon = Icons.Filled.DisplaySettings,
-                    title = "Dual screen",
-                    subtitle = "Show video controls on the second screen",
-                    checked = state.dualScreen,
-                    onCheckedChange = { enabled ->
-                        viewModel.updateGeneral("dualScreen", enabled)
-                        // Device-wide brightness (both screens) needs the
-                        // WRITE_SETTINGS grant — ask once when the feature
-                        // is turned on.
-                        if (enabled && !writeSettingsGranted(settingsContext)) {
-                            writeSettingsLauncher.launch(
-                                Intent(
-                                    Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                                    Uri.parse("package:${settingsContext.packageName}"),
-                                ),
-                            )
-                        }
-                    },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.PlayArrow,
-                    title = "Pages",
-                    subtitle = dualListLabel(state.dualScreenPages, dualPageNames),
-                    onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Video page",
-                    reset =
-                        if (
-                            state.dualScreenVideoTabs != defaults.dualScreenVideoTabs ||
-                            state.dualScreenVideoTabOrder != defaults.dualScreenVideoTabOrder
-                        ) {
-                            {
-                                viewModel.setDualScreenVideoTabs(defaults.dualScreenVideoTabs)
-                                viewModel.setDualScreenVideoTabOrder(
-                                    defaults.dualScreenVideoTabOrder,
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader("General")
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.DisplaySettings,
+                        title = "Dual screen",
+                        subtitle = "Show video controls on the second screen",
+                        checked = state.dualScreen,
+                        onCheckedChange = { enabled ->
+                            viewModel.updateGeneral("dualScreen", enabled)
+                            // Device-wide brightness (both screens) needs the
+                            // WRITE_SETTINGS grant — ask once when the feature
+                            // is turned on.
+                            if (enabled && !writeSettingsGranted(settingsContext)) {
+                                writeSettingsLauncher.launch(
+                                    Intent(
+                                        Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                        Uri.parse("package:${settingsContext.packageName}"),
+                                    ),
                                 )
                             }
-                        } else {
-                            null
                         },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Chat,
-                    title = "Video page tabs",
-                    subtitle = dualListLabel(state.dualScreenVideoTabs, dualTabNames),
-                    onClick = { onChoiceSelected(Choice.DUAL_TABS) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Reorder,
-                    title = "Video tab order",
-                    subtitle = dualOrderLabel(state.dualScreenVideoTabOrder, dualTabNames),
-                    onClick = { onChoiceSelected(Choice.DUAL_TAB_ORDER) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.FormatListBulleted,
-                    title = "Main page order",
-                    subtitle = dualOrderLabel(state.dualScreenPageOrder, dualPageOrderNames),
-                    onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Playlists page",
-                    reset =
-                        if (state.dualScreenLibrarySlots != defaults.dualScreenLibrarySlots) {
-                            { viewModel.setDualScreenLibrarySlots(defaults.dualScreenLibrarySlots) }
-                        } else {
-                            null
-                        },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.VideoLibrary,
-                    title = "Library slots",
-                    subtitle = slotListLabel(state.dualScreenLibrarySlots, playlists),
-                    onClick = { onChoiceSelected(Choice.DUAL_SLOTS) },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Home page",
-                    reset =
-                        if (state.dualScreenFeedSources.isNotEmpty()) {
-                            { viewModel.setDualScreenFeedSources(emptyList()) }
-                        } else {
-                            null
-                        },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.RssFeed,
-                    title = "Feed sources",
-                    subtitle =
-                        if (state.dualScreenFeedSources.isEmpty()) {
-                            "All sources"
-                        } else {
-                            state.dualScreenFeedSources.joinToString(", ") { id ->
-                                enabledSources.firstOrNull { it.id == id }?.name ?: id
-                            }
-                        },
-                    onClick = { onChoiceSelected(Choice.DUAL_FEED_SOURCES) },
-                )
-            }
-        }
-
-        "controller" -> {
-            item {
-                SettingsSwitchCard(
-                    icon = Icons.Filled.Games,
-                    title = "Use controller",
-                    subtitle = "Control playback with a gamepad or TV remote",
-                    checked = state.controller.enabled,
-                    onCheckedChange = { enabled ->
-                        viewModel.setController(state.controller.copy(enabled = enabled))
-                    },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Replay10,
-                    title = "Backwards jump step",
-                    subtitle = "${state.controller.seekBackSeconds}s",
-                    onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_BACK) },
-                )
-            }
-            item {
-                SettingsOptionCard(
-                    icon = Icons.Filled.Forward30,
-                    title = "Forwards jump step",
-                    subtitle = "${state.controller.seekForwardSeconds}s",
-                    onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_FORWARD) },
-                )
-            }
-            item {
-                SettingsHeader(
-                    title = "Buttons",
-                    reset =
-                        if (state.controller.mappings.isNotEmpty()) {
-                            { viewModel.setController(state.controller.copy(mappings = emptyMap())) }
-                        } else {
-                            null
-                        },
-                )
-            }
-            PlayerControllerActions.ALL.forEach { action ->
-                item {
-                    ControllerBindingRow(
-                        action = action,
-                        binding = state.controller.mappings[action.id],
-                        onCapture = { onBindRequested(action.id) },
-                        onClear = {
-                            viewModel.setController(
-                                state.controller.copy(mappings = state.controller.mappings - action.id),
-                            )
-                        },
+                        groupPosition = GroupPosition.First,
                     )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.PlayArrow,
+                        title = "Pages",
+                        subtitle = dualListLabel(state.dualScreenPages, dualPageNames),
+                        onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Video page",
+                        reset =
+                            if (
+                                state.dualScreenVideoTabs != defaults.dualScreenVideoTabs ||
+                                state.dualScreenVideoTabOrder != defaults.dualScreenVideoTabOrder
+                            ) {
+                                {
+                                    viewModel.setDualScreenVideoTabs(defaults.dualScreenVideoTabs)
+                                    viewModel.setDualScreenVideoTabOrder(
+                                        defaults.dualScreenVideoTabOrder,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Chat,
+                        title = "Video page tabs",
+                        subtitle = dualListLabel(state.dualScreenVideoTabs, dualTabNames),
+                        onClick = { onChoiceSelected(Choice.DUAL_TABS) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Reorder,
+                        title = "Video tab order",
+                        subtitle = dualOrderLabel(state.dualScreenVideoTabOrder, dualTabNames),
+                        onClick = { onChoiceSelected(Choice.DUAL_TAB_ORDER) },
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.FormatListBulleted,
+                        title = "Main page order",
+                        subtitle = dualOrderLabel(state.dualScreenPageOrder, dualPageOrderNames),
+                        onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Playlists page",
+                        reset =
+                            if (state.dualScreenLibrarySlots != defaults.dualScreenLibrarySlots) {
+                                { viewModel.setDualScreenLibrarySlots(defaults.dualScreenLibrarySlots) }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.VideoLibrary,
+                        title = "Library slots",
+                        subtitle = slotListLabel(state.dualScreenLibrarySlots, playlists),
+                        onClick = { onChoiceSelected(Choice.DUAL_SLOTS) },
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Home page",
+                        reset =
+                            if (state.dualScreenFeedSources.isNotEmpty()) {
+                                { viewModel.setDualScreenFeedSources(emptyList()) }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.RssFeed,
+                        title = "Feed sources",
+                        subtitle =
+                            if (state.dualScreenFeedSources.isEmpty()) {
+                                "All sources"
+                            } else {
+                                state.dualScreenFeedSources.joinToString(", ") { id ->
+                                    enabledSources.firstOrNull { it.id == id }?.name ?: id
+                                }
+                            },
+                        onClick = { onChoiceSelected(Choice.DUAL_FEED_SOURCES) },
+                    )
+                }
+            }
+
+            "controller" -> {
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.Games,
+                        title = "Use controller",
+                        subtitle = "Control playback with a gamepad or TV remote",
+                        checked = state.controller.enabled,
+                        onCheckedChange = { enabled ->
+                            viewModel.setController(state.controller.copy(enabled = enabled))
+                        },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Replay10,
+                        title = "Backwards jump step",
+                        subtitle = "${state.controller.seekBackSeconds}s",
+                        onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_BACK) },
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Forward30,
+                        title = "Forwards jump step",
+                        subtitle = "${state.controller.seekForwardSeconds}s",
+                        onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_FORWARD) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Buttons",
+                        reset =
+                            if (state.controller.mappings.isNotEmpty()) {
+                                { viewModel.setController(state.controller.copy(mappings = emptyMap())) }
+                            } else {
+                                null
+                            },
+                    )
+                    PlayerControllerActions.ALL.forEachIndexed { index, action ->
+                        ControllerBindingRow(
+                            action = action,
+                            binding = state.controller.mappings[action.id],
+                            onCapture = { onBindRequested(action.id) },
+                            onClear = {
+                                viewModel.setController(
+                                    state.controller.copy(
+                                        mappings = state.controller.mappings - action.id,
+                                    ),
+                                )
+                            },
+                            groupPosition =
+                                GroupPosition.fromIndex(
+                                    index,
+                                    PlayerControllerActions.ALL.size,
+                                ),
+                        )
+                    }
                 }
             }
         }

@@ -477,7 +477,7 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
         modifier =
             modifier
                 .clip(RoundedCornerShape(BluejayTokens().radius.xs))
-                .background(Color(0xFFE60000))
+                .background(MaterialTheme.colorScheme.error)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -487,13 +487,13 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
                     Modifier
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(Color.White),
+                        .background(MaterialTheme.colorScheme.onError),
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "LIVE",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onError,
                 fontWeight = FontWeight.Bold,
             )
         }

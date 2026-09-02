@@ -1,29 +1,37 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ElevatedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +53,9 @@ import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PaletteStyle
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
+import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
+import com.tsutsen.platformplayer.core.designsystem.component.groupShape
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import java.util.UUID
@@ -64,19 +75,25 @@ fun ThemesSection(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
-        appearance.customThemes.forEach { theme ->
-            ThemeRow(
-                theme = theme,
-                isActive = theme.id == appearance.activeThemeId,
-                onClick = {
-                    editing = theme
-                    editorOpen = true
-                },
-                onUse = { viewModel.setActiveTheme(theme.id) },
-                onDelete = { viewModel.deleteTheme(theme.id) },
-            )
+        if (appearance.customThemes.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                appearance.customThemes.forEachIndexed { index, theme ->
+                    ThemeRow(
+                        theme = theme,
+                        isActive = theme.id == appearance.activeThemeId,
+                        groupPosition =
+                            GroupPosition.fromIndex(index, appearance.customThemes.size),
+                        onClick = {
+                            editing = theme
+                            editorOpen = true
+                        },
+                        onUse = { viewModel.setActiveTheme(theme.id) },
+                        onDelete = { viewModel.deleteTheme(theme.id) },
+                    )
+                }
+            }
         }
 
         if (appearance.activeThemeId != null) {
@@ -126,6 +143,7 @@ fun ThemesSection(
 private fun ThemeRow(
     theme: CustomTheme,
     isActive: Boolean,
+    groupPosition: GroupPosition = GroupPosition.Single,
     onClick: () -> Unit,
     onUse: () -> Unit,
     onDelete: () -> Unit,
@@ -133,38 +151,41 @@ private fun ThemeRow(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        shape = groupShape(groupPosition),
         colors =
             CardDefaults.cardColors(
                 containerColor =
-                    if (isActive)
+                    if (isActive) {
                         MaterialTheme.colorScheme.secondaryContainer
-                    else MaterialTheme.colorScheme.surfaceContainer,
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
                 modifier = Modifier.clip(CircleShape),
             ) {
                 Box(
                     modifier =
                         Modifier
-                            .size(24.dp)
+                            .size(Tokens.SwatchSm)
                             .background(theme.primary.toColor(), CircleShape),
                 )
                 theme.secondary?.let {
                     Box(
                         modifier =
                             Modifier
-                                .size(24.dp)
+                                .size(Tokens.SwatchSm)
                                 .background(it.toColor(), CircleShape),
                     )
                 }
@@ -172,7 +193,7 @@ private fun ThemeRow(
                     Box(
                         modifier =
                             Modifier
-                                .size(24.dp)
+                                .size(Tokens.SwatchSm)
                                 .background(it.toColor(), CircleShape),
                     )
                 }
@@ -211,9 +232,9 @@ private fun ThemeRow(
 }
 
 /**
- * Theme editor form: name, three key colors (primary required, secondary and
- * tertiary optional), palette style, and a live preview of the generated
- * scheme (light and dark).
+ * Theme editor form: name, three key colors in one row (primary required,
+ * secondary and tertiary optional), a swatch-style palette style selector,
+ * and a compact light+dark preview of the generated scheme.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -232,6 +253,15 @@ private fun ThemeEditor(
     }
     var pickSlot by remember { mutableStateOf<ThemeSlot?>(null) }
 
+    // One generated scheme per style, so each swatch square shows what that
+    // style actually does with the user's current colors.
+    val styleSchemes =
+        remember(primary, secondary, tertiary) {
+            PaletteStyle.entries.associateWith {
+                ThemeEngine.generate(primary, secondary, tertiary, it).light
+            }
+        }
+
     Column(
         modifier =
             Modifier
@@ -247,45 +277,59 @@ private fun ThemeEditor(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        ThemeColorRow(
-            label = "Primary",
-            color = primary.toColor(),
-            optional = false,
-            onPick = { pickSlot = ThemeSlot.PRIMARY },
-            onClear = {},
-        )
-        ThemeColorRow(
-            label = "Secondary",
-            color = secondary?.toColor(),
-            optional = true,
-            onPick = { pickSlot = ThemeSlot.SECONDARY },
-            onClear = { secondary = null },
-        )
-        ThemeColorRow(
-            label = "Tertiary",
-            color = tertiary?.toColor(),
-            optional = true,
-            onPick = { pickSlot = ThemeSlot.TERTIARY },
-            onClear = { tertiary = null },
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+        ) {
+            ThemeColorSlot(
+                label = "Primary",
+                color = primary,
+                optional = false,
+                modifier = Modifier.weight(1f),
+                onPick = { pickSlot = ThemeSlot.PRIMARY },
+                onClear = {},
+            )
+            ThemeColorSlot(
+                label = "Secondary",
+                color = secondary,
+                optional = true,
+                modifier = Modifier.weight(1f),
+                onPick = { pickSlot = ThemeSlot.SECONDARY },
+                onClear = { secondary = null },
+            )
+            ThemeColorSlot(
+                label = "Tertiary",
+                color = tertiary,
+                optional = true,
+                modifier = Modifier.weight(1f),
+                onPick = { pickSlot = ThemeSlot.TERTIARY },
+                onClear = { tertiary = null },
+            )
+        }
 
         Text(
             text = "Palette style",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium,
         )
-        PaletteStyle.entries.forEach { option ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                RadioButton(
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+        ) {
+            PaletteStyle.entries.forEach { option ->
+                PaletteSwatchSquare(
+                    scheme = styleSchemes.getValue(option),
                     selected = style == option,
                     onClick = { style = option },
+                    modifier = Modifier.weight(1f),
                 )
-                Text(option.label)
             }
         }
+        Text(
+            text = style.label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         ThemePreview(
             primary = primary,
@@ -294,26 +338,22 @@ private fun ThemeEditor(
             style = style,
         )
 
-        Row(
+        Button(
+            onClick = {
+                onSave(
+                    CustomTheme(
+                        id = initial?.id ?: UUID.randomUUID().toString(),
+                        name = name.ifBlank { "My theme" },
+                        primary = primary,
+                        secondary = secondary,
+                        tertiary = tertiary,
+                        paletteStyle = style,
+                    ),
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
         ) {
-            ElevatedButton(
-                onClick = {
-                    onSave(
-                        CustomTheme(
-                            id = initial?.id ?: UUID.randomUUID().toString(),
-                            name = name.ifBlank { "My theme" },
-                            primary = primary,
-                            secondary = secondary,
-                            tertiary = tertiary,
-                            paletteStyle = style,
-                        )
-                    )
-                },
-            ) {
-                Text("Save")
-            }
+            Text("Save")
         }
     }
 
@@ -340,53 +380,139 @@ private fun ThemeEditor(
     }
 }
 
+/**
+ * One key color as a tappable swatch: 48dp circle, label under it, and a
+ * small clear badge for the optional slots.
+ */
 @Composable
-private fun ThemeColorRow(
+private fun ThemeColorSlot(
     label: String,
-    color: Color?,
+    color: Int?,
     optional: Boolean,
+    modifier: Modifier = Modifier,
     onPick: () -> Unit,
     onClear: () -> Unit,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
         Box(
             modifier =
                 Modifier
-                    .size(32.dp)
+                    .size(Tokens.SwatchLg)
                     .clip(CircleShape)
-                    .background(color ?: MaterialTheme.colorScheme.surfaceContainerHighest),
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-            )
-            Text(
-                text = if (color == null) "Not set" else "#" + color.toArgb().toString(16),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (optional && color != null) {
-            IconButton(onClick = onClear) {
-                Icon(Icons.Default.Delete, contentDescription = "Clear $label")
+                    .background(color?.toColor() ?: MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .clickable(onClick = onPick),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (color == null) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Pick $label color",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
-        TextButton(onClick = onPick) { Text("Pick") }
+        if (optional && color != null) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .size(Tokens.SwatchSm)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .clickable(onClick = onClear),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = "Clear $label",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(Tokens.IconXs),
+                )
+            }
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
-/** Live preview of the scheme ThemeEngine would generate for these inputs. */
+/**
+ * Swatch square for the palette style selector (PixelPlayer style): a 2x2
+ * grid of the scheme's key colors. Selected = squarer corners + primary
+ * border, unselected = circular.
+ */
+@Composable
+private fun PaletteSwatchSquare(
+    scheme: ColorScheme,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val r = BluejayTokens().radius
+    val outerCorner =
+        if (selected) r.md else r.lg
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        shape = RoundedCornerShape(outerCorner),
+        border =
+            if (selected) {
+                BorderStroke(Tokens.StrokeEmphasized, MaterialTheme.colorScheme.primary)
+            } else {
+                null
+            },
+        modifier = modifier.aspectRatio(1f),
+        tonalElevation = 0.dp,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(if (selected) Tokens.SpaceXs else Tokens.SpaceXxs),
+        ) {
+            Row(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .background(scheme.primary),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .background(scheme.secondary),
+                )
+            }
+            Row(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .background(scheme.tertiary),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .background(scheme.surfaceContainerHighest),
+                )
+            }
+        }
+    }
+}
+
+/** Compact side-by-side light+dark preview of the generated scheme. */
 @Composable
 private fun ThemePreview(
     primary: Int,
@@ -398,50 +524,49 @@ private fun ThemePreview(
         remember(primary, secondary, tertiary, style) {
             ThemeEngine.generate(primary, secondary, tertiary, style)
         }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ThemePreviewCard(title = "Light", light = true, schemes = schemes)
-        ThemePreviewCard(title = "Dark", light = false, schemes = schemes)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+    ) {
+        ThemePreviewCard(title = "Light", scheme = schemes.light, modifier = Modifier.weight(1f))
+        ThemePreviewCard(title = "Dark", scheme = schemes.dark, modifier = Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun ThemePreviewCard(
     title: String,
-    light: Boolean,
-    schemes: ThemeEngine.Schemes,
+    scheme: ColorScheme,
+    modifier: Modifier = Modifier,
 ) {
-    val scheme = if (light) schemes.light else schemes.dark
     Surface(
-        color =
-            if (light)
-                MaterialTheme.colorScheme.surface
-            else MaterialTheme.colorScheme.inverseSurface,
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth(),
+        color = scheme.surface,
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(Tokens.SpaceMd),
+            verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
                 PreviewSwatch(scheme.primary)
                 PreviewSwatch(scheme.secondary)
                 PreviewSwatch(scheme.tertiary)
             }
             Surface(
                 color = scheme.primaryContainer,
-                shape = MaterialTheme.shapes.medium,
+                shape = MaterialTheme.shapes.small,
             ) {
                 Text(
-                    text = "Primary container",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Container",
+                    style = MaterialTheme.typography.bodySmall,
                     color = scheme.onPrimaryContainer,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(horizontal = Tokens.SpaceSm, vertical = Tokens.SpaceXs),
                 )
             }
         }
@@ -450,7 +575,7 @@ private fun ThemePreviewCard(
 
 @Composable
 private fun PreviewSwatch(color: Color) {
-    Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(color))
+    Box(modifier = Modifier.size(Tokens.SwatchXs).clip(CircleShape).background(color))
 }
 
 /**
@@ -475,17 +600,19 @@ private fun ColorPickerDialog(
                 modifier =
                     Modifier
                         .padding(Tokens.SpaceLg)
-                        .width(300.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .width(Tokens.DialogSm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
                 Text(
                     text = "#" + initialColor.toArgb().toString(16),
                     style = MaterialTheme.typography.labelLarge,
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    (listOf(initialColor.toArgb()) + PresetColors).distinct().chunked(8)
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+                    (listOf(initialColor.toArgb()) + PresetColors)
+                        .distinct()
+                        .chunked(8)
                         .forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
                                 row.forEach { argb ->
                                     ColorSwatch(
                                         color = Color(argb),
@@ -511,7 +638,7 @@ private fun ColorSwatch(
     Box(
         modifier =
             Modifier
-                .size(28.dp)
+                .size(Tokens.SwatchMd)
                 .clip(CircleShape)
                 .background(color)
                 .clickable(onClick = onClick),
@@ -522,7 +649,7 @@ private fun ColorSwatch(
                 Icons.Default.Check,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(Tokens.IconXs),
             )
         }
     }
@@ -530,14 +657,38 @@ private fun ColorSwatch(
 
 private val PresetColors: List<Int> =
     listOf(
-        0xFF6750A4.toInt(), 0xFF7C4DFF.toInt(), 0xFF6200EE.toInt(), 0xFF5E35B1.toInt(),
-        0xFF3F51B5.toInt(), 0xFF1E88E5.toInt(), 0xFF2962FF.toInt(), 0xFF00B0FF.toInt(),
-        0xFF009688.toInt(), 0xFF018786.toInt(), 0xFF00BFA5.toInt(), 0xFF43A047.toInt(),
-        0xFF4CAF50.toInt(), 0xFF00C853.toInt(), 0xFF76FF03.toInt(), 0xFFFBC02D.toInt(),
-        0xFFFFAB40.toInt(), 0xFFF57C00.toInt(), 0xFFFF6D00.toInt(), 0xFFC62828.toInt(),
-        0xFFD50000.toInt(), 0xFFFF5252.toInt(), 0xFFC2185B.toInt(), 0xFFFF4081.toInt(),
-        0xFF8D6E63.toInt(), 0xFF546E7A.toInt(), 0xFF37474F.toInt(), 0xFF757575.toInt(),
-        0xFFB0BEC5.toInt(), 0xFF212121.toInt(), 0xFF625B71.toInt(), 0xFF7D5260.toInt(),
+        0xFF6750A4.toInt(),
+        0xFF7C4DFF.toInt(),
+        0xFF6200EE.toInt(),
+        0xFF5E35B1.toInt(),
+        0xFF3F51B5.toInt(),
+        0xFF1E88E5.toInt(),
+        0xFF2962FF.toInt(),
+        0xFF00B0FF.toInt(),
+        0xFF009688.toInt(),
+        0xFF018786.toInt(),
+        0xFF00BFA5.toInt(),
+        0xFF43A047.toInt(),
+        0xFF4CAF50.toInt(),
+        0xFF00C853.toInt(),
+        0xFF76FF03.toInt(),
+        0xFFFBC02D.toInt(),
+        0xFFFFAB40.toInt(),
+        0xFFF57C00.toInt(),
+        0xFFFF6D00.toInt(),
+        0xFFC62828.toInt(),
+        0xFFD50000.toInt(),
+        0xFFFF5252.toInt(),
+        0xFFC2185B.toInt(),
+        0xFFFF4081.toInt(),
+        0xFF8D6E63.toInt(),
+        0xFF546E7A.toInt(),
+        0xFF37474F.toInt(),
+        0xFF757575.toInt(),
+        0xFFB0BEC5.toInt(),
+        0xFF212121.toInt(),
+        0xFF625B71.toInt(),
+        0xFF7D5260.toInt(),
     )
 
 private enum class ThemeSlot { PRIMARY, SECONDARY, TERTIARY }

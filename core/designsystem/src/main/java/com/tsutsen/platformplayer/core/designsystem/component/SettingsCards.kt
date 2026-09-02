@@ -1,11 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
-import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Card
@@ -28,21 +24,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.Shape
+import coil.compose.AsyncImage
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import kotlin.math.roundToInt
 import kotlin.ranges.ClosedFloatingPointRange
 
-/** Group members stack flush; only solo cards keep the 2.dp breathing inset. */
-private fun groupPad(position: GroupPosition): Dp =
-    if (position == GroupPosition.Single) 2.dp else 0.dp
-
 @Composable
-private fun groupShape(position: GroupPosition): Shape {
+fun groupShape(position: GroupPosition): Shape {
     val r = BluejayTokens().radius
     return when (position) {
         GroupPosition.Single -> RoundedCornerShape(r.md)
@@ -70,18 +66,17 @@ fun SettingsOptionCard(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(vertical = groupPad(groupPosition)),
+                .clickable(onClick = onClick),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -137,18 +132,17 @@ fun SettingsSwitchCard(
     Card(
         modifier =
             Modifier
-                .fillMaxWidth()
-                .padding(vertical = groupPad(groupPosition)),
+                .fillMaxWidth(),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -204,15 +198,15 @@ fun SettingsSliderCard(
     groupPosition: GroupPosition = GroupPosition.Single,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = groupPad(groupPosition)),
+        modifier = Modifier.fillMaxWidth(),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(Tokens.SpaceMd)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -255,7 +249,7 @@ fun SettingsSliderCard(
                 onValueChange = onValueChange,
                 valueRange = valueRange,
                 steps = steps,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = Tokens.SpaceXs),
             )
         }
     }
@@ -280,18 +274,17 @@ fun SettingsSwitchOptionCard(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(vertical = groupPad(groupPosition)),
+                .clickable(onClick = onClick),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(

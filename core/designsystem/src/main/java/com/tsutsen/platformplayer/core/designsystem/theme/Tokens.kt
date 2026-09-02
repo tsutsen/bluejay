@@ -21,6 +21,7 @@ import kotlin.math.roundToInt
  */
 object Tokens {
     // Spacing
+    val SpaceXxs: Dp = 2.dp
     val SpaceXs: Dp = 4.dp
     val SpaceSm: Dp = 8.dp
     val SpaceMd: Dp = 12.dp
@@ -28,6 +29,7 @@ object Tokens {
     val SpaceXl: Dp = 24.dp
 
     // Icons
+    val IconXs: Dp = 16.dp
     val IconSm: Dp = 18.dp
     val IconMd: Dp = 24.dp
 
@@ -36,9 +38,21 @@ object Tokens {
     val AvatarLg: Dp = 48.dp
     val AvatarXl: Dp = 56.dp
 
-    // Static radii for things that must not follow the user's rounding
-    // preference (stadium/pill shapes are round at every setting).
-    val RadiusFull: Dp = 500.dp
+    // Buttons & touch
+    val TouchTarget: Dp = 48.dp // minimum touchable area (icon buttons, chips)
+    val ButtonSm: Dp = 36.dp // compact action buttons (Subscribe, like/dislike)
+
+    // Color swatches (theme editor, previews)
+    val SwatchXs: Dp = 20.dp
+    val SwatchSm: Dp = 24.dp
+    val SwatchMd: Dp = 28.dp
+    val SwatchLg: Dp = 48.dp
+
+    // Strokes
+    val StrokeEmphasized: Dp = 2.dp // selection borders (swatch selectors)
+
+    // Dialogs
+    val DialogSm: Dp = 300.dp
 }
 
 /**
