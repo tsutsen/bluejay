@@ -1140,6 +1140,9 @@ fun PlayerView(
                                 is DownloadButtonState.Starting -> Unit
                             }
                         },
+                        onDownloadWithQuality = { quality ->
+                            viewModel.startDownload(quality)
+                        },
                         onDismiss = { showOptionsModal = false },
                     )
                 }

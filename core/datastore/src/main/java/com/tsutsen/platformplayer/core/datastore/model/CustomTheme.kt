@@ -16,7 +16,16 @@ data class CustomTheme(
     val primary: Int,
     val secondary: Int? = null,
     val tertiary: Int? = null,
+    /** Optional surface tint: when set, light+dark neutrals come from this color. */
+    val background: Int? = null,
     val paletteStyle: PaletteStyle = PaletteStyle.TONAL_SPOT,
+    /**
+     * Contrast refinement, -1..1 per the material-color-utilities spec:
+     * -1 = minimum, 0 = standard (as specced), 1 = maximum. Adjusts the
+     * per-role contrast curves, so text-on-container pairs get bolder or
+     * softer while the palette itself stays the same.
+     */
+    val contrast: Float = 0f,
 )
 
 /**

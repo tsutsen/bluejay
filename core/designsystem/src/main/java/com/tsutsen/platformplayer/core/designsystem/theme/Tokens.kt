@@ -53,6 +53,9 @@ object Tokens {
 
     // Dialogs
     val DialogSm: Dp = 300.dp
+
+    // Option-sheet section labels (fixed width so chip rows align)
+    val OptionLabelWidth: Dp = 76.dp
 }
 
 /**

@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,11 +55,13 @@ import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PaletteStyle
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
+import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
 import com.tsutsen.platformplayer.core.designsystem.component.groupShape
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import java.util.UUID
+import kotlin.math.roundToInt
 
 /**
  * Custom themes management: list of saved themes + the theme editor sheet.
@@ -248,17 +251,26 @@ private fun ThemeEditor(
     }
     var secondary by remember(initial) { mutableStateOf(initial?.secondary) }
     var tertiary by remember(initial) { mutableStateOf(initial?.tertiary) }
+    var background by remember(initial) { mutableStateOf(initial?.background) }
     var style by remember(initial) {
         mutableStateOf(initial?.paletteStyle ?: PaletteStyle.TONAL_SPOT)
     }
+    var contrast by remember(initial) { mutableStateOf(initial?.contrast ?: 0f) }
     var pickSlot by remember { mutableStateOf<ThemeSlot?>(null) }
 
     // One generated scheme per style, so each swatch square shows what that
     // style actually does with the user's current colors.
     val styleSchemes =
-        remember(primary, secondary, tertiary) {
+        remember(primary, secondary, tertiary, background, contrast) {
             PaletteStyle.entries.associateWith {
-                ThemeEngine.generate(primary, secondary, tertiary, it).light
+                ThemeEngine.generate(
+                    primary,
+                    secondary,
+                    tertiary,
+                    it,
+                    background = background,
+                    contrast = contrast,
+                ).light
             }
         }
 
@@ -305,6 +317,15 @@ private fun ThemeEditor(
                 onPick = { pickSlot = ThemeSlot.TERTIARY },
                 onClear = { tertiary = null },
             )
+            // Background (surfaces) is the fourth optional key color.
+            ThemeColorSlot(
+                label = "Background",
+                color = background,
+                optional = true,
+                modifier = Modifier.weight(1f),
+                onPick = { pickSlot = ThemeSlot.BACKGROUND },
+                onClear = { background = null },
+            )
         }
 
         Text(
@@ -331,11 +352,39 @@ private fun ThemeEditor(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "Contrast",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = if (contrast == 0f) "standard" else (contrast * 100).roundToInt().toString() + "%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // -1 = minimum, 0 = standard (as specced), 1 = maximum — the
+            // spec's contrast level drives the per-role contrast curves.
+            Slider(
+                value = contrast,
+                onValueChange = { contrast = it },
+                valueRange = -1f..1f,
+                steps = 3,
+            )
+        }
+
         ThemePreview(
             primary = primary,
             secondary = secondary,
             tertiary = tertiary,
+            background = background,
             style = style,
+            contrast = contrast,
         )
 
         Button(
@@ -347,7 +396,9 @@ private fun ThemeEditor(
                         primary = primary,
                         secondary = secondary,
                         tertiary = tertiary,
+                        background = background,
                         paletteStyle = style,
+                        contrast = contrast,
                     ),
                 )
             },
@@ -363,6 +414,7 @@ private fun ThemeEditor(
                 ThemeSlot.PRIMARY -> primary.toColor()
                 ThemeSlot.SECONDARY -> (secondary ?: 0xFF625B71.toInt()).toColor()
                 ThemeSlot.TERTIARY -> (tertiary ?: 0xFF7D5260.toInt()).toColor()
+                ThemeSlot.BACKGROUND -> (background ?: 0xFFF7F2FA.toInt()).toColor()
             }
         ColorPickerDialog(
             initialColor = initialColor,
@@ -372,6 +424,7 @@ private fun ThemeEditor(
                     ThemeSlot.PRIMARY -> primary = argb
                     ThemeSlot.SECONDARY -> secondary = argb
                     ThemeSlot.TERTIARY -> tertiary = argb
+                    ThemeSlot.BACKGROUND -> background = argb
                 }
                 pickSlot = null
             },
@@ -402,9 +455,9 @@ private fun ThemeColorSlot(
             modifier =
                 Modifier
                     .size(Tokens.SwatchLg)
+                    .expressiveClickable(onClick = onPick)
                     .clip(CircleShape)
-                    .background(color?.toColor() ?: MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .clickable(onClick = onPick),
+                    .background(color?.toColor() ?: MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center,
         ) {
             if (color == null) {
@@ -421,9 +474,9 @@ private fun ThemeColorSlot(
                     Modifier
                         .align(Alignment.CenterHorizontally)
                         .size(Tokens.SwatchSm)
+                        .expressiveClickable(onClick = onClear)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .clickable(onClick = onClear),
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -457,18 +510,23 @@ private fun PaletteSwatchSquare(
     val r = BluejayTokens().radius
     val outerCorner =
         if (selected) r.md else r.lg
-    Surface(
-        onClick = onClick,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        shape = RoundedCornerShape(outerCorner),
-        border =
-            if (selected) {
-                BorderStroke(Tokens.StrokeEmphasized, MaterialTheme.colorScheme.primary)
-            } else {
-                null
-            },
-        modifier = modifier.aspectRatio(1f),
-        tonalElevation = 0.dp,
+    // The selection border is concentric: same rectangle as the shape, but
+    // with its corner radius shrunk by the stroke width so the outline
+    // follows the outer rounding instead of sitting slightly outside it.
+    val borderCorner =
+        if (selected) r.md - Tokens.StrokeEmphasized else r.lg
+    Box(
+        modifier =
+            modifier
+                .aspectRatio(1f)
+                .expressiveClickable(onClick = onClick)
+                .clip(RoundedCornerShape(outerCorner))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .border(
+                    width = if (selected) Tokens.StrokeEmphasized else 0.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(borderCorner),
+                ),
     ) {
         Column(
             modifier =
@@ -519,10 +577,19 @@ private fun ThemePreview(
     secondary: Int?,
     tertiary: Int?,
     style: PaletteStyle,
+    background: Int? = null,
+    contrast: Float = 0f,
 ) {
     val schemes =
-        remember(primary, secondary, tertiary, style) {
-            ThemeEngine.generate(primary, secondary, tertiary, style)
+        remember(primary, secondary, tertiary, style, background, contrast) {
+            ThemeEngine.generate(
+                primary,
+                secondary,
+                tertiary,
+                style,
+                background = background,
+                contrast = contrast,
+            )
         }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -639,9 +706,9 @@ private fun ColorSwatch(
         modifier =
             Modifier
                 .size(Tokens.SwatchMd)
+                .expressiveClickable(onClick = onClick)
                 .clip(CircleShape)
-                .background(color)
-                .clickable(onClick = onClick),
+                .background(color),
         contentAlignment = Alignment.Center,
     ) {
         if (isSelected) {
@@ -691,7 +758,7 @@ private val PresetColors: List<Int> =
         0xFF7D5260.toInt(),
     )
 
-private enum class ThemeSlot { PRIMARY, SECONDARY, TERTIARY }
+private enum class ThemeSlot { PRIMARY, SECONDARY, TERTIARY, BACKGROUND }
 
 private val PaletteStyle.label: String
     get() =

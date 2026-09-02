@@ -218,7 +218,14 @@ class CompanionPresentation(
             val customSchemes =
                 remember(activeTheme) {
                     activeTheme?.let {
-                        ThemeEngine.generate(it.primary, it.secondary, it.tertiary, it.paletteStyle)
+                        ThemeEngine.generate(
+                            it.primary,
+                            it.secondary,
+                            it.tertiary,
+                            it.paletteStyle,
+                            background = it.background,
+                            contrast = it.contrast,
+                        )
                     }
                 }
 

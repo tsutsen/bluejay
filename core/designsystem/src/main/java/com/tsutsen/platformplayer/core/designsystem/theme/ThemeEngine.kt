@@ -31,14 +31,23 @@ object ThemeEngine {
      * @param primary key color, ARGB (0xAARRGGBB)
      * @param secondary key color, ARGB, or null to derive from primary
      * @param tertiary key color, ARGB, or null to derive from secondary/primary
+     * @param background optional surface color, ARGB — when set, the neutral
+     *        palettes (surfaces, backgrounds) come from it instead of being
+     *        derived from [primary], so themes are not locked to white/dark.
+     * @param contrast contrast refinement, -1 (minimum) to 1 (maximum),
+     *        0 = standard. Drives the per-role ContrastCurves in the spec.
      */
     fun generate(
         primary: Int,
         secondary: Int?,
         tertiary: Int?,
         style: PaletteStyle,
+        background: Int? = null,
+        contrast: Float = 0f,
     ): Schemes {
-        val palettes = buildPalettes(primary, secondary, tertiary, style)
+        val palettes = buildPalettes(primary, secondary, tertiary, style, background)
+        // Trust boundary: this also reads persisted user data.
+        val level = contrast.toDouble().coerceIn(-1.0, 1.0)
         val source = Hct.fromInt(primary)
 
         // The material 1.13.0-bundled DynamicScheme ignores `variant` when
@@ -51,7 +60,7 @@ object ThemeEngine {
                     source,
                     variant,
                     false,
-                    0.0,
+                    level,
                     palettes.primary,
                     palettes.secondary,
                     palettes.tertiary,
@@ -63,7 +72,7 @@ object ThemeEngine {
                     source,
                     variant,
                     true,
-                    0.0,
+                    level,
                     palettes.primary,
                     palettes.secondary,
                     palettes.tertiary,
@@ -95,6 +104,7 @@ object ThemeEngine {
         secondary: Int?,
         tertiary: Int?,
         style: PaletteStyle,
+        background: Int? = null,
     ): Palettes {
         val source = Hct.fromInt(primary)
         val hue = source.hue
@@ -169,12 +179,20 @@ object ThemeEngine {
         }
         val neutralHue = MathUtils.sanitizeDegreesDouble(hue + neutralHueShift)
 
+        // A user-picked background owns the neutrals (both light and dark
+        // surfaces take its hue); otherwise the style derives them.
+        val neutral =
+            picked(background)
+                ?: TonalPalette.fromHueAndChroma(neutralHue, neutralChroma)
+
         return Palettes(
             primary = TonalPalette.fromInt(primary),
             secondary = picked(secondary) ?: secondaryTonal,
             tertiary = picked(tertiary) ?: tertiaryTonal,
-            neutral = TonalPalette.fromHueAndChroma(neutralHue, neutralChroma),
-            neutralVariant = TonalPalette.fromHueAndChroma(neutralHue, neutralVariantChroma),
+            neutral = neutral,
+            neutralVariant =
+                picked(background)
+                    ?: TonalPalette.fromHueAndChroma(neutralHue, neutralVariantChroma),
         )
     }
 

@@ -1,7 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -27,7 +26,7 @@ fun CreatorAvatar(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier.expressiveClickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AsyncImage(

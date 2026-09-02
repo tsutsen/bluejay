@@ -2,10 +2,10 @@ package com.tsutsen.platformplayer.feature.subscriptions.impl
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,7 +75,10 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
+import androidx.compose.ui.unit.Dp
 import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
@@ -482,10 +485,16 @@ private fun CreatorAvatar(
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val avatarSize by animateDpAsState(
+        targetValue = if (isSelected) Tokens.SwatchLg + Tokens.SpaceXs else Tokens.SwatchLg,
+        animationSpec = spatialSpec<Dp>(),
+        label = "creator-avatar-size",
+    )
     Box(
         modifier =
             modifier
-                .size(if (isSelected) 52.dp else 48.dp)
+                .size(avatarSize)
+                .expressiveClickable(onClick = onClick, onLongClick = onLongClick ?: {})
                 .clip(CircleShape)
                 .background(
                     if (isSelected) {
@@ -493,7 +502,7 @@ private fun CreatorAvatar(
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
                     },
-                ).combinedClickable(onClick = onClick, onLongClick = onLongClick ?: {}),
+                ),
     ) {
         if (creator.thumbnailUrl != null) {
             AsyncImage(
