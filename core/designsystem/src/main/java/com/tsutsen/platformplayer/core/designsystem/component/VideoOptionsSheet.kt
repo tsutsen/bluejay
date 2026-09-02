@@ -20,13 +20,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,13 +47,23 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonLayout
+import androidx.compose.material3.SplitButtonShapes
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +80,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.LocalSemanticColors
@@ -668,12 +683,133 @@ enum class TileTone {
 private val tileColorSpec = tween<Color>(200, easing = FastOutSlowInEasing)
 
 /**
- * Download control for the options sheets. Built from plain [OptionTileView]
- * tiles so it has exactly the same size, colors, and press/(de)rounding
- * animations as the other actions in the sheet: idle = a "Download" tile
- * (default quality) next to a "Quality" tile (opens the quality picker);
- * while downloading (or done) it collapses to a single full-width tile
- * carrying the status (the progress bar) or the delete action.
+ * Shapes for the download [SplitButtonLayout]. M3's split button keeps its
+ * outer corners percent-full (size-relative, so they can never go negative)
+ * and only the seam (inner) corners are Dp — those are driven by the
+ * rounding tokens: [RadiusScale.sm] at rest, [RadiusScale.md] when pressed
+ * (M3 bulges the seam corners on press), and the checked trailing morphs to
+ * a full circle.
+ *
+ * Rounding ≈ 0: every state takes one uniform square shape. With zero Dp
+ * bases the pressed/checked shape morphs would spring from 0 and overshoot
+ * into negative corners.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun downloadSplitShapes(height: Dp): Pair<SplitButtonShapes, SplitButtonShapes> {
+    val radius = BluejayTokens().radius
+    if (radius.md.value < 1f) {
+        val square = RoundedCornerShape(0.dp)
+        return Pair(
+            SplitButtonShapes(square, square, null),
+            SplitButtonShapes(square, square, square),
+        )
+    }
+    val inner = radius.sm
+    val innerPressed = radius.md
+    // "Full pill" outer corners as Dp: half the container height (the
+    // RoundedCornerShape 4-corner overload only takes Dp).
+    val outer = height / 2
+    return Pair(
+        SplitButtonShapes(
+            shape = RoundedCornerShape(outer, inner, inner, outer),
+            pressedShape = RoundedCornerShape(outer, innerPressed, innerPressed, outer),
+            checkedShape = null,
+        ),
+        SplitButtonShapes(
+            shape = RoundedCornerShape(inner, outer, outer, inner),
+            pressedShape = RoundedCornerShape(innerPressed, outer, outer, innerPressed),
+            checkedShape = CircleShape,
+        ),
+    )
+}
+
+/**
+ * The native M3 split button for downloading: a tonal "Download" action
+ * connected to an icon-only quality toggle (the chevron flips while the
+ * quality menu is open). [SplitButtonLayout] handles the 2dp seam and
+ * height synchronization between the segments.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun DownloadSplitButton(
+    onDownload: () -> Unit,
+    onQualityClick: () -> Unit,
+    qualityMenuOpen: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val height = SplitButtonDefaults.MediumContainerHeight
+    val (leadingShapes, trailingShapes) = downloadSplitShapes(height)
+
+    SplitButtonLayout(
+        modifier = modifier,
+        leadingButton = {
+            SplitButtonDefaults.TonalLeadingButton(
+                onClick = onDownload,
+                modifier = Modifier.heightIn(height),
+                shapes = leadingShapes,
+                contentPadding = SplitButtonDefaults.leadingButtonContentPaddingFor(height),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Download,
+                    contentDescription = null,
+                    modifier = Modifier.size(SplitButtonDefaults.leadingButtonIconSizeFor(height)),
+                )
+                Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
+                Text("Download")
+            }
+        },
+        trailingButton = {
+            val description = "Download quality"
+            // Icon-only trailing button should have a tooltip for a11y
+            // (M3 split button spec).
+            TooltipBox(
+                positionProvider =
+                    TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                tooltip = {
+                    PlainTooltip { Text(description) }
+                },
+                state = rememberTooltipState(),
+            ) {
+                SplitButtonDefaults.TonalTrailingButton(
+                    checked = qualityMenuOpen,
+                    onCheckedChange = { if (it) onQualityClick() },
+                    modifier =
+                        Modifier
+                            .heightIn(height)
+                            .semantics {
+                                stateDescription = if (qualityMenuOpen) "Expanded" else "Collapsed"
+                                contentDescription = description
+                            },
+                    shapes = trailingShapes,
+                    contentPadding = SplitButtonDefaults.trailingButtonContentPaddingFor(height),
+                ) {
+                    val rotation by
+                        animateFloatAsState(
+                            targetValue = if (qualityMenuOpen) 180f else 0f,
+                            animationSpec = spatialSpec<Float>(),
+                            label = "quality-chevron",
+                        )
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = description,
+                        modifier =
+                            Modifier
+                                .size(SplitButtonDefaults.trailingButtonIconSizeFor(height))
+                                .graphicsLayer { rotationZ = rotation },
+                    )
+                }
+            }
+        },
+    )
+}
+
+/**
+ * Download control for the options sheets. Idle = the native M3 split
+ * button ([DownloadSplitButton]): "Download" (default quality) connected to
+ * an icon-only quality toggle. While downloading (or done) it collapses to a
+ * single full-width [OptionTileView] carrying the status (the progress bar)
+ * or the delete action.
  *
  * [onDownload] is state-aware (the host switches on the current state),
  * so it doubles as cancel (while downloading) and delete (when done).
@@ -688,17 +824,14 @@ fun DownloadSection(
     var showQualityDialog by remember { mutableStateOf(false) }
     when (state) {
         is DownloadButtonState.Idle -> {
-            // The M3 split button: a "Download" button connected to an
-            // icon-only quality button. IntrinsicSize keeps both segments
-            // the height of the taller one; the 2dp seam is M3's own
-            // connected-group spacing.
-            Row(
-                modifier =
-                    modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
-            ) {
+            if (onDownloadWithQuality != null) {
+                DownloadSplitButton(
+                    onDownload = onDownload,
+                    onQualityClick = { showQualityDialog = true },
+                    qualityMenuOpen = showQualityDialog,
+                    modifier = modifier.fillMaxWidth(),
+                )
+            } else {
                 OptionTileView(
                     tile =
                         OptionTile(
@@ -706,22 +839,8 @@ fun DownloadSection(
                             icon = Icons.Filled.Download,
                             onClick = onDownload,
                         ),
-                    modifier = Modifier.weight(1f).height(IntrinsicSize.Min),
-                    connection = TileConnection.ConnectedLeading,
+                    modifier = modifier.fillMaxWidth(),
                 )
-                if (onDownloadWithQuality != null) {
-                    OptionTileView(
-                        tile =
-                            OptionTile(
-                                label = "Quality",
-                                icon = Icons.Filled.ArrowDropDown,
-                                onClick = { showQualityDialog = true },
-                            ),
-                        modifier = Modifier.weight(1f).height(IntrinsicSize.Min),
-                        showLabel = false,
-                        connection = TileConnection.ConnectedTrailing,
-                    )
-                }
             }
             if (showQualityDialog) {
                 DownloadQualityDialog(
