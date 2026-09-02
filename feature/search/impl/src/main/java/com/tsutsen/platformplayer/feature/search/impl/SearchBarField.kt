@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.search.impl
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,7 +54,11 @@ fun SearchBarField(
     DockedSearchBar(
         inputField = {
             SearchBarDefaults.InputField(
-                modifier = fieldModifier,
+                // Fill the bar's width so the trailing clear button sits at
+                // the bar's right edge — otherwise the field hugs its 360dp
+                // minimum and the button floats mid-bar on wide screens.
+                // (InputField still caps it at its native 720dp max.)
+                modifier = fieldModifier.fillMaxWidth(),
                 query = value,
                 onQueryChange = onValueChange,
                 onSearch = { onSearch() },
