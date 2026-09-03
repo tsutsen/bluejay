@@ -43,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import com.tsutsen.platformplayer.core.designsystem.component.AvatarCircle
@@ -278,7 +279,12 @@ fun WatchStatsDetailScreen(
                 )
                 Text(
                     text = humanDuration(stats.allTimeMs),
-                    style = MaterialTheme.typography.displaySmall,
+                    // Same weight as the MiniStat values below — display
+                    // styles default to Normal, which looked thinner next
+                    // to the Medium titleLarge numbers.
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
                 )
                 Text(
                     text = videosLabel(stats.videoCount),

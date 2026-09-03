@@ -40,11 +40,10 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 
-// The editor mimics a video player: pure black cards holding dark tiles,
-// so the inner colors are fixed instead of theme-derived.
+// The editor mimics a video player: pure black cards with flat tiles
+// (no tile fill — state is shown through the tint only), so the inner
+// colors are fixed instead of theme-derived.
 private val CardBackground = Color.Black
-private val TileBackground = Color(0xFF1E1E1E)
-private val TileAssigned = Color(0xFF2B2B2B)
 private val TextBright = Color(0xFFF2F2F2)
 private val TextDim = Color(0xFF9A9A9A)
 
@@ -204,7 +203,7 @@ private fun GesturePanel(
     }
 }
 
-/** One dark tile: gesture-type icon on top, the selected action below. */
+/** One flat tile: gesture-type icon on top, the selected action below. */
 @Composable
 private fun GestureTile(
     type: String,
@@ -217,7 +216,7 @@ private fun GestureTile(
         modifier =
             modifier
                 .clip(RoundedCornerShape(BluejayTokens().radius.sm))
-                .background(if (isAssigned) TileAssigned else TileBackground)
+                .background(Color.Transparent)
                 .clickable(onClick = onClick)
                 .padding(vertical = Tokens.SpaceMd, horizontal = Tokens.SpaceXs),
         horizontalAlignment = Alignment.CenterHorizontally,
