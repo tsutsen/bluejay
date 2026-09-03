@@ -12,19 +12,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.RocketLaunch
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.StayCurrentPortrait
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -43,9 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.tsutsen.platformplayer.api.media.IPlatformClient
@@ -53,10 +50,15 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
+import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchOptionCard
+import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.feature.settings.impl.ControllerBindingPopup
 import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -120,18 +122,36 @@ fun GettingStartedFlow(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
     ) {
-        Column(
+        // Step content: centered in a box (so it scrolls instead of
+        // clipping when a step is longer than the viewport), capped at
+        // half the width on wide screens.
+        val wide = rememberIsWide()
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = entrance.value
-                        translationY = (1f - entrance.value) * 24f
-                    },
+                    .padding(
+                        start = Tokens.SpaceXl,
+                        end = Tokens.SpaceXl,
+                        top = Tokens.SpaceXl,
+                        // Keep content clear of the bottom dock.
+                        bottom = Tokens.SpaceXl * 3,
+                    ),
+            contentAlignment = Alignment.Center,
         ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(if (wide) 0.5f else 1f)
+                        .verticalScroll(rememberScrollState())
+                        .graphicsLayer {
+                            alpha = entrance.value
+                            translationY = (1f - entrance.value) * 24f
+                        },
+            ) {
             key(step) {
                 when (step) {
-                    0 -> WelcomeStep(onStart = { step = 1 }, onSkip = onFinished)
+                    0 -> WelcomeStep()
                     1 -> SourcesStep(
                             sources = sources,
                             checked = checkedSources,
@@ -172,48 +192,35 @@ fun GettingStartedFlow(
                             onRemap = { action -> bindingAction = action },
                         )
                     4 -> DoneStep()
+                    }
                 }
             }
         }
 
-        // Footer: back / next / done
-        when (step) {
-            0 -> Unit // buttons live in the welcome content
-            4 ->
-                Button(
-                    onClick = onFinished,
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .padding(horizontal = Tokens.SpaceXl, vertical = Tokens.SpaceLg),
-                ) {
-                    Text("Done")
-                }
-            else ->
-                Row(
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .padding(horizontal = Tokens.SpaceXl, vertical = Tokens.SpaceLg),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    TextButton(onClick = { step-- }) { Text("Back") }
-                    Button(
-                        onClick = {
+        // Bottom dock: back / next (or skip / first setup / done) on every step.
+        FlowDock(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            back =
+                when (step) {
+                    0 -> Pair("Skip tour and accept defaults", onFinished)
+                    4 -> null
+                    else -> Pair("Back", { step-- })
+                },
+            primary =
+                when (step) {
+                    0 -> Pair("First setup", { step = 1 })
+                    4 -> Pair("Done", onFinished)
+                    else ->
+                        Pair("Next", {
                             scope.launch {
                                 if (step == 1) {
                                     StatePlatform.instance.selectClients(*(checkedSources.toTypedArray()))
                                 }
                                 step++
                             }
-                        },
-                    ) {
-                        Text("Next")
-                    }
-                }
-        }
+                        })
+                },
+        )
 
         // Progress dots (steps 1..4)
         if (step in 1..4) {
@@ -271,23 +278,64 @@ fun GettingStartedFlow(
     }
 }
 
+/** Bottom action dock: a surface bar with the secondary action left, primary right. */
+@Composable
+private fun FlowDock(
+    back: Pair<String, () -> Unit>?,
+    primary: Pair<String, () -> Unit>,
+    modifier: Modifier = Modifier,
+) {
+    val radius = BluejayTokens().radius.lg
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surfaceContainer,
+                    RoundedCornerShape(topStart = radius, topEnd = radius),
+                ),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Tokens.SpaceXl, vertical = Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (back != null) {
+                TextButton(onClick = back.second) { Text(back.first) }
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+            Button(onClick = primary.second, modifier = Modifier.weight(2f)) {
+                Text(primary.first)
+            }
+        }
+    }
+}
+
 @Composable
 private fun Dot(active: Boolean, modifier: Modifier = Modifier) {
     Box(
         modifier =
             modifier
                 .size(Tokens.SpaceSm)
-                .clip(RoundedCornerShape(50))
                 .background(
-                    if (active) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(50),
+                    color =
+                        if (active) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant,
                 ),
     )
 }
 
 @Composable
-private fun WelcomeStep(onStart: () -> Unit, onSkip: () -> Unit, modifier: Modifier = Modifier) {
-    StepLayout(modifier) {
+private fun WelcomeStep(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Icon(
             Icons.Outlined.RocketLaunch,
             contentDescription = null,
@@ -301,22 +349,10 @@ private fun WelcomeStep(onStart: () -> Unit, onSkip: () -> Unit, modifier: Modif
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(Tokens.SpaceMd))
-        Text(
-            "Do you want to get a tour and personalize some stuff here?",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(Tokens.SpaceXl))
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("Let's go!") }
-        Spacer(Modifier.height(Tokens.SpaceSm))
-        TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
-            Text("Skip tour and accept defaults")
-        }
     }
 }
 
+/** Same cards as the settings plugins page: icon, name, switch. */
 @Composable
 private fun SourcesStep(
     sources: List<IPlatformClient>,
@@ -324,9 +360,9 @@ private fun SourcesStep(
     onToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    StepLayout(modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Icon(
-            Icons.Outlined.VideoLibrary,
+            Icons.Default.Extension,
             contentDescription = null,
             modifier = Modifier.size(Tokens.IconMd),
             tint = MaterialTheme.colorScheme.primary,
@@ -347,18 +383,17 @@ private fun SourcesStep(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            sources.forEach { source ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Checkbox(
-                        checked = source.id in checked,
-                        onCheckedChange = { onToggle(source.id) },
-                    )
-                    Spacer(Modifier.width(Tokens.SpaceXs))
-                    Text(source.name, style = MaterialTheme.typography.bodyLarge)
-                }
+            sources.forEachIndexed { index, source ->
+                SettingsSwitchOptionCard(
+                    icon = Icons.Default.Extension,
+                    iconUrl = StatePlugins.instance.getPluginIconUriOrNull(source.id),
+                    title = source.name,
+                    subtitle = "",
+                    checked = source.id in checked,
+                    onCheckedChange = { onToggle(source.id) },
+                    onClick = { onToggle(source.id) },
+                    groupPosition = GroupPosition.fromIndex(index, sources.size),
+                )
             }
         }
     }
@@ -372,7 +407,7 @@ private fun DualScreenStep(
     onPagesChange: (Set<String>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    StepLayout(modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Icon(
             Icons.Outlined.StayCurrentPortrait,
             contentDescription = null,
@@ -432,7 +467,7 @@ private fun ControllerStep(
     onRemap: (PlayerControllerActions.Action) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    StepLayout(modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Icon(
             Icons.Outlined.SportsEsports,
             contentDescription = null,
@@ -494,7 +529,10 @@ private fun ControllerStep(
 
 @Composable
 private fun DoneStep(modifier: Modifier = Modifier) {
-    StepLayout(modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Icon(
             Icons.Outlined.CheckCircle,
             contentDescription = null,
@@ -515,26 +553,6 @@ private fun DoneStep(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-    }
-}
-
-/** Shared step scaffolding: centered content with a comfortable max width. */
-@Composable
-private fun StepLayout(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 560.dp)
-                    .verticalScroll(rememberScrollState()),
-        ) {
-            content()
-        }
     }
 }
 
