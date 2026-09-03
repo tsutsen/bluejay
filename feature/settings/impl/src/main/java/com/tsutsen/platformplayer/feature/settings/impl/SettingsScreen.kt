@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Games
+import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Hd
 import androidx.compose.material.icons.filled.Info
@@ -56,7 +57,6 @@ import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -97,6 +97,7 @@ import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.ReorderableList
+import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSliderCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
@@ -184,7 +185,7 @@ fun SettingsScreen(
                     }
                     item {
                         SettingsOptionCard(
-                            icon = Icons.Filled.TouchApp,
+                            icon = Icons.Filled.Gesture,
                             title = "Gestures",
                             subtitle = "Speed, per-slot gesture actions",
                             onClick = { navigator.navigateToSettingsFragment("gestures") },
@@ -1087,6 +1088,7 @@ private fun SectionItems(
             }
 
             "gestures" -> {
+                var gestureSheetMode by remember { mutableStateOf<String?>(null) }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsOptionCard(
                         icon = Icons.Filled.Speed,
@@ -1111,50 +1113,76 @@ private fun SectionItems(
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
-                    SettingsHeader(
-                        title = "Fullscreen gestures",
-                        reset =
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Gesture,
+                        title = "Fullscreen player gestures",
+                        subtitle =
                             if (state.playerGestures.fullscreen.isCustomized) {
-                                { viewModel.resetPlayerGestures("fullscreen") }
+                                "Customized"
                             } else {
-                                null
+                                "Defaults"
                             },
+                        onClick = { gestureSheetMode = PlayerGestures.MODE_FULLSCREEN },
+                        groupPosition = GroupPosition.First,
                     )
-                    PlayerGesturesEditor(
-                        mode = PlayerGestures.MODE_FULLSCREEN,
-                        slotSet = state.playerGestures.fullscreen,
-                        onCellChange = { slot, type, action ->
-                            viewModel.setPlayerGesturesCell(
-                                PlayerGestures.MODE_FULLSCREEN,
-                                slot,
-                                type,
-                                action,
-                            )
-                        },
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Gesture,
+                        title = "Normal player gestures",
+                        subtitle =
+                            if (state.playerGestures.normal.isCustomized) {
+                                "Customized"
+                            } else {
+                                "Defaults"
+                            },
+                        onClick = { gestureSheetMode = PlayerGestures.MODE_NORMAL },
+                        groupPosition = GroupPosition.Last,
                     )
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
-                    SettingsHeader(
-                        title = "Normal gestures",
-                        reset =
-                            if (state.playerGestures.normal.isCustomized) {
-                                { viewModel.resetPlayerGestures("normal") }
+
+                gestureSheetMode?.let { mode ->
+                    BluejayModalBottomSheet(
+                        onDismiss = { gestureSheetMode = null },
+                        title =
+                            if (mode == PlayerGestures.MODE_FULLSCREEN) {
+                                "Fullscreen player gestures"
                             } else {
-                                null
+                                "Normal player gestures"
                             },
-                    )
-                    PlayerGesturesEditor(
-                        mode = PlayerGestures.MODE_NORMAL,
-                        slotSet = state.playerGestures.normal,
-                        onCellChange = { slot, type, action ->
-                            viewModel.setPlayerGesturesCell(
-                                PlayerGestures.MODE_NORMAL,
-                                slot,
-                                type,
-                                action,
-                            )
-                        },
-                    )
+                    ) {
+                        Text(
+                            text = "Each zone in a player can have its unique gestures.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = Tokens.SpaceSm),
+                        )
+                        PlayerGesturesEditor(
+                            mode = mode,
+                            slotSet =
+                                if (mode == PlayerGestures.MODE_FULLSCREEN) {
+                                    state.playerGestures.fullscreen
+                                } else {
+                                    state.playerGestures.normal
+                                },
+                            onCellChange = { slot, type, action ->
+                                viewModel.setPlayerGesturesCell(
+                                    mode,
+                                    slot,
+                                    type,
+                                    action,
+                                )
+                            },
+                        )
+                        if (
+                            (mode == PlayerGestures.MODE_FULLSCREEN &&
+                                state.playerGestures.fullscreen.isCustomized) ||
+                            (mode == PlayerGestures.MODE_NORMAL &&
+                                state.playerGestures.normal.isCustomized)
+                        ) {
+                            TextButton(onClick = { viewModel.resetPlayerGestures(mode) }) {
+                                Text("Reset to defaults")
+                            }
+                        }
+                    }
                 }
             }
 
