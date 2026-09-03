@@ -48,6 +48,7 @@ class SettingsRepositoryImpl
                         font = s.playback.subtitleFont,
                         size = s.playback.subtitleFontSize,
                         bottomPadding = s.playback.subtitleBottomPadding,
+                        outline = s.playback.subtitleOutline,
                     ),
                 defaultPlaybackSpeed = s.playback.defaultPlaybackSpeed,
                 defaultSpeedup = s.playback.defaultSpeedup,
@@ -137,6 +138,7 @@ class SettingsRepositoryImpl
                 "subtitleFont" -> s.playback.subtitleFont = value as String
                 "subtitleFontSize" -> s.playback.subtitleFontSize = (value as Number).toInt()
                 "subtitleBottomPadding" -> s.playback.subtitleBottomPadding = (value as Number).toInt()
+                "subtitleOutline" -> s.playback.subtitleOutline = (value as Number).toInt()
                 "defaultPlaybackSpeed" -> s.playback.defaultPlaybackSpeed = value as Float
                 "defaultSpeedup" -> s.playback.defaultSpeedup = value as Float
                 "speedupSensitivity" -> s.playback.speedupSensitivity = value as Float
@@ -294,6 +296,7 @@ class SettingsRepositoryImpl
             s.playback.subtitleFont = "default"
             s.playback.subtitleFontSize = 16
             s.playback.subtitleBottomPadding = 20
+            s.playback.subtitleOutline = 3
             s.save()
             emit()
         }

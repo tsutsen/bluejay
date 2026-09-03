@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BorderStyle
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
@@ -379,6 +380,24 @@ fun SettingsSectionScreen(
                     suffix = " dp",
                     onSelected = { value ->
                         viewModel.updateGeneral("subtitleBottomPadding", value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.SUBTITLE_OUTLINE -> {
+            loaded?.let {
+                StepperDialog(
+                    title = "Subtitle outline",
+                    value = it.subtitle.outline,
+                    step = 1,
+                    min = 0,
+                    max = 6,
+                    suffix = " px",
+                    onSelected = { value ->
+                        viewModel.updateGeneral("subtitleOutline", value)
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -990,6 +1009,10 @@ private fun SectionItems(
                                         "subtitleBottomPadding",
                                         subtitlesDefault.bottomPadding,
                                     )
+                                    viewModel.updateGeneral(
+                                        "subtitleOutline",
+                                        subtitlesDefault.outline,
+                                    )
                                 }
                             } else {
                                 null
@@ -1014,6 +1037,13 @@ private fun SectionItems(
                         title = "Subtitle bottom padding",
                         subtitle = "${state.subtitle.bottomPadding} dp",
                         onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.BorderStyle,
+                        title = "Subtitle outline",
+                        subtitle = "${state.subtitle.outline} px",
+                        onClick = { onChoiceSelected(Choice.SUBTITLE_OUTLINE) },
                         groupPosition = GroupPosition.Last,
                     )
                 }
@@ -1444,6 +1474,7 @@ private enum class Choice {
     SUBTITLE_FONT,
     SUBTITLE_SIZE,
     SUBTITLE_PADDING,
+    SUBTITLE_OUTLINE,
     DUAL_PAGES,
     DUAL_TAB_ORDER,
     DUAL_PAGE_ORDER,

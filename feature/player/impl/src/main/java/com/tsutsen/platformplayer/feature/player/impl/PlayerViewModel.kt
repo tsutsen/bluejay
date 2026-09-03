@@ -176,6 +176,7 @@ class PlayerViewModel
                         font = prefs.subtitle.font,
                         size = prefs.subtitle.size,
                         padding = prefs.subtitle.bottomPadding,
+                        outline = prefs.subtitle.outline,
                     )
                 }
             }

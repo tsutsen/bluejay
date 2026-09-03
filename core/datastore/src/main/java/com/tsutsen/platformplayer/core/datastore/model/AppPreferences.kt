@@ -48,4 +48,5 @@ data class SubtitlePreferences(
     val font: String = "default",
     val size: Int = 16,
     val bottomPadding: Int = 20,
+    val outline: Int = 3,
 )

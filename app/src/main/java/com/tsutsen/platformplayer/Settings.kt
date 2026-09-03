@@ -206,6 +206,9 @@ class Settings {
         var subtitleFont: String = "default"
         var subtitleFontSize: Int = 16
         var subtitleBottomPadding: Int = 20
+
+        // Subtitle glyph outline thickness in px (0 = no outline).
+        var subtitleOutline: Int = 3
     }
 
     @Serializable
