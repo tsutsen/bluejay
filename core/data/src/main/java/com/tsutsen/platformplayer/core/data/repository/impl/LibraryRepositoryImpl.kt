@@ -19,11 +19,13 @@ import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.PlaylistStats
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
+import com.tsutsen.platformplayer.core.model.WatchState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -186,6 +188,25 @@ class LibraryRepositoryImpl
             savedVideoDao.backfillDuration(contentUrl, durationMs)
             playlistDao.backfillDuration(contentUrl, durationMs)
         }
+
+        override suspend fun removeWatched(
+            type: SavedVideoType,
+        ): Int =
+            withContext(Dispatchers.IO) {
+                val saved = savedVideoDao.observeByType(type).first()
+                val historyByContentUrl = historyDao.observeAll().first().associateBy { it.contentUrl }
+                saved
+                    .filter { s ->
+                        historyByContentUrl[s.contentUrl]
+                            ?.let { h ->
+                                h.totalDurationMs > 0 &&
+                                    h.lastPositionMs >= h.totalDurationMs * WatchState.WATCHED_FRACTION
+                            }
+                            ?: false
+                    }
+                    .onEach { savedVideoDao.deleteByType(it.contentUrl, type) }
+                    .size
+            }
 
         override suspend fun removeSavedVideo(
             type: SavedVideoType,

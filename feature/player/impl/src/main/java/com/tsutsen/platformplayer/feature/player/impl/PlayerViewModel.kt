@@ -239,7 +239,7 @@ class PlayerViewModel
                                             .coerceIn(0f, 1f),
                                     isWatched =
                                         it.lastPositionMs >=
-                                            it.totalDurationMs * WATCHED_FRACTION,
+                                            it.totalDurationMs * WatchState.WATCHED_FRACTION,
                                 )
                         }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())

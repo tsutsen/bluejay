@@ -12,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
@@ -79,6 +81,16 @@ fun LibrarySectionDetailScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                         )
+                    }
+                },
+                actions = {
+                    if (sectionId == LibraryRepositoryImpl.WATCH_LATER_ID) {
+                        TextButton(onClick = { viewModel.removeWatched() }) {
+                            Text(
+                                text = "Remove watched",
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
                     }
                 },
             )
