@@ -820,7 +820,9 @@ private fun FilterDropdown(
             onClick = { onExpandedChange(true) },
             shapes =
                 ButtonShapes(RoundedCornerShape(radius.md), RoundedCornerShape(radius.sm)),
-            modifier = Modifier.height(Tokens.ButtonSm),
+            // 40dp: the native type-switcher group's floor (its items bake
+            // in M3's 40dp minimum), so both rows match.
+            modifier = Modifier.height(Tokens.ButtonMd),
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor = scheme.surfaceContainer,

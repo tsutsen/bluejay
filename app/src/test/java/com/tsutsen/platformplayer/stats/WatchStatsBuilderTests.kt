@@ -40,7 +40,7 @@ class WatchStatsBuilderTests {
         assertTrue(stats.isEmpty)
         assertEquals(0L, stats.allTimeMs)
         assertEquals(7, stats.lastWeekDaily.size)
-        assertEquals(12, stats.monthlyTrend.size)
+        assertEquals(30, stats.last30Days.size)
         assertEquals(0, stats.topCreators.size)
     }
 

@@ -2,7 +2,6 @@ package com.tsutsen.platformplayer.stats
 
 import com.tsutsen.platformplayer.models.HistoryVideo
 import java.time.LocalDate
-import java.time.YearMonth
 
 /**
  * Aggregated watch behaviour for the Dash stats card / detail screen,
@@ -26,7 +25,7 @@ data class WatchStats(
     val topCreatorsLastWeek: List<CreatorWatch> = emptyList(), // top 3
     val allTimeMs: Long = 0,
     val topCreators: List<CreatorWatch> = emptyList(), // top 10
-    val monthlyTrend: List<MonthlyWatch> = emptyList(), // last 12 months, oldest first
+    val last30Days: List<DailyWatch> = emptyList(), // 30-day sliding window, oldest first
     val videoCount: Int = 0,
 ) {
     val isEmpty: Boolean get() = videoCount == 0
@@ -37,8 +36,13 @@ data class WatchStats(
 }
 
 data class DailyWatch(val day: LocalDate, val ms: Long)
-data class CreatorWatch(val author: String, val ms: Long, val videoCount: Int)
-data class MonthlyWatch(val month: YearMonth, val ms: Long)
+
+data class CreatorWatch(
+    val author: String,
+    val ms: Long,
+    val videoCount: Int,
+    val avatarUrl: String? = null,
+)
 
 object WatchStatsBuilder {
     fun build(
@@ -46,10 +50,11 @@ object WatchStatsBuilder {
         now: LocalDate = LocalDate.now(),
     ): WatchStats {
         val weekStart = now.minusDays(6)
-        val daySums = HashMap<LocalDate, Long>()
+        val windowStart = now.minusDays(29)
+        val daySums = HashMap<LocalDate, Long>() // last 30 days
         val weekCreators = HashMap<String, LongArray>() // [ms, count]
         val allCreators = HashMap<String, LongArray>()
-        val monthSums = HashMap<YearMonth, Long>()
+        val creatorAvatars = HashMap<String, String?>()
         var todayMs = 0L
         var weekMs = 0L
         var allTimeMs = 0L
@@ -59,18 +64,23 @@ object WatchStatsBuilder {
             if (ms <= 0L) continue
             val day = h.date.toLocalDate()
             val creator = h.video.author?.name?.takeIf { it.isNotBlank() } ?: "Unknown"
+            val avatar = h.video.author?.thumbnail?.takeIf { it.isNotBlank() }
+            if (avatar != null && !creatorAvatars.containsKey(creator)) {
+                creatorAvatars[creator] = avatar
+            }
 
             allTimeMs += ms
-            monthSums[YearMonth.from(day)] = (monthSums[YearMonth.from(day)] ?: 0L) + ms
             if (day == now) todayMs += ms
 
             val all = allCreators.getOrPut(creator) { LongArray(2) }
             all[0] += ms
             all[1] += 1
 
+            if (day in windowStart..now) {
+                daySums[day] = (daySums[day] ?: 0L) + ms
+            }
             if (day in weekStart..now) {
                 weekMs += ms
-                daySums[day] = (daySums[day] ?: 0L) + ms
                 val w = weekCreators.getOrPut(creator) { LongArray(2) }
                 w[0] += ms
                 w[1] += 1
@@ -81,30 +91,33 @@ object WatchStatsBuilder {
             val day = weekStart.plusDays(offset)
             DailyWatch(day, daySums[day] ?: 0L)
         }
-        val currentMonth = YearMonth.from(now)
-        val monthlyTrend = (11 downTo 0).map { back ->
-            val month = currentMonth.minusMonths(back.toLong())
-            MonthlyWatch(month, monthSums[month] ?: 0L)
+        val last30Days = (0L until 30L).map { offset ->
+            val day = windowStart.plusDays(offset)
+            DailyWatch(day, daySums[day] ?: 0L)
         }
 
         return WatchStats(
             todayMs = todayMs,
             weekAverageMs = weekMs / 7L,
             lastWeekDaily = lastWeekDaily,
-            topCreatorsLastWeek = topCreators(weekCreators, 3),
+            topCreatorsLastWeek = topCreators(weekCreators, creatorAvatars, 3),
             allTimeMs = allTimeMs,
-            topCreators = topCreators(allCreators, 10),
-            monthlyTrend = monthlyTrend,
+            topCreators = topCreators(allCreators, creatorAvatars, 10),
+            last30Days = last30Days,
             videoCount = history.size,
         )
     }
 
-    private fun topCreators(sums: Map<String, LongArray>, limit: Int): List<CreatorWatch> =
+    private fun topCreators(
+        sums: Map<String, LongArray>,
+        avatars: Map<String, String?>,
+        limit: Int,
+    ): List<CreatorWatch> =
         sums.entries
             .filter { it.value[0] > 0L }
             .sortedByDescending { it.value[0] }
             .take(limit)
-            .map { CreatorWatch(it.key, it.value[0], it.value[1].toInt()) }
+            .map { CreatorWatch(it.key, it.value[0], it.value[1].toInt(), avatars[it.key]) }
 }
 
 /** "1h 20m" / "43m" — the human duration labels for the stats screens. */

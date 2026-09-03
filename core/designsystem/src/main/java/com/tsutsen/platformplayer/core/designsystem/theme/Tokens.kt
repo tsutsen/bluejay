@@ -41,6 +41,7 @@ object Tokens {
     // Buttons & touch
     val TouchTarget: Dp = 48.dp // minimum touchable area (icon buttons, chips)
     val ButtonSm: Dp = 36.dp // compact action buttons (Subscribe, like/dislike)
+    val ButtonMd: Dp = 40.dp // M3's minimum button height (native group items, dropdown triggers)
     val ControlSm: Dp = 34.dp // small queue move buttons
     val ControlLg: Dp = 80.dp // companion (second screen) playback control row
 
@@ -76,15 +77,17 @@ data class RadiusScale(
     val xs: Dp, // badges, small chips
     val sm: Dp, // cards, thumbnails
     val md: Dp, // sheet tiles, search field
+    val card: Dp, // dash cards (queue, stats)
     val lg: Dp, // large cards, player panels
 ) {
     companion object {
         private const val XS = 4f
         private const val SM = 8f
         private const val MD = 12f
+        private const val CARD = 16f
         private const val LG = 24f
 
-        val Default = RadiusScale(XS.dp, SM.dp, MD.dp, LG.dp)
+        val Default = RadiusScale(XS.dp, SM.dp, MD.dp, CARD.dp, LG.dp)
 
         /**
          * @param rounding 0..200 — 100 is the shipped look, 0 is sharp,
@@ -96,6 +99,7 @@ data class RadiusScale(
                 xs = (XS * f).roundToInt().dp,
                 sm = (SM * f).roundToInt().dp,
                 md = (MD * f).roundToInt().dp,
+                card = (CARD * f).roundToInt().dp,
                 lg = (LG * f).roundToInt().dp,
             )
         }

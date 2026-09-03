@@ -1,7 +1,13 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -11,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
@@ -53,5 +60,41 @@ fun CreatorAvatar(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = Tokens.SpaceXs)
         )
+    }
+}
+
+/**
+ * Compact circular avatar for list rows (e.g. the stats toplist): the
+ * creator's thumbnail, or a tonal circle with the name initial when
+ * there is none.
+ */
+@Composable
+fun AvatarCircle(
+    thumbnailUrl: String?,
+    name: String,
+    modifier: Modifier = Modifier,
+    size: Dp = Tokens.AvatarMd,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (thumbnailUrl != null) {
+            AsyncImage(
+                model = thumbnailUrl,
+                contentDescription = name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Text(
+                text = name.take(1).uppercase(),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
