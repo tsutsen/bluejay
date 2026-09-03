@@ -477,97 +477,102 @@ private fun TippedBars(
         days.forEachIndexed { index, day ->
             val tooltipState = rememberTooltipState(isPersistent = true)
             val scope = rememberCoroutineScope()
-            TooltipBox(
-                positionProvider =
-                    TooltipDefaults.rememberTooltipPositionProvider(
-                        TooltipAnchorPosition.Above
-                    ),
-                tooltip = {
-                    PlainTooltip(caretShape = TooltipDefaults.caretShape()) {
-                        Column {
-                            Text(
-                                text = day.day.labelFull,
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                            Text(
-                                text = humanDuration(day.ms),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = scheme.primary,
-                            )
-                            day.topCreator?.let { creator ->
+            // The wrapper owns the row's equal share: TooltipBox's outer layout
+            // is an unconstrained Box (its modifier hits the inner anchor), so
+            // a weight passed to it would be ignored by this Row.
+            Column(modifier = Modifier.weight(1f)) {
+                TooltipBox(
+                    positionProvider =
+                        TooltipDefaults.rememberTooltipPositionProvider(
+                            TooltipAnchorPosition.Above
+                        ),
+                    tooltip = {
+                        PlainTooltip(caretShape = TooltipDefaults.caretShape()) {
+                            Column {
                                 Text(
-                                    text = "Top: $creator",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = day.day.labelFull,
+                                    style = MaterialTheme.typography.labelLarge,
                                 )
-                            }
-                        }
-                    }
-                },
-                state = tooltipState,
-                // Gestures are handled per bar below, not by the framework.
-                enableUserInput = false,
-            ) {
-                Column(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) {
-                                if (tooltipState.isVisible) {
-                                    tooltipState.dismiss()
-                                } else {
-                                    scope.launch { tooltipState.show() }
+                                Text(
+                                    text = humanDuration(day.ms),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = scheme.primary,
+                                )
+                                day.topCreator?.let { creator ->
+                                    Text(
+                                        text = "Top: $creator",
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
                                 }
                             }
-                            // Visual gap between bars; the full slot is the hit target.
-                            .padding(horizontal = Tokens.SpaceXxs / 2),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        }
+                    },
+                    state = tooltipState,
+                    // Gestures are handled per bar below, not by the framework.
+                    enableUserInput = false,
                 ) {
-                    Box(
+                    Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(chartHeight),
-                        contentAlignment = Alignment.BottomCenter,
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) {
+                                    if (tooltipState.isVisible) {
+                                        tooltipState.dismiss()
+                                    } else {
+                                        scope.launch { tooltipState.show() }
+                                    }
+                                }
+                                // Visual gap between bars; the full slot is the hit target.
+                                .padding(horizontal = Tokens.SpaceXxs / 2),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        val fraction = (day.ms.toFloat() / maxValue).coerceIn(0f, 1f)
                         Box(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(
-                                        if (day.ms > 0)
-                                            chartHeight * fraction.coerceAtLeast(0.15f)
-                                        // Visible stub so the whole window stays shown
-                                        else Tokens.SpaceXs
-                                    )
-                                    .clip(
-                                        RoundedCornerShape(
-                                            topStart = BluejayTokens().radius.xs,
-                                            topEnd = BluejayTokens().radius.xs,
+                                    .height(chartHeight),
+                            contentAlignment = Alignment.BottomCenter,
+                        ) {
+                            val fraction = (day.ms.toFloat() / maxValue).coerceIn(0f, 1f)
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(
+                                            if (day.ms > 0)
+                                                chartHeight * fraction.coerceAtLeast(0.15f)
+                                            // Visible stub so the whole window stays shown
+                                            else Tokens.SpaceXs
                                         )
-                                    )
-                                    .background(
-                                        when {
-                                            day.ms == 0L -> scheme.surfaceVariant
-                                            tooltipState.isVisible || index == highlightIndex ->
-                                                scheme.primary
-                                            else -> scheme.primary.copy(alpha = 0.5f)
-                                        }
-                                    ),
-                        )
-                    }
-                    labeler?.invoke(day.day)?.let { label ->
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = scheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = Tokens.SpaceXs),
-                        )
+                                        .clip(
+                                            RoundedCornerShape(
+                                                topStart = BluejayTokens().radius.xs,
+                                                topEnd = BluejayTokens().radius.xs,
+                                            )
+                                        )
+                                        .background(
+                                            when {
+                                                day.ms == 0L -> scheme.surfaceVariant
+                                                tooltipState.isVisible || index == highlightIndex ->
+                                                    scheme.primary
+                                                else -> scheme.primary.copy(alpha = 0.5f)
+                                            }
+                                        ),
+                            )
+                        }
+                        labeler?.invoke(day.day)?.let { label ->
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = scheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = Tokens.SpaceXs),
+                            )
+                        }
                     }
                 }
             }
