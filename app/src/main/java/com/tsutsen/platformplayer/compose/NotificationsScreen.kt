@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.DoneAll
@@ -178,10 +179,20 @@ fun NotificationsScreen(
             },
             onLongClick = { video -> sheetVideo = video },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            footer = {
-                WatchStatsSummary(stats = watchStats, onClick = { showStatsDetail = true })
-            },
         )
+
+        // Stats card (health-app style): tapping it opens the detail screen.
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(Tokens.SpaceLg),
+        ) {
+            WatchStatsSummary(stats = watchStats, onClick = { showStatsDetail = true })
+        }
 
         // Persistent download-progress card (active downloads only).
         DownloadStripCard(
