@@ -487,7 +487,7 @@ private fun TippedBars(
                             TooltipAnchorPosition.Above
                         ),
                     tooltip = {
-                        PlainTooltip(caretShape = TooltipDefaults.caretShape()) {
+                        PlainTooltip {
                             Column {
                                 Text(
                                     text = day.day.labelFull,
