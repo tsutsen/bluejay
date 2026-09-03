@@ -1556,7 +1556,17 @@ private fun CompanionVideoOptionsSheet(
     val containedPlaylists by libraryRepository
         .observePlaylistsContaining(card.url)
         .collectAsState(initial = emptySet())
-    var downloading by remember { mutableStateOf(false) }
+    // Live download state straight from the shared repository (the same
+    // derivation as the main screen's VideoOptionsViewModel), so the
+    // second screen knows about downloads started anywhere.
+    val downloads by downloadsRepository.downloads.collectAsState(initial = emptyList())
+    val downloadEntry = downloads.firstOrNull { it.url == card.url }
+    val downloadState =
+        when {
+            downloadEntry == null -> DownloadButtonState.Idle
+            downloadEntry.done -> DownloadButtonState.Downloaded
+            else -> DownloadButtonState.Downloading(downloadEntry.progress)
+        }
 
     VideoOptionsSheet(
         url = card.url,
@@ -1578,20 +1588,21 @@ private fun CompanionVideoOptionsSheet(
         },
         onDownload = {
             scope.launch {
-                if (downloading) {
-                    downloading = false
-                    downloadsRepository.cancelDownload(card.url)
-                } else {
-                    downloading = true
-                    downloadsRepository.startDownload(card.url)
+                when (downloadState) {
+                    is DownloadButtonState.Downloaded ->
+                        downloadsRepository.deleteDownload(card.url)
+
+                    is DownloadButtonState.Downloading,
+                    is DownloadButtonState.Starting ->
+                        downloadsRepository.cancelDownload(card.url)
+
+                    is DownloadButtonState.Idle ->
+                        downloadsRepository.startDownload(card.url)
                 }
             }
         },
         onDownloadWithQuality = { quality ->
-            scope.launch {
-                downloading = true
-                downloadsRepository.startDownload(card.url, quality)
-            }
+            scope.launch { downloadsRepository.startDownload(card.url, quality) }
         },
         onAddToPlaylist = { playlistId ->
             // "New playlist" row only (checkboxes use onTogglePlaylist).
@@ -1622,7 +1633,7 @@ private fun CompanionVideoOptionsSheet(
             scope.launch { playbackQueueRepository.remove(card.url) }
         },
         containedPlaylistIds = containedPlaylists,
-        downloadState = if (downloading) DownloadButtonState.Downloading(0f) else DownloadButtonState.Idle,
+        downloadState = downloadState,
         isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),
         isFavouriteSaved = savedTypes.contains(SavedVideoType.FAVOURITE),

@@ -43,6 +43,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchOptionCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateApp
@@ -1092,27 +1093,39 @@ private fun PluginSettingsSection(
                             Spacer(Modifier.width(12.dp))
                             var menuExpanded by remember { mutableStateOf(false) }
                             Box {
-                                // Same trigger style as the search tab's sort pill.
-                                // maxLines=1 + ellipsis: a long selected option
-                                // must not wrap / overflow the chip in portrait.
-                                FilterChip(
-                                    selected = false,
+                                // Same trigger style as the search tab's
+                                // filter buttons: the app's compact
+                                // tile-language button. maxLines=1 +
+                                // ellipsis: a long selected option must
+                                // not wrap / overflow in portrait.
+                                Button(
                                     onClick = { menuExpanded = true },
-                                    label = {
-                                        Text(
-                                            current,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    },
-                                    trailingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Filled.ArrowDropDown,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(Tokens.IconSm),
-                                        )
-                                    },
-                                )
+                                    shapes =
+                                        ButtonShapes(
+                                            RoundedCornerShape(BluejayTokens().radius.md),
+                                            RoundedCornerShape(BluejayTokens().radius.sm),
+                                        ),
+                                    modifier = Modifier.height(Tokens.ButtonSm),
+                                    colors =
+                                        ButtonDefaults.buttonColors(
+                                            containerColor =
+                                                MaterialTheme.colorScheme.surfaceContainer,
+                                            contentColor =
+                                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                        ),
+                                ) {
+                                    Text(
+                                        current,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Spacer(Modifier.width(Tokens.SpaceXxs))
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(Tokens.IconSm),
+                                    )
+                                }
                                 DropdownMenuPopup(
                                     expanded = menuExpanded,
                                     onDismissRequest = { menuExpanded = false },

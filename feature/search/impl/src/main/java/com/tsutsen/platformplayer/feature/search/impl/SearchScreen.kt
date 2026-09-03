@@ -34,14 +34,16 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
@@ -367,7 +369,6 @@ fun SearchScreen(
                                 },
                             expanded = sourceMenuExpanded.value,
                             onExpandedChange = { sourceMenuExpanded.value = it },
-                            selected = selectedSources.isNotEmpty(),
                         ) {
                             // Checkbox variant: the menu stays open after a
                             // pick so several sources can be toggled.
@@ -409,7 +410,6 @@ fun SearchScreen(
                             label = sort.label,
                             expanded = sortMenuExpanded.value,
                             onExpandedChange = { sortMenuExpanded.value = it },
-                            selected = sort != SearchSort.RELEVANCE,
                         ) {
                             SelectionDropdownItems(
                                 items = SearchSort.entries,
@@ -799,10 +799,11 @@ private fun <T> SelectionDropdownItems(
 }
 
 /**
- * Filter trigger for the search results row: an M3 [FilterChip] that
- * opens an expressive [DropdownMenuPopup] anchored to itself (the menu
- * opens from the pill, not the top of the screen). [label] summarizes
- * the current selection; [menuContent] renders the menu items.
+ * Filter trigger for the search results row: a tile-language [Button]
+ * (the app's compact button color/size/rounding) that opens an
+ * expressive [DropdownMenuPopup] anchored to itself (the menu opens from
+ * the button, not the top of the screen). [label] summarizes the current
+ * selection; [menuContent] renders the menu items.
  */
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -810,22 +811,34 @@ private fun FilterDropdown(
     label: String,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    selected: Boolean,
     menuContent: @Composable ColumnScope.() -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val radius = BluejayTokens().radius
     Box {
-        FilterChip(
-            selected = selected,
+        Button(
             onClick = { onExpandedChange(true) },
-            label = { Text(label) },
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(Tokens.IconSm),
-                )
-            },
-        )
+            shapes =
+                ButtonShapes(RoundedCornerShape(radius.md), RoundedCornerShape(radius.sm)),
+            modifier = Modifier.height(Tokens.ButtonSm),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = scheme.surfaceContainer,
+                    contentColor = scheme.onSurfaceVariant,
+                ),
+        ) {
+            Text(
+                text = label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.width(Tokens.SpaceXxs))
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = null,
+                modifier = Modifier.size(Tokens.IconSm),
+            )
+        }
         DropdownMenuPopup(
             expanded = expanded,
             onDismissRequest = { onExpandedChange(false) },

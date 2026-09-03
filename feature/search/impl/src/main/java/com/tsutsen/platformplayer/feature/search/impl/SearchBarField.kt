@@ -25,7 +25,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 
 /**
  * Search field for [SearchScreen] — a verbatim port of PixelPlayer's
- * [DockedSearchBar] (M3 Expressive): translucent primary-tinted
+ * [DockedSearchBar] (M3 Expressive): rail-toned (surfaceContainer)
  * container, search icon, and a clear button that appears while the
  * query is non-blank.
  *
@@ -106,7 +106,9 @@ fun SearchBarField(
         modifier = modifier.clip(RoundedCornerShape(tokens.radius.lg)),
         colors =
             SearchBarDefaults.colors(
-                containerColor = scheme.primaryContainer.copy(alpha = 0.3f),
+                // Same tone as the navigation rail, so the field reads as
+                // part of the app chrome rather than a colored accent.
+                containerColor = scheme.surfaceContainer,
                 dividerColor = scheme.primary.copy(alpha = 0.2f),
                 inputFieldColors = inputFieldColors,
             ),

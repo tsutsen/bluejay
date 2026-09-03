@@ -112,7 +112,7 @@ fun NotificationsScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         AppHeader(
-            title = { Text("Feed", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("Dash", style = MaterialTheme.typography.titleLarge) },
             actions = {
                 TextButton(onClick = { viewModel.markAllRead() }) {
                     Icon(
