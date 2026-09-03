@@ -273,11 +273,15 @@ fun VideoCard(
                         .padding(Tokens.SpaceMd)
                         .fillMaxWidth(),
             ) {
-                // Title (2 lines max)
+                // Title: always reserves two lines, so every card in a
+                // grid row is the same height and the author line sits at
+                // the same spot (the bottom of the text block) regardless
+                // of title length.
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
+                    minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface,

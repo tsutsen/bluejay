@@ -425,7 +425,8 @@ private fun ChannelContent(
                     Box(modifier = Modifier.fillMaxSize())
                 }
             } else if (isWide) {
-                WideVideoGrid(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    WideVideoGrid(
                     items = state.shortsCards,
                     hasMore = state.shortsHasMore,
                     columns = gridColumns,
@@ -433,7 +434,8 @@ private fun ChannelContent(
                     onLoadMore = onShortsLoadMore,
                     onVideoLongClick = onVideoLongClick,
                     isShorts = true,
-                )
+                    )
+                }
             } else {
                 ContentCard(modifier = Modifier.fillMaxSize()) {
                     VideoContainer(
@@ -516,14 +518,16 @@ private fun ChannelContent(
                     Box(modifier = Modifier.fillMaxSize())
                 }
             } else if (isWide) {
-                WideVideoGrid(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    WideVideoGrid(
                     items = state.cards,
                     hasMore = state.hasMore,
                     columns = gridColumns,
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
                     onVideoLongClick = onVideoLongClick,
-                )
+                    )
+                }
             } else {
                 ContentCard(modifier = Modifier.fillMaxSize()) {
                     VideoContainer(

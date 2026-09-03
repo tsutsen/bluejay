@@ -773,13 +773,18 @@ private fun <T> SelectionDropdownItems(
             text = { Text(label(item)) },
             shapes = MenuDefaults.itemShape(index, count),
             modifier =
-                if (onLongPick != null) {
-                    Modifier.pointerInput(item) {
-                        detectTapGestures(onLongPress = { onLongPick(item) })
-                    }
-                } else {
-                    Modifier
-                },
+                // Checkbox rows: cap at the app's button height (M3's menu
+                // row floor is 48dp, which reads too tall for a filter list).
+                (if (multiSelect) Modifier.height(Tokens.ButtonMd) else Modifier)
+                    .let { m ->
+                        if (onLongPick != null) {
+                            m.pointerInput(item) {
+                                detectTapGestures(onLongPress = { onLongPick(item) })
+                            }
+                        } else {
+                            m
+                        }
+                    },
             leadingIcon =
                 if (multiSelect) {
                     {

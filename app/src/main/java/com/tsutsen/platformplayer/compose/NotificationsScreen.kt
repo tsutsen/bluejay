@@ -223,7 +223,23 @@ fun NotificationsScreen(
             )
         }
 
-        if (notifications.isEmpty()) {
+        // Notifications section: same card panel as the queue/stats cards
+        // above, with a full bottom gap for the last row.
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = Tokens.SpaceLg,
+                        top = Tokens.SpaceXs,
+                        end = Tokens.SpaceLg,
+                        bottom = Tokens.SpaceLg,
+                    )
+                    .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(Tokens.SpaceLg),
+        ) {
+            if (notifications.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -254,6 +270,7 @@ fun NotificationsScreen(
                 )
             }
         }
+            }
         }
     }
 }
@@ -280,7 +297,8 @@ private fun NotificationRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm)
+                // The section card owns the horizontal padding now.
+                .padding(vertical = Tokens.SpaceSm)
                 .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {

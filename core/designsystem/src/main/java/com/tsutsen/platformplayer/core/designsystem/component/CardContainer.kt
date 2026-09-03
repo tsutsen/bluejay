@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -40,6 +41,10 @@ import com.tsutsen.platformplayer.core.model.Card
  * so the panel's tone separates the card group from the screen background
  * (and makes an empty area read as a card, not as dead space).
  *
+ * The panel insets itself from the screen edges ([Tokens.SpaceLg] on the
+ * sides and bottom, like the library's section columns) — callers just
+ * pass [fillMaxSize].
+ *
  * The panel itself never scrolls — the lazy list scrolls inside it, so
  * wrap it around the lazy container, not the other way round.
  */
@@ -51,6 +56,12 @@ fun ContentCard(
     Box(
         modifier =
             modifier
+                .padding(
+                    start = Tokens.SpaceLg,
+                    top = Tokens.SpaceSm,
+                    end = Tokens.SpaceLg,
+                    bottom = Tokens.SpaceLg,
+                )
                 .clip(RoundedCornerShape(BluejayTokens().radius.card))
                 .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
