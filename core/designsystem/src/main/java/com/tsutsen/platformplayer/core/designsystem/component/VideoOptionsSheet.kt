@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -29,12 +30,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
@@ -48,21 +48,22 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupMenuState
 import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.ButtonShapes
+import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButtonShapes
@@ -711,28 +712,35 @@ enum class TileTone {
 private val tileColorSpec = tween<Color>(200, easing = FastOutSlowInEasing)
 
 /**
- * Registers the leading "Download" action in the download group. A plain
+ * Registers the leading download action in the download group. A plain
  * [Button] (it's an action, not a state) with [ButtonGroupScope.weight] 1f:
  * it takes all the horizontal space left after the unweighted chevron
  * toggle is measured, so the two segments are deliberately unequal while
- * the group still spans its slot. The content stacks icon over label with
- * the sheet's own tile spacing, so the segment reads as one of the grid.
+ * the group still spans its slot. The content stacks icon over a label —
+ * or a progress bar, they share one fixed-height slot — with the sheet's
+ * own tile spacing, so the segment reads as one of the grid and keeps its
+ * height across states.
  *
  * Non-composable on purpose: the ButtonGroup scope itself is not a
  * composable context, only the item's content lambda is.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ButtonGroupScope.downloadLeadingItem(
-    onDownload: () -> Unit,
-    position: GroupPosition,
+    icon: ImageVector,
+    label: String?,
+    progress: Float?,
+    indeterminate: Boolean,
+    containerColor: Color,
+    contentColor: Color,
     shapes: GroupCornerShapes,
     interactionSource: MutableInteractionSource,
+    onClick: () -> Unit,
 ) {
+    val showBar = progress != null || indeterminate
     customItem(
         buttonGroupContent = {
-            val scheme = MaterialTheme.colorScheme
             Button(
-                onClick = onDownload,
+                onClick = onClick,
                 shapes = ButtonShapes(shapes.shape, shapes.pressedShape),
                 modifier =
                     Modifier
@@ -744,25 +752,47 @@ private fun ButtonGroupScope.downloadLeadingItem(
                 contentPadding = PaddingValues(all = Tokens.SpaceMd),
                 colors =
                     ButtonDefaults.buttonColors(
-                        containerColor = scheme.surfaceContainerHigh,
-                        contentColor = scheme.onSurfaceVariant,
+                        containerColor = containerColor,
+                        contentColor = contentColor,
                     ),
                 interactionSource = interactionSource,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Filled.Download,
+                        imageVector = icon,
                         contentDescription = null,
                         modifier = Modifier.size(Tokens.IconMd),
                     )
                     Spacer(modifier = Modifier.height(Tokens.SpaceSm))
-                    Text(
-                        text = "Download",
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                    )
+                    // Label and progress bar cross-fade inside one slot the
+                    // height of a labelSmall line: swapping them changes
+                    // nothing about the segment's height.
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(Tokens.SpaceLg),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        // Fully qualified: inside the Column the scope-bound
+                        // AnimatedVisibility overloads would win resolution.
+                        androidx.compose.animation.AnimatedVisibility(visible = showBar) {
+                            if (progress != null) {
+                                LinearProgressIndicator(
+                                    progress = { progress.coerceIn(0f, 1f) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            } else {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                        androidx.compose.animation.AnimatedVisibility(visible = !showBar) {
+                            Text(
+                                text = label.orEmpty(),
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -772,14 +802,23 @@ private fun ButtonGroupScope.downloadLeadingItem(
 
 /**
  * Registers the trailing icon-only quality toggle in the download group.
- * Unweighted: it shrinks to its content, so the group stays unequal.
+ * Unweighted: it shrinks to its content, so the group stays unequal. Its
+ * [width] is animated by the caller (to 0 while a download is active, so
+ * the progress bar owns the whole segment); [clip]ping to the largest
+ * (checked) shape keeps the icon inside while the segment collapses. The
+ * toggle anchors an expressive [DropdownMenuPopup] (a sub-window, so it is
+ * allowed even from the companion's [android.app.Presentation] context, where
+ * a [Dialog] would crash with a window-type mismatch).
  * Non-composable on purpose, see [downloadLeadingItem].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ButtonGroupScope.downloadQualityItem(
-    checked: Boolean,
-    onCheck: () -> Unit,
-    position: GroupPosition,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    enabled: Boolean,
+    width: Dp,
+    selectedQuality: DownloadQuality?,
+    onQualitySelected: (DownloadQuality) -> Unit,
     shapes: GroupCornerShapes,
     interactionSource: MutableInteractionSource,
 ) {
@@ -787,19 +826,22 @@ private fun ButtonGroupScope.downloadQualityItem(
         buttonGroupContent = {
             val scheme = MaterialTheme.colorScheme
             ToggleButton(
-                checked = checked,
-                onCheckedChange = { if (it) onCheck() },
+                checked = expanded,
+                enabled = enabled,
+                onCheckedChange = { if (it) onExpandedChange(true) },
                 shapes = ToggleButtonShapes(shapes.shape, shapes.pressedShape, shapes.checkedShape),
                 modifier =
                     Modifier
                         .fillMaxHeight()
+                        .width(width)
+                        .clip(shapes.checkedShape)
                         .animateWidth(interactionSource),
                 // Same vertical padding as the sheet's tiles, see the
                 // leading item.
                 contentPadding = PaddingValues(all = Tokens.SpaceMd),
                 colors =
                     ToggleButtonDefaults.colors(
-                        containerColor = scheme.surfaceContainerHigh,
+                        containerColor = scheme.surfaceContainer,
                         contentColor = scheme.onSurfaceVariant,
                         checkedContainerColor = scheme.primaryContainer,
                         checkedContentColor = scheme.onPrimaryContainer,
@@ -812,20 +854,44 @@ private fun ButtonGroupScope.downloadQualityItem(
                     modifier = Modifier.size(Tokens.IconMd),
                 )
             }
+            DropdownMenuPopup(
+                expanded = expanded,
+                onDismissRequest = { onExpandedChange(false) },
+            ) {
+                DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+                    MenuDefaults.DropdownMenuGroupLabel { Text("Download quality") }
+                    val count = DownloadQuality.Options.size
+                    DownloadQuality.Options.forEachIndexed { index, quality ->
+                        CheckableDropdownMenuItem(
+                            checked = quality == selectedQuality,
+                            onCheckedChange = {
+                                onQualitySelected(quality)
+                                onExpandedChange(false)
+                            },
+                            text = { Text(quality.label) },
+                            shapes = MenuDefaults.itemShape(index, count),
+                            checkedLeadingIcon = {
+                                Icon(Icons.Filled.Check, contentDescription = null)
+                            },
+                        )
+                    }
+                }
+            }
         },
         menuContent = {},
     )
 }
 
 /**
- * Download control for the options sheets. Idle = the native M3
- * [ButtonGroup] in the app's connected-group language (the same corner
- * recipe, colors, and expressive width animation as the like/dislike
- * pill), with deliberately unequal segments: the leading "Download" action
- * takes the remaining width, the trailing icon-only quality toggle shrinks
- * to its content. While downloading (or done) it collapses to a single
- * full-width [OptionTileView] carrying the status (the progress bar) or
- * the delete action.
+ * Download control for the options sheets. One native M3 [ButtonGroup] in
+ * every state — the grid-tile corner recipe, the tiles' colors, and the
+ * expressive width animation — with deliberately unequal segments: the
+ * leading action takes the remaining width, the trailing icon-only quality
+ * toggle shrinks to its content. While a download is active the chevron
+ * animates away (width → 0, faded) and the leading segment shows the
+ * progress bar in place of its label; when done it becomes the delete
+ * action. Because the segment keeps the tile's content stack (and thus
+ * height) in every state, switching states never jumps the layout.
  *
  * [onDownload] is state-aware (the host switches on the current state),
  * so it doubles as cancel (while downloading) and delete (when done).
@@ -838,139 +904,90 @@ fun DownloadSection(
     onDownloadWithQuality: ((DownloadQuality) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    var showQualityDialog by remember { mutableStateOf(false) }
+    var showQualityMenu by remember { mutableStateOf(false) }
+    var selectedQuality by remember { mutableStateOf<DownloadQuality?>(null) }
     val downloadSource = remember { MutableInteractionSource() }
     val qualitySource = remember { MutableInteractionSource() }
     val radius = BluejayTokens().radius
-    when (state) {
-        is DownloadButtonState.Idle -> {
-            if (onDownloadWithQuality != null) {
-                ButtonGroup(
-                    overflowIndicator = { _ -> },
-                    modifier = modifier,
-                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
-                ) {
-                    downloadLeadingItem(
-                        onDownload = onDownload,
-                        position = GroupPosition.First,
-                        shapes = connectedGroupShapes(GroupPosition.First, radius),
-                        interactionSource = downloadSource,
-                    )
-                    downloadQualityItem(
-                        checked = showQualityDialog,
-                        onCheck = { showQualityDialog = true },
-                        position = GroupPosition.Last,
-                        shapes = connectedGroupShapes(GroupPosition.Last, radius),
-                        interactionSource = qualitySource,
-                    )
-                }
-            } else {
-                OptionTileView(
-                    tile =
-                        OptionTile(
-                            label = "Download",
-                            icon = Icons.Filled.Download,
-                            onClick = onDownload,
-                        ),
-                    modifier = modifier.fillMaxWidth(),
-                )
-            }
-            if (showQualityDialog) {
-                DownloadQualityDialog(
-                    onDismiss = { showQualityDialog = false },
-                    onConfirm = { quality ->
-                        showQualityDialog = false
-                        onDownloadWithQuality?.invoke(quality)
-                    },
-                )
-            }
+    val scheme = MaterialTheme.colorScheme
+    val semantic = LocalSemanticColors.current
+    val showQuality = onDownloadWithQuality != null && state is DownloadButtonState.Idle
+    // The chevron's fixed width when visible: its icon plus the item's
+    // horizontal content padding, both tokens.
+    val chevronWidth by
+        animateDpAsState(
+            targetValue = if (showQuality) Tokens.IconMd + Tokens.SpaceMd * 2 else 0.dp,
+            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            label = "download-chevron-width",
+        )
+    // The tiles' default color at rest, the tiles' state tones otherwise.
+    val container by
+        animateColorAsState(
+            targetValue =
+                when (state) {
+                    is DownloadButtonState.Downloaded -> scheme.errorContainer
+                    is DownloadButtonState.Downloading -> semantic.warning
+                    is DownloadButtonState.Starting -> scheme.primaryContainer
+                    is DownloadButtonState.Idle -> scheme.surfaceContainer
+                },
+            animationSpec = tileColorSpec,
+            label = "download-container",
+        )
+    val content by
+        animateColorAsState(
+            targetValue =
+                when (state) {
+                    is DownloadButtonState.Downloaded -> scheme.onErrorContainer
+                    is DownloadButtonState.Downloading -> semantic.onWarning
+                    is DownloadButtonState.Starting -> scheme.onPrimaryContainer
+                    is DownloadButtonState.Idle -> scheme.onSurfaceVariant
+                },
+            animationSpec = tileColorSpec,
+            label = "download-content",
+        )
+    ButtonGroup(
+        overflowIndicator = { _ -> },
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
+    ) {
+        downloadLeadingItem(
+            icon =
+                when (state) {
+                    is DownloadButtonState.Downloaded -> Icons.Filled.Delete
+                    // A running download offers itself as the cancel action.
+                    is DownloadButtonState.Starting, is DownloadButtonState.Downloading ->
+                        Icons.Filled.Stop
+                    is DownloadButtonState.Idle -> Icons.Filled.Download
+                },
+            label =
+                when (state) {
+                    is DownloadButtonState.Idle -> "Download"
+                    is DownloadButtonState.Downloaded -> "Delete"
+                    else -> null
+                },
+            progress = (state as? DownloadButtonState.Downloading)?.progress,
+            indeterminate = state is DownloadButtonState.Starting,
+            containerColor = container,
+            contentColor = content,
+            shapes = tileFlowGroupShapes(GroupPosition.First, radius),
+            interactionSource = downloadSource,
+            onClick = onDownload,
+        )
+        if (onDownloadWithQuality != null) {
+            downloadQualityItem(
+                expanded = showQualityMenu,
+                onExpandedChange = { showQualityMenu = it },
+                enabled = showQuality,
+                width = chevronWidth,
+                selectedQuality = selectedQuality,
+                onQualitySelected = { quality ->
+                    selectedQuality = quality
+                    onDownloadWithQuality?.invoke(quality)
+                },
+                shapes = tileFlowGroupShapes(GroupPosition.Last, radius),
+                interactionSource = qualitySource,
+            )
         }
-
-        is DownloadButtonState.Downloading ->
-            OptionTileView(
-                tile =
-                    OptionTile(
-                        label = "Stop download",
-                        icon = Icons.Filled.Stop,
-                        tone = TileTone.Warning,
-                        progress = state.progress,
-                        onClick = onDownload,
-                    ),
-                modifier = modifier.fillMaxWidth(),
-            )
-
-        is DownloadButtonState.Starting ->
-            OptionTileView(
-                tile =
-                    OptionTile(
-                        label = "Starting...",
-                        icon = Icons.Filled.Download,
-                        tone = TileTone.Highlight,
-                        indeterminate = true,
-                        // no action while the engine connects
-                        onClick = {},
-                    ),
-                modifier = modifier.fillMaxWidth(),
-            )
-
-        is DownloadButtonState.Downloaded ->
-            OptionTileView(
-                tile =
-                    OptionTile(
-                        label = "Delete",
-                        icon = Icons.Filled.Delete,
-                        tone = TileTone.Danger,
-                        onClick = onDownload,
-                    ),
-                modifier = modifier.fillMaxWidth(),
-            )
     }
 }
 
-@Composable
-private fun DownloadQualityDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (DownloadQuality) -> Unit,
-) {
-    var selected by remember { mutableStateOf(DownloadQuality.Default) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Download quality") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                DownloadQuality.Options.forEach { q ->
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(BluejayTokens().radius.md))
-                                .clickable { selected = q }
-                                .padding(horizontal = Tokens.SpaceMd, vertical = Tokens.SpaceSm),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = selected == q,
-                            onClick = { selected = q },
-                        )
-                        Spacer(modifier = Modifier.width(Tokens.SpaceMd))
-                        Text(
-                            text = q.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selected) }) {
-                Text("Download")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
-}

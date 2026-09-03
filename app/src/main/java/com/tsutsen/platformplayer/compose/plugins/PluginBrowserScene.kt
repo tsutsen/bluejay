@@ -985,6 +985,7 @@ fun PluginDetailScene(
  * in the caller when the screen is disposed.
  */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun PluginSettingsSection(
     config: SourcePluginConfig,
     settings: MutableMap<String, String?>,
@@ -1112,23 +1113,26 @@ private fun PluginSettingsSection(
                                         )
                                     },
                                 )
-                                DropdownMenu(
+                                DropdownMenuPopup(
                                     expanded = menuExpanded,
                                     onDismissRequest = { menuExpanded = false },
                                 ) {
-                                    options.forEachIndexed { index, option ->
-                                        DropdownMenuItem(
-                                            leadingIcon = {
-                                                if (option == current) {
+                                    DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+                                        val count = options.size
+                                        options.forEachIndexed { index, option ->
+                                            CheckableDropdownMenuItem(
+                                                checked = option == current,
+                                                onCheckedChange = {
+                                                    menuExpanded = false
+                                                    onSettingChanged(variable, index.toString())
+                                                },
+                                                text = { Text(option) },
+                                                shapes = MenuDefaults.itemShape(index, count),
+                                                checkedLeadingIcon = {
                                                     Icon(Icons.Default.Check, contentDescription = null)
-                                                }
-                                            },
-                                            text = { Text(option) },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onSettingChanged(variable, index.toString())
-                                            },
-                                        )
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                             }

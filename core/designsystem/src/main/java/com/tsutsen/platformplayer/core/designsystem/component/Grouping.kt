@@ -94,3 +94,52 @@ fun connectedGroupShapes(
             )
     }
 }
+
+/**
+ * The corner recipe for groups that live in the sheet's tile grid (the
+ * download group): the OUTER corners follow the grid tiles' own states —
+ * medium radius at rest, small while pressed, large when active — so the
+ * group reads as a tile, not as a capsule. The inner (seam) corners stay
+ * small, as in [connectedGroupShapes]. The same zero-rounding guard
+ * applies: with Dp radii near 0 the spring-morphed corners overshoot into
+ * negative values, so every state takes a percent pill instead.
+ */
+fun tileFlowGroupShapes(
+    position: GroupPosition,
+    radius: RadiusScale,
+): GroupCornerShapes {
+    if (radius.lg.value < 1f) {
+        val flat = RoundedCornerShape(CornerSize(100))
+        return GroupCornerShapes(flat, flat, flat)
+    }
+    val rest = radius.md
+    val pressed = radius.sm
+    val active = radius.lg
+    val seamRest = radius.sm
+    val seamPressed = radius.xs
+    return when (position) {
+        // First (left side): left (outer) corners follow the tile states.
+        GroupPosition.First ->
+            GroupCornerShapes(
+                shape = RoundedCornerShape(rest, seamRest, seamRest, rest),
+                pressedShape = RoundedCornerShape(pressed, seamPressed, seamPressed, pressed),
+                checkedShape = RoundedCornerShape(active, seamRest, seamRest, active),
+            )
+
+        // Last (right side): right (outer) corners follow the tile states.
+        GroupPosition.Last ->
+            GroupCornerShapes(
+                shape = RoundedCornerShape(seamRest, rest, rest, seamRest),
+                pressedShape = RoundedCornerShape(seamPressed, pressed, pressed, seamPressed),
+                checkedShape = RoundedCornerShape(seamRest, active, active, seamRest),
+            )
+
+        // Single / Middle: no seam, uniform rounding like a tile.
+        else ->
+            GroupCornerShapes(
+                shape = RoundedCornerShape(rest),
+                pressedShape = RoundedCornerShape(pressed),
+                checkedShape = RoundedCornerShape(active),
+            )
+    }
+}

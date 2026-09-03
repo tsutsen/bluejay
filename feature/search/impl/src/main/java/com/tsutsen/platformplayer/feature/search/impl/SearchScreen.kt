@@ -29,18 +29,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -740,14 +744,16 @@ private fun SwipeToDeleteRow(
 }
 
 /**
- * Dropdown content with the selection element (radio / checkbox) to the
- * right of the label. Radio variant: the caller closes the menu on pick.
- * Checkbox variant ([multiSelect]): the menu stays open after a pick.
+ * Expressive dropdown content: M3 [CheckableDropdownMenuItem]s with the
+ * selection element as the leading icon. Single-select: the checked item
+ * gets the check icon (the caller closes the menu on pick). Multi-select:
+ * a checkbox leading icon, the menu stays open after a pick.
  *
  * [onLongPick] (optional): long-pressing an item calls this instead of
  * [onPick] — used for "select only this one" in multiselect menus.
  */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun <T> SelectionDropdownItems(
     items: List<T>,
     label: (T) -> String,
@@ -756,46 +762,50 @@ private fun <T> SelectionDropdownItems(
     onPick: (T) -> Unit,
     onLongPick: ((T) -> Unit)? = null,
 ) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        items.forEach { item ->
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .pointerInput(item) {
-                            detectTapGestures(
-                                onTap = { onPick(item) },
-                                onLongPress = { onLongPick?.invoke(item) },
-                            )
-                        }.padding(horizontal = Tokens.SpaceMd, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = label(item),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.width(Tokens.SpaceSm))
-                if (multiSelect) {
-                    Checkbox(checked = isSelected(item), onCheckedChange = { onPick(item) })
+    val count = items.size
+    items.forEachIndexed { index, item ->
+        CheckableDropdownMenuItem(
+            checked = isSelected(item),
+            onCheckedChange = { onPick(item) },
+            text = { Text(label(item)) },
+            shapes = MenuDefaults.itemShape(index, count),
+            modifier =
+                if (onLongPick != null) {
+                    Modifier.pointerInput(item) {
+                        detectTapGestures(onLongPress = { onLongPick(item) })
+                    }
                 } else {
-                    RadioButton(selected = isSelected(item), onClick = { onPick(item) })
-                }
-            }
-        }
+                    Modifier
+                },
+            leadingIcon =
+                if (multiSelect) {
+                    {
+                        Checkbox(
+                            checked = isSelected(item),
+                            onCheckedChange = { onPick(item) },
+                        )
+                    }
+                } else {
+                    null
+                },
+            checkedLeadingIcon =
+                if (multiSelect) {
+                    null
+                } else {
+                    { Icon(Icons.Filled.Check, contentDescription = null) }
+                },
+        )
     }
 }
 
 /**
  * Filter trigger for the search results row: an M3 [FilterChip] that
- * opens a [DropdownMenu] anchored to itself (the menu opens from the
- * pill, not the top of the screen). [label] summarizes the current
- * selection; [menuContent] renders the menu items.
+ * opens an expressive [DropdownMenuPopup] anchored to itself (the menu
+ * opens from the pill, not the top of the screen). [label] summarizes
+ * the current selection; [menuContent] renders the menu items.
  */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun FilterDropdown(
     label: String,
     expanded: Boolean,
@@ -816,11 +826,13 @@ private fun FilterDropdown(
                 )
             },
         )
-        DropdownMenu(
+        DropdownMenuPopup(
             expanded = expanded,
             onDismissRequest = { onExpandedChange(false) },
         ) {
-            menuContent()
+            DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+                menuContent()
+            }
         }
     }
 }

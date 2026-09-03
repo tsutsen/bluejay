@@ -11,6 +11,7 @@ import android.view.Display
 import android.view.ViewGroup
 import android.view.Window
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -1725,20 +1726,23 @@ private fun PagerCard(
 
 /**
  * Registers one icon-only playback control in the companion control group.
- * Non-composable on purpose: the ButtonGroup scope itself is not a
- * composable context, only the item's content lambda is.
+ * [containerColor]/[contentColor] come in as plain values so the caller
+ * can animate them (the play/pause button turns accent-colored while
+ * paused). Non-composable on purpose: the ButtonGroup scope itself is not
+ * a composable context, only the item's content lambda is.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 private fun ButtonGroupScope.controlItem(
     icon: ImageVector,
     description: String,
+    containerColor: Color,
+    contentColor: Color,
     shapes: GroupCornerShapes,
     interactionSource: MutableInteractionSource,
     onClick: () -> Unit,
 ) {
     customItem(
         buttonGroupContent = {
-            val scheme = MaterialTheme.colorScheme
             Button(
                 onClick = onClick,
                 shapes = ButtonShapes(shapes.shape, shapes.pressedShape),
@@ -1750,8 +1754,8 @@ private fun ButtonGroupScope.controlItem(
                 contentPadding = PaddingValues(all = Tokens.SpaceMd),
                 colors =
                     ButtonDefaults.buttonColors(
-                        containerColor = scheme.surfaceContainer,
-                        contentColor = scheme.onSurfaceVariant,
+                        containerColor = containerColor,
+                        contentColor = contentColor,
                     ),
                 interactionSource = interactionSource,
             ) {
@@ -1782,19 +1786,38 @@ private fun CompanionControlRow(
     onNext: () -> Unit,
 ) {
     val radius = BluejayTokens().radius
+    val scheme = MaterialTheme.colorScheme
     val previousSource = remember { MutableInteractionSource() }
     val rewindSource = remember { MutableInteractionSource() }
     val playPauseSource = remember { MutableInteractionSource() }
     val forwardSource = remember { MutableInteractionSource() }
     val nextSource = remember { MutableInteractionSource() }
+    // While stopped, the play button takes the accent color so the one
+    // action that matters on the second screen stands out.
+    val playContainer by
+        animateColorAsState(
+            targetValue = if (isPlaying) scheme.surfaceContainer else scheme.primaryContainer,
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "play-pause-container",
+        )
+    val playContent by
+        animateColorAsState(
+            targetValue = if (isPlaying) scheme.onSurfaceVariant else scheme.onPrimaryContainer,
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "play-pause-content",
+        )
     ButtonGroup(
         overflowIndicator = { _ -> },
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
+        val restContainer = scheme.surfaceContainer
+        val restContent = scheme.onSurfaceVariant
         controlItem(
             icon = Icons.Filled.SkipPrevious,
             description = "Previous",
+            containerColor = restContainer,
+            contentColor = restContent,
             shapes = connectedGroupShapes(GroupPosition.First, radius),
             interactionSource = previousSource,
             onClick = onPrevious,
@@ -1803,6 +1826,8 @@ private fun CompanionControlRow(
         controlItem(
             icon = Icons.Filled.FastRewind,
             description = "Back 10 seconds",
+            containerColor = restContainer,
+            contentColor = restContent,
             shapes = connectedGroupShapes(GroupPosition.Middle, radius),
             interactionSource = rewindSource,
             onClick = { onSeekBy(-10_000L) },
@@ -1810,6 +1835,8 @@ private fun CompanionControlRow(
         controlItem(
             icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
             description = if (isPlaying) "Pause" else "Play",
+            containerColor = playContainer,
+            contentColor = playContent,
             shapes = connectedGroupShapes(GroupPosition.Middle, radius),
             interactionSource = playPauseSource,
             onClick = onPlayPause,
@@ -1817,6 +1844,8 @@ private fun CompanionControlRow(
         controlItem(
             icon = Icons.Filled.FastForward,
             description = "Forward 10 seconds",
+            containerColor = restContainer,
+            contentColor = restContent,
             shapes = connectedGroupShapes(GroupPosition.Middle, radius),
             interactionSource = forwardSource,
             onClick = { onSeekBy(10_000L) },
@@ -1824,6 +1853,8 @@ private fun CompanionControlRow(
         controlItem(
             icon = Icons.Filled.SkipNext,
             description = "Next",
+            containerColor = restContainer,
+            contentColor = restContent,
             shapes = connectedGroupShapes(GroupPosition.Last, radius),
             interactionSource = nextSource,
             onClick = onNext,
