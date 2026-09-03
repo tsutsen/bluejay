@@ -34,6 +34,7 @@ object Tokens {
     val IconMd: Dp = 24.dp
 
     // Avatars
+    val AvatarSm: Dp = 28.dp
     val AvatarMd: Dp = 40.dp
     val AvatarLg: Dp = 48.dp
     val AvatarXl: Dp = 56.dp

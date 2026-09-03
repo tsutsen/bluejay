@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -64,8 +63,7 @@ import java.util.Locale
  * Bottom-aligned bar chart for watch time. [barWidth] null makes the bars
  * share the row evenly (weighted) for wide charts. [labels] draws one line
  * under each bar; [highlightIndex] marks one bar in full-strength primary
- * (e.g. today). [onBarClick] makes every bar a full-chart-height tap
- * target (e.g. the 30-day chart's tooltip).
+ * (e.g. today).
  */
 @Composable
 fun WatchTimeBars(
@@ -75,7 +73,6 @@ fun WatchTimeBars(
     barWidth: Dp? = Tokens.SpaceXs,
     labels: List<String>? = null,
     highlightIndex: Int? = null,
-    onBarClick: ((Int) -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val maxValue = (values.maxOrNull() ?: 0L).coerceAtLeast(1L)
@@ -86,23 +83,16 @@ fun WatchTimeBars(
     ) {
         values.forEachIndexed { index, value ->
             val width = barWidth?.let { Modifier.width(it) } ?: Modifier.weight(1f)
-            val tap =
-                onBarClick?.let { click ->
-                    Modifier.pointerInput(index) { detectTapGestures { click(index) } }
-                } ?: Modifier
             Column(
                 modifier = width,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val fraction = (value.toFloat() / maxValue).coerceIn(0f, 1f)
-                // The bar sits in a full-height box: the box is the tap
-                // target (a bar with little data can be a couple px tall).
                 Box(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(height)
-                            .then(tap),
+                            .height(height),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
                     Box(
@@ -197,23 +187,24 @@ fun WatchStatsSummary(
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Top this week",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stats.topCreatorsLastWeek.firstOrNull()?.author ?: "—",
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Spacer(modifier = Modifier.width(Tokens.SpaceMd))
             WatchTimeBars(
                 values = stats.lastWeekDaily.map { it.ms },
                 height = Tokens.ChartSm,
                 highlightIndex = stats.lastWeekDaily.lastIndex,
-            )
-        }
-        if (stats.topCreatorsLastWeek.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(Tokens.SpaceSm))
-            Text(
-                text =
-                    "Top this week: " +
-                        stats.topCreatorsLastWeek.joinToString(" · ") { it.author },
-                style = MaterialTheme.typography.bodySmall,
-                color = scheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -312,16 +303,47 @@ fun WatchStatsDetailScreen(
 
             Spacer(modifier = Modifier.height(Tokens.SpaceLg))
             SectionTitle("Top creators")
-            StatCard {
-                val topMs = stats.topCreators.firstOrNull()?.ms?.coerceAtLeast(1L) ?: 1L
-                stats.topCreators.forEachIndexed { index, creator ->
-                    CreatorRow(
-                        rank = index + 1,
-                        creator = creator,
-                        fraction = (creator.ms.toFloat() / topMs).coerceIn(0f, 1f),
+            // Two cards side by side: this week's favourites and the
+            // all-time overall list.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                verticalAlignment = Alignment.Top,
+            ) {
+                StatCard(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "This week",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
                     )
-                    if (index < stats.topCreators.lastIndex) {
-                        Spacer(modifier = Modifier.height(Tokens.SpaceMd))
+                    Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+                    if (stats.topCreatorsLastWeek.isEmpty()) {
+                        Text(
+                            text = "—",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = scheme.onSurfaceVariant,
+                        )
+                    } else {
+                        stats.topCreatorsLastWeek.forEachIndexed { index, creator ->
+                            CreatorRow(rank = index + 1, creator = creator)
+                            if (index < stats.topCreatorsLastWeek.lastIndex) {
+                                Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+                            }
+                        }
+                    }
+                }
+                StatCard(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Overall",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+                    stats.topCreators.forEachIndexed { index, creator ->
+                        CreatorRow(rank = index + 1, creator = creator)
+                        if (index < stats.topCreators.lastIndex) {
+                            Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+                        }
                     }
                 }
             }
@@ -382,58 +404,42 @@ private fun MiniStat(label: String, value: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun CreatorRow(rank: Int, creator: CreatorWatch, fraction: Float) {
+private fun CreatorRow(rank: Int, creator: CreatorWatch) {
     val scheme = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "$rank",
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = scheme.onSurfaceVariant,
-            modifier = Modifier.width(Tokens.IconMd),
+            modifier = Modifier.width(Tokens.IconSm),
         )
-        Spacer(modifier = Modifier.width(Tokens.SpaceSm))
+        Spacer(modifier = Modifier.width(Tokens.SpaceXs))
         AvatarCircle(
             thumbnailUrl = creator.avatarUrl,
             name = creator.author,
-            modifier = Modifier.size(Tokens.AvatarMd),
+            modifier = Modifier.size(Tokens.AvatarSm),
         )
         Spacer(modifier = Modifier.width(Tokens.SpaceSm))
         Text(
             text = creator.author,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        Spacer(modifier = Modifier.width(Tokens.SpaceXs))
         Text(
             text = humanDuration(creator.ms),
-            style = MaterialTheme.typography.titleSmall,
-        )
-    }
-    Spacer(modifier = Modifier.height(Tokens.SpaceXxs))
-    // Proportional bar: the widest creator fills it, the rest scale.
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(Tokens.SpaceXs)
-                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
-                .background(scheme.surfaceVariant),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(BluejayTokens().radius.xs))
-                    .background(scheme.primary),
+            style = MaterialTheme.typography.labelMedium,
+            color = scheme.onSurfaceVariant,
         )
     }
 }
 
 /**
  * The 30-day sliding-window chart: 30 even bars (no day labels — there is
- * no legible label per bar), tapping a bar pins a tooltip with the exact
+ * no legible label per bar). Tapping anywhere on the chart pins a tooltip
+ * on the bar under the finger (tapping it again dismisses) with the exact
  * date and the watch duration for that day.
  */
 @Composable
@@ -448,13 +454,22 @@ private fun Last30DaysChart(days: List<DailyWatch>) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .onSizeChanged { chartWidthPx = it.width },
+                .onSizeChanged { chartWidthPx = it.width }
+                // The whole chart is the hit target and the tap position
+                // picks the bar — 30 bars are a few dp wide each, so
+                // per-bar targets would be nearly impossible to hit.
+                .pointerInput(n) {
+                    detectTapGestures { offset ->
+                        val index =
+                            ((offset.x / size.width) * n).toInt().coerceIn(0, n - 1)
+                        selected = if (selected == index) null else index
+                    }
+                },
     ) {
         WatchTimeBars(
             values = days.map { it.ms },
             barWidth = null, // weighted: 30 bars share the width
             highlightIndex = selected,
-            onBarClick = { i -> selected = if (selected == i) null else i },
             modifier = Modifier.fillMaxWidth(),
         )
         selected?.let { i ->
