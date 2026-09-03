@@ -86,6 +86,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
@@ -460,7 +461,8 @@ fun SearchScreen(
                             resultsBounds.value = it.boundsInWindow()
                         },
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
                     // Search result grid (shown after search is executed)
                     when {
                         uiState.isLoading && uiState.items.isEmpty() -> {
@@ -590,6 +592,7 @@ fun SearchScreen(
                             }
                         }
                     }
+                }
                 }
             }
 

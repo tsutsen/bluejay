@@ -30,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ArticleCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
@@ -216,7 +217,8 @@ private fun HomeFeedContent(
             state = refreshingState,
             onRefresh = onRefresh,
             content = {
-                VideoContainer(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    VideoContainer(
                     items = cards,
                     layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                     isLoading = isLoading,
@@ -269,6 +271,7 @@ private fun HomeFeedContent(
                             Box(Modifier.height(1.dp))
                         }
                     }
+                }
                 }
             },
         )

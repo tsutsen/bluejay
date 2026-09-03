@@ -1,6 +1,8 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,13 +22,41 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Card
+
+/**
+ * Content-area card: the rounded [surfaceContainer] panel that a scrolling
+ * video container lays its cards on. The inner video cards stay `surface`,
+ * so the panel's tone separates the card group from the screen background
+ * (and makes an empty area read as a card, not as dead space).
+ *
+ * The panel itself never scrolls — the lazy list scrolls inside it, so
+ * wrap it around the lazy container, not the other way round.
+ */
+@Composable
+fun ContentCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                .background(MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        content()
+    }
+}
 
 /**
  * Layout mode for the video container.

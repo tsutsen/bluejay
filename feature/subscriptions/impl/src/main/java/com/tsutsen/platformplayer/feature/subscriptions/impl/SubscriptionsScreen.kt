@@ -69,6 +69,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
@@ -289,7 +290,8 @@ private fun SubscriptionsContent(
                         state = pullToRefreshState,
                         onRefresh = onRefresh,
                         content = {
-                            VideoContainer(
+                            ContentCard(modifier = Modifier.fillMaxSize()) {
+                                VideoContainer(
                                 items = state.items,
                                 layout = ContainerLayout.Grid(gridColumns),
                                 isLoading = false,
@@ -307,6 +309,7 @@ private fun SubscriptionsContent(
                                     watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
                                     isWatched = watchStates[card.url]?.isWatched ?: false,
                                 )
+                            }
                             }
                         },
                     )
@@ -394,7 +397,8 @@ private fun SubscriptionsContent(
                     state = pullToRefreshState,
                     onRefresh = onRefresh,
                     content = {
-                        VideoContainer(
+                        ContentCard(modifier = Modifier.fillMaxSize()) {
+                            VideoContainer(
                             items = state.items,
                             layout = ContainerLayout.List,
                             isLoading = false,
@@ -412,6 +416,7 @@ private fun SubscriptionsContent(
                                 watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
                                 isWatched = watchStates[card.url]?.isWatched ?: false,
                             )
+                        }
                         }
                     },
                 )

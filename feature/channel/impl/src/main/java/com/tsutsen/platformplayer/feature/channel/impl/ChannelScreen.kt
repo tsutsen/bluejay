@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import androidx.compose.material3.CircularProgressIndicator
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
@@ -434,7 +435,8 @@ private fun ChannelContent(
                     isShorts = true,
                 )
             } else {
-                VideoContainer(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    VideoContainer(
                     items = state.shortsCards,
                     layout = ContainerLayout.List,
                     isLoading = false,
@@ -454,6 +456,7 @@ private fun ChannelContent(
                         Box(Modifier.height(1.dp))
                     }
                 }
+                }
             }
         }
 
@@ -470,7 +473,8 @@ private fun ChannelContent(
                     )
                 }
             } else {
-                VideoContainer(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    VideoContainer(
                     items = state.playlists,
                     layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                     isLoading = false,
@@ -486,6 +490,7 @@ private fun ChannelContent(
                     } else {
                         Box(Modifier.height(1.dp))
                     }
+                }
                 }
             }
         }
@@ -520,7 +525,8 @@ private fun ChannelContent(
                     onVideoLongClick = onVideoLongClick,
                 )
             } else {
-                VideoContainer(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    VideoContainer(
                     items = state.cards,
                     layout = ContainerLayout.List,
                     isLoading = false,
@@ -539,6 +545,7 @@ private fun ChannelContent(
                     } else {
                         Box(Modifier.height(1.dp))
                     }
+                }
                 }
             }
         }
