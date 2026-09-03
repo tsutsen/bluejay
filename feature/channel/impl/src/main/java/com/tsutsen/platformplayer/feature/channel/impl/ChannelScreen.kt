@@ -581,7 +581,7 @@ private fun WideVideoGrid(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(Tokens.SpaceLg),
+        contentPadding = PaddingValues(Tokens.SpaceSm),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
     ) {
         items(

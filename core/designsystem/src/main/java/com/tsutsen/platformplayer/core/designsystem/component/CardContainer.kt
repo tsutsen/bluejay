@@ -130,7 +130,10 @@ fun VideoContainer(
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(Tokens.SpaceLg),
+    // The gap between the ContentCard edge and the inner video cards is the
+    // difference of their radii (radius.card 16dp - radius.sm 8dp = 8dp), so
+    // every screen gets the same visual inset.
+    contentPadding: PaddingValues = PaddingValues(Tokens.SpaceSm),
     trailingContent: (@Composable () -> Unit)? = null,
     topContent: (@Composable () -> Unit)? = null,
     cardContent: @Composable (Card) -> Unit,

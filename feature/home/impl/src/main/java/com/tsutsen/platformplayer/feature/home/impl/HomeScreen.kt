@@ -4,7 +4,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,7 +37,6 @@ import com.tsutsen.platformplayer.core.designsystem.component.PostCardView
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
-import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ArticleCard
 import com.tsutsen.platformplayer.core.model.Card
@@ -226,14 +224,6 @@ private fun HomeFeedContent(
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
                     modifier = Modifier.fillMaxSize(),
-                    // First element of the tab: on the shared 42dp content line.
-                    contentPadding =
-                        PaddingValues(
-                            start = Tokens.SpaceLg,
-                            top = TabContentTopPadding,
-                            end = Tokens.SpaceLg,
-                            bottom = Tokens.SpaceLg,
-                        ),
                 ) { card ->
                     when (card) {
                         is VideoCard -> {

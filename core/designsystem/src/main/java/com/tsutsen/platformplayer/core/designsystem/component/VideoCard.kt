@@ -248,7 +248,7 @@ fun VideoCard(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             if (isWatched) {
-                                WatchedCheck(Modifier.size(10.dp))
+                                WatchedCheck(Modifier.size(8.dp))
                                 if (durationMs != null && durationMs > 0) {
                                     Spacer(Modifier.width(2.dp))
                                 }

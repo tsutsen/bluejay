@@ -239,6 +239,11 @@ fun NotificationsScreen(
                     .background(MaterialTheme.colorScheme.surfaceContainer)
                     .padding(Tokens.SpaceLg),
         ) {
+            Text(
+                text = "Notifications",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(modifier = Modifier.height(Tokens.SpaceSm))
             if (notifications.isEmpty()) {
             Column(
                 modifier = Modifier
