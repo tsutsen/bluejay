@@ -21,6 +21,7 @@ import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.ContentType
 import com.tsutsen.platformplayer.core.model.DownloadInfo
+import com.tsutsen.platformplayer.core.model.toContentItem
 import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlayerState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
@@ -716,28 +717,7 @@ class PlayerViewModel
 
         /** Play a card whose details are already known (instant title/thumb). */
         fun play(card: com.tsutsen.platformplayer.core.model.VideoCard) {
-            play(
-                card.url,
-                com.tsutsen.platformplayer.core.model.ContentItem(
-                    id = card.id,
-                    url = card.url,
-                    title = card.title,
-                    author =
-                        card.author?.let {
-                            com.tsutsen.platformplayer.core.model.Author(
-                                id = card.authorUrl.orEmpty(),
-                                name = it,
-                                url = card.authorUrl,
-                                thumbnailUrl = null,
-                            )
-                        },
-                    thumbnailUrl = card.thumbnailUrl,
-                    contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
-                    publishedAt = card.publishedAt,
-                    durationMs = card.durationMs,
-                    viewCount = card.viewCount,
-                ),
-            )
+            play(card.url, card.toContentItem())
         }
 
         fun loadMoreComments(contentUrl: String) {

@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import android.util.Log
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,11 +69,27 @@ internal fun OptionsModal(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        // BJPROBE: opens directly to Expanded (no PartiallyExpanded) — fix
+        // candidate for the untappable-when-expanded regression.
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    // BJPROBE: non-consuming event logger — proves whether
+                    // pointer events reach the sheet content at all.
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val e = awaitPointerEvent()
+                                Log.d(
+                                    "BJPROBE",
+                                    "opts content ${e.type} pos=${e.changes.firstOrNull()?.position}",
+                                )
+                            }
+                        }
+                    }
                     .padding(horizontal = Tokens.SpaceLg)
                     .padding(bottom = Tokens.SpaceXl),
             verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
@@ -80,7 +98,10 @@ internal fun OptionsModal(
                 listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
                     FilterChip(
                         selected = playbackSpeed == speed,
-                        onClick = { onSpeedChange(speed) },
+                        onClick = {
+                            Log.d("BJPROBE", "SPEED tap $speed")
+                            onSpeedChange(speed)
+                        },
                         label = { Text("${speed}x") },
                         shapes = tokenizedChipShapes(),
                     )

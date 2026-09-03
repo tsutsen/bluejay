@@ -168,6 +168,9 @@ fun WatchStatsSummary(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     fillHeight: Boolean = false,
+    // Companion dash card: full-width weighted bars with weekday labels.
+    // Main-screen card keeps the small fixed bars without labels.
+    wideChart: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(
@@ -234,16 +237,14 @@ fun WatchStatsSummary(
                     )
                 }
             }
-            // Weighted bars (no fixed barWidth) so the chart spans the
-            // whole card, with a weekday under each bar.
             WatchTimeBars(
                 values = stats.lastWeekDaily.map { it.ms },
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .then(if (fillHeight) Modifier.weight(1f) else Modifier),
-                barWidth = null,
-                labels = stats.lastWeekDaily.map { it.day.label },
+                barWidth = if (wideChart) null else Tokens.SpaceXs,
+                labels = if (wideChart) stats.lastWeekDaily.map { it.day.label } else null,
                 fillHeight = fillHeight,
                 highlightIndex = stats.lastWeekDaily.lastIndex,
             )
