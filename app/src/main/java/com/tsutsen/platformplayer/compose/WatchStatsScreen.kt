@@ -230,12 +230,16 @@ fun WatchStatsSummary(
                     )
                 }
             }
+            // Weighted bars (no fixed barWidth) so the chart spans the
+            // whole card, with a weekday under each bar.
             WatchTimeBars(
                 values = stats.lastWeekDaily.map { it.ms },
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .then(if (fillHeight) Modifier.weight(1f) else Modifier),
+                barWidth = null,
+                labels = stats.lastWeekDaily.map { it.day.label },
                 fillHeight = fillHeight,
                 highlightIndex = stats.lastWeekDaily.lastIndex,
             )

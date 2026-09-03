@@ -104,7 +104,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
-import com.tsutsen.platformplayer.compose.WatchStatsDetailScreen
 import com.tsutsen.platformplayer.compose.WatchStatsSummary
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
@@ -191,6 +190,7 @@ class CompanionPresentation(
     private val historyTracker: HistoryTracker,
     private val onChannelClick: (String) -> Unit,
     private val onPlaylistClick: (String) -> Unit,
+    private val onWatchStats: () -> Unit,
 ) : Presentation(context, display) {
     @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -274,6 +274,7 @@ class CompanionPresentation(
                     companionWindow = window,
                     onChannelClick = onChannelClick,
                     onPlaylistClick = onPlaylistClick,
+                    onWatchStats = onWatchStats,
                 )
             }
         }
@@ -381,6 +382,7 @@ private fun CompanionContent(
     companionWindow: Window?,
     onChannelClick: (String) -> Unit,
     onPlaylistClick: (String) -> Unit,
+    onWatchStats: () -> Unit,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
     val liveChat by liveChatRepository.state.collectAsState()
@@ -467,9 +469,8 @@ private fun CompanionContent(
     LaunchedEffect(history) {
         watchStats = withContext(Dispatchers.IO) { WatchStatsBuilder.build(history) }
     }
-    // Dash page: the stats detail overlay and the continue widget's
-    // discarded entries (local dismiss — history itself is untouched).
-    var showStatsDetail by remember { mutableStateOf(false) }
+    // Dash page: the continue widget's discarded entries (local dismiss —
+    // history itself is untouched).
     var discardedContinue by remember { mutableStateOf(setOf<String>()) }
 
     // Info tab: like/dislike state from the library, subscribe state from
@@ -710,7 +711,7 @@ private fun CompanionContent(
                                     onDiscard = { url ->
                                         discardedContinue = discardedContinue + url
                                     },
-                                    onStatsClick = { showStatsDetail = true },
+                                    onStatsClick = onWatchStats,
                                     onChannelClick = onChannelClick,
                                 )
                             }
@@ -724,12 +725,6 @@ private fun CompanionContent(
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = scrimAlpha))
                                 .clickable { scope.launch { sheetState.hide() } },
-                    )
-                }
-                if (showStatsDetail) {
-                    WatchStatsDetailScreen(
-                        stats = watchStats,
-                        onBack = { showStatsDetail = false },
                     )
                 }
             }

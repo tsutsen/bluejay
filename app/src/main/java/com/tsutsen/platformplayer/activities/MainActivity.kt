@@ -170,6 +170,9 @@ class MainActivity :
                 // Tapping a library playlist title opens the playlist on the
                 // main screen (same "playlist:<id>" URL the library cards use).
                 onPlaylistClick = { url -> navigator.navigateToPlaylist(url) },
+                // Tapping the stats card opens the watch-stats detail on the
+                // main screen.
+                onWatchStats = { navigator.navigateWatchStatsDetail() },
             ).also { it.show() }
     }
 

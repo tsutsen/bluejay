@@ -74,6 +74,8 @@ class Navigator
 
         fun navigateNotifications() = navigate(NavDestination.Notifications)
 
+        fun navigateWatchStatsDetail() = navigate(NavDestination.WatchStatsDetail)
+
         fun navigateSettings() = navigate(NavDestination.Settings)
 
         // Detail navigation

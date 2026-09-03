@@ -15,6 +15,7 @@ sealed class NavDestination {
     data object Settings : NavDestination()
 
     // Detail screens
+    data object WatchStatsDetail : NavDestination()
     data class ChannelDetail(val url: String) : NavDestination()
     data class PlaylistDetail(val url: String) : NavDestination()
     data class SourceDetail(val url: String) : NavDestination()

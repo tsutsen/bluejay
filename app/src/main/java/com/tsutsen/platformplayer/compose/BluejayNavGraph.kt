@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
@@ -171,6 +172,17 @@ fun BluejayNavGraph(
 
             is NavDestination.Settings -> {
                 Unit
+            }
+
+            NavDestination.WatchStatsDetail -> {
+                // Same stats pipeline as the Dash tab's card (activity-scoped
+                // NotificationsViewModel); reachable from the companion.
+                val notificationsViewModel: NotificationsViewModel = hiltViewModel()
+                val stats by notificationsViewModel.watchStats.collectAsState()
+                WatchStatsDetailScreen(
+                    stats = stats,
+                    onBack = { navigator.goBack() },
+                )
             }
 
             is NavDestination.ChannelDetail -> {
