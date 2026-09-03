@@ -46,6 +46,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -1407,8 +1408,8 @@ private fun CompanionDashPage(
         modifier =
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = Tokens.SpaceSm, vertical = Tokens.SpaceXs),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
         WatchStatsSummary(
             stats = stats,
@@ -1422,17 +1423,27 @@ private fun CompanionDashPage(
             fillHeight = true,
             wideChart = true,
         )
-        Column(modifier = Modifier.sectionEntrance(entered, 80)) {
+        // Top creators: a card holding the title + the creator badges.
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .sectionEntrance(entered, 80)
+                    .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(Tokens.SpaceMd),
+        ) {
             DashSectionTitle("Top creators this week")
             if (stats.topCreatorsLastWeek.isEmpty()) {
                 DashEmpty("No watch history yet")
             } else {
+                Spacer(Modifier.height(Tokens.SpaceSm))
                 Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 ) {
                     stats.topCreatorsLastWeek.forEach { creator ->
                         CreatorBadge(
@@ -1443,7 +1454,17 @@ private fun CompanionDashPage(
                 }
             }
         }
-        Column(modifier = Modifier.sectionEntrance(entered, 160)) {
+        // Continue: a card holding the title + the entry row (or the
+        // empty-state label).
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .sectionEntrance(entered, 160)
+                    .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(Tokens.SpaceMd),
+        ) {
             DashSectionTitle("Continue")
             val entry = continueEntry(history, currentVideoUrl, discarded)
             ContinueCard(
@@ -1486,7 +1507,6 @@ private fun DashSectionTitle(text: String) {
         text = text,
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.padding(start = 8.dp, top = 8.dp),
     )
 }
 
@@ -1496,7 +1516,7 @@ private fun DashEmpty(text: String) {
         text = text,
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 8.dp),
+        modifier = Modifier.padding(top = Tokens.SpaceSm),
     )
 }
 
@@ -1511,15 +1531,17 @@ private fun CreatorBadge(
             Modifier
                 .expressiveClickable(onClick = onClick)
                 .clip(RoundedCornerShape(BluejayTokens().radius.md))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                // Main background color, like the video cards on the
+                // surfaceContainer panel.
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = Tokens.SpaceMd, vertical = Tokens.SpaceSm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
         AsyncImage(
             url = creator.avatarUrl,
             contentDescription = null,
-            modifier = Modifier.size(28.dp).clip(CircleShape),
+            modifier = Modifier.size(Tokens.AvatarSm).clip(CircleShape),
         )
         Column {
             Text(
@@ -1539,8 +1561,8 @@ private fun CreatorBadge(
 
 /**
  * The last unfinished video: thumbnail, title, channel, play + discard.
- * With a null [entry] it renders the same card as a placeholder, so the
- * widget always occupies the same space.
+ * With a null [entry] the card just shows a centered empty-state label.
+ * The enclosing dash card is drawn by the caller.
  */
 @Composable
 private fun ContinueCard(
@@ -1549,18 +1571,27 @@ private fun ContinueCard(
     onDiscard: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    if (entry == null) {
+        Text(
+            text = "Watched it all and left no crumbs!",
+            style = MaterialTheme.typography.titleSmall,
+            color = scheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = Tokens.SpaceLg),
+        )
+        return
+    }
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(BluejayTokens().radius.md))
-                .background(scheme.surfaceContainer)
-                .padding(12.dp),
+                .padding(top = Tokens.SpaceSm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
     ) {
-        // Fixed-size thumbnail slot keeps the card's dimensions identical
-        // with and without a video.
         Box(
             modifier =
                 Modifier
@@ -1569,46 +1600,34 @@ private fun ContinueCard(
                     .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                     .background(scheme.surfaceVariant),
         ) {
-            if (entry != null) {
-                AsyncImage(
-                    url = entry.thumbnailUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            AsyncImage(
+                url = entry.thumbnailUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
         Column(modifier = Modifier.weight(1f)) {
-            if (entry != null) {
+            Text(
+                text = entry.title,
+                style = MaterialTheme.typography.titleSmall,
+                color = scheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            entry.author?.let {
                 Text(
-                    text = entry.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = scheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                entry.author?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-            } else {
-                Text(
-                    text = "Nothing in progress",
-                    style = MaterialTheme.typography.titleSmall,
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
         }
-        if (entry != null) {
-            IconButton(onClick = onPlay) {
-                Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play")
-            }
-            IconButton(onClick = onDiscard) {
-                Icon(imageVector = Icons.Filled.Close, contentDescription = "Discard")
-            }
+        IconButton(onClick = onPlay) {
+            Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play")
+        }
+        IconButton(onClick = onDiscard) {
+            Icon(imageVector = Icons.Filled.Close, contentDescription = "Discard")
         }
     }
 }
