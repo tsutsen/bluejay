@@ -48,8 +48,11 @@ class WatchStatsBuilderTests {
                 now,
             )
         assertEquals(2 * hour + 30 * 60_000, stats.todayMs)
+        assertEquals(2, stats.todayVideoCount)
         // (2h + 1h + 30m) / 7
         assertEquals((3 * hour + 30 * 60_000) / 7, stats.weekAverageMs)
+        // The 5h entry is 8 days old, outside the week window.
+        assertEquals(3, stats.weekVideoCount)
         // All time includes the 5h from 8 days ago.
         assertEquals(2 * hour + hour + 30 * 60_000 + 5 * hour, stats.allTimeMs)
         assertEquals(4, stats.videoCount)

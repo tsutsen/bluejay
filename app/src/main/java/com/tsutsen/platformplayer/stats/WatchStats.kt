@@ -22,7 +22,9 @@ import java.time.ZoneId
  */
 data class WatchStats(
     val todayMs: Long = 0,
+    val todayVideoCount: Int = 0,
     val weekAverageMs: Long = 0,
+    val weekVideoCount: Int = 0,
     val lastWeekDaily: List<DailyWatch> = emptyList(), // 7 days, oldest first
     val topCreatorsLastWeek: List<CreatorWatch> = emptyList(), // top 3
     val allTimeMs: Long = 0,
@@ -63,7 +65,9 @@ object WatchStatsBuilder {
         val allCreators = HashMap<String, LongArray>()
         val creatorAvatars = HashMap<String, String?>()
         var todayMs = 0L
+        var todayVideos = 0
         var weekMs = 0L
+        var weekVideos = 0
         var allTimeMs = 0L
 
         for (h in history) {
@@ -80,7 +84,10 @@ object WatchStatsBuilder {
             }
 
             allTimeMs += ms
-            if (day == now) todayMs += ms
+            if (day == now) {
+                todayMs += ms
+                todayVideos++
+            }
 
             val all = allCreators.getOrPut(creator) { LongArray(2) }
             all[0] += ms
@@ -94,6 +101,7 @@ object WatchStatsBuilder {
             }
             if (day in weekStart..now) {
                 weekMs += ms
+                weekVideos++
                 val w = weekCreators.getOrPut(creator) { LongArray(2) }
                 w[0] += ms
                 w[1] += 1
@@ -113,7 +121,9 @@ object WatchStatsBuilder {
 
         return WatchStats(
             todayMs = todayMs,
+            todayVideoCount = todayVideos,
             weekAverageMs = weekMs / 7L,
+            weekVideoCount = weekVideos,
             lastWeekDaily = lastWeekDaily,
             topCreatorsLastWeek = topCreators(weekCreators, creatorAvatars, 3),
             allTimeMs = allTimeMs,

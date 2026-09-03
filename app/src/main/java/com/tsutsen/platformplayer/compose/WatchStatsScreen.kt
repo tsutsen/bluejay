@@ -1,5 +1,8 @@
 package com.tsutsen.platformplayer.compose
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -7,8 +10,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,6 +37,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -275,7 +281,7 @@ fun WatchStatsDetailScreen(
                     style = MaterialTheme.typography.displaySmall,
                 )
                 Text(
-                    text = "across ${stats.videoCount} videos",
+                    text = videosLabel(stats.videoCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant,
                 )
@@ -284,11 +290,17 @@ fun WatchStatsDetailScreen(
             Spacer(modifier = Modifier.height(Tokens.SpaceLg))
             SectionTitle("This week")
             Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                MiniStat("Today", humanDuration(stats.todayMs), Modifier.weight(1f))
+                MiniStat(
+                    "Today",
+                    humanDuration(stats.todayMs),
+                    subtext = videosLabel(stats.todayVideoCount),
+                    modifier = Modifier.weight(1f),
+                )
                 MiniStat(
                     "Daily average",
                     humanDuration(stats.weekAverageMs),
-                    Modifier.weight(1f),
+                    subtext = videosLabel(stats.weekVideoCount),
+                    modifier = Modifier.weight(1f),
                 )
             }
             Spacer(modifier = Modifier.height(Tokens.SpaceMd))
@@ -305,13 +317,13 @@ fun WatchStatsDetailScreen(
             Spacer(modifier = Modifier.height(Tokens.SpaceLg))
             SectionTitle("Top creators")
             // Two cards side by side: this week's favourites and the
-            // all-time overall list.
+            // all-time overall list. IntrinsicSize.Min makes the row as
+            // tall as the taller card so both cards fill the same height.
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-                verticalAlignment = Alignment.Top,
             ) {
-                StatCard(modifier = Modifier.weight(1f)) {
+                StatCard(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     Text(
                         text = "This week",
                         style = MaterialTheme.typography.labelSmall,
@@ -333,7 +345,7 @@ fun WatchStatsDetailScreen(
                         }
                     }
                 }
-                StatCard(modifier = Modifier.weight(1f)) {
+                StatCard(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     Text(
                         text = "Overall",
                         style = MaterialTheme.typography.labelSmall,
@@ -390,7 +402,12 @@ private fun StatCard(
 }
 
 @Composable
-private fun MiniStat(label: String, value: String, modifier: Modifier = Modifier) {
+private fun MiniStat(
+    label: String,
+    value: String,
+    subtext: String? = null,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier =
             modifier
@@ -405,6 +422,14 @@ private fun MiniStat(label: String, value: String, modifier: Modifier = Modifier
         )
         Spacer(modifier = Modifier.height(Tokens.SpaceXxs))
         Text(text = value, style = MaterialTheme.typography.titleLarge)
+        subtext?.let {
+            Spacer(modifier = Modifier.height(Tokens.SpaceXxs))
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -537,6 +562,19 @@ private fun TippedBars(
                             contentAlignment = Alignment.BottomCenter,
                         ) {
                             val fraction = (day.ms.toFloat() / maxValue).coerceIn(0f, 1f)
+                            // M3's own color-change timing: 200ms FastOutSlowIn.
+                            val barColor by animateColorAsState(
+                                targetValue =
+                                    when {
+                                        day.ms == 0L -> scheme.surfaceVariant
+                                        tooltipState.isVisible || index == highlightIndex ->
+                                            scheme.primary
+                                        else -> scheme.primary.copy(alpha = 0.5f)
+                                    },
+                                animationSpec =
+                                    tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                label = "barColor",
+                            )
                             Box(
                                 modifier =
                                     Modifier
@@ -553,14 +591,7 @@ private fun TippedBars(
                                                 topEnd = BluejayTokens().radius.xs,
                                             )
                                         )
-                                        .background(
-                                            when {
-                                                day.ms == 0L -> scheme.surfaceVariant
-                                                tooltipState.isVisible || index == highlightIndex ->
-                                                    scheme.primary
-                                                else -> scheme.primary.copy(alpha = 0.5f)
-                                            }
-                                        ),
+                                        .background(barColor),
                             )
                         }
                         labeler?.invoke(day.day)?.let { label ->
@@ -579,6 +610,9 @@ private fun TippedBars(
         }
     }
 }
+
+private fun videosLabel(count: Int): String =
+    if (count == 1) "across 1 video" else "across $count videos"
 
 private val FULL_DATE_FORMAT =
     DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault())
