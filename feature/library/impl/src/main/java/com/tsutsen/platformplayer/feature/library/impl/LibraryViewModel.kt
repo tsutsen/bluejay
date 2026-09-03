@@ -35,10 +35,11 @@ class LibraryViewModel
                 settingsRepository.preferences,
             ) { raw, prefs ->
                 val order = prefs.librarySectionOrder
-                if (order.isEmpty()) raw
+                val visible = raw.filter { it.id in prefs.librarySectionsEnabled }
+                if (order.isEmpty()) visible
                 else {
                     val index = order.withIndex().associate { (i, id) -> id to i }
-                    raw.sortedBy { index[it.id] ?: Int.MAX_VALUE }
+                    visible.sortedBy { index[it.id] ?: Int.MAX_VALUE }
                 }
             }.stateIn(
                 scope = viewModelScope,

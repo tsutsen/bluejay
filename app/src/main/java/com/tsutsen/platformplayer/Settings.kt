@@ -96,6 +96,17 @@ class Settings {
             LibraryRepositoryImpl.DOWNLOADS_ID,
             LibraryRepositoryImpl.PLAYLISTS_ID,
         )
+    /** Enabled library sections (Settings > Content). Order lives in [librarySectionOrder]. */
+    var librarySectionsEnabled: List<String> =
+        listOf(
+            LibraryRepositoryImpl.WATCH_LATER_ID,
+            LibraryRepositoryImpl.LIKED_ID,
+            LibraryRepositoryImpl.DISLIKED_ID,
+            LibraryRepositoryImpl.FAVOURITE_ID,
+            LibraryRepositoryImpl.HISTORY_ID,
+            LibraryRepositoryImpl.DOWNLOADS_ID,
+            LibraryRepositoryImpl.PLAYLISTS_ID,
+        )
 
     // Second (rear) display companion window
     var dualScreen: Boolean = false

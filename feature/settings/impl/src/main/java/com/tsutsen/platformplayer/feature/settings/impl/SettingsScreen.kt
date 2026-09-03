@@ -5,10 +5,6 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -81,17 +78,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -102,13 +95,12 @@ import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
-import com.tsutsen.platformplayer.core.designsystem.component.QueueMoveButton
+import com.tsutsen.platformplayer.core.designsystem.component.ReorderableList
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSliderCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
 import com.tsutsen.platformplayer.core.designsystem.component.groupShape
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
-import com.tsutsen.platformplayer.core.designsystem.reorder.FlipItem
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
@@ -396,32 +388,25 @@ fun SettingsSectionScreen(
 
         Choice.DUAL_PAGES -> {
             loaded?.let {
-                MultiSelectDialog(
+                ReorderDialog(
                     title = "Pages",
-                    options = dualPageNames.map { (key, label) -> label to key },
-                    selected = it.dualScreenPages,
-                    onToggle = { key, checked ->
+                    items =
+                        (it.dualScreenPages + (dualPageNames.keys - it.dualScreenPages))
+                            .map { id -> id to (dualPageNames[id] ?: id) },
+                    // The saved list is membership + order; the dialog shows all
+                    // known pages, so filter the new order back to the enabled set.
+                    onChange = { newOrder ->
+                        viewModel.setDualScreenPages(
+                            newOrder.filter { id -> id in it.dualScreenPages },
+                        )
+                    },
+                    onDismiss = { selectedChoice = null },
+                    enabledIds = it.dualScreenPages,
+                    onToggleEnabled = { key, checked ->
                         viewModel.setDualScreenPages(
                             if (checked) it.dualScreenPages + key else it.dualScreenPages - key,
                         )
                     },
-                    onDismiss = { selectedChoice = null },
-                )
-            }
-        }
-
-        Choice.DUAL_TABS -> {
-            loaded?.let {
-                MultiSelectDialog(
-                    title = "Video page tabs",
-                    options = dualTabNames.map { (key, label) -> label to key },
-                    selected = it.dualScreenVideoTabs,
-                    onToggle = { key, checked ->
-                        viewModel.setDualScreenVideoTabs(
-                            if (checked) it.dualScreenVideoTabs + key else it.dualScreenVideoTabs - key,
-                        )
-                    },
-                    onDismiss = { selectedChoice = null },
                 )
             }
         }
@@ -429,7 +414,7 @@ fun SettingsSectionScreen(
         Choice.DUAL_TAB_ORDER -> {
             loaded?.let {
                 ReorderDialog(
-                    title = "Video tab order",
+                    title = "Video tabs",
                     items =
                         it.dualScreenVideoTabOrder
                             .map { id -> id to (dualTabNames[id] ?: id) },
@@ -500,6 +485,12 @@ fun SettingsSectionScreen(
                     items = it.librarySectionOrder.map { id -> id to (librarySectionNames[id] ?: id) },
                     onChange = { newOrder -> viewModel.setLibrarySectionOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
+                    enabledIds = it.librarySectionsEnabled,
+                    onToggleEnabled = { key, checked ->
+                        viewModel.setLibrarySectionsEnabled(
+                            if (checked) it.librarySectionsEnabled + key else it.librarySectionsEnabled - key,
+                        )
+                    },
                 )
             }
         }
@@ -959,8 +950,16 @@ private fun SectionItems(
                     SettingsHeader(
                         title = "Library",
                         reset =
-                            if (state.librarySectionOrder != defaults.librarySectionOrder) {
-                                { viewModel.setLibrarySectionOrder(defaults.librarySectionOrder) }
+                            if (
+                                state.librarySectionOrder != defaults.librarySectionOrder ||
+                                state.librarySectionsEnabled != defaults.librarySectionsEnabled
+                            ) {
+                                {
+                                    viewModel.setLibrarySectionOrder(defaults.librarySectionOrder)
+                                    viewModel.setLibrarySectionsEnabled(
+                                        defaults.librarySectionsEnabled,
+                                    )
+                                }
                             } else {
                                 null
                             },
@@ -968,7 +967,7 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.VideoLibrary,
                         title = "Library sections",
-                        subtitle = "Order of sections on the library screen",
+                        subtitle = "Order and visibility of sections on the library screen",
                         onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
                     )
                 }
@@ -1185,18 +1184,11 @@ private fun SectionItems(
                             },
                     )
                     SettingsOptionCard(
-                        icon = Icons.Filled.Chat,
-                        title = "Video page tabs",
-                        subtitle = dualListLabel(state.dualScreenVideoTabs, dualTabNames),
-                        onClick = { onChoiceSelected(Choice.DUAL_TABS) },
-                        groupPosition = GroupPosition.First,
-                    )
-                    SettingsOptionCard(
                         icon = Icons.Filled.Reorder,
-                        title = "Video tab order",
+                        title = "Video tabs",
                         subtitle = dualOrderLabel(state.dualScreenVideoTabOrder, dualTabNames),
                         onClick = { onChoiceSelected(Choice.DUAL_TAB_ORDER) },
-                        groupPosition = GroupPosition.Middle,
+                        groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.FormatListBulleted,
@@ -1453,7 +1445,6 @@ private enum class Choice {
     SUBTITLE_SIZE,
     SUBTITLE_PADDING,
     DUAL_PAGES,
-    DUAL_TABS,
     DUAL_TAB_ORDER,
     DUAL_PAGE_ORDER,
     DUAL_SLOTS,
@@ -1551,10 +1542,9 @@ internal fun ChoiceDialog(
 }
 
 /**
- * Reorder a list of items (up/down per row) with animated moves
- * (queue-style FLIP) and queue-style arrow pills. Live-updates on each
- * move. [items] is (id, label) in the current order; [onChange] receives
- * the new ordered ids.
+ * Reorder (and optionally enable/disable) a list of items via a
+ * drag-reorderable list. [items] is (id, label) in the current display
+ * order; [onChange] receives the new ordered ids when a drag settles.
  *
  * Pass [enabledIds] + [onToggleEnabled] to also show an enable/disable
  * checkbox per row — order and visibility in one popup.
@@ -1568,104 +1558,25 @@ private fun ReorderDialog(
     enabledIds: List<String>? = null,
     onToggleEnabled: ((String, Boolean) -> Unit)? = null,
 ) {
-    var draft by remember { mutableStateOf(items) }
-    val scope = rememberCoroutineScope()
-
-    // FLIP for swaps: the move buttons only ever swap adjacent rows, so the
-    // delta is known at the press. Rows are all the same height — measured
-    // via onSizeChanged as the first row lays out.
-    val flipAnims = remember { mutableMapOf<String, Animatable<Offset, *>>() }
-    val rowHeightPx = remember { mutableStateOf(44f) }
-
-    /** Displace [id] by [steps] row slots and slide it back to rest. */
-    fun slide(
-        id: String,
-        steps: Int,
-    ) {
-        val anim = flipAnims.getOrPut(id) { Animatable(Offset.Zero, Offset.VectorConverter) }
-        scope.launch {
-            anim.snapTo(Offset(0f, -steps * rowHeightPx.value))
-            anim.animateTo(
-                Offset.Zero,
-                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-            )
-        }
-    }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                draft.forEachIndexed { index, (id, label) ->
-                    key(id) {
-                        val flip = flipAnims.getOrPut(id) { Animatable(Offset.Zero, Offset.VectorConverter) }
-                        FlipItem(flip) {
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .onSizeChanged { if (it.height > 0) rowHeightPx.value = it.height.toFloat() }
-                                        .padding(vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                if (onToggleEnabled != null) {
-                                    Checkbox(
-                                        checked = id in (enabledIds ?: emptyList()),
-                                        onCheckedChange = { onToggleEnabled(id, it) },
-                                    )
-                                }
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                QueueMoveButton(
-                                    imageVector = Icons.Outlined.ExpandLess,
-                                    contentDescription = "Move up",
-                                    enabled = index > 0,
-                                    onClick = {
-                                        draft.swapAdjacent(index, -1)?.let { d ->
-                                            draft = d
-                                            slide(id, -1)
-                                            onChange(d.map { it.first })
-                                        }
-                                    },
-                                )
-                                QueueMoveButton(
-                                    imageVector = Icons.Outlined.ExpandMore,
-                                    contentDescription = "Move down",
-                                    enabled = index < draft.size - 1,
-                                    onClick = {
-                                        draft.swapAdjacent(index, 1)?.let { d ->
-                                            draft = d
-                                            slide(id, 1)
-                                            onChange(d.map { it.first })
-                                        }
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            ReorderableList(
+                items = items,
+                onReordered = onChange,
+                enabledIds = enabledIds,
+                onToggleEnabled = onToggleEnabled,
+                // ponytail: fixed cap — a LazyColumn is greedy inside an
+                // AlertDialog and would expand the dialog to window height;
+                // 400dp fits every current list (max 7 rows) without
+                // scrolling. Replace with a token if one exists for dialog
+                // max heights.
+                modifier = Modifier.heightIn(max = 400.dp),
+            )
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
     )
-}
-
-/** Swap two adjacent rows; null when the swap would leave the list. */
-private fun List<Pair<String, String>>.swapAdjacent(
-    from: Int,
-    delta: Int,
-): List<Pair<String, String>>? {
-    val to = from + delta
-    if (to < 0 || to >= size) return null
-    val d = toMutableList()
-    val t = d[from]
-    d[from] = d[to]
-    d[to] = t
-    return d
 }
 
 /**

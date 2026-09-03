@@ -383,7 +383,9 @@ private fun CompanionContent(
     // sections the second screen shows (Settings > Dual screen).
     val prefsState by settingsRepository.preferences.collectAsState(initial = null)
     val prefs = prefsState ?: return
-    val pageKeys = listOf("video", "library", "home").filter { it in prefs.dualScreenPages }
+    // Saved order wins (Settings > Dual screen > Pages); unknown keys are
+    // dropped, missing pages are simply absent.
+    val pageKeys = prefs.dualScreenPages.filter { it in setOf("video", "library", "home") }
     // Configured order wins; canonical keys appended as fallback (older
     // saves predate info/controls), then filtered to the enabled set.
     val allVideoTabKeys =

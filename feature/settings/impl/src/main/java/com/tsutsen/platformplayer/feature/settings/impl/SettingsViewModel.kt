@@ -27,6 +27,7 @@ sealed interface SettingsUiState {
         val defaultDownloadResolution: String,
         val enableDeveloperOptions: Boolean,
         val librarySectionOrder: List<String>,
+        val librarySectionsEnabled: List<String>,
         val dualScreen: Boolean,
         val dualScreenPages: List<String>,
         val dualScreenVideoTabs: List<String>,
@@ -86,6 +87,7 @@ class SettingsViewModel
                                 defaultDownloadResolution = prefs.defaultDownloadResolution,
                                 enableDeveloperOptions = prefs.enableDeveloperOptions,
                                 librarySectionOrder = prefs.librarySectionOrder,
+                                librarySectionsEnabled = prefs.librarySectionsEnabled,
                                 dualScreen = prefs.dualScreen,
                                 dualScreenPages = prefs.dualScreenPages,
                                 dualScreenVideoTabs = prefs.dualScreenVideoTabs,
@@ -225,6 +227,10 @@ class SettingsViewModel
 
         fun setLibrarySectionOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateLibrarySectionOrder(order) }
+        }
+
+        fun setLibrarySectionsEnabled(ids: List<String>) {
+            viewModelScope.launch { settingsRepository.updateLibrarySectionsEnabled(ids) }
         }
 
         fun resetToDefaults() {

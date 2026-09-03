@@ -16,6 +16,8 @@ data class AppPreferences(
     val enableDeveloperOptions: Boolean = false,
     val librarySectionOrder: List<String> =
         listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),
+    val librarySectionsEnabled: List<String> =
+        listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),
     val dualScreen: Boolean = false,
     val dualScreenPages: List<String> = listOf("video", "library", "home"),
     val dualScreenVideoTabs: List<String> =

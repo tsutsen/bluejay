@@ -88,6 +88,7 @@ class SettingsRepositoryImpl
                 dualScreenFeedSources = s.dualScreenFeedSources,
                 dualScreenLibrarySlots = s.dualScreenLibrarySlots,
                 librarySectionOrder = s.librarySectionOrder,
+                librarySectionsEnabled = s.librarySectionsEnabled,
                 gridColumns = s.feed.gridColumns,
                 homeHiddenSources = s.feed.hiddenSources,
                 searchHistory = s.search.history,
@@ -255,6 +256,13 @@ class SettingsRepositoryImpl
             emit()
         }
 
+        override suspend fun updateLibrarySectionsEnabled(ids: List<String>) {
+            val s = Settings.instance
+            s.librarySectionsEnabled = ids
+            s.save()
+            emit()
+        }
+
         override suspend fun resetToDefaults() {
             val s = Settings.instance
             s.appearance.themeMode = "AUTO"
@@ -272,6 +280,8 @@ class SettingsRepositoryImpl
             s.dualScreenLibrarySlots =
                 listOf("watch_later", "liked", "favourite", "history")
             s.librarySectionOrder =
+                listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists")
+            s.librarySectionsEnabled =
                 listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists")
             s.feed.gridColumns = 3
             s.content.showRecommendedVideos = true
