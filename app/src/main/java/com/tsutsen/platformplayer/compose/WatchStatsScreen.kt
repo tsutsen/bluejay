@@ -81,6 +81,9 @@ fun WatchTimeBars(
     barWidth: Dp? = Tokens.SpaceXs,
     labels: List<String>? = null,
     highlightIndex: Int? = null,
+    // When true the bars stretch to fill whatever height the caller gives
+    // them (paired with a weight(1f) modifier) instead of using [height].
+    fillHeight: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val maxValue = (values.maxOrNull() ?: 0L).coerceAtLeast(1L)
@@ -100,16 +103,23 @@ fun WatchTimeBars(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(height),
+                            .then(if (fillHeight) Modifier.fillMaxHeight() else Modifier.height(height)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
                     Box(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(
-                                    if (value > 0) height * fraction.coerceAtLeast(0.15f)
-                                        else Tokens.SpaceXs,
+                                .then(
+                                    when {
+                                        value == 0L -> Modifier.height(Tokens.SpaceXs)
+                                        fillHeight ->
+                                            Modifier.fillMaxHeight(fraction.coerceAtLeast(0.15f))
+                                        else ->
+                                            Modifier.height(
+                                                height * fraction.coerceAtLeast(0.15f)
+                                            )
+                                    },
                                 )
                                 .clip(
                                     RoundedCornerShape(
@@ -142,77 +152,91 @@ fun WatchTimeBars(
 }
 
 /**
- * The Dash stats card: today's total, the week average, the last-week bar
- * chart and the top creators — tapping it opens the detail screen.
+ * The Dash stats card: the stat columns and the last-week bar chart below
+ * them — tapping it opens the detail screen. The card owns its own
+ * container styling; callers pass layout modifiers (weight, padding).
+ * [fillHeight] lets the bar chart stretch to fill whatever height the
+ * caller gives the card.
  */
 @Composable
 fun WatchStatsSummary(
     stats: WatchStats,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    fillHeight: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
-    if (stats.isEmpty) {
-        Text(
-            text = "No watch history yet",
-            style = MaterialTheme.typography.bodySmall,
-            color = scheme.onSurfaceVariant,
-            modifier = modifier,
-        )
-        return
-    }
-    Column(modifier = modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Stats", style = MaterialTheme.typography.titleSmall)
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(
-                imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = "View watch stats",
-                tint = scheme.onSurfaceVariant,
-                modifier = Modifier.size(Tokens.IconMd),
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                .background(scheme.surfaceContainer)
+                .clickable(onClick = onClick)
+                .padding(Tokens.SpaceLg),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+    ) {
+        if (stats.isEmpty) {
+            Text(
+                text = "No watch history yet",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
             )
-        }
-        Spacer(modifier = Modifier.height(Tokens.SpaceSm))
-        Row(verticalAlignment = Alignment.Bottom) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Today",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
-                )
-                Text(
-                    text = humanDuration(stats.todayMs),
-                    style = MaterialTheme.typography.titleMedium,
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "Stats", style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "View watch stats",
+                    tint = scheme.onSurfaceVariant,
+                    modifier = Modifier.size(Tokens.IconMd),
                 )
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Avg this week",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
-                )
-                Text(
-                    text = humanDuration(stats.weekAverageMs),
-                    style = MaterialTheme.typography.titleMedium,
-                )
+            Row(verticalAlignment = Alignment.Bottom) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Today",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = humanDuration(stats.todayMs),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Avg this week",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = humanDuration(stats.weekAverageMs),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Top this week",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stats.topCreatorsLastWeek.firstOrNull()?.author ?: "—",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Top this week",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stats.topCreatorsLastWeek.firstOrNull()?.author ?: "—",
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(modifier = Modifier.width(Tokens.SpaceMd))
             WatchTimeBars(
                 values = stats.lastWeekDaily.map { it.ms },
-                height = Tokens.ChartSm,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .then(if (fillHeight) Modifier.weight(1f) else Modifier),
+                fillHeight = fillHeight,
                 highlightIndex = stats.lastWeekDaily.lastIndex,
             )
         }

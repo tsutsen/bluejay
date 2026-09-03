@@ -104,6 +104,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import com.tsutsen.platformplayer.compose.WatchStatsDetailScreen
 import com.tsutsen.platformplayer.compose.WatchStatsSummary
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
@@ -466,6 +467,10 @@ private fun CompanionContent(
     LaunchedEffect(history) {
         watchStats = withContext(Dispatchers.IO) { WatchStatsBuilder.build(history) }
     }
+    // Dash page: the stats detail overlay and the continue widget's
+    // discarded entries (local dismiss — history itself is untouched).
+    var showStatsDetail by remember { mutableStateOf(false) }
+    var discardedContinue by remember { mutableStateOf(setOf<String>()) }
 
     // Info tab: like/dislike state from the library, subscribe state from
     // the channel repository (same actions as the main player row).
@@ -692,9 +697,11 @@ private fun CompanionContent(
                                     history = history,
                                     currentVideoUrl = video?.url,
                                     onPlay = onPlay,
+                                    discarded = discardedContinue,
                                     onDiscard = { url ->
-                                        scope.launch { historyTracker.deleteFromHistory(url) }
+                                        discardedContinue = discardedContinue + url
                                     },
+                                    onStatsClick = { showStatsDetail = true },
                                     onChannelClick = onChannelClick,
                                 )
                             }
@@ -708,6 +715,12 @@ private fun CompanionContent(
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = scrimAlpha))
                                 .clickable { scope.launch { sheetState.hide() } },
+                    )
+                }
+                if (showStatsDetail) {
+                    WatchStatsDetailScreen(
+                        stats = watchStats,
+                        onBack = { showStatsDetail = false },
                     )
                 }
             }
@@ -1333,28 +1346,27 @@ private fun CompanionDashPage(
     history: List<HistoryEntity>,
     currentVideoUrl: String?,
     onPlay: (String) -> Unit,
+    discarded: Set<String>,
     onDiscard: (String) -> Unit,
+    onStatsClick: () -> Unit,
     onChannelClick: (String) -> Unit,
 ) {
+    // Not scrollable on purpose: a scrollable page inside the VerticalPager
+    // eats the page-swipe gestures until it reaches its edge.
     Column(
         modifier =
             Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = "Dash",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 8.dp),
-        )
         WatchStatsSummary(
             stats = stats,
-            // No detail screen on the second screen — display only.
-            onClick = {},
-            modifier = Modifier.fillMaxWidth(),
+            onClick = onStatsClick,
+            // Take whatever vertical space the stat columns + sections leave
+            // over, and stretch the bar chart into it.
+            modifier = Modifier.weight(1f),
+            fillHeight = true,
         )
         DashSectionTitle("Top creators")
         if (stats.topCreators.isEmpty()) {
@@ -1376,7 +1388,7 @@ private fun CompanionDashPage(
             }
         }
         DashSectionTitle("Continue")
-        continueEntry(history, currentVideoUrl)?.let { entry ->
+        continueEntry(history, currentVideoUrl, discarded)?.let { entry ->
             ContinueCard(
                 entry = entry,
                 onPlay = { onPlay(entry.contentUrl) },
@@ -1496,23 +1508,25 @@ private fun ContinueCard(
 }
 
 /**
- * The last unfinished video to continue: the newest of the three most
+ * The last unfinished video to continue: the newest of the five most
  * recent not-fully-watched history entries, excluding the video currently
- * playing.
+ * playing and any the user discarded in the widget.
  */
 private fun continueEntry(
     history: List<HistoryEntity>,
     currentVideoUrl: String?,
+    discarded: Set<String>,
 ): HistoryEntity? =
     // observeAll() is already ordered watchedAt DESC (newest first).
     history
         .filter { it.contentUrl != currentVideoUrl }
+        .filter { it.contentUrl !in discarded }
         .filter { it.lastPositionMs > 0L && it.totalDurationMs > 0L }
         .filter {
             it.lastPositionMs.toFloat() <
                 it.totalDurationMs * WatchState.WATCHED_FRACTION
         }
-        .take(3)
+        .take(5)
         .firstOrNull()
 
 private fun String.companionTabLabel(): String =

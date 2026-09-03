@@ -188,17 +188,11 @@ fun NotificationsScreen(
             )
 
             // Stats card (health-app style): tapping it opens the detail screen.
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs)
-                        .clip(RoundedCornerShape(BluejayTokens().radius.card))
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                        .padding(Tokens.SpaceLg),
-            ) {
-                WatchStatsSummary(stats = watchStats, onClick = { showStatsDetail = true })
-            }
+            WatchStatsSummary(
+                stats = watchStats,
+                onClick = { showStatsDetail = true },
+                modifier = Modifier.padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
+            )
 
             // Persistent download-progress card (active downloads only).
             DownloadStripCard(
