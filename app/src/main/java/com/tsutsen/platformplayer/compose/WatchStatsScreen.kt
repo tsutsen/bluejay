@@ -95,7 +95,9 @@ fun WatchTimeBars(
         values.forEachIndexed { index, value ->
             val width = barWidth?.let { Modifier.width(it) } ?: Modifier.weight(1f)
             Column(
-                modifier = width,
+                // fillHeight: fill the row's height so the track's
+                // weight(1f) below leaves room for the label line.
+                modifier = width.then(if (fillHeight) Modifier.fillMaxHeight() else Modifier),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val fraction = (value.toFloat() / maxValue).coerceIn(0f, 1f)
@@ -103,7 +105,9 @@ fun WatchTimeBars(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .then(if (fillHeight) Modifier.fillMaxHeight() else Modifier.height(height)),
+                            // weight (not fillMaxHeight) so the label below
+                            // is never pushed out of the chart.
+                            .then(if (fillHeight) Modifier.weight(1f) else Modifier.height(height)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
                     Box(
