@@ -19,7 +19,7 @@ data class AppPreferences(
     val librarySectionsEnabled: List<String> =
         listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),
     val dualScreen: Boolean = false,
-    val dualScreenPages: List<String> = listOf("video", "library", "home"),
+    val dualScreenPages: List<String> = listOf("video", "library", "home", "dash"),
     val dualScreenVideoTabs: List<String> =
         listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot"),
     /** Display order of the enabled video-page tabs (Settings > Dual screen). */

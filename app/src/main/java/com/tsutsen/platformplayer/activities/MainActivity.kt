@@ -88,6 +88,9 @@ class MainActivity :
     @Inject
     lateinit var channelRepository: ChannelRepository
 
+    @Inject
+    lateinit var historyTracker: com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
+
     /** System picture-in-picture active (video-only window). */
     internal val pipActive = MutableStateFlow(false)
 
@@ -160,9 +163,13 @@ class MainActivity :
                 playbackQueueRepository = playbackQueueRepository,
                 liveChatRepository = liveChatRepository,
                 channelRepository = channelRepository,
+                historyTracker = historyTracker,
                 // Tapping the channel badge on the second screen navigates
                 // the main screen to the channel page.
                 onChannelClick = { url -> navigator.navigateToChannel(url) },
+                // Tapping a library playlist title opens the playlist on the
+                // main screen (same "playlist:<id>" URL the library cards use).
+                onPlaylistClick = { url -> navigator.navigateToPlaylist(url) },
             ).also { it.show() }
     }
 

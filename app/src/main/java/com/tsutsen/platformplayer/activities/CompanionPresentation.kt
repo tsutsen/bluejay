@@ -44,10 +44,13 @@ import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
@@ -101,11 +104,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import com.tsutsen.platformplayer.compose.WatchStatsSummary
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
 import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
@@ -128,9 +133,11 @@ import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.SavedVideoType
+import com.tsutsen.platformplayer.core.model.WatchState
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
 import com.tsutsen.platformplayer.feature.player.impl.ChannelRow
+import com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
 import com.tsutsen.platformplayer.feature.player.impl.PlayerEvent
 import com.tsutsen.platformplayer.feature.player.impl.PlayerEventBus
 import com.tsutsen.platformplayer.feature.player.impl.SystemControls
@@ -138,6 +145,10 @@ import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import com.tsutsen.platformplayer.feature.player.impl.formatViewCount
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.stats.CreatorWatch
+import com.tsutsen.platformplayer.stats.WatchStats
+import com.tsutsen.platformplayer.stats.WatchStatsBuilder
+import com.tsutsen.platformplayer.stats.humanDuration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
@@ -176,7 +187,9 @@ class CompanionPresentation(
     private val playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
     private val liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     private val channelRepository: ChannelRepository,
+    private val historyTracker: HistoryTracker,
     private val onChannelClick: (String) -> Unit,
+    private val onPlaylistClick: (String) -> Unit,
 ) : Presentation(context, display) {
     @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -256,8 +269,10 @@ class CompanionPresentation(
                     settingsRepository = settingsRepository,
                     liveChatRepository = liveChatRepository,
                     channelRepository = channelRepository,
+                    historyTracker = historyTracker,
                     companionWindow = window,
                     onChannelClick = onChannelClick,
+                    onPlaylistClick = onPlaylistClick,
                 )
             }
         }
@@ -361,8 +376,10 @@ private fun CompanionContent(
     settingsRepository: SettingsRepository,
     liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     channelRepository: ChannelRepository,
+    historyTracker: HistoryTracker,
     companionWindow: Window?,
     onChannelClick: (String) -> Unit,
+    onPlaylistClick: (String) -> Unit,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
     val liveChat by liveChatRepository.state.collectAsState()
@@ -385,7 +402,7 @@ private fun CompanionContent(
     val prefs = prefsState ?: return
     // Saved order wins (Settings > Dual screen > Pages); unknown keys are
     // dropped, missing pages are simply absent.
-    val pageKeys = prefs.dualScreenPages.filter { it in setOf("video", "library", "home") }
+    val pageKeys = prefs.dualScreenPages.filter { it in setOf("video", "library", "home", "dash") }
     // Configured order wins; canonical keys appended as fallback (older
     // saves predate info/controls), then filtered to the enabled set.
     val allVideoTabKeys =
@@ -440,6 +457,15 @@ private fun CompanionContent(
 
     val onPlay: (String) -> Unit = { url -> scope.launch { playerRepository.play(url) } }
     val onLongClick: (CoreVideoCard) -> Unit = { card -> optionsCard = card }
+
+    // Dash page: live history (the Room flow the player's HistoryTracker
+    // writes to) and the stats derived from it — the same pipeline as the
+    // Dash tab card on the main screen.
+    val history by historyTracker.observeHistory().collectAsState(initial = emptyList())
+    var watchStats by remember { mutableStateOf(WatchStats()) }
+    LaunchedEffect(history) {
+        watchStats = withContext(Dispatchers.IO) { WatchStatsBuilder.build(history) }
+    }
 
     // Info tab: like/dislike state from the library, subscribe state from
     // the channel repository (same actions as the main player row).
@@ -647,6 +673,7 @@ private fun CompanionContent(
                                     libraryRepository = libraryRepository,
                                     onPlay = onPlay,
                                     onLongClick = onLongClick,
+                                    onPlaylistClick = onPlaylistClick,
                                 )
                             }
 
@@ -656,6 +683,19 @@ private fun CompanionContent(
                                     onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
                                     onPlay = onPlay,
                                     onLongClick = onLongClick,
+                                )
+                            }
+
+                            "dash" -> {
+                                CompanionDashPage(
+                                    stats = watchStats,
+                                    history = history,
+                                    currentVideoUrl = video?.url,
+                                    onPlay = onPlay,
+                                    onDiscard = { url ->
+                                        scope.launch { historyTracker.deleteFromHistory(url) }
+                                    },
+                                    onChannelClick = onChannelClick,
                                 )
                             }
                         }
@@ -1154,6 +1194,7 @@ private fun CompanionLibraryPage(
     libraryRepository: LibraryRepository,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistClick: (String) -> Unit,
 ) {
     Column(
         modifier =
@@ -1178,6 +1219,7 @@ private fun CompanionLibraryPage(
                 libraryRepository = libraryRepository,
                 onPlay = onPlay,
                 onLongClick = onLongClick,
+                onPlaylistClick = onPlaylistClick,
                 modifier = Modifier.weight(1f),
             )
             LibrarySlotCell(
@@ -1186,6 +1228,7 @@ private fun CompanionLibraryPage(
                 libraryRepository = libraryRepository,
                 onPlay = onPlay,
                 onLongClick = onLongClick,
+                onPlaylistClick = onPlaylistClick,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -1196,6 +1239,7 @@ private fun CompanionLibraryPage(
                 libraryRepository = libraryRepository,
                 onPlay = onPlay,
                 onLongClick = onLongClick,
+                onPlaylistClick = onPlaylistClick,
                 modifier = Modifier.weight(1f),
             )
             LibrarySlotCell(
@@ -1204,6 +1248,7 @@ private fun CompanionLibraryPage(
                 libraryRepository = libraryRepository,
                 onPlay = onPlay,
                 onLongClick = onLongClick,
+                onPlaylistClick = onPlaylistClick,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -1218,6 +1263,7 @@ private fun LibrarySlotCell(
     libraryRepository: LibraryRepository,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (value == null) {
@@ -1230,6 +1276,7 @@ private fun LibrarySlotCell(
             libraryRepository = libraryRepository,
             onPlay = onPlay,
             onLongClick = onLongClick,
+            onPlaylistClick = onPlaylistClick,
             modifier = modifier,
         )
         return
@@ -1252,6 +1299,7 @@ private fun PlaylistSlotPager(
     libraryRepository: LibraryRepository,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val id = playlistId.toLongOrNull()
@@ -1268,9 +1316,204 @@ private fun PlaylistSlotPager(
         totalCount = pair?.second?.size ?: 0,
         onPlay = onPlay,
         onLongClick = onLongClick,
+        // Same URL shape the main screen's library playlist cards use.
+        onTitleClick = { onPlaylistClick("playlist:$playlistId") },
         modifier = modifier,
     )
 }
+
+/**
+ * Dash page: the stats card (the same widget as the main screen's Dash
+ * tab), the all-time top creators with their watch time, and the last
+ * unfinished video to continue.
+ */
+@Composable
+private fun CompanionDashPage(
+    stats: WatchStats,
+    history: List<HistoryEntity>,
+    currentVideoUrl: String?,
+    onPlay: (String) -> Unit,
+    onDiscard: (String) -> Unit,
+    onChannelClick: (String) -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = "Dash",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+        WatchStatsSummary(
+            stats = stats,
+            // No detail screen on the second screen — display only.
+            onClick = {},
+            modifier = Modifier.fillMaxWidth(),
+        )
+        DashSectionTitle("Top creators")
+        if (stats.topCreators.isEmpty()) {
+            DashEmpty("No watch history yet")
+        } else {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                stats.topCreators.forEach { creator ->
+                    CreatorBadge(
+                        creator = creator,
+                        onClick = { creator.authorUrl?.let(onChannelClick) },
+                    )
+                }
+            }
+        }
+        DashSectionTitle("Continue")
+        continueEntry(history, currentVideoUrl)?.let { entry ->
+            ContinueCard(
+                entry = entry,
+                onPlay = { onPlay(entry.contentUrl) },
+                onDiscard = { onDiscard(entry.contentUrl) },
+            )
+        } ?: DashEmpty("Nothing in progress")
+    }
+}
+
+@Composable
+private fun DashSectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp),
+    )
+}
+
+@Composable
+private fun DashEmpty(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 8.dp),
+    )
+}
+
+/** A horizontally scrolling badge: avatar, channel name, total watch time. */
+@Composable
+private fun CreatorBadge(
+    creator: CreatorWatch,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .clip(RoundedCornerShape(BluejayTokens().radius.md))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AsyncImage(
+            url = creator.avatarUrl,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp).clip(CircleShape),
+        )
+        Column {
+            Text(
+                text = creator.author,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+            Text(
+                text = humanDuration(creator.ms),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Last unfinished video: thumbnail, title, channel, play + discard. */
+@Composable
+private fun ContinueCard(
+    entry: HistoryEntity,
+    onPlay: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(BluejayTokens().radius.md))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        AsyncImage(
+            url = entry.thumbnailUrl,
+            contentDescription = null,
+            modifier =
+                Modifier
+                    .width(120.dp)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            entry.author?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+        IconButton(onClick = onPlay) {
+            Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play")
+        }
+        IconButton(onClick = onDiscard) {
+            Icon(imageVector = Icons.Filled.Close, contentDescription = "Discard")
+        }
+    }
+}
+
+/**
+ * The last unfinished video to continue: the newest of the three most
+ * recent not-fully-watched history entries, excluding the video currently
+ * playing.
+ */
+private fun continueEntry(
+    history: List<HistoryEntity>,
+    currentVideoUrl: String?,
+): HistoryEntity? =
+    // observeAll() is already ordered watchedAt DESC (newest first).
+    history
+        .filter { it.contentUrl != currentVideoUrl }
+        .filter { it.lastPositionMs > 0L && it.totalDurationMs > 0L }
+        .filter {
+            it.lastPositionMs.toFloat() <
+                it.totalDurationMs * WatchState.WATCHED_FRACTION
+        }
+        .take(3)
+        .firstOrNull()
 
 private fun String.companionTabLabel(): String =
     when (this) {
@@ -1295,6 +1538,9 @@ private fun LibrarySlotPager(
     totalCount: Int,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    // Playlist slots only: tapping the title opens the playlist on the
+    // main screen.
+    onTitleClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surfaceContainer
@@ -1317,7 +1563,10 @@ private fun LibrarySlotPager(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier),
                 )
                 val total = totalCount
                 if (total > 0) {
