@@ -15,6 +15,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -98,6 +100,7 @@ fun QueueStripCard(
     onPlayPause: () -> Unit,
     onLongClick: (ContentItem) -> Unit,
     modifier: Modifier = Modifier,
+    footer: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     Box(
         modifier =
@@ -121,19 +124,25 @@ fun QueueStripCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                return@Column
+            } else {
+                QueuedCardStrip(
+                    items = queue,
+                    current = current,
+                    isPlaying = isPlaying,
+                    onPlay = onPlay,
+                    onRemove = onRemove,
+                    onMove = onMove,
+                    onPlayPause = onPlayPause,
+                    onLongClick = onLongClick,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
-            QueuedCardStrip(
-                items = queue,
-                current = current,
-                isPlaying = isPlaying,
-                onPlay = onPlay,
-                onRemove = onRemove,
-                onMove = onMove,
-                onPlayPause = onPlayPause,
-                onLongClick = onLongClick,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            if (footer != null) {
+                Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+                footer(this)
+            }
         }
     }
 }

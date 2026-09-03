@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +39,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
+import com.tsutsen.platformplayer.stats.WatchStats
+import com.tsutsen.platformplayer.stats.WatchStatsBuilder
+import com.tsutsen.platformplayer.states.StateHistory
 import com.tsutsen.platformplayer.core.designsystem.component.DownloadStripCard
 import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
@@ -46,11 +50,15 @@ import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.database.dao.NotificationDao
 import com.tsutsen.platformplayer.core.database.entity.NotificationEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withContext
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.core.ui.RelativeTime
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.OffsetDateTime
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -80,6 +88,20 @@ class NotificationsViewModel
                 .map { list -> list.filter { !it.done } }
                 .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+        /** Aggregated watch stats for the Dash stats card / detail screen. */
+        private val _watchStats = MutableStateFlow(WatchStats.Empty)
+        val watchStats: StateFlow<WatchStats> = _watchStats
+
+        fun refreshWatchStats() {
+            viewModelScope.launch {
+                val history =
+                    withContext(Dispatchers.IO) {
+                        StateHistory.instance.getRecentHistory(OffsetDateTime.MIN, 100_000)
+                    }
+                _watchStats.value = WatchStatsBuilder.build(history)
+            }
+        }
+
         fun markRead(id: Long) {
             viewModelScope.launch { notificationDao.markRead(id) }
         }
@@ -107,8 +129,18 @@ fun NotificationsScreen(
     val playerUi by playerViewModel.uiState.collectAsState()
     val playerLoaded = playerUi as? com.tsutsen.platformplayer.feature.player.impl.PlayerUiState.Loaded
     val activeDownloads by viewModel.activeDownloads.collectAsState(initial = emptyList())
+    val watchStats by viewModel.watchStats.collectAsState()
     // Long-press on a queue card → the shared video options sheet.
     var sheetVideo by remember { mutableStateOf<ContentItem?>(null) }
+    var showStatsDetail by remember { mutableStateOf(false) }
+    // Recompute stats when the tab first shows and whenever the detail
+    // screen goes back (a watched video changes the numbers).
+    LaunchedEffect(showStatsDetail) { viewModel.refreshWatchStats() }
+
+    if (showStatsDetail) {
+        WatchStatsDetailScreen(stats = watchStats, onBack = { showStatsDetail = false })
+        return
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         AppHeader(
@@ -146,6 +178,9 @@ fun NotificationsScreen(
             },
             onLongClick = { video -> sheetVideo = video },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            footer = {
+                WatchStatsSummary(stats = watchStats, onClick = { showStatsDetail = true })
+            },
         )
 
         // Persistent download-progress card (active downloads only).

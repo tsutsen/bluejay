@@ -62,6 +62,10 @@ object Tokens {
 
     // Option-sheet section labels (fixed width so chip rows align)
     val OptionLabelWidth: Dp = 76.dp
+
+    // Charts (watch-time stats)
+    val ChartSm: Dp = 28.dp
+    val ChartLg: Dp = 48.dp
 }
 
 /**
