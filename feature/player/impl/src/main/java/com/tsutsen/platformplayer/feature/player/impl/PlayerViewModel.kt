@@ -331,6 +331,14 @@ class PlayerViewModel
         @Volatile
         private var isSubscribedCache: Boolean = false
 
+        /**
+         * Bumped on every optimistic subscribe/unsubscribe so an in-flight
+         * lazy-fetch (or an earlier toggle) can't clobber the UI with a
+         * pre-toggle value.
+         */
+        @Volatile
+        private var subscribeGeneration: Int = 0
+
         val playlists: StateFlow<List<PlaylistOption>> = libraryRepository.playlists
         val downloads: StateFlow<List<DownloadInfo>> = downloadsRepository.downloads
 
@@ -470,12 +478,13 @@ class PlayerViewModel
                         if (channelUrl != null && channelUrl != isSubscribedUrl) {
                             isSubscribedUrl = channelUrl
                             isSubscribedCache = false
+                            val gen = subscribeGeneration
                             viewModelScope.launch {
                                 val subscribed =
                                     withContext(Dispatchers.IO) {
                                         channelRepository.isSubscribed(channelUrl)
                                     }
-                                if (isSubscribedUrl == channelUrl) {
+                                if (isSubscribedUrl == channelUrl && gen == subscribeGeneration) {
                                     isSubscribedCache = subscribed
                                     _uiState.update {
                                         (it as? PlayerUiState.Loaded)?.copy(
@@ -552,21 +561,39 @@ class PlayerViewModel
             }
         }
 
-        /** Subscribe/unsubscribe the current video's channel. */
+        /**
+         * Subscribe/unsubscribe the current video's channel.
+         *
+         * Optimistic: the button flips immediately from the synchronous
+         * local store state; the backend transaction runs behind it and its
+         * result (the source of truth) is written back — a failed
+         * subscription no-ops in the repository, which rolls the UI back.
+         */
         fun subscribeChannel() {
+            val url =
+                playerRepository.playerState.value.currentVideo
+                    ?.author
+                    ?.url
+                    ?.takeIf { it.isNotEmpty() } ?: return
+            // Local read — synchronous, no IO.
+            val optimistic = !channelRepository.isSubscribed(url)
+            isSubscribedUrl = url
+            isSubscribedCache = optimistic
+            subscribeGeneration++
+            _uiState.update {
+                (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = optimistic) ?: it
+            }
+            val gen = subscribeGeneration
             viewModelScope.launch {
-                val url =
-                    playerRepository.playerState.value.currentVideo
-                        ?.author
-                        ?.url
-                if (url.isNullOrEmpty()) return@launch
                 val subscribed =
                     withContext(Dispatchers.IO) {
                         channelRepository.toggleSubscription(url)
                     }
-                isSubscribedCache = subscribed
-                _uiState.update {
-                    (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = subscribed) ?: it
+                if (isSubscribedUrl == url && gen == subscribeGeneration) {
+                    isSubscribedCache = subscribed
+                    _uiState.update {
+                        (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = subscribed) ?: it
+                    }
                 }
             }
         }
