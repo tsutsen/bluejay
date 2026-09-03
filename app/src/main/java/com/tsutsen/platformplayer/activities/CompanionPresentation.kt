@@ -512,6 +512,15 @@ private fun CompanionContent(
     }
 
     val pagerState = rememberPagerState(pageCount = { pageKeys.size })
+
+    // The dash page is the landing page; when a video opens in the player
+    // the pager flips to the video page.
+    val videoPageIndex = pageKeys.indexOf("video")
+    LaunchedEffect(video?.url) {
+        if (video != null && videoPageIndex in 1..pagerState.currentPage) {
+            pagerState.animateScrollToPage(videoPageIndex)
+        }
+    }
     // Settings can shrink the page list while the screen is up — snap back
     // to the first page instead of clamping mid-gesture.
     LaunchedEffect(pageKeys.size) {
