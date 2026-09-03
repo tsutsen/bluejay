@@ -47,10 +47,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -1837,7 +1837,7 @@ private fun CompanionControlRow(
         )
         // Seek icons without the baked-in "10" digit — plain rewind/ffwd.
         controlItem(
-            icon = Icons.Filled.Replay,
+            icon = Icons.Filled.FastRewind,
             description = "Back 10 seconds",
             containerColor = restContainer,
             contentColor = restContent,
@@ -1855,7 +1855,7 @@ private fun CompanionControlRow(
             onClick = onPlayPause,
         )
         controlItem(
-            icon = Icons.AutoMirrored.Filled.Forward,
+            icon = Icons.Filled.FastForward,
             description = "Forward 10 seconds",
             containerColor = restContainer,
             contentColor = restContent,

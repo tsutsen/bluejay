@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward30
@@ -19,7 +18,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Swipe
 import androidx.compose.material.icons.filled.SwipeVertical
-import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,23 +34,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
+import com.tsutsen.platformplayer.core.designsystem.icon.TouchDouble
+import com.tsutsen.platformplayer.core.designsystem.icon.TouchLong
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 
-// The editor mimics a video player: near-black bezel panels holding pure
-// black tiles, so the inner colors are fixed instead of theme-derived.
-private val BezelBackground = Color(0xFF1E1E1E)
-private val TileBackground = Color.Black
+// The editor mimics a video player: pure black cards holding dark tiles,
+// so the inner colors are fixed instead of theme-derived.
+private val CardBackground = Color.Black
+private val TileBackground = Color(0xFF1E1E1E)
+private val TileAssigned = Color(0xFF2B2B2B)
 private val TextBright = Color(0xFFF2F2F2)
 private val TextDim = Color(0xFF9A9A9A)
 
-// Material's set only ships TouchApp/Swipe* — hold and double-tap share the
-// touch icon; the double-tap tile gets a small "2" badge.
 private val GESTURE_ICONS: Map<String, ImageVector> =
     mapOf(
-        "hold" to Icons.Filled.TouchApp,
-        "double_tap" to Icons.Filled.TouchApp,
+        "hold" to TouchLong,
+        "double_tap" to TouchDouble,
         "swipe_h" to Icons.Filled.Swipe,
         "swipe_v" to Icons.Filled.SwipeVertical,
     )
@@ -80,8 +79,9 @@ internal fun PlayerGesturesEditor(
     // (slot, type) of the cell being picked; null = no popup.
     var picking by remember { mutableStateOf<Pair<String, String>?>(null) }
     val radius = BluejayTokens().radius
-    // The outer corners of each combined shape stay rounded, the inner
-    // corners (facing the gaps) are barely rounded.
+    // Stacked-group corner language: the first/last element of the stack
+    // keeps the outer rounding on its edge, everything in between and all
+    // corners facing the gaps uses the smaller radius.
     val outer = radius.md
     val inner = radius.xs
 
@@ -107,18 +107,18 @@ internal fun PlayerGesturesEditor(
                 }
             }
         }
-        // Bottom zones: three panels, each a 2x2 tile grid.
+        // Bottom zones: three panels, each a 2x2 tile grid. Middle of the
+        // stack — the same small radius on every corner.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
         ) {
-            listOf(
-                "bottomLeft" to RoundedCornerShape(inner, inner, inner, outer),
-                "bottomCenter" to RoundedCornerShape(inner),
-                "bottomRight" to RoundedCornerShape(inner, inner, outer, inner),
-            ).forEach { (slot, shape) ->
+            listOf("bottomLeft", "bottomCenter", "bottomRight").forEach { slot ->
                 val slotMap = slotSet[slot]
-                GesturePanel(modifier = Modifier.weight(1f), shape = shape) {
+                GesturePanel(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(inner),
+                ) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
                     ) {
@@ -152,7 +152,8 @@ internal fun PlayerGesturesEditor(
         }
         // Aesthetic hint bar: half a tile row tall, back/play/forward
         // centered — a reminder that this configures the player itself.
-        PlayerHintBar()
+        // Last element of the stack: small radius on top, outer below.
+        PlayerHintBar(shape = RoundedCornerShape(inner, inner, outer, outer))
     }
 
     // The single popup: action list for the selected cell.
@@ -185,7 +186,7 @@ private operator fun PlayerGestureSlotSet.get(slot: String): Map<String, String>
         else -> emptyMap()
     }
 
-/** Near-black panel that groups a zone's tiles. */
+/** Black card that groups a zone's tiles. */
 @Composable
 private fun GesturePanel(
     shape: RoundedCornerShape,
@@ -196,14 +197,14 @@ private fun GesturePanel(
         modifier =
             modifier
                 .clip(shape)
-                .background(BezelBackground)
+                .background(CardBackground)
                 .padding(Tokens.SpaceXs),
     ) {
         content()
     }
 }
 
-/** One black tile: gesture-type icon on top, the selected action below. */
+/** One dark tile: gesture-type icon on top, the selected action below. */
 @Composable
 private fun GestureTile(
     type: String,
@@ -216,7 +217,7 @@ private fun GestureTile(
         modifier =
             modifier
                 .clip(RoundedCornerShape(BluejayTokens().radius.sm))
-                .background(TileBackground)
+                .background(if (isAssigned) TileAssigned else TileBackground)
                 .clickable(onClick = onClick)
                 .padding(vertical = Tokens.SpaceMd, horizontal = Tokens.SpaceXs),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -229,23 +230,6 @@ private fun GestureTile(
                 modifier = Modifier.size(Tokens.IconMd),
                 tint = if (isAssigned) TextBright else TextDim,
             )
-            if (type == "double_tap") {
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .size(Tokens.IconXs)
-                            .clip(CircleShape)
-                            .background(BezelBackground),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "2",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextBright,
-                    )
-                }
-            }
         }
         Spacer(modifier = Modifier.height(Tokens.SpaceXs))
         Text(
@@ -261,13 +245,13 @@ private fun GestureTile(
 
 /** Decorative back/play/forward strip — half a tile row tall. */
 @Composable
-private fun PlayerHintBar() {
+private fun PlayerHintBar(shape: RoundedCornerShape) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(BluejayTokens().radius.md))
-                .background(TileBackground)
+                .clip(shape)
+                .background(CardBackground)
                 .height(Tokens.IconMd + Tokens.SpaceSm),
         horizontalArrangement =
             Arrangement.spacedBy(Tokens.SpaceXl, Alignment.CenterHorizontally),

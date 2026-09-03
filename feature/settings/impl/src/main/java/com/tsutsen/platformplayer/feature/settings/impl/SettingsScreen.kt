@@ -43,10 +43,10 @@ import androidx.compose.material.icons.filled.Games
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Recommend
-import androidx.compose.material.icons.filled.Splitscreen
 import androidx.compose.material.icons.filled.Tab
-import androidx.compose.material.icons.filled.TabletAndroid
+import com.tsutsen.platformplayer.core.designsystem.icon.DualScreen
+import com.tsutsen.platformplayer.core.designsystem.icon.SplitscreenBottom
+import com.tsutsen.platformplayer.core.designsystem.icon.VideoTemplate
 import androidx.compose.material.icons.filled.Hd
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
@@ -207,7 +207,7 @@ fun SettingsScreen(
                     }
                     item {
                         SettingsOptionCard(
-                            icon = Icons.Filled.TabletAndroid,
+                            icon = DualScreen,
                             title = "Dual screen",
                             subtitle = "Second display pages, tabs, sections",
                             onClick = { navigator.navigateToSettingsFragment("dual") },
@@ -954,7 +954,7 @@ private fun SectionItems(
                             },
                     )
                     SettingsSwitchCard(
-                        icon = Icons.Filled.Recommend,
+                        icon = VideoTemplate,
                         title = "Show recommended videos",
                         subtitle = "Recommended tab on the video page",
                         checked = state.showRecommendedVideos,
@@ -1153,13 +1153,21 @@ private fun SectionItems(
                                 "Normal player gestures"
                             },
                     ) {
-                        Text(
-                            text = "Each zone in a player can have its unique gestures.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = Tokens.SpaceSm),
-                        )
-                        PlayerGesturesEditor(
+                        // The shared sheet only pads its title; give the
+                        // editor the same horizontal inset as the title.
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = Tokens.SpaceLg),
+                        ) {
+                            Text(
+                                text = "Each zone in a player can have its unique gestures.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = Tokens.SpaceSm),
+                            )
+                            PlayerGesturesEditor(
                             mode = mode,
                             slotSet =
                                 if (mode == PlayerGestures.MODE_FULLSCREEN) {
@@ -1167,23 +1175,24 @@ private fun SectionItems(
                                 } else {
                                     state.playerGestures.normal
                                 },
-                            onCellChange = { slot, type, action ->
-                                viewModel.setPlayerGesturesCell(
-                                    mode,
-                                    slot,
-                                    type,
-                                    action,
-                                )
-                            },
-                        )
-                        if (
-                            (mode == PlayerGestures.MODE_FULLSCREEN &&
-                                state.playerGestures.fullscreen.isCustomized) ||
-                            (mode == PlayerGestures.MODE_NORMAL &&
-                                state.playerGestures.normal.isCustomized)
-                        ) {
-                            TextButton(onClick = { viewModel.resetPlayerGestures(mode) }) {
-                                Text("Reset to defaults")
+                                onCellChange = { slot, type, action ->
+                                    viewModel.setPlayerGesturesCell(
+                                        mode,
+                                        slot,
+                                        type,
+                                        action,
+                                    )
+                                },
+                            )
+                            if (
+                                (mode == PlayerGestures.MODE_FULLSCREEN &&
+                                    state.playerGestures.fullscreen.isCustomized) ||
+                                (mode == PlayerGestures.MODE_NORMAL &&
+                                    state.playerGestures.normal.isCustomized)
+                            ) {
+                                TextButton(onClick = { viewModel.resetPlayerGestures(mode) }) {
+                                    Text("Reset to defaults")
+                                }
                             }
                         }
                     }
@@ -1253,7 +1262,7 @@ private fun SectionItems(
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
-                        icon = Icons.Filled.Splitscreen,
+                        icon = SplitscreenBottom,
                         title = "Main page order",
                         subtitle = dualOrderLabel(state.dualScreenPageOrder, dualPageOrderNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
