@@ -5,7 +5,7 @@ import com.tsutsen.platformplayer.api.media.models.PlatformAuthorLink
 import com.tsutsen.platformplayer.api.media.models.video.SerializedPlatformVideo
 import com.tsutsen.platformplayer.models.HistoryVideo
 import java.time.LocalDate
-import java.time.ZoneOffset
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -27,7 +27,10 @@ class WatchStatsBuilderTests {
         return HistoryVideo(
             video,
             positionMs,
-            date.atStartOfDay().atOffset(ZoneOffset.UTC),
+            // Local midnight of the intended day: the builder attributes
+            // history to the device-local day, so the fixture must be
+            // timezone-independent.
+            date.atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime(),
             null,
         )
     }

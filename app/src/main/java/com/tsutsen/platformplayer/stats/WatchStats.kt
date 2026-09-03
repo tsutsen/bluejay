@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.stats
 
 import com.tsutsen.platformplayer.models.HistoryVideo
 import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Aggregated watch behaviour for the Dash stats card / detail screen,
@@ -67,7 +68,10 @@ object WatchStatsBuilder {
         for (h in history) {
             val ms = h.position.coerceAtLeast(0L)
             if (ms <= 0L) continue
-            val day = h.date.toLocalDate()
+            // History stores UTC instants; attribute each video to the day
+            // it was watched in the device's local zone (not the UTC day,
+            // which trails behind by the timezone offset in early hours).
+            val day = h.date.atZoneSameInstant(ZoneId.systemDefault()).toLocalDate()
             val creator = h.video.author?.name?.takeIf { it.isNotBlank() } ?: "Unknown"
             val avatar = h.video.author?.thumbnail?.takeIf { it.isNotBlank() }
             if (avatar != null && !creatorAvatars.containsKey(creator)) {
@@ -97,7 +101,8 @@ object WatchStatsBuilder {
 
         val lastWeekDaily = (0L until 7L).map { offset ->
             val day = weekStart.plusDays(offset)
-            DailyWatch(day, daySums[day] ?: 0L)
+            val top = dayAuthorMs[day]?.maxByOrNull { it.value }
+            DailyWatch(day, daySums[day] ?: 0L, top?.key)
         }
         val last30Days = (0L until 30L).map { offset ->
             val day = windowStart.plusDays(offset)

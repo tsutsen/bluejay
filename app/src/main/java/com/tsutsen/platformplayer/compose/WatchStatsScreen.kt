@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import com.tsutsen.platformplayer.core.designsystem.component.AvatarCircle
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
@@ -102,7 +100,8 @@ fun WatchTimeBars(
                             Modifier
                                 .fillMaxWidth()
                                 .height(
-                                    if (value > 0) height * fraction.coerceAtLeast(0.15f) else 2.dp,
+                                    if (value > 0) height * fraction.coerceAtLeast(0.15f)
+                                        else Tokens.SpaceXs,
                                 )
                                 .clip(
                                     RoundedCornerShape(
@@ -293,12 +292,10 @@ fun WatchStatsDetailScreen(
             }
             Spacer(modifier = Modifier.height(Tokens.SpaceMd))
             StatCard {
-                WatchTimeBars(
-                    values = stats.lastWeekDaily.map { it.ms },
-                    height = Tokens.ChartLg,
+                TippedBars(
+                    days = stats.lastWeekDaily,
                     labels = stats.lastWeekDaily.map { it.day.label },
                     highlightIndex = stats.lastWeekDaily.lastIndex,
-                    barWidth = null, // weighted: 7 bars share the width
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -353,7 +350,10 @@ fun WatchStatsDetailScreen(
             Spacer(modifier = Modifier.height(Tokens.SpaceLg))
             SectionTitle("Last 30 days")
             StatCard {
-                Last30DaysChart(days = stats.last30Days)
+                TippedBars(
+                    days = stats.last30Days,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             Spacer(modifier = Modifier.height(Tokens.SpaceLg))
         }
@@ -439,21 +439,31 @@ private fun CreatorRow(rank: Int, creator: CreatorWatch) {
 }
 
 /**
- * The 30-day sliding-window chart: 30 even bars (no day labels — there is
- * no legible label per bar). Each bar carries a native [TooltipBox] that is
- * pinned on tap: the tooltip (a real [androidx.compose.ui.window.Popup],
- * placed above the bar with a caret) shows the exact date, the watch
- * duration and the top creator for that day. Tapping the same bar, or
- * anywhere outside the tooltip, dismisses it — handled by the popup.
+ * Bar chart where every bar carries a native [TooltipBox] that is pinned
+ * on tap: the tooltip (a real [androidx.compose.ui.window.Popup], placed
+ * above the bar with a caret) shows the day, the watch duration and the
+ * top creator for that day. Tapping the same bar, or anywhere outside the
+ * tooltip, dismisses it — handled by the popup.
+ *
+ * [days] oldest first. [labels] (optional) draws one line under each bar.
+ * [highlightIndex] marks one bar in full-strength primary (e.g. today).
+ * Days with no watch time render as a small visible stub, so the full
+ * window is always shown — every day in [days] gets a bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Last30DaysChart(days: List<DailyWatch>) {
+private fun TippedBars(
+    days: List<DailyWatch>,
+    modifier: Modifier = Modifier,
+    chartHeight: Dp = Tokens.ChartLg,
+    labels: List<String>? = null,
+    highlightIndex: Int? = null,
+) {
     val scheme = MaterialTheme.colorScheme
     if (days.isEmpty()) return
     val maxValue = days.maxOf { it.ms }.coerceAtLeast(1L)
-    Row(modifier = Modifier.fillMaxWidth().height(Tokens.ChartLg)) {
-        days.forEachIndexed { _, day ->
+    Row(modifier = modifier) {
+        days.forEachIndexed { index, day ->
             val tooltipState = rememberTooltipState(isPersistent = true)
             val scope = rememberCoroutineScope()
             TooltipBox(
@@ -486,11 +496,10 @@ private fun Last30DaysChart(days: List<DailyWatch>) {
                 // Gestures are handled per bar below, not by the framework.
                 enableUserInput = false,
             ) {
-                Box(
+                Column(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .fillMaxHeight()
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -503,32 +512,52 @@ private fun Last30DaysChart(days: List<DailyWatch>) {
                             }
                             // Visual gap between bars; the full slot is the hit target.
                             .padding(horizontal = Tokens.SpaceXxs / 2),
-                    contentAlignment = Alignment.BottomCenter,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    val fraction = (day.ms.toFloat() / maxValue).coerceIn(0f, 1f)
                     Box(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(
-                                    if (day.ms > 0)
-                                        Tokens.ChartLg * fraction.coerceAtLeast(0.15f)
-                                    else 2.dp
-                                )
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = BluejayTokens().radius.xs,
-                                        topEnd = BluejayTokens().radius.xs,
+                                .height(chartHeight),
+                        contentAlignment = Alignment.BottomCenter,
+                    ) {
+                        val fraction = (day.ms.toFloat() / maxValue).coerceIn(0f, 1f)
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(
+                                        if (day.ms > 0)
+                                            chartHeight * fraction.coerceAtLeast(0.15f)
+                                        // Visible stub so the whole window stays shown
+                                        else Tokens.SpaceXs
                                     )
-                                )
-                                .background(
-                                    when {
-                                        day.ms == 0L -> scheme.surfaceVariant
-                                        tooltipState.isVisible -> scheme.primary
-                                        else -> scheme.primary.copy(alpha = 0.5f)
-                                    }
-                                ),
-                    )
+                                    .clip(
+                                        RoundedCornerShape(
+                                            topStart = BluejayTokens().radius.xs,
+                                            topEnd = BluejayTokens().radius.xs,
+                                        )
+                                    )
+                                    .background(
+                                        when {
+                                            day.ms == 0L -> scheme.surfaceVariant
+                                            tooltipState.isVisible || index == highlightIndex ->
+                                                scheme.primary
+                                            else -> scheme.primary.copy(alpha = 0.5f)
+                                        }
+                                    ),
+                        )
+                    }
+                    labels?.getOrNull(index)?.let { label ->
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = Tokens.SpaceXs),
+                        )
+                    }
                 }
             }
         }
