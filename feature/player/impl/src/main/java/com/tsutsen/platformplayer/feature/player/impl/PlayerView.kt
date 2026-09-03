@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -1077,7 +1079,7 @@ fun PlayerView(
                                 .padding(top = 64.dp)
                                 .background(
                                     Color.Black.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = RoundedCornerShape(BluejayTokens().radius.card),
                                 ).padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),

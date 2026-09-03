@@ -2,7 +2,10 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ChipShapes
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Shape
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.RadiusScale
 
 /**
@@ -93,6 +96,18 @@ fun connectedGroupShapes(
                 checkedShape = pill,
             )
     }
+}
+
+/**
+ * The app's chip shape for all three states (rest / selected / pressed),
+ * derived from the user's rounding tokens. M3's chip defaults are
+ * hard-coded component tokens that ignore the rounding slider, so every
+ * [androidx.compose.material3.FilterChip] in the app passes these.
+ */
+@Composable
+fun tokenizedChipShapes(): ChipShapes {
+    val s = RoundedCornerShape(BluejayTokens().radius.sm)
+    return ChipShapes(s, s, s)
 }
 
 /**

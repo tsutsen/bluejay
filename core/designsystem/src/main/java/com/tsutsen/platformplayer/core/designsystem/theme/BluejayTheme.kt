@@ -1,6 +1,9 @@
 package com.tsutsen.platformplayer.core.designsystem.theme
 
 import android.app.Activity
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
@@ -16,6 +19,25 @@ import androidx.core.view.WindowCompat
 
 private val DefaultColorScheme = lightColorScheme()
 private val DarkColorSchemeCustom = darkColorScheme()
+
+/**
+ * M3's expressive scheme, except the default effects spec never overshoots.
+ *
+ * M3 morphs button/chip/icon corner radii with [androidx.compose.material3.internal.rememberAnimatedShape],
+ * driven by this spec. When a toggle is reversed mid-animation M3 resumes
+ * the spring with the previous velocity, and even a critically damped
+ * spring can push the morph progress past 1.0 — the corner lerp then
+ * extrapolates to negative radii and crashes with "Corner size in Px can't
+ * be negative" (seen on the like/dislike pill). A tween ignores the
+ * initial velocity, so it structurally cannot overshoot: the same clamp
+ * used on our own animated radii, applied at the one place every M3 shape
+ * morph routes through.
+ */
+private val safeExpressiveMotionScheme: MotionScheme =
+    object : MotionScheme by MotionScheme.expressive() {
+        override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> =
+            tween(durationMillis = 200, easing = FastOutSlowInEasing)
+    }
 
 /**
  * Semantic colors (warning etc.) for the current effective theme.
@@ -37,7 +59,7 @@ fun BluejayTheme(
     /** 0..100 — user's UI rounding preference (Settings > Appearance). */
     uiRounding: Int = 100,
     /** M3 expressive motion physics for every animation in the app. */
-    motionScheme: MotionScheme = MotionScheme.expressive(),
+    motionScheme: MotionScheme = safeExpressiveMotionScheme,
     content: @Composable () -> Unit,
 ) {
     val tokens = remember(uiRounding) {

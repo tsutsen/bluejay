@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -171,7 +173,7 @@ private fun GestureSlotCard(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                             .background(
                                 if (isAssigned) TileAssigned else TileUnassigned,
                             )

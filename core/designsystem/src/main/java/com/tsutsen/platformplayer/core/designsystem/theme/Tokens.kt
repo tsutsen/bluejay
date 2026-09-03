@@ -95,7 +95,9 @@ data class RadiusScale(
          * above 100 rounds further (200 = double the shipped radii).
          */
         fun fromRounding(rounding: Int): RadiusScale {
-            val f = (rounding / 100f).coerceIn(0f, 2f)
+            // 5 is the app's minimum rounding — the same floor the settings
+            // slider enforces (covers values saved before the floor existed).
+            val f = (rounding / 100f).coerceIn(0.05f, 2f)
             return RadiusScale(
                 xs = (XS * f).roundToInt().dp,
                 sm = (SM * f).roundToInt().dp,

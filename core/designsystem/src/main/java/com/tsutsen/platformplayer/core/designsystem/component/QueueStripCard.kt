@@ -313,7 +313,7 @@ private fun QueueStripItem(
                                 (abs(swipe.value) / swipeFlyPx).coerceIn(0f, 1f) * 0.8f)
                                 .coerceAtLeast(0.2f)
                     }
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(BluejayTokens().radius.md))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             // Content area: swipe up/down to remove, tap to play, long-press
@@ -380,7 +380,7 @@ private fun QueueStripItem(
                             Modifier
                                 .fillMaxWidth()
                                 .height(92.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                                 .background(Color(0xFF1F1F1F)),
                     ) {
                         AsyncImage(
@@ -389,7 +389,7 @@ private fun QueueStripItem(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
-                                    .clip(RoundedCornerShape(8.dp)),
+                                    .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                         )
                         item.durationMs
                             ?.takeIf { it > 0 }
@@ -403,7 +403,7 @@ private fun QueueStripItem(
                                             .align(Alignment.BottomEnd)
                                             .background(
                                                 Color.Black.copy(alpha = 0.75f),
-                                                RoundedCornerShape(4.dp),
+                                                RoundedCornerShape(BluejayTokens().radius.xs),
                                             )
                                             .padding(horizontal = 5.dp, vertical = 2.dp),
                                 )
@@ -509,7 +509,7 @@ private fun NowPlayingCard(
             Modifier
                 .width(CARD_W)
                 .height(CARD_H)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(BluejayTokens().radius.md))
                 .background(Color(0xFF1F1F1F))
                 .combinedClickable(onClick = onPlayPause, onLongClick = onLongClick),
     ) {
@@ -521,7 +521,7 @@ private fun NowPlayingCard(
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
                     .align(Alignment.TopCenter)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(BluejayTokens().radius.md))
                     .background(Color(0xFF1F1F1F)),
         ) {
             AsyncImage(
@@ -537,7 +537,7 @@ private fun NowPlayingCard(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(BluejayTokens().radius.md))
                     .drawWithContent {
                         drawContent()
                         drawRect(
@@ -569,7 +569,7 @@ private fun NowPlayingCard(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(BluejayTokens().radius.md))
                         .background(Color(0xCC009369)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -613,7 +613,7 @@ private fun NowPlayingCard(
                         Modifier
                             .align(Alignment.BottomEnd)
                             .padding(end = 8.dp, bottom = 8.dp)
-                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(4.dp))
+                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(BluejayTokens().radius.xs))
                             .padding(horizontal = 5.dp, vertical = 2.dp),
                 )
             }

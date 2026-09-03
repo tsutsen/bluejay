@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.Checkbox
@@ -90,6 +89,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
+import com.tsutsen.platformplayer.core.designsystem.component.SegmentedButtons
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
@@ -323,28 +323,21 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Search type: native expressive [ButtonGroup] — the
-                // official M3 control for fixed single-select filters.
-                // Items expand to fill the row (constant height, no
-                // jitter when the sort pill appears/disappears).
-                ButtonGroup(
-                    overflowIndicator = {},
+                // Search type: the app's segmented switcher — the selected
+                // segment is a tonal pill, following the user's rounding
+                // tokens. (M3's native ButtonGroup can't take tokenized
+                // shapes, so the rounding slider would ignore it.)
+                SegmentedButtons(
+                    labels = SearchType.entries.map { searchTypeLabel(it) },
+                    selectedIndex = searchType.ordinal,
+                    onSelected = { index ->
+                        // Switching the type releases the field's
+                        // focus (and the keyboard).
+                        focusManager.clearFocus()
+                        viewModel.setSearchType(SearchType.entries[index])
+                    },
                     modifier = Modifier.weight(1f),
-                ) {
-                    SearchType.entries.forEach { type ->
-                        toggleableItem(
-                            checked = searchType == type,
-                            label = searchTypeLabel(type),
-                            onCheckedChange = {
-                                // Switching the type releases the field's
-                                // focus (and the keyboard).
-                                focusManager.clearFocus()
-                                viewModel.setSearchType(type)
-                            },
-                            weight = 1f,
-                        )
-                    }
-                }
+                )
 
                 // Source/sort menus pinned to the right; the menus anchor
                 // to their pills.
@@ -628,7 +621,7 @@ private fun RecentSearches(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 4.dp),
+                        .padding(bottom = Tokens.SpaceXs),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -653,12 +646,12 @@ private fun RecentSearches(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
+                            .padding(horizontal = Tokens.SpaceXs)
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(12.dp),
+                                RoundedCornerShape(BluejayTokens().radius.sm),
                             ).clickable { onItemClick(query) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = Tokens.SpaceMd, vertical = Tokens.SpaceSm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -672,7 +665,7 @@ private fun RecentSearches(
                         contentDescription = "Delete",
                         modifier =
                             Modifier
-                                .size(20.dp)
+                                .size(Tokens.IconSm)
                                 .clickable { onDeleteItem(query) },
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

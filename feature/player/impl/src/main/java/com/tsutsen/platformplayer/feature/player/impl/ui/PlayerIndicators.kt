@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Replay10
@@ -197,7 +198,7 @@ internal fun GestureIndicatorOverlay(
             val s = session!!
             Surface(
                 color = Color.Black.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(BluejayTokens().radius.sm),
                 modifier = Modifier.padding(horizontal = 16.dp),
             ) {
                 Row(
@@ -252,7 +253,7 @@ private fun ProgressIndicator(
                 Modifier
                     .width(6.dp)
                     .height(56.dp)
-                    .clip(RoundedCornerShape(999.dp))
+                    .clip(RoundedCornerShape(CornerSize(100)))
                     .background(Color.White.copy(alpha = 0.25f)),
         ) {
             Box(

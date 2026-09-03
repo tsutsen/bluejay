@@ -37,6 +37,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.PostCardView
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.component.tokenizedChipShapes
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ArticleCard
 import com.tsutsen.platformplayer.core.model.Card
@@ -119,6 +120,7 @@ fun HomeScreen(
                                     viewModel.setHomeHiddenSources(hiddenSources)
                                 },
                                 label = { Text(source.name) },
+                                shapes = tokenizedChipShapes(),
                             )
                         }
                     }

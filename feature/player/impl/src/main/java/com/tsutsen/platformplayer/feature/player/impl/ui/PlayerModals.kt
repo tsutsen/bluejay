@@ -33,6 +33,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.DownloadSection
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.TileTone
+import com.tsutsen.platformplayer.core.designsystem.component.tokenizedChipShapes
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.AudioTrackInfo
@@ -81,6 +82,7 @@ internal fun OptionsModal(
                         selected = playbackSpeed == speed,
                         onClick = { onSpeedChange(speed) },
                         label = { Text("${speed}x") },
+                        shapes = tokenizedChipShapes(),
                     )
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }
@@ -91,6 +93,7 @@ internal fun OptionsModal(
                         selected = quality == q,
                         onClick = { onQualityChange(q) },
                         label = { Text(q) },
+                        shapes = tokenizedChipShapes(),
                     )
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }
@@ -103,6 +106,7 @@ internal fun OptionsModal(
                             selected = track.label == selectedAudioTrack,
                             onClick = { onAudioChange(track.label) },
                             label = { Text(track.label) },
+                            shapes = tokenizedChipShapes(),
                         )
                         Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                     }
@@ -115,6 +119,7 @@ internal fun OptionsModal(
                         selected = subtitle == s,
                         onClick = { onSubtitleChange(s) },
                         label = { Text(s) },
+                        shapes = tokenizedChipShapes(),
                     )
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }

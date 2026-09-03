@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.feature.channel.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -169,8 +171,8 @@ fun ChannelScreen(
                                             modifier =
                                                 Modifier
                                                     .padding(start = Tokens.SpaceXs)
-                                                    .size(16.dp)
-                                                    .clip(RoundedCornerShape(4.dp)),
+                                                    .size(Tokens.IconSm)
+                                                    .clip(RoundedCornerShape(BluejayTokens().radius.xs)),
                                             contentScale = ContentScale.FillBounds,
                                         )
                                     }

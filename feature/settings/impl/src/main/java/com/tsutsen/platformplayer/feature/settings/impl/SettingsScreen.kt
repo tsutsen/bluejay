@@ -875,7 +875,10 @@ private fun SectionItems(
                         title = "UI rounding",
                         subtitle = "Corner radius across the app",
                         value = state.appearance.uiRounding.toFloat(),
-                        valueRange = 0f..200f,
+                        // Minimum 5: at 0 the radii (and the derived grid
+                        // gaps) would go fully sharp, which the app no longer
+                        // supports as a look.
+                        valueRange = 5f..200f,
                         onValueChange = {
                             // ponytail: persists on every tick; fine for a small
                             // JSON settings file, batch if it ever chugs.

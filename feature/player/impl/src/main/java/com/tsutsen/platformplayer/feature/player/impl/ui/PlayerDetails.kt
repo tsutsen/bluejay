@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -338,7 +340,7 @@ private fun LiveElapsedPill(startMs: Long?) {
     Box(
         modifier =
             Modifier
-                .background(MaterialTheme.colorScheme.error, RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.error, RoundedCornerShape(BluejayTokens().radius.xs))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(label, color = MaterialTheme.colorScheme.onError, fontSize = 12.sp)
