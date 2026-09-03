@@ -70,6 +70,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGap
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
@@ -299,7 +300,7 @@ private fun SubscriptionsContent(
                                 onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                                 onLoadMore = onLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(Tokens.SpaceSm),
+                                contentPadding = PaddingValues(ContentCardInnerGap()),
                             ) { card ->
                                 VideoCard(
                                     card = card as ModelVideoCard,
@@ -406,7 +407,7 @@ private fun SubscriptionsContent(
                             onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(Tokens.SpaceSm),
+                            contentPadding = PaddingValues(ContentCardInnerGap()),
                         ) { card ->
                             VideoCard(
                                 card = card as ModelVideoCard,

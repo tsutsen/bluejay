@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGap
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import androidx.compose.material3.CircularProgressIndicator
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
@@ -581,7 +582,7 @@ private fun WideVideoGrid(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(Tokens.SpaceSm),
+        contentPadding = PaddingValues(ContentCardInnerGap()),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
     ) {
         items(

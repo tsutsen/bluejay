@@ -29,11 +29,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Card
+
+/**
+ * The standard gap between a [ContentCard] edge and the cards laid on it:
+ * the difference of their corner radii. Both radii rescale with the user's
+ * corner rounding setting, so the inset tracks them (sharp rounding = zero
+ * gap, extra rounding = a wider gap).
+ */
+@Composable
+fun ContentCardInnerGap(): Dp =
+    (BluejayTokens().radius.card - BluejayTokens().radius.sm).coerceAtLeast(0.dp)
 
 /**
  * Content-area card: the rounded [surfaceContainer] panel that a scrolling
@@ -131,13 +142,14 @@ fun VideoContainer(
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
     // The gap between the ContentCard edge and the inner video cards is the
-    // difference of their radii (radius.card 16dp - radius.sm 8dp = 8dp), so
-    // every screen gets the same visual inset.
-    contentPadding: PaddingValues = PaddingValues(Tokens.SpaceSm),
+    // difference of their radii. Both radii rescale with the user's corner
+    // rounding setting, so the inset tracks them (null = derive it).
+    contentPadding: PaddingValues? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     topContent: (@Composable () -> Unit)? = null,
     cardContent: @Composable (Card) -> Unit,
 ) {
+    val effectivePadding = contentPadding ?: PaddingValues(ContentCardInnerGap())
     when (layout) {
         is ContainerLayout.List -> {
             val state = rememberLazyListState()
@@ -159,7 +171,7 @@ fun VideoContainer(
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 state = state,
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg),
             ) {
                 if (topContent != null) {
@@ -183,7 +195,7 @@ fun VideoContainer(
             LazyRow(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
                 renderCards(items, cardContent, trailingContent)
@@ -211,7 +223,7 @@ fun VideoContainer(
                 modifier = modifier.fillMaxSize(),
                 state = state,
                 columns = GridCells.Fixed(layout.columns),
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
@@ -239,7 +251,7 @@ fun VideoContainer(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
                 columns = GridCells.Fixed(layout.columns),
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
             ) {
@@ -266,7 +278,7 @@ fun VideoContainer(
                 modifier = modifier.fillMaxHeight(),
                 state = state,
                 rows = GridCells.Fixed(layout.rowsPerPage),
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
             ) {
