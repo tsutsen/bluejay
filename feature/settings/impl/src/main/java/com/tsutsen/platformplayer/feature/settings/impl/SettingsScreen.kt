@@ -31,6 +31,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BorderStyle
 import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Copyright
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DisplaySettings
@@ -42,7 +44,9 @@ import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Games
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Tab
 import com.tsutsen.platformplayer.core.designsystem.icon.DualScreen
 import com.tsutsen.platformplayer.core.designsystem.icon.SplitscreenBottom
@@ -215,18 +219,11 @@ fun SettingsScreen(
                         )
                     }
                     item {
-                        val aboutContext = LocalContext.current
                         SettingsOptionCard(
                             icon = Icons.Filled.Info,
-                            title = "About & support",
-                            subtitle = "Bluejay is based on Grayjay/FUTO — support the original",
-                            onClick = {
-                                runCatching {
-                                    aboutContext.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://grayjay.app")),
-                                    )
-                                }
-                            },
+                            title = "About",
+                            subtitle = "Version, license, support the original project",
+                            onClick = { navigator.navigateToSettingsFragment("about") },
                             groupPosition = GroupPosition.Last,
                         )
                     }
@@ -863,6 +860,10 @@ private fun SectionItems(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
         when (category) {
+            "about" -> {
+                AboutItems()
+            }
+
             "appearance" -> {
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsOptionCard(
@@ -1451,6 +1452,103 @@ private fun dualOrderLabel(
     names: Map<String, String>,
 ): String = order.joinToString(", ") { names[it] ?: it }
 
+/**
+ * About page: app identity + version, the support-the-original notice
+ * (Bluejay is a fork of Grayjay, which builds on FUTO), and the standard
+ * about links (upstream site, source repo, license).
+ */
+@Composable
+private fun AboutItems() {
+    val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
+    // The feature module has no BuildConfig of its own (versionName is set
+    // on the app module) — read it from the package manager instead.
+    val version =
+        runCatching {
+            context.packageManager
+                .getPackageInfo(context.packageName, 0)
+                .versionName
+        }.getOrNull() ?: "unknown"
+
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
+        Card(
+            shape = RoundedCornerShape(BluejayTokens().radius.card),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer),
+        ) {
+            Row(
+                modifier = Modifier.padding(Tokens.SpaceLg),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(Tokens.AvatarMd),
+                    tint = scheme.primary,
+                )
+                Spacer(Modifier.width(Tokens.SpaceLg))
+                Column {
+                    Text(
+                        text = "Bluejay",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = scheme.onSurface,
+                    )
+                    Text(
+                        text = "Version $version",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        Text(
+            text =
+                "Bluejay is a fork of Grayjay, which builds on FUTO. " +
+                    "If this app keeps you watching, consider supporting the original project.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = scheme.onSurfaceVariant,
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+            SettingsOptionCard(
+                icon = Icons.Filled.Launch,
+                title = "Support Grayjay",
+                subtitle = "grayjay.app — the original project",
+                onClick = { openUrl(context, "https://grayjay.app") },
+                groupPosition = GroupPosition.First,
+            )
+            SettingsOptionCard(
+                icon = Icons.Filled.Code,
+                title = "GitHub",
+                subtitle = "Source code, issues, feature requests",
+                onClick = {
+                    openUrl(context, "https://github.com/tsutsen-org/bluejay-android")
+                },
+                groupPosition = GroupPosition.Middle,
+            )
+            SettingsOptionCard(
+                icon = Icons.Filled.Copyright,
+                title = "License",
+                subtitle = "Source First License 1.1",
+                onClick = {
+                    openUrl(
+                        context,
+                        "https://github.com/tsutsen-org/bluejay-android/blob/master/LICENSE.md",
+                    )
+                },
+                groupPosition = GroupPosition.Last,
+            )
+        }
+    }
+}
+
+private fun openUrl(context: android.content.Context, url: String) {
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+}
+
 private fun sectionTitle(category: String): String =
     when (category) {
         "appearance" -> "Appearance"
@@ -1459,6 +1557,7 @@ private fun sectionTitle(category: String): String =
         "gestures" -> "Gestures"
         "controller" -> "Controller"
         "dual" -> "Dual screen"
+        "about" -> "About"
         else -> "Settings"
     }
 

@@ -765,13 +765,18 @@ private fun <T> SelectionDropdownItems(
     onPick: (T) -> Unit,
     onLongPick: ((T) -> Unit)? = null,
 ) {
-    val count = items.size
     items.forEachIndexed { index, item ->
+        // Gap between rows: the connected leading/middle/trailing item
+        // shapes assume items touch, so spaced items use the standalone
+        // (fully rounded) shape instead.
+        if (index > 0) {
+            Spacer(Modifier.height(Tokens.SpaceSm))
+        }
         CheckableDropdownMenuItem(
             checked = isSelected(item),
             onCheckedChange = { onPick(item) },
             text = { Text(label(item)) },
-            shapes = MenuDefaults.itemShape(index, count),
+            shapes = MenuDefaults.itemShape(0, 1),
             modifier =
                 // Checkbox rows: cap at the app's button height (M3's menu
                 // row floor is 48dp, which reads too tall for a filter list).

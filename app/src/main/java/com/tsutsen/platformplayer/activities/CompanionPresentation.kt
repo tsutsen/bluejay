@@ -50,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
@@ -1375,7 +1376,7 @@ private fun PlaylistSlotPager(
         onPlay = onPlay,
         onLongClick = onLongClick,
         // Same URL shape the main screen's library playlist cards use.
-        onTitleClick = { onPlaylistClick("playlist:$playlistId") },
+        onSlotClick = { onPlaylistClick("playlist:$playlistId") },
         modifier = modifier,
     )
 }
@@ -1677,16 +1678,25 @@ private fun LibrarySlotPager(
     totalCount: Int,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
-    // Playlist slots only: tapping the title opens the playlist on the
-    // main screen.
-    onTitleClick: (() -> Unit)? = null,
+    // Playlist slots only: tapping the slot opens the playlist on the
+    // main screen (same affordance as the main screen's library rows).
+    onSlotClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surfaceContainer
     // 1-based index of the page currently in the centre.
     val currentPage = remember(title) { mutableIntStateOf(1) }
     Card(
-        modifier = modifier.padding(4.dp),
+        modifier =
+            modifier
+                .then(
+                    if (onSlotClick != null) {
+                        Modifier.clickable(onClick = onSlotClick)
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(4.dp),
         shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
@@ -1702,10 +1712,7 @@ private fun LibrarySlotPager(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier),
+                    modifier = Modifier.weight(1f),
                 )
                 val total = totalCount
                 if (total > 0) {
@@ -1714,6 +1721,16 @@ private fun LibrarySlotPager(
                         text = "${currentPage.value.coerceIn(1, total)}/$total",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // The arrow tells the slot apart from a section slot —
+                // same affordance as the main screen's library section rows.
+                if (onSlotClick != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = "Open $title",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

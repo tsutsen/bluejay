@@ -1157,8 +1157,13 @@ private fun PluginSettingsSection(
                                     onDismissRequest = { menuExpanded = false },
                                 ) {
                                     DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
-                                        val count = options.size
                                         options.forEachIndexed { index, option ->
+                                            // Spaced rows need the standalone (fully
+                                            // rounded) shape, not the connected
+                                            // leading/middle/trailing ones.
+                                            if (index > 0) {
+                                                Spacer(Modifier.height(Tokens.SpaceSm))
+                                            }
                                             CheckableDropdownMenuItem(
                                                 checked = option == current,
                                                 onCheckedChange = {
@@ -1166,7 +1171,7 @@ private fun PluginSettingsSection(
                                                     onSettingChanged(variable, index.toString())
                                                 },
                                                 text = { Text(option) },
-                                                shapes = MenuDefaults.itemShape(index, count),
+                                                shapes = MenuDefaults.itemShape(0, 1),
                                                 checkedLeadingIcon = {
                                                     Icon(Icons.Default.Check, contentDescription = null)
                                                 },
