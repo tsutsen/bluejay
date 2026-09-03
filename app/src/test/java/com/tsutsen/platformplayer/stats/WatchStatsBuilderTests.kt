@@ -1,9 +1,6 @@
 package com.tsutsen.platformplayer.stats
 
-import com.tsutsen.platformplayer.api.media.PlatformID
-import com.tsutsen.platformplayer.api.media.models.PlatformAuthorLink
-import com.tsutsen.platformplayer.api.media.models.video.SerializedPlatformVideo
-import com.tsutsen.platformplayer.models.HistoryVideo
+import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
 import java.time.LocalDate
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
@@ -13,27 +10,18 @@ import org.junit.Test
 class WatchStatsBuilderTests {
     private val now = LocalDate.of(2026, 9, 1)
 
-    private fun history(positionMs: Long, date: LocalDate, author: String = "Anna"): HistoryVideo {
-        val url = "url-$author-${date.toEpochDay()}"
-        val video =
-            SerializedPlatformVideo(
-                id = PlatformID.asUrlID(url),
-                name = "Video $url",
-                author = PlatformAuthorLink(PlatformID.NONE, author, ""),
-                url = url,
-                duration = 0,
-                viewCount = 0,
-            )
-        return HistoryVideo(
-            video,
-            positionMs,
+    private fun history(positionMs: Long, date: LocalDate, author: String = "Anna"): HistoryEntity =
+        HistoryEntity(
+            contentUrl = "url-$author-${date.toEpochDay()}",
+            title = "Video",
+            author = author,
+            thumbnailUrl = null,
             // Local midnight of the intended day: the builder attributes
             // history to the device-local day, so the fixture must be
             // timezone-independent.
-            date.atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime(),
-            null,
+            watchedAt = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+            lastPositionMs = positionMs,
         )
-    }
 
     private val hour = 3_600_000L
 

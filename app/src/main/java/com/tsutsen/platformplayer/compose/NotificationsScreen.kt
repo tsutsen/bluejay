@@ -42,7 +42,6 @@ import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.stats.WatchStats
 import com.tsutsen.platformplayer.stats.WatchStatsBuilder
-import com.tsutsen.platformplayer.states.StateHistory
 import com.tsutsen.platformplayer.core.designsystem.component.DownloadStripCard
 import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
@@ -57,9 +56,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.core.ui.RelativeTime
+import com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.time.OffsetDateTime
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -77,6 +76,7 @@ class NotificationsViewModel
     constructor(
         private val notificationDao: NotificationDao,
         private val downloadsRepository: DownloadsRepository,
+        private val historyTracker: HistoryTracker,
     ) : ViewModel() {
         val notifications: StateFlow<List<NotificationEntity>> =
             notificationDao
@@ -94,19 +94,14 @@ class NotificationsViewModel
         val watchStats: StateFlow<WatchStats> = _watchStats
 
         init {
-            // Initial compute, then recompute after every history write
-            // (watch recorder, sync, backup) — the Dash tab is kept alive,
-            // so a one-shot refresh on composition would stay stale.
+            // Live history from the Room store the player's HistoryTracker
+            // writes to: the flow emits on every playback write (and
+            // immediately with the current rows), so the stats recompute
+            // reactively without polling.
             viewModelScope.launch {
-                kotlinx.coroutines.flow.merge(
-                    kotlinx.coroutines.flow.flowOf(Unit),
-                    StateHistory.instance.historyChanged,
-                ).collect {
-                    val history =
-                        withContext(Dispatchers.IO) {
-                            StateHistory.instance.getRecentHistory(OffsetDateTime.MIN, 100_000)
-                        }
-                    _watchStats.value = WatchStatsBuilder.build(history)
+                historyTracker.observeHistory().collect { history ->
+                    _watchStats.value =
+                        withContext(Dispatchers.IO) { WatchStatsBuilder.build(history) }
                 }
             }
         }

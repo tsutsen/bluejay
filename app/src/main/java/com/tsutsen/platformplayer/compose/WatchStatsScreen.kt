@@ -48,6 +48,7 @@ import com.tsutsen.platformplayer.stats.DailyWatch
 import com.tsutsen.platformplayer.stats.WatchStats
 import com.tsutsen.platformplayer.stats.humanDuration
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -293,9 +294,10 @@ fun WatchStatsDetailScreen(
             Spacer(modifier = Modifier.height(Tokens.SpaceMd))
             StatCard {
                 TippedBars(
-                    days = stats.lastWeekDaily,
-                    labels = stats.lastWeekDaily.map { it.day.label },
-                    highlightIndex = stats.lastWeekDaily.lastIndex,
+                    data = stats.lastWeekDaily,
+                    binCount = 7,
+                    labeler = { it.label },
+                    highlightIndex = 6, // today
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -351,7 +353,8 @@ fun WatchStatsDetailScreen(
             SectionTitle("Last 30 days")
             StatCard {
                 TippedBars(
-                    days = stats.last30Days,
+                    data = stats.last30Days,
+                    binCount = 30,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -445,22 +448,30 @@ private fun CreatorRow(rank: Int, creator: CreatorWatch) {
  * top creator for that day. Tapping the same bar, or anywhere outside the
  * tooltip, dismisses it — handled by the popup.
  *
- * [days] oldest first. [labels] (optional) draws one line under each bar.
- * [highlightIndex] marks one bar in full-strength primary (e.g. today).
- * Days with no watch time render as a small visible stub, so the full
- * window is always shown — every day in [days] gets a bar.
+ * Renders a fixed [binCount]-day window ending at [windowEnd] (today): the
+ * full window is always shown — days missing from [data] (or beyond its
+ * range) fill with 0, as small visible stubs. [labeler] (optional) draws
+ * one line under each bar; [highlightIndex] marks one bar in full-strength
+ * primary (e.g. today).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TippedBars(
-    days: List<DailyWatch>,
+    data: List<DailyWatch>,
+    binCount: Int,
     modifier: Modifier = Modifier,
     chartHeight: Dp = Tokens.ChartLg,
-    labels: List<String>? = null,
+    labeler: ((LocalDate) -> String?)? = null,
     highlightIndex: Int? = null,
+    windowEnd: LocalDate = LocalDate.now(),
 ) {
     val scheme = MaterialTheme.colorScheme
-    if (days.isEmpty()) return
+    if (binCount <= 0) return
+    val byDay = data.associate { it.day to it }
+    val days = List(binCount) { i ->
+        val day = windowEnd.minusDays((binCount - 1 - i).toLong())
+        byDay[day] ?: DailyWatch(day, 0L)
+    }
     val maxValue = days.maxOf { it.ms }.coerceAtLeast(1L)
     Row(modifier = modifier) {
         days.forEachIndexed { index, day ->
@@ -548,7 +559,7 @@ private fun TippedBars(
                                     ),
                         )
                     }
-                    labels?.getOrNull(index)?.let { label ->
+                    labeler?.invoke(day.day)?.let { label ->
                         Text(
                             text = label,
                             style = MaterialTheme.typography.labelSmall,

@@ -1,15 +1,16 @@
 package com.tsutsen.platformplayer.stats
 
-import com.tsutsen.platformplayer.models.HistoryVideo
+import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
 /**
  * Aggregated watch behaviour for the Dash stats card / detail screen,
- * derived from the local playback history (StateHistory).
+ * derived from the Room history the player's HistoryTracker writes to.
  *
  * The granularity of the underlying data: history stores ONE entry per
- * video — the last-watched position (ms) and the date it was last watched.
+ * video — the last position (ms) and when it was last watched.
  * There is no per-session log. So:
  *  - "watch time" for a video = its last position (a proxy for cumulative
  *    time watched on that video, not the time spent on the last session);
@@ -51,7 +52,7 @@ data class CreatorWatch(
 
 object WatchStatsBuilder {
     fun build(
-        history: List<HistoryVideo>,
+        history: List<HistoryEntity>,
         now: LocalDate = LocalDate.now(),
     ): WatchStats {
         val weekStart = now.minusDays(6)
@@ -66,14 +67,14 @@ object WatchStatsBuilder {
         var allTimeMs = 0L
 
         for (h in history) {
-            val ms = h.position.coerceAtLeast(0L)
+            val ms = h.lastPositionMs.coerceAtLeast(0L)
             if (ms <= 0L) continue
-            // History stores UTC instants; attribute each video to the day
-            // it was watched in the device's local zone (not the UTC day,
-            // which trails behind by the timezone offset in early hours).
-            val day = h.date.atZoneSameInstant(ZoneId.systemDefault()).toLocalDate()
-            val creator = h.video.author?.name?.takeIf { it.isNotBlank() } ?: "Unknown"
-            val avatar = h.video.author?.thumbnail?.takeIf { it.isNotBlank() }
+            // Attribute each video to the day it was last watched in the
+            // device's local zone (watchedAt is an epoch-millis instant).
+            val day =
+                Instant.ofEpochMilli(h.watchedAt).atZone(ZoneId.systemDefault()).toLocalDate()
+            val creator = h.author?.takeIf { it.isNotBlank() } ?: "Unknown"
+            val avatar = h.thumbnailUrl?.takeIf { it.isNotBlank() }
             if (avatar != null && !creatorAvatars.containsKey(creator)) {
                 creatorAvatars[creator] = avatar
             }

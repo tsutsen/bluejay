@@ -42,20 +42,6 @@ class StateHistory {
 
     var onHistoricVideoChanged = Event2<IPlatformVideo, Long>();
 
-    private val _historyChanged =
-        kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 32);
-
-    /**
-     * Emits after every local write to the history store (watch recorder,
-     * sync, backup, migration) so consumers like the Dash stats can
-     * recompute reactively.
-     */
-    val historyChanged: kotlinx.coroutines.flow.SharedFlow<Unit> = _historyChanged;
-
-    private fun emitHistoryChanged() {
-        _historyChanged.tryEmit(Unit)
-    }
-
     fun shouldMigrateLegacyHistory(): Boolean {
         return _historyDBStore.count() == 0 && _historyStore.count() > 0;
     }
@@ -68,7 +54,6 @@ class StateHistory {
             _historyDBStore.insert(item);
         }
         _historyStore.deleteAll();
-        emitHistoryChanged()
     }
 
 
@@ -104,7 +89,6 @@ class StateHistory {
                 historyVideo.playlistId = playlistId
                 _historyDBStore.update(index.id!!, historyVideo);
                 onHistoricVideoChanged.emit(liveObj, pos);
-                emitHistoryChanged();
 
 
                 val historyBroadcastSig = "${historyVideo.position}${historyVideo.video.id.value ?: historyVideo.video.url}"

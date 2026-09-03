@@ -77,9 +77,6 @@ class PlatformPlayerApp : Application() {
 
         super.onCreate()
 
-        // Start recording local watch history (the stats/history data source).
-        com.tsutsen.platformplayer.stats.WatchHistoryRecorder.start(playerRepository)
-
         applyThemeMode()
 
         if (Settings.instance.appearance.dynamicColor) {
