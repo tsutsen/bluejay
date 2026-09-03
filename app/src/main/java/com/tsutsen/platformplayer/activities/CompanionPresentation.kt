@@ -518,7 +518,8 @@ private fun CompanionContent(
     // the pager flips to the video page.
     val videoPageIndex = pageKeys.indexOf("video")
     LaunchedEffect(video?.url) {
-        if (video != null && videoPageIndex in 1..pagerState.currentPage) {
+        if (video == null) return@LaunchedEffect
+        if (videoPageIndex in pageKeys.indices && videoPageIndex != pagerState.currentPage) {
             pagerState.animateScrollToPage(videoPageIndex)
         }
     }
