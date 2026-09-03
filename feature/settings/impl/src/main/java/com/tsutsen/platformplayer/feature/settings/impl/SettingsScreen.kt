@@ -38,11 +38,15 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Games
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Recommend
+import androidx.compose.material.icons.filled.Splitscreen
+import androidx.compose.material.icons.filled.Tab
+import androidx.compose.material.icons.filled.TabletAndroid
 import androidx.compose.material.icons.filled.Hd
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
@@ -167,7 +171,7 @@ fun SettingsScreen(
                     }
                     item {
                         SettingsOptionCard(
-                            icon = Icons.Filled.Extension,
+                            icon = Icons.Filled.VideoLibrary,
                             title = "Content",
                             subtitle = "Plugins, video page sections",
                             onClick = { navigator.navigateToSettingsFragment("content") },
@@ -203,7 +207,7 @@ fun SettingsScreen(
                     }
                     item {
                         SettingsOptionCard(
-                            icon = Icons.Filled.DisplaySettings,
+                            icon = Icons.Filled.TabletAndroid,
                             title = "Dual screen",
                             subtitle = "Second display pages, tabs, sections",
                             onClick = { navigator.navigateToSettingsFragment("dual") },
@@ -950,7 +954,7 @@ private fun SectionItems(
                             },
                     )
                     SettingsSwitchCard(
-                        icon = Icons.Filled.VideoLibrary,
+                        icon = Icons.Filled.Recommend,
                         title = "Show recommended videos",
                         subtitle = "Recommended tab on the video page",
                         checked = state.showRecommendedVideos,
@@ -1216,7 +1220,7 @@ private fun SectionItems(
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
-                        icon = Icons.Filled.PlayArrow,
+                        icon = Icons.Filled.Layers,
                         title = "Pages",
                         subtitle = dualListLabel(state.dualScreenPages, dualPageNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
@@ -1242,14 +1246,14 @@ private fun SectionItems(
                             },
                     )
                     SettingsOptionCard(
-                        icon = Icons.Filled.Reorder,
+                        icon = Icons.Filled.Tab,
                         title = "Video tabs",
                         subtitle = dualOrderLabel(state.dualScreenVideoTabOrder, dualTabNames),
                         onClick = { onChoiceSelected(Choice.DUAL_TAB_ORDER) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
-                        icon = Icons.Filled.FormatListBulleted,
+                        icon = Icons.Filled.Splitscreen,
                         title = "Main page order",
                         subtitle = dualOrderLabel(state.dualScreenPageOrder, dualPageOrderNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
@@ -1662,9 +1666,21 @@ private fun SettingsHeader(
             modifier = Modifier.weight(1f),
         )
         if (reset != null) {
-            TextButton(onClick = reset) {
-                Text("Reset to defaults")
-            }
+            // Compact text action — the same line height as the title, so
+            // the header row keeps its height when the button appears.
+            Text(
+                text = "Reset to defaults",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(Tokens.SpaceXs))
+                        .clickable(onClick = reset)
+                        .padding(
+                            horizontal = Tokens.SpaceSm,
+                            vertical = Tokens.SpaceXxs,
+                        ),
+            )
         }
     }
 }
