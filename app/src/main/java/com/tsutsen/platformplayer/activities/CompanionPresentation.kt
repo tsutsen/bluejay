@@ -1393,13 +1393,12 @@ private fun CompanionDashPage(
             }
         }
         DashSectionTitle("Continue")
-        continueEntry(history, currentVideoUrl, discarded)?.let { entry ->
-            ContinueCard(
-                entry = entry,
-                onPlay = { onPlay(entry.contentUrl) },
-                onDiscard = { onDiscard(entry.contentUrl) },
-            )
-        } ?: DashEmpty("Nothing in progress")
+        val entry = continueEntry(history, currentVideoUrl, discarded)
+        ContinueCard(
+            entry = entry,
+            onPlay = { entry?.let { onPlay(it.contentUrl) } },
+            onDiscard = { entry?.let { onDiscard(it.contentUrl) } },
+        )
     }
 }
 
@@ -1460,54 +1459,78 @@ private fun CreatorBadge(
     }
 }
 
-/** Last unfinished video: thumbnail, title, channel, play + discard. */
+/**
+ * The last unfinished video: thumbnail, title, channel, play + discard.
+ * With a null [entry] it renders the same card as a placeholder, so the
+ * widget always occupies the same space.
+ */
 @Composable
 private fun ContinueCard(
-    entry: HistoryEntity,
+    entry: HistoryEntity?,
     onPlay: () -> Unit,
     onDiscard: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(BluejayTokens().radius.md))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .background(scheme.surfaceContainer)
                 .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        AsyncImage(
-            url = entry.thumbnailUrl,
-            contentDescription = null,
+        // Fixed-size thumbnail slot keeps the card's dimensions identical
+        // with and without a video.
+        Box(
             modifier =
                 Modifier
                     .width(120.dp)
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = entry.title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            entry.author?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    .clip(RoundedCornerShape(BluejayTokens().radius.sm))
+                    .background(scheme.surfaceVariant),
+        ) {
+            if (entry != null) {
+                AsyncImage(
+                    url = entry.thumbnailUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         }
-        IconButton(onClick = onPlay) {
-            Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play")
+        Column(modifier = Modifier.weight(1f)) {
+            if (entry != null) {
+                Text(
+                    text = entry.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = scheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                entry.author?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            } else {
+                Text(
+                    text = "Nothing in progress",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
         }
-        IconButton(onClick = onDiscard) {
-            Icon(imageVector = Icons.Filled.Close, contentDescription = "Discard")
+        if (entry != null) {
+            IconButton(onClick = onPlay) {
+                Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play")
+            }
+            IconButton(onClick = onDiscard) {
+                Icon(imageVector = Icons.Filled.Close, contentDescription = "Discard")
+            }
         }
     }
 }
