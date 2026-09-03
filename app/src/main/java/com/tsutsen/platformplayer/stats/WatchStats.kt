@@ -35,7 +35,11 @@ data class WatchStats(
     }
 }
 
-data class DailyWatch(val day: LocalDate, val ms: Long)
+data class DailyWatch(
+    val day: LocalDate,
+    val ms: Long,
+    val topCreator: String? = null,
+)
 
 data class CreatorWatch(
     val author: String,
@@ -52,6 +56,7 @@ object WatchStatsBuilder {
         val weekStart = now.minusDays(6)
         val windowStart = now.minusDays(29)
         val daySums = HashMap<LocalDate, Long>() // last 30 days
+        val dayAuthorMs = HashMap<LocalDate, MutableMap<String, Long>>() // last 30 days
         val weekCreators = HashMap<String, LongArray>() // [ms, count]
         val allCreators = HashMap<String, LongArray>()
         val creatorAvatars = HashMap<String, String?>()
@@ -78,6 +83,9 @@ object WatchStatsBuilder {
 
             if (day in windowStart..now) {
                 daySums[day] = (daySums[day] ?: 0L) + ms
+                dayAuthorMs
+                    .getOrPut(day) { HashMap() }
+                    .let { it[creator] = (it[creator] ?: 0L) + ms }
             }
             if (day in weekStart..now) {
                 weekMs += ms
@@ -93,7 +101,8 @@ object WatchStatsBuilder {
         }
         val last30Days = (0L until 30L).map { offset ->
             val day = windowStart.plusDays(offset)
-            DailyWatch(day, daySums[day] ?: 0L)
+            val top = dayAuthorMs[day]?.maxByOrNull { it.value }
+            DailyWatch(day, daySums[day] ?: 0L, top?.key)
         }
 
         return WatchStats(
