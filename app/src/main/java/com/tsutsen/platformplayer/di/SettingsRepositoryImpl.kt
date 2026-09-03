@@ -93,6 +93,8 @@ class SettingsRepositoryImpl
                 gridColumns = s.feed.gridColumns,
                 homeHiddenSources = s.feed.hiddenSources,
                 searchHistory = s.search.history,
+                gettingStartedCompleted = s.gettingStartedCompleted,
+                homeLoginPromptsDismissed = s.feed.loginPromptsDismissed,
                 showRecommendedVideos = s.content.showRecommendedVideos,
                 showComments = s.content.showComments,
                 autoUpdatePlugins = s.plugins.autoUpdatePlugins,
@@ -131,6 +133,8 @@ class SettingsRepositoryImpl
                 "uiRounding" -> s.appearance.uiRounding = (value as Number).toInt()
                 "gridColumns" -> s.feed.gridColumns = value as Int
                 "homeHiddenSources" -> s.feed.hiddenSources = value as List<String>
+                "homeLoginPromptsDismissed" -> s.feed.loginPromptsDismissed = value as List<String>
+                "gettingStartedCompleted" -> s.gettingStartedCompleted = value as Boolean
                 "searchHistory" -> s.search.history = value as List<String>
                 "showRecommendedVideos" -> s.content.showRecommendedVideos = value as Boolean
                 "showComments" -> s.content.showComments = value as Boolean

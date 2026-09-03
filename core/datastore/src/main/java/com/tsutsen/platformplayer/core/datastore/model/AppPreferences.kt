@@ -38,6 +38,9 @@ data class AppPreferences(
     val showRecommendedVideos: Boolean = true,
     val showComments: Boolean = true,
     val autoUpdatePlugins: Boolean = true,
+    val gettingStartedCompleted: Boolean = false,
+    /** Source ids whose home-feed login notice was declined. */
+    val homeLoginPromptsDismissed: List<String> = emptyList(),
 )
 
 /**

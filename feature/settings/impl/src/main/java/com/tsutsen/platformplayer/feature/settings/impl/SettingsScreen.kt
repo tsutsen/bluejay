@@ -773,8 +773,12 @@ private fun ControllerBindingRow(
  * rule): nothing leaks to the screen behind and BACK cannot dismiss this
  * mid-capture.
  */
+/**
+ * Captures the next gamepad/TV-remote key press and binds it to [action].
+ * Public so the getting-started tour can reuse the same capture UX.
+ */
 @Composable
-private fun ControllerBindingPopup(
+fun ControllerBindingPopup(
     action: PlayerControllerActions.Action,
     onBound: (keyCode: Int, deviceName: String?) -> Unit,
     onClear: () -> Unit,

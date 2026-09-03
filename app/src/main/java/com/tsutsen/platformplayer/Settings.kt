@@ -84,6 +84,10 @@ class Settings {
     // Tabs settings
     var advancedSettings: Boolean = false
 
+    // Set once the first-launch getting-started flow is finished or
+    // skipped; the flow shows again only if it is reset to false.
+    var gettingStartedCompleted: Boolean = false
+
     // Main-screen library: display order of the sections (reorderable in
     // Settings). Defaults to the natural LibraryRepository order.
     var librarySectionOrder: List<String> =
@@ -285,6 +289,9 @@ class Settings {
 
         // Hidden home source-chip ids (persisted filter selection).
         var hiddenSources: List<String> = emptyList()
+
+        // Source ids whose home-feed "log in?" notice was declined.
+        var loginPromptsDismissed: List<String> = emptyList()
     }
 
     @Serializable

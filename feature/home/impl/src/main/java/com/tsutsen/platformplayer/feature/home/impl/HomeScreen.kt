@@ -1,17 +1,32 @@
 package com.tsutsen.platformplayer.feature.home.impl
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.model.SourceInfo
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import android.content.Intent
@@ -65,6 +80,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val gridColumns by viewModel.gridColumns.collectAsState()
     val enabledSources by viewModel.enabledSources.collectAsState()
+    val loginPromptsDismissed by viewModel.loginPromptsDismissed.collectAsState()
     // Paused while this keep-alive tab is hidden (LocalTabActive).
     val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())
     val isWide = rememberIsWide()
@@ -94,6 +110,12 @@ fun HomeScreen(
                 } else {
                     state.items.filter { it.sourceId == null || it.sourceId !in hiddenSources }
                 }
+            // First-launch log-in notice: the first visible source that
+            // supports login and that the user is not signed into yet.
+            val loginNotice =
+                enabledSources
+                    .filter { it.supportsLogin && !it.loggedIn && it.id !in loginPromptsDismissed }
+                    .firstOrNull { source -> visibleItems.any { it.sourceId == source.id } }
             Column(modifier = Modifier.fillMaxSize()) {
                 if (enabledSources.size > 1) {
                     Row(
@@ -151,6 +173,9 @@ fun HomeScreen(
                         gridColumns = gridColumns,
                         watchStates = watchStates,
                         isRefreshing = state.isRefreshing,
+                        loginNotice = loginNotice,
+                        onLoginClick = { navigator.navigateToSourceLogin(it) },
+                        onLoginDismiss = { viewModel.dismissLoginPrompt(it) },
                         onCardClick = { card ->
                             when (card) {
                                 is VideoCard -> playerViewModel.play(card)
@@ -206,6 +231,9 @@ private fun HomeFeedContent(
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    loginNotice: SourceInfo? = null,
+    onLoginClick: (String) -> Unit = {},
+    onLoginDismiss: (String) -> Unit = {},
 ) {
     val refreshingState = rememberPullToRefreshState()
 
@@ -218,15 +246,23 @@ private fun HomeFeedContent(
             onRefresh = onRefresh,
             content = {
                 ContentCard(modifier = Modifier.fillMaxSize()) {
-                    VideoContainer(
-                    items = cards,
-                    layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
-                    isLoading = isLoading,
-                    hasMorePages = hasMorePages,
-                    onCardClick = onCardClick,
-                    onLoadMore = onLoadMore,
-                    modifier = Modifier.fillMaxSize(),
-                ) { card ->
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        loginNotice?.let { source ->
+                            SourceLoginNoticeCard(
+                                source = source,
+                                onYes = { onLoginClick(source.id) },
+                                onNo = { onLoginDismiss(source.id) },
+                            )
+                        }
+                        VideoContainer(
+                        items = cards,
+                        layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
+                        isLoading = isLoading,
+                        hasMorePages = hasMorePages,
+                        onCardClick = onCardClick,
+                        onLoadMore = onLoadMore,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    ) { card ->
                     when (card) {
                         is VideoCard -> {
                             VideoCard(
@@ -263,9 +299,59 @@ private fun HomeFeedContent(
                             Box(Modifier.height(1.dp))
                         }
                     }
+                    }
                 }
                 }
             },
         )
+    }
+}
+
+/**
+ * Home-feed "log in to this source?" notice. Shown above the grid for a
+ * source that supports login while the user is signed out; declining is
+ * persisted per source.
+ */
+@Composable
+private fun SourceLoginNoticeCard(
+    source: SourceInfo,
+    onYes: () -> Unit,
+    onNo: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(
+                    start = Tokens.SpaceMd,
+                    top = Tokens.SpaceMd,
+                    end = Tokens.SpaceMd,
+                )
+                .clip(RoundedCornerShape(BluejayTokens().radius.sm))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(Tokens.SpaceMd),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.AutoMirrored.Filled.Login,
+            contentDescription = null,
+            modifier = Modifier.size(Tokens.IconMd),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.width(Tokens.SpaceMd))
+        Column(Modifier.weight(1f)) {
+            Text("Do you want to log into ${source.name}?", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "See more of your subscribed content from this source.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(Tokens.SpaceMd))
+        Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+            Button(onClick = onYes) { Text("Yes") }
+            TextButton(onClick = onNo) { Text("No") }
+        }
     }
 }

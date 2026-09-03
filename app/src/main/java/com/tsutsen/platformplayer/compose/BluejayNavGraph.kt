@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +18,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.api.media.platforms.js.SourceAuth
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginBrowserScene
@@ -56,6 +58,34 @@ private val keepAliveTabs =
  * Wires all feature screens into the navigation graph.
  * Lives in the app module to avoid core module depending on feature modules.
  */
+/**
+ * Persists the auth to the plugin and reloads its client so the new
+ * session applies immediately (the reload re-publishes the home source
+ * list, which clears the "log in?" notice).
+ */
+private fun applySourceAuth(config: SourcePluginConfig, auth: SourceAuth) {
+    try {
+        com.tsutsen.platformplayer.states.StatePlugins.instance.setPluginAuth(config.id, auth)
+        Logger.i("BluejayNavGraph", "Auth saved for ${config.name}")
+        // Reload the client to apply auth
+        val scope = com.tsutsen.platformplayer.states.StateApp.instance.scope
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val context = com.tsutsen.platformplayer.states.StateApp.instance.context
+                val client =
+                    com.tsutsen.platformplayer.states.StatePlatform.instance.reloadClient(context, config.id) {
+                        Logger.i("BluejayNavGraph", "Client reloaded after login")
+                    }
+                Logger.i("BluejayNavGraph", "Client reloaded: ${client != null}")
+            } catch (e: Exception) {
+                Logger.e("BluejayNavGraph", "Failed to reload client", e)
+            }
+        }
+    } catch (e: Exception) {
+        Logger.e("BluejayNavGraph", "Failed to save auth", e)
+    }
+}
+
 @Composable
 fun BluejayNavGraph(
     navigator: Navigator,
@@ -289,34 +319,25 @@ fun BluejayNavGraph(
                 val config = Json.decodeFromString<SourcePluginConfig>(destination.configJson)
                 LoginScreen(
                     config = config,
-                    onLogin = { auth ->
-                        if (auth != null) {
-                            try {
-                                // Save auth to plugin
-                                com.tsutsen.platformplayer.states.StatePlugins.instance
-                                    .setPluginAuth(config.id, auth)
-                                Logger.i("BluejayNavGraph", "Auth saved for ${config.name}")
-                                // Reload the client to apply auth
-                                val scope = com.tsutsen.platformplayer.states.StateApp.instance.scope
-                                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                    try {
-                                        val context = com.tsutsen.platformplayer.states.StateApp.instance.context
-                                        val client =
-                                            com.tsutsen.platformplayer.states.StatePlatform.instance.reloadClient(context, config.id) {
-                                                Logger.i("BluejayNavGraph", "Client reloaded after login")
-                                            }
-                                        Logger.i("BluejayNavGraph", "Client reloaded: ${client != null}")
-                                    } catch (e: Exception) {
-                                        Logger.e("BluejayNavGraph", "Failed to reload client", e)
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Logger.e("BluejayNavGraph", "Failed to save auth", e)
-                            }
-                        }
-                    },
+                    onLogin = { auth -> if (auth != null) applySourceAuth(config, auth) },
                     onBack = { navigator.goBack() },
                 )
+            }
+
+            is NavDestination.SourceLogin -> {
+                val client =
+                    com.tsutsen.platformplayer.states.StatePlatform.instance
+                        .getClientOrNull(destination.sourceId)
+                        as? com.tsutsen.platformplayer.api.media.platforms.js.JSClient
+                if (client != null) {
+                    LoginScreen(
+                        config = client.config,
+                        onLogin = { auth -> if (auth != null) applySourceAuth(client.config, auth) },
+                        onBack = { navigator.goBack() },
+                    )
+                } else {
+                    Text("Source no longer available.")
+                }
             }
 
             is NavDestination.Developer -> {

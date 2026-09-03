@@ -126,6 +126,8 @@ class Navigator
         // Auth & other
         fun navigateToLogin(configJson: String) = navigate(NavDestination.Login(configJson))
 
+        fun navigateToSourceLogin(sourceId: String) = navigate(NavDestination.SourceLogin(sourceId))
+
         fun navigateToDeveloper() = navigate(NavDestination.Developer)
 
         fun navigateToTutorial() = navigate(NavDestination.Tutorial)

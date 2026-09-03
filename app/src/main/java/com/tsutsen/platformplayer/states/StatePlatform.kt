@@ -412,6 +412,9 @@ class StatePlatform {
                 }
             }
 
+            // Login (and any other auth change) lands here: the home feed's
+            // source list re-publishes so the "log in?" notice flips away.
+            onEnabledClientsChanged.emit();
             afterReload?.invoke();
             return@withContext newClient;
         };
