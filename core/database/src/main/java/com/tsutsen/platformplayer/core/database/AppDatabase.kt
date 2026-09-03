@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.core.database.entity.*
         SavedVideoEntity::class,
         NotificationEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -58,6 +58,20 @@ abstract class AppDatabase : RoomDatabase() {
          * cards do. Existing rows keep 0 (pill hidden) until re-saved or
          * re-watched.
          */
+        /**
+         * v7 -> v8: accumulates actually-watched time (skip-aware) per
+         * history entry. Existing rows keep 0 until re-watched; stats
+         * fall back to lastPositionMs for those.
+         */
+        val MIGRATION_7_8 =
+            object : Migration(7, 8) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE `history` ADD COLUMN `watchedMs` INTEGER NOT NULL DEFAULT 0",
+                    )
+                }
+            }
+
         val MIGRATION_6_7 =
             object : Migration(6, 7) {
                 override fun migrate(db: SupportSQLiteDatabase) {

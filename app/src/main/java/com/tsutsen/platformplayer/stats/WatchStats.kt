@@ -10,10 +10,14 @@ import java.time.ZoneId
  * derived from the Room history the player's HistoryTracker writes to.
  *
  * The granularity of the underlying data: history stores ONE entry per
- * video — the last position (ms) and when it was last watched.
+ * video — its actually-watched time and when it was last watched.
  * There is no per-session log. So:
- *  - "watch time" for a video = its last position (a proxy for cumulative
- *    time watched on that video, not the time spent on the last session);
+ *  - "watch time" for a video = its accumulated watched time, which the
+ *    HistoryTracker measures from position deltas between playback saves
+ *    (skip-aware: a seek jumps the position in one sample, so it
+ *    contributes ~0; rewinding and long pauses contribute nothing).
+ *    Rows that predate that measurement fall back to the last position as
+ *    a proxy.
  *  - a video's time is attributed to the day it was LAST watched.
  *
  * ponytail: this keeps the stats honest with what is stored; a per-session
@@ -71,7 +75,10 @@ object WatchStatsBuilder {
         var allTimeMs = 0L
 
         for (h in history) {
-            val ms = h.lastPositionMs.coerceAtLeast(0L)
+            val ms =
+                if (h.watchedMs > 0L) h.watchedMs
+                // Legacy row from before watched-time measurement.
+                else h.lastPositionMs
             if (ms <= 0L) continue
             // Attribute each video to the day it was last watched in the
             // device's local zone (watchedAt is an epoch-millis instant).

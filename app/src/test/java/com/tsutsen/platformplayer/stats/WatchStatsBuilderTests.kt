@@ -10,7 +10,12 @@ import org.junit.Test
 class WatchStatsBuilderTests {
     private val now = LocalDate.of(2026, 9, 1)
 
-    private fun history(positionMs: Long, date: LocalDate, author: String = "Anna"): HistoryEntity =
+    private fun history(
+        positionMs: Long,
+        date: LocalDate,
+        author: String = "Anna",
+        watchedMs: Long = 0,
+    ): HistoryEntity =
         HistoryEntity(
             contentUrl = "url-$author-${date.toEpochDay()}",
             title = "Video",
@@ -21,6 +26,7 @@ class WatchStatsBuilderTests {
             // timezone-independent.
             watchedAt = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
             lastPositionMs = positionMs,
+            watchedMs = watchedMs,
         )
 
     private val hour = 3_600_000L
@@ -95,6 +101,21 @@ class WatchStatsBuilderTests {
         assertEquals(5, stats.topCreators.size)
         assertEquals("Anna", stats.topCreators.first().author)
         assertEquals(2 * hour, stats.topCreators.first().ms)
+    }
+
+    @Test
+    fun `measured watched time is preferred over position and falls back when absent`() {
+        val stats =
+            WatchStatsBuilder.build(
+                listOf(
+                    // Skipped to the 30m mark but actually watched an hour.
+                    history(30 * 60_000, now, watchedMs = hour),
+                    // Legacy row: no measured time yet, falls back to position.
+                    history(2 * hour, now.minusDays(1)),
+                ),
+                now,
+            )
+        assertEquals(hour + 2 * hour, stats.allTimeMs)
     }
 
     @Test

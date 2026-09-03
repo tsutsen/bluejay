@@ -30,6 +30,7 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_4_5,
                 AppDatabase.MIGRATION_5_6,
                 AppDatabase.MIGRATION_6_7,
+                AppDatabase.MIGRATION_7_8,
             )
             // Safety net only: MIGRATION_1_2 is registered above, so this
             // triggers just for an unregistered future version (same as before).
