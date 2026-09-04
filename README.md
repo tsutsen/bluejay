@@ -1,7 +1,8 @@
+
 # Bluejay Media App
 <div align="center">
  
-<img width="2095" height="1065" alt="Bluejay Banner" src="https://github.com/user-attachments/assets/70b6e572-bd9f-4b8c-8343-63acedabb124" />
+<img width="2095" height="930" alt="Bluejay hero" src="https://github.com/user-attachments/assets/adbd35d8-6ec3-4dfe-adb8-759ea5311525" />
 
 <p></p>
 Follow your favorite creators! Now in dual screen.
@@ -12,25 +13,29 @@ _Grab the app in [releases](https://github.com/tsutsen/bluejay/releases)_
 
 ## Features 
 
-This app is built around the Grayjay core – the wonderful media aggregator. Bluejay relies on it to fetch data from YouTube, Twitch, BiliBili, Odyssey, and many other platforms.
+This app is built around the [Grayjay](https://gitlab.futo.org/videostreaming/grayjay) core – the wonderful media aggregator. Bluejay relies on it to fetch data from YouTube, Twitch, BiliBili, Odyssey, and many other platforms.
 
 So, here, you can expect pretty much everything you see in Grayjay but with a modern sheen:
 
-- Browse and watch videos from different platforms
-- Manage playlists
-- Download content for offline viewing
+- **Browse** and **watch** videos from different **platforms**
+- Manage **playlists**
+- **Download** content for offline viewing
 
 And there are some unique things as well:
 
-- Second screen of your Android device can now control playback, show stats, comments, queues, recommended videos, your pinned playlists, and home feed
-- Proper landscape mode support
-- Light and dark mode and custom color themes
-- Customizable gesture controls
-- Local watch stats tracking
+- **Second screen** of your Android device can now control playback, show stats, comments, queues, recommended videos, your pinned playlists, and home feed
+- Proper **landscape** mode support
+- Light and dark mode and custom color **themes**
+- Customizable **gesture** controls
+- Local watch **stats** tracking
+
+<div align="center">
+<img width="2095" height="1200" alt="Bluejay features" src="https://github.com/user-attachments/assets/d74d2026-06aa-42c0-861b-f9206c41aaf3" />
+</div>
 
 ## Roadmap
-
-Bluejay is in beta, so things might still break, misbehave, and look quite ugly in the darkest corners of the app. 
+> [!NOTE]
+> Bluejay is in beta, so things might still break, misbehave, and look quite ugly in the darkest corners of the app. 
 
 Besides basic quality-of-life, stability, performance, and prettification updates, I have two major additions planned, to bring Bluejay close to being an _ultimate media aggregator_:
 
