@@ -39,5 +39,6 @@ interface SettingsRepository {
     suspend fun setActiveThemeId(id: String?)
 
     suspend fun updateLibrarySectionOrder(order: List<String>)
+    suspend fun updateLibrarySectionsEnabled(ids: List<String>)
     suspend fun resetToDefaults()
 }

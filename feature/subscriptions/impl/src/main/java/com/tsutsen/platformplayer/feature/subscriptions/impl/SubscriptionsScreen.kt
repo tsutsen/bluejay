@@ -69,11 +69,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGap
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.component.tokenizedChipShapes
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
 import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
@@ -289,7 +292,8 @@ private fun SubscriptionsContent(
                         state = pullToRefreshState,
                         onRefresh = onRefresh,
                         content = {
-                            VideoContainer(
+                            ContentCard(modifier = Modifier.fillMaxSize()) {
+                                VideoContainer(
                                 items = state.items,
                                 layout = ContainerLayout.Grid(gridColumns),
                                 isLoading = false,
@@ -297,7 +301,7 @@ private fun SubscriptionsContent(
                                 onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                                 onLoadMore = onLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(Tokens.SpaceSm),
+                                contentPadding = PaddingValues(ContentCardInnerGap()),
                             ) { card ->
                                 VideoCard(
                                     card = card as ModelVideoCard,
@@ -307,6 +311,7 @@ private fun SubscriptionsContent(
                                     watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
                                     isWatched = watchStates[card.url]?.isWatched ?: false,
                                 )
+                            }
                             }
                         },
                     )
@@ -394,7 +399,8 @@ private fun SubscriptionsContent(
                     state = pullToRefreshState,
                     onRefresh = onRefresh,
                     content = {
-                        VideoContainer(
+                        ContentCard(modifier = Modifier.fillMaxSize()) {
+                            VideoContainer(
                             items = state.items,
                             layout = ContainerLayout.List,
                             isLoading = false,
@@ -402,7 +408,7 @@ private fun SubscriptionsContent(
                             onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(Tokens.SpaceSm),
+                            contentPadding = PaddingValues(ContentCardInnerGap()),
                         ) { card ->
                             VideoCard(
                                 card = card as ModelVideoCard,
@@ -412,6 +418,7 @@ private fun SubscriptionsContent(
                                 watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
                                 isWatched = watchStates[card.url]?.isWatched ?: false,
                             )
+                        }
                         }
                     },
                 )
@@ -584,21 +591,25 @@ private fun SubsHeader(
             selected = filterVideo,
             onClick = onVideoToggle,
             label = { Text("Videos") },
+            shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterStreams,
             onClick = onStreamsToggle,
             label = { Text("Live") },
+            shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterStarted,
             onClick = onStartedToggle,
             label = { Text("Started") },
+            shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterWatched,
             onClick = onWatchedToggle,
             label = { Text("Watched") },
+            shapes = tokenizedChipShapes(),
         )
     }
 }

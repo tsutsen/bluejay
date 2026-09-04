@@ -86,6 +86,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
@@ -460,7 +461,8 @@ fun SearchScreen(
                             resultsBounds.value = it.boundsInWindow()
                         },
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
                     // Search result grid (shown after search is executed)
                     when {
                         uiState.isLoading && uiState.items.isEmpty() -> {
@@ -591,6 +593,7 @@ fun SearchScreen(
                         }
                     }
                 }
+                }
             }
 
             optionsCard?.let { card ->
@@ -625,7 +628,7 @@ private fun RecentSearches(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 4.dp),
+                        .padding(bottom = Tokens.SpaceXs),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -650,12 +653,12 @@ private fun RecentSearches(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
+                            .padding(horizontal = Tokens.SpaceXs)
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(12.dp),
+                                RoundedCornerShape(BluejayTokens().radius.sm),
                             ).clickable { onItemClick(query) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = Tokens.SpaceMd, vertical = Tokens.SpaceSm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -669,7 +672,7 @@ private fun RecentSearches(
                         contentDescription = "Delete",
                         modifier =
                             Modifier
-                                .size(20.dp)
+                                .size(Tokens.IconSm)
                                 .clickable { onDeleteItem(query) },
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -762,21 +765,31 @@ private fun <T> SelectionDropdownItems(
     onPick: (T) -> Unit,
     onLongPick: ((T) -> Unit)? = null,
 ) {
-    val count = items.size
     items.forEachIndexed { index, item ->
+        // Gap between rows: the connected leading/middle/trailing item
+        // shapes assume items touch, so spaced items use the standalone
+        // (fully rounded) shape instead.
+        if (index > 0) {
+            Spacer(Modifier.height(Tokens.SpaceSm))
+        }
         CheckableDropdownMenuItem(
             checked = isSelected(item),
             onCheckedChange = { onPick(item) },
             text = { Text(label(item)) },
-            shapes = MenuDefaults.itemShape(index, count),
+            shapes = MenuDefaults.itemShape(0, 1),
             modifier =
-                if (onLongPick != null) {
-                    Modifier.pointerInput(item) {
-                        detectTapGestures(onLongPress = { onLongPick(item) })
-                    }
-                } else {
-                    Modifier
-                },
+                // Checkbox rows: cap at the app's button height (M3's menu
+                // row floor is 48dp, which reads too tall for a filter list).
+                (if (multiSelect) Modifier.height(Tokens.ButtonMd) else Modifier)
+                    .let { m ->
+                        if (onLongPick != null) {
+                            m.pointerInput(item) {
+                                detectTapGestures(onLongPress = { onLongPick(item) })
+                            }
+                        } else {
+                            m
+                        }
+                    },
             leadingIcon =
                 if (multiSelect) {
                     {

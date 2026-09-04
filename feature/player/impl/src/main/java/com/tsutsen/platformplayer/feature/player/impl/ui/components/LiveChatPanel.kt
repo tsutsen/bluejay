@@ -244,8 +244,8 @@ private fun ChatMessageList(
                     Modifier
                         .align(Alignment.BottomEnd)
                         .padding(12.dp)
-                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp)),
-                shape = RoundedCornerShape(20.dp),
+                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(BluejayTokens().radius.lg)),
+                shape = RoundedCornerShape(BluejayTokens().radius.lg),
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 IconButton(
@@ -292,7 +292,7 @@ private fun ChatMessageCard(
                 val badge = entry.badge
                 if (badge != null) {
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
+                        shape = RoundedCornerShape(BluejayTokens().radius.xs),
                         color = MaterialTheme.colorScheme.primaryContainer,
                     ) {
                         Text(

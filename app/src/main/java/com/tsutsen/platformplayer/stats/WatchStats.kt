@@ -54,6 +54,7 @@ data class CreatorWatch(
     val ms: Long,
     val videoCount: Int,
     val avatarUrl: String? = null,
+    val authorUrl: String? = null,
 )
 
 object WatchStatsBuilder {
@@ -68,6 +69,7 @@ object WatchStatsBuilder {
         val weekCreators = HashMap<String, LongArray>() // [ms, count]
         val allCreators = HashMap<String, LongArray>()
         val creatorAvatars = HashMap<String, String?>()
+        val creatorUrls = HashMap<String, String?>()
         var todayMs = 0L
         var todayVideos = 0
         var weekMs = 0L
@@ -88,6 +90,10 @@ object WatchStatsBuilder {
             val avatar = h.thumbnailUrl?.takeIf { it.isNotBlank() }
             if (avatar != null && !creatorAvatars.containsKey(creator)) {
                 creatorAvatars[creator] = avatar
+            }
+            val url = h.authorUrl?.takeIf { it.isNotBlank() }
+            if (url != null && !creatorUrls.containsKey(creator)) {
+                creatorUrls[creator] = url
             }
 
             allTimeMs += ms
@@ -132,9 +138,9 @@ object WatchStatsBuilder {
             weekAverageMs = weekMs / 7L,
             weekVideoCount = weekVideos,
             lastWeekDaily = lastWeekDaily,
-            topCreatorsLastWeek = topCreators(weekCreators, creatorAvatars, 3),
+            topCreatorsLastWeek = topCreators(weekCreators, creatorAvatars, creatorUrls, 3),
             allTimeMs = allTimeMs,
-            topCreators = topCreators(allCreators, creatorAvatars, 10),
+            topCreators = topCreators(allCreators, creatorAvatars, creatorUrls, 10),
             last30Days = last30Days,
             videoCount = history.size,
         )
@@ -143,13 +149,22 @@ object WatchStatsBuilder {
     private fun topCreators(
         sums: Map<String, LongArray>,
         avatars: Map<String, String?>,
+        urls: Map<String, String?>,
         limit: Int,
     ): List<CreatorWatch> =
         sums.entries
             .filter { it.value[0] > 0L }
             .sortedByDescending { it.value[0] }
             .take(limit)
-            .map { CreatorWatch(it.key, it.value[0], it.value[1].toInt(), avatars[it.key]) }
+            .map {
+                CreatorWatch(
+                    it.key,
+                    it.value[0],
+                    it.value[1].toInt(),
+                    avatars[it.key],
+                    urls[it.key],
+                )
+            }
 }
 
 /** "1h 20m" / "43m" — the human duration labels for the stats screens. */

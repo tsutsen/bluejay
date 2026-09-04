@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Author
 
@@ -252,9 +253,9 @@ private fun RowScope.ChannelName(
                     contentDescription = "Source",
                     modifier =
                         Modifier
-                            .padding(start = 4.dp)
-                            .size(16.dp)
-                            .clip(RoundedCornerShape(4.dp)),
+                            .padding(start = Tokens.SpaceXs)
+                            .size(Tokens.IconSm)
+                            .clip(RoundedCornerShape(BluejayTokens().radius.xs)),
                     contentScale = ContentScale.FillBounds,
                 )
             }
@@ -320,6 +321,7 @@ private fun SubscribeButton(
     if (isSubscribed) {
         OutlinedButton(
             onClick = onSubscribe,
+            shape = RoundedCornerShape(BluejayTokens().radius.md),
             modifier = Modifier.height(Tokens.ButtonSm),
             contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
         ) {
@@ -328,6 +330,7 @@ private fun SubscribeButton(
     } else {
         Button(
             onClick = onSubscribe,
+            shape = RoundedCornerShape(BluejayTokens().radius.md),
             modifier = Modifier.height(Tokens.ButtonSm),
             contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
         ) {

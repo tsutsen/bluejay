@@ -18,14 +18,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResult
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
+import com.tsutsen.platformplayer.gettingstarted.GettingStartedFlow
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
@@ -47,6 +52,7 @@ import com.tsutsen.platformplayer.states.StateCasting
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -87,6 +93,9 @@ class MainActivity :
 
     @Inject
     lateinit var channelRepository: ChannelRepository
+
+    @Inject
+    lateinit var historyTracker: com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
 
     /** System picture-in-picture active (video-only window). */
     internal val pipActive = MutableStateFlow(false)
@@ -160,9 +169,16 @@ class MainActivity :
                 playbackQueueRepository = playbackQueueRepository,
                 liveChatRepository = liveChatRepository,
                 channelRepository = channelRepository,
+                historyTracker = historyTracker,
                 // Tapping the channel badge on the second screen navigates
                 // the main screen to the channel page.
                 onChannelClick = { url -> navigator.navigateToChannel(url) },
+                // Tapping a library playlist title opens the playlist on the
+                // main screen (same "playlist:<id>" URL the library cards use).
+                onPlaylistClick = { url -> navigator.navigateToPlaylist(url) },
+                // Tapping the stats card opens the watch-stats detail on the
+                // main screen.
+                onWatchStats = { navigator.navigateWatchStatsDetail() },
             ).also { it.show() }
     }
 
@@ -330,6 +346,7 @@ private fun BluejayMainActivity(
     val pip by activity.pipActive.collectAsState(initial = false)
 
     val appearance = p.appearance
+    val appScope = rememberCoroutineScope()
     // Active custom theme (if any): key colors → generated light/dark schemes.
     val activeTheme = appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
     val customSchemes =
@@ -355,11 +372,25 @@ private fun BluejayMainActivity(
         if (pip) {
             PlayerView(isPip = true)
         } else {
-            bluejayMainActivityContent(
-                activity,
-                navigator,
-                playerRepository,
-            )
+            Box(Modifier.fillMaxSize()) {
+                bluejayMainActivityContent(
+                    activity,
+                    navigator,
+                    playerRepository,
+                )
+                // One-time first-launch tour: shown until completed or skipped.
+                if (!p.gettingStartedCompleted) {
+                    GettingStartedFlow(
+                        preferences = p,
+                        settingsRepository = settingsRepository,
+                        onFinished = {
+                            appScope.launch {
+                                settingsRepository.updateGeneral("gettingStartedCompleted", true)
+                            }
+                        },
+                    )
+                }
+            }
         }
     }
 }

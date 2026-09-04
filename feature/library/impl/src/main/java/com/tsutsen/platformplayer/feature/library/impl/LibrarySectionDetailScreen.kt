@@ -12,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,7 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
@@ -81,27 +84,38 @@ fun LibrarySectionDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    if (sectionId == LibraryRepositoryImpl.WATCH_LATER_ID) {
+                        TextButton(onClick = { viewModel.removeWatched() }) {
+                            Text(
+                                text = "Remove watched",
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                    }
+                },
             )
 
-            when {
-                section == null -> {
-                    Box(modifier = Modifier.fillMaxSize())
-                }
-
-                items.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "Nothing yet",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+            ContentCard(modifier = Modifier.fillMaxSize()) {
+                when {
+                    section == null -> {
+                        Box(modifier = Modifier.fillMaxSize())
                     }
-                }
 
-                else -> {
+                    items.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "Nothing yet",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    else -> {
                     VideoContainer(
                         items = items,
                         layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
@@ -130,6 +144,7 @@ fun LibrarySectionDetailScreen(
                         )
                     }
                 }
+            }
             }
         }
     }

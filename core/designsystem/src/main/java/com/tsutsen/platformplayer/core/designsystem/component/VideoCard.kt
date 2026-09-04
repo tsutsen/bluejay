@@ -42,6 +42,35 @@ import kotlin.math.roundToLong
 private val PILL_HEIGHT = 18.dp
 
 /**
+ * Bold hand-drawn check (the icon-font check is a thin stroke): ~18% of
+ * its width as a round-capped stroke.
+ */
+@Composable
+private fun WatchedCheck(
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val w = this.size.width
+        val h = this.size.height
+        val path =
+            Path().apply {
+                moveTo(w * 0.10f, h * 0.54f)
+                lineTo(w * 0.40f, h * 0.84f)
+                lineTo(w * 0.92f, h * 0.20f)
+            }
+        drawPath(
+            path = path,
+            color = Color.White,
+            style =
+                Stroke(
+                    width = w * 0.18f,
+                    cap = StrokeCap.Round,
+                ),
+        )
+    }
+}
+
+/**
  * Watched badge: the duration pill's shape (same height, corner radius and
  * background) with a thick hand-drawn check instead of text.
  */
@@ -59,27 +88,7 @@ private fun WatchedBadge(
                 .background(Color.Black.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
-        // Bold check: the icon-font check is a thin stroke, this one is
-        // ~18% of the badge width with round caps.
-        Canvas(Modifier.size(size * 0.4f)) {
-            val w = this.size.width
-            val h = this.size.height
-            val path =
-                Path().apply {
-                    moveTo(w * 0.10f, h * 0.54f)
-                    lineTo(w * 0.40f, h * 0.84f)
-                    lineTo(w * 0.92f, h * 0.20f)
-                }
-            drawPath(
-                path = path,
-                color = Color.White,
-                style =
-                    Stroke(
-                        width = w * 0.18f,
-                        cap = StrokeCap.Round,
-                    ),
-            )
-        }
+        WatchedCheck(Modifier.size(size * 0.4f))
     }
 }
 
@@ -146,6 +155,17 @@ fun VideoCard(
                     ClipBadge(modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
                 }
 
+                // View-count pill (top-right).
+                if (viewCount != null) {
+                    ThumbnailPill(
+                        text = formatViewCount(viewCount),
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(Tokens.SpaceSm),
+                    )
+                }
+
                 // In-progress download: percentage + bar across the bottom
                 if (downloadProgress != null) {
                     Column(
@@ -200,11 +220,10 @@ fun VideoCard(
                     }
                 }
 
-                // Completed badge (bottom-LEFT, never drawn together with the
-                // progress pill — callers hide progress when watched).
-                if (isWatched) {
-                    WatchedBadge(
-                        size = 24.dp,
+                // Posted-time pill (bottom-left).
+                if (publishedAt != null) {
+                    ThumbnailPill(
+                        text = RelativeTime.format(publishedAt),
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
@@ -212,25 +231,37 @@ fun VideoCard(
                     )
                 }
 
-                // Duration pill (bottom-right)
-                if (durationMs != null && durationMs > 0) {
-                    Box(
+                // Duration pill (bottom-right); watched videos carry the
+                // check inside it. Callers hide the progress bar when
+                // watched, so the check never doubles as a "progress done".
+                if ((durationMs != null && durationMs > 0) || isWatched) {
+                    Surface(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(Tokens.SpaceSm)
-                                .height(PILL_HEIGHT)
-                                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
-                                .background(Color.Black.copy(alpha = 0.7f)),
-                        contentAlignment = Alignment.Center,
+                                .padding(Tokens.SpaceSm),
+                        color = Color.Black.copy(alpha = 0.7f),
+                        shape = RoundedCornerShape(BluejayTokens().radius.xs),
                     ) {
-                        Text(
-                            text = formatDuration(durationMs),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                            fontWeight = FontWeight.Bold,
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (isWatched) {
+                                WatchedCheck(Modifier.size(8.dp))
+                                if (durationMs != null && durationMs > 0) {
+                                    Spacer(Modifier.width(2.dp))
+                                }
+                            }
+                            if (durationMs != null && durationMs > 0) {
+                                Text(
+                                    text = formatDuration(durationMs),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -242,68 +273,31 @@ fun VideoCard(
                         .padding(Tokens.SpaceMd)
                         .fillMaxWidth(),
             ) {
-                // Title (2 lines max)
+                // Title: always reserves two lines, so every card in a
+                // grid row is the same height and the author line sits at
+                // the same spot (the bottom of the text block) regardless
+                // of title length.
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
+                    minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Meta line: Author • Views • Time
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (author != null) {
-                        Text(
-                            text = author,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Spacer(modifier = Modifier.width(Tokens.SpaceXs))
-                        Text(
-                            text = "•",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.width(Tokens.SpaceXs))
-                    }
-
-                    if (viewCount != null) {
-                        Text(
-                            text = formatViewCount(viewCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (publishedAt != null) {
-                            Spacer(modifier = Modifier.width(Tokens.SpaceXs))
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(modifier = Modifier.width(Tokens.SpaceXs))
-                        }
-                    }
-
-                    if (publishedAt != null) {
-                        Text(
-                            text = RelativeTime.format(publishedAt),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                // Meta line: author only — views and posted time live in the
+                // thumbnail pills now.
+                if (author != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = author,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }

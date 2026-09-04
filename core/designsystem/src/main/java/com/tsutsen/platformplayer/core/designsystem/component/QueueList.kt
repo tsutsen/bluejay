@@ -214,7 +214,7 @@ private fun QueueRow(
                 Modifier
                     .width(112.dp)
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                     .background(Color(0xFF202124)),
         ) {
             item.thumbnailUrl?.let { url ->
@@ -225,7 +225,7 @@ private fun QueueRow(
                         Modifier
                             .fillMaxWidth()
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                 )
             }
             item.durationMs?.takeIf { it > 0 }?.let { ms ->
@@ -238,7 +238,7 @@ private fun QueueRow(
                             .align(Alignment.BottomEnd)
                             .background(
                                 Color.Black.copy(alpha = 0.75f),
-                                RoundedCornerShape(4.dp),
+                                RoundedCornerShape(BluejayTokens().radius.xs),
                             )
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                 )

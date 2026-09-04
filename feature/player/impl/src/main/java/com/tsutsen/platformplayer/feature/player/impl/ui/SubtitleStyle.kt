@@ -30,7 +30,7 @@ object SubtitleStyle {
 
     /** Crisp glyph outline, drawn as an offset ring of copies. */
     var outlineColor: Color = Color.Black
-    var outlineWidth: Float = 1.5f
+    var outlineWidth: Float = 3f
 
     /** Opaque plate behind the text. Disabled by default. */
     var backdropEnabled: Boolean = false
@@ -38,10 +38,10 @@ object SubtitleStyle {
 
     /**
      * Applies the user's subtitle settings (font family, size in pt,
-     * bottom padding in dp). Called from the player ViewModel whenever
-     * the preferences change.
+     * bottom padding in dp, outline thickness in px).
+     * Called from the player ViewModel whenever the preferences change.
      */
-    fun applyPreferences(font: String, size: Int, padding: Int) {
+    fun applyPreferences(font: String, size: Int, padding: Int, outline: Int = 3) {
         fontFamily =
             when (font) {
                 "sans" -> FontFamily.SansSerif
@@ -52,5 +52,6 @@ object SubtitleStyle {
         fontSize = size.toFloat().coerceIn(8f, 32f)
         lineHeight = fontSize * 1.125f
         bottomPadding = padding.coerceIn(0, 80).dp
+        outlineWidth = outline.coerceIn(0, 6).toFloat()
     }
 }

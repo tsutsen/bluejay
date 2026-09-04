@@ -15,6 +15,7 @@ sealed class NavDestination {
     data object Settings : NavDestination()
 
     // Detail screens
+    data object WatchStatsDetail : NavDestination()
     data class ChannelDetail(val url: String) : NavDestination()
     data class PlaylistDetail(val url: String) : NavDestination()
     data class SourceDetail(val url: String) : NavDestination()
@@ -44,6 +45,8 @@ sealed class NavDestination {
 
     // Auth & other
     data class Login(val configJson: String) : NavDestination()
+    /** Log in to a source resolved by client id in the app module. */
+    data class SourceLogin(val sourceId: String) : NavDestination()
     data object Developer : NavDestination()
     data object Tutorial : NavDestination()
     data object Buy : NavDestination()

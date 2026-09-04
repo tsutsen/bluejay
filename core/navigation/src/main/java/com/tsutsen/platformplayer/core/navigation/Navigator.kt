@@ -74,6 +74,8 @@ class Navigator
 
         fun navigateNotifications() = navigate(NavDestination.Notifications)
 
+        fun navigateWatchStatsDetail() = navigate(NavDestination.WatchStatsDetail)
+
         fun navigateSettings() = navigate(NavDestination.Settings)
 
         // Detail navigation
@@ -123,6 +125,8 @@ class Navigator
 
         // Auth & other
         fun navigateToLogin(configJson: String) = navigate(NavDestination.Login(configJson))
+
+        fun navigateToSourceLogin(sourceId: String) = navigate(NavDestination.SourceLogin(sourceId))
 
         fun navigateToDeveloper() = navigate(NavDestination.Developer)
 

@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import android.util.Log
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,6 +35,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.DownloadSection
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.TileTone
+import com.tsutsen.platformplayer.core.designsystem.component.tokenizedChipShapes
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.AudioTrackInfo
@@ -66,11 +69,27 @@ internal fun OptionsModal(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        // BJPROBE: opens directly to Expanded (no PartiallyExpanded) — fix
+        // candidate for the untappable-when-expanded regression.
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    // BJPROBE: non-consuming event logger — proves whether
+                    // pointer events reach the sheet content at all.
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val e = awaitPointerEvent()
+                                Log.d(
+                                    "BJPROBE",
+                                    "opts content ${e.type} pos=${e.changes.firstOrNull()?.position}",
+                                )
+                            }
+                        }
+                    }
                     .padding(horizontal = Tokens.SpaceLg)
                     .padding(bottom = Tokens.SpaceXl),
             verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
@@ -79,8 +98,12 @@ internal fun OptionsModal(
                 listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
                     FilterChip(
                         selected = playbackSpeed == speed,
-                        onClick = { onSpeedChange(speed) },
+                        onClick = {
+                            Log.d("BJPROBE", "SPEED tap $speed")
+                            onSpeedChange(speed)
+                        },
                         label = { Text("${speed}x") },
+                        shapes = tokenizedChipShapes(),
                     )
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }
@@ -91,6 +114,7 @@ internal fun OptionsModal(
                         selected = quality == q,
                         onClick = { onQualityChange(q) },
                         label = { Text(q) },
+                        shapes = tokenizedChipShapes(),
                     )
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }
@@ -103,6 +127,7 @@ internal fun OptionsModal(
                             selected = track.label == selectedAudioTrack,
                             onClick = { onAudioChange(track.label) },
                             label = { Text(track.label) },
+                            shapes = tokenizedChipShapes(),
                         )
                         Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                     }
@@ -115,6 +140,7 @@ internal fun OptionsModal(
                         selected = subtitle == s,
                         onClick = { onSubtitleChange(s) },
                         label = { Text(s) },
+                        shapes = tokenizedChipShapes(),
                     )
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }

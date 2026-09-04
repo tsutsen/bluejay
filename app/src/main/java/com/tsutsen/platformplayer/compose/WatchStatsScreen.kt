@@ -43,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import com.tsutsen.platformplayer.core.designsystem.component.AvatarCircle
@@ -80,6 +81,9 @@ fun WatchTimeBars(
     barWidth: Dp? = Tokens.SpaceXs,
     labels: List<String>? = null,
     highlightIndex: Int? = null,
+    // When true the bars stretch to fill whatever height the caller gives
+    // them (paired with a weight(1f) modifier) instead of using [height].
+    fillHeight: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val maxValue = (values.maxOrNull() ?: 0L).coerceAtLeast(1L)
@@ -91,7 +95,9 @@ fun WatchTimeBars(
         values.forEachIndexed { index, value ->
             val width = barWidth?.let { Modifier.width(it) } ?: Modifier.weight(1f)
             Column(
-                modifier = width,
+                // fillHeight: fill the row's height so the track's
+                // weight(1f) below leaves room for the label line.
+                modifier = width.then(if (fillHeight) Modifier.fillMaxHeight() else Modifier),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val fraction = (value.toFloat() / maxValue).coerceIn(0f, 1f)
@@ -99,16 +105,25 @@ fun WatchTimeBars(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(height),
+                            // weight (not fillMaxHeight) so the label below
+                            // is never pushed out of the chart.
+                            .then(if (fillHeight) Modifier.weight(1f) else Modifier.height(height)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
                     Box(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(
-                                    if (value > 0) height * fraction.coerceAtLeast(0.15f)
-                                        else Tokens.SpaceXs,
+                                .then(
+                                    when {
+                                        value == 0L -> Modifier.height(Tokens.SpaceXs)
+                                        fillHeight ->
+                                            Modifier.fillMaxHeight(fraction.coerceAtLeast(0.15f))
+                                        else ->
+                                            Modifier.height(
+                                                height * fraction.coerceAtLeast(0.15f)
+                                            )
+                                    },
                                 )
                                 .clip(
                                     RoundedCornerShape(
@@ -141,77 +156,96 @@ fun WatchTimeBars(
 }
 
 /**
- * The Dash stats card: today's total, the week average, the last-week bar
- * chart and the top creators — tapping it opens the detail screen.
+ * The Dash stats card: the stat columns and the last-week bar chart below
+ * them — tapping it opens the detail screen. The card owns its own
+ * container styling; callers pass layout modifiers (weight, padding).
+ * [fillHeight] lets the bar chart stretch to fill whatever height the
+ * caller gives the card.
  */
 @Composable
 fun WatchStatsSummary(
     stats: WatchStats,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    fillHeight: Boolean = false,
+    // Companion dash card: full-width weighted bars with weekday labels.
+    // Main-screen card keeps the small fixed bars without labels.
+    wideChart: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
-    if (stats.isEmpty) {
-        Text(
-            text = "No watch history yet",
-            style = MaterialTheme.typography.bodySmall,
-            color = scheme.onSurfaceVariant,
-            modifier = modifier,
-        )
-        return
-    }
-    Column(modifier = modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Stats", style = MaterialTheme.typography.titleSmall)
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(
-                imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = "View watch stats",
-                tint = scheme.onSurfaceVariant,
-                modifier = Modifier.size(Tokens.IconMd),
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                .background(scheme.surfaceContainer)
+                .clickable(onClick = onClick)
+                .padding(Tokens.SpaceLg),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+    ) {
+        if (stats.isEmpty) {
+            Text(
+                text = "No watch history yet",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
             )
-        }
-        Spacer(modifier = Modifier.height(Tokens.SpaceSm))
-        Row(verticalAlignment = Alignment.Bottom) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Today",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
-                )
-                Text(
-                    text = humanDuration(stats.todayMs),
-                    style = MaterialTheme.typography.titleMedium,
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "Stats", style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "View watch stats",
+                    tint = scheme.onSurfaceVariant,
+                    modifier = Modifier.size(Tokens.IconMd),
                 )
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Avg this week",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
-                )
-                Text(
-                    text = humanDuration(stats.weekAverageMs),
-                    style = MaterialTheme.typography.titleMedium,
-                )
+            Row(verticalAlignment = Alignment.Bottom) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Today",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = humanDuration(stats.todayMs),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Avg this week",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = humanDuration(stats.weekAverageMs),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Top this week",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stats.topCreatorsLastWeek.firstOrNull()?.author ?: "—",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Top this week",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stats.topCreatorsLastWeek.firstOrNull()?.author ?: "—",
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(modifier = Modifier.width(Tokens.SpaceMd))
             WatchTimeBars(
                 values = stats.lastWeekDaily.map { it.ms },
-                height = Tokens.ChartSm,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .then(if (fillHeight) Modifier.weight(1f) else Modifier),
+                barWidth = if (wideChart) null else Tokens.SpaceXs,
+                labels = if (wideChart) stats.lastWeekDaily.map { it.day.label } else null,
+                fillHeight = fillHeight,
                 highlightIndex = stats.lastWeekDaily.lastIndex,
             )
         }
@@ -278,7 +312,12 @@ fun WatchStatsDetailScreen(
                 )
                 Text(
                     text = humanDuration(stats.allTimeMs),
-                    style = MaterialTheme.typography.displaySmall,
+                    // Same weight as the MiniStat values below — display
+                    // styles default to Normal, which looked thinner next
+                    // to the Medium titleLarge numbers.
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
                 )
                 Text(
                     text = videosLabel(stats.videoCount),

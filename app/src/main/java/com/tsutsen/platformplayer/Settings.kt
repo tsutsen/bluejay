@@ -84,9 +84,24 @@ class Settings {
     // Tabs settings
     var advancedSettings: Boolean = false
 
+    // Set once the first-launch getting-started flow is finished or
+    // skipped; the flow shows again only if it is reset to false.
+    var gettingStartedCompleted: Boolean = false
+
     // Main-screen library: display order of the sections (reorderable in
     // Settings). Defaults to the natural LibraryRepository order.
     var librarySectionOrder: List<String> =
+        listOf(
+            LibraryRepositoryImpl.WATCH_LATER_ID,
+            LibraryRepositoryImpl.LIKED_ID,
+            LibraryRepositoryImpl.DISLIKED_ID,
+            LibraryRepositoryImpl.FAVOURITE_ID,
+            LibraryRepositoryImpl.HISTORY_ID,
+            LibraryRepositoryImpl.DOWNLOADS_ID,
+            LibraryRepositoryImpl.PLAYLISTS_ID,
+        )
+    /** Enabled library sections (Settings > Content). Order lives in [librarySectionOrder]. */
+    var librarySectionsEnabled: List<String> =
         listOf(
             LibraryRepositoryImpl.WATCH_LATER_ID,
             LibraryRepositoryImpl.LIKED_ID,
@@ -195,6 +210,9 @@ class Settings {
         var subtitleFont: String = "default"
         var subtitleFontSize: Int = 16
         var subtitleBottomPadding: Int = 20
+
+        // Subtitle glyph outline thickness in px (0 = no outline).
+        var subtitleOutline: Int = 3
     }
 
     @Serializable
@@ -271,6 +289,9 @@ class Settings {
 
         // Hidden home source-chip ids (persisted filter selection).
         var hiddenSources: List<String> = emptyList()
+
+        // Source ids whose home-feed "log in?" notice was declined.
+        var loginPromptsDismissed: List<String> = emptyList()
     }
 
     @Serializable

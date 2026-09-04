@@ -1,11 +1,14 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -20,13 +23,62 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Card
+
+/**
+ * The standard gap between a [ContentCard] edge and the cards laid on it:
+ * the difference of their corner radii. Both radii rescale with the user's
+ * corner rounding setting, so the inset tracks them (sharp rounding = zero
+ * gap, extra rounding = a wider gap).
+ */
+@Composable
+fun ContentCardInnerGap(): Dp =
+    (BluejayTokens().radius.card - BluejayTokens().radius.sm).coerceAtLeast(0.dp)
+
+/**
+ * Content-area card: the rounded [surfaceContainer] panel that a scrolling
+ * video container lays its cards on. The inner video cards stay `surface`,
+ * so the panel's tone separates the card group from the screen background
+ * (and makes an empty area read as a card, not as dead space).
+ *
+ * The panel insets itself from the screen edges ([Tokens.SpaceLg] on the
+ * sides and bottom, like the library's section columns) — callers just
+ * pass [fillMaxSize].
+ *
+ * The panel itself never scrolls — the lazy list scrolls inside it, so
+ * wrap it around the lazy container, not the other way round.
+ */
+@Composable
+fun ContentCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier =
+            modifier
+                .padding(
+                    start = Tokens.SpaceLg,
+                    top = Tokens.SpaceSm,
+                    end = Tokens.SpaceLg,
+                    bottom = Tokens.SpaceLg,
+                )
+                .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                .background(MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        content()
+    }
+}
 
 /**
  * Layout mode for the video container.
@@ -89,11 +141,15 @@ fun VideoContainer(
     onCardClick: (Card) -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(Tokens.SpaceLg),
+    // The gap between the ContentCard edge and the inner video cards is the
+    // difference of their radii. Both radii rescale with the user's corner
+    // rounding setting, so the inset tracks them (null = derive it).
+    contentPadding: PaddingValues? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     topContent: (@Composable () -> Unit)? = null,
     cardContent: @Composable (Card) -> Unit,
 ) {
+    val effectivePadding = contentPadding ?: PaddingValues(ContentCardInnerGap())
     when (layout) {
         is ContainerLayout.List -> {
             val state = rememberLazyListState()
@@ -115,7 +171,7 @@ fun VideoContainer(
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 state = state,
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg),
             ) {
                 if (topContent != null) {
@@ -139,7 +195,7 @@ fun VideoContainer(
             LazyRow(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
                 renderCards(items, cardContent, trailingContent)
@@ -167,7 +223,7 @@ fun VideoContainer(
                 modifier = modifier.fillMaxSize(),
                 state = state,
                 columns = GridCells.Fixed(layout.columns),
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
@@ -195,7 +251,7 @@ fun VideoContainer(
                 modifier = modifier.fillMaxWidth(),
                 state = state,
                 columns = GridCells.Fixed(layout.columns),
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
             ) {
@@ -222,7 +278,7 @@ fun VideoContainer(
                 modifier = modifier.fillMaxHeight(),
                 state = state,
                 rows = GridCells.Fixed(layout.rowsPerPage),
-                contentPadding = contentPadding,
+                contentPadding = effectivePadding,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
             ) {

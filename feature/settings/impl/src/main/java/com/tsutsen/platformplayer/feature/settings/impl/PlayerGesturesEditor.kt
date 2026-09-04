@@ -3,13 +3,22 @@ package com.tsutsen.platformplayer.feature.settings.impl
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forward30
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Swipe
+import androidx.compose.material.icons.filled.SwipeVertical
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,36 +30,40 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
+import com.tsutsen.platformplayer.core.designsystem.icon.TouchDouble
+import com.tsutsen.platformplayer.core.designsystem.icon.TouchLong
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 
-// The gesture cards are always black (mimicking the video player surface),
-// so the inner colors are fixed instead of theme-derived.
-private val PlayerBackground = Color.Black
-private val TileAssigned = Color(0xFF2B2B2B)
-private val TileUnassigned = Color(0xFF191919)
+// The editor mimics a video player: pure black cards with flat tiles
+// (no tile fill — state is shown through the tint only), so the inner
+// colors are fixed instead of theme-derived.
+private val CardBackground = Color.Black
 private val TextBright = Color(0xFFF2F2F2)
 private val TextDim = Color(0xFF9A9A9A)
 
-// Corners: the 4 outer corners of the combined shape stay rounded, the
-// inner corners (facing the gaps) are barely rounded.
-private val OuterRadius = 12.dp
-private val InnerRadius = 4.dp
+private val GESTURE_ICONS: Map<String, ImageVector> =
+    mapOf(
+        "hold" to TouchLong,
+        "double_tap" to TouchDouble,
+        "swipe_h" to Icons.Filled.Swipe,
+        "swipe_v" to Icons.Filled.SwipeVertical,
+    )
 
 /**
- * Inline per-slot player gesture editor (Settings > Gestures), one per
- * player mode.
+ * Per-slot player gesture editor for one player mode.
  *
- * Four rectangles: one wide one for the top zone (maps to the whole top
- * sector row) and three tall ones for the remaining shape (bottom-left +
- * middle-left, bottom-center + middle-center, bottom-right + middle-right).
- * Each rectangle holds four "<gesture>: <action>" buttons — hold, double
- * tap, h-swipe, v-swipe. Tapping a button opens the action picker for that
- * cell (same style as the other settings pickers). Unset cells show the
- * canonical defaults for this mode.
+ * Layout (mimicking the player screen): one panel with the top zone's four
+ * tiles in a row, three panels with the bottom zones' tiles in a 2x2 grid,
+ * and a slim decorative bar (back/play/forward) making the target clear.
+ * Tiles show the gesture-type icon; the label is the selected action.
+ * Tapping a tile opens the action picker for that cell (same style as the
+ * other settings pickers). Unset cells show the canonical defaults.
  */
 @Composable
 internal fun PlayerGesturesEditor(
@@ -64,47 +77,82 @@ internal fun PlayerGesturesEditor(
 ) {
     // (slot, type) of the cell being picked; null = no popup.
     var picking by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val radius = BluejayTokens().radius
+    // Stacked-group corner language: the first/last element of the stack
+    // keeps the outer rounding on its edge, everything in between and all
+    // corners facing the gaps uses the smaller radius.
+    val outer = radius.md
+    val inner = radius.xs
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
-        GestureSlotCard(
-            mode = mode,
-            slot = "top",
-            slotMap = slotSet.top,
-            onCellClick = { type -> picking = "top" to type },
-            shape = RoundedCornerShape(OuterRadius, OuterRadius, InnerRadius, InnerRadius),
-        )
+        // Top zone: four tiles in a row.
+        GesturePanel(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(outer, outer, inner, inner),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+            ) {
+                PlayerGestures.GESTURE_TYPES.forEach { type ->
+                    GestureTile(
+                        type = type,
+                        action = PlayerGestures.resolve(mode, "top", type, slotSet.top),
+                        modifier = Modifier.weight(1f),
+                    ) { picking = "top" to type }
+                }
+            }
+        }
+        // Bottom zones: three panels, each a 2x2 tile grid. Middle of the
+        // stack — the same small radius on every corner.
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
         ) {
-            GestureSlotCard(
-                mode = mode,
-                slot = "bottomLeft",
-                slotMap = slotSet.bottomLeft,
-                onCellClick = { type -> picking = "bottomLeft" to type },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(InnerRadius, InnerRadius, InnerRadius, OuterRadius),
-            )
-            GestureSlotCard(
-                mode = mode,
-                slot = "bottomCenter",
-                slotMap = slotSet.bottomCenter,
-                onCellClick = { type -> picking = "bottomCenter" to type },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(InnerRadius),
-            )
-            GestureSlotCard(
-                mode = mode,
-                slot = "bottomRight",
-                slotMap = slotSet.bottomRight,
-                onCellClick = { type -> picking = "bottomRight" to type },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(InnerRadius, InnerRadius, OuterRadius, InnerRadius),
-            )
+            listOf("bottomLeft", "bottomCenter", "bottomRight").forEach { slot ->
+                val slotMap = slotSet[slot]
+                GesturePanel(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(inner),
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+                        ) {
+                            listOf("hold", "double_tap").forEach { type ->
+                                GestureTile(
+                                    type = type,
+                                    action =
+                                        PlayerGestures.resolve(mode, slot, type, slotMap),
+                                    modifier = Modifier.weight(1f),
+                                ) { picking = slot to type }
+                            }
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+                        ) {
+                            listOf("swipe_h", "swipe_v").forEach { type ->
+                                GestureTile(
+                                    type = type,
+                                    action =
+                                        PlayerGestures.resolve(mode, slot, type, slotMap),
+                                    modifier = Modifier.weight(1f),
+                                ) { picking = slot to type }
+                            }
+                        }
+                    }
+                }
+            }
         }
+        // Aesthetic hint bar: half a tile row tall, back/play/forward
+        // centered — a reminder that this configures the player itself.
+        // Last element of the stack: small radius on top, outer below.
+        PlayerHintBar(shape = RoundedCornerShape(inner, inner, outer, outer))
     }
 
     // The single popup: action list for the selected cell.
@@ -137,66 +185,94 @@ private operator fun PlayerGestureSlotSet.get(slot: String): Map<String, String>
         else -> emptyMap()
     }
 
-/** One rectangle: a slot's four "<gesture>: <action>" buttons. */
+/** Black card that groups a zone's tiles. */
 @Composable
-private fun GestureSlotCard(
-    mode: String,
-    slot: String,
-    slotMap: Map<String, String>,
-    onCellClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
+private fun GesturePanel(
     shape: RoundedCornerShape,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = shape,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = PlayerBackground,
-            ),
+    Box(
+        modifier =
+            modifier
+                .clip(shape)
+                .background(CardBackground)
+                .padding(Tokens.SpaceXs),
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = PlayerGestures.SLOT_LABELS[slot].orEmpty(),
-                style = MaterialTheme.typography.labelLarge,
-                color = TextBright,
+        content()
+    }
+}
+
+/** One flat tile: gesture-type icon on top, the selected action below. */
+@Composable
+private fun GestureTile(
+    type: String,
+    action: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val isAssigned = action != PlayerGestures.NONE
+    Column(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(BluejayTokens().radius.sm))
+                .background(Color.Transparent)
+                .clickable(onClick = onClick)
+                .padding(vertical = Tokens.SpaceMd, horizontal = Tokens.SpaceXs),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = GESTURE_ICONS[type]!!,
+                contentDescription = null,
+                modifier = Modifier.size(Tokens.IconMd),
+                tint = if (isAssigned) TextBright else TextDim,
             )
-            PlayerGestures.GESTURE_TYPES.forEach { type ->
-                val action = PlayerGestures.resolve(mode, slot, type, slotMap)
-                val isAssigned = action != PlayerGestures.NONE
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (isAssigned) TileAssigned else TileUnassigned,
-                            )
-                            .clickable { onCellClick(type) }
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "${PlayerGestures.TYPE_LABELS[type].orEmpty()}:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextDim,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = PlayerGestures.DISPLAY_NAMES[action].orEmpty(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isAssigned) TextBright else TextDim,
-                        textAlign = TextAlign.End,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
         }
+        Spacer(modifier = Modifier.height(Tokens.SpaceXs))
+        Text(
+            text = PlayerGestures.DISPLAY_NAMES[action].orEmpty(),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isAssigned) TextBright else TextDim,
+            textAlign = TextAlign.Center,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Decorative back/play/forward strip — half a tile row tall. */
+@Composable
+private fun PlayerHintBar(shape: RoundedCornerShape) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(CardBackground)
+                .height(Tokens.IconMd + Tokens.SpaceSm),
+        horizontalArrangement =
+            Arrangement.spacedBy(Tokens.SpaceXl, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Replay10,
+            contentDescription = null,
+            modifier = Modifier.size(Tokens.IconSm),
+            tint = TextDim,
+        )
+        Icon(
+            imageVector = Icons.Filled.PlayArrow,
+            contentDescription = null,
+            modifier = Modifier.size(Tokens.IconSm),
+            tint = TextDim,
+        )
+        Icon(
+            imageVector = Icons.Filled.Forward30,
+            contentDescription = null,
+            modifier = Modifier.size(Tokens.IconSm),
+            tint = TextDim,
+        )
     }
 }

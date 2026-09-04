@@ -21,6 +21,7 @@ import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.ContentType
 import com.tsutsen.platformplayer.core.model.DownloadInfo
+import com.tsutsen.platformplayer.core.model.toContentItem
 import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlayerState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
@@ -176,6 +177,7 @@ class PlayerViewModel
                         font = prefs.subtitle.font,
                         size = prefs.subtitle.size,
                         padding = prefs.subtitle.bottomPadding,
+                        outline = prefs.subtitle.outline,
                     )
                 }
             }
@@ -239,7 +241,7 @@ class PlayerViewModel
                                             .coerceIn(0f, 1f),
                                     isWatched =
                                         it.lastPositionMs >=
-                                            it.totalDurationMs * WATCHED_FRACTION,
+                                            it.totalDurationMs * WatchState.WATCHED_FRACTION,
                                 )
                         }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
@@ -330,6 +332,14 @@ class PlayerViewModel
 
         @Volatile
         private var isSubscribedCache: Boolean = false
+
+        /**
+         * Bumped on every optimistic subscribe/unsubscribe so an in-flight
+         * lazy-fetch (or an earlier toggle) can't clobber the UI with a
+         * pre-toggle value.
+         */
+        @Volatile
+        private var subscribeGeneration: Int = 0
 
         val playlists: StateFlow<List<PlaylistOption>> = libraryRepository.playlists
         val downloads: StateFlow<List<DownloadInfo>> = downloadsRepository.downloads
@@ -470,12 +480,13 @@ class PlayerViewModel
                         if (channelUrl != null && channelUrl != isSubscribedUrl) {
                             isSubscribedUrl = channelUrl
                             isSubscribedCache = false
+                            val gen = subscribeGeneration
                             viewModelScope.launch {
                                 val subscribed =
                                     withContext(Dispatchers.IO) {
                                         channelRepository.isSubscribed(channelUrl)
                                     }
-                                if (isSubscribedUrl == channelUrl) {
+                                if (isSubscribedUrl == channelUrl && gen == subscribeGeneration) {
                                     isSubscribedCache = subscribed
                                     _uiState.update {
                                         (it as? PlayerUiState.Loaded)?.copy(
@@ -552,21 +563,39 @@ class PlayerViewModel
             }
         }
 
-        /** Subscribe/unsubscribe the current video's channel. */
+        /**
+         * Subscribe/unsubscribe the current video's channel.
+         *
+         * Optimistic: the button flips immediately from the synchronous
+         * local store state; the backend transaction runs behind it and its
+         * result (the source of truth) is written back — a failed
+         * subscription no-ops in the repository, which rolls the UI back.
+         */
         fun subscribeChannel() {
+            val url =
+                playerRepository.playerState.value.currentVideo
+                    ?.author
+                    ?.url
+                    ?.takeIf { it.isNotEmpty() } ?: return
+            // Local read — synchronous, no IO.
+            val optimistic = !channelRepository.isSubscribed(url)
+            isSubscribedUrl = url
+            isSubscribedCache = optimistic
+            subscribeGeneration++
+            _uiState.update {
+                (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = optimistic) ?: it
+            }
+            val gen = subscribeGeneration
             viewModelScope.launch {
-                val url =
-                    playerRepository.playerState.value.currentVideo
-                        ?.author
-                        ?.url
-                if (url.isNullOrEmpty()) return@launch
                 val subscribed =
                     withContext(Dispatchers.IO) {
                         channelRepository.toggleSubscription(url)
                     }
-                isSubscribedCache = subscribed
-                _uiState.update {
-                    (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = subscribed) ?: it
+                if (isSubscribedUrl == url && gen == subscribeGeneration) {
+                    isSubscribedCache = subscribed
+                    _uiState.update {
+                        (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = subscribed) ?: it
+                    }
                 }
             }
         }
@@ -688,28 +717,7 @@ class PlayerViewModel
 
         /** Play a card whose details are already known (instant title/thumb). */
         fun play(card: com.tsutsen.platformplayer.core.model.VideoCard) {
-            play(
-                card.url,
-                com.tsutsen.platformplayer.core.model.ContentItem(
-                    id = card.id,
-                    url = card.url,
-                    title = card.title,
-                    author =
-                        card.author?.let {
-                            com.tsutsen.platformplayer.core.model.Author(
-                                id = card.authorUrl.orEmpty(),
-                                name = it,
-                                url = card.authorUrl,
-                                thumbnailUrl = null,
-                            )
-                        },
-                    thumbnailUrl = card.thumbnailUrl,
-                    contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
-                    publishedAt = card.publishedAt,
-                    durationMs = card.durationMs,
-                    viewCount = card.viewCount,
-                ),
-            )
+            play(card.url, card.toContentItem())
         }
 
         fun loadMoreComments(contentUrl: String) {

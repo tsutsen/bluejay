@@ -151,7 +151,7 @@ private fun LibrarySectionRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(BluejayTokens().radius.card))
                 .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(Tokens.SpaceLg),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),

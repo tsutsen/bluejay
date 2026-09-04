@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
+import com.tsutsen.platformplayer.core.model.SavedVideoType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,6 +49,21 @@ class LibrarySectionDetailViewModel
         private var loadedSectionId: String? = null
         private var sectionJob: Job? = null
         private var itemsJob: Job? = null
+
+        private var removingWatched = false
+
+        /**
+         * Watch Later cleanup: removes every entry that counts as watched.
+         * The items flow refreshes the list reactively once the deletes land.
+         */
+        fun removeWatched() {
+            if (loadedSectionId != LibraryRepositoryImpl.WATCH_LATER_ID || removingWatched) return
+            removingWatched = true
+            viewModelScope.launch {
+                libraryRepository.removeWatched(SavedVideoType.WATCH_LATER)
+                removingWatched = false
+            }
+        }
 
         fun loadSection(sectionId: String) {
             if (loadedSectionId == sectionId) return

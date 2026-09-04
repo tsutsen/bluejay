@@ -72,6 +72,28 @@ class HomeViewModel
             }
         }
 
+        /** Source ids whose home-feed "log in?" notice was declined. */
+        val loginPromptsDismissed: StateFlow<Set<String>> =
+            settingsRepository.preferences
+                .map { it.homeLoginPromptsDismissed.toSet() }
+                .stateIn(
+                    viewModelScope,
+                    SharingStarted.Lazily,
+                    settingsRepository.preferences.value.homeLoginPromptsDismissed.toSet(),
+                )
+
+        fun dismissLoginPrompt(sourceId: String) {
+            viewModelScope.launch {
+                val current = settingsRepository.preferences.value.homeLoginPromptsDismissed
+                if (sourceId !in current) {
+                    settingsRepository.updateGeneral(
+                        "homeLoginPromptsDismissed",
+                        current + sourceId,
+                    )
+                }
+            }
+        }
+
         private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Initial)
         val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
