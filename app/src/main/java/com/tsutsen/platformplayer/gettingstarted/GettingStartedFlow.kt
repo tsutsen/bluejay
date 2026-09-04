@@ -139,12 +139,9 @@ fun GettingStartedFlow(
         }
     }
 
-    // The "choose your sources" step works on every available client except
-    // YouTube: it is always enabled and cannot be disabled, so listing it
-    // here would let the user believe their choice matters. Sorted by name,
-    // like the plugin browser.
+    // Every available client, sorted by name like the plugin browser.
     val availableSources =
-        remember(sources) { sources.filter { it.id != "youtube" }.sortedBy { it.name.lowercase() } }
+        remember(sources) { sources.sortedBy { it.name.lowercase() } }
 
     // Step 2 — dual screen
     var dualScreen by remember { mutableStateOf(preferences.dualScreen) }
