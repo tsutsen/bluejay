@@ -885,7 +885,7 @@ private fun SectionItems(
             }
 
             "about" -> {
-                AboutItems()
+                AboutItems(viewModel)
             }
 
             "appearance" -> {
@@ -1607,7 +1607,7 @@ private fun BackupTile(
  * about links (upstream site, source repo, license).
  */
 @Composable
-private fun AboutItems() {
+private fun AboutItems(viewModel: SettingsViewModel) {
     val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
     // The feature module has no BuildConfig of its own (versionName is set
@@ -1679,11 +1679,18 @@ private fun AboutItems() {
 
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
             SettingsOptionCard(
+                icon = Icons.Filled.PlayArrow,
+                title = "Launch initial setup",
+                subtitle = "Show the getting started flow again",
+                onClick = { viewModel.restartGettingStarted() },
+                groupPosition = GroupPosition.First,
+            )
+            SettingsOptionCard(
                 icon = Icons.Filled.Launch,
                 title = "Support Grayjay",
                 subtitle = "grayjay.app — the original project",
                 onClick = { openUrl(context, "https://grayjay.app") },
-                groupPosition = GroupPosition.First,
+                groupPosition = GroupPosition.Middle,
             )
             SettingsOptionCard(
                 icon = Icons.Filled.Code,

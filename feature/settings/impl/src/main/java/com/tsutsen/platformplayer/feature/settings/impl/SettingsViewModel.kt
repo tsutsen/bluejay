@@ -73,6 +73,13 @@ class SettingsViewModel
             viewModelScope.launch { backupSummary.value = backupProvider.summary() }
         }
 
+        /** Re-show the first-launch getting started flow (About section). */
+        fun restartGettingStarted() {
+            viewModelScope.launch {
+                settingsRepository.updateGeneral("gettingStartedCompleted", false)
+            }
+        }
+
         fun exportBackup() = backupProvider.exportBackup()
 
         fun importBackup() = backupProvider.importBackup()
