@@ -1650,7 +1650,7 @@ private fun ContinueCard(
         val discardPressed by discardSource.collectIsPressedAsState()
         val playContainer by
             animateColorAsState(
-                targetValue = if (playPressed) scheme.primary else scheme.primaryContainer,
+                targetValue = if (playPressed) scheme.primary else scheme.surface,
                 animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
                 label = "continue-play-container",
             )
@@ -1662,7 +1662,7 @@ private fun ContinueCard(
             )
         val discardContainer by
             animateColorAsState(
-                targetValue = if (discardPressed) scheme.surfaceContainerHigh else scheme.surfaceVariant,
+                targetValue = if (discardPressed) scheme.surfaceContainerHigh else scheme.surface,
                 animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
                 label = "continue-discard-container",
             )
