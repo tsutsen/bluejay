@@ -288,10 +288,12 @@ fun GettingStartedFlow(
                 }
             }
         }
-    }
 
-    // A source card's tap: the plugin's settings, hosted in the overlay so
-    // the flow stays alive underneath (same scene the plugin browser uses).
+        // The hosted screens live inside the padded root box, so they keep
+        // the same system-bar clearance as the steps themselves.
+
+        // A source card's tap: the plugin's settings, hosted in the overlay so
+        // the flow stays alive underneath (same scene the plugin browser uses).
     selectedSourceUrl?.let { url ->
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             PluginDetailScene(
@@ -375,6 +377,7 @@ fun GettingStartedFlow(
             },
             onDismiss = { bindingAction = null },
         )
+    }
     }
 }
 
