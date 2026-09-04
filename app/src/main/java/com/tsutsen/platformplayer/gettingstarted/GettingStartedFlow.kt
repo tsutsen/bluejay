@@ -162,7 +162,7 @@ fun GettingStartedFlow(
                         // above the headline on every step.
                         top = Tokens.SpaceXl * 2,
                         // Keep content clear of the bottom dock.
-                        bottom = Tokens.SpaceXl * 4,
+                        bottom = Tokens.SpaceXl * 3 + Tokens.SpaceMd,
                     ),
             contentAlignment = Alignment.Center,
         ) {
