@@ -84,7 +84,7 @@ class WatchStatsBuilderTests {
     }
 
     @Test
-    fun `creators rank by watch time and week list caps at 3`() {
+    fun `creators rank by watch time and week list caps at 10`() {
         val stats =
             WatchStatsBuilder.build(
                 listOf(
@@ -96,8 +96,11 @@ class WatchStatsBuilderTests {
                 ),
                 now,
             )
-        assertEquals(listOf("Anna", "Bob", "Carla"), stats.topCreatorsLastWeek.map { it.author })
-        assertEquals(3, stats.topCreatorsLastWeek.size)
+        // Five creators in the window; all five fit under the 10 cap. The
+        // two 10-minute ties may land in any order, so assert the top 3
+        // and the size.
+        assertEquals(listOf("Anna", "Bob", "Carla"), stats.topCreatorsLastWeek.map { it.author }.take(3))
+        assertEquals(5, stats.topCreatorsLastWeek.size)
         assertEquals(5, stats.topCreators.size)
         assertEquals("Anna", stats.topCreators.first().author)
         assertEquals(2 * hour, stats.topCreators.first().ms)

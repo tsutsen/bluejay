@@ -30,7 +30,7 @@ data class WatchStats(
     val weekAverageMs: Long = 0,
     val weekVideoCount: Int = 0,
     val lastWeekDaily: List<DailyWatch> = emptyList(), // 7 days, oldest first
-    val topCreatorsLastWeek: List<CreatorWatch> = emptyList(), // top 3
+    val topCreatorsLastWeek: List<CreatorWatch> = emptyList(), // top 10
     val allTimeMs: Long = 0,
     val topCreators: List<CreatorWatch> = emptyList(), // top 10
     val last30Days: List<DailyWatch> = emptyList(), // 30-day sliding window, oldest first
@@ -138,7 +138,7 @@ object WatchStatsBuilder {
             weekAverageMs = weekMs / 7L,
             weekVideoCount = weekVideos,
             lastWeekDaily = lastWeekDaily,
-            topCreatorsLastWeek = topCreators(weekCreators, creatorAvatars, creatorUrls, 3),
+            topCreatorsLastWeek = topCreators(weekCreators, creatorAvatars, creatorUrls, 10),
             allTimeMs = allTimeMs,
             topCreators = topCreators(allCreators, creatorAvatars, creatorUrls, 10),
             last30Days = last30Days,
