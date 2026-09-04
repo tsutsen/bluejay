@@ -365,6 +365,22 @@ class PlayerViewModel
                         // something else changed — otherwise every tick would re-emit a
                         // new 28-field state and recompose the whole player subtree.
                         _positionMs.value = playerState.currentPositionMs
+                        // History sampling runs on every tick — the early
+                        // return below skips the UI rebuild for position-only
+                        // ticks, but those ticks are exactly what the
+                        // 5s-throttled sampler feeds on. Skipping them made
+                        // saves fire only on state changes (pause/seek), and
+                        // the tracker's gap cap then refused to credit the
+                        // long gaps between them, so watchedMs tracked only
+                        // a few percent of real playback.
+                        playerState.currentVideo?.let { video ->
+                            persistPlaybackHistory(
+                                video = video,
+                                positionMs = playerState.currentPositionMs,
+                                durationMs = playerState.durationMs,
+                                force = !playerState.isPlaying || playerState.isCompleted,
+                            )
+                        }
                         val prev = lastPlayerState
                         lastPlayerState = playerState
                         if (
@@ -496,14 +512,6 @@ class PlayerViewModel
                                     }
                                 }
                             }
-                        }
-                        if (video != null) {
-                            persistPlaybackHistory(
-                                video = video,
-                                positionMs = playerState.currentPositionMs,
-                                durationMs = playerState.durationMs,
-                                force = !playerState.isPlaying || playerState.isCompleted,
-                            )
                         }
                     }
             }

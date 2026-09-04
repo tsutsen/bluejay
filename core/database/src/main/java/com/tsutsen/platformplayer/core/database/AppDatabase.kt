@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.core.database.entity.*
         SavedVideoEntity::class,
         NotificationEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -68,6 +68,29 @@ abstract class AppDatabase : RoomDatabase() {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL(
                         "ALTER TABLE `history` ADD COLUMN `watchedMs` INTEGER NOT NULL DEFAULT 0",
+                    )
+                }
+            }
+
+        /**
+         * v8 -> v9: repairs rows written while history sampling only ran
+         * on state changes (pause/seek), so the skip-aware tracker
+         * credited only the samples close enough together and watchedMs
+         * tracked a fraction of real playback. Caps each row at
+         * lastPositionMs (the legacy proxy) and at totalDurationMs when
+         * known; rows with correct data are untouched (MAX).
+         */
+        val MIGRATION_8_9 =
+            object : Migration(8, 9) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+                        UPDATE `history`
+                        SET `watchedMs` = MAX(
+                            `watchedMs`,
+                            MIN(`lastPositionMs`, MAX(`totalDurationMs`, `lastPositionMs`))
+                        )
+                        """.trimIndent(),
                     )
                 }
             }

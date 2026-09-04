@@ -1650,15 +1650,20 @@ private fun continueEntry(
     discarded: Set<String>,
 ): HistoryEntity? =
     // observeAll() is already ordered watchedAt DESC (newest first).
+    // Scan only the five most recent entries so a half-watched video from
+    // weeks ago can't zombie-resurface behind a run of finished ones; the
+    // active video is excluded from the scan (not just the result) so it
+    // doesn't burn a pool slot, and a discarded video the user has since
+    // re-opened (it IS the current video) is honoured instead of hidden.
     history
         .filter { !(isPlaying && it.contentUrl == currentVideoUrl) }
-        .filter { it.contentUrl !in discarded }
+        .filter { it.contentUrl !in discarded || it.contentUrl == currentVideoUrl }
+        .take(5)
         .filter { it.lastPositionMs > 0L && it.totalDurationMs > 0L }
         .filter {
             it.lastPositionMs.toFloat() <
                 it.totalDurationMs * WatchState.WATCHED_FRACTION
         }
-        .take(5)
         .firstOrNull()
 
 /** Pre-filled details for playback (title/channel/thumb are known). */
