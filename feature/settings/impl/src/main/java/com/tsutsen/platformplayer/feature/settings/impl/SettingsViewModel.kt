@@ -61,9 +61,21 @@ class SettingsViewModel
         private val settingsRepository: SettingsRepository,
         private val libraryRepository: LibraryRepository,
         private val homeRepository: HomeRepository,
+        private val backupProvider: BackupProvider,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+        /** "Backup & restore" section tiles; null until loaded. */
+        val backupSummary = MutableStateFlow<BackupSummary?>(null)
+
+        fun loadBackupSummary() {
+            viewModelScope.launch { backupSummary.value = backupProvider.summary() }
+        }
+
+        fun exportBackup() = backupProvider.exportBackup()
+
+        fun importBackup() = backupProvider.importBackup()
 
         /** User playlists, for the dual-screen library-slot picker. */
         val playlists: StateFlow<List<PlaylistOption>> = libraryRepository.playlists

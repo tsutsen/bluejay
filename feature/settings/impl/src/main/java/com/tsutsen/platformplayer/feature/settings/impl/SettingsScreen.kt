@@ -5,7 +5,11 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +33,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BorderStyle
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Copyright
@@ -215,6 +222,15 @@ fun SettingsScreen(
                             title = "Dual screen",
                             subtitle = "Second display pages, tabs, sections",
                             onClick = { navigator.navigateToSettingsFragment("dual") },
+                            groupPosition = GroupPosition.Middle,
+                        )
+                    }
+                    item {
+                        SettingsOptionCard(
+                            icon = Icons.Filled.Backup,
+                            title = "Backup & restore",
+                            subtitle = "Export or restore the full app state",
+                            onClick = { navigator.navigateToSettingsFragment("backup") },
                             groupPosition = GroupPosition.Middle,
                         )
                     }
@@ -864,6 +880,10 @@ private fun SectionItems(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
         when (category) {
+            "backup" -> {
+                BackupItems(viewModel)
+            }
+
             "about" -> {
                 AboutItems()
             }
@@ -1457,6 +1477,131 @@ private fun dualOrderLabel(
 ): String = order.joinToString(", ") { names[it] ?: it }
 
 /**
+ * "Backup & restore" section: tiles with the size of the current app
+ * state (loaded on demand, no background work), then export / restore.
+ * Both actions run the app's existing backup engine (StateBackup), which
+ * handles the file pickers, the zip format and the import UI.
+ */
+@Composable
+private fun BackupItems(viewModel: SettingsViewModel) {
+    val summary by viewModel.backupSummary.collectAsState()
+    var confirmRestore by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { viewModel.loadBackupSummary() }
+
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
+        // State tiles: two per row, the third spans the full width.
+        Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+                BackupTile(
+                    count = summary?.subscriptions ?: 0,
+                    label = "subscriptions",
+                    detail = "across ${summary?.sources ?: 0} sources",
+                    modifier = Modifier.weight(1f),
+                )
+                BackupTile(
+                    count = summary?.playlistVideos ?: 0,
+                    label = "videos",
+                    detail = "across ${summary?.playlists ?: 0} playlists",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            BackupTile(
+                count = summary?.customSettings ?: 0,
+                label = "custom settings",
+                detail = "across ${summary?.sections ?: 0} sections",
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+            SettingsOptionCard(
+                icon = Icons.Filled.Upload,
+                title = "Export backup",
+                subtitle = "Save settings, subscriptions, playlists, watch later, history and plugins to a file",
+                onClick = { viewModel.exportBackup() },
+                groupPosition = GroupPosition.First,
+            )
+            SettingsOptionCard(
+                icon = Icons.Filled.Restore,
+                title = "Restore from backup",
+                subtitle = "Load a backup file and restore the app state",
+                onClick = { confirmRestore = true },
+                groupPosition = GroupPosition.Last,
+            )
+        }
+
+        Text(
+            text =
+                "The backup contains your settings, subscriptions, playlists, " +
+                    "watch later list, watch history and plugin settings. " +
+                    "Downloaded video files are not included.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    if (confirmRestore) {
+        AlertDialog(
+            onDismissRequest = { confirmRestore = false },
+            title = { Text("Restore backup") },
+            text = {
+                Text(
+                    "This replaces your current subscriptions, playlists, watch " +
+                        "later list, history and settings with the contents of " +
+                        "the backup file. Continue?",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmRestore = false; viewModel.importBackup() }) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRestore = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun BackupTile(
+    count: Int,
+    label: String,
+    detail: String,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Card(
+        shape = RoundedCornerShape(BluejayTokens().radius.card),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer),
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.padding(Tokens.SpaceMd),
+            verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
+        ) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.headlineMedium,
+                color = scheme.onSurface,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurface,
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
  * About page: app identity + version, the support-the-original notice
  * (Bluejay is a fork of Grayjay, which builds on FUTO), and the standard
  * about links (upstream site, source repo, license).
@@ -1479,16 +1624,33 @@ private fun AboutItems() {
             shape = RoundedCornerShape(BluejayTokens().radius.card),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Row(
-                modifier = Modifier.padding(Tokens.SpaceLg),
+                modifier = Modifier.fillMaxWidth().padding(Tokens.SpaceLg),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayCircle,
+                // The real launcher icon, rendered from the package
+                // manager (the feature module can't reference app R
+                // resources).
+                val launcherIcon =
+                    remember {
+                        val drawable: android.graphics.drawable.Drawable =
+                            context.packageManager.getApplicationIcon(context.packageName)
+                        val sizePx = 96
+                        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+                        val canvas = Canvas(bitmap)
+                        drawable.setBounds(0, 0, sizePx, sizePx)
+                        drawable.draw(canvas)
+                        bitmap.asImageBitmap()
+                    }
+                Image(
+                    bitmap = launcherIcon,
                     contentDescription = null,
-                    modifier = Modifier.size(Tokens.AvatarMd),
-                    tint = scheme.primary,
+                    modifier =
+                        Modifier
+                            .size(Tokens.AvatarLg)
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                 )
                 Spacer(Modifier.width(Tokens.SpaceLg))
                 Column {
@@ -1508,8 +1670,9 @@ private fun AboutItems() {
 
         Text(
             text =
-                "Bluejay is a fork of Grayjay, which builds on FUTO. " +
-                    "If this app keeps you watching, consider supporting the original project.",
+                "Bluejay is a rewrite of Grayjay media app by FUTO and it still " +
+                    "relies on the plugins developped and updated by them! So if you " +
+                    "love this app, consider supporting the original project and their team.",
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurfaceVariant,
         )
@@ -1561,6 +1724,7 @@ private fun sectionTitle(category: String): String =
         "gestures" -> "Gestures"
         "controller" -> "Controller"
         "dual" -> "Dual screen"
+        "backup" -> "Backup & restore"
         "about" -> "About"
         else -> "Settings"
     }

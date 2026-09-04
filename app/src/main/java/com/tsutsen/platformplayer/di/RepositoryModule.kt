@@ -89,6 +89,11 @@ abstract class RepositoryModule {
 object PlayerRepositoryModule {
     @Provides
     @Singleton
+    fun provideBackupProvider(): com.tsutsen.platformplayer.feature.settings.impl.BackupProvider =
+        com.tsutsen.platformplayer.backup.AppBackupProvider()
+
+    @Provides
+    @Singleton
     fun provideCastingRepository(
         @ApplicationContext context: Context,
     ): CastingRepository = CastingRepositoryImpl(context)
