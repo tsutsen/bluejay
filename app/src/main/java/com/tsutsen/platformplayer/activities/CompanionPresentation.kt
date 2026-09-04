@@ -745,6 +745,7 @@ private fun CompanionContent(
                                     stats = watchStats,
                                     history = history,
                                     currentVideoUrl = video?.url,
+                                    isPlaying = playerState.isPlaying,
                                     onPlay = onPlay,
                                     onPlayItem = onPlayItem,
                                     discarded = discardedContinue,
@@ -1392,6 +1393,7 @@ private fun CompanionDashPage(
     stats: WatchStats,
     history: List<HistoryEntity>,
     currentVideoUrl: String?,
+    isPlaying: Boolean = false,
     onPlay: (String) -> Unit,
     onPlayItem: (ContentItem) -> Unit,
     discarded: Set<String>,
@@ -1466,7 +1468,7 @@ private fun CompanionDashPage(
                     .padding(Tokens.SpaceMd),
         ) {
             DashSectionTitle("Continue")
-            val entry = continueEntry(history, currentVideoUrl, discarded)
+            val entry = continueEntry(history, currentVideoUrl, isPlaying, discarded)
             ContinueCard(
                 entry = entry,
                 onPlay = { entry?.let { onPlayItem(it.toContentItem()) } },
@@ -1634,17 +1636,21 @@ private fun ContinueCard(
 
 /**
  * The last unfinished video to continue: the newest of the five most
- * recent not-fully-watched history entries, excluding the video currently
- * playing and any the user discarded in the widget.
+ * recent not-fully-watched history entries, excluding the video actively
+ * playing right now and any the user discarded in the widget. The current
+ * video is only excluded while playing: playerState.currentVideo survives
+ * completion (it clears on close() only), so a finished or paused video
+ * must still surface here as its own continue entry.
  */
 private fun continueEntry(
     history: List<HistoryEntity>,
     currentVideoUrl: String?,
+    isPlaying: Boolean,
     discarded: Set<String>,
 ): HistoryEntity? =
     // observeAll() is already ordered watchedAt DESC (newest first).
     history
-        .filter { it.contentUrl != currentVideoUrl }
+        .filter { !(isPlaying && it.contentUrl == currentVideoUrl) }
         .filter { it.contentUrl !in discarded }
         .filter { it.lastPositionMs > 0L && it.totalDurationMs > 0L }
         .filter {
