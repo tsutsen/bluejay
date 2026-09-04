@@ -291,6 +291,11 @@ fun PluginDetailScene(
     configUrl: String,
     installedPlugins: List<SourcePluginConfig>,
     onBack: () -> Unit,
+    // When set, the Login button hands the config to the caller instead of
+    // navigating the main graph (the getting-started flow hosts the login
+    // screen inside its own overlay; navigating would land on the hidden
+    // screen underneath it).
+    onLogin: ((SourcePluginConfig) -> Unit)? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -537,6 +542,10 @@ fun PluginDetailScene(
                         Button(
                             shape = RoundedCornerShape(BluejayTokens().radius.md),
                             onClick = {
+                                if (onLogin != null) {
+                                    onLogin(config!!)
+                                    return@Button
+                                }
                                 Logger.i(TAG, "Opening login activity for: ${config!!.name} (id: ${config!!.id})")
                                 try {
                                     LoginDialog.showLogin(config!!) { auth ->

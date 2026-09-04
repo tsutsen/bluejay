@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.gettingstarted
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +71,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.api.media.IPlatformClient
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
+import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
+import com.tsutsen.platformplayer.auth.LoginScreen
 import com.tsutsen.platformplayer.compose.plugins.PluginDetailScene
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
@@ -81,8 +85,10 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.feature.settings.impl.ControllerBindingPopup
+import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -113,6 +119,10 @@ fun GettingStartedFlow(
     var sources by remember { mutableStateOf(emptyList<IPlatformClient>()) }
     var checkedSources by remember { mutableStateOf<Set<String>>(emptySet()) }
     var selectedSourceUrl by remember { mutableStateOf<String?>(null) }
+    // A source's Login button hands its config over: the login screen is
+    // hosted inside the overlay, because navigating the main graph (as the
+    // plugin browser does) would land on the hidden screen underneath.
+    var loginConfig by remember { mutableStateOf<SourcePluginConfig?>(null) }
     LaunchedEffect(step) {
         if (step == 1 && sources.isEmpty()) {
             // Built-in plugins load shortly after start; poll briefly.
@@ -150,8 +160,19 @@ fun GettingStartedFlow(
         modifier =
             modifier
                 .fillMaxSize()
+                .systemBarsPadding()
                 .background(MaterialTheme.colorScheme.background),
     ) {
+        // System back from a hosted screen (plugin detail, login) returns
+        // to the flow instead of finishing the activity.
+        BackHandler(enabled = selectedSourceUrl != null || loginConfig != null) {
+            if (loginConfig != null) {
+                loginConfig = null
+            } else {
+                selectedSourceUrl = null
+                checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+            }
+        }
         // Step content: centered in a box (so it scrolls instead of
         // clipping when a step is longer than the viewport).
         Box(
@@ -282,6 +303,37 @@ fun GettingStartedFlow(
                     // resync the flow's selection so "Next" doesn't clobber it.
                     checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
                 },
+                onLogin = { cfg -> loginConfig = cfg },
+            )
+        }
+    }
+
+    // Login hosted in the overlay (see loginConfig). On success the auth is
+    // applied the same way the plugin detail scene does it on the main
+    // screen, and both hosted screens close back to the sources step.
+    loginConfig?.let { cfg ->
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            LoginScreen(
+                config = cfg,
+                onLogin = { auth ->
+                    if (auth != null) {
+                        StatePlugins.instance.setPluginAuth(cfg.id, auth)
+                        // Logging in implies the source is wanted: enable it.
+                        val currentEnabled = StatePlatform.instance.getEnabledClients()
+                        if (!currentEnabled.any { it.id == cfg.id }) {
+                            StateApp.instance.scope.launch(Dispatchers.IO) {
+                                StatePlatform.instance.enableClient(listOf(cfg.id))
+                            }
+                        }
+                        StateApp.instance.scope.launch(Dispatchers.IO) {
+                            StatePlatform.instance.reloadClient(StateApp.instance.context, cfg.id)
+                        }
+                    }
+                    checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+                    loginConfig = null
+                    selectedSourceUrl = null
+                },
+                onBack = { loginConfig = null },
             )
         }
     }
@@ -498,6 +550,9 @@ private fun SourceCard(
     onOpenSettings: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    // Half-width cards in portrait: the checkbox and chevron get their own
+    // bottom row (checkbox left, chevron right) so the title and subtitle
+    // keep the full middle width instead of wrapping one letter per line.
     FlowCard(
         icon = Icons.Default.Extension,
         title = source.name,
@@ -505,8 +560,9 @@ private fun SourceCard(
         iconUrl = StatePlugins.instance.getPluginIconUriOrNull(source.id),
         onClick = onOpenSettings,
         modifier = modifier,
-        trailing = {
+        bottomRow = {
             Checkbox(checked = checked, onCheckedChange = { onToggle() })
+            Spacer(Modifier.weight(1f))
             // Settings cards' language: the chevron marks a card you can open.
             Icon(
                 imageVector = Icons.Default.ChevronRight,
@@ -532,6 +588,9 @@ private fun FlowCard(
     modifier: Modifier = Modifier,
     groupPosition: GroupPosition = GroupPosition.Single,
     trailing: (@Composable RowScope.() -> Unit)? = null,
+    // Controls that get a row of their own below the icon+text row instead
+    // of squeezing the middle column (used by the half-width source cards).
+    bottomRow: (@Composable RowScope.() -> Unit)? = null,
 ) {
     Card(
         modifier =
@@ -542,11 +601,14 @@ private fun FlowCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Row(
+        Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .padding(Tokens.SpaceMd),
+        ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -596,6 +658,16 @@ private fun FlowCard(
                 }
             }
             trailing?.let { it() }
+        }
+        bottomRow?.let { row ->
+            Spacer(Modifier.height(Tokens.SpaceSm))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                row()
+            }
+        }
         }
     }
 }
