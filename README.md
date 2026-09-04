@@ -12,7 +12,7 @@ _Grab the app in [releases](https://github.com/tsutsen/bluejay/releases)_
 
 ## Features 
 
-This app is built around the Grayjay core – the wonderful media aggregator. Bluejay relies on it to fetch data from YouTube, Twitch, Odyssey, and many other platforms. 
+This app is built around the Grayjay core – the wonderful media aggregator. Bluejay relies on it to fetch data from YouTube, Twitch, BiliBili, Odyssey, and many other platforms.
 
 So, here, you can expect pretty much everything you see in Grayjay but with a modern sheen:
 
@@ -22,24 +22,20 @@ So, here, you can expect pretty much everything you see in Grayjay but with a mo
 
 And there are some unique things as well:
 
-- Second screen of your Android device can now control playback, show comments, queues, recommended videos, your pinned playlists, and home feed!
-- Proper landscape support!
-- Improved gesture controls!
+- Second screen of your Android device can now control playback, show stats, comments, queues, recommended videos, your pinned playlists, and home feed
+- Proper landscape mode support
+- Light and dark mode and custom color themes
+- Customizable gesture controls
+- Local watch stats tracking
 
 ## Roadmap
 
-Bluejay is in early alpha, so things might break, misbehave, and look quite ugly in the darkest corners of the app. 
+Bluejay is in beta, so things might still break, misbehave, and look quite ugly in the darkest corners of the app. 
 
-Besides basic quality-of-life, stability, performance, and prettification updates, you can expect these:
+Besides basic quality-of-life, stability, performance, and prettification updates, I have two major additions planned, to bring Bluejay close to being an _ultimate media aggregator_:
 
-- Custom UI themes and new customization options
-- Improved animations
-- Configurable gestures in player
-- Local media management
-- System-level picture-in-picture mode
+- Local media management update
 - Music update
-
-I _love_ nice-looking stuff, so do expect more in this department!
 
 ## LLM use disclosure
 
