@@ -103,6 +103,11 @@ class MainActivity :
     /** System picture-in-picture active (video-only window). */
     internal val pipActive = MutableStateFlow(false)
 
+    // True from entering system PiP until the activity is back in the
+    // foreground. If the activity stops while this is still set, the PiP
+    // window was *closed* (not expanded) — see onStop().
+    private var wasInSystemPip = false
+
     private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
         registerForActivityResult(
@@ -134,6 +139,9 @@ class MainActivity :
 
     override fun onStart() {
         super.onStart()
+        // Back in the foreground (e.g. the PiP was expanded): playback is
+        // visible again, so a later stop is not a PiP close.
+        wasInSystemPip = false
         // Re-assert the dual-screen setting on every return to the
         // foreground. The rear display can still be in its wake/return
         // transition when onStart fires (STATE_OFF), so retry a couple of
@@ -230,10 +238,19 @@ class MainActivity :
     ) {
         super.onPictureInPictureModeChanged(isInPipMode, newConfig)
         pipActive.value = isInPipMode
+        if (isInPipMode) wasInSystemPip = true
     }
 
     override fun onStop() {
         super.onStop()
+        if (wasInSystemPip) {
+            wasInSystemPip = false
+            // The PiP window was closed rather than expanded: without this
+            // the video keeps playing invisibly in the background.
+            if (playerRepository.playerState.value.isPlaying) {
+                lifecycleScope.launch { playerRepository.pause() }
+            }
+        }
         // The companion only makes sense while the app is in the
         // foreground — dismiss on minimize. onStart() re-asserts it.
         companionPresentation?.dismiss()
