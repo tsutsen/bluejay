@@ -18,6 +18,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResult
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.rememberCoroutineScope
@@ -134,6 +136,10 @@ class MainActivity :
 
     override fun onStart() {
         super.onStart()
+        // The system is the source of truth for PiP state — a dropped
+        // mode-changed callback must never leave the UI stuck on the
+        // video-only layer.
+        pipActive.value = isInPictureInPictureMode
         // Re-assert the dual-screen setting on every return to the
         // foreground. The rear display can still be in its wake/return
         // transition when onStart fires (STATE_OFF), so retry a couple of
@@ -234,6 +240,14 @@ class MainActivity :
 
     override fun onStop() {
         super.onStop()
+        // Platform-samples pattern (PiPMovieActivity): entering PiP calls
+        // onPause but NOT onStop, so stopping here means the app is truly
+        // backgrounded — the PiP window was closed (or the app minimized
+        // without PiP). Pausing here is what stops the video playing on
+        // invisibly after the PiP is dismissed.
+        if (playerRepository.playerState.value.isPlaying) {
+            lifecycleScope.launch { playerRepository.pause() }
+        }
         // The companion only makes sense while the app is in the
         // foreground — dismiss on minimize. onStart() re-asserts it.
         companionPresentation?.dismiss()
@@ -373,26 +387,38 @@ private fun BluejayMainActivity(
         uiRounding = appearance.uiRounding,
         colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
     ) {
-        if (pip) {
-            PlayerView(isPip = true)
-        } else {
-            Box(Modifier.fillMaxSize()) {
-                bluejayMainActivityContent(
-                    activity,
-                    navigator,
-                    playerRepository,
+        // The app tree stays composed at all times. Swapping the whole
+        // content tree on PiP entry changed the window mid-transition, and
+        // the system answered by un-pinning and re-pinning (the PiP window
+        // flinched/rotated). Instead, in PiP the chrome is covered by a
+        // video-only layer on top — the platform-samples "keep the layout,
+        // hide the controls" pattern in Compose terms.
+        Box(Modifier.fillMaxSize()) {
+            bluejayMainActivityContent(
+                activity,
+                navigator,
+                playerRepository,
+            )
+            // One-time first-launch tour: shown until completed or skipped.
+            if (!p.gettingStartedCompleted) {
+                GettingStartedFlow(
+                    preferences = p,
+                    settingsRepository = settingsRepository,
+                    onFinished = {
+                        appScope.launch {
+                            settingsRepository.updateGeneral("gettingStartedCompleted", true)
+                        }
+                    },
                 )
-                // One-time first-launch tour: shown until completed or skipped.
-                if (!p.gettingStartedCompleted) {
-                    GettingStartedFlow(
-                        preferences = p,
-                        settingsRepository = settingsRepository,
-                        onFinished = {
-                            appScope.launch {
-                                settingsRepository.updateGeneral("gettingStartedCompleted", true)
-                            }
-                        },
-                    )
+            }
+            if (pip) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                ) {
+                    PlayerView(isPip = true)
                 }
             }
         }
