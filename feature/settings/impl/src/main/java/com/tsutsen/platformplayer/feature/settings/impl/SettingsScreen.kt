@@ -309,7 +309,7 @@ fun SettingsSectionScreen(
         Choice.THEME -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Theme",
+                    title = "Mode",
                     options =
                         listOf(
                             "Follow system" to "AUTO",
@@ -892,7 +892,7 @@ private fun SectionItems(
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsOptionCard(
                         icon = Icons.Filled.BrightnessAuto,
-                        title = "Theme",
+                        title = "Mode",
                         subtitle =
                             when (state.appearance.themeMode) {
                                 ThemeMode.AUTO -> "Follow system"
