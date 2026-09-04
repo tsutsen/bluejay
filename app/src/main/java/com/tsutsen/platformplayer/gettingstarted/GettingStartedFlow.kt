@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Home
@@ -157,9 +158,11 @@ fun GettingStartedFlow(
                     .padding(
                         start = Tokens.SpaceXl,
                         end = Tokens.SpaceXl,
-                        top = Tokens.SpaceXl,
+                        // Clear the progress dots up top and leave room
+                        // above the headline on every step.
+                        top = Tokens.SpaceXl * 2,
                         // Keep content clear of the bottom dock.
-                        bottom = Tokens.SpaceXl * 3,
+                        bottom = Tokens.SpaceXl * 4,
                     ),
             contentAlignment = Alignment.Center,
         ) {
@@ -490,6 +493,12 @@ private fun SourceCard(
         modifier = modifier,
         trailing = {
             Checkbox(checked = checked, onCheckedChange = { onToggle() })
+            // Settings cards' language: the chevron marks a card you can open.
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         },
     )
 }
@@ -732,7 +741,7 @@ private fun DoneStep(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(Tokens.SpaceMd))
         Text(
-            "You can log into your sources and start browsing. And do take a look on the settings tab, there are many more things to customize!",
+            "You can log into your sources and start browsing.\nAnd do take a look on the settings tab, there are many more things to customize!",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
