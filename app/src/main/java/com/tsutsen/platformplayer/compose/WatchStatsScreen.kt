@@ -200,6 +200,8 @@ fun WatchStatsSummary(
                     modifier = Modifier.size(Tokens.IconMd),
                 )
             }
+            // Breathing room below the header row.
+            Spacer(modifier = Modifier.height(Tokens.SpaceSm))
             Row(verticalAlignment = Alignment.Bottom) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -236,18 +238,30 @@ fun WatchStatsSummary(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                if (!wideChart) {
+                    // Main-screen card: the small chart shares the stat
+                    // columns' row instead of sitting on its own line.
+                    Spacer(modifier = Modifier.width(Tokens.SpaceMd))
+                    WatchTimeBars(
+                        values = stats.lastWeekDaily.map { it.ms },
+                        barWidth = Tokens.SpaceXs,
+                        highlightIndex = stats.lastWeekDaily.lastIndex,
+                    )
+                }
             }
-            WatchTimeBars(
-                values = stats.lastWeekDaily.map { it.ms },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .then(if (fillHeight) Modifier.weight(1f) else Modifier),
-                barWidth = if (wideChart) null else Tokens.SpaceXs,
-                labels = if (wideChart) stats.lastWeekDaily.map { it.day.label } else null,
-                fillHeight = fillHeight,
-                highlightIndex = stats.lastWeekDaily.lastIndex,
-            )
+            if (wideChart) {
+                WatchTimeBars(
+                    values = stats.lastWeekDaily.map { it.ms },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .then(if (fillHeight) Modifier.weight(1f) else Modifier),
+                    barWidth = null,
+                    labels = stats.lastWeekDaily.map { it.day.label },
+                    fillHeight = fillHeight,
+                    highlightIndex = stats.lastWeekDaily.lastIndex,
+                )
+            }
         }
     }
 }

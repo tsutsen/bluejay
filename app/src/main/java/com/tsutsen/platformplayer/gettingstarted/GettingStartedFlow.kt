@@ -107,11 +107,11 @@ fun GettingStartedFlow(
     var step by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
 
-    // Step 1 — sources
+    // Step 1 — sources. The enabled set is filled in once the plugins have
+    // loaded: it is derived from the loaded client list, so reading it
+    // earlier would just give an empty set.
     var sources by remember { mutableStateOf(emptyList<IPlatformClient>()) }
-    var checkedSources by remember {
-        mutableStateOf(StatePlatform.instance.getEnabledClients().map { it.id }.toSet())
-    }
+    var checkedSources by remember { mutableStateOf<Set<String>>(emptySet()) }
     var selectedSourceUrl by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(step) {
         if (step == 1 && sources.isEmpty()) {
@@ -124,6 +124,9 @@ fun GettingStartedFlow(
                     waited++
                 }
             }
+            // Now that the plugins are loaded, fetch the currently enabled
+            // ones and check them.
+            checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
         }
     }
 
@@ -363,16 +366,17 @@ private fun FlowDock(
 @Composable
 private fun StepHeader(icon: ImageVector, title: String) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text(title, style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.weight(1f))
         Icon(
             icon,
             contentDescription = null,
             modifier = Modifier.size(Tokens.IconMd),
             tint = MaterialTheme.colorScheme.primary,
         )
-        Text(title, style = MaterialTheme.typography.headlineSmall)
     }
 }
 
@@ -737,7 +741,7 @@ private fun DoneStep(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(Tokens.SpaceMd))
         Text(
-            "You can log into your sources and start browsing.\nAnd do take a look on the settings tab, there are many more things to customize!",
+            "You can log into your sources and start browsing.\nAnd do look around in the settings tab, there are many more things to customize!",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -747,8 +751,9 @@ private fun DoneStep(modifier: Modifier = Modifier) {
 
 private val dualPageIcons: Map<String, Pair<ImageVector, String>> =
     mapOf(
+        // Dash first: the companion's default page order.
+        "dash" to (Icons.Filled.Dashboard to "Dash page"),
         "video" to (Icons.Filled.PlayArrow to "Video page"),
         "library" to (Icons.Filled.QueueMusic to "Library page"),
         "home" to (Icons.Filled.Home to "Home page"),
-        "dash" to (Icons.Filled.Dashboard to "Dash page"),
     )

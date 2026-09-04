@@ -114,7 +114,7 @@ class Settings {
 
     // Second (rear) display companion window
     var dualScreen: Boolean = false
-    var dualScreenPages: List<String> = listOf("video", "library", "home")
+    var dualScreenPages: List<String> = listOf("dash", "video", "library", "home")
     var dualScreenVideoTabs: List<String> =
         listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
     // Second-screen video page: display order of the enabled tabs.
