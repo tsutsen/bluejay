@@ -41,7 +41,6 @@ import androidx.compose.material.icons.outlined.StayCurrentPortrait
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -564,7 +563,7 @@ private fun SourceCard(
         onClick = onOpenSettings,
         modifier = modifier,
         bottomRow = {
-            Checkbox(checked = checked, onCheckedChange = { onToggle() })
+            Switch(checked = checked, onCheckedChange = { onToggle() })
             Spacer(Modifier.weight(1f))
             // Settings cards' language: the chevron marks a card you can open.
             Icon(
@@ -611,7 +610,13 @@ private fun FlowCard(
                     .padding(Tokens.SpaceMd),
         ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    // With a bottom row, the main row takes all leftover
+                    // height so the bottom row sits flush at the card's
+                    // bottom (the grid stretches paired cards equal).
+                    .then(if (bottomRow != null) Modifier.weight(1f) else Modifier),
             horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
