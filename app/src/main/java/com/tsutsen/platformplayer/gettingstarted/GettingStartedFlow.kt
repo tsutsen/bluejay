@@ -359,6 +359,23 @@ private fun FlowDock(
     }
 }
 
+/** Step header: the step icon alongside the title, not above it. */
+@Composable
+private fun StepHeader(icon: ImageVector, title: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(Tokens.IconMd),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(title, style = MaterialTheme.typography.headlineSmall)
+    }
+}
+
 @Composable
 private fun Dot(active: Boolean, modifier: Modifier = Modifier) {
     Box(
@@ -424,14 +441,7 @@ private fun SourcesStep(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Icon(
-            Icons.Default.Extension,
-            contentDescription = null,
-            modifier = Modifier.size(Tokens.IconMd),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(Tokens.SpaceMd))
-        Text("Choose your sources", style = MaterialTheme.typography.headlineSmall)
+        StepHeader(Icons.Default.Extension, "Choose your sources")
         Spacer(Modifier.height(Tokens.SpaceSm))
         Text(
             "Pick the sources you want to watch. You can change this later in Settings.",
@@ -595,14 +605,7 @@ private fun DualScreenStep(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Icon(
-            Icons.Outlined.StayCurrentPortrait,
-            contentDescription = null,
-            modifier = Modifier.size(Tokens.IconMd),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(Tokens.SpaceMd))
-        Text("Enable dual screen mode?", style = MaterialTheme.typography.headlineSmall)
+        StepHeader(Icons.Outlined.StayCurrentPortrait, "Enable dual screen mode?")
         Spacer(Modifier.height(Tokens.SpaceSm))
         Text(
             "If your device has a second screen, this app can show additional controls and info there!",
@@ -663,14 +666,7 @@ private fun ControllerStep(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Icon(
-            Icons.Outlined.SportsEsports,
-            contentDescription = null,
-            modifier = Modifier.size(Tokens.IconMd),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(Tokens.SpaceMd))
-        Text("Enable controller support?", style = MaterialTheme.typography.headlineSmall)
+        StepHeader(Icons.Outlined.SportsEsports, "Enable controller support?")
         Spacer(Modifier.height(Tokens.SpaceSm))
         Text(
             "Control playback with a gamepad or TV remote.",
