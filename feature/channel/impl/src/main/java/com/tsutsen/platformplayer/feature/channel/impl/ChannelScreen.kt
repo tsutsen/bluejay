@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.feature.channel.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,6 +66,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGap
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import androidx.compose.material3.CircularProgressIndicator
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
@@ -167,8 +171,8 @@ fun ChannelScreen(
                                             modifier =
                                                 Modifier
                                                     .padding(start = Tokens.SpaceXs)
-                                                    .size(16.dp)
-                                                    .clip(RoundedCornerShape(4.dp)),
+                                                    .size(Tokens.IconSm)
+                                                    .clip(RoundedCornerShape(BluejayTokens().radius.xs)),
                                             contentScale = ContentScale.FillBounds,
                                         )
                                     }
@@ -424,7 +428,8 @@ private fun ChannelContent(
                     Box(modifier = Modifier.fillMaxSize())
                 }
             } else if (isWide) {
-                WideVideoGrid(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    WideVideoGrid(
                     items = state.shortsCards,
                     hasMore = state.shortsHasMore,
                     columns = gridColumns,
@@ -432,9 +437,11 @@ private fun ChannelContent(
                     onLoadMore = onShortsLoadMore,
                     onVideoLongClick = onVideoLongClick,
                     isShorts = true,
-                )
+                    )
+                }
             } else {
-                VideoContainer(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    VideoContainer(
                     items = state.shortsCards,
                     layout = ContainerLayout.List,
                     isLoading = false,
@@ -454,6 +461,7 @@ private fun ChannelContent(
                         Box(Modifier.height(1.dp))
                     }
                 }
+                }
             }
         }
 
@@ -470,7 +478,8 @@ private fun ChannelContent(
                     )
                 }
             } else {
-                VideoContainer(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    VideoContainer(
                     items = state.playlists,
                     layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                     isLoading = false,
@@ -486,6 +495,7 @@ private fun ChannelContent(
                     } else {
                         Box(Modifier.height(1.dp))
                     }
+                }
                 }
             }
         }
@@ -511,16 +521,19 @@ private fun ChannelContent(
                     Box(modifier = Modifier.fillMaxSize())
                 }
             } else if (isWide) {
-                WideVideoGrid(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    WideVideoGrid(
                     items = state.cards,
                     hasMore = state.hasMore,
                     columns = gridColumns,
                     onCardClick = onCardClick,
                     onLoadMore = onLoadMore,
                     onVideoLongClick = onVideoLongClick,
-                )
+                    )
+                }
             } else {
-                VideoContainer(
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    VideoContainer(
                     items = state.cards,
                     layout = ContainerLayout.List,
                     isLoading = false,
@@ -539,6 +552,7 @@ private fun ChannelContent(
                     } else {
                         Box(Modifier.height(1.dp))
                     }
+                }
                 }
             }
         }
@@ -570,7 +584,7 @@ private fun WideVideoGrid(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(Tokens.SpaceLg),
+        contentPadding = PaddingValues(ContentCardInnerGap()),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
     ) {
         items(

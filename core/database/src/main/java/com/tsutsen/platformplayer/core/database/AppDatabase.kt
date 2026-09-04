@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.core.database.entity.*
         SavedVideoEntity::class,
         NotificationEntity::class,
     ],
-    version = 7,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -58,6 +58,43 @@ abstract class AppDatabase : RoomDatabase() {
          * cards do. Existing rows keep 0 (pill hidden) until re-saved or
          * re-watched.
          */
+        /**
+         * v7 -> v8: accumulates actually-watched time (skip-aware) per
+         * history entry. Existing rows keep 0 until re-watched; stats
+         * fall back to lastPositionMs for those.
+         */
+        val MIGRATION_7_8 =
+            object : Migration(7, 8) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE `history` ADD COLUMN `watchedMs` INTEGER NOT NULL DEFAULT 0",
+                    )
+                }
+            }
+
+        /**
+         * v8 -> v9: repairs rows written while history sampling only ran
+         * on state changes (pause/seek), so the skip-aware tracker
+         * credited only the samples close enough together and watchedMs
+         * tracked a fraction of real playback. Caps each row at
+         * lastPositionMs (the legacy proxy) and at totalDurationMs when
+         * known; rows with correct data are untouched (MAX).
+         */
+        val MIGRATION_8_9 =
+            object : Migration(8, 9) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+                        UPDATE `history`
+                        SET `watchedMs` = MAX(
+                            `watchedMs`,
+                            MIN(`lastPositionMs`, MAX(`totalDurationMs`, `lastPositionMs`))
+                        )
+                        """.trimIndent(),
+                    )
+                }
+            }
+
         val MIGRATION_6_7 =
             object : Migration(6, 7) {
                 override fun migrate(db: SupportSQLiteDatabase) {

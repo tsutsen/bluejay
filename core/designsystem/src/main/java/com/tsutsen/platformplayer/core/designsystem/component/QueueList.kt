@@ -2,11 +2,12 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.effectsSpec
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -45,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -99,6 +101,7 @@ fun QueueList(
     val removing = remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
     val viewportPx = remember { mutableStateOf(0) }
+    val offsetSpec = spatialSpec<Offset>()
 
     // FLIP for swaps: the move buttons only ever swap adjacent rows, so
     // the delta is known at the press — no order diffing. Rows are all
@@ -112,10 +115,7 @@ fun QueueList(
         val anim = flipAnims.getOrPut(url) { Animatable(Offset.Zero, Offset.VectorConverter) }
         scope.launch {
             anim.snapTo(Offset(0f, -steps * stepPx))
-            anim.animateTo(
-                Offset.Zero,
-                spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-            )
+            anim.animateTo(Offset.Zero, offsetSpec)
         }
     }
 
@@ -147,8 +147,8 @@ fun QueueList(
 
             AnimatedVisibility(
                 visible = hasAppeared && item.url !in removing.value,
-                enter = fadeIn(tween(ANIM)) + expandVertically(tween(ANIM)),
-                exit = fadeOut(tween(ANIM)) + shrinkVertically(tween(ANIM)),
+                enter = fadeIn(effectsSpec<Float>()) + expandVertically(spatialSpec<IntSize>()),
+                exit = fadeOut(effectsSpec<Float>()) + shrinkVertically(spatialSpec<IntSize>())
             ) {
                 FlipItem(
                     flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
@@ -214,7 +214,7 @@ private fun QueueRow(
                 Modifier
                     .width(112.dp)
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                     .background(Color(0xFF202124)),
         ) {
             item.thumbnailUrl?.let { url ->
@@ -225,7 +225,7 @@ private fun QueueRow(
                         Modifier
                             .fillMaxWidth()
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                 )
             }
             item.durationMs?.takeIf { it > 0 }?.let { ms ->
@@ -238,7 +238,7 @@ private fun QueueRow(
                             .align(Alignment.BottomEnd)
                             .background(
                                 Color.Black.copy(alpha = 0.75f),
-                                RoundedCornerShape(4.dp),
+                                RoundedCornerShape(BluejayTokens().radius.xs),
                             )
                             .padding(horizontal = 4.dp, vertical = 1.dp),
                 )
@@ -301,25 +301,27 @@ fun QueueMoveButton(
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val targetBg = if (enabled) scheme.primaryContainer else scheme.surfaceVariant
+    val targetBg = if (enabled) scheme.primaryContainer else scheme.surfaceContainerHighest
     val targetTint = if (enabled) scheme.onPrimaryContainer else scheme.onSurfaceVariant
-    val bg by animateColorAsState(targetBg, animationSpec = tween(200), label = "moveBg")
-    val tint by animateColorAsState(targetTint, animationSpec = tween(200), label = "moveTint")
+    val colorSpec = effectsSpec<Color>()
+    val bg by animateColorAsState(targetBg, animationSpec = colorSpec, label = "moveBg")
+    val tint by animateColorAsState(targetTint, animationSpec = colorSpec, label = "moveTint")
 
+    val shape = RoundedCornerShape(BluejayTokens().radius.sm)
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(10.dp),
+        shape = shape,
         modifier =
             Modifier
-                .size(34.dp)
-                .background(bg, RoundedCornerShape(10.dp)),
+                .size(Tokens.ControlSm)
+                .background(bg, shape),
     ) {
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(Tokens.IconMd),
         )
     }
 }

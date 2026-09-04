@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -153,6 +155,17 @@ fun PlayerContent(
     val showSubtitles by remember(surface) {
         derivedStateOf { surface.morphProgress.value < MINI_SETTLED_THRESHOLD }
     }
+    // Shared with PlayerControls, which measures the live bottom bar height
+    // (the bar unmounts when hidden, but the last measured height stays).
+    val bottomBarHeightPx = remember { mutableIntStateOf(0) }
+    // Subtitles respect the controls: when the bottom bar pops up, the
+    // captions slide up above it (and back down with it) on the same 200ms
+    // curve the bars use, so text and bar move as one.
+    val subtitleShiftPx by animateFloatAsState(
+        targetValue = if (controlsVisible) bottomBarHeightPx.value.toFloat() else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "subtitleShift",
+    )
     // Computed directly in the body, NOT in a derivedStateOf: `state` is a
     // plain data class (not snapshot-observable), so a derivedStateOf would
     // capture the first `state` instance forever and never see
@@ -253,6 +266,7 @@ fun PlayerContent(
                 Box(
                     modifier =
                         Modifier
+                            .offset { IntOffset(0, -subtitleShiftPx.roundToInt()) }
                             .padding(horizontal = 16.dp)
                             .padding(bottom = SubtitleStyle.bottomPadding)
                             .then(
@@ -408,6 +422,7 @@ fun PlayerContent(
             onCast = onCast,
             onSeek = onSeek,
             onScrubFinished = onScrubFinished,
+            bottomBarHeightPx = bottomBarHeightPx,
         )
     }
 }

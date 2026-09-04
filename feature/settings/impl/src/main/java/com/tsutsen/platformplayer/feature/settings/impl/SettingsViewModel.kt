@@ -27,6 +27,7 @@ sealed interface SettingsUiState {
         val defaultDownloadResolution: String,
         val enableDeveloperOptions: Boolean,
         val librarySectionOrder: List<String>,
+        val librarySectionsEnabled: List<String>,
         val dualScreen: Boolean,
         val dualScreenPages: List<String>,
         val dualScreenVideoTabs: List<String>,
@@ -40,6 +41,7 @@ sealed interface SettingsUiState {
         val autoUpdatePlugins: Boolean,
         val playerGestures: PlayerGesturePreferences,
         val jumpStepSeconds: Int = 5,
+        val controller: ControllerPreferences = ControllerPreferences(),
     ) : SettingsUiState
 
     data object Loading : SettingsUiState
@@ -59,9 +61,28 @@ class SettingsViewModel
         private val settingsRepository: SettingsRepository,
         private val libraryRepository: LibraryRepository,
         private val homeRepository: HomeRepository,
+        private val backupProvider: BackupProvider,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+        /** "Backup & restore" section tiles; null until loaded. */
+        val backupSummary = MutableStateFlow<BackupSummary?>(null)
+
+        fun loadBackupSummary() {
+            viewModelScope.launch { backupSummary.value = backupProvider.summary() }
+        }
+
+        /** Re-show the first-launch getting started flow (About section). */
+        fun restartGettingStarted() {
+            viewModelScope.launch {
+                settingsRepository.updateGeneral("gettingStartedCompleted", false)
+            }
+        }
+
+        fun exportBackup() = backupProvider.exportBackup()
+
+        fun importBackup() = backupProvider.importBackup()
 
         /** User playlists, for the dual-screen library-slot picker. */
         val playlists: StateFlow<List<PlaylistOption>> = libraryRepository.playlists
@@ -85,6 +106,7 @@ class SettingsViewModel
                                 defaultDownloadResolution = prefs.defaultDownloadResolution,
                                 enableDeveloperOptions = prefs.enableDeveloperOptions,
                                 librarySectionOrder = prefs.librarySectionOrder,
+                                librarySectionsEnabled = prefs.librarySectionsEnabled,
                                 dualScreen = prefs.dualScreen,
                                 dualScreenPages = prefs.dualScreenPages,
                                 dualScreenVideoTabs = prefs.dualScreenVideoTabs,
@@ -98,6 +120,7 @@ class SettingsViewModel
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
                                 playerGestures = prefs.playerGestures,
                                 jumpStepSeconds = prefs.jumpStepSeconds,
+                                controller = prefs.controller,
                             )
                     }
             }
@@ -107,6 +130,21 @@ class SettingsViewModel
             viewModelScope.launch {
                 settingsRepository.updateAppearance(prefs)
             }
+        }
+
+        /** Save or update a custom theme (Settings > Appearance > Custom themes). */
+        fun saveTheme(theme: CustomTheme) {
+            viewModelScope.launch { settingsRepository.saveCustomTheme(theme) }
+        }
+
+        /** Delete a custom theme (clears it if it is the active theme). */
+        fun deleteTheme(id: String) {
+            viewModelScope.launch { settingsRepository.deleteCustomTheme(id) }
+        }
+
+        /** Set the active custom theme, or null for the default theme. */
+        fun setActiveTheme(id: String?) {
+            viewModelScope.launch { settingsRepository.setActiveThemeId(id) }
         }
 
         fun updatePlayback(prefs: PlaybackPreferences) {
@@ -146,6 +184,11 @@ class SettingsViewModel
 
         fun setDualScreenFeedSources(ids: List<String>) {
             viewModelScope.launch { settingsRepository.updateDualScreenFeedSources(ids) }
+        }
+
+        /** Save the controller (gamepad) settings (Settings > Controller). */
+        fun setController(prefs: ControllerPreferences) {
+            viewModelScope.launch { settingsRepository.updateControllerSettings(prefs) }
         }
 
         /** Clear gesture customizations for one player mode (back to defaults). */
@@ -203,6 +246,10 @@ class SettingsViewModel
 
         fun setLibrarySectionOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateLibrarySectionOrder(order) }
+        }
+
+        fun setLibrarySectionsEnabled(ids: List<String>) {
+            viewModelScope.launch { settingsRepository.updateLibrarySectionsEnabled(ids) }
         }
 
         fun resetToDefaults() {

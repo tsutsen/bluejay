@@ -1,37 +1,48 @@
 package com.tsutsen.platformplayer.activities
 
 import android.Manifest
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import android.view.Display
+import android.view.KeyEvent
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResult
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
+import com.tsutsen.platformplayer.gettingstarted.GettingStartedFlow
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
 import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
 import com.tsutsen.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
+import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PlayerView
@@ -40,6 +51,8 @@ import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateCasting
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -80,6 +93,15 @@ class MainActivity :
 
     @Inject
     lateinit var channelRepository: ChannelRepository
+
+    @Inject
+    lateinit var historyTracker: com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
+
+    @Inject
+    lateinit var subscriptionDao: com.tsutsen.platformplayer.core.database.dao.SubscriptionDao
+
+    /** System picture-in-picture active (video-only window). */
+    internal val pipActive = MutableStateFlow(false)
 
     private var companionPresentation: CompanionPresentation? = null
     private val resultLauncher =
@@ -150,9 +172,17 @@ class MainActivity :
                 playbackQueueRepository = playbackQueueRepository,
                 liveChatRepository = liveChatRepository,
                 channelRepository = channelRepository,
+                historyTracker = historyTracker,
+                subscriptionDao = subscriptionDao,
                 // Tapping the channel badge on the second screen navigates
                 // the main screen to the channel page.
                 onChannelClick = { url -> navigator.navigateToChannel(url) },
+                // Tapping a library playlist title opens the playlist on the
+                // main screen (same "playlist:<id>" URL the library cards use).
+                onPlaylistClick = { url -> navigator.navigateToPlaylist(url) },
+                // Tapping the stats card opens the watch-stats detail on the
+                // main screen.
+                onWatchStats = { navigator.navigateWatchStatsDetail() },
             ).also { it.show() }
     }
 
@@ -172,6 +202,36 @@ class MainActivity :
         if (hasFocus) ensureCompanion()
     }
 
+    /**
+     * System picture-in-picture: leaving the app (home) while a video is
+     * playing moves playback into the floating PiP window instead of just
+     * minimizing the app.
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (pipActive.value) return
+        val st = playerRepository.playerState.value
+        if (st.currentVideo == null || !st.isPlaying || st.isCasting) return
+        val builder = PictureInPictureParams.Builder()
+        playerRepository.exoPlayer?.videoSize?.let { size ->
+            if (size.width > 0 && size.height > 0) {
+                // Deprecated API 33+ (Rational form) — the only overload
+                // visible to this SDK stub; behaves identically on 36.
+                @Suppress("DEPRECATION")
+                builder.setAspectRatio(Rational(size.width, size.height))
+            }
+        }
+        enterPictureInPictureMode(builder.build())
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPipMode: Boolean,
+        newConfig: Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPipMode, newConfig)
+        pipActive.value = isInPipMode
+    }
+
     override fun onStop() {
         super.onStop()
         // The companion only makes sense while the app is in the
@@ -188,6 +248,27 @@ class MainActivity :
         companionPresentation = null
         super.onDestroy()
     }
+
+    /**
+     * Controller key events (Cemu GamepadInputSource pattern): the bus
+     * turns every key-edge into a [GamepadKeyBus.events] event and decides
+     * consumption — while the settings binding popup is capturing everything
+     * is consumed (the popup is non-focusable, the activity keeps input
+     * focus); otherwise only player-mapped keys are consumed, so unbound
+     * keys keep normal behavior (navigation, system keys, ...).
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        GamepadKeyBus.onKeyEvent(event) || super.dispatchKeyEvent(event)
+
+    /**
+     * Controller *analog* input (sticks, HAT d-pads) arrives as generic
+     * motion events with a gamepad/joystick source — never as touch events
+     * and (on most drivers) never as keys. Same capture/consume rules as
+     * [dispatchKeyEvent]; real touch input has no gamepad source and passes
+     * through untouched.
+     */
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
+        GamepadKeyBus.onMotionEvent(event) || super.dispatchGenericMotionEvent(event)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -243,9 +324,15 @@ private fun BluejayMainActivity(
     }
 
     // Settings are live: changing theme/grid columns re-composes this tree.
-    val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
+    // Gate on the real prefs instead of a default initial: with defaults the
+    // first frame would render 100%-rounding tokens and the saved values
+    // (e.g. rounding 0) would arrive a frame later — every radius spring
+    // then animates default→saved and overshoots into negative corner
+    // radii, which is fatal ("Corner size in Px can't be negative").
+    val prefs by settingsRepository.preferences.collectAsState(initial = null)
+    val p = prefs ?: return
     val darkTheme =
-        when (prefs.appearance.themeMode) {
+        when (p.appearance.themeMode) {
             ThemeMode.LIGHT -> false
             ThemeMode.DARK -> true
             ThemeMode.AUTO -> isSystemInDarkTheme()
@@ -254,16 +341,61 @@ private fun BluejayMainActivity(
     // Second display: follow the "dual screen" toggle. ensureCompanion is a
     // no-op when nothing changes and dismisses the presentation when the
     // toggle turns off.
-    LaunchedEffect(prefs.dualScreen) {
+    LaunchedEffect(p.dualScreen) {
         activity.ensureCompanion()
     }
 
-    BluejayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
-        bluejayMainActivityContent(
-            activity,
-            navigator,
-            playerRepository,
-        )
+    // PiP mode: the window is the video itself — render video only, no app
+    // chrome (expanding the PiP flips this back to the full app UI).
+    val pip by activity.pipActive.collectAsState(initial = false)
+
+    val appearance = p.appearance
+    val appScope = rememberCoroutineScope()
+    // Active custom theme (if any): key colors → generated light/dark schemes.
+    val activeTheme = appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
+    val customSchemes =
+        remember(activeTheme) {
+            activeTheme?.let {
+                ThemeEngine.generate(
+                    it.primary,
+                    it.secondary,
+                    it.tertiary,
+                    it.paletteStyle,
+                    background = it.background,
+                    contrast = it.contrast,
+                )
+            }
+        }
+
+    BluejayTheme(
+        darkTheme = darkTheme,
+        dynamicColor = appearance.dynamicColor,
+        uiRounding = appearance.uiRounding,
+        colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
+    ) {
+        if (pip) {
+            PlayerView(isPip = true)
+        } else {
+            Box(Modifier.fillMaxSize()) {
+                bluejayMainActivityContent(
+                    activity,
+                    navigator,
+                    playerRepository,
+                )
+                // One-time first-launch tour: shown until completed or skipped.
+                if (!p.gettingStartedCompleted) {
+                    GettingStartedFlow(
+                        preferences = p,
+                        settingsRepository = settingsRepository,
+                        onFinished = {
+                            appScope.launch {
+                                settingsRepository.updateGeneral("gettingStartedCompleted", true)
+                            }
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 

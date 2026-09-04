@@ -40,6 +40,7 @@ import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaylistRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
@@ -190,7 +191,8 @@ fun PlaylistDetailScreen(
                         Box(modifier = Modifier.fillMaxSize())
                     }
                 } else {
-                    VideoContainer(
+                    ContentCard(modifier = Modifier.fillMaxSize()) {
+                        VideoContainer(
                         items = state.cards,
                         layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
                         isLoading = false,
@@ -213,6 +215,7 @@ fun PlaylistDetailScreen(
                         } else {
                             Box(Modifier.height(1.dp))
                         }
+                    }
                     }
                 }
             }

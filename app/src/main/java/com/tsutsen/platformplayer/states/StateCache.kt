@@ -17,7 +17,7 @@ import java.time.OffsetDateTime
 import kotlin.system.measureTimeMillis
 
 class StateCache {
-    private val _subscriptionCache = ManagedDBStore.create("subscriptionCache", DBSubscriptionCache.Descriptor(), PlatformContentSerializer())
+    private val _subscriptionCache = ManagedDBStore.create<SerializedPlatformContent, DBSubscriptionCache.Index, DBSubscriptionCache.DB, DBSubscriptionCache.DBDAO>("subscriptionCache", DBSubscriptionCache.Descriptor(), PlatformContentSerializer())
         .load();
 
     val channelCacheStartupCount = _subscriptionCache.count();

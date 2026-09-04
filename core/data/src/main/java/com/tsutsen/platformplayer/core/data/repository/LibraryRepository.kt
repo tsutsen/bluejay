@@ -7,6 +7,7 @@ import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.PlaylistStats
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
+import com.tsutsen.platformplayer.core.model.WatchState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -50,6 +51,18 @@ interface LibraryRepository {
         contentUrl: String,
         durationMs: Long,
     )
+
+    /**
+     * Removes entries from a saved-video section that count as watched
+     * (last position at or past [WatchState.WATCHED_FRACTION] of the
+     * duration — the same rule as the card checkmark). Entries without
+     * history or without a known duration are kept.
+     *
+     * @return the number of entries removed.
+     */
+    suspend fun removeWatched(
+        type: SavedVideoType,
+    ): Int
 
     suspend fun removeSavedVideo(
         type: SavedVideoType,

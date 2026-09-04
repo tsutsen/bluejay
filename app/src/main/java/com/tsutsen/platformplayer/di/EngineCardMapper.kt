@@ -8,8 +8,11 @@ import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.locked.IPlatformLockedContent
 import com.tsutsen.platformplayer.api.media.models.nested.IPlatformNestedContent
 import com.tsutsen.platformplayer.api.media.models.playlists.IPlatformPlaylist
+import com.tsutsen.platformplayer.api.media.models.article.IPlatformArticle
 import com.tsutsen.platformplayer.api.media.models.post.IPlatformPost
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
+import com.tsutsen.platformplayer.api.media.platforms.js.models.JSWeb
+import com.tsutsen.platformplayer.core.model.ArticleCard
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.PlaylistCard
@@ -74,6 +77,30 @@ object EngineCardMapper {
                     id = contentId(content.id),
                     title = content.name,
                     thumbnailUrl = content.thumbnails.firstOrNull()?.getHQThumbnail(),
+                    author = content.author.name,
+                    publishedAt = epochMs(content.datetime),
+                    url = content.url,
+                    sourceId = content.id.pluginId,
+                )
+            }
+
+            is IPlatformArticle -> {
+                ArticleCard(
+                    id = contentId(content.id),
+                    title = content.name,
+                    thumbnailUrl = content.thumbnails?.getHQThumbnail(),
+                    author = content.author.name,
+                    publishedAt = epochMs(content.datetime),
+                    url = content.url,
+                    sourceId = content.id.pluginId,
+                )
+            }
+
+            is JSWeb -> {
+                ArticleCard(
+                    id = contentId(content.id),
+                    title = content.name,
+                    thumbnailUrl = null,
                     author = content.author.name,
                     publishedAt = epochMs(content.datetime),
                     url = content.url,

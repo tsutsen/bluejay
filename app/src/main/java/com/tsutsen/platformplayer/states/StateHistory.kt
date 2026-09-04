@@ -36,7 +36,7 @@ class StateHistory {
     private val _remoteHistoryDatesStore = FragmentedStorage.get<StringDateMapStorage>("remoteHistoryDates");
 
     private val historyIndex: ConcurrentMap<Any, DBHistory.Index> = ConcurrentHashMap();
-    val _historyDBStore = ManagedDBStore.create("history", DBHistory.Descriptor())
+    val _historyDBStore = ManagedDBStore.create<HistoryVideo, DBHistory.Index, DBHistory.DB, DBHistory.DBDAO>("history", DBHistory.Descriptor())
         .withIndex({ it.url }, historyIndex, false, true)
         .load();
 

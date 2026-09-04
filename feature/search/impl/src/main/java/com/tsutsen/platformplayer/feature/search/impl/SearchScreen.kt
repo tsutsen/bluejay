@@ -2,13 +2,9 @@ package com.tsutsen.platformplayer.feature.search.impl
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,6 +12,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,24 +27,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonShapes
+import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -68,7 +68,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -78,7 +77,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -88,6 +86,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
@@ -95,6 +94,8 @@ import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.PlaylistCard
@@ -295,68 +296,22 @@ fun SearchScreen(
                 },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. Search field: one pill with the search button embedded in
-            // the field (no leading icon, no button next to it).
-            OutlinedTextField(
+            // 1. Search field: PixelPlayer-style docked bar (leading icon,
+            // translucent container, clear button). Submits via the IME
+            // search action.
+            SearchBarField(
                 value = searchQuery,
                 onValueChange = { viewModel.setQuery(it) },
+                onSearch = { performSearch() },
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         // First element of the tab: on the shared 42dp content line.
-                        .padding(start = 16.dp, top = TabContentTopPadding, end = 16.dp)
+                        .padding(start = 16.dp, top = TabContentTopPadding, end = 16.dp),
+                fieldModifier =
+                    Modifier
                         .focusRequester(focusRequester)
                         .onFocusChanged { isSearchFocused = it.isFocused },
-                placeholder = { Text("Search") },
-                trailingIcon = {
-                    // Search button pins to the field's right edge; the clear
-                    // button slides in to its left when there's text. Buttons
-                    // are fixed-size, so nothing squishes.
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        // isNotBlank (not isNotEmpty): a whitespace-only
-                        // field looks empty, so the clear button goes too.
-                        AnimatedVisibility(
-                            visible = searchQuery.isNotBlank(),
-                            enter = fadeIn(tween(120)) + expandHorizontally(tween(120)),
-                            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(120)),
-                        ) {
-                            Row {
-                                SearchFieldButton(
-                                    icon = Icons.Default.Close,
-                                    contentDescription = "Clear",
-                                    onClick = { viewModel.setQuery("") },
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                            }
-                        }
-                        SearchFieldButton(
-                            icon = Icons.Default.Search,
-                            contentDescription = "Search",
-                            onClick = { performSearch() },
-                        )
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(Tokens.RadiusMd),
-                colors =
-                    TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        focusedTrailingIconColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
-                    ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions =
-                    KeyboardActions(
-                        onSearch = { performSearch() },
-                    ),
-                textStyle = MaterialTheme.typography.bodyMedium,
             )
 
             // Which kind of content to search for.
@@ -366,24 +321,34 @@ fun SearchScreen(
                         .fillMaxWidth()
                         .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                SearchType.entries.forEach { type ->
-                    FilterChip(
-                        selected = type == searchType,
-                        onClick = {
-                            // Switching the type tab releases the field's
-                            // focus (and the keyboard).
-                            focusManager.clearFocus()
-                            viewModel.setSearchType(type)
-                        },
-                        label = { Text(searchTypeLabel(type)) },
-                    )
+                // Search type: native expressive [ButtonGroup] — the
+                // official M3 control for fixed single-select filters.
+                // Items expand to fill the row (constant height, no
+                // jitter when the sort pill appears/disappears).
+                ButtonGroup(
+                    overflowIndicator = {},
+                    modifier = Modifier.weight(1f),
+                ) {
+                    SearchType.entries.forEach { type ->
+                        toggleableItem(
+                            checked = searchType == type,
+                            label = searchTypeLabel(type),
+                            onCheckedChange = {
+                                // Switching the type releases the field's
+                                // focus (and the keyboard).
+                                focusManager.clearFocus()
+                                viewModel.setSearchType(type)
+                            },
+                            weight = 1f,
+                        )
+                    }
                 }
 
-                // Pushed to the right, separate from the type chips; the
-                // menus anchor to their pills.
+                // Source/sort menus pinned to the right; the menus anchor
+                // to their pills.
                 Row(
-                    modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 ) {
                     // Source filter — only when more than one source is
@@ -391,101 +356,72 @@ fun SearchScreen(
                     if (enabledSources.size > 1) {
                         val sourceMenuExpanded = remember { mutableStateOf(false) }
                         val allSourceIds = enabledSources.map { it.id }.toSet()
-                        Box {
-                            FilterChip(
-                                selected = selectedSources.isNotEmpty(),
-                                onClick = { sourceMenuExpanded.value = true },
-                                label = {
-                                    Text(
-                                        when {
-                                            selectedSources.isEmpty() -> "All sources"
-                                            selectedSources.size == 1 ->
-                                                enabledSources.firstOrNull {
-                                                    it.id in selectedSources
-                                                }?.name ?: "Sources"
+                        FilterDropdown(
+                            label =
+                                when {
+                                    selectedSources.isEmpty() -> "All sources"
 
-                                            else -> "${selectedSources.size} sources"
-                                        },
+                                    selectedSources.size == 1 ->
+                                        enabledSources
+                                            .firstOrNull { it.id in selectedSources }?.name ?:
+                                            "Sources"
+
+                                    else -> "${selectedSources.size} sources"
+                                },
+                            expanded = sourceMenuExpanded.value,
+                            onExpandedChange = { sourceMenuExpanded.value = it },
+                        ) {
+                            // Checkbox variant: the menu stays open after a
+                            // pick so several sources can be toggled.
+                            SelectionDropdownItems(
+                                items = enabledSources,
+                                label = { it.name },
+                                isSelected = {
+                                    selectedSources.isEmpty() || it.id in selectedSources
+                                },
+                                multiSelect = true,
+                                onPick = { source ->
+                                    // Tap toggles ONLY this item (empty
+                                    // selection = everything checked).
+                                    val next =
+                                        if (selectedSources.isEmpty()) {
+                                            allSourceIds - source.id
+                                        } else if (source.id in selectedSources) {
+                                            selectedSources - source.id
+                                        } else {
+                                            selectedSources + source.id
+                                        }
+                                    // All checked collapses back to "all".
+                                    viewModel.setSelectedSources(
+                                        if (next == allSourceIds) emptySet() else next,
                                     )
                                 },
-                                trailingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Filled.ArrowDropDown,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(Tokens.IconSm),
-                                    )
+                                onLongPick = { source ->
+                                    // Long-press: select only this one.
+                                    viewModel.setSelectedSources(setOf(source.id))
                                 },
                             )
-                            DropdownMenu(
-                                expanded = sourceMenuExpanded.value,
-                                onDismissRequest = { sourceMenuExpanded.value = false },
-                            ) {
-                                // Checkbox variant: the menu stays open after a
-                                // pick so several sources can be toggled.
-                                SelectionDropdownItems(
-                                    items = enabledSources,
-                                    label = { it.name },
-                                    isSelected = {
-                                        selectedSources.isEmpty() || it.id in selectedSources
-                                    },
-                                    multiSelect = true,
-                                    onPick = { source ->
-                                        // Tap toggles ONLY this item (empty
-                                        // selection = everything checked).
-                                        val next =
-                                            if (selectedSources.isEmpty()) {
-                                                allSourceIds - source.id
-                                            } else if (source.id in selectedSources) {
-                                                selectedSources - source.id
-                                            } else {
-                                                selectedSources + source.id
-                                            }
-                                        // All checked collapses back to "all".
-                                        viewModel.setSelectedSources(
-                                            if (next == allSourceIds) emptySet() else next,
-                                        )
-                                    },
-                                    onLongPick = { source ->
-                                        // Long-press: select only this one.
-                                        viewModel.setSelectedSources(setOf(source.id))
-                                    },
-                                )
-                            }
                         }
                     }
 
-                    // Sorting is only supported for media search: a pill that
-                    // opens the sort menu from itself.
+                    // Sorting is only supported for media search.
                     if (searchType == SearchType.MEDIA) {
                         val sortMenuExpanded = remember { mutableStateOf(false) }
-                        Box {
-                            FilterChip(
-                                selected = sort != SearchSort.RELEVANCE,
-                                onClick = { sortMenuExpanded.value = true },
-                                label = { Text(sort.label) },
-                                trailingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Filled.ArrowDropDown,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(Tokens.IconSm),
-                                    )
+                        FilterDropdown(
+                            label = sort.label,
+                            expanded = sortMenuExpanded.value,
+                            onExpandedChange = { sortMenuExpanded.value = it },
+                        ) {
+                            SelectionDropdownItems(
+                                items = SearchSort.entries,
+                                label = { it.label },
+                                isSelected = { it == sort },
+                                multiSelect = false,
+                                onPick = { s ->
+                                    sortMenuExpanded.value = false
+                                    viewModel.setSort(s)
                                 },
                             )
-                            DropdownMenu(
-                                expanded = sortMenuExpanded.value,
-                                onDismissRequest = { sortMenuExpanded.value = false },
-                            ) {
-                                SelectionDropdownItems(
-                                    items = SearchSort.entries,
-                                    label = { it.label },
-                                    isSelected = { it == sort },
-                                    multiSelect = false,
-                                    onPick = { s ->
-                                        sortMenuExpanded.value = false
-                                        viewModel.setSort(s)
-                                    },
-                                )
-                            }
                         }
                     }
                 }
@@ -504,7 +440,7 @@ fun SearchScreen(
                             .padding(horizontal = Tokens.SpaceLg)
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                RoundedCornerShape(Tokens.RadiusMd),
+                                RoundedCornerShape(BluejayTokens().radius.md),
                             ).padding(Tokens.SpaceMd),
                 ) {
                     RecentSearches(
@@ -525,7 +461,8 @@ fun SearchScreen(
                             resultsBounds.value = it.boundsInWindow()
                         },
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                ContentCard(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
                     // Search result grid (shown after search is executed)
                     when {
                         uiState.isLoading && uiState.items.isEmpty() -> {
@@ -559,11 +496,6 @@ fun SearchScreen(
                                                         .fillMaxWidth()
                                                         .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm),
                                             ) {
-                                                Text(
-                                                    text = "Channels",
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    modifier = Modifier.padding(bottom = Tokens.SpaceSm),
-                                                )
                                                 VideoContainer(
                                                     items = channelResults,
                                                     layout =
@@ -661,6 +593,7 @@ fun SearchScreen(
                         }
                     }
                 }
+                }
             }
 
             optionsCard?.let { card ->
@@ -695,7 +628,7 @@ private fun RecentSearches(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 4.dp),
+                        .padding(bottom = Tokens.SpaceXs),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -720,12 +653,12 @@ private fun RecentSearches(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp)
+                            .padding(horizontal = Tokens.SpaceXs)
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(12.dp),
+                                RoundedCornerShape(BluejayTokens().radius.sm),
                             ).clickable { onItemClick(query) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = Tokens.SpaceMd, vertical = Tokens.SpaceSm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -739,41 +672,13 @@ private fun RecentSearches(
                         contentDescription = "Delete",
                         modifier =
                             Modifier
-                                .size(20.dp)
+                                .size(Tokens.IconSm)
                                 .clickable { onDeleteItem(query) },
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
         }
-    }
-}
-
-/**
- * Small rounded-rectangle action button embedded in the search field:
- * primary fill, 26dp square, 16dp icon.
- */
-@Composable
-private fun SearchFieldButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier =
-            Modifier
-                .size(26.dp)
-                .clip(RoundedCornerShape(Tokens.RadiusXs))
-                .background(MaterialTheme.colorScheme.primary)
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onPrimary,
-        )
     }
 }
 
@@ -790,6 +695,7 @@ private fun SwipeToDeleteRow(
 ) {
     val scope = rememberCoroutineScope()
     val rowWidthPx = remember { mutableIntStateOf(0) }
+    val swipeSpec = spatialSpec<Float>()
     val offsetAnim = remember { Animatable(0f) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
     val thresholdPx = with(LocalDensity.current) { 80.dp.toPx() }
@@ -821,15 +727,15 @@ private fun SwipeToDeleteRow(
                                         val target =
                                             (if (offsetAnim.value > 0f) 1f else -1f) *
                                                 (rowWidthPx.value + 60f)
-                                        offsetAnim.animateTo(target, spring())
+                                        offsetAnim.animateTo(target, swipeSpec)
                                         onSwipedAway()
                                     } else {
-                                        offsetAnim.animateTo(0f, spring())
+                                        offsetAnim.animateTo(0f, swipeSpec)
                                     }
                                 }
                         },
                         onDragCancel = {
-                            settleJob = scope.launch { offsetAnim.animateTo(0f, spring()) }
+                            settleJob = scope.launch { offsetAnim.animateTo(0f, swipeSpec) }
                         },
                     )
                 },
@@ -841,14 +747,16 @@ private fun SwipeToDeleteRow(
 }
 
 /**
- * Dropdown content with the selection element (radio / checkbox) to the
- * right of the label. Radio variant: the caller closes the menu on pick.
- * Checkbox variant ([multiSelect]): the menu stays open after a pick.
+ * Expressive dropdown content: M3 [CheckableDropdownMenuItem]s with the
+ * selection element as the leading icon. Single-select: the checked item
+ * gets the check icon (the caller closes the menu on pick). Multi-select:
+ * a checkbox leading icon, the menu stays open after a pick.
  *
  * [onLongPick] (optional): long-pressing an item calls this instead of
  * [onPick] — used for "select only this one" in multiselect menus.
  */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun <T> SelectionDropdownItems(
     items: List<T>,
     label: (T) -> String,
@@ -857,35 +765,101 @@ private fun <T> SelectionDropdownItems(
     onPick: (T) -> Unit,
     onLongPick: ((T) -> Unit)? = null,
 ) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        items.forEach { item ->
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .pointerInput(item) {
-                            detectTapGestures(
-                                onTap = { onPick(item) },
-                                onLongPress = { onLongPick?.invoke(item) },
-                            )
+    items.forEachIndexed { index, item ->
+        // Gap between rows: the connected leading/middle/trailing item
+        // shapes assume items touch, so spaced items use the standalone
+        // (fully rounded) shape instead.
+        if (index > 0) {
+            Spacer(Modifier.height(Tokens.SpaceSm))
+        }
+        CheckableDropdownMenuItem(
+            checked = isSelected(item),
+            onCheckedChange = { onPick(item) },
+            text = { Text(label(item)) },
+            shapes = MenuDefaults.itemShape(0, 1),
+            modifier =
+                // Checkbox rows: cap at the app's button height (M3's menu
+                // row floor is 48dp, which reads too tall for a filter list).
+                (if (multiSelect) Modifier.height(Tokens.ButtonMd) else Modifier)
+                    .let { m ->
+                        if (onLongPick != null) {
+                            m.pointerInput(item) {
+                                detectTapGestures(onLongPress = { onLongPick(item) })
+                            }
+                        } else {
+                            m
                         }
-                        .padding(horizontal = Tokens.SpaceMd, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = label(item),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.width(Tokens.SpaceSm))
+                    },
+            leadingIcon =
                 if (multiSelect) {
-                    Checkbox(checked = isSelected(item), onCheckedChange = { onPick(item) })
+                    {
+                        Checkbox(
+                            checked = isSelected(item),
+                            onCheckedChange = { onPick(item) },
+                        )
+                    }
                 } else {
-                    RadioButton(selected = isSelected(item), onClick = { onPick(item) })
-                }
+                    null
+                },
+            checkedLeadingIcon =
+                if (multiSelect) {
+                    null
+                } else {
+                    { Icon(Icons.Filled.Check, contentDescription = null) }
+                },
+        )
+    }
+}
+
+/**
+ * Filter trigger for the search results row: a tile-language [Button]
+ * (the app's compact button color/size/rounding) that opens an
+ * expressive [DropdownMenuPopup] anchored to itself (the menu opens from
+ * the button, not the top of the screen). [label] summarizes the current
+ * selection; [menuContent] renders the menu items.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun FilterDropdown(
+    label: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    menuContent: @Composable ColumnScope.() -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val radius = BluejayTokens().radius
+    Box {
+        Button(
+            onClick = { onExpandedChange(true) },
+            shapes =
+                ButtonShapes(RoundedCornerShape(radius.md), RoundedCornerShape(radius.sm)),
+            // 40dp: the native type-switcher group's floor (its items bake
+            // in M3's 40dp minimum), so both rows match.
+            modifier = Modifier.height(Tokens.ButtonMd),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = scheme.surfaceContainer,
+                    contentColor = scheme.onSurfaceVariant,
+                ),
+        ) {
+            Text(
+                text = label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.width(Tokens.SpaceXxs))
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = null,
+                modifier = Modifier.size(Tokens.IconSm),
+            )
+        }
+        DropdownMenuPopup(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+        ) {
+            DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+                menuContent()
             }
         }
     }

@@ -6,6 +6,12 @@ data class AppearancePreferences(
     val iconStyle: IconStyle = IconStyle.ROUNDED,
     val fontSizeScale: Float = 1.0f,
     val dynamicColor: Boolean = true,
+    /** 0..100 — 100 is the shipped rounding, 0 is sharp. */
+    val uiRounding: Int = 100,
+    /** User-created themes (Settings > Appearance > Custom themes). */
+    val customThemes: List<CustomTheme> = emptyList(),
+    /** Active custom theme id; null = default (Material You / brand). */
+    val activeThemeId: String? = null,
 )
 
 enum class ThemeMode { AUTO, LIGHT, DARK }

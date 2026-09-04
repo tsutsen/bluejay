@@ -2,6 +2,8 @@ package com.tsutsen.platformplayer
 
 import android.content.Context
 import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
+import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
+import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -82,6 +84,10 @@ class Settings {
     // Tabs settings
     var advancedSettings: Boolean = false
 
+    // Set once the first-launch getting-started flow is finished or
+    // skipped; the flow shows again only if it is reset to false.
+    var gettingStartedCompleted: Boolean = false
+
     // Main-screen library: display order of the sections (reorderable in
     // Settings). Defaults to the natural LibraryRepository order.
     var librarySectionOrder: List<String> =
@@ -94,10 +100,21 @@ class Settings {
             LibraryRepositoryImpl.DOWNLOADS_ID,
             LibraryRepositoryImpl.PLAYLISTS_ID,
         )
+    /** Enabled library sections (Settings > Content). Order lives in [librarySectionOrder]. */
+    var librarySectionsEnabled: List<String> =
+        listOf(
+            LibraryRepositoryImpl.WATCH_LATER_ID,
+            LibraryRepositoryImpl.LIKED_ID,
+            LibraryRepositoryImpl.DISLIKED_ID,
+            LibraryRepositoryImpl.FAVOURITE_ID,
+            LibraryRepositoryImpl.HISTORY_ID,
+            LibraryRepositoryImpl.DOWNLOADS_ID,
+            LibraryRepositoryImpl.PLAYLISTS_ID,
+        )
 
     // Second (rear) display companion window
     var dualScreen: Boolean = false
-    var dualScreenPages: List<String> = listOf("video", "library", "home")
+    var dualScreenPages: List<String> = listOf("dash", "video", "library", "home")
     var dualScreenVideoTabs: List<String> =
         listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
     // Second-screen video page: display order of the enabled tabs.
@@ -114,6 +131,17 @@ class Settings {
     // ("swipe_v"|"swipe_h"|"double_tap"|"hold") → action id.
     // Empty = shipped defaults for that slot.
     var playerGestures: PlayerGesturePreferences = PlayerGesturePreferences()
+
+    // Controller (gamepad / TV remote) button mapping (Settings > Controller)
+    var controller: ControllerSettings = ControllerSettings()
+
+    @Serializable
+    class ControllerSettings(
+        var enabled: Boolean = false,
+        var mappings: Map<String, ControllerBinding> = emptyMap(),
+        var seekBackSeconds: Int = 10,
+        var seekForwardSeconds: Int = 30,
+    )
     // Second-screen library: the four 2x2 slots. Each entry is a section id
     // or a "playlist:<id>" reference (see Settings > Dual screen).
     var dualScreenLibrarySlots: List<String> =
@@ -182,6 +210,9 @@ class Settings {
         var subtitleFont: String = "default"
         var subtitleFontSize: Int = 16
         var subtitleBottomPadding: Int = 20
+
+        // Subtitle glyph outline thickness in px (0 = no outline).
+        var subtitleOutline: Int = 3
     }
 
     @Serializable
@@ -241,6 +272,15 @@ class Settings {
 
         // Material You (wallpaper) color scheme
         var dynamicColor: Boolean = true
+
+        // UI rounding as a percent (100 = shipped radii, 0 = sharp)
+        var uiRounding: Int = 100
+
+        // User-created themes (key colors → generated scheme)
+        var customThemes: List<CustomTheme> = emptyList()
+
+        // Active custom theme id (null = default theming)
+        var activeThemeId: String? = null
     }
 
     @Serializable
@@ -249,6 +289,9 @@ class Settings {
 
         // Hidden home source-chip ids (persisted filter selection).
         var hiddenSources: List<String> = emptyList()
+
+        // Source ids whose home-feed "log in?" notice was declined.
+        var loginPromptsDismissed: List<String> = emptyList()
     }
 
     @Serializable

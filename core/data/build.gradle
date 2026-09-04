@@ -1,13 +1,13 @@
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android' version '2.2.21'
+    id 'org.jetbrains.kotlin.android'
     id 'com.google.devtools.ksp'
-    id 'com.google.dagger.hilt.android' version '2.58'
+    id 'com.google.dagger.hilt.android' version '2.60.1'
 }
 
 android {
     namespace 'com.tsutsen.platformplayer.core.data'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         minSdk 28
@@ -15,11 +15,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = '1.8'
+    kotlin {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        }
     }
     buildFeatures {
         buildConfig true
@@ -41,6 +43,6 @@ dependencies {
     implementation 'androidx.media3:media3-datasource:1.9.0'
     
     // Hilt Dependency Injection
-    implementation 'com.google.dagger:hilt-android:2.58'
-    ksp 'com.google.dagger:hilt-android-compiler:2.58'
+    implementation 'com.google.dagger:hilt-android:2.60.1'
+    ksp 'com.google.dagger:hilt-android-compiler:2.60.1'
 }

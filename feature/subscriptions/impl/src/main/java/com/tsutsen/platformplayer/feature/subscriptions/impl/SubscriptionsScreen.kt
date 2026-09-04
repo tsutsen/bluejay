@@ -2,10 +2,10 @@ package com.tsutsen.platformplayer.feature.subscriptions.impl
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,13 +69,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGap
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.component.tokenizedChipShapes
 import com.tsutsen.platformplayer.core.designsystem.layout.TabContentTopPadding
+import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
+import androidx.compose.ui.unit.Dp
 import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
@@ -286,7 +292,8 @@ private fun SubscriptionsContent(
                         state = pullToRefreshState,
                         onRefresh = onRefresh,
                         content = {
-                            VideoContainer(
+                            ContentCard(modifier = Modifier.fillMaxSize()) {
+                                VideoContainer(
                                 items = state.items,
                                 layout = ContainerLayout.Grid(gridColumns),
                                 isLoading = false,
@@ -294,7 +301,7 @@ private fun SubscriptionsContent(
                                 onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                                 onLoadMore = onLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(Tokens.SpaceSm),
+                                contentPadding = PaddingValues(ContentCardInnerGap()),
                             ) { card ->
                                 VideoCard(
                                     card = card as ModelVideoCard,
@@ -304,6 +311,7 @@ private fun SubscriptionsContent(
                                     watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
                                     isWatched = watchStates[card.url]?.isWatched ?: false,
                                 )
+                            }
                             }
                         },
                     )
@@ -391,7 +399,8 @@ private fun SubscriptionsContent(
                     state = pullToRefreshState,
                     onRefresh = onRefresh,
                     content = {
-                        VideoContainer(
+                        ContentCard(modifier = Modifier.fillMaxSize()) {
+                            VideoContainer(
                             items = state.items,
                             layout = ContainerLayout.List,
                             isLoading = false,
@@ -399,7 +408,7 @@ private fun SubscriptionsContent(
                             onCardClick = { card -> onItemClicked((card as ModelVideoCard).url) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(Tokens.SpaceSm),
+                            contentPadding = PaddingValues(ContentCardInnerGap()),
                         ) { card ->
                             VideoCard(
                                 card = card as ModelVideoCard,
@@ -409,6 +418,7 @@ private fun SubscriptionsContent(
                                 watchProgress = watchStates[card.url]?.takeIf { !it.isWatched }?.progress,
                                 isWatched = watchStates[card.url]?.isWatched ?: false,
                             )
+                        }
                         }
                     },
                 )
@@ -482,10 +492,16 @@ private fun CreatorAvatar(
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val avatarSize by animateDpAsState(
+        targetValue = if (isSelected) Tokens.SwatchLg + Tokens.SpaceXs else Tokens.SwatchLg,
+        animationSpec = spatialSpec<Dp>(),
+        label = "creator-avatar-size",
+    )
     Box(
         modifier =
             modifier
-                .size(if (isSelected) 52.dp else 48.dp)
+                .size(avatarSize)
+                .expressiveClickable(onClick = onClick, onLongClick = onLongClick ?: {})
                 .clip(CircleShape)
                 .background(
                     if (isSelected) {
@@ -493,7 +509,7 @@ private fun CreatorAvatar(
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
                     },
-                ).combinedClickable(onClick = onClick, onLongClick = onLongClick ?: {}),
+                ),
     ) {
         if (creator.thumbnailUrl != null) {
             AsyncImage(
@@ -575,21 +591,25 @@ private fun SubsHeader(
             selected = filterVideo,
             onClick = onVideoToggle,
             label = { Text("Videos") },
+            shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterStreams,
             onClick = onStreamsToggle,
             label = { Text("Live") },
+            shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterStarted,
             onClick = onStartedToggle,
             label = { Text("Started") },
+            shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterWatched,
             onClick = onWatchedToggle,
             label = { Text("Watched") },
+            shapes = tokenizedChipShapes(),
         )
     }
 }

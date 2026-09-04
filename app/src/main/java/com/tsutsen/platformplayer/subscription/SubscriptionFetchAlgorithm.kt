@@ -36,8 +36,6 @@ abstract class SubscriptionFetchAlgorithm(
 
         fun getAlgorithm(algo: SubscriptionFetchAlgorithms, scope: CoroutineScope, allowFailure: Boolean = false, withCacheFallback: Boolean = false, pool: ForkJoinPool? = null, withExchangeClient: SubsExchangeClient? = null): SubscriptionFetchAlgorithm {
             return when(algo) {
-                SubscriptionFetchAlgorithms.CACHE -> CachedSubscriptionAlgorithm(scope, allowFailure, withCacheFallback, pool, 50);
-                SubscriptionFetchAlgorithms.SIMPLE -> SimpleSubscriptionAlgorithm(scope, allowFailure, withCacheFallback, pool);
                 SubscriptionFetchAlgorithms.SMART -> SmartSubscriptionAlgorithm(scope, allowFailure, withCacheFallback, pool, withExchangeClient);
             }
         }

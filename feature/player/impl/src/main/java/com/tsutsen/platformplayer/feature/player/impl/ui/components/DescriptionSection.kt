@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 
 /**
  * Description in a card. Tapping the card shrinks/expands the text; the card
@@ -38,7 +38,7 @@ internal fun DescriptionSection(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .animateContentSize(),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,

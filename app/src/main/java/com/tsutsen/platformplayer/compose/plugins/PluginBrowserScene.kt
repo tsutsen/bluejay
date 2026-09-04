@@ -39,10 +39,13 @@ import com.tsutsen.platformplayer.api.media.models.playlists.IPlatformPlaylistDe
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.auth.LoginDialog
+import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
+import com.tsutsen.platformplayer.core.designsystem.component.groupShape
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchOptionCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateApp
@@ -489,6 +492,7 @@ fun PluginDetailScene(
 
                     // Update button
                     Button(
+                        shape = RoundedCornerShape(BluejayTokens().radius.md),
                         onClick = {
                             val c = config ?: return@Button
                             Logger.i(TAG, "Update button clicked for ${c.name}")
@@ -531,6 +535,7 @@ fun PluginDetailScene(
                         val context = LocalContext.current
 
                         Button(
+                            shape = RoundedCornerShape(BluejayTokens().radius.md),
                             onClick = {
                                 Logger.i(TAG, "Opening login activity for: ${config!!.name} (id: ${config!!.id})")
                                 try {
@@ -603,6 +608,7 @@ fun PluginDetailScene(
                     // Import buttons (shown when plugin has auth)
                     if (hasAuth) {
                         Button(
+                            shape = RoundedCornerShape(BluejayTokens().radius.md),
                             onClick = {
                                 importType = "subscriptions"
                                 importItems = emptyList()
@@ -627,6 +633,7 @@ fun PluginDetailScene(
                         }
 
                         Button(
+                            shape = RoundedCornerShape(BluejayTokens().radius.md),
                             onClick = {
                                 importType = "playlists"
                                 importItems = emptyList()
@@ -653,6 +660,7 @@ fun PluginDetailScene(
 
                     // Uninstall button
                     OutlinedButton(
+                        shape = RoundedCornerShape(BluejayTokens().radius.md),
                         onClick = {
                             Logger.i(TAG, "Uninstall button clicked")
                             // TODO: Implement uninstall functionality
@@ -861,9 +869,9 @@ fun PluginDetailScene(
                                                         contentDescription = null,
                                                         modifier =
                                                             Modifier
-                                                                .size(40.dp)
-                                                                .padding(start = 8.dp)
-                                                                .clip(RoundedCornerShape(8.dp)),
+                                                                .size(Tokens.AvatarMd)
+                                                                .padding(start = Tokens.SpaceSm)
+                                                                .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                                                         contentScale = ContentScale.Crop,
                                                     )
                                                 }
@@ -985,6 +993,7 @@ fun PluginDetailScene(
  * in the caller when the screen is disposed.
  */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun PluginSettingsSection(
     config: SourcePluginConfig,
     settings: MutableMap<String, String?>,
@@ -993,16 +1002,36 @@ private fun PluginSettingsSection(
     var showAdvanced by remember { mutableStateOf(false) }
     var warningConfirm by remember { mutableStateOf<SourcePluginConfig.Setting?>(null) }
 
+    // Card groups: consecutive cards form one connected group, the same
+    // language as the app settings; a "Header" row breaks a group. The
+    // advanced-settings switch is the first card of the first group.
+    val filtered = config.settings.filter { it.isAdvanced != true || showAdvanced }
+    val firstIsHeader = filtered.firstOrNull()?.type == "Header"
+    var run = 0
+    val runOf = IntArray(filtered.size) { -1 }
+    filtered.forEachIndexed { i, s ->
+        if (s.type == "Header") run++ else runOf[i] = run
+    }
+    val runSize = IntArray(run + 1)
+    runOf.forEach { if (it >= 0) runSize[it]++ }
+    if (!firstIsHeader) runSize[0]++
+    val advancedPosition = GroupPosition.fromIndex(0, runSize[0])
+    val cardPosition = { i: Int ->
+        val before = (0 until i).count { runOf[it] == runOf[i] }
+        val inRun = if (runOf[i] == 0 && !firstIsHeader) before + 1 else before
+        GroupPosition.fromIndex(inRun, runSize[runOf[i]])
+    }
+
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(vertical = Tokens.SpaceSm),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
         Text("Settings", style = MaterialTheme.typography.titleLarge)
 
-        PluginSettingsCard {
+        PluginSettingsCard(groupPosition = advancedPosition) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1016,8 +1045,7 @@ private fun PluginSettingsSection(
             }
         }
 
-        config.settings.forEach { setting ->
-            if (setting.isAdvanced == true && !showAdvanced) return@forEach
+        filtered.forEachIndexed { i, setting ->
             when (setting.type) {
                 "Header" -> {
                     // Same look as the app settings' subsection titles
@@ -1026,14 +1054,14 @@ private fun PluginSettingsSection(
                         setting.name,
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = Tokens.SpaceSm, start = 4.dp),
+                        modifier = Modifier.padding(top = Tokens.SpaceSm, start = Tokens.SpaceXs),
                     )
                 }
 
                 "Boolean" -> {
                     val variable = setting.variableOrName
                     val current = (settings[variable] ?: setting.default) == "true"
-                    PluginSettingsCard {
+                    PluginSettingsCard(groupPosition = cardPosition(i)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1046,7 +1074,7 @@ private fun PluginSettingsSection(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(Tokens.SpaceMd))
                             Switch(
                                 checked = current,
                                 onCheckedChange = { newValue ->
@@ -1075,7 +1103,7 @@ private fun PluginSettingsSection(
                         } else {
                             rawValue
                         }
-                    PluginSettingsCard {
+                    PluginSettingsCard(groupPosition = cardPosition(i)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1088,47 +1116,67 @@ private fun PluginSettingsSection(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(Tokens.SpaceMd))
                             var menuExpanded by remember { mutableStateOf(false) }
                             Box {
-                                // Same trigger style as the search tab's sort pill.
-                                // maxLines=1 + ellipsis: a long selected option
-                                // must not wrap / overflow the chip in portrait.
-                                FilterChip(
-                                    selected = false,
+                                // Same trigger style as the search tab's
+                                // filter buttons: the app's compact
+                                // tile-language button. maxLines=1 +
+                                // ellipsis: a long selected option must
+                                // not wrap / overflow in portrait.
+                                Button(
                                     onClick = { menuExpanded = true },
-                                    label = {
-                                        Text(
-                                            current,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    },
-                                    trailingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Filled.ArrowDropDown,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(Tokens.IconSm),
-                                        )
-                                    },
-                                )
-                                DropdownMenu(
+                                    shapes =
+                                        ButtonShapes(
+                                            RoundedCornerShape(BluejayTokens().radius.md),
+                                            RoundedCornerShape(BluejayTokens().radius.sm),
+                                        ),
+                                    modifier = Modifier.height(Tokens.ButtonSm),
+                                    colors =
+                                        ButtonDefaults.buttonColors(
+                                            containerColor =
+                                                MaterialTheme.colorScheme.surfaceContainer,
+                                            contentColor =
+                                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                        ),
+                                ) {
+                                    Text(
+                                        current,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Spacer(Modifier.width(Tokens.SpaceXxs))
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowDropDown,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(Tokens.IconSm),
+                                    )
+                                }
+                                DropdownMenuPopup(
                                     expanded = menuExpanded,
                                     onDismissRequest = { menuExpanded = false },
                                 ) {
-                                    options.forEachIndexed { index, option ->
-                                        DropdownMenuItem(
-                                            leadingIcon = {
-                                                if (option == current) {
+                                    DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+                                        options.forEachIndexed { index, option ->
+                                            // Spaced rows need the standalone (fully
+                                            // rounded) shape, not the connected
+                                            // leading/middle/trailing ones.
+                                            if (index > 0) {
+                                                Spacer(Modifier.height(Tokens.SpaceSm))
+                                            }
+                                            CheckableDropdownMenuItem(
+                                                checked = option == current,
+                                                onCheckedChange = {
+                                                    menuExpanded = false
+                                                    onSettingChanged(variable, index.toString())
+                                                },
+                                                text = { Text(option) },
+                                                shapes = MenuDefaults.itemShape(0, 1),
+                                                checkedLeadingIcon = {
                                                     Icon(Icons.Default.Check, contentDescription = null)
-                                                }
-                                            },
-                                            text = { Text(option) },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onSettingChanged(variable, index.toString())
-                                            },
-                                        )
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1146,6 +1194,7 @@ private fun PluginSettingsSection(
             text = { Text(setting.warningDialog ?: "") },
             confirmButton = {
                 Button(
+                    shape = RoundedCornerShape(BluejayTokens().radius.md),
                     onClick = {
                         onSettingChanged(setting.variableOrName, "true")
                         warningConfirm = null
@@ -1163,20 +1212,23 @@ private fun PluginSettingsSection(
     }
 }
 
-/** One card per plugin setting (same surface as the rest of settings). */
+/** One card per plugin setting (same surface and card-group language as
+ *  the rest of the app settings). */
 @Composable
 private fun PluginSettingsCard(
+    groupPosition: GroupPosition = GroupPosition.Single,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = groupShape(groupPosition),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp), content = content)
+        Column(modifier = Modifier.padding(Tokens.SpaceMd), content = content)
     }
 }

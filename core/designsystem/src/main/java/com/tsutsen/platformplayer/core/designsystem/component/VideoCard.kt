@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -41,40 +42,53 @@ import kotlin.math.roundToLong
 private val PILL_HEIGHT = 18.dp
 
 /**
+ * Bold hand-drawn check (the icon-font check is a thin stroke): ~18% of
+ * its width as a round-capped stroke.
+ */
+@Composable
+private fun WatchedCheck(
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val w = this.size.width
+        val h = this.size.height
+        val path =
+            Path().apply {
+                moveTo(w * 0.10f, h * 0.54f)
+                lineTo(w * 0.40f, h * 0.84f)
+                lineTo(w * 0.92f, h * 0.20f)
+            }
+        drawPath(
+            path = path,
+            color = Color.White,
+            style =
+                Stroke(
+                    width = w * 0.18f,
+                    cap = StrokeCap.Round,
+                ),
+        )
+    }
+}
+
+/**
  * Watched badge: the duration pill's shape (same height, corner radius and
  * background) with a thick hand-drawn check instead of text.
  */
 @Composable
-private fun WatchedBadge(size: Dp, modifier: Modifier = Modifier) {
+private fun WatchedBadge(
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier =
             modifier
                 .width(size)
                 .height(PILL_HEIGHT)
-                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                 .background(Color.Black.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
-        // Bold check: the icon-font check is a thin stroke, this one is
-        // ~18% of the badge width with round caps.
-        Canvas(Modifier.size(size * 0.4f)) {
-            val w = this.size.width
-            val h = this.size.height
-            val path = Path().apply {
-                moveTo(w * 0.10f, h * 0.54f)
-                lineTo(w * 0.40f, h * 0.84f)
-                lineTo(w * 0.92f, h * 0.20f)
-            }
-            drawPath(
-                path = path,
-                color = Color.White,
-                style =
-                    Stroke(
-                        width = w * 0.18f,
-                        cap = StrokeCap.Round,
-                    ),
-            )
-        }
+        WatchedCheck(Modifier.size(size * 0.4f))
     }
 }
 
@@ -107,7 +121,7 @@ fun VideoCard(
             modifier
                 .fillMaxWidth()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(Tokens.RadiusSm),
+        shape = RoundedCornerShape(BluejayTokens().radius.sm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -130,7 +144,7 @@ fun VideoCard(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                     contentScale = ContentScale.Crop,
                 )
 
@@ -139,6 +153,17 @@ fun VideoCard(
                     LiveBadge(modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
                 } else if (card.isClip) {
                     ClipBadge(modifier = Modifier.align(Alignment.TopStart).padding(Tokens.SpaceSm))
+                }
+
+                // View-count pill (top-right).
+                if (viewCount != null) {
+                    ThumbnailPill(
+                        text = formatViewCount(viewCount),
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(Tokens.SpaceSm),
+                    )
                 }
 
                 // In-progress download: percentage + bar across the bottom
@@ -180,8 +205,8 @@ fun VideoCard(
                                 .height(4.dp)
                                 .clip(
                                     RoundedCornerShape(
-                                        bottomStart = Tokens.RadiusSm,
-                                        bottomEnd = Tokens.RadiusSm,
+                                        bottomStart = BluejayTokens().radius.sm,
+                                        bottomEnd = BluejayTokens().radius.sm,
                                     ),
                                 ).background(Color.Black.copy(alpha = 0.6f)),
                     ) {
@@ -195,11 +220,10 @@ fun VideoCard(
                     }
                 }
 
-                // Completed badge (bottom-LEFT, never drawn together with the
-                // progress pill — callers hide progress when watched).
-                if (isWatched) {
-                    WatchedBadge(
-                        size = 24.dp,
+                // Posted-time pill (bottom-left).
+                if (publishedAt != null) {
+                    ThumbnailPill(
+                        text = RelativeTime.format(publishedAt),
                         modifier =
                             Modifier
                                 .align(Alignment.BottomStart)
@@ -207,25 +231,37 @@ fun VideoCard(
                     )
                 }
 
-                // Duration pill (bottom-right)
-                if (durationMs != null && durationMs > 0) {
-                    Box(
+                // Duration pill (bottom-right); watched videos carry the
+                // check inside it. Callers hide the progress bar when
+                // watched, so the check never doubles as a "progress done".
+                if ((durationMs != null && durationMs > 0) || isWatched) {
+                    Surface(
                         modifier =
                             Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(Tokens.SpaceSm)
-                                .height(PILL_HEIGHT)
-                                .clip(RoundedCornerShape(Tokens.RadiusXs))
-                                .background(Color.Black.copy(alpha = 0.7f)),
-                        contentAlignment = Alignment.Center,
+                                .padding(Tokens.SpaceSm),
+                        color = Color.Black.copy(alpha = 0.7f),
+                        shape = RoundedCornerShape(BluejayTokens().radius.xs),
                     ) {
-                        Text(
-                            text = formatDuration(durationMs),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                            fontWeight = FontWeight.Bold,
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (isWatched) {
+                                WatchedCheck(Modifier.size(8.dp))
+                                if (durationMs != null && durationMs > 0) {
+                                    Spacer(Modifier.width(2.dp))
+                                }
+                            }
+                            if (durationMs != null && durationMs > 0) {
+                                Text(
+                                    text = formatDuration(durationMs),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -237,68 +273,31 @@ fun VideoCard(
                         .padding(Tokens.SpaceMd)
                         .fillMaxWidth(),
             ) {
-                // Title (2 lines max)
+                // Title: always reserves two lines, so every card in a
+                // grid row is the same height and the author line sits at
+                // the same spot (the bottom of the text block) regardless
+                // of title length.
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
+                    minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Meta line: Author • Views • Time
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (author != null) {
-                        Text(
-                            text = author,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Spacer(modifier = Modifier.width(Tokens.SpaceXs))
-                        Text(
-                            text = "•",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.width(Tokens.SpaceXs))
-                    }
-
-                    if (viewCount != null) {
-                        Text(
-                            text = formatViewCount(viewCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (publishedAt != null) {
-                            Spacer(modifier = Modifier.width(Tokens.SpaceXs))
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(modifier = Modifier.width(Tokens.SpaceXs))
-                        }
-                    }
-
-                    if (publishedAt != null) {
-                        Text(
-                            text = RelativeTime.format(publishedAt),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                // Meta line: author only — views and posted time live in the
+                // thumbnail pills now.
+                if (author != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = author,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
@@ -330,7 +329,7 @@ fun VideoCardPills(
     // follows from 16:9 + the title), never the thumbnail's ratio.
     Card(
         modifier = modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(Tokens.RadiusSm),
+        shape = RoundedCornerShape(BluejayTokens().radius.sm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
@@ -339,7 +338,7 @@ fun VideoCardPills(
                 AsyncImage(
                     url = thumbnailUrl,
                     contentDescription = title,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(Tokens.RadiusSm)),
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                     contentScale = ContentScale.Crop,
                 )
                 if (card.isLive) {
@@ -400,7 +399,7 @@ fun VideoCardFull(
             modifier
                 .fillMaxHeight()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -422,7 +421,7 @@ fun VideoCardFull(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                            .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                     contentScale = ContentScale.Crop,
                 )
             }
@@ -471,8 +470,8 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
     Box(
         modifier =
             modifier
-                .clip(RoundedCornerShape(Tokens.RadiusXs))
-                .background(Color(0xFFE60000))
+                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
+                .background(MaterialTheme.colorScheme.error)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -482,13 +481,13 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
                     Modifier
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(Color.White),
+                        .background(MaterialTheme.colorScheme.onError),
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "LIVE",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onError,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -501,7 +500,7 @@ private fun ClipBadge(modifier: Modifier = Modifier) {
     Box(
         modifier =
             modifier
-                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                 .background(Color(0xCC202124))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
@@ -523,7 +522,7 @@ private fun ThumbnailPill(
     Surface(
         modifier = modifier,
         color = Color.Black.copy(alpha = 0.7f),
-        shape = RoundedCornerShape(Tokens.RadiusXs),
+        shape = RoundedCornerShape(BluejayTokens().radius.xs),
     ) {
         Text(
             text = text,
@@ -564,7 +563,7 @@ fun VideoCardShorts(
             modifier
                 .fillMaxWidth()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(Tokens.RadiusSm),
+        shape = RoundedCornerShape(BluejayTokens().radius.sm),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -579,7 +578,7 @@ fun VideoCardShorts(
                     Modifier
                         .height(120.dp)
                         .aspectRatio(9f / 16f)
-                        .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                        .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
             ) {
                 AsyncImage(
                     url = thumbnailUrl,
@@ -608,7 +607,7 @@ fun VideoCardShorts(
                                 .align(Alignment.BottomEnd)
                                 .padding(Tokens.SpaceXs)
                                 .height(PILL_HEIGHT)
-                                .clip(RoundedCornerShape(Tokens.RadiusXs))
+                                .clip(RoundedCornerShape(BluejayTokens().radius.xs))
                                 .background(Color.Black.copy(alpha = 0.7f)),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -632,8 +631,8 @@ fun VideoCardShorts(
                                 .height(4.dp)
                                 .clip(
                                     RoundedCornerShape(
-                                        bottomStart = Tokens.RadiusSm,
-                                        bottomEnd = Tokens.RadiusSm,
+                                        bottomStart = BluejayTokens().radius.sm,
+                                        bottomEnd = BluejayTokens().radius.sm,
                                     ),
                                 ).background(Color.Black.copy(alpha = 0.6f)),
                     ) {
@@ -666,62 +665,6 @@ fun VideoCardShorts(
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = card.author ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-/**
- * Compact landscape video card (96×54 thumbnail ratio).
- */
-@Composable
-fun CompactVideoCard(
-    card: VideoCard,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val title = card.title
-    val author = card.author
-    val thumbnailUrl = card.thumbnailUrl
-
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(72.dp)
-                .clickable(onClick = onClick)
-                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AsyncImage(
-            url = thumbnailUrl,
-            contentDescription = title,
-            modifier =
-                Modifier
-                    .size(128.dp, 72.dp)
-                    .clip(RoundedCornerShape(Tokens.RadiusSm)),
-            contentScale = ContentScale.Crop,
-        )
-        Column(
-            modifier =
-                Modifier
-                    .padding(start = Tokens.SpaceMd)
-                    .weight(1f),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (author != null) {
-                Text(
-                    text = author,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

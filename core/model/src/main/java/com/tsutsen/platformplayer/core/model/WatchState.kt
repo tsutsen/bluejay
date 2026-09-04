@@ -9,4 +9,14 @@ package com.tsutsen.platformplayer.core.model
 data class WatchState(
     val progress: Float,
     val isWatched: Boolean,
-)
+) {
+    companion object {
+        /**
+         * A video counts as watched once playback passes this fraction of
+         * its duration. The single definition of the rule: drives the
+         * checkmark on video cards and playlist cleanups like
+         * "remove watched".
+         */
+        const val WATCHED_FRACTION = 0.95f
+    }
+}

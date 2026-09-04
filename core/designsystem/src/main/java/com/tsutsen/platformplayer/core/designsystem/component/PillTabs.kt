@@ -24,6 +24,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import kotlin.math.roundToInt
 
 /**
@@ -65,9 +67,9 @@ fun PillTabs(
     // recompose and re-offset the pill.
     val scrollX = scrollState.value
 
-    val pillX by animateFloatAsState(targetValue = targetX, label = "pillX")
-    val pillW by animateFloatAsState(targetValue = targetW, label = "pillW")
-    val pillH by animateFloatAsState(targetValue = targetH, label = "pillH")
+    val pillX by animateFloatAsState(targetValue = targetX, animationSpec = spatialSpec<Float>(), label = "pillX")
+    val pillW by animateFloatAsState(targetValue = targetW, animationSpec = spatialSpec<Float>(), label = "pillW")
+    val pillH by animateFloatAsState(targetValue = targetH, animationSpec = spatialSpec<Float>(), label = "pillH")
 
     Box(modifier) {
         // The pill (drawn first, so it sits behind the tab labels). The
@@ -92,7 +94,7 @@ fun PillTabs(
                         Modifier
                             .clickable { onSelect(i) }
                             .onSizeChanged { tabSizes[i].value = it.width to it.height }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm),
                 ) {
                     Text(
                         text = label,

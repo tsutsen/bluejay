@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -72,9 +74,9 @@ fun ChannelCardView(
                         contentDescription = "Source",
                         modifier =
                             Modifier
-                                .padding(start = 4.dp)
-                                .size(16.dp)
-                                .clip(RoundedCornerShape(4.dp)),
+                                .padding(start = Tokens.SpaceXs)
+                                .size(Tokens.IconSm)
+                                .clip(RoundedCornerShape(BluejayTokens().radius.xs)),
                         contentScale = ContentScale.FillBounds,
                     )
                 }

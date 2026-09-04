@@ -2,11 +2,8 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -61,6 +58,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -72,7 +70,6 @@ import kotlin.math.abs
 private val CARD_W = 240.dp
 private val CARD_H = 160.dp
 private val STRIP_GAP = 12.dp
-private val ANIM = 180
 // Right-hand move-button column: its own zone so the arrows never overlap
 // the thumbnail or the text, and pressing them never triggers the card
 // swipe.
@@ -107,7 +104,7 @@ fun QueueStripCard(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(BluejayTokens().radius.card))
                 .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(modifier = Modifier.padding(Tokens.SpaceLg)) {
@@ -164,6 +161,7 @@ private fun QueuedCardStrip(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val viewportPx = remember { mutableStateOf(0) }
+    val flipSpec = spatialSpec<Offset>()
     // The now-playing card's position: items can't move in front of it.
     val currentIndex = items.indexOfFirst { it.url == current?.url }
 
@@ -230,7 +228,7 @@ private fun QueuedCardStrip(
                 val flipProgress = remember(index) { Animatable(Offset.Zero, Offset.VectorConverter) }
                 LaunchedEffect(index) {
                     if (flipDelta != 0f) {
-                        flipProgress.animateTo(Offset(1f, 0f), tween(ANIM, easing = FastOutSlowInEasing))
+                        flipProgress.animateTo(Offset(1f, 0f), flipSpec)
                     }
                 }
                 Box(
@@ -291,6 +289,7 @@ private fun QueueStripItem(
     val swipe = remember { Animatable(0f) }
     val swipeScope = rememberCoroutineScope()
     val swipeJob = remember { mutableStateOf<Job?>(null) }
+    val swipeSpec = spatialSpec<Float>()
     val swipeThresholdPx = remember { with(density) { 80.dp.toPx() } }
     val swipeFlyPx = remember { with(density) { 280.dp.toPx() } }
     // Arrow tiles: rounded on the left edge only — the square right edge
@@ -314,7 +313,7 @@ private fun QueueStripItem(
                                 (abs(swipe.value) / swipeFlyPx).coerceIn(0f, 1f) * 0.8f)
                                 .coerceAtLeast(0.2f)
                     }
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(BluejayTokens().radius.md))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             // Content area: swipe up/down to remove, tap to play, long-press
@@ -346,35 +345,18 @@ private fun QueueStripItem(
                                                 // Fly out in the direction it
                                                 // was dragged, then remove.
                                                 val dir = if (v > 0f) 1f else -1f
-                                                swipe.animateTo(
-                                                    dir * swipeFlyPx,
-                                                    tween(160, easing = FastOutSlowInEasing),
-                                                )
+                                                swipe.animateTo(dir * swipeFlyPx, swipeSpec)
                                                 onRemove()
                                             } else {
                                                 // Snap back home.
-                                                swipe.animateTo(
-                                                    0f,
-                                                    spring(
-                                                        dampingRatio =
-                                                            Spring.DampingRatioMediumBouncy,
-                                                        stiffness = Spring.StiffnessMedium,
-                                                    ),
-                                                )
+                                                swipe.animateTo(0f, swipeSpec)
                                             }
                                         }
                                 },
                                 onDragCancel = {
                                     swipeJob.value =
                                         swipeScope.launch {
-                                            swipe.animateTo(
-                                                0f,
-                                                spring(
-                                                    dampingRatio =
-                                                        Spring.DampingRatioMediumBouncy,
-                                                    stiffness = Spring.StiffnessMedium,
-                                                ),
-                                            )
+                                            swipe.animateTo(0f, swipeSpec)
                                         }
                                 },
                             )
@@ -398,7 +380,7 @@ private fun QueueStripItem(
                             Modifier
                                 .fillMaxWidth()
                                 .height(92.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                                 .background(Color(0xFF1F1F1F)),
                     ) {
                         AsyncImage(
@@ -407,7 +389,7 @@ private fun QueueStripItem(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
-                                    .clip(RoundedCornerShape(8.dp)),
+                                    .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
                         )
                         item.durationMs
                             ?.takeIf { it > 0 }
@@ -421,7 +403,7 @@ private fun QueueStripItem(
                                             .align(Alignment.BottomEnd)
                                             .background(
                                                 Color.Black.copy(alpha = 0.75f),
-                                                RoundedCornerShape(4.dp),
+                                                RoundedCornerShape(BluejayTokens().radius.xs),
                                             )
                                             .padding(horizontal = 5.dp, vertical = 2.dp),
                                 )
@@ -469,7 +451,7 @@ private fun QueueStripItem(
                             .background(
                                 if (earlierEnabled)
                                     MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
+                                else MaterialTheme.colorScheme.surfaceContainerHighest,
                                 arrowShape,
                             ),
                 ) {
@@ -494,7 +476,7 @@ private fun QueueStripItem(
                             .background(
                                 if (laterEnabled)
                                     MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
+                                else MaterialTheme.colorScheme.surfaceContainerHighest,
                                 arrowShape,
                             ),
                 ) {
@@ -527,7 +509,7 @@ private fun NowPlayingCard(
             Modifier
                 .width(CARD_W)
                 .height(CARD_H)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(BluejayTokens().radius.md))
                 .background(Color(0xFF1F1F1F))
                 .combinedClickable(onClick = onPlayPause, onLongClick = onLongClick),
     ) {
@@ -539,7 +521,7 @@ private fun NowPlayingCard(
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
                     .align(Alignment.TopCenter)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(BluejayTokens().radius.md))
                     .background(Color(0xFF1F1F1F)),
         ) {
             AsyncImage(
@@ -555,7 +537,7 @@ private fun NowPlayingCard(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(BluejayTokens().radius.md))
                     .drawWithContent {
                         drawContent()
                         drawRect(
@@ -587,7 +569,7 @@ private fun NowPlayingCard(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(BluejayTokens().radius.md))
                         .background(Color(0xCC009369)),
                 contentAlignment = Alignment.Center,
             ) {
@@ -631,7 +613,7 @@ private fun NowPlayingCard(
                         Modifier
                             .align(Alignment.BottomEnd)
                             .padding(end = 8.dp, bottom = 8.dp)
-                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(4.dp))
+                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(BluejayTokens().radius.xs))
                             .padding(horizontal = 5.dp, vertical = 2.dp),
                 )
             }

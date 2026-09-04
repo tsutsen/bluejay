@@ -1,25 +1,14 @@
 package com.tsutsen.platformplayer.feature.player.impl.gesture
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrightnessHigh
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
- * Declarative indicator spec emitted by gesture handlers.
- *
- * Each action optionally produces an indicator. Actions like MORPH produce [None].
+ * Declarative indicator spec for the player's on-screen overlays.
  * The UI layer resolves the spec into a composable overlay.
  *
  * @property key unique identifier for dedup (e.g. "brightness", "volume")
  */
 sealed interface GestureIndicator {
-    /** No indicator for this action (e.g. morph, seek). */
-    data object None : GestureIndicator {
-        override val key: String = ""
-    }
-
     /** Progress bar indicator: icon + filled bar + percentage text. */
     data class Progress(
         override val key: String,
@@ -45,27 +34,3 @@ sealed interface GestureIndicator {
 
     val key: String
 }
-
-/**
- * Resolve a [GestureAction] to its default indicator spec.
- * Override with [resolveIndicator] callback for custom behaviour.
- */
-fun GestureAction.defaultIndicator(value: Float = 0f): GestureIndicator =
-    when (this) {
-        GestureAction.BRIGHTNESS -> GestureIndicator.Progress(
-            key = "brightness",
-            value = value,
-            icon = Icons.Default.BrightnessHigh,
-        )
-        GestureAction.VOLUME -> GestureIndicator.Progress(
-            key = "volume",
-            value = value,
-            icon = Icons.Default.VolumeUp,
-        )
-        GestureAction.SPEEDUP, GestureAction.SPEEDDOWN -> GestureIndicator.Badge(
-            key = "speed",
-            value = value,
-            icon = Icons.Outlined.Speed,
-        )
-        else -> GestureIndicator.None
-    }

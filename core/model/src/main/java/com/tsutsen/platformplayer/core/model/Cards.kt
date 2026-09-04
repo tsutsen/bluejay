@@ -35,16 +35,31 @@ data class VideoCard(
     override val sourceId: String? = null,
 ) : Card
 
-@Parcelize
-data class ShortCard(
-    override val id: String,
-    override val title: String,
-    override val thumbnailUrl: String?,
-    val author: String?,
-    val viewCount: Long? = null,
-    val url: String,
-    override val sourceId: String? = null,
-) : Card
+/**
+ * A [ContentItem] for playback with pre-filled details, so the player UI
+ * shows the real title/channel/thumbnail immediately instead of a
+ * loading placeholder.
+ */
+fun VideoCard.toContentItem(): ContentItem =
+    ContentItem(
+        id = id,
+        url = url,
+        title = title,
+        author =
+            author?.let {
+                Author(
+                    id = authorUrl.orEmpty(),
+                    name = it,
+                    url = authorUrl,
+                    thumbnailUrl = null,
+                )
+            },
+        thumbnailUrl = thumbnailUrl,
+        contentType = ContentType.VIDEO,
+        publishedAt = publishedAt,
+        durationMs = durationMs,
+        viewCount = viewCount,
+    )
 
 @Parcelize
 data class PlaylistCard(

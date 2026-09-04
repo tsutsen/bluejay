@@ -2,9 +2,8 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 
 import android.app.Activity
 import android.content.Context
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.Replay10
+import com.tsutsen.platformplayer.feature.player.impl.PlayerEvent
+import com.tsutsen.platformplayer.feature.player.impl.PlayerEventBus
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import com.tsutsen.platformplayer.feature.player.impl.SystemControls
 import kotlinx.coroutines.CoroutineScope
@@ -28,11 +27,13 @@ interface GestureActionHandler {
 /**
  * Concrete handler wired to a [PlayerViewModel] and player callbacks.
  *
+ * Action feedback (badges) is not handled here: the actions flow through
+ * [PlayerEventBus] (the seek/speed calls go via the view model, brightness
+ * and volume are emitted directly), so badges show for every origin, not
+ * just gestures.
+ *
  * @property viewModel       for seek, speed, fullscreen, minimize
  * @property screenHeight    screen height in px (for normalising brightness delta)
- * @property onIndicator     called with a [GestureIndicator] spec on each ACTIVE/END frame.
- *                           emits [GestureIndicator.None] for actions without indicators.
- * @property onIndicatorEnd  called once when the gesture ends — UI should start hide timer here.
  * @property onMorphDragStart  called when a morph-to-floating swipe begins
  * @property onMorphDrag       called with cumulative downward drag px during morph swipe
  * @property onMorphDragEnd    called when morph swipe ends (decides commit or cancel)
@@ -48,8 +49,6 @@ class PlayerGestureActionHandler(
     private val screenHeight: () -> Float,
     private val context: Context,
     private val activity: Activity? = null,
-    private val onIndicator: (GestureIndicator) -> Unit = {},
-    private val onIndicatorEnd: () -> Unit = {},
     private val onMorphDragStart: () -> Unit = {},
     private val onMorphDrag: (dragY: Float) -> Unit = {},
     private val onMorphDragEnd: (dragY: Float) -> Unit = {},
@@ -86,11 +85,6 @@ class PlayerGestureActionHandler(
     // Written on the pointer thread (ACTIVE), read by the keep-alive coroutine.
     @Volatile
     private var lastSpeedHoldReported = 0f
-
-    // --- consecutive double-tap seek accumulation ---
-    private var lastSeekAction: GestureAction? = null
-    private var lastSeekTimeMs: Long = 0L
-    private var accumulatedSeekMs: Long = 0L
 
     fun snapshotBrightness() {
         // Shared across screens: last user value, else device-wide setting.
@@ -141,38 +135,12 @@ class PlayerGestureActionHandler(
     }
 
     /**
-     * Applies a ±[jumpStepMs] seek and, if the same direction was tapped
-     * again within [SEEK_ACCUMULATE_WINDOW_MS], accumulates the total so the
-     * badge shows e.g. -15s / +20s instead of always -5s / +5s.
+     * Applies a ±[jumpStepMs] seek. The badge (including consecutive
+     * double-tap accumulation) is derived from the [PlayerEvent.Seek]
+     * events on the bus, not here — so seeks from any origin badge identically.
      */
     private fun handleAccumulatedSeek(action: GestureAction) {
-        val now = System.currentTimeMillis()
-        val stepMs = if (action == GestureAction.REWIND_BACK) -jumpStepMs() else jumpStepMs()
-
-        accumulatedSeekMs = if (
-            action == lastSeekAction &&
-            now - lastSeekTimeMs < SEEK_ACCUMULATE_WINDOW_MS
-        ) {
-            accumulatedSeekMs + stepMs
-        } else {
-            stepMs
-        }
-        lastSeekAction = action
-        lastSeekTimeMs = now
-
-        viewModel.seekBy(stepMs)
-
-        val seconds = accumulatedSeekMs / 1000
-        val label = if (seconds > 0) "+${seconds}s" else "${seconds}s"
-        val isBack = action == GestureAction.REWIND_BACK
-        onIndicator(
-            GestureIndicator.TextBadge(
-                key = if (isBack) "rewind_back" else "rewind_forward",
-                label = label,
-                icon = if (isBack) Icons.Default.Replay10 else Icons.Default.Forward10,
-            )
-        )
-        // Skip onIndicatorEnd — badge auto-hides via overlay
+        viewModel.seekBy(if (action == GestureAction.REWIND_BACK) -jumpStepMs() else jumpStepMs())
     }
 
     // ---- Brightness (swipe vertical, continuous) ----
@@ -188,11 +156,10 @@ class PlayerGestureActionHandler(
                 // All screens: device-wide when granted, plus this window
                 // (the companion window follows through SystemControls.brightness).
                 SystemControls.applyBrightness(context, currentBrightness, activity?.window)
-                onIndicator(GestureAction.BRIGHTNESS.defaultIndicator(currentBrightness))
+                PlayerEventBus.emit(PlayerEvent.BrightnessChanged(currentBrightness))
             }
             GesturePhase.END -> {
-                onIndicator(GestureAction.BRIGHTNESS.defaultIndicator(currentBrightness))
-                onIndicatorEnd()
+                PlayerEventBus.emit(PlayerEvent.BrightnessChanged(currentBrightness))
             }
         }
     }
@@ -208,11 +175,10 @@ class PlayerGestureActionHandler(
                 val delta = -frame.instantDelta.y / screenHeight()
                 currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
                 SystemControls.setVolume(context, currentVolume)
-                onIndicator(GestureAction.VOLUME.defaultIndicator(currentVolume))
+                PlayerEventBus.emit(PlayerEvent.VolumeChanged(currentVolume))
             }
             GesturePhase.END -> {
-                onIndicator(GestureAction.VOLUME.defaultIndicator(currentVolume))
-                onIndicatorEnd()
+                PlayerEventBus.emit(PlayerEvent.VolumeChanged(currentVolume))
             }
         }
     }
@@ -221,9 +187,6 @@ class PlayerGestureActionHandler(
     private fun jumpStepMs(): Long = viewModel.jumpStepSeconds * 1000L
 
     companion object {
-        /** Window in which same-direction double-taps accumulate into one running total. */
-        private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
-
         /** Horizontal px to travel for one ±0.1x speed step. */
         private const val SPEED_SWIPE_STEP_PX = 200f
         /** Below this much horizontal movement a speed gesture counts as a still hold. */
@@ -242,7 +205,6 @@ class PlayerGestureActionHandler(
                 snapshotSpeed()
                 lastSpeedHoldReported = baseMultiplier
                 viewModel.setPlaybackSpeed(baseMultiplier)
-                onIndicator(GestureAction.SPEEDUP.defaultIndicator(baseMultiplier))
                 // Start keep-alive coroutine — re-emits the *current* speed periodically so
                 // the badge stays visible during still holds. Re-emitting the base here would
                 // snap the badge back to x2 while the finger is held after a movement step.
@@ -252,7 +214,7 @@ class PlayerGestureActionHandler(
                         delay(KEEP_ALIVE_INTERVAL_MS)
                         val current = lastSpeedHoldReported
                         if (current > 0f) {
-                            onIndicator(GestureAction.SPEEDUP.defaultIndicator(current))
+                            PlayerEventBus.emit(PlayerEvent.PlaybackSpeedChanged(current))
                         }
                     }
                 }
@@ -273,15 +235,11 @@ class PlayerGestureActionHandler(
                     lastSpeedHoldReported = snapped
                     viewModel.setPlaybackSpeed(snapped)
                 }
-                // Emit on finger movement — keep-alive coroutine handles the rest
-                onIndicator(GestureAction.SPEEDUP.defaultIndicator(snapped))
             }
             GesturePhase.END -> {
                 speedHoldJob?.cancel()
                 speedHoldJob = null
                 viewModel.setPlaybackSpeed(originalSpeed)
-                onIndicator(GestureAction.SPEEDUP.defaultIndicator(originalSpeed))
-                onIndicatorEnd()
             }
         }
     }

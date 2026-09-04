@@ -10,13 +10,18 @@ data class AppPreferences(
     /** Jump step (seconds) for the back/forward seek gestures. */
     val jumpStepSeconds: Int = 5,
     val playerGestures: PlayerGesturePreferences = PlayerGesturePreferences(),
+    val controller: ControllerPreferences = ControllerPreferences(),
     val defaultVideoResolution: String = "Auto",
     val defaultDownloadResolution: String = "480p",
     val enableDeveloperOptions: Boolean = false,
     val librarySectionOrder: List<String> =
         listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),
+    val librarySectionsEnabled: List<String> =
+        listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),
     val dualScreen: Boolean = false,
-    val dualScreenPages: List<String> = listOf("video", "library", "home"),
+    // Dash first: the companion lands on the dash page and flips to the
+    // video page when a video opens.
+    val dualScreenPages: List<String> = listOf("dash", "video", "library", "home"),
     val dualScreenVideoTabs: List<String> =
         listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot"),
     /** Display order of the enabled video-page tabs (Settings > Dual screen). */
@@ -33,6 +38,9 @@ data class AppPreferences(
     val showRecommendedVideos: Boolean = true,
     val showComments: Boolean = true,
     val autoUpdatePlugins: Boolean = true,
+    val gettingStartedCompleted: Boolean = false,
+    /** Source ids whose home-feed login notice was declined. */
+    val homeLoginPromptsDismissed: List<String> = emptyList(),
 )
 
 /**
@@ -45,4 +53,5 @@ data class SubtitlePreferences(
     val font: String = "default",
     val size: Int = 16,
     val bottomPadding: Int = 20,
+    val outline: Int = 3,
 )

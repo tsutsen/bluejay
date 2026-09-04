@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -89,6 +90,7 @@ fun PlayerControls(
     onCast: (() -> Unit)? = null,
     onSeek: (Long) -> Unit,
     onScrubFinished: () -> Unit = {},
+    bottomBarHeightPx: MutableIntState,
 ) {
     val density = LocalDensity.current
 
@@ -180,7 +182,6 @@ fun PlayerControls(
     // Measured heights of the top/bottom control bars — used to shift the gesture
     // badge so it never overlaps the visible controls.
     var topBarHeightPx by remember { mutableIntStateOf(0) }
-    var bottomBarHeightPx by remember { mutableIntStateOf(0) }
 
     // ==================== Shared video-box modifier ====================
     // Frame-level lambdas: the bars track the morphing video rect without
@@ -283,7 +284,7 @@ fun PlayerControls(
                                                 translationY =
                                                     (1f - controlsVisibleAlpha.value) *
                                                         CONTROLS_SLIDE_DISTANCE_DP.dp.toPx()
-                                            }.onSizeChanged { bottomBarHeightPx = it.height },
+                                            }.onSizeChanged { bottomBarHeightPx.value = it.height },
                                 ) {
                                     // FULLSCREEN bottom overlay
                                     if (fullscreenBottomBar) {
@@ -370,7 +371,7 @@ fun PlayerControls(
                         activeProgressIndicator = activeProgressIndicator,
                         badgeState = badgeState,
                         topBarHeightPx = topBarHeightPx,
-                        bottomBarHeightPx = bottomBarHeightPx,
+                        bottomBarHeightPx = bottomBarHeightPx.value,
                         topBarVisible = topBarVisible,
                         bottomBarVisible = bottomBarVisible,
                         onBadgeSessionEnded = onBadgeSessionEnded,

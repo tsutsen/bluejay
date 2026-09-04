@@ -40,10 +40,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.TextUnit
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.model.LiveChatEntry
 import com.tsutsen.platformplayer.core.model.LiveChatUiState
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -183,65 +183,69 @@ private fun ChatMessageList(
             state = listState,
             modifier = Modifier.fillMaxSize(),
         ) {
-        if (state.entries.isEmpty()) {
-            item {
-                Text(
-                    "Welcome to the stream!\nNo messages since you joined.",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = horizontalPadding, vertical = 32.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
+            if (state.entries.isEmpty()) {
+                item {
+                    Text(
+                        "Welcome to the stream!\nNo messages since you joined.",
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = horizontalPadding, vertical = 32.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+            items(state.entries, key = { it.uid }) { entry ->
+                when (entry) {
+                    is LiveChatEntry.ChatMessage -> {
+                        ChatMessageCard(
+                            entry,
+                            emotes,
+                            onLinkClick,
+                            Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
+                        )
+                    }
+
+                    is LiveChatEntry.Raid -> {
+                        SystemChatCard(
+                            text =
+                                if (entry.isOutgoing) {
+                                    "You are raiding ${entry.targetName}"
+                                } else {
+                                    "${entry.targetName} is raiding this channel"
+                                },
+                            Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
+                        )
+                    }
+
+                    is LiveChatEntry.Donation -> {
+                        SystemChatCard(
+                            text =
+                                buildString {
+                                    append(entry.name)
+                                    append(" donated: ")
+                                    append(entry.message)
+                                },
+                            Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
+                        )
+                    }
+                }
             }
         }
-        items(state.entries, key = { it.uid }) { entry ->
-            when (entry) {
-                is LiveChatEntry.ChatMessage ->
-                    ChatMessageCard(
-                        entry,
-                        emotes,
-                        onLinkClick,
-                        Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
-                    )
 
-                is LiveChatEntry.Raid ->
-                    SystemChatCard(
-                        text =
-                            if (entry.isOutgoing) {
-                                "You are raiding ${entry.targetName}"
-                            } else {
-                                "${entry.targetName} is raiding this channel"
-                            },
-                        Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
-                    )
-
-                is LiveChatEntry.Donation ->
-                    SystemChatCard(
-                        text =
-                            buildString {
-                                append(entry.name)
-                                append(" donated: ")
-                                append(entry.message)
-                            },
-                        Modifier.padding(horizontal = horizontalPadding, vertical = 2.dp),
-                    )
-            }
-        }
-    }
-
-    // Shown only while NOT following — it is the "enter FOLLOWING" button.
-    // The mode flag (not the live scroll position) drives visibility, so
-    // it never blinks while programmatic scrolls are in flight.
-    if (state.entries.isNotEmpty() && !following.value) {
+        // Shown only while NOT following — it is the "enter FOLLOWING" button.
+        // The mode flag (not the live scroll position) drives visibility, so
+        // it never blinks while programmatic scrolls are in flight.
+        if (state.entries.isNotEmpty() && !following.value) {
             Surface(
                 modifier =
                     Modifier
                         .align(Alignment.BottomEnd)
                         .padding(12.dp)
-                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp)),
-                shape = RoundedCornerShape(20.dp),
+                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(BluejayTokens().radius.lg)),
+                shape = RoundedCornerShape(BluejayTokens().radius.lg),
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 IconButton(
@@ -274,7 +278,7 @@ private fun ChatMessageCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -288,7 +292,7 @@ private fun ChatMessageCard(
                 val badge = entry.badge
                 if (badge != null) {
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
+                        shape = RoundedCornerShape(BluejayTokens().radius.xs),
                         color = MaterialTheme.colorScheme.primaryContainer,
                     ) {
                         Text(
@@ -334,10 +338,13 @@ private fun ChatMessageCard(
 }
 
 @Composable
-private fun SystemChatCard(text: String, modifier: Modifier = Modifier) {
+private fun SystemChatCard(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Text(
@@ -402,14 +409,17 @@ private fun EmoteText(
     }
 }
 
-private fun splitEmotes(text: String, emoteNames: Set<String>): List<Pair<Boolean, String>> {
+private fun splitEmotes(
+    text: String,
+    emoteNames: Set<String>,
+): List<Pair<Boolean, String>> {
     if (emoteNames.isEmpty() || text.isEmpty()) return listOf(false to text)
     val regex =
         Regex(
             emoteNames
                 .filter { it.isNotEmpty() }
                 .sortedByDescending { it.length }
-                .joinToString("|") { Regex.escape(it) }
+                .joinToString("|") { Regex.escape(it) },
         )
     val out = mutableListOf<Pair<Boolean, String>>()
     var last = 0

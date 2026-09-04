@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.di
 
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
+import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.model.Card
@@ -194,12 +195,21 @@ class EngineHomeRepositoryImpl
             }
         }
 
-        /** Enabled clients → display info (id, name, icon url). */
+        /** Enabled clients → display info (id, name, icon url, login state). */
         private fun publishEnabledSources() {
             _enabledSources.value =
                 StatePlatform.instance
                     .getEnabledClients()
-                    .map { SourceInfo(it.id, it.name, StatePlugins.instance.getPluginIconUriOrNull(it.id)) }
+                    .map { client ->
+                        val js = client as? JSClient
+                        SourceInfo(
+                            id = client.id,
+                            name = client.name,
+                            iconUrl = StatePlugins.instance.getPluginIconUriOrNull(client.id),
+                            supportsLogin = js?.config?.authentication != null,
+                            loggedIn = js?.isLoggedIn ?: false,
+                        )
+                    }
                     .sortedBy { it.name.lowercase() }
         }
 

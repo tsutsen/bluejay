@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.compose
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,9 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.DoneAll
@@ -38,6 +40,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
+import com.tsutsen.platformplayer.stats.WatchStats
+import com.tsutsen.platformplayer.stats.WatchStatsBuilder
 import com.tsutsen.platformplayer.core.designsystem.component.DownloadStripCard
 import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
@@ -45,10 +49,16 @@ import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.database.dao.NotificationDao
+import com.tsutsen.platformplayer.core.database.dao.SubscriptionDao
+import kotlinx.coroutines.flow.combine
 import com.tsutsen.platformplayer.core.database.entity.NotificationEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withContext
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.core.ui.RelativeTime
+import com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -68,6 +78,8 @@ class NotificationsViewModel
     constructor(
         private val notificationDao: NotificationDao,
         private val downloadsRepository: DownloadsRepository,
+        private val historyTracker: HistoryTracker,
+        private val subscriptionDao: SubscriptionDao,
     ) : ViewModel() {
         val notifications: StateFlow<List<NotificationEntity>> =
             notificationDao
@@ -79,6 +91,32 @@ class NotificationsViewModel
             downloadsRepository.downloads
                 .map { list -> list.filter { !it.done } }
                 .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+        /** Aggregated watch stats for the Dash stats card / detail screen. */
+        private val _watchStats = MutableStateFlow(WatchStats.Empty)
+        val watchStats: StateFlow<WatchStats> = _watchStats
+
+        init {
+            // Live history from the Room store the player's HistoryTracker
+            // writes to: the flow emits on every playback write (and
+            // immediately with the current rows), so the stats recompute
+            // reactively without polling.
+            viewModelScope.launch {
+                // Combine with subscriptions so top creators get the
+                // channel avatar (history only stores the video thumbnail).
+                combine(
+                    historyTracker.observeHistory(),
+                    subscriptionDao.observeAll(),
+                ) { history, subs ->
+                    history to subs.associate { it.channelId to it.thumbnailUrl }
+                }.collect { (history, avatars) ->
+                    _watchStats.value =
+                        withContext(Dispatchers.IO) {
+                            WatchStatsBuilder.build(history, channelAvatars = avatars)
+                        }
+                }
+            }
+        }
 
         fun markRead(id: Long) {
             viewModelScope.launch { notificationDao.markRead(id) }
@@ -107,12 +145,19 @@ fun NotificationsScreen(
     val playerUi by playerViewModel.uiState.collectAsState()
     val playerLoaded = playerUi as? com.tsutsen.platformplayer.feature.player.impl.PlayerUiState.Loaded
     val activeDownloads by viewModel.activeDownloads.collectAsState(initial = emptyList())
+    val watchStats by viewModel.watchStats.collectAsState()
     // Long-press on a queue card → the shared video options sheet.
     var sheetVideo by remember { mutableStateOf<ContentItem?>(null) }
+    var showStatsDetail by remember { mutableStateOf(false) }
+
+    if (showStatsDetail) {
+        WatchStatsDetailScreen(stats = watchStats, onBack = { showStatsDetail = false })
+        return
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         AppHeader(
-            title = { Text("Feed", style = MaterialTheme.typography.titleLarge) },
+            title = { Text("Dash", style = MaterialTheme.typography.titleLarge) },
             actions = {
                 TextButton(onClick = { viewModel.markAllRead() }) {
                     Icon(
@@ -129,31 +174,44 @@ fun NotificationsScreen(
             },
         )
 
-        // Persistent queue card at the top of the Feed.
-        QueueStripCard(
-            queue = queue,
-            current = playerLoaded?.currentVideo,
-            isPlaying = playerLoaded?.isPlaying ?: false,
-            onPlay = { index -> playerViewModel.playQueueItem(index) },
-            onRemove = { url -> playerViewModel.removeQueueItemUrl(url) },
-            onMove = { from, to -> playerViewModel.moveQueueItem(from, to) },
-            onPlayPause = {
-                if (playerLoaded?.isPlaying == true) {
-                    playerViewModel.pause()
-                } else {
-                    playerViewModel.resume()
-                }
-            },
-            onLongClick = { video -> sheetVideo = video },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        // The cards + notifications scroll together as one column.
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            // Persistent queue card at the top of the Dash.
+            QueueStripCard(
+                queue = queue,
+                current = playerLoaded?.currentVideo,
+                isPlaying = playerLoaded?.isPlaying ?: false,
+                onPlay = { index -> playerViewModel.playQueueItem(index) },
+                onRemove = { url -> playerViewModel.removeQueueItemUrl(url) },
+                onMove = { from, to -> playerViewModel.moveQueueItem(from, to) },
+                onPlayPause = {
+                    if (playerLoaded?.isPlaying == true) {
+                        playerViewModel.pause()
+                    } else {
+                        playerViewModel.resume()
+                    }
+                },
+                onLongClick = { video -> sheetVideo = video },
+                modifier = Modifier.padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm),
+            )
 
-        // Persistent download-progress card (active downloads only).
-        DownloadStripCard(
-            downloads = activeDownloads,
-            onRemove = { url -> viewModel.cancelDownload(url) },
-            modifier = Modifier.padding(horizontal = 16.dp).padding(top = 4.dp),
-        )
+            // Stats card (health-app style): tapping it opens the detail screen.
+            WatchStatsSummary(
+                stats = watchStats,
+                onClick = { showStatsDetail = true },
+                modifier = Modifier.padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
+            )
+
+            // Persistent download-progress card (active downloads only).
+            DownloadStripCard(
+                downloads = activeDownloads,
+                onRemove = { url -> viewModel.cancelDownload(url) },
+                modifier = Modifier.padding(horizontal = Tokens.SpaceLg).padding(top = Tokens.SpaceXs),
+            )
 
         // Long-press sheet for the queue cards (same host as every other
         // video card in the app). "Go to channel" is hidden: this screen
@@ -171,40 +229,58 @@ fun NotificationsScreen(
             )
         }
 
-        if (notifications.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+        // Notifications section: same card panel as the queue/stats cards
+        // above, with a full bottom gap for the last row.
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = Tokens.SpaceLg,
+                        top = Tokens.SpaceXs,
+                        end = Tokens.SpaceLg,
+                        bottom = Tokens.SpaceLg,
+                    )
+                    .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(Tokens.SpaceLg),
+        ) {
+            Text(
+                text = "Notifications",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(modifier = Modifier.height(Tokens.SpaceSm))
+            if (notifications.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Tokens.SpaceXl),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "No notifications yet",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                    Text(
-                        text = "Tap the bell on a subscribed channel to get notified about new videos",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                Text(
+                    text = "No notifications yet",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = "Tap the bell on a subscribed channel to get notified about new videos",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
             }
         } else {
-            LazyColumn {
-                items(
-                    items = notifications,
-                    key = { it.id },
-                ) { notification ->
-                    NotificationRow(
-                        notification = notification,
-                        onClick = {
-                            viewModel.markRead(notification.id)
-                            playerViewModel.play(notification.contentUrl)
-                        },
-                    )
-                }
+            notifications.forEach { notification ->
+                NotificationRow(
+                    notification = notification,
+                    onClick = {
+                        viewModel.markRead(notification.id)
+                        playerViewModel.play(notification.contentUrl)
+                    },
+                )
+            }
+        }
             }
         }
     }
@@ -231,8 +307,9 @@ private fun NotificationRow(
     Row(
         modifier =
             Modifier
-                .fillMaxSize()
-                .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceSm)
+                .fillMaxWidth()
+                // The section card owns the horizontal padding now.
+                .padding(vertical = Tokens.SpaceSm)
                 .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {

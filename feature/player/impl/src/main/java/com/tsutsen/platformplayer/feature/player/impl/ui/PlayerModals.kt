@@ -1,5 +1,9 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import android.util.Log
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -9,8 +13,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
+
+
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
@@ -22,14 +26,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.component.DownloadSection
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.TileTone
+import com.tsutsen.platformplayer.core.designsystem.component.tokenizedChipShapes
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.AudioTrackInfo
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
+import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import kotlinx.coroutines.flow.StateFlow
 
@@ -53,27 +64,48 @@ internal fun OptionsModal(
     onLoopClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
     onDownload: () -> Unit,
+    onDownloadWithQuality: (DownloadQuality) -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        // BJPROBE: opens directly to Expanded (no PartiallyExpanded) — fix
+        // candidate for the untappable-when-expanded regression.
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                    // BJPROBE: non-consuming event logger — proves whether
+                    // pointer events reach the sheet content at all.
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val e = awaitPointerEvent()
+                                Log.d(
+                                    "BJPROBE",
+                                    "opts content ${e.type} pos=${e.changes.firstOrNull()?.position}",
+                                )
+                            }
+                        }
+                    }
+                    .padding(horizontal = Tokens.SpaceLg)
+                    .padding(bottom = Tokens.SpaceXl),
+            verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
         ) {
             OptionCard(title = "Speed") {
                 listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
                     FilterChip(
                         selected = playbackSpeed == speed,
-                        onClick = { onSpeedChange(speed) },
+                        onClick = {
+                            Log.d("BJPROBE", "SPEED tap $speed")
+                            onSpeedChange(speed)
+                        },
                         label = { Text("${speed}x") },
+                        shapes = tokenizedChipShapes(),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }
             }
             OptionCard(title = "Quality") {
@@ -82,8 +114,9 @@ internal fun OptionsModal(
                         selected = quality == q,
                         onClick = { onQualityChange(q) },
                         label = { Text(q) },
+                        shapes = tokenizedChipShapes(),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }
             }
             // A single track is the default — nothing to select.
@@ -94,8 +127,9 @@ internal fun OptionsModal(
                             selected = track.label == selectedAudioTrack,
                             onClick = { onAudioChange(track.label) },
                             label = { Text(track.label) },
+                            shapes = tokenizedChipShapes(),
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                     }
                 }
             }
@@ -106,8 +140,9 @@ internal fun OptionsModal(
                         selected = subtitle == s,
                         onClick = { onSubtitleChange(s) },
                         label = { Text(s) },
+                        shapes = tokenizedChipShapes(),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }
             }
             // Same tiles as the video card's options sheet — no card
@@ -138,35 +173,24 @@ internal fun OptionsModal(
                         ),
                     modifier = Modifier.weight(1f),
                 )
-                OptionTileView(
-                    tile =
-                        OptionTile(
-                            label =
-                                when (downloadState) {
-                                    is DownloadButtonState.Downloading -> "Stop download"
-                                    is DownloadButtonState.Downloaded -> "Delete"
-                                    is DownloadButtonState.Starting -> "Starting..."
-                                    is DownloadButtonState.Idle -> "Download"
-                                },
-                            icon =
-                                when (downloadState) {
-                                    is DownloadButtonState.Downloading -> Icons.Filled.Stop
-                                    is DownloadButtonState.Downloaded -> Icons.Filled.Delete
-                                    else -> Icons.Filled.Download
-                                },
-                            tone =
-                                when (downloadState) {
-                                    is DownloadButtonState.Downloading -> TileTone.Warning
-                                    is DownloadButtonState.Downloaded -> TileTone.Danger
-                                    is DownloadButtonState.Starting -> TileTone.Highlight
-                                    is DownloadButtonState.Idle -> TileTone.Default
-                                },
-                            progress = (downloadState as? DownloadButtonState.Downloading)?.progress,
-                            indeterminate = downloadState is DownloadButtonState.Starting,
-                            onClick = onDownload,
-                        ),
-                    modifier = Modifier.weight(1f),
-                )
+                // The download group takes the remaining slot in the
+                // tile's shape: the tile's outer gap around it, and its
+                // natural height (the segments mirror the tile's content
+                // stack) makes it exactly one tile tall.
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .padding(Tokens.SpaceXs)
+                            .height(IntrinsicSize.Min),
+                ) {
+                    DownloadSection(
+                        state = downloadState,
+                        onDownload = onDownload,
+                        onDownloadWithQuality = onDownloadWithQuality,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
@@ -182,19 +206,24 @@ private fun OptionCard(
     title: String,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val cardBg by animateColorAsState(
+        MaterialTheme.colorScheme.surfaceContainer,
+        animationSpec = optionCardSpec,
+        label = "option-card-bg",
+    )
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .clip(RoundedCornerShape(BluejayTokens().radius.md))
+                .background(cardBg)
+                .padding(horizontal = Tokens.SpaceMd, vertical = Tokens.SpaceSm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.width(76.dp),
+            modifier = Modifier.width(Tokens.OptionLabelWidth),
         )
         Row(
             modifier =
@@ -206,6 +235,9 @@ private fun OptionCard(
         }
     }
 }
+
+/** Cross-fade for option-card state colors (M3's own color duration). */
+private val optionCardSpec = tween<Color>(200, easing = FastOutSlowInEasing)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -223,7 +255,7 @@ internal fun ChaptersPanel(
         Text(
             text = "Chapters",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(Tokens.SpaceLg),
         )
         LazyColumn {
             itemsIndexed(chapters) { _, chapter ->
@@ -232,7 +264,7 @@ internal fun ChaptersPanel(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(Tokens.SpaceLg)
                             .clickable { onChapterClick(chapter.startTimeMs) }
                             .background(
                                 if (isSelected) {
@@ -241,7 +273,7 @@ internal fun ChaptersPanel(
                                     androidx.compose.ui.graphics.Color.Transparent
                                 },
                                 MaterialTheme.shapes.medium,
-                            ).padding(12.dp),
+                            ).padding(Tokens.SpaceMd),
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 ) {
                     Text(
@@ -254,7 +286,7 @@ internal fun ChaptersPanel(
                                 MaterialTheme.colorScheme.onSurface
                             },
                     )
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(Tokens.SpaceLg))
                     Text(
                         text = chapter.title,
                         style = MaterialTheme.typography.bodyMedium,

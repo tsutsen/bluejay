@@ -26,7 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 
@@ -46,7 +46,7 @@ fun DownloadStripCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainerHigh),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -75,10 +75,10 @@ fun DownloadStripCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier =
-                        Modifier
-                            .width(68.dp)
-                            .height(38.dp)
-                            .clip(RoundedCornerShape(Tokens.RadiusXs)),
+                            Modifier
+                                .width(68.dp)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(BluejayTokens().radius.xs)),
                     ) {
                         AsyncImage(
                             url = d.thumbnailUrl,

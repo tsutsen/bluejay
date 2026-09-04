@@ -2,6 +2,10 @@ package com.tsutsen.platformplayer.core.designsystem.layout
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.animation.AnimatedVisibility
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.effectsSpec
+import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -32,6 +36,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -90,7 +95,7 @@ val bluejayNavItems =
         NavItemDef("search", Icons.Outlined.Search, Icons.Filled.Search, "Search"),
         NavItemDef("subscriptions", Icons.Outlined.Subscriptions, Icons.Filled.Subscriptions, "Subs"),
         NavItemDef("library", Icons.Outlined.LibraryBooks, Icons.Filled.LibraryBooks, "Library"),
-        NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Feed"),
+        NavItemDef("notifications", Icons.Outlined.Notifications, Icons.Filled.Notifications, "Dash"),
         NavItemDef("settings", Icons.Outlined.Settings, Icons.Filled.Settings, "Settings"),
     )
 
@@ -173,10 +178,12 @@ fun AppNavigationRail(
                 selected = item.key == currentDestination,
                 onClick = { onTabSelected(item.key) },
                 icon = {
-                    Icon(
-                        imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
-                        contentDescription = item.label,
-                    )
+                    PulseOnSelect(selected = item.key == currentDestination) {
+                        Icon(
+                            imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
+                            contentDescription = item.label,
+                        )
+                    }
                 },
                 // Alpha (not visibility) so the item height never reflows
                 // while the rail fades in/out of fullscreen. maxLines=1 +
@@ -218,10 +225,12 @@ fun AppNavigationBar(
                 selected = item.key == currentDestination,
                 onClick = { onTabSelected(item.key) },
                 icon = {
-                    Icon(
-                        imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
-                        contentDescription = item.label,
-                    )
+                    PulseOnSelect(selected = item.key == currentDestination) {
+                        Icon(
+                            imageVector = if (item.key == currentDestination) item.selectedIcon else item.icon,
+                            contentDescription = item.label,
+                        )
+                    }
                 },
                 // Alpha (not visibility) so the bar height never reflows
                 // while the bar fades in/out of fullscreen. maxLines=1 +
@@ -242,12 +251,33 @@ fun AppNavigationBar(
 }
 
 /**
+ * Scales a nav icon 1 → 1.06 → 1 when it becomes selected (the borrowed
+ * "pill pulse"). Applied to the icon only — the keep-alive content layer
+ * never slides, so tab persistence is untouched.
+ */
+@Composable
+private fun PulseOnSelect(
+    selected: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val pulse = remember { Animatable(1f) }
+    val spec = spatialSpec<Float>()
+    LaunchedEffect(selected) {
+        if (selected) {
+            pulse.animateTo(1.06f, spec)
+            pulse.animateTo(1f, spec)
+        }
+    }
+    Box(modifier = Modifier.graphicsLayer { scaleX = pulse.value; scaleY = pulse.value }) {
+        content()
+    }
+}
+
+/**
  * Padding between the nav card edge and the nav items.
  */
-private val NavSurfacePadH = 16.dp
-private val NavSurfacePadV = 12.dp
-
-private val NavSurfaceCorner = 24.dp
+private val NavSurfacePadH = Tokens.SpaceLg
+private val NavSurfacePadV = Tokens.SpaceMd
 
 /**
  * Vertical padding for the PORTRAIT bottom bar. Reduced from [NavSurfacePadV]
@@ -265,12 +295,14 @@ private val PortraitNavPadV = 4.dp
  * finally crosses zero.
  */
 @Composable
+// Clamped: the spatial spring overshoots past its 0.dp target when a
+// corner squares off, and a negative radius is invalid.
 private fun animatedCorner(rounded: Boolean, label: String): Dp =
     animateDpAsState(
-        targetValue = if (rounded) NavSurfaceCorner else 0.dp,
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        targetValue = if (rounded) BluejayTokens().radius.lg else 0.dp,
+        animationSpec = spatialSpec<Dp>(),
         label = label,
-    ).value
+    ).value.coerceAtLeast(0.dp)
 
 /**
  * Surface behind the portrait bottom navigation bar.
@@ -364,25 +396,25 @@ private fun NavigationRailSurface(
     val vTop by
         animateDpAsState(
             targetValue = if (navMorphed) topInset else with(density) { verticalGapPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = spatialSpec<Dp>(),
             label = "navRailGapTop",
         )
     val vBottom by
         animateDpAsState(
             targetValue = if (navMorphed) bottomInset else with(density) { verticalGapPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = spatialSpec<Dp>(),
             label = "navRailGapBottom",
         )
     val hStart by
         animateDpAsState(
             targetValue = if (navMorphed) startInset else with(density) { horizontalGapPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = spatialSpec<Dp>(),
             label = "navRailGapStart",
         )
     val hEnd by
         animateDpAsState(
             targetValue = if (navMorphed) endInset else with(density) { horizontalGapPx.toDp() },
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = spatialSpec<Dp>(),
             label = "navRailGapEnd",
         )
     // Morphed: fully flat rectangle (all corners 0). Shrunken: the rail's
@@ -411,7 +443,14 @@ private fun NavigationRailSurface(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(top = vTop, bottom = vBottom, start = hStart, end = hEnd)
+                    // Clamped: springs overshoot past 0 when an edge inset is 0
+                    // (gesture bar / screen edge) — negative padding is fatal.
+                    .padding(
+                        top = vTop.coerceAtLeast(0.dp),
+                        bottom = vBottom.coerceAtLeast(0.dp),
+                        start = hStart.coerceAtLeast(0.dp),
+                        end = hEnd.coerceAtLeast(0.dp),
+                    )
                     .clip(
                         RoundedCornerShape(
                             topStart = topStart,
@@ -496,7 +535,7 @@ fun AppLayout(
     val topInset by
         animateDpAsState(
             targetValue = if (config.showNavigation) statusBarTop else 0.dp,
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
+            animationSpec = spatialSpec<Dp>(),
             label = "appContentTopInset",
         )
 
@@ -509,13 +548,13 @@ fun AppLayout(
             val railWidth by
                 animateDpAsState(
                     targetValue = if (config.showNavigation) AppNavigationRailWidth else 0.dp,
-                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                    animationSpec = spatialSpec<Dp>(),
                     label = "navRailWidth",
                 )
             val railAlpha by
                 animateFloatAsState(
                     targetValue = if (config.showNavigation) 1f else 0f,
-                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                    animationSpec = effectsSpec<Float>(),
                     label = "navRailAlpha",
                 )
             Row(modifier = Modifier.fillMaxSize()) {
@@ -531,20 +570,22 @@ fun AppLayout(
                         }
                     }
                 }
-                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset)) {
+                // Clamped: the spring overshoots below 0 when the player goes
+                // fullscreen (inset target is 0) — negative padding is fatal.
+                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset.coerceAtLeast(0.dp))) {
                     content()
                 }
             }
         } else {
             // Portrait: Content + NavigationBar at bottom
             Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset)) {
+                Box(modifier = Modifier.weight(1f).fillMaxSize().padding(top = topInset.coerceAtLeast(0.dp))) {
                     content()
                 }
                 AnimatedVisibility(
                     visible = config.showNavigation,
-                    enter = fadeIn(animationSpec = tween(300)),
-                    exit = fadeOut(animationSpec = tween(300)),
+                    enter = fadeIn(animationSpec = effectsSpec<Float>()),
+                    exit = fadeOut(animationSpec = effectsSpec<Float>()),
                 ) {
                     NavigationBarSurface(navMorphed = navMorphed) {
                         navigationContent()

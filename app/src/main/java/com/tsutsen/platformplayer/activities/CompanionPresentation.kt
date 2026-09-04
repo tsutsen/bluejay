@@ -1,37 +1,34 @@
 package com.tsutsen.platformplayer.activities
 
 import android.app.Activity
+import android.app.Presentation
 import android.content.Context
 import android.content.ContextWrapper
-import android.view.Window
 import android.content.Intent
-import android.app.Presentation
 import android.net.Uri
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
-import android.view.ViewGroup
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.setViewTreeLifecycleOwner
-import com.tsutsen.platformplayer.logging.Logger
-import kotlinx.coroutines.flow.distinctUntilChanged
-import java.lang.reflect.Proxy
 import android.os.Bundle
 import android.view.Display
+import android.view.ViewGroup
+import android.view.Window
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,9 +36,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -51,18 +45,30 @@ import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupMenuState
+import androidx.compose.material3.ButtonGroupScope
+import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -79,63 +85,88 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import com.tsutsen.platformplayer.compose.WatchStatsSummary
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
-import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
-import com.tsutsen.platformplayer.feature.player.impl.SystemControls
-import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
-import com.tsutsen.platformplayer.feature.player.impl.formatViewCount
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
-import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
-import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
-import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
-import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
+import com.tsutsen.platformplayer.core.designsystem.component.CommentCardView
+import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
+import com.tsutsen.platformplayer.core.designsystem.component.GroupCornerShapes
+import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 import com.tsutsen.platformplayer.core.designsystem.component.QueueStripCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardFull
+import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardPills
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
+import com.tsutsen.platformplayer.core.designsystem.component.connectedGroupShapes
 import com.tsutsen.platformplayer.core.designsystem.component.formatDuration
-import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
-import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.CommentItem
+import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.ContentType
+import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
-import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
-import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
+import com.tsutsen.platformplayer.core.model.WatchState
+import com.tsutsen.platformplayer.core.model.toContentItem
 import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
 import com.tsutsen.platformplayer.feature.player.impl.ChannelRow
+import com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
+import com.tsutsen.platformplayer.feature.player.impl.PlayerEvent
+import com.tsutsen.platformplayer.feature.player.impl.PlayerEventBus
+import com.tsutsen.platformplayer.feature.player.impl.SystemControls
+import com.tsutsen.platformplayer.feature.player.impl.formatRelativeTime
+import com.tsutsen.platformplayer.feature.player.impl.formatTime
+import com.tsutsen.platformplayer.feature.player.impl.formatViewCount
+import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.stats.CreatorWatch
+import com.tsutsen.platformplayer.stats.WatchStats
+import com.tsutsen.platformplayer.stats.WatchStatsBuilder
+import com.tsutsen.platformplayer.stats.humanDuration
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.lang.reflect.Proxy
 import kotlin.math.roundToInt
+import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 
 /**
  * The second-screen UI, hosted in a Presentation window on the rear display
@@ -166,9 +197,12 @@ class CompanionPresentation(
     private val playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
     private val liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     private val channelRepository: ChannelRepository,
+    private val historyTracker: HistoryTracker,
+    private val subscriptionDao: com.tsutsen.platformplayer.core.database.dao.SubscriptionDao,
     private val onChannelClick: (String) -> Unit,
+    private val onPlaylistClick: (String) -> Unit,
+    private val onWatchStats: () -> Unit,
 ) : Presentation(context, display) {
-
     @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -184,7 +218,11 @@ class CompanionPresentation(
         val lifecycleOwner =
             (context as? LifecycleOwner) ?: object : LifecycleOwner {
                 private val registry = LifecycleRegistry(this)
-                init { registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME) }
+
+                init {
+                    registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+                }
+
                 override val lifecycle: Lifecycle
                     get() = registry
             }
@@ -200,14 +238,40 @@ class CompanionPresentation(
         composeView.setContent {
             // Follow the user's theme settings — same computation as
             // MainActivity, so the second screen matches the main app.
-            val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
+            // Gated on the real prefs: a default initial would render one
+            // frame of default tokens, then the radius springs would animate
+            // default→saved and overshoot into negative corner radii.
+            val prefsState by settingsRepository.preferences.collectAsState(initial = null)
+            val prefs = prefsState ?: return@setContent
             val darkTheme =
                 when (prefs.appearance.themeMode) {
                     ThemeMode.LIGHT -> false
                     ThemeMode.DARK -> true
                     ThemeMode.AUTO -> isSystemInDarkTheme()
                 }
-            BluejayTheme(darkTheme = darkTheme, dynamicColor = prefs.appearance.dynamicColor) {
+            val appearance = prefs.appearance
+            val activeTheme =
+                appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
+            val customSchemes =
+                remember(activeTheme) {
+                    activeTheme?.let {
+                        ThemeEngine.generate(
+                            it.primary,
+                            it.secondary,
+                            it.tertiary,
+                            it.paletteStyle,
+                            background = it.background,
+                            contrast = it.contrast,
+                        )
+                    }
+                }
+
+            BluejayTheme(
+                darkTheme = darkTheme,
+                dynamicColor = appearance.dynamicColor,
+                uiRounding = appearance.uiRounding,
+                colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
+            ) {
                 CompanionContent(
                     playerRepository = playerRepository,
                     libraryRepository = libraryRepository,
@@ -217,8 +281,12 @@ class CompanionPresentation(
                     settingsRepository = settingsRepository,
                     liveChatRepository = liveChatRepository,
                     channelRepository = channelRepository,
+                    historyTracker = historyTracker,
+                    subscriptionDao = subscriptionDao,
                     companionWindow = window,
                     onChannelClick = onChannelClick,
+                    onPlaylistClick = onPlaylistClick,
+                    onWatchStats = onWatchStats,
                 )
             }
         }
@@ -235,36 +303,53 @@ class CompanionPresentation(
         // while the owner is still in its initialization stage (like
         // ComponentActivity does in onCreate), so it must start INITIALIZED
         // and never be advanced.
-        val savedStateLifecycle = object : LifecycleOwner {
-            private val registry = LifecycleRegistry(this)
-            override val lifecycle: Lifecycle
-                get() = registry
-        }
+        val savedStateLifecycle =
+            object : LifecycleOwner {
+                private val registry = LifecycleRegistry(this)
+                override val lifecycle: Lifecycle
+                    get() = registry
+            }
         try {
             val ownerItf = Class.forName("androidx.savedstate.SavedStateRegistryOwner")
             val controllerCls = Class.forName("androidx.savedstate.SavedStateRegistryController")
             val companion = controllerCls.getField("Companion").get(null)
             val create = controllerCls.getMethod("create", ownerItf)
             var controller: Any? = null
-            val owner = Proxy.newProxyInstance(
-                ownerItf.classLoader,
-                arrayOf(ownerItf),
-            ) { proxy, method, args ->
-                when (method.name) {
-                    "getLifecycle" -> savedStateLifecycle.lifecycle
-                    "getSavedStateRegistry" -> {
-                        if (controller == null) controller = create.invoke(companion, proxy)
-                        controller!!
-                            .javaClass
-                            .getMethod("getSavedStateRegistry")
-                            .invoke(controller)
+            val owner =
+                Proxy.newProxyInstance(
+                    ownerItf.classLoader,
+                    arrayOf(ownerItf),
+                ) { proxy, method, args ->
+                    when (method.name) {
+                        "getLifecycle" -> {
+                            savedStateLifecycle.lifecycle
+                        }
+
+                        "getSavedStateRegistry" -> {
+                            if (controller == null) controller = create.invoke(companion, proxy)
+                            controller!!
+                                .javaClass
+                                .getMethod("getSavedStateRegistry")
+                                .invoke(controller)
+                        }
+
+                        "hashCode" -> {
+                            System.identityHashCode(proxy)
+                        }
+
+                        "equals" -> {
+                            proxy === args?.getOrNull(0)
+                        }
+
+                        "toString" -> {
+                            "CompanionSavedStateOwner"
+                        }
+
+                        else -> {
+                            throw UnsupportedOperationException(method.name)
+                        }
                     }
-                    "hashCode" -> System.identityHashCode(proxy)
-                    "equals" -> proxy === args?.getOrNull(0)
-                    "toString" -> "CompanionSavedStateOwner"
-                    else -> throw UnsupportedOperationException(method.name)
                 }
-            }
             // create() only calls getLifecycle() (not getSavedStateRegistry),
             // so this cannot recurse.
             controller = create.invoke(companion, owner)
@@ -272,8 +357,10 @@ class CompanionPresentation(
                 .javaClass
                 .getMethod("performRestore", android.os.Bundle::class.java)
                 .invoke(controller, null)
-            val set = Class.forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
-                .getMethod("set", android.view.View::class.java, ownerItf)
+            val set =
+                Class
+                    .forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
+                    .getMethod("set", android.view.View::class.java, ownerItf)
             set.invoke(null, view, owner)
         } catch (t: Throwable) {
             var root: Throwable? = t
@@ -303,8 +390,12 @@ private fun CompanionContent(
     settingsRepository: SettingsRepository,
     liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     channelRepository: ChannelRepository,
+    historyTracker: HistoryTracker,
+    subscriptionDao: com.tsutsen.platformplayer.core.database.dao.SubscriptionDao,
     companionWindow: Window?,
     onChannelClick: (String) -> Unit,
+    onPlaylistClick: (String) -> Unit,
+    onWatchStats: () -> Unit,
 ) {
     val playerState by playerRepository.playerState.collectAsState()
     val liveChat by liveChatRepository.state.collectAsState()
@@ -323,8 +414,11 @@ private fun CompanionContent(
 
     // Dual screen settings: which pages / video-page tabs / library
     // sections the second screen shows (Settings > Dual screen).
-    val prefs by settingsRepository.preferences.collectAsState(initial = AppPreferences())
-    val pageKeys = listOf("video", "library", "home").filter { it in prefs.dualScreenPages }
+    val prefsState by settingsRepository.preferences.collectAsState(initial = null)
+    val prefs = prefsState ?: return
+    // Saved order wins (Settings > Dual screen > Pages); unknown keys are
+    // dropped, missing pages are simply absent.
+    val pageKeys = prefs.dualScreenPages.filter { it in setOf("video", "library", "home", "dash") }
     // Configured order wins; canonical keys appended as fallback (older
     // saves predate info/controls), then filtered to the enabled set.
     val allVideoTabKeys =
@@ -344,9 +438,10 @@ private fun CompanionContent(
     val comments = playerState.comments
     val isLive = video?.contentType == com.tsutsen.platformplayer.core.model.ContentType.LIVE
     // distinctBy: duplicate urls from the engine crash the strip's keying.
-    val recommendations = playerState.recommendations
-        .filterIsInstance<CoreVideoCard>()
-        .distinctBy { it.url }
+    val recommendations =
+        playerState.recommendations
+            .filterIsInstance<CoreVideoCard>()
+            .distinctBy { it.url }
 
     // Live library + home data (shared repositories — updates propagate).
     val sections by libraryRepository.sections.collectAsState()
@@ -376,8 +471,57 @@ private fun CompanionContent(
 
     var optionsCard by remember { mutableStateOf<CoreVideoCard?>(null) }
 
-    val onPlay: (String) -> Unit = { url -> scope.launch { playerRepository.play(url) } }
     val onLongClick: (CoreVideoCard) -> Unit = { card -> optionsCard = card }
+
+    // Dash page: live history (the Room flow the player's HistoryTracker
+    // writes to) and the stats derived from it — the same pipeline as the
+    // Dash tab card on the main screen. Subscriptions supply the channel
+    // avatars (history rows only store video thumbnails).
+    val history by historyTracker.observeHistory().collectAsState(initial = emptyList())
+    val subscriptions by subscriptionDao.observeAll().collectAsState(initial = emptyList())
+    var watchStats by remember { mutableStateOf(WatchStats()) }
+    LaunchedEffect(history, subscriptions) {
+        watchStats =
+            withContext(Dispatchers.IO) {
+                WatchStatsBuilder.build(
+                    history,
+                    channelAvatars = subscriptions.associate { it.channelId to it.thumbnailUrl },
+                )
+            }
+    }
+    // A URL-only play (library slots, etc.) enriches from history when the
+    // entry is known, so the player UI shows real details immediately
+    // instead of the "Loading..." placeholder.
+    val onPlay: (String) -> Unit = { url ->
+        scope.launch {
+            val entry = history.firstOrNull { it.contentUrl == url }
+            playerRepository.play(url, entry?.toContentItem())
+        }
+    }
+    // A play with full details (continue widget, recommendations, options
+    // sheet) — the same path the main screen's card taps take.
+    val onPlayItem: (ContentItem) -> Unit = { item ->
+        scope.launch { playerRepository.play(item.url, item) }
+    }
+    // Dash page: the continue widget's discarded entries (local dismiss —
+    // history itself is untouched), remembered across relaunches.
+    val context = LocalContext.current
+    val companionPrefs =
+        remember { context.getSharedPreferences("bluejay_companion", Context.MODE_PRIVATE) }
+    var discardedContinue by remember {
+        mutableStateOf(
+            companionPrefs.getStringSet("discarded_continue_urls", emptySet())?.toSet()
+                ?: emptySet()
+        )
+    }
+
+    fun discardFromContinue(url: String) {
+        val updated = discardedContinue + url
+        discardedContinue = updated
+        // ponytail: unbounded URL set — grows by one string per dismiss;
+        // prune or cap if it ever gets large.
+        companionPrefs.edit().putStringSet("discarded_continue_urls", updated).apply()
+    }
 
     // Info tab: like/dislike state from the library, subscribe state from
     // the channel repository (same actions as the main player row).
@@ -393,8 +537,11 @@ private fun CompanionContent(
     LaunchedEffect(channelUrl) {
         val url = channelUrl
         isSubscribed =
-            if (url.isNullOrEmpty()) false
-            else withContext(Dispatchers.IO) { channelRepository.isSubscribed(url) }
+            if (url.isNullOrEmpty()) {
+                false
+            } else {
+                withContext(Dispatchers.IO) { channelRepository.isSubscribed(url) }
+            }
     }
     val currentVideoCard = video?.toCoreVideoCard()
     val onSubscribe: () -> Unit = {
@@ -416,6 +563,16 @@ private fun CompanionContent(
     }
 
     val pagerState = rememberPagerState(pageCount = { pageKeys.size })
+
+    // The dash page is the landing page; when a video opens in the player
+    // the pager flips to the video page.
+    val videoPageIndex = pageKeys.indexOf("video")
+    LaunchedEffect(video?.url) {
+        if (video == null) return@LaunchedEffect
+        if (videoPageIndex in pageKeys.indices && videoPageIndex != pagerState.currentPage) {
+            pagerState.animateScrollToPage(videoPageIndex)
+        }
+    }
     // Settings can shrink the page list while the screen is up — snap back
     // to the first page instead of clamping mid-gesture.
     LaunchedEffect(pageKeys.size) {
@@ -475,7 +632,7 @@ private fun CompanionContent(
                     CompanionVideoOptionsSheet(
                         card = card,
                         onDismiss = { optionsCard = null },
-                        onPlay = onPlay,
+                        onPlayItem = onPlayItem,
                         libraryRepository = libraryRepository,
                         downloadsRepository = downloadsRepository,
                         playbackQueueRepository = playbackQueueRepository,
@@ -487,107 +644,144 @@ private fun CompanionContent(
             }
         },
         content = { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-        if (pageKeys.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding),
             ) {
-                Text(
-                    "No pages enabled",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-        VerticalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-        ) { page ->
-        when (pageKeys.getOrNull(page)) {
-            "video" -> CompanionVideoPage(
-                playerState = playerState,
-                video = video,
-                comments = comments,
-                isLive = isLive,
-                liveChat = liveChat,
-                recommendations = recommendations,
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
-                onPlayPause = {
-                    scope.launch {
-                        if (playerState.isPlaying) playerRepository.pause()
-                        else playerRepository.resume()
+                if (pageKeys.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No pages enabled",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                },
-                onSeekBy = { deltaMs ->
-                    val target = (playerState.currentPositionMs + deltaMs)
-                        .coerceIn(0L, if (playerState.durationMs > 0) playerState.durationMs else Long.MAX_VALUE)
-                    scope.launch { playerRepository.seekTo(target) }
-                },
-                onPrevious = {
-                    val index = playerState.selectedIndex
-                    if (playerState.queue.isNotEmpty() && index > 0) {
-                        scope.launch { playerRepository.play(playerState.queue[index - 1].id) }
-                    }
-                },
-                onNext = {
-                    val index = playerState.selectedIndex
-                    if (playerState.queue.isNotEmpty() && index + 1 < playerState.queue.size) {
-                        scope.launch { playerRepository.play(playerState.queue[index + 1].id) }
-                    }
-                },
-                onSeekTo = { ms -> scope.launch { playerRepository.seekTo(ms) } },
-                    onPlay = onPlay,
-                    onLongClick = onLongClick,
-                    queue = queue,
-                    onQueuePlay = { index -> playbackQueueRepository.playAt(index) },
-                    onQueueRemove = { url -> playbackQueueRepository.remove(url) },
-                    onQueueMove = { from, to -> playbackQueueRepository.move(from, to) },
-                    videoTabKeys = videoTabKeys,
-                    pageOrder = pageOrder,
-                    savedTypes = savedTypes,
-                    isSubscribed = isSubscribed,
-                    onSubscribe = onSubscribe,
-                    onLike = onVideoLike,
-                    onDislike = onVideoDislike,
-                    onMore = { currentVideoCard?.let { optionsCard = it } },
-                    companionWindow = companionWindow,
-                    onChannelClick = onChannelClick,
-                )
+                } else {
+                    VerticalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { page ->
+                        when (pageKeys.getOrNull(page)) {
+                            "video" -> {
+                                CompanionVideoPage(
+                                    playerState = playerState,
+                                    video = video,
+                                    comments = comments,
+                                    isLive = isLive,
+                                    liveChat = liveChat,
+                                    onPlayItem = onPlayItem,
+                                    recommendations = recommendations,
+                                    selectedTab = selectedTab,
+                                    onTabSelected = { selectedTab = it },
+                                    onPlayPause = {
+                                        // Publish to the player event bus so the main
+                                        // screen shows the same feedback as its own actions.
+                                        PlayerEventBus.emit(
+                                            PlayerEvent.PlayPauseToggled(isPlaying = !playerState.isPlaying),
+                                        )
+                                        scope.launch {
+                                            if (playerState.isPlaying) {
+                                                playerRepository.pause()
+                                            } else {
+                                                playerRepository.resume()
+                                            }
+                                        }
+                                    },
+                                    onSeekBy = { deltaMs ->
+                                        PlayerEventBus.emit(PlayerEvent.Seek(deltaMs))
+                                        val target =
+                                            (playerState.currentPositionMs + deltaMs)
+                                                .coerceIn(0L, if (playerState.durationMs > 0) playerState.durationMs else Long.MAX_VALUE)
+                                        scope.launch { playerRepository.seekTo(target) }
+                                    },
+                                    onPrevious = {
+                                        val index = playerState.selectedIndex
+                                        if (playerState.queue.isNotEmpty() && index > 0) {
+                                            PlayerEventBus.emit(PlayerEvent.PreviousRequested)
+                                            scope.launch { playerRepository.play(playerState.queue[index - 1].id) }
+                                        }
+                                    },
+                                    onNext = {
+                                        val index = playerState.selectedIndex
+                                        if (playerState.queue.isNotEmpty() && index + 1 < playerState.queue.size) {
+                                            PlayerEventBus.emit(PlayerEvent.NextRequested)
+                                            scope.launch { playerRepository.play(playerState.queue[index + 1].id) }
+                                        }
+                                    },
+                                    onSeekTo = { ms -> scope.launch { playerRepository.seekTo(ms) } },
+                                    onPlay = onPlay,
+                                    onLongClick = onLongClick,
+                                    queue = queue,
+                                    onQueuePlay = { index -> playbackQueueRepository.playAt(index) },
+                                    onQueueRemove = { url -> playbackQueueRepository.remove(url) },
+                                    onQueueMove = { from, to -> playbackQueueRepository.move(from, to) },
+                                    videoTabKeys = videoTabKeys,
+                                    pageOrder = pageOrder,
+                                    savedTypes = savedTypes,
+                                    isSubscribed = isSubscribed,
+                                    onSubscribe = onSubscribe,
+                                    onLike = onVideoLike,
+                                    onDislike = onVideoDislike,
+                                    onMore = { currentVideoCard?.let { optionsCard = it } },
+                                    companionWindow = companionWindow,
+                                    onChannelClick = onChannelClick,
+                                )
+                            }
 
-                "library" ->
-                    CompanionLibraryPage(
-                        sections = sections,
-                        slots = librarySlotValues,
-                        libraryRepository = libraryRepository,
-                        onPlay = onPlay,
-                        onLongClick = onLongClick,
-                    )
+                            "library" -> {
+                                CompanionLibraryPage(
+                                    sections = sections,
+                                    slots = librarySlotValues,
+                                    libraryRepository = libraryRepository,
+                                    onPlay = onPlay,
+                                    onLongClick = onLongClick,
+                                    onPlaylistClick = onPlaylistClick,
+                                )
+                            }
 
-                "home" ->
-                    CompanionHomePage(
-                        items = dualHomeItems,
-                        onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
-                        onPlay = onPlay,
-                        onLongClick = onLongClick,
+                            "home" -> {
+                                CompanionHomePage(
+                                    items = dualHomeItems,
+                                    onLoadNextPage = { scope.launch { homeRepository.loadNextPage() } },
+                                    onPlay = onPlay,
+                                    onLongClick = onLongClick,
+                                )
+                            }
+
+                            "dash" -> {
+                                CompanionDashPage(
+                                    stats = watchStats,
+                                    history = history,
+                                    currentVideoUrl = video?.url,
+                                    isPlaying = playerState.isPlaying,
+                                    onPlay = onPlay,
+                                    onPlayItem = onPlayItem,
+                                    discarded = discardedContinue,
+                                    onDiscard = { url ->
+                                        discardFromContinue(url)
+                                    },
+                                    onStatsClick = onWatchStats,
+                                    onChannelClick = onChannelClick,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (scrimAlpha > 0.001f) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = scrimAlpha))
+                                .clickable { scope.launch { sheetState.hide() } },
                     )
+                }
             }
-        }
-        }
-        if (scrimAlpha > 0.001f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = scrimAlpha))
-                    .clickable { scope.launch { sheetState.hide() } },
-            )
-        }
-        }
         },
     )
 }
@@ -596,6 +790,7 @@ private fun CompanionContent(
  * Page 0: the currently playing video. Controls aligned to the top, then
  * the title block, then the comments/recommended tabs + horizontal strip.
  */
+
 /**
  * Second-screen Queue tab: the pending queue (tap = play, hold the dots to
  * reorder, X = remove). The same horizontal strip component as the Feed
@@ -647,6 +842,7 @@ private fun CompanionVideoPage(
     onNext: () -> Unit,
     onSeekTo: (Long) -> Unit,
     onPlay: (String) -> Unit,
+    onPlayItem: (ContentItem) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
     queue: List<ContentItem>,
     onQueuePlay: (Int) -> Unit,
@@ -666,14 +862,15 @@ private fun CompanionVideoPage(
 ) {
     val context = LocalContext.current
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         for (element in pageOrder) {
             when (element) {
-                "controls" ->
+                "controls" -> {
                     CompanionControlRow(
                         isPlaying = playerState.isPlaying,
                         onPlayPause = onPlayPause,
@@ -681,8 +878,9 @@ private fun CompanionVideoPage(
                         onPrevious = onPrevious,
                         onNext = onNext,
                     )
+                }
 
-                "video" ->
+                "video" -> {
                     video?.let {
                         CompanionVideoHeader(
                             video = it,
@@ -690,8 +888,9 @@ private fun CompanionVideoPage(
                             durationMs = playerState.durationMs,
                         )
                     }
+                }
 
-                "tabs" ->
+                "tabs" -> {
                     if (video != null) {
                         VideoPageTabs(
                             video = video,
@@ -701,6 +900,7 @@ private fun CompanionVideoPage(
                             comments = comments,
                             isLive = isLive,
                             liveChat = liveChat,
+                            onPlayItem = onPlayItem,
                             recommendations = recommendations,
                             queue = queue,
                             positionMs = playerState.currentPositionMs,
@@ -730,13 +930,15 @@ private fun CompanionVideoPage(
                             onChannelClick = onChannelClick,
                         )
                     }
+                }
             }
         }
         if (video == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -763,6 +965,7 @@ private fun VideoPageTabs(
     comments: List<CommentItem>,
     isLive: Boolean,
     liveChat: com.tsutsen.platformplayer.core.model.LiveChatUiState?,
+    onPlayItem: (ContentItem) -> Unit,
     recommendations: List<CoreVideoCard>,
     queue: List<ContentItem>,
     positionMs: Long,
@@ -814,234 +1017,242 @@ private fun VideoPageTabs(
             onSelect = onTabSelected,
         )
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
         ) {
             key(selectedTab) {
-                    if (activeTab == null) {
-                        // No tabs enabled — nothing to show in the strip.
-                        Unit
-                    } else if (activeTab == "info") {
-                        // Info tab: the main player's channel row (icon-only
-                        // subscribe) + a scrollable description card.
-                        CompanionInfoTab(
-                            video = video,
-                            savedTypes = savedTypes,
-                            isSubscribed = isSubscribed,
-                            onSubscribe = onSubscribe,
-                            onLike = onLike,
-                            onDislike = onDislike,
-                            onMore = onMore,
-                            durationMs = durationMs,
-                            onSeekTo = onSeekTo,
-                            onChannelClick = onChannelClick,
-                        )
-                    } else if (activeTab == "controls") {
-                        // Controls tab: playback, volume and brightness
-                        // sliders.
-                        CompanionControlsTab(
-                            positionMs = positionMs,
-                            durationMs = durationMs,
-                            isLive = isLive,
-                            onSeekTo = onSeekTo,
-                            companionWindow = companionWindow,
-                        )
-                    } else if (activeTab == "queue") {
-                        // Queue tab: the playing video pinned on top, then
-                        // the pending queue (tap = play, drag = reorder,
-                        // X = remove). The same horizontal strip as the
-                        // tabs' horizontal strips.
-                        CompanionQueueTabContent(
-                            queue = queue,
-                            current = currentVideo,
-                            isPlaying = isPlaying,
-                            onPlayItem = onQueuePlay,
-                            onRemove = onQueueRemove,
-                            onMove = onQueueMove,
-                            onPlayPause = onPlayPause,
-                            onLongClick = { item ->
-                                onLongClick(
-                                    CoreVideoCard(
-                                        id = item.id,
-                                        title = item.title,
-                                        thumbnailUrl = item.thumbnailUrl,
-                                        author = item.author?.name,
-                                        authorUrl = item.author?.url,
-                                        durationMs = item.durationMs,
-                                        viewCount = item.viewCount,
-                                        publishedAt = item.publishedAt,
-                                        url = item.url,
-                                    ),
-                                )
-                            },
-                        )
-                    } else if (activeTab == "dot") {
-                        // The distraction-free tab: just the video.
-                        Unit
-                    } else if (activeTab == "comments" && isLive) {
-                        // Live stream: the comments slot becomes the live
-                        // chat, same as the main player. Vertical, fills the
-                        // tab area.
-                        com.tsutsen.platformplayer.feature.player.impl.ui.components
-                            .LiveChatPanel(
-                                state = liveChat,
-                                modifier = Modifier.fillMaxSize(),
-                                listHeight = null,
-                                // No horizontal inset on the companion
-                                // (bottom screen) chat.
-                                horizontalPadding = 0.dp,
+                if (activeTab == null) {
+                    // No tabs enabled — nothing to show in the strip.
+                    Unit
+                } else if (activeTab == "info") {
+                    // Info tab: the main player's channel row (icon-only
+                    // subscribe) + a scrollable description card.
+                    CompanionInfoTab(
+                        video = video,
+                        savedTypes = savedTypes,
+                        isSubscribed = isSubscribed,
+                        onSubscribe = onSubscribe,
+                        onLike = onLike,
+                        onDislike = onDislike,
+                        onMore = onMore,
+                        durationMs = durationMs,
+                        onSeekTo = onSeekTo,
+                        onChannelClick = onChannelClick,
+                    )
+                } else if (activeTab == "controls") {
+                    // Controls tab: playback, volume and brightness
+                    // sliders.
+                    CompanionControlsTab(
+                        positionMs = positionMs,
+                        durationMs = durationMs,
+                        isLive = isLive,
+                        onSeekTo = onSeekTo,
+                        companionWindow = companionWindow,
+                    )
+                } else if (activeTab == "queue") {
+                    // Queue tab: the playing video pinned on top, then
+                    // the pending queue (tap = play, drag = reorder,
+                    // X = remove). The same horizontal strip as the
+                    // tabs' horizontal strips.
+                    CompanionQueueTabContent(
+                        queue = queue,
+                        current = currentVideo,
+                        isPlaying = isPlaying,
+                        onPlayItem = onQueuePlay,
+                        onRemove = onQueueRemove,
+                        onMove = onQueueMove,
+                        onPlayPause = onPlayPause,
+                        onLongClick = { item ->
+                            onLongClick(
+                                CoreVideoCard(
+                                    id = item.id,
+                                    title = item.title,
+                                    thumbnailUrl = item.thumbnailUrl,
+                                    author = item.author?.name,
+                                    authorUrl = item.author?.url,
+                                    durationMs = item.durationMs,
+                                    viewCount = item.viewCount,
+                                    publishedAt = item.publishedAt,
+                                    url = item.url,
+                                ),
                             )
-                    } else if (activeTab == "comments" && comments.isEmpty()) {
-                        // Centre the empty state in the whole tab area — a
-                        // LazyRow item can't fill the (unbounded) row width.
-                        Box(
+                        },
+                    )
+                } else if (activeTab == "dot") {
+                    // The distraction-free tab: just the video.
+                    Unit
+                } else if (activeTab == "comments" && isLive) {
+                    // Live stream: the comments slot becomes the live
+                    // chat, same as the main player. Vertical, fills the
+                    // tab area.
+                    com.tsutsen.platformplayer.feature.player.impl.ui.components
+                        .LiveChatPanel(
+                            state = liveChat,
                             modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "No comments",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 32.dp),
-                            )
-                        }
-                    } else if (activeTab == "chapters" && chapters.isEmpty()) {
-                        // Centre the empty state in the whole tab area — a
-                        // LazyRow item can't fill the (unbounded) row width.
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "No chapters",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else {
+                            listHeight = null,
+                            // No horizontal inset on the companion
+                            // (bottom screen) chat.
+                            horizontalPadding = 0.dp,
+                        )
+                } else if (activeTab == "comments" && comments.isEmpty()) {
+                    // Centre the empty state in the whole tab area — a
+                    // LazyRow item can't fill the (unbounded) row width.
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No comments",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 32.dp),
+                        )
+                    }
+                } else if (activeTab == "chapters" && chapters.isEmpty()) {
+                    // Centre the empty state in the whole tab area — a
+                    // LazyRow item can't fill the (unbounded) row width.
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No chapters",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
                     LazyRow(
                         state = tabStates[selectedTab],
                         modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(end = 8.dp),
                     ) {
-                if (activeTab == "comments") {
-                    items(comments, key = { it.id }) { comment ->
-                        CommentCardView(
-                            comment = comment,
-                            onTimestampClick = { ms ->
-                                val dur = durationMs
-                                val target =
-                                    if (dur > 0) ms.coerceIn(0, dur - 500) else ms.coerceAtLeast(0)
-                                onSeekTo(target)
-                            },
-                            onLinkClick = { url ->
-                                runCatching {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        if (activeTab == "comments") {
+                            items(comments, key = { it.id }) { comment ->
+                                CommentCardView(
+                                    comment = comment,
+                                    onTimestampClick = { ms ->
+                                        val dur = durationMs
+                                        val target =
+                                            if (dur > 0) ms.coerceIn(0, dur - 500) else ms.coerceAtLeast(0)
+                                        onSeekTo(target)
+                                    },
+                                    onLinkClick = { url ->
+                                        runCatching {
+                                            context.startActivity(
+                                                Intent(Intent.ACTION_VIEW, Uri.parse(url)),
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        } else if (activeTab == "chapters") {
+                            if (chapters.isEmpty()) {
+                                item(key = "no-chapters") {
+                                    Text(
+                                        "No chapters",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 24.dp),
                                     )
                                 }
-                            },
-                        )
-                    }
-                } else if (activeTab == "chapters") {
-                    if (chapters.isEmpty()) {
-                        item(key = "no-chapters") {
-                            Text(
-                                "No chapters",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 24.dp),
-                            )
-                        }
-                    }
-                    itemsIndexed(chapters, key = { _, c -> c.startTimeMs }) { index, chapter ->
-                        // Same card chrome as the comment cards; the chapter
-                        // containing the current playhead is highlighted.
-                        val scheme = MaterialTheme.colorScheme
-                        val isCurrent = index == currentChapterIndex
-                        // Animated highlight: the active chapter eases in.
-                        val containerColor by animateColorAsState(
-                            targetValue =
-                                if (isCurrent) scheme.primaryContainer
-                                else scheme.surfaceContainer,
-                            animationSpec = tween(300),
-                            label = "chapterBg",
-                        )
-                        val cardFg by animateColorAsState(
-                            targetValue =
-                                if (isCurrent) scheme.onPrimaryContainer
-                                else scheme.onSurface,
-                            animationSpec = tween(300),
-                            label = "chapterFg",
-                        )
-                        Card(
-                            modifier =
-                                Modifier
-                                    .width(240.dp)
-                                    .fillMaxHeight()
-                                    .combinedClickable(onClick = { onSeekTo(chapter.startTimeMs) }),
-                            shape = RoundedCornerShape(Tokens.RadiusMd),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            colors =
-                                CardDefaults.cardColors(
-                                    containerColor = containerColor,
-                                ),
-                        ) {
-                            Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                            }
+                            itemsIndexed(chapters, key = { _, c -> c.startTimeMs }) { index, chapter ->
+                                // Same card chrome as the comment cards; the chapter
+                                // containing the current playhead is highlighted.
+                                val scheme = MaterialTheme.colorScheme
+                                val isCurrent = index == currentChapterIndex
+                                // Animated highlight: the active chapter eases in.
+                                val containerColor by animateColorAsState(
+                                    targetValue =
+                                        if (isCurrent) {
+                                            scheme.primaryContainer
+                                        } else {
+                                            scheme.surfaceContainer
+                                        },
+                                    animationSpec = tween(300),
+                                    label = "chapterBg",
+                                )
+                                val cardFg by animateColorAsState(
+                                    targetValue =
+                                        if (isCurrent) {
+                                            scheme.onPrimaryContainer
+                                        } else {
+                                            scheme.onSurface
+                                        },
+                                    animationSpec = tween(300),
+                                    label = "chapterFg",
+                                )
+                                Card(
+                                    modifier =
+                                        Modifier
+                                            .width(240.dp)
+                                            .fillMaxHeight()
+                                            .combinedClickable(onClick = { onSeekTo(chapter.startTimeMs) }),
+                                    shape = RoundedCornerShape(BluejayTokens().radius.md),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                    colors =
+                                        CardDefaults.cardColors(
+                                            containerColor = containerColor,
+                                        ),
+                                ) {
+                                    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "${index + 1}",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = cardFg,
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                text = formatDuration(chapter.startTimeMs),
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = cardFg,
+                                            )
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = chapter.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = cardFg,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            if (recommendations.isEmpty()) {
+                                item(key = "no-recs") {
                                     Text(
-                                        text = "${index + 1}",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = cardFg,
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = formatDuration(chapter.startTimeMs),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = cardFg,
+                                        "No recommendations",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 24.dp),
                                     )
                                 }
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = chapter.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = cardFg,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
+                            }
+                            items(recommendations, key = { it.url }) { card ->
+                                VideoCardFull(
+                                    card = card,
+                                    onClick = { onPlayItem(card.toContentItem()) },
+                                    onLongClick = { onLongClick(card) },
+                                    modifier =
+                                        Modifier
+                                            .width(240.dp)
+                                            .padding(horizontal = 2.dp),
                                 )
                             }
                         }
-                    }
-                } else {
-                    if (recommendations.isEmpty()) {
-                        item(key = "no-recs") {
-                            Text(
-                                "No recommendations",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 24.dp),
-                            )
-                        }
-                    }
-                    items(recommendations, key = { it.url }) { card ->
-                        VideoCardFull(
-                            card = card,
-                            onClick = { onPlay(card.url) },
-                            onLongClick = { onLongClick(card) },
-                            modifier = Modifier
-                                .width(240.dp)
-                                .padding(horizontal = 2.dp),
-                        )
-                    }
-                }
-                    }
                     }
                 }
             }
         }
     }
+}
 
 /**
  * Page 1: the library as four corner slots (2x2).
@@ -1057,11 +1268,13 @@ private fun CompanionLibraryPage(
     libraryRepository: LibraryRepository,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistClick: (String) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
@@ -1074,12 +1287,44 @@ private fun CompanionLibraryPage(
         // "playlist:<id>" reference (Settings > Dual screen > Library slots).
         val slotValues = (0 until 4).map { slots.getOrNull(it) }
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            LibrarySlotCell(value = slotValues.getOrNull(0), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            LibrarySlotCell(value = slotValues.getOrNull(1), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(
+                value = slotValues.getOrNull(0),
+                sections = sections,
+                libraryRepository = libraryRepository,
+                onPlay = onPlay,
+                onLongClick = onLongClick,
+                onPlaylistClick = onPlaylistClick,
+                modifier = Modifier.weight(1f),
+            )
+            LibrarySlotCell(
+                value = slotValues.getOrNull(1),
+                sections = sections,
+                libraryRepository = libraryRepository,
+                onPlay = onPlay,
+                onLongClick = onLongClick,
+                onPlaylistClick = onPlaylistClick,
+                modifier = Modifier.weight(1f),
+            )
         }
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            LibrarySlotCell(value = slotValues.getOrNull(2), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            LibrarySlotCell(value = slotValues.getOrNull(3), sections = sections, libraryRepository = libraryRepository, onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            LibrarySlotCell(
+                value = slotValues.getOrNull(2),
+                sections = sections,
+                libraryRepository = libraryRepository,
+                onPlay = onPlay,
+                onLongClick = onLongClick,
+                onPlaylistClick = onPlaylistClick,
+                modifier = Modifier.weight(1f),
+            )
+            LibrarySlotCell(
+                value = slotValues.getOrNull(3),
+                sections = sections,
+                libraryRepository = libraryRepository,
+                onPlay = onPlay,
+                onLongClick = onLongClick,
+                onPlaylistClick = onPlaylistClick,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -1092,6 +1337,7 @@ private fun LibrarySlotCell(
     libraryRepository: LibraryRepository,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (value == null) {
@@ -1104,6 +1350,7 @@ private fun LibrarySlotCell(
             libraryRepository = libraryRepository,
             onPlay = onPlay,
             onLongClick = onLongClick,
+            onPlaylistClick = onPlaylistClick,
             modifier = modifier,
         )
         return
@@ -1126,6 +1373,7 @@ private fun PlaylistSlotPager(
     libraryRepository: LibraryRepository,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    onPlaylistClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val id = playlistId.toLongOrNull()
@@ -1142,9 +1390,368 @@ private fun PlaylistSlotPager(
         totalCount = pair?.second?.size ?: 0,
         onPlay = onPlay,
         onLongClick = onLongClick,
+        // Same URL shape the main screen's library playlist cards use.
+        onSlotClick = { onPlaylistClick("playlist:$playlistId") },
         modifier = modifier,
     )
 }
+
+/**
+ * Dash page: the stats card (the same widget as the main screen's Dash
+ * tab), the all-time top creators with their watch time, and the last
+ * unfinished video to continue.
+ */
+@Composable
+private fun CompanionDashPage(
+    stats: WatchStats,
+    history: List<HistoryEntity>,
+    currentVideoUrl: String?,
+    isPlaying: Boolean = false,
+    onPlay: (String) -> Unit,
+    onPlayItem: (ContentItem) -> Unit,
+    discarded: Set<String>,
+    onDiscard: (String) -> Unit,
+    onStatsClick: () -> Unit,
+    onChannelClick: (String) -> Unit,
+) {
+    // Staggered entrance: the sections fade + slide in as the page appears.
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+    // Not scrollable on purpose: a scrollable page inside the VerticalPager
+    // eats the page-swipe gestures until it reaches its edge.
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = Tokens.SpaceSm, vertical = Tokens.SpaceXs),
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+    ) {
+        WatchStatsSummary(
+            stats = stats,
+            onClick = onStatsClick,
+            // Take whatever vertical space the stat columns + sections leave
+            // over, and stretch the bar chart into it.
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .sectionEntrance(entered, 0),
+            fillHeight = true,
+            wideChart = true,
+        )
+        // Top creators: a card holding the title + the creator badges.
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .sectionEntrance(entered, 80)
+                    .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(Tokens.SpaceMd),
+        ) {
+            DashSectionTitle("Top creators this week")
+            if (stats.topCreatorsLastWeek.isEmpty()) {
+                DashEmpty("No watch history yet")
+            } else {
+                Spacer(Modifier.height(Tokens.SpaceSm))
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                ) {
+                    stats.topCreatorsLastWeek.forEach { creator ->
+                        CreatorBadge(
+                            creator = creator,
+                            onClick = { creator.authorUrl?.let(onChannelClick) },
+                        )
+                    }
+                }
+            }
+        }
+        // Continue: a card holding the title + the entry row (or the
+        // empty-state label).
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .sectionEntrance(entered, 160)
+                    .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(Tokens.SpaceMd),
+        ) {
+            DashSectionTitle("Continue")
+            val entry = continueEntry(history, currentVideoUrl, isPlaying, discarded)
+            ContinueCard(
+                entry = entry,
+                onPlay = { entry?.let { onPlayItem(it.toContentItem()) } },
+                onDiscard = { entry?.let { onDiscard(it.contentUrl) } },
+            )
+        }
+    }
+}
+
+/** Fade + slide-up entrance for a dash-page section (staggered by [delayMs]). */
+@Composable
+private fun Modifier.sectionEntrance(entered: Boolean, delayMs: Int): Modifier =
+    composed {
+        val spec = tween<Float>(
+            durationMillis = 350,
+            delayMillis = delayMs,
+            easing = FastOutSlowInEasing,
+        )
+        val entranceAlpha by animateFloatAsState(
+            targetValue = if (entered) 1f else 0f,
+            animationSpec = spec,
+            label = "dashEntranceAlpha",
+        )
+        val entranceOffset by animateFloatAsState(
+            targetValue = if (entered) 0f else 16f,
+            animationSpec = spec,
+            label = "dashEntranceOffset",
+        )
+        graphicsLayer {
+            alpha = entranceAlpha
+            translationY = entranceOffset
+        }
+    }
+
+@Composable
+private fun DashSectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+}
+
+@Composable
+private fun DashEmpty(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = Tokens.SpaceSm),
+    )
+}
+
+/** A horizontally scrolling badge: avatar, channel name, total watch time. */
+@Composable
+private fun CreatorBadge(
+    creator: CreatorWatch,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .expressiveClickable(onClick = onClick)
+                .clip(RoundedCornerShape(BluejayTokens().radius.md))
+                // Main background color, like the video cards on the
+                // surfaceContainer panel.
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = Tokens.SpaceMd, vertical = Tokens.SpaceSm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+    ) {
+        AsyncImage(
+            url = creator.avatarUrl,
+            contentDescription = null,
+            modifier = Modifier.size(Tokens.AvatarSm).clip(CircleShape),
+        )
+        Column {
+            Text(
+                text = creator.author,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+            Text(
+                text = humanDuration(creator.ms),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * The last unfinished video: thumbnail, title, channel, play + discard.
+ * With a null [entry] the card just shows a centered empty-state label.
+ * The enclosing dash card is drawn by the caller.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ContinueCard(
+    entry: HistoryEntity?,
+    onPlay: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val radius = BluejayTokens().radius
+    val playSource = remember { MutableInteractionSource() }
+    val discardSource = remember { MutableInteractionSource() }
+    if (entry == null) {
+        Text(
+            text = "Watched it all and left no crumbs!",
+            style = MaterialTheme.typography.titleSmall,
+            color = scheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = Tokens.SpaceLg),
+        )
+        return
+    }
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = Tokens.SpaceSm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .width(120.dp)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(BluejayTokens().radius.sm))
+                    .background(scheme.surfaceVariant),
+        ) {
+            AsyncImage(
+                url = entry.thumbnailUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.title,
+                style = MaterialTheme.typography.titleSmall,
+                color = scheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            entry.author?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+        // Play + discard in the companion's connected-group language:
+        // on press the group compresses, the seam corners squish, and
+        // both colors shift (play keeps the accent the control row uses
+        // while stopped; discard shifts up one surface step).
+        val playPressed by playSource.collectIsPressedAsState()
+        val discardPressed by discardSource.collectIsPressedAsState()
+        val playContainer by
+            animateColorAsState(
+                targetValue = if (playPressed) scheme.primary else scheme.surface,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "continue-play-container",
+            )
+        val playContent by
+            animateColorAsState(
+                targetValue = if (playPressed) scheme.onPrimary else scheme.onPrimaryContainer,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "continue-play-content",
+            )
+        val discardContainer by
+            animateColorAsState(
+                targetValue = if (discardPressed) scheme.surfaceContainerHigh else scheme.surface,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "continue-discard-container",
+            )
+        val discardContent by
+            animateColorAsState(
+                targetValue = if (discardPressed) scheme.onSurface else scheme.onSurfaceVariant,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "continue-discard-content",
+            )
+        ButtonGroup(
+            overflowIndicator = { _ -> },
+            modifier =
+                Modifier
+                    .width(Tokens.ControlLg * 2 + Tokens.SpaceXs)
+                    .height(Tokens.ControlLg),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+        ) {
+            controlItem(
+                icon = Icons.Filled.PlayArrow,
+                description = "Play",
+                containerColor = playContainer,
+                contentColor = playContent,
+                shapes = connectedGroupShapes(GroupPosition.First, radius),
+                interactionSource = playSource,
+                onClick = onPlay,
+            )
+            controlItem(
+                icon = Icons.Filled.Close,
+                description = "Discard",
+                containerColor = discardContainer,
+                contentColor = discardContent,
+                shapes = connectedGroupShapes(GroupPosition.Last, radius),
+                interactionSource = discardSource,
+                onClick = onDiscard,
+            )
+        }
+    }
+}
+
+/**
+ * The last unfinished video to continue: the newest of the five most
+ * recent not-fully-watched history entries, excluding the video actively
+ * playing right now and any the user discarded in the widget. The current
+ * video is only excluded while playing: playerState.currentVideo survives
+ * completion (it clears on close() only), so a finished or paused video
+ * must still surface here as its own continue entry.
+ */
+private fun continueEntry(
+    history: List<HistoryEntity>,
+    currentVideoUrl: String?,
+    isPlaying: Boolean,
+    discarded: Set<String>,
+): HistoryEntity? =
+    // observeAll() is already ordered watchedAt DESC (newest first).
+    // Scan only the five most recent entries so a half-watched video from
+    // weeks ago can't zombie-resurface behind a run of finished ones; the
+    // active video is excluded from the scan (not just the result) so it
+    // doesn't burn a pool slot, and a discarded video the user has since
+    // re-opened (it IS the current video) is honoured instead of hidden.
+    history
+        .filter { !(isPlaying && it.contentUrl == currentVideoUrl) }
+        .filter { it.contentUrl !in discarded || it.contentUrl == currentVideoUrl }
+        .take(5)
+        .filter { it.lastPositionMs > 0L && it.totalDurationMs > 0L }
+        .filter {
+            it.lastPositionMs.toFloat() <
+                it.totalDurationMs * WatchState.WATCHED_FRACTION
+        }
+        .firstOrNull()
+
+/** Pre-filled details for playback (title/channel/thumb are known). */
+private fun HistoryEntity.toContentItem(): ContentItem =
+    ContentItem(
+        id = contentUrl,
+        url = contentUrl,
+        title = title,
+        author =
+            author?.let {
+                Author(
+                    id = authorUrl.orEmpty(),
+                    name = it,
+                    url = authorUrl,
+                    thumbnailUrl = null,
+                )
+            },
+        thumbnailUrl = thumbnailUrl,
+        contentType = ContentType.VIDEO,
+        durationMs = totalDurationMs.takeIf { it > 0L },
+    )
 
 private fun String.companionTabLabel(): String =
     when (this) {
@@ -1169,14 +1776,26 @@ private fun LibrarySlotPager(
     totalCount: Int,
     onPlay: (String) -> Unit,
     onLongClick: (CoreVideoCard) -> Unit,
+    // Playlist slots only: tapping the slot opens the playlist on the
+    // main screen (same affordance as the main screen's library rows).
+    onSlotClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surfaceContainer
     // 1-based index of the page currently in the centre.
     val currentPage = remember(title) { mutableIntStateOf(1) }
     Card(
-        modifier = modifier.padding(4.dp),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        modifier =
+            modifier
+                .then(
+                    if (onSlotClick != null) {
+                        Modifier.clickable(onClick = onSlotClick)
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(4.dp),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
     ) {
@@ -1202,6 +1821,16 @@ private fun LibrarySlotPager(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // The arrow tells the slot apart from a section slot —
+                // same affordance as the main screen's library section rows.
+                if (onSlotClick != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = "Open $title",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (cards.isEmpty()) {
                 Box(
@@ -1209,7 +1838,7 @@ private fun LibrarySlotPager(
                         Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .clip(RoundedCornerShape(Tokens.RadiusMd))
+                            .clip(RoundedCornerShape(BluejayTokens().radius.md))
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -1260,9 +1889,9 @@ private fun LibrarySlotPager(
                                             listOf(
                                                 cardColor,
                                                 cardColor.copy(alpha = 0f),
-                                            )
-                                    )
-                                )
+                                            ),
+                                    ),
+                                ),
                     )
                     Box(
                         modifier =
@@ -1276,9 +1905,9 @@ private fun LibrarySlotPager(
                                             listOf(
                                                 cardColor.copy(alpha = 0f),
                                                 cardColor,
-                                            )
-                                    )
-                                )
+                                            ),
+                                    ),
+                                ),
                     )
                 }
             }
@@ -1299,9 +1928,10 @@ private fun CompanionHomePage(
     onLongClick: (CoreVideoCard) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
@@ -1324,10 +1954,11 @@ private fun CompanionHomePage(
             val pageCount = (feedItems.value.size + 3) / 4
             val lastPage = remember { mutableIntStateOf(0) }
             key(pageCount) {
-                val state = rememberPagerState(
-                    initialPage = lastPage.value.coerceIn(0, (pageCount - 1).coerceAtLeast(0)),
-                    pageCount = { pageCount },
-                )
+                val state =
+                    rememberPagerState(
+                        initialPage = lastPage.value.coerceIn(0, (pageCount - 1).coerceAtLeast(0)),
+                        pageCount = { pageCount },
+                    )
                 // Reach the last page -> fetch more. The repository no-ops
                 // once the feed is exhausted, so extra triggers are harmless.
                 LaunchedEffect(state) {
@@ -1346,7 +1977,11 @@ private fun CompanionHomePage(
                     pageSpacing = 8.dp,
                 ) { pageIndex ->
                     HomeGridPage(
-                        pageItems = feedItems.value.chunked(4).getOrNull(pageIndex).orEmpty(),
+                        pageItems =
+                            feedItems.value
+                                .chunked(4)
+                                .getOrNull(pageIndex)
+                                .orEmpty(),
                         onPlay = onPlay,
                         onLongClick = onLongClick,
                     )
@@ -1367,7 +2002,7 @@ private fun HomeGridPage(
     // not four separate cells.
     Card(
         modifier = Modifier.fillMaxSize().padding(4.dp),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
+        shape = RoundedCornerShape(BluejayTokens().radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
@@ -1378,14 +2013,14 @@ private fun HomeGridPage(
             modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            HomeGridCell(pageItems.getOrNull(0), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            HomeGridCell(pageItems.getOrNull(1), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-        }
-        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            HomeGridCell(pageItems.getOrNull(2), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-            HomeGridCell(pageItems.getOrNull(3), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
-        }
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                HomeGridCell(pageItems.getOrNull(0), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+                HomeGridCell(pageItems.getOrNull(1), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            }
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                HomeGridCell(pageItems.getOrNull(2), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+                HomeGridCell(pageItems.getOrNull(3), onPlay = onPlay, onLongClick = onLongClick, modifier = Modifier.weight(1f))
+            }
         }
     }
 }
@@ -1413,7 +2048,7 @@ private fun HomeGridCell(
 private fun CompanionVideoOptionsSheet(
     card: CoreVideoCard,
     onDismiss: () -> Unit,
-    onPlay: (String) -> Unit,
+    onPlayItem: (ContentItem) -> Unit,
     libraryRepository: LibraryRepository,
     downloadsRepository: com.tsutsen.platformplayer.core.data.repository.DownloadsRepository,
     playbackQueueRepository: com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository,
@@ -1426,13 +2061,23 @@ private fun CompanionVideoOptionsSheet(
     val containedPlaylists by libraryRepository
         .observePlaylistsContaining(card.url)
         .collectAsState(initial = emptySet())
-    var downloading by remember { mutableStateOf(false) }
+    // Live download state straight from the shared repository (the same
+    // derivation as the main screen's VideoOptionsViewModel), so the
+    // second screen knows about downloads started anywhere.
+    val downloads by downloadsRepository.downloads.collectAsState(initial = emptyList())
+    val downloadEntry = downloads.firstOrNull { it.url == card.url }
+    val downloadState =
+        when {
+            downloadEntry == null -> DownloadButtonState.Idle
+            downloadEntry.done -> DownloadButtonState.Downloaded
+            else -> DownloadButtonState.Downloading(downloadEntry.progress)
+        }
 
     VideoOptionsSheet(
         url = card.url,
         onDismiss = onDismiss,
         onPlay = {
-            onPlay(card.url)
+            onPlayItem(card.toContentItem())
             onDismiss()
         },
         // No navigation on the second screen.
@@ -1448,20 +2093,21 @@ private fun CompanionVideoOptionsSheet(
         },
         onDownload = {
             scope.launch {
-                if (downloading) {
-                    downloading = false
-                    downloadsRepository.cancelDownload(card.url)
-                } else {
-                    downloading = true
-                    downloadsRepository.startDownload(card.url)
+                when (downloadState) {
+                    is DownloadButtonState.Downloaded ->
+                        downloadsRepository.deleteDownload(card.url)
+
+                    is DownloadButtonState.Downloading,
+                    is DownloadButtonState.Starting ->
+                        downloadsRepository.cancelDownload(card.url)
+
+                    is DownloadButtonState.Idle ->
+                        downloadsRepository.startDownload(card.url)
                 }
             }
         },
         onDownloadWithQuality = { quality ->
-            scope.launch {
-                downloading = true
-                downloadsRepository.startDownload(card.url, quality)
-            }
+            scope.launch { downloadsRepository.startDownload(card.url, quality) }
         },
         onAddToPlaylist = { playlistId ->
             // "New playlist" row only (checkboxes use onTogglePlaylist).
@@ -1492,7 +2138,7 @@ private fun CompanionVideoOptionsSheet(
             scope.launch { playbackQueueRepository.remove(card.url) }
         },
         containedPlaylistIds = containedPlaylists,
-        downloadState = if (downloading) DownloadButtonState.Downloading(0f) else DownloadButtonState.Idle,
+        downloadState = downloadState,
         isWatchLaterSaved = savedTypes.contains(SavedVideoType.WATCH_LATER),
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),
         isFavouriteSaved = savedTypes.contains(SavedVideoType.FAVOURITE),
@@ -1512,14 +2158,15 @@ private fun CoreVideoCard.toContentItem() =
         id = id,
         url = url,
         title = title,
-        author = author?.let { name ->
-            com.tsutsen.platformplayer.core.model.Author(
-                id = id,
-                name = name,
-                url = authorUrl,
-                thumbnailUrl = null,
-            )
-        },
+        author =
+            author?.let { name ->
+                com.tsutsen.platformplayer.core.model.Author(
+                    id = id,
+                    name = name,
+                    url = authorUrl,
+                    thumbnailUrl = null,
+                )
+            },
         thumbnailUrl = thumbnailUrl,
         contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
         durationMs = durationMs,
@@ -1536,6 +2183,17 @@ private suspend fun toggleSaveType(
     if (savedTypes.contains(type)) {
         libraryRepository.removeSavedVideo(type, card.url)
     } else {
+        // Like and dislike are mutually exclusive (the main screen's player
+        // row behaves the same way).
+        when (type) {
+            SavedVideoType.LIKED ->
+                libraryRepository.removeSavedVideo(SavedVideoType.DISLIKED, card.url)
+
+            SavedVideoType.DISLIKED ->
+                libraryRepository.removeSavedVideo(SavedVideoType.LIKED, card.url)
+
+            else -> Unit
+        }
         libraryRepository.saveVideo(type, card)
     }
 }
@@ -1560,7 +2218,7 @@ private fun PagerCard(
             contentAlignment = Alignment.Center,
         ) {
             when (card) {
-                is CoreVideoCard ->
+                is CoreVideoCard -> {
                     // Pill variant: all meta on the thumbnail, no meta row,
                     // so the card stays short and nothing clips in tight slots.
                     VideoCardPills(
@@ -1569,12 +2227,14 @@ private fun PagerCard(
                         onLongClick = { onLongClick(card) },
                         modifier = Modifier.width(cardWidth),
                     )
+                }
 
-                is PlaylistCard ->
-                // No navigation on the second screen.
-                PlaylistCardView(card = card, onClick = {})
+                is PlaylistCard -> {
+                    // No navigation on the second screen.
+                    PlaylistCardView(card = card, onClick = {})
+                }
 
-                else ->
+                else -> {
                     // Channels and other card types: no navigation on the second
                     // screen.
                     Box(
@@ -1582,19 +2242,69 @@ private fun PagerCard(
                             Modifier
                                 .width(cardWidth)
                                 .aspectRatio(16f / 9f)
-                                .clip(RoundedCornerShape(Tokens.RadiusSm))
+                                .clip(RoundedCornerShape(BluejayTokens().radius.sm))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
+                }
             }
         }
     }
 }
 
 /**
- * Playback controls as large tiles — same look as the main player's video
- * options sheet buttons (icon + label in a rounded box).
+ * Registers one icon-only playback control in the companion control group.
+ * [containerColor]/[contentColor] come in as plain values so the caller
+ * can animate them (the play/pause button turns accent-colored while
+ * paused). Non-composable on purpose: the ButtonGroup scope itself is not
+ * a composable context, only the item's content lambda is.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ButtonGroupScope.controlItem(
+    icon: ImageVector,
+    description: String,
+    containerColor: Color,
+    contentColor: Color,
+    shapes: GroupCornerShapes,
+    interactionSource: MutableInteractionSource,
+    onClick: () -> Unit,
+) {
+    customItem(
+        buttonGroupContent = {
+            Button(
+                onClick = onClick,
+                shapes = ButtonShapes(shapes.shape, shapes.pressedShape),
+                modifier =
+                    Modifier
+                        .height(Tokens.ControlLg)
+                        .weight(1f)
+                        .animateWidth(interactionSource),
+                contentPadding = PaddingValues(all = Tokens.SpaceMd),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = containerColor,
+                        contentColor = contentColor,
+                    ),
+                interactionSource = interactionSource,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = description,
+                    modifier = Modifier.size(Tokens.IconMd),
+                )
+            }
+        },
+        menuContent = {},
+    )
+}
+
+/**
+ * Playback controls as a native M3 [ButtonGroup] in the app's
+ * connected-group language (the same corner recipe as the like/dislike
+ * pill): on press the button expands, its neighbours compress, and its
+ * shape and color morph.
  */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun CompanionControlRow(
     isPlaying: Boolean,
     onPlayPause: () -> Unit,
@@ -1602,41 +2312,79 @@ private fun CompanionControlRow(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth(),
+    val radius = BluejayTokens().radius
+    val scheme = MaterialTheme.colorScheme
+    val previousSource = remember { MutableInteractionSource() }
+    val rewindSource = remember { MutableInteractionSource() }
+    val playPauseSource = remember { MutableInteractionSource() }
+    val forwardSource = remember { MutableInteractionSource() }
+    val nextSource = remember { MutableInteractionSource() }
+    // While stopped, the play button takes the accent color so the one
+    // action that matters on the second screen stands out.
+    val playContainer by
+        animateColorAsState(
+            targetValue = if (isPlaying) scheme.surfaceContainer else scheme.primaryContainer,
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "play-pause-container",
+        )
+    val playContent by
+        animateColorAsState(
+            targetValue = if (isPlaying) scheme.onSurfaceVariant else scheme.onPrimaryContainer,
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "play-pause-content",
+        )
+    ButtonGroup(
+        overflowIndicator = { _ -> },
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
-        val tileModifier: Modifier = Modifier.weight(1f).height(80.dp)
-        OptionTileView(
-            OptionTile(label = "Previous", icon = Icons.Filled.SkipPrevious, onClick = onPrevious),
-            modifier = tileModifier,
-            showLabel = false,
-            outerPadding = 0.dp
+        val restContainer = scheme.surfaceContainer
+        val restContent = scheme.onSurfaceVariant
+        controlItem(
+            icon = Icons.Filled.SkipPrevious,
+            description = "Previous",
+            containerColor = restContainer,
+            contentColor = restContent,
+            shapes = connectedGroupShapes(GroupPosition.First, radius),
+            interactionSource = previousSource,
+            onClick = onPrevious,
         )
         // Seek icons without the baked-in "10" digit — plain rewind/ffwd.
-        OptionTileView(
-            OptionTile(label = "Back 10s", icon = Icons.Filled.FastRewind, onClick = { onSeekBy(-10_000L) }),
-            modifier = tileModifier,
-            showLabel = false,
+        controlItem(
+            icon = Icons.Filled.FastRewind,
+            description = "Back 10 seconds",
+            containerColor = restContainer,
+            contentColor = restContent,
+            shapes = connectedGroupShapes(GroupPosition.Middle, radius),
+            interactionSource = rewindSource,
+            onClick = { onSeekBy(-10_000L) },
         )
-        OptionTileView(
-            OptionTile(
-                label = if (isPlaying) "Pause" else "Play",
-                icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                onClick = onPlayPause,
-            ),
-            modifier = tileModifier,
-            showLabel = false,
+        controlItem(
+            icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            description = if (isPlaying) "Pause" else "Play",
+            containerColor = playContainer,
+            contentColor = playContent,
+            shapes = connectedGroupShapes(GroupPosition.Middle, radius),
+            interactionSource = playPauseSource,
+            onClick = onPlayPause,
         )
-        OptionTileView(
-            OptionTile(label = "Fwd 10s", icon = Icons.Filled.FastForward, onClick = { onSeekBy(10_000L) }),
-            modifier = tileModifier,
-            showLabel = false,
+        controlItem(
+            icon = Icons.Filled.FastForward,
+            description = "Forward 10 seconds",
+            containerColor = restContainer,
+            contentColor = restContent,
+            shapes = connectedGroupShapes(GroupPosition.Middle, radius),
+            interactionSource = forwardSource,
+            onClick = { onSeekBy(10_000L) },
         )
-        OptionTileView(
-            OptionTile(label = "Next", icon = Icons.Filled.SkipNext, onClick = onNext),
-            modifier = tileModifier,
-            showLabel = false,
+        controlItem(
+            icon = Icons.Filled.SkipNext,
+            description = "Next",
+            containerColor = restContainer,
+            contentColor = restContent,
+            shapes = connectedGroupShapes(GroupPosition.Last, radius),
+            interactionSource = nextSource,
+            onClick = onNext,
         )
     }
 }
@@ -1659,7 +2407,7 @@ private fun CompanionVideoHeader(
                 Modifier
                     .width(96.dp)
                     .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(Tokens.RadiusSm)),
+                    .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
             contentScale = ContentScale.Crop,
         )
         Column(modifier = Modifier.padding(start = 12.dp)) {
@@ -1672,13 +2420,14 @@ private fun CompanionVideoHeader(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = buildString {
-                    video.author?.let { append(it.name) }
-                    if (durationMs > 0) {
-                        if (isNotEmpty()) append("  •  ")
-                        append("${formatDuration(positionMs)} / ${formatDuration(durationMs)}")
-                    }
-                },
+                text =
+                    buildString {
+                        video.author?.let { append(it.name) }
+                        if (durationMs > 0) {
+                            if (isNotEmpty()) append("  •  ")
+                            append("${formatDuration(positionMs)} / ${formatDuration(durationMs)}")
+                        }
+                    },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -1737,13 +2486,15 @@ private fun CompanionInfoTab(
         // line, linkified text (timestamps + links), always expanded
         // (the card scrolls, no Show more/less on the second screen).
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            shape = RoundedCornerShape(Tokens.RadiusMd),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            shape = RoundedCornerShape(BluejayTokens().radius.md),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
         ) {
             val description = video.description.orEmpty()
             Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
@@ -1828,102 +2579,114 @@ private fun CompanionControlsTab(
     val onVolume: (Float) -> Unit = {
         volume = it
         SystemControls.setVolume(context, it)
+        // Bus event so the main screen shows the volume badge like its own actions.
+        PlayerEventBus.emit(PlayerEvent.VolumeChanged(it))
     }
     val onBrightness: (Float) -> Unit = { value ->
         brightness = value
         // All screens: device-wide when granted, plus this window; the
         // main window follows through SystemControls.brightness.
         SystemControls.applyBrightness(context, value, companionWindow)
+        PlayerEventBus.emit(PlayerEvent.BrightnessChanged(value))
     }
     // Fixed slot widths keep every slider the same length: time strings
     // on the playback row, icon/percent on the others.
     // 8dp below the tab strip — same first-item gap as the other tabs.
     Column(modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        shape = RoundedCornerShape(Tokens.RadiusMd),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
-            // Distribute the three rows across the card height —
-            // spacedBy left a dead zone below them.
-            verticalArrangement = Arrangement.SpaceEvenly,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            shape = RoundedCornerShape(BluejayTokens().radius.md),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
         ) {
-            CompanionSliderRow(
-                leading = {
-                    Text(
-                        text =
-                            if (isLive || durationMs <= 0) "Live"
-                            else formatTime(seekDrag?.let { (it * durationMs).toLong() } ?: positionMs),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                trailing = {
-                    if (!isLive && durationMs > 0) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+                // Distribute the three rows across the card height —
+                // spacedBy left a dead zone below them.
+                verticalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                CompanionSliderRow(
+                    leading = {
                         Text(
-                            text = formatTime(durationMs),
+                            text =
+                                if (isLive || durationMs <= 0) {
+                                    "Live"
+                                } else {
+                                    formatTime(seekDrag?.let { (it * durationMs).toLong() } ?: positionMs)
+                                },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                },
-                value =
-                    seekDrag
-                        ?: (if (durationMs > 0)
-                            (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
-                        else 0f),
-                onValueChange = { seekDrag = it },
-                onValueChangeFinished = {
-                    seekDrag?.let { onSeekTo((it * durationMs).toLong()) }
-                    seekDrag = null
-                },
-                enabled = !isLive && durationMs > 0,
-            )
-            CompanionSliderRow(
-                leading = {
-                    Icon(
-                        imageVector = Icons.Filled.VolumeUp,
-                        contentDescription = "Volume",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                trailing = {
-                    Text(
-                        text = "${(volume * 100).roundToInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                value = volume,
-                onValueChange = onVolume,
-            )
-            CompanionSliderRow(
-                leading = {
-                    Icon(
-                        imageVector = Icons.Filled.Brightness7,
-                        contentDescription = "Brightness",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                trailing = {
-                    Text(
-                        text = "${(brightness * 100).roundToInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                value = brightness,
-                onValueChange = onBrightness,
-            )
-        }
+                    },
+                    trailing = {
+                        if (!isLive && durationMs > 0) {
+                            Text(
+                                text = formatTime(durationMs),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    value =
+                        seekDrag
+                            ?: (
+                                if (durationMs > 0) {
+                                    (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                }
+                            ),
+                    onValueChange = { seekDrag = it },
+                    onValueChangeFinished = {
+                        seekDrag?.let { onSeekTo((it * durationMs).toLong()) }
+                        seekDrag = null
+                    },
+                    enabled = !isLive && durationMs > 0,
+                )
+                CompanionSliderRow(
+                    leading = {
+                        Icon(
+                            imageVector = Icons.Filled.VolumeUp,
+                            contentDescription = "Volume",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    trailing = {
+                        Text(
+                            text = "${(volume * 100).roundToInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    value = volume,
+                    onValueChange = onVolume,
+                )
+                CompanionSliderRow(
+                    leading = {
+                        Icon(
+                            imageVector = Icons.Filled.Brightness7,
+                            contentDescription = "Brightness",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    trailing = {
+                        Text(
+                            text = "${(brightness * 100).roundToInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    value = brightness,
+                    onValueChange = onBrightness,
+                )
+            }
         }
     }
 }
@@ -1986,4 +2749,3 @@ private fun ContentItem.toCoreVideoCard(): CoreVideoCard =
         publishedAt = publishedAt,
         url = url,
     )
-

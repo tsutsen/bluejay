@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.player.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.CastingRepository
+import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
@@ -20,6 +21,7 @@ import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.ContentType
 import com.tsutsen.platformplayer.core.model.DownloadInfo
+import com.tsutsen.platformplayer.core.model.toContentItem
 import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlayerState
 import com.tsutsen.platformplayer.core.model.PlaylistOption
@@ -27,6 +29,8 @@ import com.tsutsen.platformplayer.core.model.LiveChatUiState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.model.VideoChapter
+import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
+import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.core.model.WatchState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +53,14 @@ private const val HISTORY_SAVE_INTERVAL_MS = 5_000L
 /**
  * MVI state for the Video Player screen.
  */
+/** Speed clamp for controller speed-up/down (same range the gesture steps use). */
+private const val MIN_SPEED = 0.25f
+private const val MAX_SPEED = 4f
+
+/** Action ids that exist now — bindings saved for removed/renamed actions
+ * (e.g. the old combined "speed" action) must not shadow their keycode. */
+private val KNOWN_ACTION_IDS = PlayerControllerActions.ALL.mapTo(HashSet()) { it.id }
+
 sealed interface PlayerUiState {
     data class Loaded(
         val isPlaying: Boolean,
@@ -134,6 +146,11 @@ class PlayerViewModel
         @Volatile
         private var liveChatJob: Job? = null
 
+        /** Speed in effect before a controller speed-hold started (restored
+         *  on release). Class-level: the speed action handler is local to
+         *  [onLoad] but [close] must be able to reset a stuck hold. */
+        private var speedBeforeHold: Float? = null
+
         /** Per-slot gesture assignments (Settings > Gestures); live flow.
          *  The player surface builds its gesture configs from this on (re)composition. */
         val gesturePrefs: StateFlow<com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences> =
@@ -141,6 +158,14 @@ class PlayerViewModel
                 viewModelScope,
                 kotlinx.coroutines.flow.SharingStarted.Eagerly,
                 com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences(),
+            )
+
+        /** Controller (gamepad/remote) settings (Settings > Controller); live flow. */
+        val controllerPrefs: StateFlow<ControllerPreferences> =
+            settingsRepository.preferences.map { it.controller }.stateIn(
+                viewModelScope,
+                kotlinx.coroutines.flow.SharingStarted.Eagerly,
+                ControllerPreferences(),
             )
 
         init {
@@ -152,6 +177,7 @@ class PlayerViewModel
                         font = prefs.subtitle.font,
                         size = prefs.subtitle.size,
                         padding = prefs.subtitle.bottomPadding,
+                        outline = prefs.subtitle.outline,
                     )
                 }
             }
@@ -215,7 +241,7 @@ class PlayerViewModel
                                             .coerceIn(0f, 1f),
                                     isWatched =
                                         it.lastPositionMs >=
-                                            it.totalDurationMs * WATCHED_FRACTION,
+                                            it.totalDurationMs * WatchState.WATCHED_FRACTION,
                                 )
                         }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
@@ -307,6 +333,14 @@ class PlayerViewModel
         @Volatile
         private var isSubscribedCache: Boolean = false
 
+        /**
+         * Bumped on every optimistic subscribe/unsubscribe so an in-flight
+         * lazy-fetch (or an earlier toggle) can't clobber the UI with a
+         * pre-toggle value.
+         */
+        @Volatile
+        private var subscribeGeneration: Int = 0
+
         val playlists: StateFlow<List<PlaylistOption>> = libraryRepository.playlists
         val downloads: StateFlow<List<DownloadInfo>> = downloadsRepository.downloads
 
@@ -331,6 +365,22 @@ class PlayerViewModel
                         // something else changed — otherwise every tick would re-emit a
                         // new 28-field state and recompose the whole player subtree.
                         _positionMs.value = playerState.currentPositionMs
+                        // History sampling runs on every tick — the early
+                        // return below skips the UI rebuild for position-only
+                        // ticks, but those ticks are exactly what the
+                        // 5s-throttled sampler feeds on. Skipping them made
+                        // saves fire only on state changes (pause/seek), and
+                        // the tracker's gap cap then refused to credit the
+                        // long gaps between them, so watchedMs tracked only
+                        // a few percent of real playback.
+                        playerState.currentVideo?.let { video ->
+                            persistPlaybackHistory(
+                                video = video,
+                                positionMs = playerState.currentPositionMs,
+                                durationMs = playerState.durationMs,
+                                force = !playerState.isPlaying || playerState.isCompleted,
+                            )
+                        }
                         val prev = lastPlayerState
                         lastPlayerState = playerState
                         if (
@@ -446,12 +496,13 @@ class PlayerViewModel
                         if (channelUrl != null && channelUrl != isSubscribedUrl) {
                             isSubscribedUrl = channelUrl
                             isSubscribedCache = false
+                            val gen = subscribeGeneration
                             viewModelScope.launch {
                                 val subscribed =
                                     withContext(Dispatchers.IO) {
                                         channelRepository.isSubscribed(channelUrl)
                                     }
-                                if (isSubscribedUrl == channelUrl) {
+                                if (isSubscribedUrl == channelUrl && gen == subscribeGeneration) {
                                     isSubscribedCache = subscribed
                                     _uiState.update {
                                         (it as? PlayerUiState.Loaded)?.copy(
@@ -461,14 +512,6 @@ class PlayerViewModel
                                     }
                                 }
                             }
-                        }
-                        if (video != null) {
-                            persistPlaybackHistory(
-                                video = video,
-                                positionMs = playerState.currentPositionMs,
-                                durationMs = playerState.durationMs,
-                                force = !playerState.isPlaying || playerState.isCompleted,
-                            )
                         }
                     }
             }
@@ -528,21 +571,39 @@ class PlayerViewModel
             }
         }
 
-        /** Subscribe/unsubscribe the current video's channel. */
+        /**
+         * Subscribe/unsubscribe the current video's channel.
+         *
+         * Optimistic: the button flips immediately from the synchronous
+         * local store state; the backend transaction runs behind it and its
+         * result (the source of truth) is written back — a failed
+         * subscription no-ops in the repository, which rolls the UI back.
+         */
         fun subscribeChannel() {
+            val url =
+                playerRepository.playerState.value.currentVideo
+                    ?.author
+                    ?.url
+                    ?.takeIf { it.isNotEmpty() } ?: return
+            // Local read — synchronous, no IO.
+            val optimistic = !channelRepository.isSubscribed(url)
+            isSubscribedUrl = url
+            isSubscribedCache = optimistic
+            subscribeGeneration++
+            _uiState.update {
+                (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = optimistic) ?: it
+            }
+            val gen = subscribeGeneration
             viewModelScope.launch {
-                val url =
-                    playerRepository.playerState.value.currentVideo
-                        ?.author
-                        ?.url
-                if (url.isNullOrEmpty()) return@launch
                 val subscribed =
                     withContext(Dispatchers.IO) {
                         channelRepository.toggleSubscription(url)
                     }
-                isSubscribedCache = subscribed
-                _uiState.update {
-                    (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = subscribed) ?: it
+                if (isSubscribedUrl == url && gen == subscribeGeneration) {
+                    isSubscribedCache = subscribed
+                    _uiState.update {
+                        (it as? PlayerUiState.Loaded)?.copy(isSubscribedChannel = subscribed) ?: it
+                    }
                 }
             }
         }
@@ -664,28 +725,7 @@ class PlayerViewModel
 
         /** Play a card whose details are already known (instant title/thumb). */
         fun play(card: com.tsutsen.platformplayer.core.model.VideoCard) {
-            play(
-                card.url,
-                com.tsutsen.platformplayer.core.model.ContentItem(
-                    id = card.id,
-                    url = card.url,
-                    title = card.title,
-                    author =
-                        card.author?.let {
-                            com.tsutsen.platformplayer.core.model.Author(
-                                id = card.authorUrl.orEmpty(),
-                                name = it,
-                                url = card.authorUrl,
-                                thumbnailUrl = null,
-                            )
-                        },
-                    thumbnailUrl = card.thumbnailUrl,
-                    contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
-                    publishedAt = card.publishedAt,
-                    durationMs = card.durationMs,
-                    viewCount = card.viewCount,
-                ),
-            )
+            play(card.url, card.toContentItem())
         }
 
         fun loadMoreComments(contentUrl: String) {
@@ -718,12 +758,14 @@ class PlayerViewModel
         fun getPlayer() = playerRepository
 
         fun pause() {
+            PlayerEventBus.emit(PlayerEvent.PlayPauseToggled(isPlaying = false))
             viewModelScope.launch {
                 playerRepository.pause()
             }
         }
 
         fun resume() {
+            PlayerEventBus.emit(PlayerEvent.PlayPauseToggled(isPlaying = true))
             viewModelScope.launch {
                 playerRepository.resume()
             }
@@ -738,24 +780,28 @@ class PlayerViewModel
         /** Seek relative to current ExoPlayer position (avoids stale UI state). */
         fun seekBy(deltaMs: Long) {
             val current = playerRepository.exoPlayer?.currentPosition ?: return
+            PlayerEventBus.emit(PlayerEvent.Seek(deltaMs))
             viewModelScope.launch {
                 playerRepository.seekTo((current + deltaMs).coerceIn(0, playerRepository.exoPlayer?.duration ?: Long.MAX_VALUE))
             }
         }
 
         fun setVolume(volume: Float) {
+            PlayerEventBus.emit(PlayerEvent.VolumeChanged(volume))
             viewModelScope.launch {
                 playerRepository.setVolume(volume)
             }
         }
 
         fun setBrightness(brightness: Float) {
+            PlayerEventBus.emit(PlayerEvent.BrightnessChanged(brightness))
             viewModelScope.launch {
                 playerRepository.setBrightness(brightness)
             }
         }
 
         fun setPlaybackSpeed(speed: Float) {
+            PlayerEventBus.emit(PlayerEvent.PlaybackSpeedChanged(speed))
             viewModelScope.launch {
                 playerRepository.setPlaybackSpeed(speed)
             }
@@ -785,6 +831,90 @@ class PlayerViewModel
             }
         }
 
+        /**
+         * Handle a gamepad/remote press or release edge. Looks up the bound
+         * action in the user's mapping (falling back to each action's
+         * default key) and performs it. Bindings saved for removed actions
+         * (e.g. the old combined "speed") are ignored so they don't shadow
+         * their keycode.
+         *
+         * Speed actions are *hold* actions: while held, playback runs at
+         * the *current* speed multiplied by 2 (up) / divided by 2 (down),
+         * clamped to [MIN_SPEED]..[MAX_SPEED]; releasing restores the speed
+         * from before the hold. All other actions fire on press only.
+         *
+         * @return true when the key is mapped (press *and* release are
+         *   consumed so they don't leak to system handling).
+         */
+        fun handleControllerKey(event: GamepadKeyBus.GamepadEvent): Boolean {
+            val prefs = controllerPrefs.value
+            if (!prefs.enabled) return false
+            val action =
+                prefs.mappings.entries.firstOrNull {
+                    it.key in KNOWN_ACTION_IDS && it.value.keyCode == event.keyCode
+                }?.key
+                    ?: PlayerControllerActions.ALL.firstOrNull { it.defaultKeyCode == event.keyCode }?.id
+                    ?: return false
+            val state = _uiState.value as? PlayerUiState.Loaded ?: return false
+            when (action) {
+                PlayerControllerActions.SPEED_UP ->
+                    if (event.isPress) {
+                        if (speedBeforeHold == null) speedBeforeHold = state.playbackSpeed
+                        setPlaybackSpeed((state.playbackSpeed * 2f).coerceIn(MIN_SPEED, MAX_SPEED))
+                    } else {
+                        speedBeforeHold?.let { setPlaybackSpeed(it) }
+                        speedBeforeHold = null
+                    }
+
+                PlayerControllerActions.SPEED_DOWN ->
+                    if (event.isPress) {
+                        if (speedBeforeHold == null) speedBeforeHold = state.playbackSpeed
+                        setPlaybackSpeed((state.playbackSpeed / 2f).coerceIn(MIN_SPEED, MAX_SPEED))
+                    } else {
+                        speedBeforeHold?.let { setPlaybackSpeed(it) }
+                        speedBeforeHold = null
+                    }
+
+                else ->
+                    if (event.isPress) {
+                        when (action) {
+                            PlayerControllerActions.PLAY_PAUSE ->
+                                if (state.isPlaying) pause() else resume()
+
+                            PlayerControllerActions.SEEK_BACK ->
+                                seekBy(-prefs.seekBackSeconds * 1000L)
+
+                            PlayerControllerActions.SEEK_FORWARD ->
+                                seekBy(prefs.seekForwardSeconds * 1000L)
+
+                            PlayerControllerActions.NEXT -> skipNext()
+                            PlayerControllerActions.PREVIOUS -> skipPrevious()
+
+                            // Back-style key in fullscreen exits fullscreen
+                            // first (same as the app's back handler);
+                            // otherwise it closes the player.
+                            PlayerControllerActions.CLOSE ->
+                                if (state.isFullscreen) exitFullscreen() else close()
+
+                            PlayerControllerActions.BRIGHTNESS_UP ->
+                                setBrightness((state.brightness + 0.1f).coerceIn(0f, 1f))
+
+                            PlayerControllerActions.BRIGHTNESS_DOWN ->
+                                setBrightness((state.brightness - 0.1f).coerceIn(0f, 1f))
+
+                            PlayerControllerActions.VOLUME_UP ->
+                                setVolume((state.volume + 0.1f).coerceIn(0f, 1f))
+
+                            PlayerControllerActions.VOLUME_DOWN ->
+                                setVolume((state.volume - 0.1f).coerceIn(0f, 1f))
+
+                            else -> {}
+                        }
+                    }
+            }
+            return true
+        }
+
         fun toggleFullscreen() {
             viewModelScope.launch {
                 playerRepository.toggleFullscreen()
@@ -810,6 +940,8 @@ class PlayerViewModel
         }
 
         fun close() {
+            speedBeforeHold = null
+            PlayerEventBus.emit(PlayerEvent.Closed)
             // A closed player session consumes the current video — drop it
             // from the queue so it doesn't linger at the head afterwards.
             // (playerRepository.close() nulls currentVideo, so the queue's
@@ -824,10 +956,12 @@ class PlayerViewModel
         }
 
         fun skipNext() {
+            PlayerEventBus.emit(PlayerEvent.NextRequested)
             playbackQueueRepository.playNext()
         }
 
         fun skipPrevious() {
+            PlayerEventBus.emit(PlayerEvent.PreviousRequested)
             viewModelScope.launch {
                 // TODO: Implement queue navigation
             }

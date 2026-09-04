@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -24,7 +26,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -66,10 +73,13 @@ import androidx.media3.common.Player
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.QueueList
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
+import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
+import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import com.tsutsen.platformplayer.feature.player.impl.ui.CastingSheet
 import kotlinx.coroutines.Job
@@ -80,10 +90,14 @@ import kotlin.math.roundToInt
 
 private const val TAG = "PlayerScreen"
 
+/** Window in which same-direction seeks accumulate into one running badge total. */
+private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
+
 @Composable
 fun PlayerView(
     viewModel: PlayerViewModel = hiltViewModel(),
     onChannelClick: (String) -> Unit = {},
+    isPip: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val liveChat by viewModel.liveChat.collectAsState()
@@ -98,6 +112,19 @@ fun PlayerView(
     // composed later), so it wins while enabled.
     BackHandler(enabled = (uiState as? PlayerUiState.Loaded)?.isFullscreen == true) {
         viewModel.exitFullscreen()
+    }
+    // Controller (gamepad / TV remote) key handling: route key-downs to the
+    // view model while this screen is composed (Settings > Controller).
+    val controllerKeyHandler =
+        remember {
+            object : (GamepadKeyBus.GamepadEvent) -> Boolean {
+                override fun invoke(event: GamepadKeyBus.GamepadEvent) =
+                    viewModel.handleControllerKey(event)
+            }
+        }
+    DisposableEffect(Unit) {
+        GamepadKeyBus.setPlayerHandler(controllerKeyHandler)
+        onDispose { GamepadKeyBus.setPlayerHandler(null) }
     }
     val coroutineScope = rememberCoroutineScope()
 
@@ -182,6 +209,17 @@ fun PlayerView(
         remember(uiState) {
             (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
         }
+
+    // System picture-in-picture: the PiP window is the video itself — no
+    // chrome, controls, or gestures. (SurfaceView composites correctly in
+    // the PiP window on API 10+; if a device shows a black PiP frame the
+    // upgrade path is a TextureView wired via setVideoTextureView.)
+    if (isPip) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            PlayerVideoSurface(player = player)
+        }
+        return
+    }
 
     // ==================== Animation sync ====================
     val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
@@ -312,15 +350,36 @@ fun PlayerView(
         }
     }
 
+    val isLandscapeNow: () -> Boolean =
+        { surface.containerSize.value.width > surface.containerSize.value.height }
+
+    /**
+     * Begin the overdrag-to-fullscreen morph: remember how much of the
+     * drag still has to re-expand the video, claim the fullscreen axis,
+     * and hide the system bars (edge-to-edge: layout-neutral, so hiding
+     * at drag start is free).
+     */
+    fun beginOverscrollMorph(pendingExpandPx: Float) {
+        detailsOverdragPendingExpandPx.value = pendingExpandPx
+        surface.isDraggingFullscreen.value = true
+        setFullscreenBarsNow(true)
+    }
+
+    /**
+     * Overdrag-to-fullscreen is only allowed from NORMAL. A drag that
+     * starts in COMPACT re-expands the video via the normal nested scroll
+     * first — starting the morph (and hiding the system bars) there fired
+     * both transitions in one gesture and flashed the bars on cancel.
+     * Such a drag lazy-starts in [updateOverscrollMorph] once the video is
+     * fully expanded and the drag continues.
+     */
     fun startOverscrollMorph() {
-        val c = surface.containerSize.value
-        val isLand = c.width > c.height
-        detailsOverdragPendingExpandPx.value =
+        val isLand = isLandscapeNow()
+        if (surface.isCollapsedNow(isLand)) return
+        val pending =
             (surface.maxPlayerHeightPx(isLand) - surface.playerHeightPx.value)
                 .coerceAtLeast(0f)
-        surface.isDraggingFullscreen.value = true
-        // Edge-to-edge: layout-neutral, so hiding at drag start is free.
-        setFullscreenBarsNow(true)
+        beginOverscrollMorph(pending)
     }
 
     // Morph travel = the distance the video still has to GROW: full window
@@ -333,6 +392,18 @@ fun PlayerView(
             .coerceAtLeast(1f)
 
     fun updateOverscrollMorph(cumulativePx: Float) {
+        if (!surface.isDraggingFullscreen.value) {
+            // Lazy start: a drag that began in COMPACT consumed its px via
+            // the nested-scroll re-expansion. Engage the fullscreen morph
+            // only once the video is fully expanded and the drag continues
+            // past the top — counting all px accumulated so far as the
+            // re-expansion distance so the morph starts from 0.
+            if (cumulativePx > 0f && !surface.isCollapsedNow(isLandscapeNow())) {
+                beginOverscrollMorph(cumulativePx)
+            } else {
+                return
+            }
+        }
         val over =
             (cumulativePx - detailsOverdragPendingExpandPx.value)
                 .coerceAtLeast(0f)
@@ -343,6 +414,7 @@ fun PlayerView(
     }
 
     fun finishOverscrollMorph(cumulativePx: Float) {
+        if (!surface.isDraggingFullscreen.value) return // never started (COMPACT drag)
         surface.isDraggingFullscreen.value = false
         val travel = fullscreenOverdragTravelPx()
         val over =
@@ -600,6 +672,80 @@ fun PlayerView(
                         .buildGestureConfigs(gesturePrefs)
                 }
 
+            // ==================== Action badges (PlayerEventBus) ====================
+            // Badges are driven by the player event bus, not the gesture
+            // handler, so the same badges show for actions from the
+            // controller, the companion screen, etc. — not just gestures.
+            LaunchedEffect(Unit) {
+                // Consecutive same-direction seeks within the window accumulate
+                // into one running total (double-tap -5s -5s -> "-10s").
+                var seekTotalMs = 0L
+                var seekDir = 0
+                var seekTime = 0L
+                var capsuleJob: Job? = null
+
+                fun showCapsule(key: String, level: Float, icon: ImageVector) {
+                    activeProgressIndicator =
+                        GestureIndicator.Progress(key = key, value = level, icon = icon)
+                    capsuleJob?.cancel()
+                    capsuleJob = launch {
+                        delay(GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS)
+                        if (activeProgressIndicator?.key == key) activeProgressIndicator = null
+                    }
+                }
+
+                PlayerEventBus.events.collect { event ->
+                    when (event) {
+                        is PlayerEvent.Seek -> {
+                            val now = System.currentTimeMillis()
+                            val dir = if (event.deltaMs < 0) -1 else 1
+                            seekTotalMs =
+                                if (dir == seekDir && now - seekTime < SEEK_ACCUMULATE_WINDOW_MS)
+                                    seekTotalMs + event.deltaMs
+                                else event.deltaMs
+                            seekDir = dir
+                            seekTime = now
+                            val seconds = seekTotalMs / 1000
+                            badgeKeepAliveCounter++
+                            badgeState =
+                                GestureBadgeState(
+                                    key = if (dir < 0) "rewind_back" else "rewind_forward",
+                                    label = if (seconds > 0) "+${seconds}s" else "${seconds}s",
+                                    icon =
+                                        if (dir < 0)
+                                            Icons.Default.Replay10
+                                        else Icons.Default.Forward10,
+                                    visible = true,
+                                    keepAlive = badgeKeepAliveCounter,
+                                )
+                        }
+
+                        is PlayerEvent.PlaybackSpeedChanged -> {
+                            badgeKeepAliveCounter++
+                            badgeState =
+                                GestureBadgeState(
+                                    key = "speed",
+                                    label = "%.2fx".format(event.speed),
+                                    icon = Icons.Outlined.Speed,
+                                    visible = true,
+                                    keepAlive = badgeKeepAliveCounter,
+                                )
+                        }
+
+                        is PlayerEvent.BrightnessChanged ->
+                            showCapsule("brightness", event.level, Icons.Default.BrightnessHigh)
+
+                        is PlayerEvent.VolumeChanged ->
+                            showCapsule("volume", event.level, Icons.Default.VolumeUp)
+
+                        // PlayPauseToggled / NextRequested / PreviousRequested /
+                        // Closed: no badge yet — they still pass through the bus
+                        // for future consumers.
+                        else -> Unit
+                    }
+                }
+            }
+
             // ==================== Gesture action handler ====================
             val gestureHandler =
                 remember {
@@ -608,45 +754,6 @@ fun PlayerView(
                         screenHeight = { surface.containerSize.value.height },
                         context = context,
                         activity = context as? android.app.Activity,
-                        onIndicator = { indicator ->
-                            when (indicator) {
-                                is GestureIndicator.Progress -> {
-                                    activeProgressIndicator = indicator
-                                }
-
-                                is GestureIndicator.TextBadge -> {
-                                    badgeKeepAliveCounter++
-                                    badgeState =
-                                        GestureBadgeState(
-                                            key = indicator.key,
-                                            label = indicator.label,
-                                            icon = indicator.icon,
-                                            visible = true,
-                                            keepAlive = badgeKeepAliveCounter,
-                                        )
-                                }
-
-                                is GestureIndicator.Badge -> {
-                                    badgeKeepAliveCounter++
-                                    badgeState =
-                                        GestureBadgeState(
-                                            key = indicator.key,
-                                            label = indicator.format(indicator.value),
-                                            icon = indicator.icon,
-                                            visible = true,
-                                            keepAlive = badgeKeepAliveCounter,
-                                        )
-                                }
-
-                                else -> {
-                                    Unit
-                                }
-                            }
-                        },
-                        onIndicatorEnd = {
-                            activeProgressIndicator = null
-                            // Badges auto-hide via their own fade animation — don't touch badgeState here
-                        },
                         onMorphDragStart = { surface.isDraggingMorph.value = true },
                         onMorphDrag = { dragY ->
                             // Read the surface at call time — this block is
@@ -972,7 +1079,7 @@ fun PlayerView(
                                 .padding(top = 64.dp)
                                 .background(
                                     Color.Black.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = RoundedCornerShape(BluejayTokens().radius.card),
                                 ).padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1034,6 +1141,9 @@ fun PlayerView(
                                 is DownloadButtonState.Downloaded -> viewModel.deleteDownload()
                                 is DownloadButtonState.Starting -> Unit
                             }
+                        },
+                        onDownloadWithQuality = { quality ->
+                            viewModel.startDownload(quality)
                         },
                         onDismiss = { showOptionsModal = false },
                     )
