@@ -1,30 +1,43 @@
 package com.tsutsen.platformplayer.gettingstarted
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.RocketLaunch
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.StayCurrentPortrait
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,17 +55,27 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.api.media.IPlatformClient
+import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
+import com.tsutsen.platformplayer.compose.plugins.PluginDetailScene
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
-import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchOptionCard
-import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.component.groupShape
+import com.tsutsen.platformplayer.core.designsystem.icon.DualScreen
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
@@ -69,7 +92,9 @@ import kotlinx.coroutines.launch
  * persists the flag, so the tour shows only once.
  *
  * Every choice persists live (except the source selection, which applies on
- * "Next" because enabling clients initialises their engines).
+ * "Next" because enabling clients initialises their engines). Tapping a
+ * source card opens that plugin's settings (the same detail scene the
+ * plugin browser uses) without leaving the flow.
  */
 @Composable
 fun GettingStartedFlow(
@@ -86,6 +111,7 @@ fun GettingStartedFlow(
     var checkedSources by remember {
         mutableStateOf(StatePlatform.instance.getEnabledClients().map { it.id }.toSet())
     }
+    var selectedSourceUrl by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(step) {
         if (step == 1 && sources.isEmpty()) {
             // Built-in plugins load shortly after start; poll briefly.
@@ -123,9 +149,7 @@ fun GettingStartedFlow(
                 .background(MaterialTheme.colorScheme.background),
     ) {
         // Step content: centered in a box (so it scrolls instead of
-        // clipping when a step is longer than the viewport), capped at
-        // half the width on wide screens.
-        val wide = rememberIsWide()
+        // clipping when a step is longer than the viewport).
         Box(
             modifier =
                 Modifier
@@ -142,7 +166,7 @@ fun GettingStartedFlow(
             Column(
                 modifier =
                     Modifier
-                        .fillMaxWidth(if (wide) 0.5f else 1f)
+                        .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
                         .graphicsLayer {
                             alpha = entrance.value
@@ -160,6 +184,7 @@ fun GettingStartedFlow(
                                     if (id in checkedSources) checkedSources - id
                                     else checkedSources + id
                             },
+                            onOpenSettings = { url -> selectedSourceUrl = url },
                         )
                     2 -> DualScreenStep(
                             enabled = dualScreen,
@@ -202,7 +227,7 @@ fun GettingStartedFlow(
             modifier = Modifier.align(Alignment.BottomCenter),
             back =
                 when (step) {
-                    0 -> Pair("Skip tour and accept defaults", onFinished)
+                    0 -> Pair("Skip setup", onFinished)
                     4 -> null
                     else -> Pair("Back", { step-- })
                 },
@@ -235,6 +260,23 @@ fun GettingStartedFlow(
                     Dot(active = i < step || step == 4)
                 }
             }
+        }
+    }
+
+    // A source card's tap: the plugin's settings, hosted in the overlay so
+    // the flow stays alive underneath (same scene the plugin browser uses).
+    selectedSourceUrl?.let { url ->
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            PluginDetailScene(
+                configUrl = url,
+                installedPlugins = sources.filterIsInstance<JSClient>().map { it.config },
+                onBack = {
+                    selectedSourceUrl = null
+                    // The detail scene can toggle the plugin's enable state —
+                    // resync the flow's selection so "Next" doesn't clobber it.
+                    checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+                },
+            )
         }
     }
 
@@ -300,15 +342,14 @@ private fun FlowDock(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Tokens.SpaceXl, vertical = Tokens.SpaceMd),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (back != null) {
-                TextButton(onClick = back.second) { Text(back.first) }
-            } else {
+            back?.let {
+                TextButton(onClick = it.second) { Text(it.first) }
                 Spacer(Modifier.weight(1f))
             }
-            Button(onClick = primary.second, modifier = Modifier.weight(2f)) {
+            Button(onClick = primary.second) {
                 Text(primary.first)
             }
         }
@@ -332,15 +373,30 @@ private fun Dot(active: Boolean, modifier: Modifier = Modifier) {
 
 @Composable
 private fun WelcomeStep(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    // The real launcher icon, rendered from the package manager.
+    val launcherIcon =
+        remember {
+            val drawable: android.graphics.drawable.Drawable =
+                context.packageManager.getApplicationIcon(context.packageName)
+            val sizePx = 96
+            val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, sizePx, sizePx)
+            drawable.draw(canvas)
+            bitmap.asImageBitmap()
+        }
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(
-            Icons.Outlined.RocketLaunch,
+        Image(
+            bitmap = launcherIcon,
             contentDescription = null,
-            modifier = Modifier.size(Tokens.AvatarXl),
-            tint = MaterialTheme.colorScheme.primary,
+            modifier =
+                Modifier
+                    .size(Tokens.AvatarXl)
+                    .clip(RoundedCornerShape(BluejayTokens().radius.sm)),
         )
         Spacer(Modifier.height(Tokens.SpaceLg))
         Text(
@@ -352,12 +408,16 @@ private fun WelcomeStep(modifier: Modifier = Modifier) {
     }
 }
 
-/** Same cards as the settings plugins page: icon, name, switch. */
+/**
+ * Sources as a grid of cards (icon, name, description, enable checkbox).
+ * Tapping a card opens that plugin's settings.
+ */
 @Composable
 private fun SourcesStep(
     sources: List<IPlatformClient>,
     checked: Set<String>,
     onToggle: (String) -> Unit,
+    onOpenSettings: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -383,18 +443,136 @@ private fun SourcesStep(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            sources.forEachIndexed { index, source ->
-                SettingsSwitchOptionCard(
-                    icon = Icons.Default.Extension,
-                    iconUrl = StatePlugins.instance.getPluginIconUriOrNull(source.id),
-                    title = source.name,
-                    subtitle = "",
-                    checked = source.id in checked,
-                    onCheckedChange = { onToggle(source.id) },
-                    onClick = { onToggle(source.id) },
-                    groupPosition = GroupPosition.fromIndex(index, sources.size),
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd)) {
+                sources.chunked(2).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+                    ) {
+                        row.forEach { source ->
+                            SourceCard(
+                                source = source,
+                                checked = source.id in checked,
+                                onToggle = { onToggle(source.id) },
+                                onOpenSettings = {
+                                    (source as? JSClient)
+                                        ?.config
+                                        ?.sourceUrl
+                                        ?.let(onOpenSettings)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                            )
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun SourceCard(
+    source: IPlatformClient,
+    checked: Boolean,
+    onToggle: () -> Unit,
+    onOpenSettings: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    FlowCard(
+        icon = Icons.Default.Extension,
+        title = source.name,
+        subtitle = (source as? JSClient)?.config?.description,
+        iconUrl = StatePlugins.instance.getPluginIconUriOrNull(source.id),
+        onClick = onOpenSettings,
+        modifier = modifier,
+        trailing = {
+            Checkbox(checked = checked, onCheckedChange = { onToggle() })
+        },
+    )
+}
+
+/**
+ * The flow's option card: the settings cards' visual language (icon tile,
+ * title, subtitle) with a caller-provided trailing control and optional
+ * card-level tap.
+ */
+@Composable
+private fun FlowCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    iconUrl: String? = null,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    groupPosition: GroupPosition = GroupPosition.Single,
+    trailing: (@Composable RowScope.() -> Unit)? = null,
+) {
+    Card(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        shape = groupShape(groupPosition),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(Tokens.AvatarMd)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(BluejayTokens().radius.sm),
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (iconUrl != null) {
+                    AsyncImage(
+                        model = iconUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .clip(MaterialTheme.shapes.small),
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(Tokens.IconMd),
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                subtitle?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            trailing?.let { it() }
         }
     }
 }
@@ -418,41 +596,49 @@ private fun DualScreenStep(
         Text("Enable dual screen mode?", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(Tokens.SpaceSm))
         Text(
-            "Show the app on a second display, like a tablet or phone.",
+            "If your device has a second screen, this app can show additional controls and info there!",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Tokens.SpaceMd))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                "Dual screen",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            Switch(checked = enabled, onCheckedChange = onEnabledChange)
-        }
+        FlowCard(
+            icon = DualScreen,
+            title = "Dual screen",
+            subtitle = "Show a second display",
+            groupPosition =
+                if (enabled) GroupPosition.First else GroupPosition.Single,
+            trailing = {
+                Switch(checked = enabled, onCheckedChange = onEnabledChange)
+            },
+        )
         if (enabled) {
-            Spacer(Modifier.height(Tokens.SpaceMd))
-            Text("Pages to show on the second screen:", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(Tokens.SpaceSm))
-            dualPageNames.forEach { (id, label) ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Checkbox(
-                        checked = id in pages,
-                        onCheckedChange = {
-                            onPagesChange(
-                                if (id in pages) pages - id else pages + id
+            Text(
+                "Pages to show on the second screen:",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.height(Tokens.SpaceSm))
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                dualPageIcons.forEach { (id, page) ->
+                    FlowCard(
+                        icon = page.first,
+                        title = page.second,
+                        groupPosition =
+                            GroupPosition.fromIndex(
+                                dualPageIcons.keys.indexOf(id),
+                                dualPageIcons.size,
+                            ),
+                        trailing = {
+                            Switch(
+                                checked = id in pages,
+                                onCheckedChange = {
+                                    onPagesChange(
+                                        if (id in pages) pages - id else pages + id
+                                    )
+                                },
                             )
                         },
                     )
-                    Spacer(Modifier.width(Tokens.SpaceXs))
-                    Text(label, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -483,44 +669,42 @@ private fun ControllerStep(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(Tokens.SpaceMd))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                "Controller",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            Switch(checked = enabled, onCheckedChange = onEnabledChange)
-        }
+        FlowCard(
+            icon = Icons.Outlined.SportsEsports,
+            title = "Controller",
+            subtitle = "Use a gamepad or TV remote",
+            groupPosition =
+                if (enabled) GroupPosition.First else GroupPosition.Single,
+            trailing = {
+                Switch(checked = enabled, onCheckedChange = onEnabledChange)
+            },
+        )
         if (enabled) {
-            Spacer(Modifier.height(Tokens.SpaceMd))
-            Text("Default key mappings:", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(Tokens.SpaceSm))
-            PlayerControllerActions.ALL.forEach { action ->
-                val bound = mappings[action.id]
-                val keyLabel =
-                    PlayerControllerActions.labelFor(bound?.keyCode ?: action.defaultKeyCode)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = Tokens.SpaceXxs),
-                ) {
-                    Text(
-                        action.label,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
+            Text(
+                "Default key mappings:",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.height(Tokens.SpaceSm))
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                PlayerControllerActions.ALL.forEachIndexed { index, action ->
+                    val bound = mappings[action.id]
+                    val keyLabel =
+                        PlayerControllerActions.labelFor(bound?.keyCode ?: action.defaultKeyCode)
+                    FlowCard(
+                        icon = Icons.Filled.Keyboard,
+                        title = action.label,
+                        groupPosition = GroupPosition.fromIndex(index, PlayerControllerActions.ALL.size),
+                        trailing = {
+                            Text(
+                                keyLabel,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(Tokens.SpaceSm))
+                            TextButton(onClick = { onRemap(action) }) { Text("Remap") }
+                        },
                     )
-                    Text(
-                        keyLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.width(Tokens.SpaceMd))
-                    TextButton(onClick = { onRemap(action) }) { Text("Remap") }
                 }
             }
         }
@@ -548,7 +732,7 @@ private fun DoneStep(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(Tokens.SpaceMd))
         Text(
-            "You can log into your sources and start browsing.",
+            "You can log into your sources and start browsing. And do take a look on the settings tab, there are many more things to customize!",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -556,10 +740,10 @@ private fun DoneStep(modifier: Modifier = Modifier) {
     }
 }
 
-private val dualPageNames =
+private val dualPageIcons: Map<String, Pair<ImageVector, String>> =
     mapOf(
-        "video" to "Video page",
-        "library" to "Library page",
-        "home" to "Home page",
-        "dash" to "Dash page",
+        "video" to (Icons.Filled.PlayArrow to "Video page"),
+        "library" to (Icons.Filled.QueueMusic to "Library page"),
+        "home" to (Icons.Filled.Home to "Home page"),
+        "dash" to (Icons.Filled.Dashboard to "Dash page"),
     )
