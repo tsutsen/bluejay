@@ -49,6 +49,8 @@ import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.database.dao.NotificationDao
+import com.tsutsen.platformplayer.core.database.dao.SubscriptionDao
+import kotlinx.coroutines.flow.combine
 import com.tsutsen.platformplayer.core.database.entity.NotificationEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
@@ -77,6 +79,7 @@ class NotificationsViewModel
         private val notificationDao: NotificationDao,
         private val downloadsRepository: DownloadsRepository,
         private val historyTracker: HistoryTracker,
+        private val subscriptionDao: SubscriptionDao,
     ) : ViewModel() {
         val notifications: StateFlow<List<NotificationEntity>> =
             notificationDao
@@ -99,9 +102,18 @@ class NotificationsViewModel
             // immediately with the current rows), so the stats recompute
             // reactively without polling.
             viewModelScope.launch {
-                historyTracker.observeHistory().collect { history ->
+                // Combine with subscriptions so top creators get the
+                // channel avatar (history only stores the video thumbnail).
+                combine(
+                    historyTracker.observeHistory(),
+                    subscriptionDao.observeAll(),
+                ) { history, subs ->
+                    history to subs.associate { it.channelId to it.thumbnailUrl }
+                }.collect { (history, avatars) ->
                     _watchStats.value =
-                        withContext(Dispatchers.IO) { WatchStatsBuilder.build(history) }
+                        withContext(Dispatchers.IO) {
+                            WatchStatsBuilder.build(history, channelAvatars = avatars)
+                        }
                 }
             }
         }

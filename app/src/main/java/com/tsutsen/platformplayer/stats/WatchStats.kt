@@ -58,9 +58,17 @@ data class CreatorWatch(
 )
 
 object WatchStatsBuilder {
+    /**
+     * @param channelAvatars channel avatar per channel URL, from the
+     *     subscriptions table. History rows only store the video
+     *     thumbnail, so without this map "top creators" would show a
+     *     random video frame as the channel face. Rows for channels
+     *     the user isn't subscribed to fall back to that thumbnail.
+     */
     fun build(
         history: List<HistoryEntity>,
         now: LocalDate = LocalDate.now(),
+        channelAvatars: Map<String, String?> = emptyMap(),
     ): WatchStats {
         val weekStart = now.minusDays(6)
         val windowStart = now.minusDays(29)
@@ -87,7 +95,10 @@ object WatchStatsBuilder {
             val day =
                 Instant.ofEpochMilli(h.watchedAt).atZone(ZoneId.systemDefault()).toLocalDate()
             val creator = h.author?.takeIf { it.isNotBlank() } ?: "Unknown"
-            val avatar = h.thumbnailUrl?.takeIf { it.isNotBlank() }
+            val avatar =
+                h.authorUrl?.let { channelAvatars[it] }
+                    ?.takeIf { it.isNotBlank() }
+                    ?: h.thumbnailUrl?.takeIf { it.isNotBlank() }
             if (avatar != null && !creatorAvatars.containsKey(creator)) {
                 creatorAvatars[creator] = avatar
             }

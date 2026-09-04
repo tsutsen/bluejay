@@ -198,6 +198,7 @@ class CompanionPresentation(
     private val liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     private val channelRepository: ChannelRepository,
     private val historyTracker: HistoryTracker,
+    private val subscriptionDao: com.tsutsen.platformplayer.core.database.dao.SubscriptionDao,
     private val onChannelClick: (String) -> Unit,
     private val onPlaylistClick: (String) -> Unit,
     private val onWatchStats: () -> Unit,
@@ -281,6 +282,7 @@ class CompanionPresentation(
                     liveChatRepository = liveChatRepository,
                     channelRepository = channelRepository,
                     historyTracker = historyTracker,
+                    subscriptionDao = subscriptionDao,
                     companionWindow = window,
                     onChannelClick = onChannelClick,
                     onPlaylistClick = onPlaylistClick,
@@ -389,6 +391,7 @@ private fun CompanionContent(
     liveChatRepository: com.tsutsen.platformplayer.core.data.repository.LiveChatRepository,
     channelRepository: ChannelRepository,
     historyTracker: HistoryTracker,
+    subscriptionDao: com.tsutsen.platformplayer.core.database.dao.SubscriptionDao,
     companionWindow: Window?,
     onChannelClick: (String) -> Unit,
     onPlaylistClick: (String) -> Unit,
@@ -472,11 +475,19 @@ private fun CompanionContent(
 
     // Dash page: live history (the Room flow the player's HistoryTracker
     // writes to) and the stats derived from it — the same pipeline as the
-    // Dash tab card on the main screen.
+    // Dash tab card on the main screen. Subscriptions supply the channel
+    // avatars (history rows only store video thumbnails).
     val history by historyTracker.observeHistory().collectAsState(initial = emptyList())
+    val subscriptions by subscriptionDao.observeAll().collectAsState(initial = emptyList())
     var watchStats by remember { mutableStateOf(WatchStats()) }
-    LaunchedEffect(history) {
-        watchStats = withContext(Dispatchers.IO) { WatchStatsBuilder.build(history) }
+    LaunchedEffect(history, subscriptions) {
+        watchStats =
+            withContext(Dispatchers.IO) {
+                WatchStatsBuilder.build(
+                    history,
+                    channelAvatars = subscriptions.associate { it.channelId to it.thumbnailUrl },
+                )
+            }
     }
     // A URL-only play (library slots, etc.) enriches from history when the
     // entry is known, so the player UI shows real details immediately

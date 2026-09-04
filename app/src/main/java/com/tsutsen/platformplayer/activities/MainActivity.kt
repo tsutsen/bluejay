@@ -97,6 +97,9 @@ class MainActivity :
     @Inject
     lateinit var historyTracker: com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
 
+    @Inject
+    lateinit var subscriptionDao: com.tsutsen.platformplayer.core.database.dao.SubscriptionDao
+
     /** System picture-in-picture active (video-only window). */
     internal val pipActive = MutableStateFlow(false)
 
@@ -170,6 +173,7 @@ class MainActivity :
                 liveChatRepository = liveChatRepository,
                 channelRepository = channelRepository,
                 historyTracker = historyTracker,
+                subscriptionDao = subscriptionDao,
                 // Tapping the channel badge on the second screen navigates
                 // the main screen to the channel page.
                 onChannelClick = { url -> navigator.navigateToChannel(url) },

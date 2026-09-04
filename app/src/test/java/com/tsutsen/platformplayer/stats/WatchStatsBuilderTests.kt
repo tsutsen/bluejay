@@ -15,12 +15,15 @@ class WatchStatsBuilderTests {
         date: LocalDate,
         author: String = "Anna",
         watchedMs: Long = 0,
+        authorUrl: String? = "channel-$author",
+        thumbnailUrl: String? = null,
     ): HistoryEntity =
         HistoryEntity(
             contentUrl = "url-$author-${date.toEpochDay()}",
             title = "Video",
             author = author,
-            thumbnailUrl = null,
+            authorUrl = authorUrl,
+            thumbnailUrl = thumbnailUrl,
             // Local midnight of the intended day: the builder attributes
             // history to the device-local day, so the fixture must be
             // timezone-independent.
@@ -127,5 +130,22 @@ class WatchStatsBuilderTests {
         assertEquals(0L, stats.allTimeMs)
         assertEquals(0, stats.topCreators.size)
         assertEquals(2, stats.videoCount)
+    }
+
+    @Test
+    fun `creator avatar prefers the channel avatar and falls back to the video thumbnail`() {
+        val stats =
+            WatchStatsBuilder.build(
+                listOf(
+                    // Subscribed channel: the channel avatar wins.
+                    history(hour, now, thumbnailUrl = "thumb-anna"),
+                    // Not subscribed (no map entry): falls back to the thumbnail.
+                    history(30 * 60_000, now, "Bob", thumbnailUrl = "thumb-bob"),
+                ),
+                now,
+                channelAvatars = mapOf("channel-Anna" to "avatar-anna"),
+            )
+        assertEquals("avatar-anna", stats.topCreators.first { it.author == "Anna" }.avatarUrl)
+        assertEquals("thumb-bob", stats.topCreators.first { it.author == "Bob" }.avatarUrl)
     }
 }
