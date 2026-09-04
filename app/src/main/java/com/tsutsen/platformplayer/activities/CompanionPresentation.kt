@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -1568,12 +1569,16 @@ private fun CreatorBadge(
  * The enclosing dash card is drawn by the caller.
  */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun ContinueCard(
     entry: HistoryEntity?,
     onPlay: () -> Unit,
     onDiscard: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val radius = BluejayTokens().radius
+    val playSource = remember { MutableInteractionSource() }
+    val discardSource = remember { MutableInteractionSource() }
     if (entry == null) {
         Text(
             text = "Watched it all and left no crumbs!",
@@ -1626,11 +1631,62 @@ private fun ContinueCard(
                 )
             }
         }
-        IconButton(onClick = onPlay) {
-            Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play")
-        }
-        IconButton(onClick = onDiscard) {
-            Icon(imageVector = Icons.Filled.Close, contentDescription = "Discard")
+        // Play + discard in the companion's connected-group language:
+        // on press the group compresses, the seam corners squish, and
+        // both colors shift (play keeps the accent the control row uses
+        // while stopped; discard shifts up one surface step).
+        val playPressed by playSource.collectIsPressedAsState()
+        val discardPressed by discardSource.collectIsPressedAsState()
+        val playContainer by
+            animateColorAsState(
+                targetValue = if (playPressed) scheme.primary else scheme.primaryContainer,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "continue-play-container",
+            )
+        val playContent by
+            animateColorAsState(
+                targetValue = if (playPressed) scheme.onPrimary else scheme.onPrimaryContainer,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "continue-play-content",
+            )
+        val discardContainer by
+            animateColorAsState(
+                targetValue = if (discardPressed) scheme.surfaceContainerHigh else scheme.surfaceVariant,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "continue-discard-container",
+            )
+        val discardContent by
+            animateColorAsState(
+                targetValue = if (discardPressed) scheme.onSurface else scheme.onSurfaceVariant,
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                label = "continue-discard-content",
+            )
+        ButtonGroup(
+            overflowIndicator = { _ -> },
+            modifier =
+                Modifier
+                    .width(Tokens.ControlLg * 2 + Tokens.SpaceXs)
+                    .height(Tokens.ControlLg),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+        ) {
+            controlItem(
+                icon = Icons.Filled.PlayArrow,
+                description = "Play",
+                containerColor = playContainer,
+                contentColor = playContent,
+                shapes = connectedGroupShapes(GroupPosition.First, radius),
+                interactionSource = playSource,
+                onClick = onPlay,
+            )
+            controlItem(
+                icon = Icons.Filled.Close,
+                description = "Discard",
+                containerColor = discardContainer,
+                contentColor = discardContent,
+                shapes = connectedGroupShapes(GroupPosition.Last, radius),
+                interactionSource = discardSource,
+                onClick = onDiscard,
+            )
         }
     }
 }
