@@ -41,4 +41,11 @@ interface SavedVideoDao {
         url: String,
         durationMs: Long,
     )
+
+    @Query("SELECT COUNT(*) FROM saved_video")
+    fun countAll(): Int
+
+    /** How many save types (Watch Later, Liked, ...) hold at least one video. */
+    @Query("SELECT COUNT(DISTINCT type) FROM saved_video")
+    fun countTypesWithVideos(): Int
 }

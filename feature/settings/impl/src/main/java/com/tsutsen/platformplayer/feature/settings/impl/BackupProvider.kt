@@ -6,8 +6,8 @@ package com.tsutsen.platformplayer.feature.settings.impl
 data class BackupSummary(
     val subscriptions: Int = 0,
     val sources: Int = 0,
-    val playlistVideos: Int = 0,
-    val playlists: Int = 0,
+    val savedVideos: Int = 0,
+    val savedPlaylists: Int = 0,
     val customSettings: Int = 0,
     val sections: Int = 0,
 )

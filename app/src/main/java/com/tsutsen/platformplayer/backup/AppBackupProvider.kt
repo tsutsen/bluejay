@@ -2,12 +2,12 @@ package com.tsutsen.platformplayer.backup
 
 import android.net.Uri
 import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.core.database.dao.SavedVideoDao
 import com.tsutsen.platformplayer.readBytes
 import com.tsutsen.platformplayer.feature.settings.impl.BackupProvider
 import com.tsutsen.platformplayer.feature.settings.impl.BackupSummary
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateBackup
-import com.tsutsen.platformplayer.states.StatePlaylists
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,7 +27,8 @@ import javax.inject.Singleton
  * a single IO pass, no background work.
  */
 @Singleton
-class AppBackupProvider @Inject constructor() : BackupProvider {
+class AppBackupProvider @Inject constructor(private val savedVideoDao: SavedVideoDao) :
+    BackupProvider {
 
     override suspend fun summary(): BackupSummary = withContext(Dispatchers.IO) {
         val subscriptions = StateSubscriptions.instance.getSubscriptions()
@@ -40,12 +41,13 @@ class AppBackupProvider @Inject constructor() : BackupProvider {
                 }
                 .distinct()
                 .size
-        val playlists = StatePlaylists.instance.getPlaylists()
+        // The save-type lists (Watch Later, Liked, Disliked, Favourites)
+        // live in Room, not in the legacy playlist stores.
         BackupSummary(
             subscriptions = subscriptions.size,
             sources = sources,
-            playlistVideos = playlists.sumOf { it.videos.size },
-            playlists = playlists.size,
+            savedVideos = savedVideoDao.countAll(),
+            savedPlaylists = savedVideoDao.countTypesWithVideos(),
             customSettings = countCustomSettings(),
             sections = SECTION_COUNT,
         )

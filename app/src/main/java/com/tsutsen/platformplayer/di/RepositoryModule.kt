@@ -89,8 +89,10 @@ abstract class RepositoryModule {
 object PlayerRepositoryModule {
     @Provides
     @Singleton
-    fun provideBackupProvider(): com.tsutsen.platformplayer.feature.settings.impl.BackupProvider =
-        com.tsutsen.platformplayer.backup.AppBackupProvider()
+    fun provideBackupProvider(
+        savedVideoDao: com.tsutsen.platformplayer.core.database.dao.SavedVideoDao,
+    ): com.tsutsen.platformplayer.feature.settings.impl.BackupProvider =
+        com.tsutsen.platformplayer.backup.AppBackupProvider(savedVideoDao)
 
     @Provides
     @Singleton

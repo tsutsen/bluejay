@@ -1500,9 +1500,9 @@ private fun BackupItems(viewModel: SettingsViewModel) {
                     modifier = Modifier.weight(1f),
                 )
                 BackupTile(
-                    count = summary?.playlistVideos ?: 0,
+                    count = summary?.savedVideos ?: 0,
                     label = "videos",
-                    detail = "across ${summary?.playlists ?: 0} playlists",
+                    detail = "across ${summary?.savedPlaylists ?: 0} playlists",
                     modifier = Modifier.weight(1f),
                 )
             }
