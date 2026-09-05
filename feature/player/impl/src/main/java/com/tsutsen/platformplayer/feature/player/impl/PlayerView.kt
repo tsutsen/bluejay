@@ -10,6 +10,7 @@ import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -256,6 +257,16 @@ fun PlayerView(
      */
     fun settleMorphTo(target: Float, initialVelocityPps: Float = 0f) {
         if (surface.isSettlingMorph.value) return
+        // Already at rest at the target: nothing to settle. The sync effect
+        // below is keyed on this flag and re-enters on every flag clear;
+        // without this bail it re-settles to the same target forever — a
+        // tight no-op loop that spins the main thread every frame.
+        if (
+            !surface.isDraggingMorph.value &&
+            kotlin.math.abs(surface.morphProgress.value - target) <= 0.01f
+        ) {
+            return
+        }
         surface.isSettlingMorph.value = true
         settleScope.launch {
             snapJobs[surface.morphProgress]?.cancel()
@@ -280,9 +291,24 @@ fun PlayerView(
     fun settleFullscreenTo(
         target: Float,
         initialVelocityPps: Float = 0f,
+        springSpec: SpringSpec<Float>? = null,
         after: (() -> Unit)? = null,
     ) {
+        val spring = springSpec ?: surface.MORPH_SETTLE_SPRING
         if (surface.isSettlingFullscreen.value) return
+        // Already at rest at the target: nothing to settle. The sync effect
+        // below is keyed on this flag and re-enters on every flag clear;
+        // without this bail it re-settles to the same target forever —
+        // ~14 Hz of flag flips in fullscreen that keep the details gate
+        // (and its 300 ms settle animation) running continuously.
+        if (
+            !surface.isDraggingFullscreen.value &&
+            !surface.isDraggingShrink.value &&
+            kotlin.math.abs(surface.fullscreenProgress.value - target) <= 0.01f
+        ) {
+            after?.invoke()
+            return
+        }
         // Set synchronously, BEFORE the launch: the sync effect below is keyed
         // on this flag and re-enters on the drag-end / state flips that land a
         // few ms later. If the flag were only set inside the launched
@@ -302,7 +328,7 @@ fun PlayerView(
                 if (kotlin.math.abs(surface.fullscreenProgress.value - target) > 0.01f) {
                     surface.fullscreenProgress.animateTo(
                         target,
-                        surface.MORPH_SETTLE_SPRING,
+                        spring,
                         initialVelocity = velocityToward(surface.fullscreenProgress.value, target, initialVelocityPps),
                     )
                 }
@@ -473,13 +499,13 @@ fun PlayerView(
             // Committed: flip state first (details fade out),
             // then settle to full.
             viewModel.toggleFullscreen()
-            settleFullscreenTo(1f, vPps)
+            settleFullscreenTo(1f, vPps, springSpec = surface.OVERDRAG_SETTLE_SPRING)
         } else {
             // Cancelled: the bars were hidden when the drag started — put
             // them back (the isFullscreen effect doesn't fire: state didn't
             // change).
             setFullscreenBarsNow(false)
-            settleFullscreenTo(0f, vPps)
+            settleFullscreenTo(0f, vPps, springSpec = surface.OVERDRAG_SETTLE_SPRING)
         }
     }
 

@@ -20,7 +20,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -181,27 +184,25 @@ fun PlayerContent(
             surface.isCollapsedNow(isLandscape),
         )
     // The details panel's first layout is heavy (comments, recommendations,
-    // live chat). Composition policy:
-    // - Normal: composed whenever its alpha is above the invisible
-    //   threshold. A cancelled settle back to normal keeps it (it is
-    //   already composed — dropping it mid-fade would pop the panel).
-    // - Fullscreen: composed while its alpha is visible AND through the
-    //   expand settle (isSettlingFullscreen): the alpha is 0 by then, so
-    //   nothing draws, and the heavy unmount lands on the still frame
-    //   after the settle instead of mid-motion at fsP 0.99.
-    // First-time composition (remount) still goes through the time-based
-    // fade-in below.
-    val isFullscreenNow = state.isFullscreen
-    val detailsVisible by remember(surface, isLandscape, isFullscreenNow) {
+    // live chat), so its compose/uncompose must land on a STILL frame,
+    // never mid-motion. A pure "alpha > threshold" gate mounted partway
+    // through the floating->normal morph and unmounted partway through the
+    // fullscreen morph — a visible frame-drop / pop. Use hysteresis instead:
+    // - not composed: compose only when visible AND the morph/fullscreen
+    //   axes are at rest, so the heavy first mount lands after the motion
+    //   settles (the 300 ms fade-in below covers its appearance);
+    // - composed: stay composed while visible OR while the axes are moving,
+    //   so the panel fades smoothly (no pop) and the unmount lands on the
+    //   still frame at rest, not mid-motion at fsP/mP ~0.4.
+    val detailsComposed = remember(surface) { mutableStateOf(false) }
+    val detailsVisible by remember(surface, isLandscape) {
         derivedStateOf {
-            if (isFullscreenNow) {
-                surface.isSettlingFullscreen.value ||
-                    surface.detailsAlphaNow(isLandscape) > 0.01f
-            } else {
-                surface.detailsAlphaNow(isLandscape) > 0.01f
-            }
+            val visible = surface.detailsAlphaNow(isLandscape) > 0.01f
+            val moving = surface.isAnyAxisMoving()
+            if (detailsComposed.value) visible || moving else visible && !moving
         }
     }
+    LaunchedEffect(detailsVisible) { detailsComposed.value = detailsVisible }
     // Time-based fade-IN: the p-based alpha window (0.1-0.4) is traversed in
     // only ~90ms of the 300ms click-to-expand tween, so the details would
     // pop in. Multiply by a settle that runs 0->1 whenever the details
@@ -320,7 +321,7 @@ fun PlayerContent(
             // Floating mode
             onOffsetChanged = onMiniOffsetChanged,
             onExpand = onExpand,
-        )
+            )
 
         // ==================== 3. Details panel (LazyColumn) ====================
         // Rendered on top of the gesture layer so the LazyColumn can receive scroll
@@ -427,6 +428,6 @@ fun PlayerContent(
             onSeek = onSeek,
             onScrubFinished = onScrubFinished,
             bottomBarHeightPx = bottomBarHeightPx,
-        )
+            )
     }
 }

@@ -178,6 +178,18 @@ class PlayerSurface(private val scope: CoroutineScope) {
             dampingRatio = Spring.DampingRatioNoBouncy,
         )
 
+    /**
+     * Stiffer settle for the overdrag-to-fullscreen gesture's return. The
+     * general [MORPH_SETTLE_SPRING] (StiffnessMediumLow) reads as a slow,
+     * floaty drift home after an overdrag flick; this one snaps the panel
+     * back in a crisp motion that matches the flick's energy.
+     */
+    val OVERDRAG_SETTLE_SPRING: SpringSpec<Float> =
+        spring(
+            stiffness = Spring.StiffnessMedium,
+            dampingRatio = Spring.DampingRatioNoBouncy,
+        )
+
     // ==================== Mini-player geometry ====================
 
     fun miniWidthPx(density: Density): Float = with(density) { MINI_PLAYER_WIDTH.toPx() }
@@ -264,6 +276,19 @@ class PlayerSurface(private val scope: CoroutineScope) {
      */
     fun effectiveFullscreenNow(): Float =
         fullscreenProgress.value * (1f - shrinkProgress.value)
+
+    /**
+     * True while any axis that drives [detailsAlphaNow] (the morph and
+     * fullscreen axes, the latter via shrink) is dragging or settling.
+     * Lets the UI keep the heavy details panel composed/unmounted only on
+     * still frames — never mid-motion.
+     */
+    fun isAnyAxisMoving(): Boolean =
+        isDraggingMorph.value ||
+            isDraggingFullscreen.value ||
+            isDraggingShrink.value ||
+            isSettlingMorph.value ||
+            isSettlingFullscreen.value
 
     /** Current video rect (position + size + corner) for the given orientation. */
     fun videoLayout(isLandscape: Boolean, density: Density): VideoLayout {
