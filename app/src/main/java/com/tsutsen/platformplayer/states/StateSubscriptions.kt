@@ -28,7 +28,6 @@ import com.tsutsen.platformplayer.subscription.SubscriptionFetchAlgorithm
 import com.tsutsen.platformplayer.subscription.SubscriptionFetchAlgorithms
 import com.tsutsen.platformplayer.sync.internal.GJSyncOpcodes
 import com.tsutsen.platformplayer.sync.models.SyncSubscriptionsPackage
-import com.google.gson.JsonSerializer
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

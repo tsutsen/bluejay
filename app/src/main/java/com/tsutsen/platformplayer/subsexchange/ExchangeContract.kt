@@ -1,12 +1,8 @@
 package com.tsutsen.platformplayer.subsexchange
 
-import com.tsutsen.platformplayer.serializers.OffsetDateTimeNullableSerializer
-import com.tsutsen.platformplayer.serializers.OffsetDateTimeSerializer
 import com.tsutsen.platformplayer.serializers.OffsetDateTimeStringSerializer
-import com.google.gson.annotations.SerializedName
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Serializer
 import java.time.OffsetDateTime
 
 @Serializable

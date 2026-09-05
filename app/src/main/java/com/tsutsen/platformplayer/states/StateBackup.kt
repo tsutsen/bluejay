@@ -24,8 +24,6 @@ import com.tsutsen.platformplayer.readBytes
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.v2.ManagedStore
 import com.tsutsen.platformplayer.writeBytes
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -585,36 +583,6 @@ class StateBackup {
                 UIDialogs.showGeneralErrorDialog(context, "Unknown text header [${text}]");
             }
             return false;
-        }
-        fun importNewPipeSubs(context: MainActivity, json: String) {
-            val newPipeSubsParsed = JsonParser.parseString(json).asJsonObject;
-            if (!newPipeSubsParsed.has("subscriptions") || !newPipeSubsParsed["subscriptions"].isJsonArray)
-                UIDialogs.showGeneralErrorDialog(context, "Invalid json");
-            else {
-                importNewPipeSubs(context, newPipeSubsParsed);
-            }
-        }
-        fun importNewPipeSubs(context: MainActivity, obj: JsonObject) {
-            try {
-                val jsonSubs = obj["subscriptions"]
-                val jsonSubsArray = jsonSubs.asJsonArray;
-                val jsonSubsArrayItt = jsonSubsArray.iterator();
-                val subs = mutableListOf<String>()
-                while(jsonSubsArrayItt.hasNext()) {
-                    val jsonSubObj = jsonSubsArrayItt.next().asJsonObject;
-
-                    if(jsonSubObj.has("url"))
-                        subs.add(jsonSubObj["url"].asString);
-                }
-
-                // ImportSubscriptionsFragment removed - Compose ImportSubscriptions screen handles this
-                Logger.i(TAG, "Importing ${subs.size} subscriptions via Compose screen");
-                UIDialogs.toast(context, "Import ${subs.size} subscriptions (Compose screen not yet wired)");
-            }
-            catch(ex: Exception) {
-                Logger.e("StateBackup", ex.message, ex);
-                UIDialogs.showGeneralErrorDialog(context, context.getString(R.string.failed_to_parse_newpipe_subscriptions), ex);
-            }
         }
     }
 
