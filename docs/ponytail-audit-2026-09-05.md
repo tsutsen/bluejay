@@ -4,7 +4,7 @@ Repo-wide over-engineering sweep. Scope: complexity only (correctness/security/p
 `dep/*` submodules and plugin-asset submodules skipped by request.
 Ranked biggest cut first. Tags: `delete` / `native` / `stdlib` / `yagni` / `shrink`.
 
-## Implemented this pass
+## Implemented — batch 1 (zero-reference cuts)
 
 - `delete` **feature/dualscreen module** — entire module is a stub: zero callers repo-wide, every method returns a constant or an empty body (`persistState` is a no-op, `isFoldingDevice()` → false, `getSecondaryDisplaySize()` → null; comments say "will be implemented in Phase 7"). Deleted module, `di/DualScreenModule.kt`, `settings.gradle` include, app dependency, and its 6 dep declarations. → −216 tracked lines, −1 module. [feature/dualscreen, app/src/main/java/.../di/DualScreenModule.kt]
 - `delete` **androidx.window:window:1.3.0** — 0 imports anywhere in app/feature/core; the build.gradle comment admits it is "future-proofing for multi-display". [app/build.gradle]
@@ -14,14 +14,17 @@ Ranked biggest cut first. Tags: `delete` / `native` / `stdlib` / `yagni` / `shri
 - `delete` **dead asset srcDirs** `'src/tests/assets', 'src/test/assets'` in app main sourceSets — both directories do not exist. [app/build.gradle]
 - `delete` **junk dirs** `runtime/runtime-android,` and `ui/ui-android}/1.12.0` — empty local dirs with typo'd names (stray `,` and `}`), untracked by git.
 
-## Not implemented (needs a refactor, not a delete)
+## Implemented — batch 2 (refactors)
 
-- `native` **Two image loaders: Glide (5 files) + Coil (21 files)**. Coil is the mainstream; Glide survives in notification-bitmap/background paths (Utility, BackgroundWorker, ImageVariable, MediaPlaybackService, StateNotifications). Coil 2 does synchronous bitmap loads fine → consolidate on Coil, drop `glide` + its `annotationProcessor`. ~−2 deps. [app/build.gradle]
-- `native` **Two JSON libraries: Gson (5 files) + kotlinx-serialization (122 files)**. build.gradle comment: Gson "used for complex/anonymous cases like during development conversions (eg. V8RemoteObject)". The 5 Gson files (DeveloperEndpoints, V8RemoteObject, StateBackup, StateSubscriptions, ExchangeContract) can migrate; drop `gson`. −1 dep. [app/build.gradle]
-- `yagni` **15 repository interfaces in core/data, each with exactly one implementation** (3 in core/data/impl, 11 as `Engine*RepositoryImpl` in app/di), and the test suite (23 files) mocks none of them — the "seam" buys nothing today. Standard Hilt pattern, but it's the cheapest-to-keep yagni in the repo; revisit if a second implementation ever appears. [core/data/.../repository]
-- `yagni` **ReorderableList.kt** (~95-line wrapper around `sh.calvin.reorderable`) with a single caller (SettingsScreen). Borderline: the wrapper is small and used; inline it into SettingsScreen if the second use never comes. [core/designsystem/.../ReorderableList.kt]
-- `shrink` **Two parallel persistence systems in app/stores/**: `stores/db/ManagedDB*` (~700 lines, Room) and `stores/v2/ManagedStore` (~560 lines, file/fragmented) — both live (StateHistory uses both). Pick one substrate; "v2" that runs next to v1 is how v3 starts. Big refactor, needs its own pass. [app/src/main/java/.../stores]
-- `shrink` **CompanionPresentation.kt is 2,751 lines** (largest file in repo); StateCasting.kt 1,856; VideoDownload.kt 2,081. Split candidates, not deletions. [app/src/main/java/.../activities]
+- `native` **Glide → Coil** — migrated the 5 remaining Glide files (MediaPlaybackService + StateNotifications notification bitmaps now use `ImageLoader.execute`; `ImageVariable.setImageView` had 0 callers and was deleted; BackgroundWorker/Utility had dead Glide imports + a dead `withMaxSizePx`). Dropped `glide:4.16.0` + its `annotationProcessor`. −2 dep declarations. Coil 2.7.0 was already the mainstream (21 files). [app/build.gradle, app/src/main/java/.../{services,states,models,background,Utility.kt}]
+- `native` **Gson → kotlinx-serialization (partial)** — dead Gson paths removed: `StateBackup.importNewPipeSubs` (both overloads, 0 callers repo-wide; the toast even said "Compose screen not yet wired") and unused imports in StateSubscriptions/ExchangeContract. **Dependency kept**: the remaining 2 users (V8RemoteObject, DeveloperEndpoints) reflectively serialize arbitrary V8/dev-object types, which kotlinx-serialization cannot do by design. −37 lines; the "−1 dep" is not achievable without a reflective JSON shim. [app/src/main/java/.../states/StateBackup.kt, .../states/StateSubscriptions.kt, .../subsexchange/ExchangeContract.kt]
+- `shrink` **CompanionPresentation.kt split 2,751 → 4 files** — mechanical region split, same package, zero logic changes: `CompanionPresentation.kt` (class, 235), `CompanionContent.kt` (root composable, 489), `CompanionPages.kt` (pages, 1,351), `CompanionControls.kt` (controls, 805). Moved `private` top-level composables to `internal` (verified no name collisions in package); imports pruned per file. [app/src/main/java/.../activities/]
+
+## Checked, kept (reclassified after deeper inspection)
+
+- `yagni` **15 repository interfaces in core/data, each with exactly one implementation** — **kept: it's the dependency-inversion seam, not yagni.** The 11 `Engine*RepositoryImpl` implementations live in :app (bound via `@Binds`), while feature modules (`feature/*/impl`, which cannot depend on :app) inject the interfaces — 30+ injection sites (SettingsRepository ×8, LibraryRepository ×5, ...). Deleting the interfaces forces the implementations (and the app state classes they wrap) down into core/data, i.e. moving half the app module. Single-impl-per-interface is exactly what a clean seam looks like when the impl sits in the higher-dependency module. [core/data/.../repository, app/src/main/java/.../di/]
+- `shrink` **Two persistence systems in app/stores/** — **kept: complementary, and mid-migration, not duplicate.** `FragmentedStorage` (file) is the main substrate (25+ consumers); `stores/v2/ManagedStore` sits on top of it; `stores/db/ManagedDB*` (Room) handles queryable history. Real wrinkle found: **history data has 3 paths** — `ManagedDBStore<HistoryVideo>`, `ReconstructStore<HistoryVideo>` (file), and the new `core/database` Room `HistoryDao` consumed by `LibraryRepositoryImpl`. Collapsing that is a product-level migration (the build.gradle "Compose migration phase 0+" comment points the same way), not an audit cut. Needs its own planned pass. [app/src/main/java/.../stores, core/database]
+- `yagni` **ReorderableList.kt** (~95-line wrapper around `sh.calvin.reorderable`, single caller) — **skipped per request** (item #10).
 
 ## Checked, kept (deliberate, not bloat)
 
@@ -34,7 +37,7 @@ Ranked biggest cut first. Tags: `delete` / `native` / `stdlib` / `yagni` / `shri
 
 ## Net
 
-- Implemented: **−216 tracked lines, −1 module, −5 dependency declarations** (window, rtsp, smoothstreaming, concurrent-futures, parcelize-plugin), 0 code references touched.
-- Possible if refactors land: **−2 more deps** (glide, gson), −1 module-level abstraction pair (stores v1/v2).
+- Implemented (batches 1+2): **−2 module (dualscreen), −7 dependency declarations** (window, rtsp, smoothstreaming, concurrent-futures, parcelize-plugin, glide ×2), **−253 tracked lines net** (216 dualscreen + 37 Gson dead paths + split refactor), CompanionPresentation 2,751 → max 1,351 lines.
+- Remaining audit surface: the 3-path history collapse in stores/ (needs a planned migration), and the eventual reorderable-wrapper inline if a second use never comes.
 
-Verification: `./gradlew :app:compileUnstableDebugKotlin` (see compile log / commit).
+Verification: `./gradlew :app:compileUnstableDebugKotlin` green after every batch (commits on `feat/platform-sample-updates`).
