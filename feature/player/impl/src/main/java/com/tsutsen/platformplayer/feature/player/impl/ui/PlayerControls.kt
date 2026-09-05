@@ -63,7 +63,6 @@ fun PlayerControls(
     surface: PlayerSurface,
     isLandscape: Boolean,
     controlsVisible: Boolean,
-    isLoading: Boolean,
     activeProgressIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator.Progress?,
     badgeState: GestureBadgeState,
     onBadgeSessionEnded: () -> Unit = {},
@@ -228,7 +227,6 @@ fun PlayerControls(
                 ) {
                     PlayerUIScaffold(
                         modifier = videoBoxModifier,
-                        isLoading = isLoading,
                         showTopBar = resolvedShowTopBar,
                         showBottomBar = resolvedShowBottomBar,
                         gradientsVisible = gradientsVisible,

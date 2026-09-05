@@ -178,6 +178,7 @@ internal fun CompanionVideoPage(
                 "controls" -> {
                     CompanionControlRow(
                         isPlaying = playerState.isPlaying,
+                        isLoading = playerState.isLoading,
                         onPlayPause = onPlayPause,
                         onSeekBy = onSeekBy,
                         onPrevious = onPrevious,

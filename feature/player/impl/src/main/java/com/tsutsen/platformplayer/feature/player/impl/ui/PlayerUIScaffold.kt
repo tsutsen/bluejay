@@ -1,8 +1,5 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -14,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
@@ -46,7 +42,6 @@ data class PlayerGestureCallbacks(
 @Composable
 fun PlayerUIScaffold(
     modifier: Modifier,
-    isLoading: Boolean,
     showTopBar: Boolean,
     showBottomBar: Boolean,
     callbacks: PlayerGestureCallbacks,
@@ -94,16 +89,6 @@ fun PlayerUIScaffold(
                     }
                 )
         )
-
-        // ==================== Loading Spinner ====================
-        AnimatedVisibility(
-            visible = isLoading,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            CircularProgressIndicator(color = Color.White)
-        }
 
         // ==================== Top gradient + bar ====================
         if (showTopBar && gradientsVisible) {

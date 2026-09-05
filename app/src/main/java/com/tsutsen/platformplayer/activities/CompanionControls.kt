@@ -47,7 +47,9 @@ import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -321,6 +323,7 @@ internal fun ButtonGroupScope.controlItem(
     shapes: GroupCornerShapes,
     interactionSource: MutableInteractionSource,
     onClick: () -> Unit,
+    content: (@Composable () -> Unit)? = null,
 ) {
     customItem(
         buttonGroupContent = {
@@ -340,11 +343,15 @@ internal fun ButtonGroupScope.controlItem(
                     ),
                 interactionSource = interactionSource,
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = description,
-                    modifier = Modifier.size(Tokens.IconMd),
-                )
+                if (content != null) {
+                    content()
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = description,
+                        modifier = Modifier.size(Tokens.IconMd),
+                    )
+                }
             }
         },
         menuContent = {},
@@ -358,9 +365,10 @@ internal fun ButtonGroupScope.controlItem(
  * shape and color morph.
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 internal fun CompanionControlRow(
     isPlaying: Boolean,
+    isLoading: Boolean = false,
     onPlayPause: () -> Unit,
     onSeekBy: (Long) -> Unit,
     onPrevious: () -> Unit,
@@ -421,6 +429,14 @@ internal fun CompanionControlRow(
             shapes = connectedGroupShapes(GroupPosition.Middle, radius),
             interactionSource = playPauseSource,
             onClick = onPlayPause,
+            content = if (isLoading) {
+                {
+                    LoadingIndicator(
+                        modifier = Modifier.size(Tokens.IconMd),
+                        color = playContent,
+                    )
+                }
+            } else null,
         )
         controlItem(
             icon = Icons.Filled.FastForward,
