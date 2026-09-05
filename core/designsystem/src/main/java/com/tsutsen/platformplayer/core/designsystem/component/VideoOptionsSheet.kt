@@ -36,7 +36,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
+import com.tsutsen.platformplayer.core.designsystem.icon.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HistoryEdu
 import androidx.compose.material.icons.filled.PlayArrow
@@ -957,7 +957,7 @@ fun DownloadSection(
                     // A running download offers itself as the cancel action.
                     is DownloadButtonState.Starting, is DownloadButtonState.Downloading ->
                         Icons.Filled.Stop
-                    is DownloadButtonState.Idle -> Icons.Filled.Download
+                    is DownloadButtonState.Idle -> Download
                 },
             label =
                 when (state) {

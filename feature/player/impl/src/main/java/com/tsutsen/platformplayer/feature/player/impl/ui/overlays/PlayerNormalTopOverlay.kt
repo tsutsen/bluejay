@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -36,11 +37,21 @@ internal fun PlayerNormalTopOverlay(
     onOptions: () -> Unit,
     onCast: (() -> Unit)? = null,
 ) {
+    // In fullscreen landscape the bar rides the screen's top edge, under the
+    // camera cutout (layoutInDisplayCutoutMode=shortEdges). displayCutout
+    // insets are nonzero on an edge only when the cutout touches it, so this
+    // shifts a corner-cutout bar clear of the hole and is a no-op elsewhere.
+    val layoutDirection = LocalLayoutDirection.current
+    val cutout = WindowInsets.displayCutout.asPaddingValues()
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(
+                    top = 16.dp,
+                    start = 16.dp + cutout.calculateStartPadding(layoutDirection),
+                    end = 16.dp + cutout.calculateEndPadding(layoutDirection),
+                ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onMinimize) {

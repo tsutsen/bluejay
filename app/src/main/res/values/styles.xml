@@ -11,5 +11,9 @@
     <style name="Theme.App.NoActionBar" parent="Theme.Material3.DynamicColors.DayNight">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+        <!-- Extend into the camera-cutout area (short edges) so the
+             landscape UI can be laid out around the punch-hole; the
+             player top bar pads WindowInsets.displayCutout itself. -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>

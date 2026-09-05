@@ -42,7 +42,6 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Copyright
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Extension
@@ -55,6 +54,7 @@ import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Tab
+import com.tsutsen.platformplayer.core.designsystem.icon.Download
 import com.tsutsen.platformplayer.core.designsystem.icon.DualScreen
 import com.tsutsen.platformplayer.core.designsystem.icon.SplitscreenBottom
 import com.tsutsen.platformplayer.core.designsystem.icon.VideoTemplate
@@ -1139,7 +1139,7 @@ private fun SectionItems(
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
-                        icon = Icons.Filled.Download,
+                        icon = Download,
                         title = "Default download resolution",
                         subtitle = state.defaultDownloadResolution,
                         onClick = { onChoiceSelected(Choice.DOWNLOAD_RESOLUTION) },
