@@ -213,20 +213,20 @@ class PlayerGestureRecognizerTest {
     }
 
     @Test
-    fun holdWithVerticalDriftHandsOverToSlide() {
+    fun holdWithVerticalDriftKeepsHold() {
         val r = PlayerGestureRecognizer()
         down(r)
-        val holdStart = r.onHoldTimeout(1500L)!!
-        // 45 px vertical — slide wins.
+        r.onHoldTimeout(1500L)!!
+        // 45 px vertical past the threshold — the hold owns the finger,
+        // no slide may start from under it; the hold keeps modulating.
         val move = r.onMove(400f, 295f, 1550L)
-        val slide = move as PlayerGestureRecognizer.MoveResult.SlideStart
-        assertEquals(GesturePhase.START, slide.startFrame!!.phase)
-        // The hold got its END frame before the slide started.
-        val holdEnd = slide.frames.single()
-        assertEquals(GesturePhase.END, holdEnd.phase)
-        assertEquals(GestureAction.SPEEDUP, holdEnd.action)
-        // And the hold START was already delivered by the watchdog.
-        assertEquals(GesturePhase.START, holdStart.phase)
+        val active = (move as PlayerGestureRecognizer.MoveResult.Idle).frames.single()
+        assertEquals(GesturePhase.ACTIVE, active.phase)
+        assertEquals(GestureAction.SPEEDUP, active.action)
+        // Release ends the hold exactly once.
+        val end = (r.onUp(1600L) as PlayerGestureRecognizer.UpResult.End).frame!!
+        assertEquals(GesturePhase.END, end.phase)
+        assertNull(r.cancel(1601L))
     }
 
     // ---- END-frame exactly-once under cancellation ----

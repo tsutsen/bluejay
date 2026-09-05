@@ -12,7 +12,7 @@ import kotlin.math.sqrt
  * No Compose, no coroutines, no wall clock: the adapter (the composable
  * [PlayerGestureSystem]) feeds it pointer events with timestamps and
  * receives decisions. That keeps the recognition logic — double-tap
- * window, hold race, swipe threshold, axis lock, morph-drag resolution,
+ * window, hold race, swipe threshold, hold ownership, morph-drag resolution,
  * END-frame dispatch — unit-testable by replaying event sequences.
  *
  * The adapter still owns the two things that need a real timer and a
@@ -52,8 +52,9 @@ class PlayerGestureRecognizer(
 
     /**
      * Result of [onMove] during the decision phase.
-     * [frames] are hold frames to emit (an END frame when a hold hands
-     * over to a slide, ACTIVE frames while a hold modulates).
+     * Idle's [frames] are hold frames to emit (ACTIVE frames while a
+     * hold modulates — an active hold owns the finger, so a slide never
+     * starts from under it).
      * [SlideStart] means the decision phase resolved: take over with
      * the frame-driven execution loop ([startFrame] != null) or a
      * plain drain (unbound slot). Morph slides ride the same frame
@@ -61,10 +62,7 @@ class PlayerGestureRecognizer(
      */
     sealed interface MoveResult {
         data class Idle(val frames: List<GestureFrame> = emptyList()) : MoveResult
-        data class SlideStart(
-            val startFrame: GestureFrame?,
-            val frames: List<GestureFrame> = emptyList()
-        ) : MoveResult
+        data class SlideStart(val startFrame: GestureFrame?) : MoveResult
     }
 
     /**
@@ -91,9 +89,6 @@ class PlayerGestureRecognizer(
     private var decisionIsSlide = false
     private var slideType = GestureType.SWIPE_VERTICAL
     private var holdFired = false
-    // Once a speed-hold's drift goes horizontal, that decision is
-    // locked — a later vertical drift must not intercept it.
-    private var holdHorizontalLocked = false
     private var maxDist = 0f
     private var released = false
     private var activeAction: GestureAction? = null
@@ -154,32 +149,17 @@ class PlayerGestureRecognizer(
 
         val frames = mutableListOf<GestureFrame>()
 
-        if (dist > swipeThreshold) {
+        if (dist > swipeThreshold && !holdFired) {
+            // An active hold OWNS the finger until release: no slide may
+            // start while it runs (a vertical drift used to end the hold
+            // and hand the finger to the morph/fullscreen drag). The
+            // compound gesture is hold + horizontal swipe — that keeps
+            // modulating in the hold branch below.
             val isHorizontal = abs(dx) > abs(dy)
-            // Horizontal drift during a speed hold is fine tuning — the hold
-            // stays alive and keeps modulating instead of handing off. The
-            // first dominant axis locks the decision; once locked horizontal,
-            // a vertical drift can never intercept it.
-            if (holdFired && (isHorizontal || holdHorizontalLocked)) {
-                if (isHorizontal) holdHorizontalLocked = true
-            } else {
-                if (holdFired) {
-                    // Slide wins — end the hold now; re-arm the END dispatch
-                    // for the slide that follows.
-                    holdFired = false
-                    buildEndFrame(timeMs)?.let(frames::add)
-                    endSent = false
-                    activeAction = null
-                    activeType = null
-                }
-                decisionIsSlide = true
-                slideType = if (isHorizontal) GestureType.SWIPE_HORIZONTAL
-                else GestureType.SWIPE_VERTICAL
-                return MoveResult.SlideStart(
-                    startFrame = beginSlide(timeMs),
-                    frames = frames
-                )
-            }
+            decisionIsSlide = true
+            slideType = if (isHorizontal) GestureType.SWIPE_HORIZONTAL
+            else GestureType.SWIPE_VERTICAL
+            return MoveResult.SlideStart(startFrame = beginSlide(timeMs))
         }
 
         val holdAction = activeAction
@@ -292,7 +272,6 @@ class PlayerGestureRecognizer(
         decisionIsSlide = false
         slideType = GestureType.SWIPE_VERTICAL
         holdFired = false
-        holdHorizontalLocked = false
         maxDist = 0f
         released = false
         activeAction = null

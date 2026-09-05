@@ -290,7 +290,6 @@ fun PlayerGestureSystem(
                                             is PlayerGestureRecognizer.MoveResult.Idle ->
                                                 move.frames.forEach { currentHandler.handleGestureFrame(it) }
                                             is PlayerGestureRecognizer.MoveResult.SlideStart -> {
-                                                move.frames.forEach { currentHandler.handleGestureFrame(it) }
                                                 slide = move
                                                 break
                                             }
