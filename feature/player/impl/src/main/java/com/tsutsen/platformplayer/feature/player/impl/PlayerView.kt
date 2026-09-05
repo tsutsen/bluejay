@@ -10,7 +10,6 @@ import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -190,20 +189,6 @@ fun PlayerView(
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableStateOf(0L) }
 
-    val transitionSpringSpec =
-        tween<Float>(
-            durationMillis = 300,
-            easing = FastOutSlowInEasing,
-        )
-
-    /**
-     * Grace window between a drag-end callback and the settle animation.
-     * A committed flip (minimize / enter / exit fullscreen) is dispatched
-     * through a viewModelScope.launch, so it lands a few frames after the
-     * callback; without the window the settle would start toward the
-     * opposite target and dip before reversing.
-     */
-    val morphCommitGraceMs = 150L
 
     val player =
         remember(uiState) {
@@ -224,21 +209,6 @@ fun PlayerView(
     // ==================== Animation sync ====================
     val isMinimizedState = (uiState as? PlayerUiState.Loaded)?.isMinimized
     val isFullscreenState = (uiState as? PlayerUiState.Loaded)?.isFullscreen
-
-    LaunchedEffect(isMinimizedState, surface.isDraggingMorph.value) {
-        if (surface.isDraggingMorph.value) return@LaunchedEffect
-        val minimized = isMinimizedState ?: return@LaunchedEffect
-        if (surface.morphDragJustEnded) {
-            surface.morphDragJustEnded = false
-            kotlinx.coroutines.delay(morphCommitGraceMs)
-        }
-        val target = if (minimized) 1f else 0f
-        if (kotlin.math.abs(surface.morphProgress.value - target) > 0.01f) {
-            surface.morphProgress.animateTo(target, transitionSpringSpec)
-        }
-        surface.isMinimizedAnim.value = minimized
-        if (!minimized) controlsVisible = true
-    }
 
     // Fullscreen-axis settles are launched in the composition scope — never
     // the sync effect's body, whose key-change restarts would cancel an
@@ -267,15 +237,52 @@ fun PlayerView(
         snapJobs[axis] = coroutineScope.launch { axis.snapTo(value) }
     }
 
+    /**
+     * A release flick AWAY from the target would make the spring move the
+     * wrong way before reversing — clamp it to rest. Toward the target it
+     * is kept as-is (overshoot included: that is the momentum).
+     */
+    fun velocityToward(current: Float, target: Float, velocityPps: Float): Float =
+        if (target >= current) velocityPps.coerceAtLeast(0f) else velocityPps.coerceAtMost(0f)
+
+    /**
+     * Settle the morph axis. Launched in the composition scope — never the
+     * sync effect's body, whose key-change restarts would cancel an
+     * in-flight animation — and guarded by isSettlingMorph, so the flip
+     * that follows a drag commit lands a few ms later and is absorbed by
+     * the guard instead of restarting the move.
+     * [initialVelocityPps] seeds the settle spring ([PlayerSurface.MORPH_SETTLE_SPRING])
+     * with the release velocity (progress per ms).
+     */
+    fun settleMorphTo(target: Float, initialVelocityPps: Float = 0f) {
+        if (surface.isSettlingMorph.value) return
+        surface.isSettlingMorph.value = true
+        settleScope.launch {
+            snapJobs[surface.morphProgress]?.cancel()
+            try {
+                if (kotlin.math.abs(surface.morphProgress.value - target) > 0.01f) {
+                    surface.morphProgress.animateTo(
+                        target,
+                        surface.MORPH_SETTLE_SPRING,
+                        initialVelocity = velocityToward(surface.morphProgress.value, target, initialVelocityPps),
+                    )
+                }
+                // Land exactly on the target.
+                surface.morphProgress.snapTo(target)
+            } finally {
+                surface.isSettlingMorph.value = false
+                surface.isMinimizedAnim.value = target == 1f
+                if (target == 0f) controlsVisible = true
+            }
+        }
+    }
+
     fun settleFullscreenTo(
         target: Float,
+        initialVelocityPps: Float = 0f,
         after: (() -> Unit)? = null,
     ) {
         if (surface.isSettlingFullscreen.value) return
-        if (kotlin.math.abs(surface.fullscreenProgress.value - target) <= 0.01f) {
-            after?.invoke()
-            return
-        }
         // Set synchronously, BEFORE the launch: the sync effect below is keyed
         // on this flag and re-enters on the drag-end / state flips that land a
         // few ms later. If the flag were only set inside the launched
@@ -291,12 +298,38 @@ fun PlayerView(
                 // settle so the two axes don't fight over the video rect.
                 kotlinx.coroutines.delay(50)
             }
-            surface.fullscreenProgress.animateTo(target, transitionSpringSpec)
-            // Land exactly on the target.
-            surface.fullscreenProgress.snapTo(target)
-            surface.isSettlingFullscreen.value = false
+            try {
+                if (kotlin.math.abs(surface.fullscreenProgress.value - target) > 0.01f) {
+                    surface.fullscreenProgress.animateTo(
+                        target,
+                        surface.MORPH_SETTLE_SPRING,
+                        initialVelocity = velocityToward(surface.fullscreenProgress.value, target, initialVelocityPps),
+                    )
+                }
+                // Land exactly on the target.
+                surface.fullscreenProgress.snapTo(target)
+            } finally {
+                // A newer same-priority mutate (a drag snapTo) interrupts this
+                // mutate — the CancellationException unwinds this coroutine
+                // quietly, so the flag MUST clear in finally, or every later
+                // settle and the sync effect would bail on the stale flag
+                // forever (the stuck-mid-morph state).
+                surface.isSettlingFullscreen.value = false
+            }
             after?.invoke()
         }
+    }
+
+    LaunchedEffect(
+        isMinimizedState,
+        surface.isDraggingMorph.value,
+        surface.isSettlingMorph.value,
+    ) {
+        if (surface.isDraggingMorph.value || surface.isSettlingMorph.value) {
+            return@LaunchedEffect
+        }
+        val minimized = isMinimizedState ?: return@LaunchedEffect
+        settleMorphTo(if (minimized) 1f else 0f)
     }
 
     // ---- Details overdrag morph -----------------------------------------
@@ -762,15 +795,21 @@ fun PlayerView(
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
                             snapAxis(surface.morphProgress, progress)
                         },
-                        onMorphDragEnd = { dragY ->
+                        onMorphDragEnd = { dragY, velocityPxPerMs ->
                             surface.isDraggingMorph.value = false
-                            surface.morphDragJustEnded = true
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
-                            // Commit: the flip lands async — the sync effect animates
-                            // the axis after its grace window. Cancel: the sync
-                            // effect settles the axis back to 0.
+                            // Commit: the flip lands async — the settle guard
+                            // absorbs it (the settle is already running).
                             if (progress > 0.4f) viewModel.minimize()
+                            // Settle NOW, seeded with the release velocity:
+                            // the spring continues the finger's motion
+                            // instead of freezing (grace window) and
+                            // restarting from rest (tween).
+                            settleMorphTo(
+                                if (progress > 0.4f) 1f else 0f,
+                                if (travel > 0f) velocityPxPerMs / travel else 0f,
+                            )
                         },
                         onShrinkDragStart = { surface.isDraggingShrink.value = true },
                         onShrinkDrag = { dragY ->
@@ -778,7 +817,7 @@ fun PlayerView(
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
                             snapAxis(surface.shrinkProgress, progress)
                         },
-                        onShrinkDragEnd = { dragY ->
+                        onShrinkDragEnd = { dragY, velocityPxPerMs ->
                             surface.isDraggingShrink.value = false
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
@@ -803,12 +842,24 @@ fun PlayerView(
                                     surface.fullscreenProgress.snapTo(effective)
                                     surface.shrinkProgress.snapTo(0f)
                                 }
-                                settleFullscreenTo(0f) { viewModel.exitFullscreen() }
+                                // The fullscreen axis inherits the shrink
+                                // velocity, reversed: the shrink axis grows
+                                // downward as the fs axis shrinks downward.
+                                settleFullscreenTo(
+                                    0f,
+                                    if (travel > 0f) -velocityPxPerMs / travel else 0f,
+                                ) { viewModel.exitFullscreen() }
                             } else {
-                                // Cancel: settle the shrink axis back (no state change).
+                                // Cancel: spring the shrink axis back —
+                                // reversed velocity keeps it continuous with
+                                // the release instead of a snap-pop.
                                 snapJobs[surface.shrinkProgress]?.cancel()
                                 coroutineScope.launch {
-                                    surface.shrinkProgress.animateTo(0f, transitionSpringSpec)
+                                    surface.shrinkProgress.animateTo(
+                                        0f,
+                                        surface.MORPH_SETTLE_SPRING,
+                                        initialVelocity = if (travel > 0f) -velocityPxPerMs / travel else 0f,
+                                    )
                                 }
                             }
                         },
@@ -825,21 +876,22 @@ fun PlayerView(
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
                             snapAxis(surface.fullscreenProgress, progress)
                         },
-                        onFullscreenDragEnd = { dragY ->
+                        onFullscreenDragEnd = { dragY, velocityPxPerMs ->
                             surface.isDraggingFullscreen.value = false
                             val travel = surface.dragTravelPx()
                             val progress = if (travel > 0f) (dragY / travel).coerceIn(0f, 1f) else 0f
                             if (progress > 0.4f) {
                                 // Committed expand: flip state NOW (the details
                                 // fade-out and system bars key off it), then
-                                // animate to fullscreen; the settle guard keeps
+                                // settle to fullscreen on a spring seeded with
+                                // the release velocity; the settle guard keeps
                                 // the in-flight flip from restarting the move.
                                 viewModel.toggleFullscreen()
-                                settleFullscreenTo(1f)
+                                settleFullscreenTo(1f, if (travel > 0f) velocityPxPerMs / travel else 0f)
                             } else {
                                 // Cancelled: bars were hidden at drag start.
                                 setFullscreenBarsNow(false)
-                                settleFullscreenTo(0f)
+                                settleFullscreenTo(0f, if (travel > 0f) velocityPxPerMs / travel else 0f)
                             }
                         },
                     )

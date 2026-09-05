@@ -36,13 +36,13 @@ interface GestureActionHandler {
  * @property screenHeight    screen height in px (for normalising brightness delta)
  * @property onMorphDragStart  called when a morph-to-floating swipe begins
  * @property onMorphDrag       called with cumulative downward drag px during morph swipe
- * @property onMorphDragEnd    called when morph swipe ends (decides commit or cancel)
+ * @property onMorphDragEnd    called when morph swipe ends; velocity = release speed px/ms toward the target
  * @property onFullscreenDragStart  called when a morph-to-fullscreen (swipe up) begins
  * @property onFullscreenDrag       called with cumulative upward drag px during fullscreen morph
- * @property onFullscreenDragEnd    called when the fullscreen morph swipe ends (commit or cancel)
+ * @property onFullscreenDragEnd    called when the fullscreen morph swipe ends; velocity = release speed px/ms toward fullscreen
  * @property onShrinkDragStart      called when a morph-to-normal (swipe down in fullscreen) begins
  * @property onShrinkDrag           called with cumulative downward drag px during shrink
- * @property onShrinkDragEnd        called when the shrink swipe ends (commit or cancel)
+ * @property onShrinkDragEnd        called when the shrink swipe ends; velocity = release speed px/ms toward normal
  */
 class PlayerGestureActionHandler(
     private val viewModel: PlayerViewModel,
@@ -51,13 +51,13 @@ class PlayerGestureActionHandler(
     private val activity: Activity? = null,
     private val onMorphDragStart: () -> Unit = {},
     private val onMorphDrag: (dragY: Float) -> Unit = {},
-    private val onMorphDragEnd: (dragY: Float) -> Unit = {},
+    private val onMorphDragEnd: (dragY: Float, velocityPxPerMs: Float) -> Unit = { _, _ -> },
     private val onFullscreenDragStart: () -> Unit = {},
     private val onFullscreenDrag: (dragY: Float) -> Unit = {},
-    private val onFullscreenDragEnd: (dragY: Float) -> Unit = {},
+    private val onFullscreenDragEnd: (dragY: Float, velocityPxPerMs: Float) -> Unit = { _, _ -> },
     private val onShrinkDragStart: () -> Unit = {},
     private val onShrinkDrag: (dragY: Float) -> Unit = {},
-    private val onShrinkDragEnd: (dragY: Float) -> Unit = {},
+    private val onShrinkDragEnd: (dragY: Float, velocityPxPerMs: Float) -> Unit = { _, _ -> },
 ) : GestureActionHandler {
 
     // --- brightness state (device-wide via SystemControls, window-local fallback) ---
@@ -71,6 +71,30 @@ class PlayerGestureActionHandler(
 
     // --- morph drag state ---
     private var morphStartDelta = 0f
+
+    // --- drag velocity sampling (release speed seeds the settle springs) ---
+    // Last sample of the active drag (elapsedMs, dragPx toward target);
+    // the frame-pair delta is the release velocity estimate (1-frame lag).
+    private var dragSampleT = 0L
+    private var dragSamplePx = 0f
+    private var dragSampleV = 0f
+    private var hasDragSample = false
+
+    private fun sampleDragVelocity(t: Long, px: Float) {
+        if (hasDragSample && t > dragSampleT) {
+            dragSampleV = (px - dragSamplePx) / (t - dragSampleT).toFloat()
+        }
+        dragSampleT = t
+        dragSamplePx = px
+        hasDragSample = true
+    }
+
+    private fun releaseDragVelocity(): Float {
+        val v = if (hasDragSample) dragSampleV else 0f
+        hasDragSample = false
+        dragSampleV = 0f
+        return v
+    }
 
     // --- vertical morph state (MORPH_VERTICAL) ---
     // -1 = swipe up (fullscreen), +1 = swipe down (floating);
@@ -250,17 +274,19 @@ class PlayerGestureActionHandler(
         when (frame.phase) {
             GesturePhase.START -> {
                 morphStartDelta = 0f
+                hasDragSample = false
                 onMorphDragStart()
             }
             GesturePhase.ACTIVE -> {
                 val dragY = frame.totalDelta.y.coerceAtLeast(0f)
                 if (dragY > 0f) {
                     morphStartDelta = dragY
+                    sampleDragVelocity(frame.elapsedMs, dragY)
                     onMorphDrag(dragY)
                 }
             }
             GesturePhase.END -> {
-                onMorphDragEnd(morphStartDelta)
+                onMorphDragEnd(morphStartDelta, releaseDragVelocity())
             }
         }
     }
@@ -272,17 +298,19 @@ class PlayerGestureActionHandler(
         when (frame.phase) {
             GesturePhase.START -> {
                 morphStartDelta = 0f
+                hasDragSample = false
                 onShrinkDragStart()
             }
             GesturePhase.ACTIVE -> {
                 val dragY = frame.totalDelta.y.coerceAtLeast(0f)
                 if (dragY > 0f) {
                     morphStartDelta = dragY
+                    sampleDragVelocity(frame.elapsedMs, dragY)
                     onShrinkDrag(dragY)
                 }
             }
             GesturePhase.END -> {
-                onShrinkDragEnd(morphStartDelta)
+                onShrinkDragEnd(morphStartDelta, releaseDragVelocity())
             }
         }
     }
@@ -301,6 +329,7 @@ class PlayerGestureActionHandler(
             GesturePhase.START -> {
                 morphVerticalDir = null
                 morphVerticalDrag = 0f
+                hasDragSample = false
             }
 
             GesturePhase.ACTIVE -> {
@@ -311,13 +340,14 @@ class PlayerGestureActionHandler(
                     if (morphVerticalDir == -1) onFullscreenDragStart() else onMorphDragStart()
                 }
                 morphVerticalDrag = if (morphVerticalDir == -1) -y else y
+                sampleDragVelocity(frame.elapsedMs, morphVerticalDrag)
                 if (morphVerticalDir == -1) onFullscreenDrag(morphVerticalDrag) else onMorphDrag(morphVerticalDrag)
             }
 
             GesturePhase.END -> {
                 when (morphVerticalDir) {
-                    -1 -> onFullscreenDragEnd(morphVerticalDrag)
-                    1 -> onMorphDragEnd(morphVerticalDrag)
+                    -1 -> onFullscreenDragEnd(morphVerticalDrag, releaseDragVelocity())
+                    1 -> onMorphDragEnd(morphVerticalDrag, releaseDragVelocity())
                     else -> {}
                 }
                 morphVerticalDir = null
