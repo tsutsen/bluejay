@@ -131,6 +131,13 @@ class PlayerViewModel
         private val _positionMs = MutableStateFlow(0L)
         val positionMs: StateFlow<Long> = _positionMs.asStateFlow()
 
+        /** Last value emitted to [positionMs]. Emissions are quantized to 500 ms so the
+         *  timeline leaves recompose at 2 Hz instead of the ticker's 10 Hz (every 10th
+         *  recompose was otherwise a no-op re-layout). A seek shows on the first tick
+         *  crossing a 500 ms boundary (<=100 ms). */
+        @Volatile
+        private var lastEmittedPositionMs = 0L
+
         /** Last repository state, used to detect position-only ticks. */
         @Volatile
         private var lastPlayerState: PlayerState? = null
@@ -364,7 +371,10 @@ class PlayerViewModel
                         // that into a dedicated flow and skip the rebuild below unless
                         // something else changed — otherwise every tick would re-emit a
                         // new 28-field state and recompose the whole player subtree.
-                        _positionMs.value = playerState.currentPositionMs
+                        if (playerState.currentPositionMs / 500L != lastEmittedPositionMs / 500L) {
+                            lastEmittedPositionMs = playerState.currentPositionMs
+                            _positionMs.value = playerState.currentPositionMs
+                        }
                         // History sampling runs on every tick — the early
                         // return below skips the UI rebuild for position-only
                         // ticks, but those ticks are exactly what the
