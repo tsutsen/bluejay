@@ -174,7 +174,9 @@ dependencies {
     implementation project(':feature:player:impl')
 
     //Core
-    implementation 'androidx.core:core-ktx:1.17.0'
+    implementation 'androidx.core:core-ktx:1.18.0'
+    // Jetpack PiP (alpha): unified PiP events + validated params.
+    implementation 'androidx.core:core-pip:1.0.0-alpha02'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.documentfile:documentfile:1.1.0'
 

@@ -84,7 +84,7 @@
             android:exported="true"
             android:theme="@style/Theme.App.NoActionBar"
             android:windowSoftInputMode="adjustPan"
-            android:launchMode="singleInstance"
+            android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true">
 

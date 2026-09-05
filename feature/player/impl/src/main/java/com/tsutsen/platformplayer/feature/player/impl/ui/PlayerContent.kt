@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -227,7 +228,10 @@ fun PlayerContent(
         // in PlayerView — it follows the video box through the morph and
         // lands exactly on the mini rect, so no separate scrim is needed
         // here.
-        PlayerVideoSurface(player = player, modifier = Modifier.then(videoModifier))
+        PlayerVideoSurface(
+            player = player,
+            modifier = Modifier.then(videoModifier),
+        )
 
         // ==================== 1b. Subtitle overlay ====================
         // Rendered inside the video's offset/size space (clipped with it) so
