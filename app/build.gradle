@@ -181,10 +181,6 @@ dependencies {
     //Preferences (DataStore for appearance settings)
     implementation 'androidx.datastore:datastore-preferences:1.1.1'
 
-    //Images
-    annotationProcessor 'com.github.bumptech.glide:compiler:5.0.5'
-    implementation 'com.github.bumptech.glide:glide:5.0.5'
-
     //Async
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 

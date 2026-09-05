@@ -7,13 +7,12 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.drawable.Drawable
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
-import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
+import coil.ImageLoader
+import coil.request.ImageRequest
+import coil.size.Size
 import com.tsutsen.platformplayer.activities.MainActivity
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
@@ -23,8 +22,10 @@ import com.tsutsen.platformplayer.receivers.PlannedNotificationReceiver
 import com.tsutsen.platformplayer.serializers.PlatformContentSerializer
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.toHumanNowDiffString
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.toHumanNowDiffStringMinDay
-import com.tsutsen.platformplayer.withMaxSizePx
 import java.time.OffsetDateTime
 
 class StateNotifications {
@@ -97,18 +98,16 @@ class StateNotifications {
         val thumbnail = if(content is IPlatformVideo) content.thumbnails.getHQThumbnail()
         else null;
         if(thumbnail != null)
-            Glide.with(context).asBitmap()
-                .load(thumbnail)
-                .withMaxSizePx()
-                .into(object: CustomTarget<Bitmap>() {
-                    override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-                        notifyNewContent(context, manager, notificationChannel, id, content, resource);
-                    }
-                    override fun onLoadCleared(placeholder: Drawable?) {}
-                    override fun onLoadFailed(errorDrawable: Drawable?) {
-                        notifyNewContent(context, manager, notificationChannel, id, content, null);
-                    }
-                })
+            CoroutineScope(Dispatchers.Main).launch {
+                val result = ImageLoader(context).execute(
+                    ImageRequest.Builder(context)
+                        .data(thumbnail)
+                        .size(Size.ORIGINAL)
+                        .build()
+                )
+                val resource = (result.drawable as? BitmapDrawable)?.bitmap
+                notifyNewContent(context, manager, notificationChannel, id, content, resource);
+            }
         else
             notifyNewContent(context, manager, notificationChannel, id, content, null);
     }

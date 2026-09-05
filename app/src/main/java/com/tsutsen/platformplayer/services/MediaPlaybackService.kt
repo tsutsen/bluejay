@@ -9,7 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
-import android.graphics.drawable.Drawable
+import android.graphics.drawable.BitmapDrawable
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.AudioManager.OnAudioFocusChangeListener
@@ -25,10 +25,9 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.KeyEvent
 import androidx.core.app.NotificationCompat
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
-import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
+import coil.ImageLoader
+import coil.request.ImageRequest
+import coil.size.Size
 import com.tsutsen.platformplayer.R
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.activities.MainActivity
@@ -38,8 +37,10 @@ import com.tsutsen.platformplayer.receivers.MediaButtonReceiver
 import com.tsutsen.platformplayer.receivers.MediaControlReceiver
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlayer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.stores.FragmentedStorage
-import com.tsutsen.platformplayer.withMaxSizePx
 
 class MediaPlaybackService : Service() {
     private val TAG = "MediaPlaybackService";
@@ -228,32 +229,30 @@ class MediaPlaybackService : Service() {
         else if(thumbnail != null) {
             notifyMediaSession(video, null);
             val tag = video;
-            Glide.with(this).asBitmap()
-                .load(thumbnail)
-                .withMaxSizePx()
-                .into(object: CustomTarget<Bitmap>() {
-                    override fun onResourceReady(resource: Bitmap,transition: Transition<in Bitmap>?) {
-                        if (tag != _notif_last_video) return
-                        if (resource.isRecycled) {
-                            notifyMediaSession(video, null)
-                            return
-                        }
+            CoroutineScope(Dispatchers.Main).launch {
+                val result = ImageLoader(this@MediaPlaybackService).execute(
+                    ImageRequest.Builder(this@MediaPlaybackService)
+                        .data(thumbnail)
+                        .size(Size.ORIGINAL)
+                        .build()
+                )
+                val resource = (result.drawable as? BitmapDrawable)?.bitmap
+                if (tag != _notif_last_video) return@launch
+                if (resource == null || resource.isRecycled) {
+                    notifyMediaSession(video, null)
+                    return@launch
+                }
 
-                        val albumArt = resource.copy(
-                            resource.config ?: Bitmap.Config.ARGB_8888,
-                            false
-                        )
+                val albumArt = resource.copy(
+                    resource.config ?: Bitmap.Config.ARGB_8888,
+                    false
+                )
 
-                        _notif_last_bitmap = albumArt
+                _notif_last_bitmap = albumArt
 
-                        notifyMediaSession(video, albumArt)
-                        updateMediaMetadata(video, albumArt)
-                    }
-                    override fun onLoadCleared(placeholder: Drawable?) {
-                        if(tag == _notif_last_video)
-                            notifyMediaSession(video, null)
-                    }
-                });
+                notifyMediaSession(video, albumArt)
+                updateMediaMetadata(video, albumArt)
+            }
         }
         else
             notifyMediaSession(video, null);
