@@ -16,6 +16,9 @@ interface HistoryDao {
     @Query("SELECT * FROM history ORDER BY watchedAt DESC LIMIT :limit OFFSET :offset")
     suspend fun getPaginated(limit: Int, offset: Int): List<HistoryEntity>
 
+    @Query("SELECT * FROM history WHERE watchedAt > :millis ORDER BY watchedAt DESC LIMIT :limit")
+    suspend fun getSince(millis: Long, limit: Int): List<HistoryEntity>
+
     @Query("SELECT * FROM history WHERE lastPositionMs > 0 ORDER BY watchedAt DESC")
     fun observeContinueWatching(): Flow<List<HistoryEntity>>
 

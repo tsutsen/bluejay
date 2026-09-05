@@ -28,10 +28,6 @@ class HistoryVideo {
     }
 
 
-    fun toReconString(): String {
-        return "${video.url}|||${date.toEpochSecond()}|||${position}|||${video.name}";
-    }
-
     companion object {
         fun fromReconString(str: String, resolve: ((url: String)->SerializedPlatformVideo?)? = null): HistoryVideo {
             var index = str.indexOf("|||");

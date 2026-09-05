@@ -351,8 +351,8 @@ class StateBackup {
             }
             try {
                 val history = StateHistory.instance.getRecentHistory(OffsetDateTime.MIN, 2000);
-                historyVideos = history.map { it.video };
-                storesToSave.set("history", history.map { it.toReconString() });
+                historyVideos = history.map { StateHistory.instance.toWireHistory(it).video };
+                storesToSave.set("history", history.map { StateHistory.instance.toReconString(it) });
             }
             catch(ex: Throwable) {
                 Logger.e(TAG, "Failed to serialize history");
@@ -463,9 +463,7 @@ class StateBackup {
                                                                 for (historyStr in store.value) {
                                                                     try {
                                                                         val histObj = HistoryVideo.fromReconString(historyStr) { url -> return@fromReconString export.cache?.videos?.firstOrNull { it.url == url }; }
-                                                                        val hist = StateHistory.instance.getHistoryByVideo(histObj.video, true, histObj.date);
-                                                                        if (hist != null)
-                                                                            StateHistory.instance.updateHistoryPosition(histObj.video, hist, true, histObj.position, histObj.date, false, histObj.playlistId);
+                                                                        StateHistory.instance.importHistoryVideos(listOf(histObj));
                                                                     } catch (ex: Throwable) {
                                                                         Logger.e(TAG, "Failed to import subscription group", ex);
                                                                     }

@@ -295,7 +295,7 @@ class StateSync {
                 session.sendData(GJSyncOpcodes.syncWatchLater, watchLaterPackageString);
                 Logger.i(TAG, "syncStateExchange syncWatchLater (size: ${watchLaterPackageString.length})")
 
-                val recentHistory = StateHistory.instance.getRecentHistory(syncSessionData.lastHistory);
+                val recentHistory = StateHistory.instance.getRecentHistory(syncSessionData.lastHistory).map { StateHistory.instance.toWireHistory(it) };
 
                 Logger.i(TAG, "syncStateExchange syncHistory b (size: ${recentHistory.size})")
                 if(recentHistory.isNotEmpty())
@@ -460,12 +460,10 @@ class StateSync {
 
                 var lastHistory = OffsetDateTime.MIN;
                 for(video in history){
-                    val hist = StateHistory.instance.getHistoryByVideo(video.video, true, video.date);
-                    if(hist != null)
-                        StateHistory.instance.updateHistoryPosition(video.video, hist, true, video.position, video.date, false, video.playlistId)
                     if(lastHistory < video.date)
                         lastHistory = video.date;
                 }
+                StateHistory.instance.importHistoryVideos(history);
 
                 if(lastHistory != OffsetDateTime.MIN && history.size > 1) {
                     val sesData = getSyncSessionData(remotePublicKey);

@@ -800,9 +800,6 @@ class StateApp {
 
         StatePlaylists.instance.toMigrateCheck();
 
-        if(StateHistory.instance.shouldMigrateLegacyHistory())
-            StateHistory.instance.migrateLegacyHistory();
-
         scopeOrNull?.launch(Dispatchers.IO) {
             val updateAvailable = StatePlugins.instance.checkForUpdates()
 
