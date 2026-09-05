@@ -364,7 +364,15 @@ fun PlayerView(
      */
     fun setFullscreenBarsNow(fullscreen: Boolean) {
         val controller = insetsController ?: return
-        val isPortrait = surface.containerSize.value.width <= surface.containerSize.value.height
+        // Window orientation, NOT the player container: in normal portrait
+        // the video is a WIDE 16:9 letterbox, so container-size comparison
+        // misreads it as landscape and hid the NAV bar at drag start — the
+        // bottom-inset reflow behind the video was the morph stutter. The
+        // button path only looked correct because its effect ran after the
+        // container had already grown tall.
+        val isPortrait =
+            configuration.orientation !=
+            android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val bars =
             if (isPortrait) {
                 androidx.core.view.WindowInsetsCompat.Type
