@@ -2,9 +2,12 @@ package com.tsutsen.platformplayer.core.designsystem.component
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -27,6 +30,9 @@ fun BluejayModalBottomSheet(
     // before [content]: a trailing lambda needs the last param to be a
     // function type.
     scroll: Boolean = true,
+    // Optional right-aligned action in the title row (e.g. "Reset to
+    // defaults").
+    headerAction: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     // Sheets with several rows open in the partial state and clip their
@@ -46,12 +52,28 @@ fun BluejayModalBottomSheet(
                     .then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                     .padding(bottom = 32.dp),
         ) {
-            if (title != null) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = Tokens.SpaceLg, end = Tokens.SpaceLg, top = Tokens.SpaceSm, bottom = Tokens.SpaceSm),
-                )
+            if (title != null || headerAction != null) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = Tokens.SpaceLg,
+                                end = Tokens.SpaceLg,
+                                top = Tokens.SpaceSm,
+                                bottom = Tokens.SpaceSm,
+                            ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (title != null) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    headerAction?.invoke()
+                }
             }
             content()
         }

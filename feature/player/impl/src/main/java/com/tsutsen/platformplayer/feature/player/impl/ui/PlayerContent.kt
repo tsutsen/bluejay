@@ -115,7 +115,7 @@ fun PlayerContent(
     onFullscreenToggle: () -> Unit,
     onDetailsOverdragStart: () -> Unit = {},
     onDetailsOverdrag: (overdragPx: Float) -> Unit = {},
-    onDetailsOverdragEnd: (overdragPx: Float) -> Unit = {},
+    onDetailsOverdragEnd: (overdragPx: Float, velocityPxPerMs: Float) -> Unit = { _, _ -> },
 ) {
     val density = LocalDensity.current
 

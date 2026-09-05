@@ -1151,6 +1151,7 @@ private fun SectionItems(
             "gestures" -> {
                 var gestureSheetMode by remember { mutableStateOf<String?>(null) }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader("General")
                     SettingsOptionCard(
                         icon = Icons.Filled.Speed,
                         title = "Default playback speedup",
@@ -1174,6 +1175,7 @@ private fun SectionItems(
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader("Customization")
                     SettingsOptionCard(
                         icon = Icons.Filled.Gesture,
                         title = "Fullscreen player gestures",
@@ -1209,6 +1211,21 @@ private fun SectionItems(
                             } else {
                                 "Normal player gestures"
                             },
+                        headerAction =
+                            if (
+                                (mode == PlayerGestures.MODE_FULLSCREEN &&
+                                    state.playerGestures.fullscreen.isCustomized) ||
+                                (mode == PlayerGestures.MODE_NORMAL &&
+                                    state.playerGestures.normal.isCustomized)
+                            ) {
+                                {
+                                    TextButton(onClick = { viewModel.resetPlayerGestures(mode) }) {
+                                        Text("Reset to defaults")
+                                    }
+                                }
+                            } else {
+                                null
+                            },
                     ) {
                         // The shared sheet only pads its title; give the
                         // editor the same horizontal inset as the title.
@@ -1241,16 +1258,6 @@ private fun SectionItems(
                                     )
                                 },
                             )
-                            if (
-                                (mode == PlayerGestures.MODE_FULLSCREEN &&
-                                    state.playerGestures.fullscreen.isCustomized) ||
-                                (mode == PlayerGestures.MODE_NORMAL &&
-                                    state.playerGestures.normal.isCustomized)
-                            ) {
-                                TextButton(onClick = { viewModel.resetPlayerGestures(mode) }) {
-                                    Text("Reset to defaults")
-                                }
-                            }
                         }
                     }
                 }

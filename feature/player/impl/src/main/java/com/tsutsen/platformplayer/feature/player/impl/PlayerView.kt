@@ -446,7 +446,10 @@ fun PlayerView(
         snapAxis(surface.fullscreenProgress, progress)
     }
 
-    fun finishOverscrollMorph(cumulativePx: Float) {
+    fun finishOverscrollMorph(
+        cumulativePx: Float,
+        velocityPxPerMs: Float = 0f,
+    ) {
         if (!surface.isDraggingFullscreen.value) return // never started (COMPACT drag)
         surface.isDraggingFullscreen.value = false
         val travel = fullscreenOverdragTravelPx()
@@ -454,17 +457,21 @@ fun PlayerView(
             (cumulativePx - detailsOverdragPendingExpandPx.value)
                 .coerceAtLeast(0f)
         detailsOverdragPendingExpandPx.value = 0f
+        // Release velocity in progress/ms (same seeding as the fullscreen
+        // drag axis); velocityToward clamps a flick away from the target to
+        // a settle-from-rest.
+        val vPps = if (travel > 0f) velocityPxPerMs / travel else 0f
         if (travel > 0f && over > 0.4f * travel) {
             // Committed: flip state first (details fade out),
             // then settle to full.
             viewModel.toggleFullscreen()
-            settleFullscreenTo(1f)
+            settleFullscreenTo(1f, vPps)
         } else {
             // Cancelled: the bars were hidden when the drag started — put
             // them back (the isFullscreen effect doesn't fire: state didn't
             // change).
             setFullscreenBarsNow(false)
-            settleFullscreenTo(0f)
+            settleFullscreenTo(0f, vPps)
         }
     }
 
@@ -1116,7 +1123,7 @@ fun PlayerView(
                             },
                         onDetailsOverdragEnd =
                             remember {
-                                { px -> finishOverscrollMorph(px) }
+                                { px, velocity -> finishOverscrollMorph(px, velocity) }
                             },
                     )
                 }

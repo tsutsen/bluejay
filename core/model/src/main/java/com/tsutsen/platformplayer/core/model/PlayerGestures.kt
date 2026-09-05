@@ -188,15 +188,7 @@ object PlayerGestures {
                         }
                     },
                 ),
-            MODE_NORMAL to
-                slotSet(
-                    {
-                        when (it) {
-                            "bottomCenter" -> NONE
-                            else -> MORPH_VERTICAL
-                        }
-                    },
-                ),
+            MODE_NORMAL to slotSet({ MORPH_VERTICAL }),
         )
 
     /** Effective action for one cell: the user's override, else the default. */

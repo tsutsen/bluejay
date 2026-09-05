@@ -76,11 +76,13 @@ internal fun PlayerDetails(
      * Overdrag morph: while the list is pinned at the top, further
      * downward drags are reported live ([onOverdrag] with the cumulative px)
      * so the parent can morph toward fullscreen. [onOverdragEnd] receives
-     * the final total (0f when the drag was cancelled or scrolled away).
+     * the final total (0f when the drag was cancelled or scrolled away) and
+     * the release velocity (px/ms, downward-positive) for a momentum
+     * settle.
      */
     onOverdragStart: () -> Unit = {},
     onOverdrag: (overdragPx: Float) -> Unit = {},
-    onOverdragEnd: (overdragPx: Float) -> Unit = {},
+    onOverdragEnd: (overdragPx: Float, velocityPxPerMs: Float) -> Unit = { _, _ -> },
 ) {
     val density = LocalDensity.current
     val systemBottomInset = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
@@ -113,17 +115,41 @@ internal fun PlayerDetails(
                     // it is pinned at the top.
                     var topOverscrollPx = 0f
                     var overscrollActive = false
+                    // Last two accumulation samples (ms, px) → the release
+                    // velocity; one frame stale, same as the morph drag axes.
+                    var sampleT = 0L
+                    var samplePx = 0f
+                    var sampleV = 0f
+                    var hasSample = false
+
+                    fun sampleOverdragVelocity() {
+                        val t = System.currentTimeMillis()
+                        if (hasSample) {
+                            sampleV =
+                                (topOverscrollPx - samplePx) /
+                                    maxOf(1L, t - sampleT).toFloat()
+                            samplePx = topOverscrollPx
+                            sampleT = t
+                        } else {
+                            samplePx = topOverscrollPx
+                            sampleT = t
+                            sampleV = 0f
+                            hasSample = true
+                        }
+                    }
 
                     fun endOverscroll(totalPx: Float) {
                         if (!overscrollActive) return
                         overscrollActive = false
-                        onOverdragEnd(totalPx)
+                        onOverdragEnd(totalPx, if (hasSample) sampleV else 0f)
                     }
 
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         topOverscrollPx = 0f
                         overscrollActive = false
+                        hasSample = false
+                        sampleV = 0f
                         try {
                             while (true) {
                                 val event = awaitPointerEvent()
@@ -146,6 +172,7 @@ internal fun PlayerDetails(
                                     // accumulate.
                                     amount.y > 0f -> {
                                         topOverscrollPx += amount.y
+                                        sampleOverdragVelocity()
                                         if (!overscrollActive) {
                                             overscrollActive = true
                                             onOverdragStart()

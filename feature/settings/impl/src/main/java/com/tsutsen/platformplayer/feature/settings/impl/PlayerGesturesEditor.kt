@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forward30
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Swipe
 import androidx.compose.material.icons.filled.SwipeVertical
 import androidx.compose.material3.Icon
@@ -60,7 +60,8 @@ private val GESTURE_ICONS: Map<String, ImageVector> =
  *
  * Layout (mimicking the player screen): one panel with the top zone's four
  * tiles in a row, three panels with the bottom zones' tiles in a 2x2 grid,
- * and a slim decorative bar (back/play/forward) making the target clear.
+ * and a slim decorative bar (rewind/play/forward — the companion controls
+ * row) making the target clear.
  * Tiles show the gesture-type icon; the label is the selected action.
  * Tapping a tile opens the action picker for that cell (same style as the
  * other settings pickers). Unset cells show the canonical defaults.
@@ -149,7 +150,7 @@ internal fun PlayerGesturesEditor(
                 }
             }
         }
-        // Aesthetic hint bar: half a tile row tall, back/play/forward
+        // Aesthetic hint bar: half a tile row tall, rewind/play/forward
         // centered — a reminder that this configures the player itself.
         // Last element of the stack: small radius on top, outer below.
         PlayerHintBar(shape = RoundedCornerShape(inner, inner, outer, outer))
@@ -236,13 +237,15 @@ private fun GestureTile(
             style = MaterialTheme.typography.labelSmall,
             color = if (isAssigned) TextBright else TextDim,
             textAlign = TextAlign.Center,
-            maxLines = 3,
+            // One line only: a label that wraps would grow the tile and
+            // break the flat 2x2 grid.
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
-/** Decorative back/play/forward strip — half a tile row tall. */
+/** Decorative rewind/play/forward strip (companion controls row) — half a tile row tall. */
 @Composable
 private fun PlayerHintBar(shape: RoundedCornerShape) {
     Row(
@@ -257,19 +260,20 @@ private fun PlayerHintBar(shape: RoundedCornerShape) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = Icons.Filled.Replay10,
+            imageVector = Icons.Filled.FastRewind,
             contentDescription = null,
             modifier = Modifier.size(Tokens.IconSm),
             tint = TextDim,
         )
+        // The play button leads: one icon step larger than the flanks.
         Icon(
             imageVector = Icons.Filled.PlayArrow,
             contentDescription = null,
-            modifier = Modifier.size(Tokens.IconSm),
+            modifier = Modifier.size(Tokens.IconMd),
             tint = TextDim,
         )
         Icon(
-            imageVector = Icons.Filled.Forward30,
+            imageVector = Icons.Filled.FastForward,
             contentDescription = null,
             modifier = Modifier.size(Tokens.IconSm),
             tint = TextDim,
