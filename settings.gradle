@@ -39,7 +39,6 @@ include ':core:navigation'
 include ':core:ui'
 
 // Feature modules
-include ':feature:dualscreen'
 include ':feature:home:impl'
 include ':feature:search:impl'
 include ':feature:player:impl'
