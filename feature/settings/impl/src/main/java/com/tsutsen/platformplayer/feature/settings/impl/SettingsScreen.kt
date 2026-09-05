@@ -42,7 +42,6 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Copyright
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DisplaySettings
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -51,6 +50,7 @@ import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Games
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.PlayCircle
@@ -472,11 +472,43 @@ fun SettingsSectionScreen(
         Choice.DUAL_PAGE_ORDER -> {
             loaded?.let {
                 ReorderDialog(
-                    title = "Main page order",
+                    title = "Video page order",
                     items =
                         it.dualScreenPageOrder
                             .map { id -> id to (dualPageOrderNames[id] ?: id) },
                     onChange = { newOrder -> viewModel.setDualScreenPageOrder(newOrder) },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DASH_TOP_CREATORS -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Top creators",
+                    options =
+                        listOf(
+                            "This week" to "week",
+                            "Overall" to "overall",
+                        ),
+                    selected = it.dualScreenTopCreatorsScope,
+                    onSelected = { value ->
+                        viewModel.setDualScreenTopCreatorsScope(value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DASH_PAGE_ORDER -> {
+            loaded?.let {
+                ReorderDialog(
+                    title = "Dash page order",
+                    items =
+                        it.dualScreenDashPageOrder
+                            .map { id -> id to (dashPageOrderNames[id] ?: id) },
+                    onChange = { newOrder -> viewModel.setDualScreenDashPageOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
                 )
             }
@@ -1233,7 +1265,7 @@ private fun SectionItems(
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader("General")
                     SettingsSwitchCard(
-                        icon = Icons.Filled.DisplaySettings,
+                        icon = DualScreen,
                         title = "Dual screen",
                         subtitle = "Show video controls on the second screen",
                         checked = state.dualScreen,
@@ -1258,6 +1290,44 @@ private fun SectionItems(
                         title = "Pages",
                         subtitle = dualListLabel(state.dualScreenPages, dualPageNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Dash page",
+                        reset =
+                            if (
+                                state.dualScreenTopCreatorsScope !=
+                                    defaults.dualScreenTopCreatorsScope ||
+                                state.dualScreenDashPageOrder != defaults.dualScreenDashPageOrder
+                            ) {
+                                {
+                                    viewModel.setDualScreenTopCreatorsScope(
+                                        defaults.dualScreenTopCreatorsScope,
+                                    )
+                                    viewModel.setDualScreenDashPageOrder(
+                                        defaults.dualScreenDashPageOrder,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Groups,
+                        title = "Top creators",
+                        subtitle =
+                            if (state.dualScreenTopCreatorsScope == "overall") "Overall"
+                            else "This week",
+                        onClick = { onChoiceSelected(Choice.DASH_TOP_CREATORS) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Reorder,
+                        title = "Dash page order",
+                        subtitle = dualOrderLabel(state.dualScreenDashPageOrder, dashPageOrderNames),
+                        onClick = { onChoiceSelected(Choice.DASH_PAGE_ORDER) },
                         groupPosition = GroupPosition.Last,
                     )
                 }
@@ -1288,7 +1358,7 @@ private fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = SplitscreenBottom,
-                        title = "Main page order",
+                        title = "Video page order",
                         subtitle = dualOrderLabel(state.dualScreenPageOrder, dualPageOrderNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
                         groupPosition = GroupPosition.Last,
@@ -1423,6 +1493,13 @@ private val dualPageOrderNames =
         "controls" to "Controls",
         "video" to "Video",
         "tabs" to "Tabs",
+    )
+
+private val dashPageOrderNames =
+    mapOf(
+        "stats" to "Stats",
+        "top_creators" to "Top creators",
+        "continue" to "Continue",
     )
 
 private val librarySectionNames =
@@ -1794,6 +1871,8 @@ private enum class Choice {
     DUAL_PAGES,
     DUAL_TAB_ORDER,
     DUAL_PAGE_ORDER,
+    DASH_TOP_CREATORS,
+    DASH_PAGE_ORDER,
     DUAL_SLOTS,
     DUAL_FEED_SOURCES,
     LIBRARY_SECTION_ORDER,

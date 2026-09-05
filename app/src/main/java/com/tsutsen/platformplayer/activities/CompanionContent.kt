@@ -120,6 +120,11 @@ internal fun CompanionContent(
             .filter { it in prefs.dualScreenVideoTabs }
     val pageOrder =
         (prefs.dualScreenPageOrder + listOf("controls", "video", "tabs")).distinct()
+    // Dash page: widget order + the "Top creators" scope (Settings > Dual
+    // screen > Dash page).
+    val dashPageOrder =
+        (prefs.dualScreenDashPageOrder + listOf("stats", "top_creators", "continue")).distinct()
+    val topCreatorsScope = prefs.dualScreenTopCreatorsScope
     val librarySlotValues = prefs.dualScreenLibrarySlots
 
     // Same data the main screen shows: the PlayerViewModel fetches comments
@@ -450,6 +455,8 @@ internal fun CompanionContent(
                                     history = history,
                                     currentVideoUrl = video?.url,
                                     isPlaying = playerState.isPlaying,
+                                    pageOrder = dashPageOrder,
+                                    topCreatorsScope = topCreatorsScope,
                                     onPlay = onPlay,
                                     onPlayItem = onPlayItem,
                                     discarded = discardedContinue,

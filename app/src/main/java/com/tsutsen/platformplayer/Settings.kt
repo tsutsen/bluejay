@@ -123,6 +123,11 @@ class Settings {
     // Second-screen video page: order of the elements (controls row, video
     // header, tab strip).
     var dualScreenPageOrder: List<String> = listOf("controls", "video", "tabs")
+    // Second-screen dash page: "Top creators" scope — "week" (this week)
+    // or "overall" (all time).
+    var dualScreenTopCreatorsScope: String = "week"
+    // Second-screen dash page: display order of the widgets.
+    var dualScreenDashPageOrder: List<String> = listOf("stats", "top_creators", "continue")
     // Second screen home page: which sources to fetch from (empty = all enabled).
     var dualScreenFeedSources: List<String> = emptyList()
 

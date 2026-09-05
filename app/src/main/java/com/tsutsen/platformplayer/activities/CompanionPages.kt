@@ -703,8 +703,9 @@ internal fun PlaylistSlotPager(
 
 /**
  * Dash page: the stats card (the same widget as the main screen's Dash
- * tab), the all-time top creators with their watch time, and the last
- * unfinished video to continue.
+ * tab), the top creators with their watch time (this week or all time,
+ * Settings > Dual screen > Dash page), and the last unfinished video to
+ * continue. The widgets render in [pageOrder].
  */
 @Composable
 internal fun CompanionDashPage(
@@ -712,6 +713,8 @@ internal fun CompanionDashPage(
     history: List<HistoryEntity>,
     currentVideoUrl: String?,
     isPlaying: Boolean = false,
+    pageOrder: List<String> = listOf("stats", "top_creators", "continue"),
+    topCreatorsScope: String = "week",
     onPlay: (String) -> Unit,
     onPlayItem: (ContentItem) -> Unit,
     discarded: Set<String>,
@@ -722,6 +725,14 @@ internal fun CompanionDashPage(
     // Staggered entrance: the sections fade + slide in as the page appears.
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered = true }
+    // Top creators scope: this week (default) or all time.
+    val topCreators =
+        if (topCreatorsScope == "overall") stats.topCreators else stats.topCreatorsLastWeek
+    val topCreatorsTitle =
+        if (topCreatorsScope == "overall") "Top creators" else "Top creators this week"
+    // Saved order wins; unknown keys are dropped, missing widgets appended.
+    val widgetKeys =
+        (pageOrder + listOf("stats", "top_creators", "continue")).distinct()
     // Not scrollable on purpose: a scrollable page inside the VerticalPager
     // eats the page-swipe gestures until it reaches its edge.
     Column(
@@ -731,67 +742,80 @@ internal fun CompanionDashPage(
                 .padding(horizontal = Tokens.SpaceSm, vertical = Tokens.SpaceXs),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
-        WatchStatsSummary(
-            stats = stats,
-            onClick = onStatsClick,
-            // Take whatever vertical space the stat columns + sections leave
-            // over, and stretch the bar chart into it.
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .sectionEntrance(entered, 0),
-            fillHeight = true,
-            wideChart = true,
-        )
-        // Top creators: a card holding the title + the creator badges.
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .sectionEntrance(entered, 80)
-                    .clip(RoundedCornerShape(BluejayTokens().radius.card))
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(Tokens.SpaceMd),
-        ) {
-            DashSectionTitle("Top creators this week")
-            if (stats.topCreatorsLastWeek.isEmpty()) {
-                DashEmpty("No watch history yet")
-            } else {
-                Spacer(Modifier.height(Tokens.SpaceSm))
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-                ) {
-                    stats.topCreatorsLastWeek.forEach { creator ->
-                        CreatorBadge(
-                            creator = creator,
-                            onClick = { creator.authorUrl?.let(onChannelClick) },
+        widgetKeys.forEach { key ->
+            when (key) {
+                "stats" ->
+                    WatchStatsSummary(
+                        stats = stats,
+                        onClick = onStatsClick,
+                        // Take whatever vertical space the stat columns +
+                        // sections leave over, and stretch the bar chart
+                        // into it.
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .sectionEntrance(entered, 0),
+                        fillHeight = true,
+                        wideChart = true,
+                    )
+
+                "top_creators" -> {
+                    // A card holding the title + the creator badges.
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .sectionEntrance(entered, 80)
+                                .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .padding(Tokens.SpaceMd),
+                    ) {
+                        DashSectionTitle(topCreatorsTitle)
+                        if (topCreators.isEmpty()) {
+                            DashEmpty("No watch history yet")
+                        } else {
+                            Spacer(Modifier.height(Tokens.SpaceSm))
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                            ) {
+                                topCreators.forEach { creator ->
+                                    CreatorBadge(
+                                        creator = creator,
+                                        onClick = { creator.authorUrl?.let(onChannelClick) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                "continue" -> {
+                    // A card holding the title + the entry row (or the
+                    // empty-state label).
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .sectionEntrance(entered, 160)
+                                .clip(RoundedCornerShape(BluejayTokens().radius.card))
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .padding(Tokens.SpaceMd),
+                    ) {
+                        DashSectionTitle("Continue")
+                        val entry =
+                            continueEntry(history, currentVideoUrl, isPlaying, discarded)
+                        ContinueCard(
+                            entry = entry,
+                            onPlay = { entry?.let { onPlayItem(it.toContentItem()) } },
+                            onDiscard = { entry?.let { onDiscard(it.contentUrl) } },
                         )
                     }
                 }
             }
-        }
-        // Continue: a card holding the title + the entry row (or the
-        // empty-state label).
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .sectionEntrance(entered, 160)
-                    .clip(RoundedCornerShape(BluejayTokens().radius.card))
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(Tokens.SpaceMd),
-        ) {
-            DashSectionTitle("Continue")
-            val entry = continueEntry(history, currentVideoUrl, isPlaying, discarded)
-            ContinueCard(
-                entry = entry,
-                onPlay = { entry?.let { onPlayItem(it.toContentItem()) } },
-                onDiscard = { entry?.let { onDiscard(it.contentUrl) } },
-            )
         }
     }
 }

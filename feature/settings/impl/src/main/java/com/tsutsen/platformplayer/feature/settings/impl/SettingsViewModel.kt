@@ -33,6 +33,8 @@ sealed interface SettingsUiState {
         val dualScreenVideoTabs: List<String>,
         val dualScreenVideoTabOrder: List<String>,
         val dualScreenPageOrder: List<String>,
+        val dualScreenTopCreatorsScope: String,
+        val dualScreenDashPageOrder: List<String>,
         val dualScreenFeedSources: List<String>,
         val dualScreenLibrarySlots: List<String>,
         val gridColumns: Int,
@@ -112,6 +114,8 @@ class SettingsViewModel
                                 dualScreenVideoTabs = prefs.dualScreenVideoTabs,
                                 dualScreenVideoTabOrder = prefs.dualScreenVideoTabOrder,
                                 dualScreenPageOrder = prefs.dualScreenPageOrder,
+                                dualScreenTopCreatorsScope = prefs.dualScreenTopCreatorsScope,
+                                dualScreenDashPageOrder = prefs.dualScreenDashPageOrder,
                                 dualScreenFeedSources = prefs.dualScreenFeedSources,
                                 dualScreenLibrarySlots = prefs.dualScreenLibrarySlots,
                                 gridColumns = prefs.gridColumns,
@@ -180,6 +184,16 @@ class SettingsViewModel
 
         fun setDualScreenPageOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateDualScreenPageOrder(order) }
+        }
+
+        fun setDualScreenTopCreatorsScope(scope: String) {
+            viewModelScope.launch {
+                settingsRepository.updateDualScreenTopCreatorsScope(scope)
+            }
+        }
+
+        fun setDualScreenDashPageOrder(order: List<String>) {
+            viewModelScope.launch { settingsRepository.updateDualScreenDashPageOrder(order) }
         }
 
         fun setDualScreenFeedSources(ids: List<String>) {

@@ -86,6 +86,8 @@ class SettingsRepositoryImpl
                 dualScreenVideoTabs = s.dualScreenVideoTabs,
                 dualScreenVideoTabOrder = s.dualScreenVideoTabOrder,
                 dualScreenPageOrder = s.dualScreenPageOrder,
+                dualScreenTopCreatorsScope = s.dualScreenTopCreatorsScope,
+                dualScreenDashPageOrder = s.dualScreenDashPageOrder,
                 dualScreenFeedSources = s.dualScreenFeedSources,
                 dualScreenLibrarySlots = s.dualScreenLibrarySlots,
                 librarySectionOrder = s.librarySectionOrder,
@@ -190,6 +192,20 @@ class SettingsRepositoryImpl
             emit()
         }
 
+        override suspend fun updateDualScreenTopCreatorsScope(scope: String) {
+            val s = Settings.instance
+            s.dualScreenTopCreatorsScope = scope
+            s.save()
+            emit()
+        }
+
+        override suspend fun updateDualScreenDashPageOrder(order: List<String>) {
+            val s = Settings.instance
+            s.dualScreenDashPageOrder = order
+            s.save()
+            emit()
+        }
+
         override suspend fun updatePlayerGestures(
             fullscreen: PlayerGestureSlotSet,
             normal: PlayerGestureSlotSet,
@@ -282,6 +298,8 @@ class SettingsRepositoryImpl
             s.dualScreenVideoTabOrder =
                 listOf("info", "controls", "comments", "chapters", "recommended", "queue")
             s.dualScreenPageOrder = listOf("controls", "video", "tabs")
+            s.dualScreenTopCreatorsScope = "week"
+            s.dualScreenDashPageOrder = listOf("stats", "top_creators", "continue")
             s.dualScreenFeedSources = emptyList()
             s.dualScreenLibrarySlots =
                 listOf("watch_later", "liked", "favourite", "history")

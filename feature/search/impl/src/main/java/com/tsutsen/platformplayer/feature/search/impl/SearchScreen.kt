@@ -198,6 +198,85 @@ fun SearchScreen(
         if (searchQuery.isNotBlank()) viewModel.search(searchQuery)
     }
 
+    // Source/sort dropdowns, shared by the wide (same-line) and portrait
+    // (own-line) filter layouts.
+    @Composable
+    fun filterDropdowns() {
+        // Source filter — only when more than one source is
+        // enabled. Empty selection means "all sources".
+        if (enabledSources.size > 1) {
+            val sourceMenuExpanded = remember { mutableStateOf(false) }
+            val allSourceIds = enabledSources.map { it.id }.toSet()
+            FilterDropdown(
+                label =
+                    when {
+                        selectedSources.isEmpty() -> "All sources"
+
+                        selectedSources.size == 1 ->
+                            enabledSources
+                                .firstOrNull { it.id in selectedSources }?.name ?:
+                                "Sources"
+
+                        else -> "${selectedSources.size} sources"
+                    },
+                expanded = sourceMenuExpanded.value,
+                onExpandedChange = { sourceMenuExpanded.value = it },
+            ) {
+                // Checkbox variant: the menu stays open after a
+                // pick so several sources can be toggled.
+                SelectionDropdownItems(
+                    items = enabledSources,
+                    label = { it.name },
+                    isSelected = {
+                        selectedSources.isEmpty() || it.id in selectedSources
+                    },
+                    multiSelect = true,
+                    onPick = { source ->
+                        // Tap toggles ONLY this item (empty
+                        // selection = everything checked).
+                        val next =
+                            if (selectedSources.isEmpty()) {
+                                allSourceIds - source.id
+                            } else if (source.id in selectedSources) {
+                                selectedSources - source.id
+                            } else {
+                                selectedSources + source.id
+                            }
+                        // All checked collapses back to "all".
+                        viewModel.setSelectedSources(
+                            if (next == allSourceIds) emptySet() else next,
+                        )
+                    },
+                    onLongPick = { source ->
+                        // Long-press: select only this one.
+                        viewModel.setSelectedSources(setOf(source.id))
+                    },
+                )
+            }
+        }
+
+        // Sorting is only supported for media search.
+        if (searchType == SearchType.MEDIA) {
+            val sortMenuExpanded = remember { mutableStateOf(false) }
+            FilterDropdown(
+                label = sort.label,
+                expanded = sortMenuExpanded.value,
+                onExpandedChange = { sortMenuExpanded.value = it },
+            ) {
+                SelectionDropdownItems(
+                    items = SearchSort.entries,
+                    label = { it.label },
+                    isSelected = { it == sort },
+                    multiSelect = false,
+                    onPick = { s ->
+                        sortMenuExpanded.value = false
+                        viewModel.setSort(s)
+                    },
+                )
+            }
+        }
+    }
+
     // Combine repository results with local search history
     val uiState by combine(viewModel.repositoryResults, viewModel.searchHistoryFlow) { results, history ->
         SearchUiState(
@@ -314,115 +393,62 @@ fun SearchScreen(
                         .onFocusChanged { isSearchFocused = it.isFocused },
             )
 
-            // Which kind of content to search for.
-            Row(
+            // Which kind of content to search for. Wide: the type group
+            // and the dropdowns share one line. Portrait: the dropdowns
+            // wrap to their own line (they crowded the type group).
+            Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = Tokens.SpaceLg, vertical = Tokens.SpaceXs),
-                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Search type: native expressive [ButtonGroup] — the
-                // official M3 control for fixed single-select filters.
-                // Items expand to fill the row (constant height, no
-                // jitter when the sort pill appears/disappears).
-                ButtonGroup(
-                    overflowIndicator = {},
-                    modifier = Modifier.weight(1f),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    SearchType.entries.forEach { type ->
-                        toggleableItem(
-                            checked = searchType == type,
-                            label = searchTypeLabel(type),
-                            onCheckedChange = {
-                                // Switching the type releases the field's
-                                // focus (and the keyboard).
-                                focusManager.clearFocus()
-                                viewModel.setSearchType(type)
-                            },
-                            weight = 1f,
-                        )
+                    // Search type: native expressive [ButtonGroup] — the
+                    // official M3 control for fixed single-select filters.
+                    // Items expand to fill the row (constant height, no
+                    // jitter when the sort pill appears/disappears).
+                    ButtonGroup(
+                        overflowIndicator = {},
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        SearchType.entries.forEach { type ->
+                            toggleableItem(
+                                checked = searchType == type,
+                                label = searchTypeLabel(type),
+                                onCheckedChange = {
+                                    // Switching the type releases the field's
+                                    // focus (and the keyboard).
+                                    focusManager.clearFocus()
+                                    viewModel.setSearchType(type)
+                                },
+                                weight = 1f,
+                            )
+                        }
+                    }
+
+                    // Wide: source/sort menus pinned to the right; the
+                    // menus anchor to their pills.
+                    if (isWide) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                        ) {
+                            filterDropdowns()
+                        }
                     }
                 }
 
-                // Source/sort menus pinned to the right; the menus anchor
-                // to their pills.
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-                ) {
-                    // Source filter — only when more than one source is
-                    // enabled. Empty selection means "all sources".
-                    if (enabledSources.size > 1) {
-                        val sourceMenuExpanded = remember { mutableStateOf(false) }
-                        val allSourceIds = enabledSources.map { it.id }.toSet()
-                        FilterDropdown(
-                            label =
-                                when {
-                                    selectedSources.isEmpty() -> "All sources"
-
-                                    selectedSources.size == 1 ->
-                                        enabledSources
-                                            .firstOrNull { it.id in selectedSources }?.name ?:
-                                            "Sources"
-
-                                    else -> "${selectedSources.size} sources"
-                                },
-                            expanded = sourceMenuExpanded.value,
-                            onExpandedChange = { sourceMenuExpanded.value = it },
-                        ) {
-                            // Checkbox variant: the menu stays open after a
-                            // pick so several sources can be toggled.
-                            SelectionDropdownItems(
-                                items = enabledSources,
-                                label = { it.name },
-                                isSelected = {
-                                    selectedSources.isEmpty() || it.id in selectedSources
-                                },
-                                multiSelect = true,
-                                onPick = { source ->
-                                    // Tap toggles ONLY this item (empty
-                                    // selection = everything checked).
-                                    val next =
-                                        if (selectedSources.isEmpty()) {
-                                            allSourceIds - source.id
-                                        } else if (source.id in selectedSources) {
-                                            selectedSources - source.id
-                                        } else {
-                                            selectedSources + source.id
-                                        }
-                                    // All checked collapses back to "all".
-                                    viewModel.setSelectedSources(
-                                        if (next == allSourceIds) emptySet() else next,
-                                    )
-                                },
-                                onLongPick = { source ->
-                                    // Long-press: select only this one.
-                                    viewModel.setSelectedSources(setOf(source.id))
-                                },
-                            )
-                        }
-                    }
-
-                    // Sorting is only supported for media search.
-                    if (searchType == SearchType.MEDIA) {
-                        val sortMenuExpanded = remember { mutableStateOf(false) }
-                        FilterDropdown(
-                            label = sort.label,
-                            expanded = sortMenuExpanded.value,
-                            onExpandedChange = { sortMenuExpanded.value = it },
-                        ) {
-                            SelectionDropdownItems(
-                                items = SearchSort.entries,
-                                label = { it.label },
-                                isSelected = { it == sort },
-                                multiSelect = false,
-                                onPick = { s ->
-                                    sortMenuExpanded.value = false
-                                    viewModel.setSort(s)
-                                },
-                            )
-                        }
+                // Portrait: the dropdowns get their own line below the
+                // type group.
+                if (!isWide) {
+                    Row(
+                        modifier = Modifier.padding(top = Tokens.SpaceSm),
+                        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                    ) {
+                        filterDropdowns()
                     }
                 }
             }
@@ -437,6 +463,47 @@ fun SearchScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .pointerInput(focusManager) {
+                                // Scrolling the history down (finger up)
+                                // releases the field's focus — which
+                                // hides this list.
+                                val slop = 8.dp.toPx()
+                                awaitPointerEventScope {
+                                    var downY: Float? = null
+                                    var cleared = false
+                                    while (true) {
+                                        val event =
+                                            awaitPointerEvent(PointerEventPass.Initial)
+                                        when (event.type) {
+                                            PointerEventType.Press ->
+                                                downY =
+                                                    event.changes
+                                                        .firstOrNull { it.pressed }
+                                                        ?.position
+                                                        ?.y
+
+                                            PointerEventType.Move -> {
+                                                val y =
+                                                    event.changes
+                                                        .firstOrNull()
+                                                        ?.position
+                                                        ?.y
+                                                    ?: continue
+                                                val down = downY ?: continue
+                                                if (!cleared && down - y > slop) {
+                                                    focusManager.clearFocus()
+                                                    cleared = true
+                                                }
+                                            }
+
+                                            else -> {
+                                                downY = null
+                                                cleared = false
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             .padding(horizontal = Tokens.SpaceLg)
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),

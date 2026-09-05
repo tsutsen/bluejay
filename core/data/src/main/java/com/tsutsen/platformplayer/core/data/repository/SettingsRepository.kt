@@ -18,6 +18,8 @@ interface SettingsRepository {
     suspend fun updateDualScreenLibrarySlots(slots: List<String>)
     suspend fun updateDualScreenVideoTabOrder(order: List<String>)
     suspend fun updateDualScreenPageOrder(order: List<String>)
+    suspend fun updateDualScreenTopCreatorsScope(scope: String)
+    suspend fun updateDualScreenDashPageOrder(order: List<String>)
     suspend fun updateDualScreenFeedSources(ids: List<String>)
 
     /** Save the per-mode gesture assignments (Settings > Gestures). */

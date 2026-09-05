@@ -29,6 +29,11 @@ data class AppPreferences(
         listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot"),
     /** Order of the elements on the second screen's video page. */
     val dualScreenPageOrder: List<String> = listOf("controls", "video", "tabs"),
+    /** Dash page: "Top creators" scope — "week" (this week) or "overall". */
+    val dualScreenTopCreatorsScope: String = "week",
+    /** Dash page: display order of the widgets. */
+    val dualScreenDashPageOrder: List<String> =
+        listOf("stats", "top_creators", "continue"),
     val dualScreenFeedSources: List<String> = emptyList(),
     val dualScreenLibrarySlots: List<String> =
         listOf("watch_later", "liked", "favourite", "history"),
