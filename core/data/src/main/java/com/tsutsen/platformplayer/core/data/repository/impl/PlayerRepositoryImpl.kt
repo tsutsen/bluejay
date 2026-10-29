@@ -210,15 +210,6 @@ class PlayerRepositoryImpl(
                         durationMs = duration,
                     )
                 }
-                // Apply a pending resume position once playback is ready, unless
-                // it would land in the last 5% (i.e. the video was finished).
-                if (playbackState == Player.STATE_READY && pendingResumePosition > 0) {
-                    val pos = pendingResumePosition
-                    pendingResumePosition = 0
-                    if (duration <= 0 || pos < duration * 0.95) {
-                        _exoPlayer?.seekTo(pos)
-                    }
-                }
                 // LOOP_ONCE: replay the video exactly one more time, then stop.
                 if (playbackState == Player.STATE_ENDED && loopOnceArmed) {
                     loopOnceArmed = false
@@ -452,11 +443,15 @@ class PlayerRepositoryImpl(
         // new one. Harmless on an idle player (e.g. cast-only sessions).
         withContext(Dispatchers.Main) { _exoPlayer?.stop() }
 
-        // Resume: look up where this video was last watched (applied once the
-        // player is READY, see onPlaybackStateChanged).
+        // Resume: look up where this video was last watched. The position is
+        // applied before prepare() below so the first READY is already there.
+        // The last 5% means the video was finished — start over instead.
         pendingResumePosition =
             withContext(Dispatchers.IO) {
-                historyDao?.getByUrl(videoId)?.lastPositionMs ?: 0L
+                val row = historyDao?.getByUrl(videoId)
+                val position = row?.lastPositionMs ?: 0L
+                val total = row?.totalDurationMs ?: 0L
+                if (total > 0 && position >= total * 0.95) 0L else position
             }
 
         // Publish loading state IMMEDIATELY, before any network/resolve/ExoPlayer work.
@@ -630,6 +625,10 @@ class PlayerRepositoryImpl(
                         }
                     }
                     startPositionTicker()
+                    // A host may have attached while _exoPlayer was still null
+                    // (surface update ran once at first composition); push the
+                    // now-created instance so the surface actually renders.
+                    engine.onPlayerReplaced()
                 } else {
                     Log.i(TAG, "Using existing ExoPlayer instance")
                 }
@@ -703,6 +702,14 @@ class PlayerRepositoryImpl(
 
                 Log.i(TAG, "Setting MediaSource on ExoPlayer (subtitle=$selectedSubtitle)...")
                 _exoPlayer?.setMediaSource(mediaSource)
+                // Seeking before prepare() makes this the player's initial
+                // position, so ExoPlayer starts its first load at the resume
+                // point instead of seeking (and re-buffering) after READY.
+                if (pendingResumePosition > 0) {
+                    Log.i(TAG, "Seeking to resume position before prepare: $pendingResumePosition")
+                    _exoPlayer?.seekTo(pendingResumePosition)
+                    pendingResumePosition = 0
+                }
                 Log.i(TAG, "Preparing ExoPlayer...")
                 _exoPlayer?.prepare()
                 Log.i(TAG, "Setting playWhenReady to true...")
@@ -792,6 +799,10 @@ class PlayerRepositoryImpl(
             Log.e(TAG, "Failed to play video: $videoId", e)
             Log.e(TAG, "========================================")
             _playerState.update { it.copy(isLoading = false, error = e.message ?: "Failed to play video") }
+        } finally {
+            // Never let a resume position leak into the next play() call — but
+            // don't clobber one a newer play() has already loaded in its place.
+            if (generation == playGeneration.get()) pendingResumePosition = 0
         }
     }
 
