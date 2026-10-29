@@ -334,6 +334,15 @@ class Settings {
 
         // Source 3: recent unwatched videos from the most-watched creators.
         var sourceTopCreators: Boolean = true
+
+        // Spawn-probability range (percent 0..100) per source, sampled once
+        // per feed build by HomebrewRecommendations (0-0 = never spawns).
+        var youtubeProbMin: Int = 20
+        var youtubeProbMax: Int = 80
+        var subsProbMin: Int = 20
+        var subsProbMax: Int = 80
+        var topCreatorsProbMin: Int = 20
+        var topCreatorsProbMax: Int = 80
     }
 
     @Serializable

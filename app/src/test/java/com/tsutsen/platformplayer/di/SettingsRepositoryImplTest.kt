@@ -33,6 +33,12 @@ class SettingsRepositoryImplTest {
         s.notifications.enabled = true
         s.advancedSettings = false
         s.feed.gridColumns = 3
+        s.recommendations.youtubeProbMin = 20
+        s.recommendations.youtubeProbMax = 80
+        s.recommendations.subsProbMin = 20
+        s.recommendations.subsProbMax = 80
+        s.recommendations.topCreatorsProbMin = 20
+        s.recommendations.topCreatorsProbMax = 80
         repo = SettingsRepositoryImpl()
     }
 
@@ -157,6 +163,30 @@ class SettingsRepositoryImplTest {
             assertEquals(1.25f, prefs.defaultPlaybackSpeed)
             assertEquals(60, prefs.appearance.uiRounding)
             assertTrue(prefs.gettingStartedCompleted)
+        }
+
+    @Test
+    fun probRangeSettersPersistAndEmit() =
+        runTest {
+            repo.setYoutubeProbRange(10 to 30)
+            repo.setSubsProbRange(0 to 0)
+            repo.setTopCreatorsProbRange(50 to 90)
+
+            val s = Settings.instance
+            assertEquals(10, s.recommendations.youtubeProbMin)
+            assertEquals(30, s.recommendations.youtubeProbMax)
+            assertEquals(0, s.recommendations.subsProbMin)
+            assertEquals(0, s.recommendations.subsProbMax)
+            assertEquals(50, s.recommendations.topCreatorsProbMin)
+            assertEquals(90, s.recommendations.topCreatorsProbMax)
+
+            val prefs = repo.preferences.value
+            assertEquals(10, prefs.youtubeProbMin)
+            assertEquals(30, prefs.youtubeProbMax)
+            assertEquals(0, prefs.subsProbMin)
+            assertEquals(0, prefs.subsProbMax)
+            assertEquals(50, prefs.topCreatorsProbMin)
+            assertEquals(90, prefs.topCreatorsProbMax)
         }
 
     @Test

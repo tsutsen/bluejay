@@ -89,7 +89,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -102,9 +104,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -1176,6 +1180,33 @@ private fun SectionItems(
                         enabled = state.homebrewRecommendations,
                         groupPosition = GroupPosition.Last,
                     )
+                    SpawnProbabilityCard(
+                        enabled = state.homebrewRecommendations,
+                        rows =
+                            listOf(
+                                SpawnProbabilityRow(
+                                    label = "Source picks",
+                                    active = state.sourceYoutubeFeed,
+                                    min = state.youtubeProbMin,
+                                    max = state.youtubeProbMax,
+                                    onRangeChange = { viewModel.setYoutubeProbRange(it) },
+                                ),
+                                SpawnProbabilityRow(
+                                    label = "Subscriptions",
+                                    active = state.sourceSubscriptions,
+                                    min = state.subsProbMin,
+                                    max = state.subsProbMax,
+                                    onRangeChange = { viewModel.setSubsProbRange(it) },
+                                ),
+                                SpawnProbabilityRow(
+                                    label = "Top creators",
+                                    active = state.sourceTopCreators,
+                                    min = state.topCreatorsProbMin,
+                                    max = state.topCreatorsProbMax,
+                                    onRangeChange = { viewModel.setTopCreatorsProbRange(it) },
+                                ),
+                            ),
+                    )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
@@ -2235,6 +2266,90 @@ private fun SettingsHeader(
                             vertical = Tokens.SpaceXxs,
                         ),
             )
+        }
+    }
+}
+
+/** One category row of the "Spawn probability" card. */
+private data class SpawnProbabilityRow(
+    val label: String,
+    /** Source toggle on: two-headed RangeSlider; off: greyed single Slider. */
+    val active: Boolean,
+    val min: Int,
+    val max: Int,
+    val onRangeChange: (Pair<Int, Int>) -> Unit,
+)
+
+/**
+ * "Spawn probability" card in the Recommendations section: per-source
+ * spawn-probability range (percent) for the homebrew feed. An enabled
+ * category gets a two-headed [RangeSlider] (0..100%, 1% steps, heads coerced
+ * so min <= max); a disabled category gets a plain [Slider], greyed out,
+ * parked at the middle of its stored range.
+ */
+@Composable
+private fun SpawnProbabilityCard(
+    enabled: Boolean,
+    rows: List<SpawnProbabilityRow>,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = groupShape(GroupPosition.Single),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(modifier = Modifier.padding(Tokens.SpaceMd)) {
+            Text(
+                text = "Spawn probability",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            rows.forEach { row ->
+                // Coerce in case stored values are inverted; the engine reads
+                // them as [min, max].
+                val lo = minOf(row.min, row.max)
+                val hi = maxOf(row.min, row.max)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = Tokens.SpaceSm),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = row.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "$lo–$hi%",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (row.active) {
+                    RangeSlider(
+                        value = lo.toFloat()..hi.toFloat(),
+                        onValueChange = { range ->
+                            val a = range.start.roundToInt()
+                            val b = range.endInclusive.roundToInt()
+                            row.onRangeChange(minOf(a, b) to maxOf(a, b))
+                        },
+                        valueRange = 0f..100f,
+                        // 99 steps = 1% resolution across 0..100.
+                        steps = 99,
+                        enabled = enabled,
+                    )
+                } else {
+                    Slider(
+                        value = (lo + hi) / 2f,
+                        onValueChange = {},
+                        valueRange = 0f..100f,
+                        enabled = false,
+                        modifier = Modifier.alpha(0.5f),
+                    )
+                }
+            }
         }
     }
 }

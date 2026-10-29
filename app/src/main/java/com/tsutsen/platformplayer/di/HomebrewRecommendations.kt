@@ -16,6 +16,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlin.random.Random
 
 /**
  * "Homebrew recommendations" feed builder (Settings > Content > Recommendations).
@@ -28,9 +29,12 @@ import kotlinx.coroutines.withContext
  *  3. [sourceTopCreators] — creators with > 15 min watched in the last 28
  *     days (HistoryDao), their recent unwatched videos.
  *
- * The sources are interleaved round-robin and deduped by card id. Each source
- * is isolated: a failing source contributes nothing, and an empty result
- * means the caller falls back to the plain home refresh.
+ * The sources are merged by weighted spawn (see [interleave]): each enabled
+ * source's weight is sampled once per feed build from its stored
+ * spawn-probability range, and every emitted item comes from a source picked
+ * with probability proportional to its weight. Cards are deduped by card id.
+ * Each source is isolated: a failing source contributes nothing, and an
+ * empty result means the caller falls back to the plain home refresh.
  *
  * [buildFeed] reports progress via [onPartial] (after each source completes)
  * and hands the per-source pagers to [onFlows] so the caller can keep
@@ -74,14 +78,20 @@ object HomebrewRecommendations {
             // the total is max(source), not the sum.
             coroutineScope {
                 val futures = mutableListOf<Deferred<SourceResult>>()
+                // Spawn-probability range (percent) per source, kept in
+                // submission order so it stays aligned with [sources] below.
+                val probRanges = mutableListOf<Pair<Int, Int>>()
                 if (settings.sourceYoutubeFeed) {
                     futures += async { youtubeFeed() }
+                    probRanges += settings.youtubeProbMin to settings.youtubeProbMax
                 }
                 if (settings.sourceSubscriptions) {
                     futures += async { subscriptionVideos(historyDao, onPartial) }
+                    probRanges += settings.subsProbMin to settings.subsProbMax
                 }
                 if (settings.sourceTopCreators) {
                     futures += async { topCreatorVideos(historyDao) }
+                    probRanges += settings.topCreatorsProbMin to settings.topCreatorsProbMax
                 }
                 val allFlows = mutableListOf<PagerFlow<IPlatformContent, Card>>()
                 val sources = mutableListOf<List<Card>>()
@@ -95,9 +105,22 @@ object HomebrewRecommendations {
                     allFlows += result.flows
                 }
                 onFlows(allFlows)
-                interleave(sources)
+                // One weight sample per source per feed build.
+                interleave(sources, probRanges.map { sampleWeight(it) })
             }
         }
+
+    /**
+     * Samples one spawn weight (0..1) for a [min, max] percent range,
+     * inclusive at both ends. A 0-0 range yields weight 0 (never spawns);
+     * inverted ranges are coerced to min <= max.
+     */
+    private fun sampleWeight(range: Pair<Int, Int>): Float {
+        val lo = range.first.coerceIn(0, 100)
+        val hi = range.second.coerceIn(lo, 100)
+        if (hi <= lo) return lo / 100f
+        return Random.nextInt(lo, hi + 1) / 100f
+    }
 
     /** One source's contribution plus the pagers backing it (kept for loadNextPage). */
     private data class SourceResult(
@@ -222,25 +245,44 @@ object HomebrewRecommendations {
         }
     }
 
-    /** Round-robin interleave of the sources, deduped by card id (first source wins). */
-    internal fun interleave(sources: List<List<Card>>): List<Card> {
+    /**
+     * Weighted-spawn interleave of the sources, deduped by card id (first
+     * source to yield a card wins). [weights] aligns with [sources]; each
+     * entry is the weight sampled once per feed build. Every emitted item
+     * comes from a source picked with probability proportional to its weight
+     * among the sources that still have items; a zero-weight source
+     * contributes nothing.
+     */
+    internal fun interleave(sources: List<List<Card>>, weights: List<Float>): List<Card> {
         val seen = mutableSetOf<String>()
         val out = mutableListOf<Card>()
         val iterators = sources.map { it.iterator() }
-        var progressed = true
-        while (progressed) {
-            progressed = false
-            for (it in iterators) {
-                while (it.hasNext()) {
-                    val card = it.next()
-                    if (seen.add(card.id)) {
-                        out += card
-                        progressed = true
-                        break
-                    }
+        val w = weights.map { it.coerceIn(0f, 1f) }
+        while (true) {
+            val candidates = iterators.indices.filter { iterators[it].hasNext() && w[it] > 0f }
+            if (candidates.isEmpty()) return out
+            // Roulette-wheel pick over the sources that still have items.
+            val total = candidates.fold(0f) { acc, i -> acc + w[i] }
+            var roll = Random.nextDouble() * total
+            var chosen = candidates.last()
+            for (i in candidates) {
+                roll -= w[i]
+                if (roll < 0.0) {
+                    chosen = i
+                    break
+                }
+            }
+            // Take the chosen source's next non-duplicate card; if its
+            // remaining items are all dupes they are drained and the loop
+            // re-picks among the rest.
+            val it = iterators[chosen]
+            while (it.hasNext()) {
+                val card = it.next()
+                if (seen.add(card.id)) {
+                    out += card
+                    break
                 }
             }
         }
-        return out
     }
 }

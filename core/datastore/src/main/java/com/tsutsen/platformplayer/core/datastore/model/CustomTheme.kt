@@ -16,7 +16,7 @@ data class CustomTheme(
     val primary: Int,
     val secondary: Int? = null,
     val tertiary: Int? = null,
-    /** Optional surface tint: when set, light+dark neutrals come from this color. */
+    /** Optional surface tint: when set, light+dark neutral palettes take this color's hue at low chroma. */
     val background: Int? = null,
     val paletteStyle: PaletteStyle = PaletteStyle.TONAL_SPOT,
     /**

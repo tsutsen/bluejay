@@ -46,6 +46,12 @@ sealed interface SettingsUiState {
         val sourceYoutubeFeed: Boolean,
         val sourceSubscriptions: Boolean,
         val sourceTopCreators: Boolean,
+        val youtubeProbMin: Int,
+        val youtubeProbMax: Int,
+        val subsProbMin: Int,
+        val subsProbMax: Int,
+        val topCreatorsProbMin: Int,
+        val topCreatorsProbMax: Int,
         val autoUpdatePlugins: Boolean,
         val dockTabOrder: List<String>,
         val defaultDockTab: String,
@@ -136,6 +142,12 @@ class SettingsViewModel
                                 sourceYoutubeFeed = prefs.sourceYoutubeFeed,
                                 sourceSubscriptions = prefs.sourceSubscriptions,
                                 sourceTopCreators = prefs.sourceTopCreators,
+                                youtubeProbMin = prefs.youtubeProbMin,
+                                youtubeProbMax = prefs.youtubeProbMax,
+                                subsProbMin = prefs.subsProbMin,
+                                subsProbMax = prefs.subsProbMax,
+                                topCreatorsProbMin = prefs.topCreatorsProbMin,
+                                topCreatorsProbMax = prefs.topCreatorsProbMax,
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
                                 dockTabOrder = prefs.dockTabOrder,
                                 defaultDockTab = prefs.defaultDockTab,
@@ -298,6 +310,18 @@ class SettingsViewModel
 
         fun setSourceTopCreators(enabled: Boolean) {
             viewModelScope.launch { settingsRepository.setSourceTopCreators(enabled) }
+        }
+
+        fun setYoutubeProbRange(range: Pair<Int, Int>) {
+            viewModelScope.launch { settingsRepository.setYoutubeProbRange(range) }
+        }
+
+        fun setSubsProbRange(range: Pair<Int, Int>) {
+            viewModelScope.launch { settingsRepository.setSubsProbRange(range) }
+        }
+
+        fun setTopCreatorsProbRange(range: Pair<Int, Int>) {
+            viewModelScope.launch { settingsRepository.setTopCreatorsProbRange(range) }
         }
 
         fun setDockTabOrder(order: List<String>) {

@@ -32,6 +32,12 @@ interface SettingsRepository {
     suspend fun setSourceYoutubeFeed(enabled: Boolean)
     suspend fun setSourceSubscriptions(enabled: Boolean)
     suspend fun setSourceTopCreators(enabled: Boolean)
+    /** Spawn-probability range (percent 0..100) for the platform feed source. */
+    suspend fun setYoutubeProbRange(range: Pair<Int, Int>)
+    /** Spawn-probability range (percent 0..100) for the subscriptions source. */
+    suspend fun setSubsProbRange(range: Pair<Int, Int>)
+    /** Spawn-probability range (percent 0..100) for the top-creators source. */
+    suspend fun setTopCreatorsProbRange(range: Pair<Int, Int>)
     suspend fun setDockTabOrder(order: List<String>)
     suspend fun setDefaultDockTab(key: String)
     suspend fun setSubscriptionsOrder(order: String)

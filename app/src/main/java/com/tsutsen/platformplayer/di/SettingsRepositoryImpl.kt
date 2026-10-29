@@ -111,6 +111,12 @@ class SettingsRepositoryImpl
                 sourceYoutubeFeed = s.recommendations.sourceYoutubeFeed,
                 sourceSubscriptions = s.recommendations.sourceSubscriptions,
                 sourceTopCreators = s.recommendations.sourceTopCreators,
+                youtubeProbMin = s.recommendations.youtubeProbMin,
+                youtubeProbMax = s.recommendations.youtubeProbMax,
+                subsProbMin = s.recommendations.subsProbMin,
+                subsProbMax = s.recommendations.subsProbMax,
+                topCreatorsProbMin = s.recommendations.topCreatorsProbMin,
+                topCreatorsProbMax = s.recommendations.topCreatorsProbMax,
                 autoUpdatePlugins = s.plugins.autoUpdatePlugins,
                 dockTabOrder = s.other.dockTabOrder,
                 defaultDockTab = s.other.defaultDockTab,
@@ -221,6 +227,24 @@ class SettingsRepositoryImpl
 
         override suspend fun setSourceTopCreators(enabled: Boolean) =
             persist { it.recommendations.sourceTopCreators = enabled }
+
+        override suspend fun setYoutubeProbRange(range: Pair<Int, Int>) =
+            persist {
+                it.recommendations.youtubeProbMin = range.first
+                it.recommendations.youtubeProbMax = range.second
+            }
+
+        override suspend fun setSubsProbRange(range: Pair<Int, Int>) =
+            persist {
+                it.recommendations.subsProbMin = range.first
+                it.recommendations.subsProbMax = range.second
+            }
+
+        override suspend fun setTopCreatorsProbRange(range: Pair<Int, Int>) =
+            persist {
+                it.recommendations.topCreatorsProbMin = range.first
+                it.recommendations.topCreatorsProbMax = range.second
+            }
 
         override suspend fun setDockTabOrder(order: List<String>) =
             persist { it.other.dockTabOrder = order }
