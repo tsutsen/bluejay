@@ -157,7 +157,25 @@ class EngineHomeRepositoryImpl
                     cacheFeed(visible)
                     return@withContext
                 }
-                Logger.i("EngineHomeRepository", "Recommendations empty, falling back to home refresh")
+                if (recommendations.sourceYoutubeFeed) {
+                    Logger.i("EngineHomeRepository", "Recommendations empty, falling back to home refresh")
+                } else {
+                    // Homebrew is on but no source produced items and the
+                    // platform feed is disabled — show an empty feed rather
+                    // than silently re-showing the platform home.
+                    Logger.i("EngineHomeRepository", "Recommendations empty and platform feed disabled")
+                    _pagerFlow = null
+                    _feed.update {
+                        it.copy(
+                            isLoading = false,
+                            items = emptyList(),
+                            hasMorePages = false,
+                            error = "No recommendations — enable a source in Settings > Content > Recommendations",
+                            currentPage = 1,
+                        )
+                    }
+                    return@withContext
+                }
             }
 
             try {

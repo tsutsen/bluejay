@@ -83,7 +83,9 @@ object HomebrewRecommendations {
             val contents = mutableListOf<IPlatformContent>()
             for (sub in StateSubscriptions.instance.getSubscriptions()) {
                 try {
-                    contents += StatePlatform.instance.getChannelContent(sub.channel.url).getResults()
+                    // A fresh pager has no results until a page is loaded.
+                    val pager = StatePlatform.instance.getChannelContent(sub.channel.url)
+                    contents += PagerFlow(pager, { it }, { it.id }).loadInitial()
                 } catch (e: Exception) {
                     Logger.w(TAG, "Channel contents failed for ${sub.channel.url}", e)
                 }
@@ -102,7 +104,8 @@ object HomebrewRecommendations {
             val contents = mutableListOf<IPlatformContent>()
             for (creator in creators) {
                 try {
-                    contents += StatePlatform.instance.getChannelContent(creator.authorUrl).getResults()
+                    val pager = StatePlatform.instance.getChannelContent(creator.authorUrl)
+                    contents += PagerFlow(pager, { it }, { it.id }).loadInitial()
                 } catch (e: Exception) {
                     Logger.w(TAG, "Channel contents failed for ${creator.authorUrl}", e)
                 }
