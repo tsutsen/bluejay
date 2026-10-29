@@ -1,12 +1,11 @@
-package com.tsutsen.platformplayer.di
+package com.tsutsen.platformplayer.core.data.pager
 
-import com.tsutsen.platformplayer.api.media.structures.IPager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class PagerFlowTest {
+class PagerFeedTest {
     /**
      * Models real pager delta semantics: [getResults] returns only the last
      * loaded page; page 0 is already loaded on construction.
@@ -14,7 +13,7 @@ class PagerFlowTest {
     private class DeltaPager<T>(
         private val pages: List<List<T>>,
         private var failNext: Boolean = false,
-    ) : IPager<T> {
+    ) : PagedSource<T> {
         private var page = 0
         var nextPageCalls = 0
             private set
@@ -32,7 +31,7 @@ class PagerFlowTest {
 
     @Test
     fun loadInitial_returnsMappedFirstPage() {
-        val flow = PagerFlow(DeltaPager(listOf(listOf("a", "b"), listOf("c"))), { it })
+        val flow = PagerFeed(DeltaPager(listOf(listOf("a", "b"), listOf("c"))), { it })
         assertEquals(listOf("a", "b"), flow.loadInitial())
         assertEquals(listOf("a", "b"), flow.items)
         assertTrue(flow.hasMore)
@@ -41,7 +40,7 @@ class PagerFlowTest {
 
     @Test
     fun loadNextPage_appendsDelta_returnsOnlyNewItems() {
-        val flow = PagerFlow(DeltaPager(listOf(listOf("a"), listOf("b", "c"))), { it })
+        val flow = PagerFeed(DeltaPager(listOf(listOf("a"), listOf("b", "c"))), { it })
         flow.loadInitial()
         val newItems = flow.loadNextPage()
         assertEquals(listOf("b", "c"), newItems)
@@ -52,7 +51,7 @@ class PagerFlowTest {
     @Test
     fun nullMappingResults_areDropped() {
         val flow =
-            PagerFlow(
+            PagerFeed(
                 DeltaPager(listOf(listOf("keep", "drop", "keep2"))),
                 { if (it == "drop") null else it },
             )
@@ -64,7 +63,7 @@ class PagerFlowTest {
         // Small playlists: once content runs out, the engine window re-returns
         // existing items. They must not reach [items] (duplicate lazy keys crash).
         val flow =
-            PagerFlow(
+            PagerFeed(
                 DeltaPager(listOf(listOf("a", "b"), listOf("b", "c"))),
                 { it },
             )
@@ -84,7 +83,7 @@ class PagerFlowTest {
         )
 
         val flow =
-            PagerFlow(
+            PagerFeed(
                 DeltaPager(
                     listOf(
                         listOf(Item("a", "t1")),
@@ -101,14 +100,14 @@ class PagerFlowTest {
 
     @Test
     fun loadInitial_dropsIntraPageDuplicates() {
-        val flow = PagerFlow(DeltaPager(listOf(listOf("a", "a", "b"))), { it })
+        val flow = PagerFeed(DeltaPager(listOf(listOf("a", "a", "b"))), { it })
         flow.loadInitial()
         assertEquals(listOf("a", "b"), flow.items)
     }
 
     @Test
     fun loadNextPage_whenExhausted_returnsEmpty() {
-        val flow = PagerFlow(DeltaPager(listOf(listOf("a"))), { it })
+        val flow = PagerFeed(DeltaPager(listOf(listOf("a"))), { it })
         flow.loadInitial()
         assertEquals(emptyList<String>(), flow.loadNextPage())
         assertEquals(listOf("a"), flow.items)
