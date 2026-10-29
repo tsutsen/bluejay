@@ -28,14 +28,18 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import okhttp3.OkHttpClient
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.SocketException
 import java.time.Duration
+import java.util.Collections
 import java.time.OffsetDateTime
 
 class DownloadService : Service() {
@@ -156,62 +160,72 @@ class DownloadService : Service() {
 
     private suspend fun doDownloading() {
         Logger.i(TAG, "doDownloading - Starting Downloads");
-        val ignore = mutableListOf<VideoDownload>();
-        var currentVideo: VideoDownload? = StateDownloads.instance.getDownloading().firstOrNull();
-        while (currentVideo != null)
-        {
-            try {
-                doDownload(currentVideo);
-            }
-            catch(ex: SocketException) {
-                var msg = ex.message;
-                if(ex.message == "Software caused connection abort")
-                    msg = "Downloading disabled on current network";
+        //Claimed (in-flight or failed) downloads; workers must not pick the same item twice
+        val ignore = Collections.synchronizedSet(mutableSetOf<VideoDownload>());
+        val permits = Semaphore(2);
+        //Up to 2 downloads at once; coroutineScope awaits all workers before stopping the service
+        coroutineScope {
+            repeat(2) {
+                launch {
+                    while (true) {
+                        val currentVideo = synchronized(ignore) {
+                            StateDownloads.instance.getDownloading()
+                                .firstOrNull { !ignore.contains(it) }
+                                ?.also { ignore.add(it) } //claim it atomically
+                        } ?: break;
+                        permits.withPermit {
+                            try {
+                                doDownload(currentVideo);
+                            }
+                            catch(ex: SocketException) {
+                                var msg = ex.message;
+                                if(ex.message == "Software caused connection abort")
+                                    msg = "Downloading disabled on current network";
 
-                Logger.e(TAG, "Failed download [${currentVideo.name}]: ${msg}", ex);
-                currentVideo.error = msg;
-                currentVideo.changeState(VideoDownload.State.ERROR);
-                ignore.add(currentVideo);
+                                Logger.e(TAG, "Failed download [${currentVideo.name}]: ${msg}", ex);
+                                currentVideo.error = msg;
+                                currentVideo.changeState(VideoDownload.State.ERROR);
 
-                //Give it a sec
-                delay(500);
-            }
-            catch(ex: Throwable) {
-                //if(ex is ScriptReloadRequiredException)
-                Logger.e(TAG, "Download failed", ex);
-                if(currentVideo.video == null && currentVideo.videoDetails == null) {
-                    //Corrupt?
-                    Logger.w(TAG, "Video had no video or videodetail, removing download");
-                    StateDownloads.instance.removeDownload(currentVideo);
+                                //Give it a sec
+                                delay(500);
+                            }
+                            catch(ex: Throwable) {
+                                //if(ex is ScriptReloadRequiredException)
+                                Logger.e(TAG, "Download failed", ex);
+                                if(currentVideo.video == null && currentVideo.videoDetails == null) {
+                                    //Corrupt?
+                                    Logger.w(TAG, "Video had no video or videodetail, removing download");
+                                    StateDownloads.instance.removeDownload(currentVideo);
+                                }
+                                else if(ex is DownloadException && !ex.isRetryable) {
+                                    Logger.w(TAG, "Video had exception that should not be retried");
+                                    StateDownloads.instance.removeDownload(currentVideo);
+                                    StateDownloads.instance.preventPlaylistDownload(currentVideo);
+                                }
+                                else
+                                    Logger.e(TAG, "Failed download [${currentVideo.name}]: ${ex.message}", ex);
+                                currentVideo.error = ex.message;
+                                currentVideo.changeState(VideoDownload.State.ERROR);
+
+                                if(ex !is CancellationException) {
+                                    StateAnnouncement.instance.registerAnnouncement(
+                                        currentVideo.id.value ?: ("" + currentVideo.id.pluginId),
+                                        "Download failed",
+                                        "Download for [${currentVideo.name}] failed.\nDownloads are automatically retried.\nReason: ${ex.message}",
+                                        AnnouncementType.SESSION,
+                                        null,
+                                        "download"
+                                    );
+                                }
+
+                                //Give it a sec
+                                delay(500);
+                            }
+                            StateDownloads.instance.updateDownloading(currentVideo);
+                        }
+                    }
                 }
-                else if(ex is DownloadException && !ex.isRetryable) {
-                    Logger.w(TAG, "Video had exception that should not be retried");
-                    StateDownloads.instance.removeDownload(currentVideo);
-                    StateDownloads.instance.preventPlaylistDownload(currentVideo);
-                }
-                else
-                    Logger.e(TAG, "Failed download [${currentVideo.name}]: ${ex.message}", ex);
-                currentVideo.error = ex.message;
-                currentVideo.changeState(VideoDownload.State.ERROR);
-                ignore.add(currentVideo);
-
-                if(ex !is CancellationException) {
-                    StateAnnouncement.instance.registerAnnouncement(
-                        currentVideo.id.value ?: ("" + currentVideo.id.pluginId),
-                        "Download failed",
-                        "Download for [${currentVideo.name}] failed.\nDownloads are automatically retried.\nReason: ${ex.message}",
-                        AnnouncementType.SESSION,
-                        null,
-                        "download"
-                    );
-                }
-
-                //Give it a sec
-                delay(500);
             }
-            StateDownloads.instance.updateDownloading(currentVideo);
-
-            currentVideo = StateDownloads.instance.getDownloading().filter { !ignore.contains(it) }.firstOrNull();
         }
         Logger.i(TAG, "doDownloading - Ending Downloads");
         stopService(this);

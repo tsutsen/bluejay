@@ -260,8 +260,7 @@ class StateBackup {
             importZipBytes(context, scope, plaintextZip)
         }
 
-        fun saveExternalBackup(activity: IWithResultLauncher) {
-            val data = export();
+        fun saveExternalBackup(activity: IWithResultLauncher, data: ExportStructure) {
             if(activity is Context)
                 StateApp.instance.requestFileCreateAccess(activity, null, "application/zip") {
                     if(it == null) {

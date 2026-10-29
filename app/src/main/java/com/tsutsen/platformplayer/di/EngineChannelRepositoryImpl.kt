@@ -30,7 +30,10 @@ class EngineChannelRepositoryImpl
         private val contentFlows = mutableMapOf<String, PagerFlow<IPlatformContent, Card>>()
         private val playlistFlows = mutableMapOf<String, PagerFlow<IPlatformPlaylist, Card>>()
 
-        override suspend fun getChannel(url: String): ChannelInfo {
+        override suspend fun getChannel(url: String): ChannelInfo =
+            // getChannelCapabilities() runs V8 `busy` on the calling thread —
+            // callers use viewModelScope (Main), so dispatch to IO.
+            withContext(Dispatchers.IO) {
             val channel = StatePlatform.instance.getChannel(url).await()
             // Source badge only earns its place with >1 enabled source.
             val client = StatePlatform.instance.getClientOrNullByUrl(url)
@@ -41,7 +44,7 @@ class EngineChannelRepositoryImpl
                 runCatching {
                     client?.getChannelCapabilities()?.types?.contains(ResultCapabilities.TYPE_SHORTS)
                 }.getOrNull() == true
-            return ChannelInfo(
+            return@withContext ChannelInfo(
                 url = channel.url,
                 name = channel.name,
                 thumbnail = channel.thumbnail,
@@ -55,7 +58,7 @@ class EngineChannelRepositoryImpl
                     if (multiSource && client != null) StatePlugins.instance.getPluginIconUriOrNull(client.id) else null,
                 hasShorts = hasShorts,
             )
-        }
+            }
 
         override fun isSubscribed(url: String): Boolean = StateSubscriptions.instance.isSubscribed(url)
 
@@ -75,7 +78,9 @@ class EngineChannelRepositoryImpl
                 StateSubscriptions.instance.removeSubscription(url, isUserAction = true)
             } else {
                 try {
-                    val channel = StatePlatform.instance.getChannel(url).await()
+                    // getChannel() runs V8 `busy` — keep it off the main thread
+                    // (callers use viewModelScope).
+                    val channel = withContext(Dispatchers.IO) { StatePlatform.instance.getChannel(url).await() }
                     StateSubscriptions.instance.addSubscription(channel)
                 } catch (e: Exception) {
                     // Unsubscribing never fails; subscribing needs a live

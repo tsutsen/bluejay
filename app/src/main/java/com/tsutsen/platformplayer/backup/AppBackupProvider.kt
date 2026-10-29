@@ -10,6 +10,7 @@ import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateBackup
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -55,7 +56,15 @@ class AppBackupProvider @Inject constructor(private val savedVideoDao: SavedVide
 
     override fun exportBackup() {
         val activity = StateApp.instance.activity ?: return
-        StateBackup.saveExternalBackup(activity)
+        // export() blocks (StateHistory reads use runBlocking) and this is called
+        // from a settings onClick on the main thread — compute the zip on IO, then
+        // hand it to the SAF writer on Main (requestFileCreateAccess needs Main).
+        StateApp.instance.scope.launch(Dispatchers.IO) {
+            val data = StateBackup.export()
+            withContext(Dispatchers.Main) {
+                StateBackup.saveExternalBackup(activity, data)
+            }
+        }
     }
 
     override fun importBackup() {

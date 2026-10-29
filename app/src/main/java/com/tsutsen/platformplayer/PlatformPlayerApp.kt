@@ -7,6 +7,10 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.core.content.edit
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import com.google.android.material.color.DynamicColors
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.database.dao.NotificationDao
@@ -23,7 +27,15 @@ private const val TAG = "BluejayTheme"
  * Applies theme mode (light/dark/auto) from user preferences.
  */
 @HiltAndroidApp
-class PlatformPlayerApp : Application() {
+class PlatformPlayerApp : Application(), ImageLoaderFactory {
+    // Coil 2.x: implementing ImageLoaderFactory makes context.imageLoader()
+    // return this — cap the caches up front (largeHeap=true makes the
+    // defaults huge): 128MB memory / 256MB disk bounds image memory usage.
+    override fun newImageLoader(): ImageLoader =
+        ImageLoader.Builder(this)
+            .memoryCache { MemoryCache.Builder(this).maxSizeBytes(128 * 1024 * 1024).build() }
+            .diskCache { DiskCache.Builder().directory(File(cacheDir, "image_cache")).maxSizeBytes(256 * 1024 * 1024).build() }
+            .build()
     init {
         // The Hilt-generated subclass injects the @Inject fields (the
         // PlayerRepository graph, which includes SettingsRepository) BEFORE
