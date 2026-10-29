@@ -116,7 +116,7 @@ class PagerFlowTest {
 
     @Test
     fun loadNextPage_failure_setsError_keepsExistingItems() {
-        val flow = PagerFlow(DeltaPager(listOf(listOf("a"), listOf("b")), failNext = true), { it })
+        val flow = PagerFeed(DeltaPager(listOf(listOf("a"), listOf("b")), failNext = true), { it })
         flow.loadInitial()
         val newItems = flow.loadNextPage()
         assertEquals(emptyList<String>(), newItems)

@@ -127,32 +127,104 @@ class SettingsRepositoryImpl
             key: String,
             value: Any,
         ) {
-            val s = Settings.instance
             when (key) {
-                "enableDeveloperOptions" -> s.advancedSettings = value as Boolean
-                "dualScreen" -> s.dualScreen = value as Boolean
-                "dynamicColor" -> s.appearance.dynamicColor = value as Boolean
-                "uiRounding" -> s.appearance.uiRounding = (value as Number).toInt()
-                "gridColumns" -> s.feed.gridColumns = value as Int
-                "homeHiddenSources" -> s.feed.hiddenSources = value as List<String>
-                "homeLoginPromptsDismissed" -> s.feed.loginPromptsDismissed = value as List<String>
-                "gettingStartedCompleted" -> s.gettingStartedCompleted = value as Boolean
-                "searchHistory" -> s.search.history = value as List<String>
-                "showRecommendedVideos" -> s.content.showRecommendedVideos = value as Boolean
-                "showComments" -> s.content.showComments = value as Boolean
-                "autoUpdatePlugins" -> s.plugins.autoUpdatePlugins = value as Boolean
-                "subtitleFont" -> s.playback.subtitleFont = value as String
-                "subtitleFontSize" -> s.playback.subtitleFontSize = (value as Number).toInt()
-                "subtitleBottomPadding" -> s.playback.subtitleBottomPadding = (value as Number).toInt()
-                "subtitleOutline" -> s.playback.subtitleOutline = (value as Number).toInt()
-                "defaultPlaybackSpeed" -> s.playback.defaultPlaybackSpeed = value as Float
-                "defaultSpeedup" -> s.playback.defaultSpeedup = value as Float
-                "speedupSensitivity" -> s.playback.speedupSensitivity = value as Float
-                "jumpStepSeconds" -> s.playback.jumpStepSeconds = (value as Number).toInt()
-                "defaultVideoResolution" -> s.content.defaultVideoResolution = value as String
-                "defaultDownloadResolution" -> s.content.defaultDownloadResolution = value as String
+                "enableDeveloperOptions" -> setEnableDeveloperOptions(value as Boolean)
+                "dualScreen" -> setDualScreen(value as Boolean)
+                "dynamicColor" -> setDynamicColor(value as Boolean)
+                "uiRounding" -> setUiRounding((value as Number).toInt())
+                "gridColumns" -> setGridColumns(value as Int)
+                "homeHiddenSources" -> setHomeHiddenSources(value as List<String>)
+                "homeLoginPromptsDismissed" -> setHomeLoginPromptsDismissed(value as List<String>)
+                "gettingStartedCompleted" -> setGettingStartedCompleted(value as Boolean)
+                "searchHistory" -> setSearchHistory(value as List<String>)
+                "showRecommendedVideos" -> setShowRecommendedVideos(value as Boolean)
+                "showComments" -> setShowComments(value as Boolean)
+                "autoUpdatePlugins" -> setAutoUpdatePlugins(value as Boolean)
+                "subtitleFont" -> setSubtitleFont(value as String)
+                "subtitleFontSize" -> setSubtitleFontSize((value as Number).toInt())
+                "subtitleBottomPadding" -> setSubtitleBottomPadding((value as Number).toInt())
+                "subtitleOutline" -> setSubtitleOutline((value as Number).toInt())
+                "defaultPlaybackSpeed" -> setDefaultPlaybackSpeed(value as Float)
+                "defaultSpeedup" -> setDefaultSpeedup(value as Float)
+                "speedupSensitivity" -> setSpeedupSensitivity(value as Float)
+                "jumpStepSeconds" -> setJumpStepSeconds((value as Number).toInt())
+                "defaultVideoResolution" -> setDefaultVideoResolution(value as String)
+                "defaultDownloadResolution" -> setDefaultDownloadResolution(value as String)
                 else -> return
             }
+        }
+
+        // Each typed setter persists the field and re-emits (same contract as
+        // updateGeneral, which now delegates here).
+        override suspend fun setEnableDeveloperOptions(enabled: Boolean) =
+            persist { it.advancedSettings = enabled }
+
+        override suspend fun setDualScreen(enabled: Boolean) =
+            persist { it.dualScreen = enabled }
+
+        override suspend fun setDynamicColor(enabled: Boolean) =
+            persist { it.appearance.dynamicColor = enabled }
+
+        override suspend fun setUiRounding(rounding: Int) =
+            persist { it.appearance.uiRounding = rounding }
+
+        override suspend fun setGridColumns(columns: Int) =
+            persist { it.feed.gridColumns = columns }
+
+        override suspend fun setHomeHiddenSources(ids: List<String>) =
+            persist { it.feed.hiddenSources = ids }
+
+        override suspend fun setHomeLoginPromptsDismissed(ids: List<String>) =
+            persist { it.feed.loginPromptsDismissed = ids }
+
+        override suspend fun setGettingStartedCompleted(completed: Boolean) =
+            persist { it.gettingStartedCompleted = completed }
+
+        override suspend fun setSearchHistory(history: List<String>) =
+            persist { it.search.history = history }
+
+        override suspend fun setShowRecommendedVideos(show: Boolean) =
+            persist { it.content.showRecommendedVideos = show }
+
+        override suspend fun setShowComments(show: Boolean) =
+            persist { it.content.showComments = show }
+
+        override suspend fun setAutoUpdatePlugins(enabled: Boolean) =
+            persist { it.plugins.autoUpdatePlugins = enabled }
+
+        override suspend fun setSubtitleFont(font: String) =
+            persist { it.playback.subtitleFont = font }
+
+        override suspend fun setSubtitleFontSize(sizeSp: Int) =
+            persist { it.playback.subtitleFontSize = sizeSp }
+
+        override suspend fun setSubtitleBottomPadding(paddingDp: Int) =
+            persist { it.playback.subtitleBottomPadding = paddingDp }
+
+        override suspend fun setSubtitleOutline(width: Int) =
+            persist { it.playback.subtitleOutline = width }
+
+        override suspend fun setDefaultPlaybackSpeed(speed: Float) =
+            persist { it.playback.defaultPlaybackSpeed = speed }
+
+        override suspend fun setDefaultSpeedup(multiplier: Float) =
+            persist { it.playback.defaultSpeedup = multiplier }
+
+        override suspend fun setSpeedupSensitivity(sensitivity: Float) =
+            persist { it.playback.speedupSensitivity = sensitivity }
+
+        override suspend fun setJumpStepSeconds(seconds: Int) =
+            persist { it.playback.jumpStepSeconds = seconds }
+
+        override suspend fun setDefaultVideoResolution(resolution: String) =
+            persist { it.content.defaultVideoResolution = resolution }
+
+        override suspend fun setDefaultDownloadResolution(resolution: String) =
+            persist { it.content.defaultDownloadResolution = resolution }
+
+        private inline fun persist(block: (Settings) -> Unit) {
+            val s = Settings.instance
+            block(s)
             s.save()
             emit()
         }

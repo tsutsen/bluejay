@@ -136,6 +136,30 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
+    fun typedSettersPersistAndEmit() =
+        runTest {
+            repo.setGridColumns(5)
+            repo.setSubtitleFont("serif")
+            repo.setDefaultPlaybackSpeed(1.25f)
+            repo.setUiRounding(60)
+            repo.setGettingStartedCompleted(true)
+
+            val s = Settings.instance
+            assertEquals(5, s.feed.gridColumns)
+            assertEquals("serif", s.playback.subtitleFont)
+            assertEquals(1.25f, s.playback.defaultPlaybackSpeed)
+            assertEquals(60, s.appearance.uiRounding)
+            assertTrue(s.gettingStartedCompleted)
+
+            val prefs = repo.preferences.value
+            assertEquals(5, prefs.gridColumns)
+            assertEquals("serif", prefs.subtitle.font)
+            assertEquals(1.25f, prefs.defaultPlaybackSpeed)
+            assertEquals(60, prefs.appearance.uiRounding)
+            assertTrue(prefs.gettingStartedCompleted)
+        }
+
+    @Test
     fun resetToDefaultsRestoresPersistedAndEmits() =
         runTest {
             repo.updateAppearance(AppearancePreferences(themeMode = ThemeMode.LIGHT))

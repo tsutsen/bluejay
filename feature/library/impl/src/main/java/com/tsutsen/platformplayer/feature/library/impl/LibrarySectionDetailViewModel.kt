@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.SavedVideoType
@@ -57,7 +56,7 @@ class LibrarySectionDetailViewModel
          * The items flow refreshes the list reactively once the deletes land.
          */
         fun removeWatched() {
-            if (loadedSectionId != LibraryRepositoryImpl.WATCH_LATER_ID || removingWatched) return
+            if (loadedSectionId != LibraryRepository.WATCH_LATER_ID || removingWatched) return
             removingWatched = true
             viewModelScope.launch {
                 libraryRepository.removeWatched(SavedVideoType.WATCH_LATER)

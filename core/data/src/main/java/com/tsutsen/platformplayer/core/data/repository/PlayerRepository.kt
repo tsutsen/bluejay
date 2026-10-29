@@ -1,8 +1,5 @@
 package com.tsutsen.platformplayer.core.data.repository
 
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.MediaSource
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
@@ -13,11 +10,20 @@ interface PlayerRepository {
 
     val playerState: StateFlow<PlayerState>
 
+    /** Current playback position in ms (0 when no player exists). */
+    val positionMs: Long
+
+    /** Current media duration in ms (0 when unknown / no player). */
+    val durationMs: Long
+
+    /** Current video frame size, null when no video is loaded. */
+    val videoSize: PlaybackVideoSize?
+
     /**
-     * Get the ExoPlayer instance managed by this repository.
-     * Used by PlayerScreen to bind a PlayerView to the player.
+     * Engine-neutral playback port: state, controls and surface binding
+     * without Media3 types on the interface.
      */
-    val exoPlayer: ExoPlayer?
+    val engine: PlaybackEngine
 
     /**
      * Play [videoId]. Pass [initial] (known details from the tapped card) so
@@ -78,33 +84,4 @@ interface PlayerRepository {
         const val LOOP_ONCE = 1
         const val LOOP_INFINITE = 2
     }
-}
-
-/**
- * Result of resolving a content URL — contains both the MediaSource for playback
- * and the VideoDetails for populating the video details page (title, author, etc.).
- */
-data class ResolutionResult(
-    val mediaSource: MediaSource?,
-    val videoDetails: VideoDetails?,
-    /**
-     * True when the resolver handed the video to the cast subsystem instead
-     * of producing a local [MediaSource] — [mediaSource] is null in that case.
-     */
-    val casted: Boolean = false,
-)
-
-/**
- * Interface for resolving content URLs to MediaSources.
- * Implementation depends on the engine plugin being available.
- * Returns both a MediaSource for playback and IPlatformVideoDetails for the UI.
- */
-interface VideoUrlResolver {
-    /**
-     * Resolve [contentUrl] to a playable [ResolutionResult].
-     *
-     * [resumePositionMs] is the position this video was last watched at; the
-     * cast path uses it as its start position.
-     */
-    suspend fun resolve(contentUrl: String, resumePositionMs: Long = 0): ResolutionResult
 }

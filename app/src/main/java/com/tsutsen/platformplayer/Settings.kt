@@ -1,9 +1,10 @@
 package com.tsutsen.platformplayer
 
 import android.content.Context
-import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
+import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
+import com.tsutsen.platformplayer.logging.LogLevel
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -92,24 +93,24 @@ class Settings {
     // Settings). Defaults to the natural LibraryRepository order.
     var librarySectionOrder: List<String> =
         listOf(
-            LibraryRepositoryImpl.WATCH_LATER_ID,
-            LibraryRepositoryImpl.LIKED_ID,
-            LibraryRepositoryImpl.DISLIKED_ID,
-            LibraryRepositoryImpl.FAVOURITE_ID,
-            LibraryRepositoryImpl.HISTORY_ID,
-            LibraryRepositoryImpl.DOWNLOADS_ID,
-            LibraryRepositoryImpl.PLAYLISTS_ID,
+            LibraryRepository.WATCH_LATER_ID,
+            LibraryRepository.LIKED_ID,
+            LibraryRepository.DISLIKED_ID,
+            LibraryRepository.FAVOURITE_ID,
+            LibraryRepository.HISTORY_ID,
+            LibraryRepository.DOWNLOADS_ID,
+            LibraryRepository.PLAYLISTS_ID,
         )
     /** Enabled library sections (Settings > Content). Order lives in [librarySectionOrder]. */
     var librarySectionsEnabled: List<String> =
         listOf(
-            LibraryRepositoryImpl.WATCH_LATER_ID,
-            LibraryRepositoryImpl.LIKED_ID,
-            LibraryRepositoryImpl.DISLIKED_ID,
-            LibraryRepositoryImpl.FAVOURITE_ID,
-            LibraryRepositoryImpl.HISTORY_ID,
-            LibraryRepositoryImpl.DOWNLOADS_ID,
-            LibraryRepositoryImpl.PLAYLISTS_ID,
+            LibraryRepository.WATCH_LATER_ID,
+            LibraryRepository.LIKED_ID,
+            LibraryRepository.DISLIKED_ID,
+            LibraryRepository.FAVOURITE_ID,
+            LibraryRepository.HISTORY_ID,
+            LibraryRepository.DOWNLOADS_ID,
+            LibraryRepository.PLAYLISTS_ID,
         )
 
     // Second (rear) display companion window
@@ -151,10 +152,10 @@ class Settings {
     // or a "playlist:<id>" reference (see Settings > Dual screen).
     var dualScreenLibrarySlots: List<String> =
         listOf(
-            LibraryRepositoryImpl.WATCH_LATER_ID,
-            LibraryRepositoryImpl.LIKED_ID,
-            LibraryRepositoryImpl.FAVOURITE_ID,
-            LibraryRepositoryImpl.HISTORY_ID,
+            LibraryRepository.WATCH_LATER_ID,
+            LibraryRepository.LIKED_ID,
+            LibraryRepository.FAVOURITE_ID,
+            LibraryRepository.HISTORY_ID,
         )
 
     @Serializable

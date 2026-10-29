@@ -26,6 +26,13 @@ android {
     buildFeatures {
         buildConfig true
     }
+
+    testOptions {
+        unitTests {
+            // PagerFeed logs failures through android.util.Log.
+            returnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -43,4 +50,6 @@ dependencies {
     // Hilt Dependency Injection
     implementation 'com.google.dagger:hilt-android:2.60.1'
     ksp 'com.google.dagger:hilt-android-compiler:2.60.1'
+
+    testImplementation 'junit:junit:4.13.2'
 }

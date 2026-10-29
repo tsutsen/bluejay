@@ -44,10 +44,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.media3.exoplayer.ExoPlayer
+import com.tsutsen.platformplayer.core.data.repository.PlaybackEngine
 import com.tsutsen.platformplayer.core.model.VideoCard
-import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureActionHandler
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs
+import com.tsutsen.platformplayer.feature.player.impl.gesture.GesturePipeline
 import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureSystem
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
@@ -68,7 +68,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PlayerContent(
-    player: ExoPlayer?,
+    playbackEngine: PlaybackEngine,
     state: PlayerUiState.Loaded,
     positionMs: StateFlow<Long>,
     surface: PlayerSurface,
@@ -77,7 +77,7 @@ fun PlayerContent(
     scrollState: LazyListState,
     nestedScrollConnection: NestedScrollConnection,
     gestureConfigs: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs,
-    gestureHandler: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureActionHandler,
+    gesturePipeline: GesturePipeline,
     isScrubbing: Boolean,
     onMiniOffsetChanged: (x: Float, y: Float) -> Unit,
     onTap: () -> Unit,
@@ -257,7 +257,7 @@ fun PlayerContent(
         // lands exactly on the mini rect, so no separate scrim is needed
         // here.
         PlayerVideoSurface(
-            player = player,
+            playbackEngine = playbackEngine,
             modifier =
                 videoModifier.graphicsLayer {
                     scaleX = zoomScale
@@ -351,7 +351,7 @@ fun PlayerContent(
             overlayMode = overlayMode,
             isLandscape = isLandscape,
             gestureConfigs = gestureConfigs,
-            handler = gestureHandler,
+            pipeline = gesturePipeline,
             isScrubbing = isScrubbing,
             onTap = onTap,
             // Pinch-to-zoom (default, non-configurable): the gesture system

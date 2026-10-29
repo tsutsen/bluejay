@@ -79,9 +79,11 @@ import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
+import com.tsutsen.platformplayer.feature.player.impl.gesture.DefaultGesturePipeline
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
+import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureEffects
 import com.tsutsen.platformplayer.feature.player.impl.ui.CastingSheet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -196,10 +198,7 @@ fun PlayerView(
     var seekPreviewMs by remember { mutableStateOf<Long?>(null) }
 
 
-    val player =
-        remember(uiState) {
-            (viewModel as? PlayerViewModel)?.getPlayer()?.exoPlayer
-        }
+    val playbackEngine = remember(viewModel) { viewModel.playbackEngine() }
 
     // System picture-in-picture: the PiP window is the video itself — no
     // chrome, controls, or gestures. (SurfaceView composites correctly in
@@ -207,7 +206,7 @@ fun PlayerView(
     // video surface, so there is nothing to fight over on entry/exit.)
     if (isPip) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-            PlayerVideoSurface(player)
+            PlayerVideoSurface(playbackEngine)
         }
         return
     }
@@ -743,14 +742,8 @@ fun PlayerView(
                 if (clampedY != surface.miniPlayerOffsetY.value) surface.miniPlayerOffsetY.value = clampedY
             }
 
-            // ==================== Gesture configs (defaults + user overrides) ====================
             // Rebuilt when the user edits Settings > Gestures.
             val gesturePrefs by viewModel.gesturePrefs.collectAsState()
-            val gestureConfigs =
-                remember(gesturePrefs) {
-                    com.tsutsen.platformplayer.feature.player.impl.gesture
-                        .buildGestureConfigs(gesturePrefs)
-                }
 
             // ==================== Action badges (PlayerEventBus) ====================
             // Badges are driven by the player event bus, not the gesture
@@ -856,10 +849,13 @@ fun PlayerView(
                 }
             }
 
-            // ==================== Gesture action handler ====================
-            val gestureHandler =
-                remember {
-                    com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureActionHandler(
+            // ==================== Gesture pipeline ====================
+            // Configs are derived from the user's gesture settings; the
+            // pipeline owns recognition and action dispatch.
+            val gesturePipeline =
+                remember(viewModel) {
+                    DefaultGesturePipeline(
+                        PlayerGestureEffects(
                         viewModel = viewModel,
                         screenHeight = { surface.containerSize.value.height },
                         context = context,
@@ -971,7 +967,12 @@ fun PlayerView(
                                 settleFullscreenTo(0f, if (travel > 0f) velocityPxPerMs / travel else 0f)
                             }
                         },
+                        ),
                     )
+                }
+            val gestureConfigs =
+                remember(gesturePrefs, gesturePipeline) {
+                    gesturePipeline.configs(gesturePrefs)
                 }
 
             // ==================== Tap handler (toggle controls) ====================
@@ -1098,7 +1099,7 @@ fun PlayerView(
                     Box(modifier = pageScrimModifier)
 
                     PlayerContent(
-                        player = player,
+                        playbackEngine = playbackEngine,
                         state = state,
                         positionMs = viewModel.positionMs,
                         surface = surface,
@@ -1107,7 +1108,7 @@ fun PlayerView(
                         scrollState = scrollState,
                         nestedScrollConnection = nestedScrollConnection,
                         gestureConfigs = gestureConfigs,
-                        gestureHandler = gestureHandler,
+                        gesturePipeline = gesturePipeline,
                         isScrubbing = isScrubbing,
                         onTap = onTap,
                         onOptions = remember { { showOptionsModal = true } },

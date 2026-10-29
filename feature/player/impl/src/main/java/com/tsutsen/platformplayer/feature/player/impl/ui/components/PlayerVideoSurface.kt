@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.tsutsen.platformplayer.core.data.repository.PlaybackEngine
+import com.tsutsen.platformplayer.core.data.repository.PlaybackViewHost
 
 /**
  * The single ExoPlayer video surface, shared by NORMAL, COMPACT, FULLSCREEN,
@@ -22,10 +24,13 @@ import androidx.media3.ui.PlayerView
  *
  * The underlying SurfaceView is also reported to [PipSurface.surfaceView] so
  * the Jetpack PiP delegate can track it (sourceRectHint).
+ *
+ * Binding goes through the engine-neutral [PlaybackEngine]/[PlaybackViewHost]
+ * port; the Media3 cast stays in this feature-side host.
  */
 @Composable
 fun PlayerVideoSurface(
-    player: ExoPlayer?,
+    playbackEngine: PlaybackEngine,
     modifier: Modifier = Modifier.fillMaxSize(),
 ) {
     AndroidView(
@@ -45,7 +50,7 @@ fun PlayerVideoSurface(
             }
         },
         update = { view ->
-            view.player = player
+            playbackEngine.attach(Media3PlaybackViewHost(view))
             // Media3 1.9 has no public surface accessor: the SurfaceView is
             // an internal child. update() runs on every player-state tick
             // (10/s), so the reference is picked up as soon as the view
@@ -55,6 +60,15 @@ fun PlayerVideoSurface(
         },
         modifier = modifier,
     )
+}
+
+/** Feature-side [PlaybackViewHost]: the only place the Media3 cast happens. */
+private class Media3PlaybackViewHost(
+    private val view: PlayerView,
+) : PlaybackViewHost {
+    override fun attachToHost(renderer: Any?) {
+        view.player = renderer as? ExoPlayer
+    }
 }
 
 /** Depth-first search for the (internal) SurfaceView inside a view tree. */

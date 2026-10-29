@@ -585,3 +585,29 @@ class StateDownloads {
         }
     }
 }
+
+/** UI projection of an in-progress engine download. */
+fun VideoDownload.toDownloadInfo(): DownloadInfo =
+    DownloadInfo(
+        url = video?.url.orEmpty(),
+        title = name,
+        author = null,
+        authorUrl = video?.author?.url?.takeIf { it.isNotEmpty() },
+        thumbnailUrl = thumbnail,
+        durationMs = null,
+        progress = progress.toFloat(),
+        done = false,
+    )
+
+/** UI projection of a completed engine download. */
+fun VideoLocal.toDownloadInfo(): DownloadInfo =
+    DownloadInfo(
+        url = url,
+        title = name,
+        author = author?.name,
+        authorUrl = author?.url?.takeIf { it.isNotEmpty() },
+        thumbnailUrl = thumbnails?.getHQThumbnail(),
+        durationMs = if (duration > 0) duration * 1000L else null,
+        progress = 1f,
+        done = true,
+    )

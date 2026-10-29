@@ -70,13 +70,14 @@ class GestureSettingsBridgeTest {
     fun emptySlotSetYieldsCanonicalDefaults() {
         val configs = buildGestureConfigs(PlayerGesturePreferences())
         // normal mode: v-swipe is the direction-aware morph everywhere
-        // except the bottom-center column.
+        // (since ebab6e1f the bottom-center column morphs too — matches the
+        // DEFAULT_SLOTS doc in core/model/PlayerGestures.kt).
         assertEquals(
             GestureAction.MORPH_VERTICAL,
             configs.normal.resolve(GestureSector.MIDDLE_LEFT, GestureType.SWIPE_VERTICAL),
         )
         assertEquals(
-            GestureAction.NONE,
+            GestureAction.MORPH_VERTICAL,
             configs.normal.resolve(GestureSector.BOTTOM_CENTER, GestureType.SWIPE_VERTICAL),
         )
         // fullscreen: sides are brightness/volume

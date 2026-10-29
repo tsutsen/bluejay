@@ -98,5 +98,13 @@ interface LibraryRepository {
 
     companion object {
         const val SECTION_ITEM_LIMIT = 20
+
+        const val WATCH_LATER_ID = "watch_later"
+        const val LIKED_ID = "liked"
+        const val DISLIKED_ID = "disliked"
+        const val FAVOURITE_ID = "favourite"
+        const val HISTORY_ID = "history"
+        const val DOWNLOADS_ID = "downloads"
+        const val PLAYLISTS_ID = "playlists"
     }
 }

@@ -31,6 +31,8 @@ import com.tsutsen.platformplayer.core.data.BuildConfig
 import com.tsutsen.platformplayer.core.data.repository.CastingRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
+import com.tsutsen.platformplayer.core.data.repository.PlaybackEngine
+import com.tsutsen.platformplayer.core.data.repository.PlaybackVideoSize
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
@@ -125,8 +127,14 @@ class PlayerRepositoryImpl(
     private val _playerState = MutableStateFlow(PlayerState())
     override val playerState: StateFlow<PlayerState> = _playerState.asStateFlow()
 
-    override val exoPlayer: ExoPlayer? get() = _exoPlayer
+    /** Media3 handle for same-module consumers (PlayerService); use [engine] elsewhere. */
+    internal val exoPlayer: ExoPlayer? get() = _exoPlayer
     private var _exoPlayer: ExoPlayer? = null
+    override val positionMs: Long get() = _exoPlayer?.currentPosition ?: 0L
+    override val durationMs: Long get() = _exoPlayer?.duration ?: 0L
+    override val videoSize: PlaybackVideoSize?
+        get() = _exoPlayer?.videoSize?.let { PlaybackVideoSize(it.width, it.height) }
+    override val engine: PlaybackEngine = ExoPlayerEngine(this)
     private val _loopMode = MutableStateFlow(PlayerRepository.LOOP_OFF)
     override val loopMode: kotlinx.coroutines.flow.StateFlow<Int> = _loopMode.asStateFlow()
     private var loopOnceArmed = false

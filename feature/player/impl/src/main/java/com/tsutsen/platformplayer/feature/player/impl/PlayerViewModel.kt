@@ -11,6 +11,7 @@ import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.LiveChatRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
+import com.tsutsen.platformplayer.core.data.repository.PlaybackEngine
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.AudioTrackInfo
@@ -769,6 +770,8 @@ class PlayerViewModel
 
         fun getPlayer() = playerRepository
 
+        fun playbackEngine(): PlaybackEngine = playerRepository.engine
+
         fun pause() {
             PlayerEventBus.emit(PlayerEvent.PlayPauseToggled(isPlaying = false))
             viewModelScope.launch {
@@ -789,17 +792,17 @@ class PlayerViewModel
             }
         }
 
-        /** Seek relative to current ExoPlayer position (avoids stale UI state). */
+        /** Seek relative to the engine's live position (avoids stale UI state). */
         fun seekBy(deltaMs: Long) {
-            val current = playerRepository.exoPlayer?.currentPosition ?: return
+            val current = playerRepository.positionMs
             PlayerEventBus.emit(PlayerEvent.Seek(deltaMs))
             viewModelScope.launch {
-                playerRepository.seekTo((current + deltaMs).coerceIn(0, playerRepository.exoPlayer?.duration ?: Long.MAX_VALUE))
+                playerRepository.seekTo((current + deltaMs).coerceIn(0, playerRepository.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE))
             }
         }
 
-        /** Current ExoPlayer position in ms (0 when no player). */
-        fun currentPositionMs(): Long = playerRepository.exoPlayer?.currentPosition ?: 0L
+        /** Current engine position in ms (0 when no player). */
+        fun currentPositionMs(): Long = playerRepository.positionMs
 
         fun setVolume(volume: Float) {
             PlayerEventBus.emit(PlayerEvent.VolumeChanged(volume))

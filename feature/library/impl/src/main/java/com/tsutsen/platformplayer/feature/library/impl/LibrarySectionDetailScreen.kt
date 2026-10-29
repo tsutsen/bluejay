@@ -1,6 +1,5 @@
 package com.tsutsen.platformplayer.feature.library.impl
 
-import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,20 +24,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
-import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
-import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
+import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
+import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistCard
+import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
-import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 
 /**
  * Detail screen for a library section.
@@ -85,7 +85,7 @@ fun LibrarySectionDetailScreen(
                     }
                 },
                 actions = {
-                    if (sectionId == LibraryRepositoryImpl.WATCH_LATER_ID) {
+                    if (sectionId == LibraryRepository.WATCH_LATER_ID) {
                         TextButton(onClick = { viewModel.removeWatched() }) {
                             Text(
                                 text = "Remove watched",
@@ -157,7 +157,7 @@ fun LibrarySectionDetailScreen(
             onGoToChannel = { navigator.navigateToChannel(it) },
             // Every item on the history page is a history entry.
             onRemoveFromHistory =
-                if (sectionId == LibraryRepositoryImpl.HISTORY_ID) {
+                if (sectionId == LibraryRepository.HISTORY_ID) {
                     { viewModel.deleteFromHistory(card.url) }
                 } else {
                     null

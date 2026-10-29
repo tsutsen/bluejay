@@ -387,7 +387,7 @@ class MainActivity :
         lifecycleScope.launch {
             playerRepository.playerState
                 .map {
-                    val size = playerRepository.exoPlayer?.videoSize
+                    val size = playerRepository.videoSize
                     if (size != null && size.width > 0 && size.height > 0) {
                         Rational(size.width, size.height)
                     } else null

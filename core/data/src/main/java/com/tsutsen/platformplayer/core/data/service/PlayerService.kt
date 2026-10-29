@@ -11,6 +11,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.tsutsen.platformplayer.core.data.R
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
+import com.tsutsen.platformplayer.core.data.repository.impl.PlayerRepositoryImpl
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import java.util.UUID
@@ -61,7 +62,8 @@ class PlayerService : MediaSessionService() {
         val cached = session
         // The service is only started once the ExoPlayer exists; the
         // fallback covers a stray bind after the player was released.
-        val player = playerRepository.exoPlayer ?: ExoPlayer.Builder(this).build().also { fallbackPlayer = it }
+        // Media3 handle is impl-only: the service lives in the same module.
+        val player = (playerRepository as? PlayerRepositoryImpl)?.exoPlayer ?: ExoPlayer.Builder(this).build().also { fallbackPlayer = it }
         if (cached != null && sessionPlayer !== player) {
             // A new playback created a new ExoPlayer — the cached session
             // is bound to the old (released) player, so replace it.

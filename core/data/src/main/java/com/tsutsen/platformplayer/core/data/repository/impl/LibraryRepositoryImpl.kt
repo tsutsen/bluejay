@@ -87,13 +87,13 @@ class LibraryRepositoryImpl
                     val (watchLater, liked, disliked, favourite) = saved
                     val (history, downloads, playlists) = rest
                     listOf(
-                        buildSection(WATCH_LATER_ID, "Watch Later", watchLater.map { it.toVideoCard() }),
-                        buildSection(LIKED_ID, "Liked", liked.map { it.toVideoCard() }),
-                        buildSection(DISLIKED_ID, "Disliked", disliked.map { it.toVideoCard() }),
-                        buildSection(FAVOURITE_ID, "Favourites", favourite.map { it.toVideoCard() }),
-                        buildSection(HISTORY_ID, "History", history.map { it.toVideoCard() }),
-                        buildSection(DOWNLOADS_ID, "Downloads", downloads.map { it.toVideoCard() }),
-                        buildSection(PLAYLISTS_ID, "Playlists", playlists.map { it.toPlaylistCard() }),
+                        buildSection(LibraryRepository.WATCH_LATER_ID, "Watch Later", watchLater.map { it.toVideoCard() }),
+                        buildSection(LibraryRepository.LIKED_ID, "Liked", liked.map { it.toVideoCard() }),
+                        buildSection(LibraryRepository.DISLIKED_ID, "Disliked", disliked.map { it.toVideoCard() }),
+                        buildSection(LibraryRepository.FAVOURITE_ID, "Favourites", favourite.map { it.toVideoCard() }),
+                        buildSection(LibraryRepository.HISTORY_ID, "History", history.map { it.toVideoCard() }),
+                        buildSection(LibraryRepository.DOWNLOADS_ID, "Downloads", downloads.map { it.toVideoCard() }),
+                        buildSection(LibraryRepository.PLAYLISTS_ID, "Playlists", playlists.map { it.toPlaylistCard() }),
                     )
                 }
             repositoryScope.launch {
@@ -122,13 +122,13 @@ class LibraryRepositoryImpl
 
         override fun observeSectionItems(sectionId: String): Flow<List<Card>> =
             when (sectionId) {
-                WATCH_LATER_ID -> savedVideoDao.observeByType(SavedVideoType.WATCH_LATER).map { list -> list.map { it.toVideoCard() } }
-                LIKED_ID -> savedVideoDao.observeByType(SavedVideoType.LIKED).map { list -> list.map { it.toVideoCard() } }
-                DISLIKED_ID -> savedVideoDao.observeByType(SavedVideoType.DISLIKED).map { list -> list.map { it.toVideoCard() } }
-                FAVOURITE_ID -> savedVideoDao.observeByType(SavedVideoType.FAVOURITE).map { list -> list.map { it.toVideoCard() } }
-                HISTORY_ID -> historyDao.observeAll().map { list -> list.map { it.toVideoCard() } }
-                DOWNLOADS_ID -> downloadsRepository.downloads.map { list -> list.map { it.toVideoCard() } }
-                PLAYLISTS_ID -> playlistDao.observeAllWithCounts().map { list -> list.map { it.toPlaylistCard() } }
+                LibraryRepository.WATCH_LATER_ID -> savedVideoDao.observeByType(SavedVideoType.WATCH_LATER).map { list -> list.map { it.toVideoCard() } }
+                LibraryRepository.LIKED_ID -> savedVideoDao.observeByType(SavedVideoType.LIKED).map { list -> list.map { it.toVideoCard() } }
+                LibraryRepository.DISLIKED_ID -> savedVideoDao.observeByType(SavedVideoType.DISLIKED).map { list -> list.map { it.toVideoCard() } }
+                LibraryRepository.FAVOURITE_ID -> savedVideoDao.observeByType(SavedVideoType.FAVOURITE).map { list -> list.map { it.toVideoCard() } }
+                LibraryRepository.HISTORY_ID -> historyDao.observeAll().map { list -> list.map { it.toVideoCard() } }
+                LibraryRepository.DOWNLOADS_ID -> downloadsRepository.downloads.map { list -> list.map { it.toVideoCard() } }
+                LibraryRepository.PLAYLISTS_ID -> playlistDao.observeAllWithCounts().map { list -> list.map { it.toPlaylistCard() } }
                 else -> MutableStateFlow<List<Card>>(emptyList())
             }
 
@@ -366,14 +366,4 @@ class LibraryRepositoryImpl
                 author = null,
                 url = "playlist:$id",
             )
-
-        companion object {
-            const val WATCH_LATER_ID = "watch_later"
-            const val LIKED_ID = "liked"
-            const val DISLIKED_ID = "disliked"
-            const val FAVOURITE_ID = "favourite"
-            const val HISTORY_ID = "history"
-            const val DOWNLOADS_ID = "downloads"
-            const val PLAYLISTS_ID = "playlists"
-        }
     }

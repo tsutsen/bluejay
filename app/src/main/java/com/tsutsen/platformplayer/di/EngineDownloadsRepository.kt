@@ -8,6 +8,7 @@ import com.tsutsen.platformplayer.downloads.VideoDownload
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.services.DownloadService
 import com.tsutsen.platformplayer.states.StateDownloads
+import com.tsutsen.platformplayer.states.toDownloadInfo
 import com.tsutsen.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,7 +71,7 @@ class EngineDownloadsRepository
                     // Duplicate-queue guard: the engine's download() has
                     // no de-dupe of its own — repeated taps would queue
                     // the same video multiple times (each 0→100%).
-                    if (StateDownloads.instance.getDownloading().any { it.video?.url == videoUrl }) {
+                    if (StateDownloads.instance.getDownloading().any { it.toDownloadInfo().url == videoUrl }) {
                         return@withContext null
                     }
                     // Cache hits return the plain feed video — fine: the
@@ -116,7 +117,7 @@ class EngineDownloadsRepository
         override suspend fun deleteDownload(videoUrl: String): String? =
             withContext(Dispatchers.IO) {
                 val video =
-                    StateDownloads.instance.getDownloadedVideos().firstOrNull { it.url == videoUrl }
+                    StateDownloads.instance.getDownloadedVideos().firstOrNull { it.toDownloadInfo().url == videoUrl }
                 if (video == null) {
                     "Not downloaded"
                 } else {
@@ -131,7 +132,7 @@ class EngineDownloadsRepository
         override suspend fun cancelDownload(videoUrl: String): String? =
             withContext(Dispatchers.IO) {
                 val download =
-                    StateDownloads.instance.getDownloading().firstOrNull { it.video?.url == videoUrl }
+                    StateDownloads.instance.getDownloading().firstOrNull { it.toDownloadInfo().url == videoUrl }
                 if (download == null) {
                     "Not downloading"
                 } else {
@@ -146,36 +147,8 @@ class EngineDownloadsRepository
 
         private fun refresh() {
             val sd = StateDownloads.instance
-            val inProgress =
-                sd.getDownloading().map { d ->
-                    DownloadInfo(
-                        url = d.video?.url.orEmpty(),
-                        title = d.name,
-                        author = null,
-                        authorUrl =
-                            d.video
-                                ?.author
-                                ?.url
-                                ?.takeIf { it.isNotEmpty() },
-                        thumbnailUrl = d.thumbnail,
-                        durationMs = null,
-                        progress = d.progress.toFloat(),
-                        done = false,
-                    )
-                }
-            val done =
-                sd.getDownloadedVideos().map { v ->
-                    DownloadInfo(
-                        url = v.url,
-                        title = v.name,
-                        author = v.author?.name,
-                        authorUrl = v.author?.url?.takeIf { it.isNotEmpty() },
-                        thumbnailUrl = v.thumbnails?.getHQThumbnail(),
-                        durationMs = if (v.duration > 0) v.duration * 1000L else null,
-                        progress = 1f,
-                        done = true,
-                    )
-                }
+            val inProgress = sd.getDownloading().map { it.toDownloadInfo() }
+            val done = sd.getDownloadedVideos().map { it.toDownloadInfo() }
             trackProgress()
             // Active downloads first — they are what the user is watching.
             _downloads.value = inProgress + done

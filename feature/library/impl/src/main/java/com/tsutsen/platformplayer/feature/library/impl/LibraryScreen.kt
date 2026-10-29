@@ -43,7 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
+import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.PlaylistOptionsSheet
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
@@ -54,11 +54,11 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PlaylistStats
+import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
 import kotlinx.coroutines.launch
-import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 
 /**
  * Library screen: Watch Later, Liked, Favourites, Playlists.
@@ -112,7 +112,7 @@ fun LibraryScreen(
                             optionsSectionId = section.id
                         },
                         onPlaylistLongClick = { optionsPlaylist = it },
-                        // "playlists" is the LibraryRepositoryImpl.PLAYLISTS_ID
+                        // "playlists" is the LibraryRepository.PLAYLISTS_ID
                         // section constant.
                         onNewPlaylist = { showNewPlaylistDialog = true },
                     )
@@ -128,7 +128,7 @@ fun LibraryScreen(
             onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
             onRemoveFromHistory =
-                if (optionsSectionId == LibraryRepositoryImpl.HISTORY_ID) {
+                if (optionsSectionId == LibraryRepository.HISTORY_ID) {
                     { viewModel.deleteFromHistory(card.url) }
                 } else {
                     null
