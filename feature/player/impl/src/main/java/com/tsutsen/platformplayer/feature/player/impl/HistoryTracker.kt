@@ -11,7 +11,7 @@ import javax.inject.Singleton
 
 /**
  * Max wall-clock gap between position samples that still counts as
- * continuous playback. The player saves every 5s while playing, plus on
+ * continuous playback. The player saves every 15s while playing, plus on
  * pause/completion — a longer gap means pause, background or a session
  * break, so the position jump across it (resume, seek after a pause) is
  * not credited as watched time.

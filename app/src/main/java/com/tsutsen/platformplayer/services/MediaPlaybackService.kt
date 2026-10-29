@@ -40,6 +40,7 @@ import com.tsutsen.platformplayer.states.StatePlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 
 class MediaPlaybackService : Service() {
@@ -230,12 +231,15 @@ class MediaPlaybackService : Service() {
             notifyMediaSession(video, null);
             val tag = video;
             CoroutineScope(Dispatchers.Main).launch {
-                val result = ImageLoader(this@MediaPlaybackService).execute(
-                    ImageRequest.Builder(this@MediaPlaybackService)
-                        .data(thumbnail)
-                        .size(Size.ORIGINAL)
-                        .build()
-                )
+                // ImageLoader.execute is synchronous: run it off the main thread
+                val result = withContext(Dispatchers.IO) {
+                    ImageLoader(this@MediaPlaybackService).execute(
+                        ImageRequest.Builder(this@MediaPlaybackService)
+                            .data(thumbnail)
+                            .size(256, 256) // only used as a small notification icon
+                            .build()
+                    )
+                }
                 val resource = (result.drawable as? BitmapDrawable)?.bitmap
                 if (tag != _notif_last_video) return@launch
                 if (resource == null || resource.isRecycled) {

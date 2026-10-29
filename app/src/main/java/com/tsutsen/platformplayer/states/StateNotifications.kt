@@ -25,6 +25,7 @@ import com.tsutsen.platformplayer.toHumanNowDiffString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.tsutsen.platformplayer.toHumanNowDiffStringMinDay
 import java.time.OffsetDateTime
 
@@ -99,12 +100,15 @@ class StateNotifications {
         else null;
         if(thumbnail != null)
             CoroutineScope(Dispatchers.Main).launch {
-                val result = ImageLoader(context).execute(
-                    ImageRequest.Builder(context)
-                        .data(thumbnail)
-                        .size(Size.ORIGINAL)
-                        .build()
-                )
+                // ImageLoader.execute is synchronous: run it off the main thread
+                val result = withContext(Dispatchers.IO) {
+                    ImageLoader(context).execute(
+                        ImageRequest.Builder(context)
+                            .data(thumbnail)
+                            .size(256, 256) // only used as a small notification icon
+                            .build()
+                    )
+                }
                 val resource = (result.drawable as? BitmapDrawable)?.bitmap
                 notifyNewContent(context, manager, notificationChannel, id, content, resource);
             }

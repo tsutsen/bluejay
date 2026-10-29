@@ -49,7 +49,7 @@ private const val MIN_WATCH_MS = 15_000L
 private const val WATCHED_FRACTION = 0.95f
 
 /** How often playback history is persisted while a video plays (was: every 100ms tick). */
-private const val HISTORY_SAVE_INTERVAL_MS = 5_000L
+private const val HISTORY_SAVE_INTERVAL_MS = 15_000L
 
 /**
  * MVI state for the Video Player screen.

@@ -390,7 +390,7 @@ class PlayerRepositoryImpl(
                         val position = player.currentPosition
                         _playerState.update { it.copy(currentPositionMs = position) }
                     }
-                    kotlinx.coroutines.delay(100) // 10fps for smooth UI
+                    kotlinx.coroutines.delay(250) // 4Hz; the ViewModel quantizes emissions to 500ms, so UI is unaffected
                 }
             }
     }
