@@ -41,7 +41,10 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 
     // Room
-    implementation("androidx.room:room-runtime:2.8.3")
+    // api (not implementation): AppDatabaseProvider exposes AppDatabase
+    // (a RoomDatabase subtype) in this module's public API, so consumers
+    // calling it need room-runtime on their compile classpath.
+    api("androidx.room:room-runtime:2.8.3")
     implementation("androidx.room:room-ktx:2.8.3")
     ksp("androidx.room:room-compiler:2.8.3")
 

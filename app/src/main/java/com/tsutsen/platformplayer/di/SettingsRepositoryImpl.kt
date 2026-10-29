@@ -30,6 +30,11 @@ class SettingsRepositoryImpl
         private val _preferences = MutableStateFlow(fromSettings())
         override val preferences: StateFlow<AppPreferences> = _preferences.asStateFlow()
 
+        // Kept out of [AppPreferences] (the sheet only needs this one list);
+        // re-synced after the hidden-set changes below.
+        private val _hiddenVideoUrls = MutableStateFlow(Settings.instance.content.hiddenVideoUrls)
+        override val hiddenVideoUrls: StateFlow<List<String>> = _hiddenVideoUrls.asStateFlow()
+
         private fun fromSettings(): AppPreferences {
             val s = Settings.instance
             return AppPreferences(
@@ -226,8 +231,15 @@ class SettingsRepositoryImpl
         override suspend fun setSubscriptionsOrder(order: String) =
             persist { it.subscriptions.subscriptionsOrder = order }
 
-        override suspend fun addHiddenVideoUrl(url: String) =
+        override suspend fun addHiddenVideoUrl(url: String) {
             persist { it.content.hiddenVideoUrls = (it.content.hiddenVideoUrls + url).distinct() }
+            _hiddenVideoUrls.value = Settings.instance.content.hiddenVideoUrls
+        }
+
+        override suspend fun removeHiddenVideoUrl(url: String) {
+            persist { it.content.hiddenVideoUrls = it.content.hiddenVideoUrls - url }
+            _hiddenVideoUrls.value = Settings.instance.content.hiddenVideoUrls
+        }
 
         override suspend fun setAutoUpdatePlugins(enabled: Boolean) =
             persist { it.plugins.autoUpdatePlugins = enabled }

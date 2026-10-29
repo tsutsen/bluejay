@@ -83,4 +83,61 @@ class HistoryDaoTest {
 
             assertEquals(listOf("chanB", "chanC"), top.map { it.authorUrl })
         }
+
+    @Test
+    fun `markWatched inserts a fully watched row for an unknown video`() =
+        runBlocking {
+            val dao = dao()
+            val now = System.currentTimeMillis()
+
+            dao.markWatched(
+                url = "v1",
+                title = "t1",
+                author = "a1",
+                thumbnailUrl = "thumb1",
+                durationMs = 90_000,
+                watchedAt = now,
+            )
+
+            val row = dao.getByUrl("v1")!!
+            assertEquals(90_000, row.lastPositionMs)
+            assertEquals(90_000, row.totalDurationMs)
+            assertEquals(90_000, row.watchedMs)
+            assertEquals(now, row.watchedAt)
+        }
+
+    @Test
+    fun `markWatched on an existing row updates watched fields but keeps the rest`() =
+        runBlocking {
+            val dao = dao()
+            val old = System.currentTimeMillis() - 5 * 60_000
+            // A partially watched row with extra fields a REPLACE would wipe.
+            dao.upsert(
+                HistoryEntity(
+                    contentUrl = "v1",
+                    title = "old title",
+                    author = null,
+                    thumbnailUrl = null,
+                    lastPositionMs = 30_000,
+                    totalDurationMs = 90_000,
+                    watchedMs = 12_000,
+                    watchedAt = old,
+                    viewedAt = old,
+                    authorUrl = "chanA",
+                    viewCount = 42,
+                    postedAt = old - 60_000,
+                )
+            )
+
+            dao.markWatched(url = "v1", title = "t1", durationMs = 90_000)
+
+            val row = dao.getByUrl("v1")!!
+            assertEquals(90_000, row.lastPositionMs)
+            assertEquals(90_000, row.watchedMs)
+            // Fields the tile doesn't know about survive the upsert.
+            assertEquals(old, row.viewedAt)
+            assertEquals("chanA", row.authorUrl)
+            assertEquals(42, row.viewCount)
+            assertEquals(old - 60_000, row.postedAt)
+        }
 }

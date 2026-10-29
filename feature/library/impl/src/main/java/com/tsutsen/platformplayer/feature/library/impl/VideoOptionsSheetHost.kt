@@ -11,13 +11,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.database.AppDatabaseProvider
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.core.model.VideoCard
+import kotlinx.coroutines.launch
 
 /**
  * Shared long-press options host: renders [VideoOptionsSheet] with live
@@ -52,11 +55,13 @@ fun VideoOptionsSheetHost(
         .playlistsContaining(video.url)
         .collectAsState(initial = emptySet())
     val queue by viewModel.queue.collectAsState(initial = emptyList())
+    val hiddenUrls by viewModel.hiddenVideoUrls.collectAsState(initial = emptyList())
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
 
     // One-shot feedback for download failures as a system toast (success
     // and stop are visible on the button itself).
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     LaunchedEffect(downloadMessage) {
         downloadMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -99,7 +104,23 @@ fun VideoOptionsSheetHost(
             }
         },
         onRemoveFromHistory = onRemoveFromHistory,
-        onHide = { viewModel.hideVideo(video.url) },
+        // "Watched" tile: upsert a history row at full duration, then a
+        // toast (plain Toast here — the app module's UIDialogs.toast is the
+        // same call but unreachable from this module).
+        onMarkWatched = {
+            scope.launch {
+                AppDatabaseProvider.get(context).historyDao().markWatched(
+                    url = video.url,
+                    title = video.title,
+                    author = video.author,
+                    thumbnailUrl = video.thumbnailUrl,
+                    durationMs = video.durationMs ?: 0L,
+                )
+                Toast.makeText(context, "Marked as watched", Toast.LENGTH_SHORT).show()
+            }
+        },
+        isHidden = video.url in hiddenUrls,
+        onHideToggle = { viewModel.toggleHiddenVideo(video.url) },
         onAddToQueue = {
             // No onDismiss: the sheet stays open so the user can keep
             // choosing actions.

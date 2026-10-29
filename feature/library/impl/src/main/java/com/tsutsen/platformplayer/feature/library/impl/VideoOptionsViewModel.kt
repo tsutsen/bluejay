@@ -54,9 +54,19 @@ class VideoOptionsViewModel
             playbackQueueRepository.remove(url)
         }
 
-        /** "Hide" tile: persist the url as hidden (filtered from the home feed). */
-        fun hideVideo(url: String) {
-            viewModelScope.launch { settingsRepository.addHiddenVideoUrl(url) }
+        /** Live hidden video URLs (drives the sheet's Hide/Unhide tile). */
+        val hiddenVideoUrls: StateFlow<List<String>>
+            get() = settingsRepository.hiddenVideoUrls
+
+        /** "Hide"/"Unhide" tile: toggle the url in the persisted hidden set. */
+        fun toggleHiddenVideo(url: String) {
+            viewModelScope.launch {
+                if (url in settingsRepository.hiddenVideoUrls.value) {
+                    settingsRepository.removeHiddenVideoUrl(url)
+                } else {
+                    settingsRepository.addHiddenVideoUrl(url)
+                }
+            }
         }
 
         fun consumeDownloadMessage() {

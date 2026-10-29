@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.view.View
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -74,6 +75,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.Player
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.QueueList
+import com.tsutsen.platformplayer.core.database.AppDatabaseProvider
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.model.ContentItem
@@ -1404,6 +1406,11 @@ private fun CurrentVideoOptionsSheet(
             else -> DownloadButtonState.Downloading(downloadInfo.progress)
         }
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
+    val hiddenUrls by viewModel.hiddenVideoUrls.collectAsState(initial = emptyList())
+    // "Watched" tile: upsert the history row directly (the player module
+    // owns its DB access, same as HistoryTracker).
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     VideoOptionsSheet(
         url = video.url,
@@ -1436,7 +1443,23 @@ private fun CurrentVideoOptionsSheet(
             }
         },
         onAddToQueue = { viewModel.addToQueue(video) },
-        onHide = { viewModel.hideVideo(video.url) },
+        // "Watched" tile: mark the video fully watched, then a toast (plain
+        // Toast here — the app module's UIDialogs.toast is the same call but
+        // unreachable from this module).
+        onMarkWatched = {
+            scope.launch {
+                AppDatabaseProvider.get(context).historyDao().markWatched(
+                    url = video.url,
+                    title = video.title,
+                    author = video.author?.name,
+                    thumbnailUrl = video.thumbnailUrl,
+                    durationMs = video.durationMs ?: 0L,
+                )
+                Toast.makeText(context, "Marked as watched", Toast.LENGTH_SHORT).show()
+            }
+        },
+        isHidden = video.url in hiddenUrls,
+        onHideToggle = { viewModel.toggleHiddenVideo(video.url) },
         isInQueue = queue.any { it.url == video.url },
         isCurrentlyPlaying = isCurrentlyPlaying,
         onRemoveFromQueue = { viewModel.removeQueueItemUrl(video.url) },

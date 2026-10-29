@@ -35,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import com.tsutsen.platformplayer.core.designsystem.icon.Download
 import androidx.compose.material.icons.filled.History
@@ -129,9 +130,17 @@ fun VideoOptionsSheet(
     // history contexts pass it (the library's History strip, the history
     // page) so the tile never appears where the video isn't a history item.
     onRemoveFromHistory: (() -> Unit)? = null,
-    // Non-null = show a "Hide" tile: adds the video's url to the persisted
-    // hidden set (filtered out of the home feed).
-    onHide: (() -> Unit)? = null,
+    // Non-null = show a "Watched" tile: marks the video fully watched in
+    // the history (the sheet stays open, it's not destructive).
+    onMarkWatched: (() -> Unit)? = null,
+    // Non-null = show a "Hide"/"Unhide" toggle tile (danger tone): adds or
+    // removes the video's url from the persisted hidden set (filtered out
+    // of the home feed). The sheet stays open so both directions are one
+    // tap away.
+    onHideToggle: (() -> Unit)? = null,
+    // Drives the Hide tile's label: "Hide" when not hidden, "Unhide" when it
+    // is already in the hidden set.
+    isHidden: Boolean = false,
     // Queue state: the tile becomes a highlighted "Remove from queue" when
     // the video is already queued, and a dimmed "Now playing" when it is
     // the current video.
@@ -209,7 +218,8 @@ fun VideoOptionsSheet(
             }
         }
 
-        // Action tiles: 3 columns, unrolled rows (max 7 tiles = 3 rows).
+        // Action tiles: 3 columns, unrolled rows (8 base tiles + optional
+        // channel/hide/history tiles).
         val tiles =
             buildList {
                 add(
@@ -246,6 +256,15 @@ fun VideoOptionsSheet(
                         onClick = onToggleFavourite,
                     ),
                 )
+                onMarkWatched?.let { onMarkWatched ->
+                    add(
+                        OptionTile(
+                            label = "Watched",
+                            icon = Icons.Filled.CheckCircle,
+                            onClick = onMarkWatched,
+                        ),
+                    )
+                }
                 add(
                     OptionTile(
                         label = "Add to playlist",
@@ -309,15 +328,16 @@ fun VideoOptionsSheet(
                         ),
                     )
                 }
-                onHide?.let { onHide ->
+                onHideToggle?.let { onHideToggle ->
                     add(
                         OptionTile(
-                            label = "Hide",
+                            label = if (isHidden) "Unhide" else "Hide",
                             icon = Icons.Filled.VisibilityOff,
-                            onClick = {
-                                onHide()
-                                onDismiss()
-                            },
+                            // Destructive for the feed: danger tone. No
+                            // onDismiss — it's a toggle, so the sheet stays
+                            // open (a tap can immediately undo it).
+                            tone = TileTone.Danger,
+                            onClick = onHideToggle,
                         ),
                     )
                 }

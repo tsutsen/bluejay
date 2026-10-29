@@ -1151,8 +1151,8 @@ private fun SectionItems(
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.PlayCircle,
-                        title = "YouTube feed",
-                        subtitle = "Logged-in home feed from your sources",
+                        title = "Source picks",
+                        subtitle = "Home feed from your sources",
                         checked = state.sourceYoutubeFeed,
                         onCheckedChange = { viewModel.setSourceYoutubeFeed(it) },
                         enabled = state.homebrewRecommendations,

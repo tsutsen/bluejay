@@ -47,6 +47,30 @@ interface HistoryDao {
     @Delete
     suspend fun delete(history: HistoryEntity)
 
+    /**
+     * Mark [url] as fully watched (long-press sheet "Watched" tile):
+     * lastPositionMs and watchedMs become [durationMs]. Existing rows keep
+     * their other fields (viewedAt, authorUrl, viewCount, postedAt) — a
+     * plain REPLACE upsert would reset them.
+     */
+    // viewedAt/viewCount/postedAt have no table defaults (NOT NULL, set by
+    // the entity constructor), so a raw INSERT must name them; on conflict
+    // only the watched fields change.
+    @Query(
+        "INSERT INTO history (contentUrl, title, author, thumbnailUrl, lastPositionMs, totalDurationMs, watchedMs, watchedAt, viewedAt, viewCount, postedAt) " +
+            "VALUES (:url, :title, :author, :thumbnailUrl, :durationMs, :durationMs, :durationMs, :watchedAt, :watchedAt, 0, 0) " +
+            "ON CONFLICT (contentUrl) DO UPDATE SET lastPositionMs = excluded.lastPositionMs, " +
+            "totalDurationMs = excluded.totalDurationMs, watchedMs = excluded.watchedMs, watchedAt = excluded.watchedAt",
+    )
+    suspend fun markWatched(
+        url: String,
+        title: String,
+        author: String? = null,
+        thumbnailUrl: String? = null,
+        durationMs: Long,
+        watchedAt: Long = System.currentTimeMillis(),
+    )
+
     @Query("DELETE FROM history WHERE contentUrl = :url")
     suspend fun deleteByUrl(url: String)
 

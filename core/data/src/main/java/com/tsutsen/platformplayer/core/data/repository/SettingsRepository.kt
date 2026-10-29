@@ -37,6 +37,12 @@ interface SettingsRepository {
     suspend fun setSubscriptionsOrder(order: String)
     /** Persist a video URL as hidden (long-press sheet "Hide"); filtered from the home feed. */
     suspend fun addHiddenVideoUrl(url: String)
+
+    /** Remove a video URL from the hidden set (long-press sheet "Unhide"). */
+    suspend fun removeHiddenVideoUrl(url: String)
+
+    /** Live hidden video URLs (drives the options sheet's Hide/Unhide tile). */
+    val hiddenVideoUrls: StateFlow<List<String>>
     suspend fun setAutoUpdatePlugins(enabled: Boolean)
     suspend fun setSubtitleFont(font: String)
     suspend fun setSubtitleFontSize(sizeSp: Int)
