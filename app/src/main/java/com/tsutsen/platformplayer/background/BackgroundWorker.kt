@@ -8,16 +8,15 @@ import android.graphics.Bitmap
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.tsutsen.platformplayer.PlatformPlayerApp
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.activities.MainActivity
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
-import com.tsutsen.platformplayer.core.database.entity.NotificationEntity
 import com.tsutsen.platformplayer.getNowDiffSeconds
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Subscription
 import com.tsutsen.platformplayer.states.StateApp
+import com.tsutsen.platformplayer.states.recordDashNotification
 import com.tsutsen.platformplayer.states.StateNotifications
 import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.states.StateSubscriptions
@@ -167,26 +166,7 @@ class BackgroundWorker(
                         // In-app notification feed: record every new video on a
                         // channel the user opted into (deduped by the DAO's
                         // unique index on (subscriptionUrl, contentUrl)).
-                        if (sub.doNotifications) {
-                            try {
-                                (appContext.applicationContext as? PlatformPlayerApp)
-                                    ?.notificationDao()
-                                    ?.let { dao ->
-                                        dao.insertIgnore(
-                                            NotificationEntity(
-                                                subscriptionUrl = sub.channel.url,
-                                                subscriptionName = sub.channel.name,
-                                                contentUrl = content.url,
-                                                title = content.name,
-                                                thumbnailUrl = (content as? IPlatformVideo)?.thumbnails?.getHQThumbnail(),
-                                                timestamp = System.currentTimeMillis(),
-                                            ),
-                                        )
-                                    }
-                            } catch (t: Throwable) {
-                                Logger.w("BackgroundWorker", "Failed to insert notification: ${t.message}")
-                            }
-                        }
+                        recordDashNotification(appContext, sub, content)
                         newItems.add(content)
                     }
                 })

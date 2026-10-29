@@ -13,11 +13,14 @@ import androidx.core.app.NotificationCompat
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.size.Size
+import com.tsutsen.platformplayer.PlatformPlayerApp
 import com.tsutsen.platformplayer.activities.MainActivity
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.models.video.SerializedPlatformContent
+import com.tsutsen.platformplayer.core.database.entity.NotificationEntity
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.models.Subscription
 import com.tsutsen.platformplayer.receivers.PlannedNotificationReceiver
 import com.tsutsen.platformplayer.serializers.PlatformContentSerializer
 import com.tsutsen.platformplayer.stores.FragmentedStorage
@@ -28,6 +31,32 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.tsutsen.platformplayer.toHumanNowDiffStringMinDay
 import java.time.OffsetDateTime
+
+/**
+ * Records a new content item from a subscription into the in-app Dash
+ * (notifications) feed. Shared by the background worker and foreground
+ * refreshes; deduped by the DAO's unique index on
+ * (subscriptionUrl, contentUrl), so duplicate calls are harmless.
+ */
+fun recordDashNotification(appContext: Context, sub: Subscription, content: IPlatformContent) {
+    if (!sub.doNotifications) return;
+    try {
+        (appContext.applicationContext as? PlatformPlayerApp)
+            ?.notificationDao()
+            ?.insertIgnore(
+                NotificationEntity(
+                    subscriptionUrl = sub.channel.url,
+                    subscriptionName = sub.channel.name,
+                    contentUrl = content.url,
+                    title = content.name,
+                    thumbnailUrl = (content as? IPlatformVideo)?.thumbnails?.getHQThumbnail(),
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+    } catch (t: Throwable) {
+        Logger.w("StateNotifications", "Failed to insert notification: ${t.message}")
+    }
+}
 
 class StateNotifications {
     private val _alarmManagerLock = Object();

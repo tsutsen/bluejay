@@ -1,16 +1,21 @@
 package com.tsutsen.platformplayer.di
 
 import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.api.media.Serializer
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
+import com.tsutsen.platformplayer.api.media.models.video.SerializedPlatformContent
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
 import com.tsutsen.platformplayer.core.database.dao.HistoryDao
+import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.model.SubscriptionFeed
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Subscription
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
+import com.tsutsen.platformplayer.stores.FragmentedStorage
+import com.tsutsen.platformplayer.stores.StringStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,8 +25,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** On-disk payload for the Subs tab feed cache (file store: no Room bump). */
+@Serializable
+private data class SubsFeedCache(
+    val cachedAt: Long = 0L,
+    val items: List<SerializedPlatformContent> = emptyList(),
+)
 
 /**
  * Bridges the engine subscription machinery (StateSubscriptions +
@@ -54,6 +69,14 @@ class EngineSubscriptionsRepositoryImpl
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         private var flow: PagerFlow<IPlatformContent, IPlatformContent>? = null
+
+        // File-backed cache of the last loaded global feed; painted on launch
+        // while a fresh fetch runs (same UX as the home feed's Room cache).
+        private val feedCache by lazy { FragmentedStorage.get<StringStorage>("subscriptions_feed_cache") }
+
+        // Cached items currently backing the UI (initial load in flight or a
+        // failed refresh); cleared once fresh data lands.
+        private var cachedItems: List<IPlatformContent>? = null
 
         init {
             // Subscribing/unsubscribing from anywhere (channel screen,
@@ -143,16 +166,73 @@ class EngineSubscriptionsRepositoryImpl
         private suspend fun reload(updated: Boolean) {
             _feed.update { it.copy(isLoading = true) }
             withContext(Dispatchers.IO) {
+                // Cache-first on the initial load (not pull-to-refresh): paint
+                // the last feed immediately, refresh in background, replace
+                // when fresh data lands.
+                if (!updated) {
+                    cachedItems = loadCachedFeed()
+                    emitCachedFeed()
+                }
                 try {
                     flow = newFlow(updated = updated)
                     flow!!.loadInitial()
                     Logger.i(TAG, "Loaded ${flow!!.items.size} items")
+                    saveFeedCache(flow!!.items)
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error loading feed", e)
-                    _feed.update { it.copy(isLoading = false, error = e.message) }
+                    // A failed refresh must not wipe a cache that's on screen.
+                    if (cachedItems != null) {
+                        _feed.update {
+                            it.copy(
+                                items = filteredCards(cachedItems!!),
+                                isLoading = false,
+                                error = e.message,
+                            )
+                        }
+                    } else {
+                        _feed.update { it.copy(isLoading = false, error = e.message) }
+                    }
                     return@withContext
                 }
+                cachedItems = null
                 applyFilters()
+            }
+        }
+
+        /** Emits the cached feed (filtered) immediately; loading stays up. */
+        private fun emitCachedFeed() {
+            val cached = cachedItems ?: return
+            Logger.i(TAG, "Showing ${cached.size} cached feed items")
+            _feed.update { it.copy(items = filteredCards(cached), isLoading = true) }
+        }
+
+        /** @return the cached feed when fresh enough (< [FEED_CACHE_TTL_MS]), else null. */
+        private suspend fun loadCachedFeed(): List<IPlatformContent>? {
+            return try {
+                val payload = Serializer.json.decodeFromString<SubsFeedCache>(feedCache.value)
+                if (System.currentTimeMillis() - payload.cachedAt > FEED_CACHE_TTL_MS || payload.items.isEmpty()) {
+                    null
+                } else {
+                    payload.items.toList()
+                }
+            } catch (e: Exception) {
+                Logger.w(TAG, "Failed to load cached feed", e)
+                null
+            }
+        }
+
+        private suspend fun saveFeedCache(items: List<IPlatformContent>) {
+            if (items.isEmpty()) return
+            try {
+                val payload =
+                    SubsFeedCache(
+                        System.currentTimeMillis(),
+                        items.map { SerializedPlatformContent.fromContent(it) },
+                    )
+                feedCache.setAndSave(Serializer.json.encodeToString(payload))
+                Logger.i(TAG, "Cached ${payload.items.size} feed items")
+            } catch (e: Exception) {
+                Logger.w(TAG, "Failed to cache feed", e)
             }
         }
 
@@ -267,9 +347,25 @@ class EngineSubscriptionsRepositoryImpl
         }
 
         private fun applyFilters() {
-            val state = _feed.value
             val f = flow
-            var filtered: List<IPlatformContent> = f?.items ?: emptyList()
+            // While a fresh load is in flight the new pager's first page hasn't
+            // landed yet: keep the cached items on screen so the chips keep
+            // filtering them.
+            val contents = (f?.items ?: emptyList()).ifEmpty { cachedItems ?: emptyList() }
+            _feed.update {
+                it.copy(
+                    items = filteredCards(contents),
+                    hasMorePages = f?.hasMore ?: false,
+                    isLoading = false,
+                    error = f?.error,
+                )
+            }
+        }
+
+        /** Applies the scope/type/watch filters and maps raw content to Cards. */
+        private fun filteredCards(contents: List<IPlatformContent>): List<Card> {
+            val state = _feed.value
+            var filtered: List<IPlatformContent> = contents
 
             // Scope filter (no-op for the per-channel pager, which is
             // already scoped — kept for a single code path).
@@ -320,19 +416,12 @@ class EngineSubscriptionsRepositoryImpl
                 }
 
             // Convert to Cards
-            val cards = EngineCardMapper.toCards(filtered)
-
-            _feed.update {
-                it.copy(
-                    items = cards,
-                    hasMorePages = f?.hasMore ?: false,
-                    isLoading = false,
-                    error = f?.error,
-                )
-            }
+            return EngineCardMapper.toCards(filtered)
         }
 
         private companion object {
             const val TAG = "EngineSubscriptionsRepository"
+            // Cached feed is a launch shortcut only; after this, wait for fresh data.
+            const val FEED_CACHE_TTL_MS = 60L * 60L * 1000L
         }
     }

@@ -136,7 +136,12 @@ class StateSubscriptions {
                     feed.lastTotal = total;
                     feed.onUpdateProgress.emit(progress, total);
                     onProgress?.invoke(progress, total);
-                }, null, group);
+                }, { sub, content ->
+                    // Foreground refreshes must feed the Dash tab too: same
+                    // recording as the background worker (deduped by the DAO's
+                    // unique index on (subscriptionUrl, contentUrl)).
+                    StateApp.instance.contextOrNull?.let { recordDashNotification(it, sub, content) }
+                }, group);
                 if (subsResult.second.any()) {
                     feed.exceptions = subsResult.second;
                     feed.onException.emit(subsResult.second);
