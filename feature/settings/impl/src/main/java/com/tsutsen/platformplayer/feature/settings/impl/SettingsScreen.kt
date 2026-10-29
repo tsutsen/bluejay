@@ -1140,6 +1140,44 @@ private fun SectionItems(
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader("Recommendations")
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.RssFeed,
+                        title = "Homebrew recommendations",
+                        subtitle = "Build the home feed from the sources below",
+                        checked = state.homebrewRecommendations,
+                        onCheckedChange = { viewModel.setHomebrewRecommendations(it) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.PlayCircle,
+                        title = "YouTube feed",
+                        subtitle = "Logged-in home feed from your sources",
+                        checked = state.sourceYoutubeFeed,
+                        onCheckedChange = { viewModel.setSourceYoutubeFeed(it) },
+                        enabled = state.homebrewRecommendations,
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.Subscriptions,
+                        title = "Subscriptions",
+                        subtitle = "Recent unwatched videos from subscribed channels",
+                        checked = state.sourceSubscriptions,
+                        onCheckedChange = { viewModel.setSourceSubscriptions(it) },
+                        enabled = state.homebrewRecommendations,
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.Groups,
+                        title = "Top creators",
+                        subtitle = "Recent unwatched videos from creators you watch most",
+                        checked = state.sourceTopCreators,
+                        onCheckedChange = { viewModel.setSourceTopCreators(it) },
+                        enabled = state.homebrewRecommendations,
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
                         title = "Dock",
                         reset =

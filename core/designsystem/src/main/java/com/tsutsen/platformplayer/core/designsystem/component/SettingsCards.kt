@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -118,7 +119,8 @@ fun SettingsOptionCard(
 }
 
 /**
- * Settings card with a toggle switch.
+ * Settings card with a toggle switch. [enabled] = false greys the card out
+ * and disables the switch (e.g. source toggles under a master toggle).
  */
 @Composable
 fun SettingsSwitchCard(
@@ -128,6 +130,7 @@ fun SettingsSwitchCard(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     groupPosition: GroupPosition = GroupPosition.Single,
+    enabled: Boolean = true,
 ) {
     Card(
         modifier =
@@ -141,6 +144,7 @@ fun SettingsSwitchCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .alpha(if (enabled) 1f else 0.5f)
                     .padding(Tokens.SpaceMd),
             horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
@@ -177,6 +181,7 @@ fun SettingsSwitchCard(
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
+                enabled = enabled,
             )
         }
     }

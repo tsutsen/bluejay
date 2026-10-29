@@ -62,6 +62,9 @@ class Settings {
     // Feed settings (grid columns for content lists)
     val feed = FeedSettings()
 
+    // Homebrew recommendations settings (home feed sources)
+    val recommendations = RecommendationsSettings()
+
     // Search settings (recent search queries)
     val search = SearchSettings()
 
@@ -316,6 +319,21 @@ class Settings {
 
         // Source ids whose home-feed "log in?" notice was declined.
         var loginPromptsDismissed: List<String> = emptyList()
+    }
+
+    @Serializable
+    class RecommendationsSettings {
+        // Master toggle: off = the plain platform home refresh (current behavior).
+        var homebrewRecommendations: Boolean = false
+
+        // Source 1: logged-in platform home feed (the current home pager).
+        var sourceYoutubeFeed: Boolean = true
+
+        // Source 2: recent unwatched videos from in-app subscriptions.
+        var sourceSubscriptions: Boolean = true
+
+        // Source 3: recent unwatched videos from the most-watched creators.
+        var sourceTopCreators: Boolean = true
     }
 
     @Serializable

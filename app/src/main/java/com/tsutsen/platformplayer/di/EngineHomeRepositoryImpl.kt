@@ -133,6 +133,33 @@ class EngineHomeRepositoryImpl
                 Logger.w("EngineHomeRepository", "Plugin initialization failed", e)
             }
 
+            // Homebrew recommendations (Settings > Content > Recommendations):
+            // master toggle ON → build the feed from the enabled sources and
+            // cache the merged result; OFF, or every source empty/failed →
+            // fall through to the plain home refresh below (today's behavior).
+            val recommendations = Settings.instance.recommendations
+            if (recommendations.homebrewRecommendations) {
+                val merged = HomebrewRecommendations.buildFeed(historyDao, recommendations)
+                if (merged.isNotEmpty()) {
+                    // No pager backs the merged feed: infinite scroll is off.
+                    _pagerFlow = null
+                    val visible = applyContentFilters(merged)
+                    Logger.i("EngineHomeRepository", "Recommendations feed: ${visible.size} cards")
+                    _feed.update {
+                        it.copy(
+                            isLoading = false,
+                            items = visible,
+                            hasMorePages = false,
+                            error = null,
+                            currentPage = 1,
+                        )
+                    }
+                    cacheFeed(visible)
+                    return@withContext
+                }
+                Logger.i("EngineHomeRepository", "Recommendations empty, falling back to home refresh")
+            }
+
             try {
                 val pager = StatePlatform.instance.getHomeRefresh(CoroutineScope(Dispatchers.IO))
                 val refreshPager = pager as? IRefreshPager<IPlatformContent>
@@ -264,7 +291,12 @@ class EngineHomeRepositoryImpl
             _feed.update { it.copy(isLoading = true) }
 
             try {
-                val flow = _pagerFlow ?: return
+                // Null pager = recommendations mode (merged list, no next page).
+                val flow = _pagerFlow
+                if (flow == null) {
+                    _feed.update { it.copy(isLoading = false) }
+                    return
+                }
                 Logger.i("EngineHomeRepository", "hasMore=${flow.hasMore}")
                 if (!flow.hasMore) {
                     _feed.update { it.copy(isLoading = false) }

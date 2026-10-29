@@ -46,6 +46,14 @@ data class AppPreferences(
     val showWatchedVideos: Boolean = true,
     /** Home feed: hide started-but-unfinished videos (history position > 0). */
     val showStartedVideos: Boolean = true,
+    /** Homebrew recommendations master toggle (Settings > Content > Recommendations). */
+    val homebrewRecommendations: Boolean = false,
+    /** Recommendation source: logged-in platform home feed. */
+    val sourceYoutubeFeed: Boolean = true,
+    /** Recommendation source: recent unwatched videos from subscriptions. */
+    val sourceSubscriptions: Boolean = true,
+    /** Recommendation source: recent unwatched videos from top creators. */
+    val sourceTopCreators: Boolean = true,
     val autoUpdatePlugins: Boolean = true,
     val gettingStartedCompleted: Boolean = false,
     /** Source ids whose home-feed login notice was declined. */

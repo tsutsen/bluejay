@@ -102,6 +102,10 @@ class SettingsRepositoryImpl
                 showComments = s.content.showComments,
                 showWatchedVideos = s.content.showWatchedVideos,
                 showStartedVideos = s.content.showStartedVideos,
+                homebrewRecommendations = s.recommendations.homebrewRecommendations,
+                sourceYoutubeFeed = s.recommendations.sourceYoutubeFeed,
+                sourceSubscriptions = s.recommendations.sourceSubscriptions,
+                sourceTopCreators = s.recommendations.sourceTopCreators,
                 autoUpdatePlugins = s.plugins.autoUpdatePlugins,
                 dockTabOrder = s.other.dockTabOrder,
                 defaultDockTab = s.other.defaultDockTab,
@@ -200,6 +204,18 @@ class SettingsRepositoryImpl
 
         override suspend fun setShowStartedVideos(show: Boolean) =
             persist { it.content.showStartedVideos = show }
+
+        override suspend fun setHomebrewRecommendations(enabled: Boolean) =
+            persist { it.recommendations.homebrewRecommendations = enabled }
+
+        override suspend fun setSourceYoutubeFeed(enabled: Boolean) =
+            persist { it.recommendations.sourceYoutubeFeed = enabled }
+
+        override suspend fun setSourceSubscriptions(enabled: Boolean) =
+            persist { it.recommendations.sourceSubscriptions = enabled }
+
+        override suspend fun setSourceTopCreators(enabled: Boolean) =
+            persist { it.recommendations.sourceTopCreators = enabled }
 
         override suspend fun setDockTabOrder(order: List<String>) =
             persist { it.other.dockTabOrder = order }

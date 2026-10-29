@@ -21,6 +21,14 @@ interface HistoryDao {
     @Query("SELECT authorUrl AS authorUrl, SUM(watchedMs) AS watchedMs FROM history WHERE authorUrl IS NOT NULL GROUP BY authorUrl")
     suspend fun watchedTimeByAuthor(): List<AuthorWatchTime>
 
+    /**
+     * Top creators by watched time within a recent window (homebrew
+     * recommendations source 3): authors with more than [minWatchedMs]
+     * accumulated since [sinceMs], most watched first.
+     */
+    @Query("SELECT authorUrl AS authorUrl, SUM(watchedMs) AS watchedMs FROM history WHERE authorUrl IS NOT NULL AND watchedAt > :sinceMs GROUP BY authorUrl HAVING SUM(watchedMs) > :minWatchedMs ORDER BY watchedMs DESC LIMIT :limit")
+    suspend fun topCreatorsByWatchTimeSince(sinceMs: Long, minWatchedMs: Long, limit: Int): List<AuthorWatchTime>
+
     @Query("SELECT * FROM history ORDER BY watchedAt DESC LIMIT :limit OFFSET :offset")
     suspend fun getPaginated(limit: Int, offset: Int): List<HistoryEntity>
 

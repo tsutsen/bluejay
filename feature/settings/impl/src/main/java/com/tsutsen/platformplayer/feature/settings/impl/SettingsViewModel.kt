@@ -42,6 +42,10 @@ sealed interface SettingsUiState {
         val showComments: Boolean,
         val showWatchedVideos: Boolean,
         val showStartedVideos: Boolean,
+        val homebrewRecommendations: Boolean,
+        val sourceYoutubeFeed: Boolean,
+        val sourceSubscriptions: Boolean,
+        val sourceTopCreators: Boolean,
         val autoUpdatePlugins: Boolean,
         val dockTabOrder: List<String>,
         val defaultDockTab: String,
@@ -128,6 +132,10 @@ class SettingsViewModel
                                 showComments = prefs.showComments,
                                 showWatchedVideos = prefs.showWatchedVideos,
                                 showStartedVideos = prefs.showStartedVideos,
+                                homebrewRecommendations = prefs.homebrewRecommendations,
+                                sourceYoutubeFeed = prefs.sourceYoutubeFeed,
+                                sourceSubscriptions = prefs.sourceSubscriptions,
+                                sourceTopCreators = prefs.sourceTopCreators,
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
                                 dockTabOrder = prefs.dockTabOrder,
                                 defaultDockTab = prefs.defaultDockTab,
@@ -274,6 +282,22 @@ class SettingsViewModel
 
         fun setShowStartedVideos(show: Boolean) {
             viewModelScope.launch { settingsRepository.setShowStartedVideos(show) }
+        }
+
+        fun setHomebrewRecommendations(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setHomebrewRecommendations(enabled) }
+        }
+
+        fun setSourceYoutubeFeed(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setSourceYoutubeFeed(enabled) }
+        }
+
+        fun setSourceSubscriptions(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setSourceSubscriptions(enabled) }
+        }
+
+        fun setSourceTopCreators(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setSourceTopCreators(enabled) }
         }
 
         fun setDockTabOrder(order: List<String>) {
