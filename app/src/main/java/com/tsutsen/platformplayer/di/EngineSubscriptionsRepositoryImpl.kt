@@ -209,7 +209,9 @@ class EngineSubscriptionsRepositoryImpl
         /** @return the cached feed when fresh enough (< [FEED_CACHE_TTL_MS]), else null. */
         private suspend fun loadCachedFeed(): List<IPlatformContent>? {
             return try {
-                val payload = Serializer.json.decodeFromString<SubsFeedCache>(feedCache.value)
+                val raw = feedCache.value
+                if (raw.isBlank()) return null // StringStorage default is ""
+                val payload = Serializer.json.decodeFromString<SubsFeedCache>(raw)
                 if (System.currentTimeMillis() - payload.cachedAt > FEED_CACHE_TTL_MS || payload.items.isEmpty()) {
                     null
                 } else {
