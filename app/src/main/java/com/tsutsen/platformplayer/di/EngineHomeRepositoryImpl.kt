@@ -1,10 +1,10 @@
 package com.tsutsen.platformplayer.di
 
-import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
+import com.tsutsen.platformplayer.core.database.dao.HomeFeedCacheDao
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.FeedPage
 import com.tsutsen.platformplayer.core.model.SourceInfo
@@ -14,12 +14,11 @@ import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import javax.inject.Inject
@@ -32,7 +31,9 @@ import javax.inject.Singleton
 @Singleton
 class EngineHomeRepositoryImpl
     @Inject
-    constructor() : HomeRepository {
+    constructor(
+        private val homeFeedCacheDao: HomeFeedCacheDao,
+    ) : HomeRepository {
         private val _feed = MutableStateFlow(FeedPage())
         override val feed: StateFlow<FeedPage> = _feed.asStateFlow()
 
@@ -40,11 +41,6 @@ class EngineHomeRepositoryImpl
         override val enabledSources: StateFlow<List<SourceInfo>> = _enabledSources.asStateFlow()
 
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
-
-        // Survives across loadInitial calls; auto-update installs can take
-        // longer than one launch's work and must not be cancelled.
-        private val pluginUpdateScope =
-            CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         // Single-flight: loadInitial re-runs the full plugin init + client
         // enable + home fetch, so overlapping calls (e.g. refresh() racing a
@@ -90,6 +86,13 @@ class EngineHomeRepositoryImpl
             Logger.i("EngineHomeRepository", "loadInitial")
             _feed.update { it.copy(isLoading = true, error = null) }
 
+            // Cache-first: paint the last successful feed immediately while
+            // the refresh below runs. Only for a truly empty feed, so a
+            // pull-to-refresh never collapses loaded pages back to page 1.
+            if (_feed.value.items.isEmpty()) {
+                loadCachedFeed()
+            }
+
             // Ensure plugins are initialized before loading feed
             try {
                 val context = StateApp.instance.contextOrNull
@@ -109,25 +112,6 @@ class EngineHomeRepositoryImpl
                     }
 
                     publishEnabledSources()
-
-                    // Auto-update plugins in the background: check every
-                    // enabled source, install anything newer when the user
-                    // allows it (Settings > Content > Auto-update plugins).
-                    pluginUpdateScope.launch {
-                        val updates = StatePlugins.instance.checkForUpdates()
-                        if (updates.isEmpty()) return@launch
-                        if (!Settings.instance.plugins.autoUpdatePlugins) {
-                            Logger.i("EngineHomeRepository", "${updates.size} plugin update(s) available, auto-update off")
-                            return@launch
-                        }
-                        Logger.i("EngineHomeRepository", "Auto-installing ${updates.size} plugin update(s)")
-                        StatePlugins.instance.installPlugins(
-                            context,
-                            this,
-                            updates.mapNotNull { it.second.sourceUrl },
-                            assumeReinstall = true,
-                        )
-                    }
                 }
             } catch (e: Exception) {
                 Logger.w("EngineHomeRepository", "Plugin initialization failed", e)
@@ -182,6 +166,7 @@ class EngineHomeRepositoryImpl
                         currentPage = 1,
                     )
                 }
+                cacheFeed(flow.items)
             } catch (e: Exception) {
                 Logger.e("EngineHomeRepository", "loadInitial failed", e)
                 _feed.update {
@@ -192,6 +177,38 @@ class EngineHomeRepositoryImpl
                         error = e.message ?: "Failed to load feed",
                     )
                 }
+            }
+        }
+
+        private suspend fun loadCachedFeed() {
+            try {
+                val entities = homeFeedCacheDao.observeValidCache().first()
+                val cards = entities.mapNotNull { EngineCardMapper.toCardFromCache(it) }
+                if (cards.isEmpty()) return
+                Logger.i("EngineHomeRepository", "Showing ${cards.size} cached cards")
+                _feed.update {
+                    it.copy(items = cards, isLoading = true, currentPage = 1)
+                }
+            } catch (e: Exception) {
+                Logger.w("EngineHomeRepository", "Failed to load cached feed", e)
+            }
+        }
+
+        private suspend fun cacheFeed(cards: List<Card>) {
+            if (cards.isEmpty()) return
+            try {
+                val now = System.currentTimeMillis()
+                // The DAO orders by cachedAt DESC and the entity has no
+                // position column, so an offset restores the feed order.
+                val entities =
+                    cards.mapIndexed { index, card ->
+                        EngineCardMapper.toCacheEntity(card).copy(cachedAt = now - index)
+                    }
+                homeFeedCacheDao.clearAll()
+                homeFeedCacheDao.insertAll(entities)
+                Logger.i("EngineHomeRepository", "Cached ${entities.size} feed cards")
+            } catch (e: Exception) {
+                Logger.w("EngineHomeRepository", "Failed to cache feed", e)
             }
         }
 

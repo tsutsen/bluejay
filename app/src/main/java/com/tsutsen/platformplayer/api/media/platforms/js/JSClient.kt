@@ -854,7 +854,7 @@ open class JSClient : IPlatformClient {
         fun getMethodDocs(names: List<String>): Map<String, String>? {
             synchronized(_lock) {
                 if(_docs == null) {
-                    val client = ManagedHttpClient();
+                    val client = ManagedHttpClient.shared;
                     val docs = names
                         .map { stringWithoutBrackets(it) }
                         .distinct()

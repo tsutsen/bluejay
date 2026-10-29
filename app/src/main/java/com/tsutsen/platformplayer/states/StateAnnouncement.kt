@@ -41,7 +41,7 @@ class StateAnnouncement {
 
         withContext(Dispatchers.IO) {
             try {
-                val client = ManagedHttpClient();
+                val client = ManagedHttpClient.shared;
                 val response = client.get("https://announcements.bluejay.app/bluejay.json");
                 if (response.isOk && response.body != null) {
                     val body = response.body.string();

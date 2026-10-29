@@ -333,7 +333,7 @@ fun PluginDetailScene(
                 Logger.i(TAG, "Fetching plugin config from: $configUrl")
                 val response =
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        ManagedHttpClient().get(configUrl)
+                        ManagedHttpClient.shared.get(configUrl)
                     }
                 if (response.isOk && response.body != null) {
                     val configJson = response.body.string()

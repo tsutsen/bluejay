@@ -213,7 +213,7 @@ class PackageBridge : V8Package {
             return;
         val devUrl = _plugin.config.developerSubmitUrl ?: return;
         if(_devSubmitClient == null)
-            _devSubmitClient = ManagedHttpClient();
+            _devSubmitClient = ManagedHttpClient.shared;
 
         val stackTrace = Thread.currentThread().stackTrace;
         val callerMethod = stackTrace.findLast {

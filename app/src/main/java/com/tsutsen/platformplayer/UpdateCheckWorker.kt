@@ -21,7 +21,7 @@ class UpdateCheckWorker(appContext: Context, workerParams: WorkerParameters) : C
 
         return withContext(Dispatchers.IO) {
             try {
-                val client = ManagedHttpClient()
+                val client = ManagedHttpClient.shared
                 val latestVersion = StateUpdate.Companion.instance.downloadVersionCode(client)
 
                 if (latestVersion == null) {

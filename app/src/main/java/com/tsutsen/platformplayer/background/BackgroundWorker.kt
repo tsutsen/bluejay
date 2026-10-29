@@ -19,10 +19,13 @@ import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Subscription
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateNotifications
+import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import com.tsutsen.platformplayer.toHumanNowDiffString
 import com.tsutsen.platformplayer.toHumanNowDiffStringMinDay
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
 import java.time.OffsetDateTime
 
@@ -53,6 +56,11 @@ class BackgroundWorker(
             val contentChannel = StateNotifications.instance.contentNotifChannel
             notificationManager.createNotificationChannel(contentChannel)
             try {
+                try {
+                    doPluginAutoUpdate()
+                } catch (ex: Throwable) {
+                    Logger.e("BackgroundWorker", "Plugin auto-update failed: ${ex.message}", ex)
+                }
                 doSubscriptionUpdating(notificationManager, notificationChannel, contentChannel)
             } catch (ex: Throwable) {
                 exception = ex
@@ -76,6 +84,25 @@ class BackgroundWorker(
         } else {
             Result.failure()
         }
+    }
+
+    private suspend fun doPluginAutoUpdate() {
+        val updates = StatePlugins.instance.checkForUpdates()
+        if (updates.isEmpty()) return
+        if (!Settings.instance.plugins.autoUpdatePlugins) {
+            Logger.i("BackgroundWorker", "${updates.size} plugin update(s) available, auto-update off")
+            return
+        }
+        Logger.i("BackgroundWorker", "Auto-installing ${updates.size} plugin update(s)")
+        // installPlugins launches onto the given scope (fire-and-forget, as the
+        // old home-load path did); BackgroundWorker itself is not a CoroutineScope.
+        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        StatePlugins.instance.installPlugins(
+            appContext,
+            scope,
+            updates.mapNotNull { it.second.sourceUrl },
+            assumeReinstall = true,
+        )
     }
 
     suspend fun doSubscriptionUpdating(

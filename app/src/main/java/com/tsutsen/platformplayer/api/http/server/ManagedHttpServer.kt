@@ -20,7 +20,7 @@ import java.util.concurrent.Executors
 import java.util.stream.IntStream.range
 
 class ManagedHttpServer(private val _requestedPort: Int = 0) {
-    private val _client : ManagedHttpClient = ManagedHttpClient();
+    private val _client : ManagedHttpClient = ManagedHttpClient.shared;
     private val _logVerbose: Boolean = false;
 
     var active : Boolean = false

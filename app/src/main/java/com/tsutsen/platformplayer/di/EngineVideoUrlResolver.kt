@@ -572,7 +572,7 @@ class EngineVideoUrlResolver
                             source.toStreamSpec(
                                 httpClientFactory = {
                                     com.tsutsen.platformplayer.api.http
-                                        .ManagedHttpClient()
+                                        .ManagedHttpClient.shared
                                 },
                                 ownsClient = false,
                             )

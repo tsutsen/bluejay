@@ -22,6 +22,7 @@ import com.tsutsen.platformplayer.api.media.models.streams.sources.SubtitleRawSo
 import com.tsutsen.platformplayer.api.media.models.subtitles.ISubtitleSource
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideoDetails
+import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.constructs.Event0
 import com.tsutsen.platformplayer.downloads.PlaylistDownloadDescriptor
 import com.tsutsen.platformplayer.downloads.VideoDownload
@@ -430,7 +431,7 @@ class StateDownloads {
                 subtitles = reader.use { it.readText() };
             }
         } else if ("http" == subtitleUri.scheme || "https" == subtitleUri.scheme) {
-            val client = ManagedHttpClient();
+            val client = ManagedHttpClient.shared;
             val subtitleResponse = client.get(subtitleUri.toString());
             if (!subtitleResponse.isOk) {
                 throw Exception("Cannot fetch subtitles from source '${subtitleUri}': ${subtitleResponse.code}");

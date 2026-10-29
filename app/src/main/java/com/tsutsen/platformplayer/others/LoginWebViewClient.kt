@@ -26,7 +26,7 @@ class LoginWebViewClient : WebViewClient {
     private val _authConfig: SourcePluginAuthConfig;
     private val _userAgent: String?;
 
-    private val _client = ManagedHttpClient();
+    private val _client = ManagedHttpClient.shared;
 
     val onLogin = Event1<SourceAuth>();
     val onPageLoaded = Event2<WebView?, String?>()

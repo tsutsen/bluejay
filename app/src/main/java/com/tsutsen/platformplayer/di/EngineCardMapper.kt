@@ -12,6 +12,7 @@ import com.tsutsen.platformplayer.api.media.models.article.IPlatformArticle
 import com.tsutsen.platformplayer.api.media.models.post.IPlatformPost
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.platforms.js.models.JSWeb
+import com.tsutsen.platformplayer.core.database.entity.HomeFeedCacheEntity
 import com.tsutsen.platformplayer.core.model.ArticleCard
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelCard
@@ -32,6 +33,12 @@ import java.time.OffsetDateTime
  * - authorUrl: always set where an author exists
  */
 object EngineCardMapper {
+    private const val CACHE_TYPE_VIDEO = "video"
+    private const val CACHE_TYPE_PLAYLIST = "playlist"
+    private const val CACHE_TYPE_CHANNEL = "channel"
+    private const val CACHE_TYPE_POST = "post"
+    private const val CACHE_TYPE_ARTICLE = "article"
+
     fun toCards(contents: List<IPlatformContent>): List<Card> =
         contents.mapNotNull { content ->
             try {
@@ -165,6 +172,102 @@ object EngineCardMapper {
         }
 
     private fun epochMs(datetime: OffsetDateTime?): Long? = datetime?.toInstant()?.toEpochMilli()
+
+    /**
+     * Display-only snapshot for the home-feed cache: the entity has no room
+     * for duration/viewCount/publishedAt, so those come back null until the
+     * live refresh replaces the cached cards.
+     */
+    fun toCacheEntity(card: Card): HomeFeedCacheEntity {
+        val (contentUrl, author) =
+            when (card) {
+                is VideoCard -> card.url to card.author
+                is PlaylistCard -> card.url to card.author
+                is ChannelCard -> card.url to null
+                is PostCard -> card.url to card.author
+                is ArticleCard -> card.url to card.author
+            }
+        val contentType =
+            when (card) {
+                is VideoCard -> CACHE_TYPE_VIDEO
+                is PlaylistCard -> CACHE_TYPE_PLAYLIST
+                is ChannelCard -> CACHE_TYPE_CHANNEL
+                is PostCard -> CACHE_TYPE_POST
+                is ArticleCard -> CACHE_TYPE_ARTICLE
+            }
+        return HomeFeedCacheEntity(
+            cacheKey = card.id,
+            contentUrl = contentUrl,
+            title = card.title,
+            author = author,
+            thumbnailUrl = card.thumbnailUrl,
+            contentType = contentType,
+        )
+    }
+
+    fun toCardFromCache(entity: HomeFeedCacheEntity): Card? {
+        val id = entity.cacheKey
+        val sourceId = cacheSourceId(id)
+        return when (entity.contentType) {
+            CACHE_TYPE_VIDEO ->
+                VideoCard(
+                    id = id,
+                    title = entity.title,
+                    thumbnailUrl = entity.thumbnailUrl,
+                    author = entity.author,
+                    url = entity.contentUrl,
+                    sourceId = sourceId,
+                )
+
+            CACHE_TYPE_PLAYLIST ->
+                PlaylistCard(
+                    id = id,
+                    title = entity.title,
+                    thumbnailUrl = entity.thumbnailUrl,
+                    author = entity.author,
+                    url = entity.contentUrl,
+                    sourceId = sourceId,
+                )
+
+            CACHE_TYPE_CHANNEL ->
+                ChannelCard(
+                    id = id,
+                    title = entity.title,
+                    thumbnailUrl = entity.thumbnailUrl,
+                    url = entity.contentUrl,
+                    sourceId = sourceId,
+                )
+
+            CACHE_TYPE_POST ->
+                PostCard(
+                    id = id,
+                    title = entity.title,
+                    thumbnailUrl = entity.thumbnailUrl,
+                    author = entity.author,
+                    url = entity.contentUrl,
+                    sourceId = sourceId,
+                )
+
+            CACHE_TYPE_ARTICLE ->
+                ArticleCard(
+                    id = id,
+                    title = entity.title,
+                    thumbnailUrl = entity.thumbnailUrl,
+                    author = entity.author,
+                    url = entity.contentUrl,
+                    sourceId = sourceId,
+                )
+
+            else -> null
+        }
+    }
+
+    /** Card ids are "pluginId:value"; URL/name playlist fallbacks have none. */
+    private fun cacheSourceId(id: String): String? {
+        if (id.contains("://")) return null
+        val separator = id.indexOf(':')
+        return if (separator > 0) id.substring(0, separator) else null
+    }
 
     /**
      * Source badge for channel cards: the plugin's stored icon, only when

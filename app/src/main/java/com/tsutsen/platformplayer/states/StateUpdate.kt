@@ -108,7 +108,7 @@ class StateUpdate {
 
     suspend fun checkForUpdates(context: Context, showUpToDateToast: Boolean, hideExceptionButtons: Boolean = false) = withContext(Dispatchers.IO) {
         try {
-            val client = ManagedHttpClient();
+            val client = ManagedHttpClient.shared;
             val latestVersion = downloadVersionCode(client);
 
             if (latestVersion != null) {

@@ -49,7 +49,7 @@ class StateTelemetry {
 
                 val json = Json.encodeToString(telemetry);
                 val url = "https://logs.bluejay.app/telemetry";
-                val client = ManagedHttpClient();
+                val client = ManagedHttpClient.shared;
                 client.post(url, json, headers).use { response ->
                     if (response.isOk) {
                         Logger.i(TAG, "Launch telemetry submitted.");

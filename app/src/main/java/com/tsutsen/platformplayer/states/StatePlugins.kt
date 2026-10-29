@@ -131,7 +131,7 @@ class StatePlugins {
 
         Logger.i(TAG, "Check for source updates '${c.name}'.");
         try {
-            val client = ManagedHttpClient();
+            val client = ManagedHttpClient.shared;
             val response = client.get(sourceUrl);
             Logger.i(TAG, "Downloading source config '$sourceUrl'.");
 
@@ -334,7 +334,7 @@ class StatePlugins {
         }
     }
     fun requestConfig(sourceUrl: String): SourcePluginConfig {
-        val configResp = ManagedHttpClient().get(sourceUrl);
+        val configResp = ManagedHttpClient.shared.get(sourceUrl);
         if(!configResp.isOk)
             throw IllegalStateException("Failed request with ${configResp.code}");
         val configJson = configResp.body?.string();
@@ -344,7 +344,7 @@ class StatePlugins {
     }
     fun installPlugin(context: Context, scope: CoroutineScope, sourceUrl: String, assumeReinstall: Boolean = false, handler: ((Boolean) -> Unit)? = null) {
         scope.launch(Dispatchers.IO) {
-            val client = ManagedHttpClient();
+            val client = ManagedHttpClient.shared;
             val config: SourcePluginConfig;
             try {
                 val configResp = client.get(sourceUrl);
@@ -403,7 +403,7 @@ class StatePlugins {
         }
     }
     fun installPlugin(context: Context, scope: CoroutineScope, config: SourcePluginConfig, script: String, assumeReinstall: Boolean = false, handler: ((Boolean)->Unit)? = null) {
-        val client = ManagedHttpClient();
+        val client = ManagedHttpClient.shared;
         val warnings = config.getWarnings();
 
         if (script.isEmpty())

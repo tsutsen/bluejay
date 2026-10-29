@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.api.http
 
 import androidx.collection.arrayMapOf
+import com.tsutsen.platformplayer.PlatformPlayerApp
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.SettingsDev
 import com.tsutsen.platformplayer.constructs.Event1
@@ -8,6 +9,7 @@ import com.tsutsen.platformplayer.ensureNotMainThread
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.stores.FragmentedStorage
+import okhttp3.Cache
 import okhttp3.Call
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -365,6 +367,20 @@ open class ManagedHttpClient {
 
     companion object {
         val TAG = "ManagedHttpClient";
+
+        /**
+         * Process-wide read-only client. OkHttp only caches responses whose
+         * headers allow it, so plugin JSON/config fetches benefit while
+         * session clients (cookies, custom timeouts) keep their own instance.
+         */
+        val shared: ManagedHttpClient by lazy {
+            val context = PlatformPlayerApp.context
+                ?: error("PlatformPlayerApp.context is not initialized")
+            ManagedHttpClient(
+                OkHttpClient.Builder()
+                    .cache(Cache(File(context.cacheDir, "okhttp"), 50L * 1024 * 1024)),
+            )
+        };
 
         @Volatile private var _cachedCompositePair: Pair<SSLSocketFactory, X509TrustManager>? = null;
         @Volatile private var _cachedCompositeMtime: Long = -1L;

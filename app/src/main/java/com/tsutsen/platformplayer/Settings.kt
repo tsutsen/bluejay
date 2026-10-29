@@ -317,7 +317,9 @@ class Settings {
 
     @Serializable
     class LoggingSettings {
-        var logLevel: Int = 2 // INFO level
+        // Debug: file + logcat at INFO. Release: no consumers are attached
+        // (StateApp checks logLevel > NONE), so logging stays off.
+        var logLevel: Int = if (BuildConfig.DEBUG) LogLevel.INFORMATION.value else LogLevel.NONE.value
     }
 
     @Serializable

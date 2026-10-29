@@ -42,7 +42,7 @@ import kotlin.reflect.jvm.jvmErasure
 
 class DeveloperEndpoints(private val context: Context) {
     private val TAG = "DeveloperEndpoints";
-    private val _client = ManagedHttpClient();
+    private val _client = ManagedHttpClient.shared;
     private var _testPlugin: V8Plugin? = null;
     private var _testPluginFull: JSClient? = null;
     private val testPluginOrThrow: V8Plugin get() = _testPlugin ?: throw IllegalStateException("Attempted to use test plugin without plugin");

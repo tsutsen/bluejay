@@ -27,7 +27,7 @@ class HttpProxyHandler(method: String, path: String, val targetUrl: String, priv
     private var _injectHost = false;
     private var _injectReferer = false;
 
-    private val _client = ManagedHttpClient();
+    private val _client = ManagedHttpClient.shared;
     private var _requestModifier: ((String, Map<String, String>) -> IRequest)? = null;
 
     override fun handle(context: HttpContext) {
