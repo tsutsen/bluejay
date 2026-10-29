@@ -9,6 +9,11 @@ import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 /**
@@ -32,6 +37,12 @@ object HomebrewRecommendations {
     /** Items each source contributes to the merged feed. */
     private const val SOURCE_ITEM_LIMIT = 10
 
+    /** Random subscription channels sampled for source 2 (each is a plugin call). */
+    private const val SUB_SAMPLE_SIZE = 6
+
+    /** Concurrent channel fetches (plugin calls are the bottleneck). */
+    private const val CHANNEL_CONCURRENCY = 4
+
     /** How many top creators (by recent watch time) source 3 considers. */
     private const val TOP_CREATOR_LIMIT = 5
 
@@ -50,20 +61,25 @@ object HomebrewRecommendations {
         settings: Settings.RecommendationsSettings,
     ): List<Card> =
         withContext(Dispatchers.IO) {
-            val sources = mutableListOf<List<Card>>()
-            if (settings.sourceYoutubeFeed) {
-                sources += youtubeFeed()
-                    .also { if (it.isEmpty()) Logger.i(TAG, "YouTube feed source empty/failed") }
+            // Sources run concurrently — each is a network/plugin fetch and
+            // the total is max(source), not the sum.
+            coroutineScope {
+                val futures = mutableListOf<kotlinx.coroutines.Deferred<List<Card>>>()
+                if (settings.sourceYoutubeFeed) {
+                    futures += async { youtubeFeed() }
+                }
+                if (settings.sourceSubscriptions) {
+                    futures += async { subscriptionVideos(historyDao) }
+                }
+                if (settings.sourceTopCreators) {
+                    futures += async { topCreatorVideos(historyDao) }
+                }
+                val sources = futures.awaitAll()
+                sources.forEachIndexed { i, s ->
+                    if (s.isEmpty()) Logger.i(TAG, "Source ${i + 1} empty/failed")
+                }
+                interleave(sources)
             }
-            if (settings.sourceSubscriptions) {
-                sources += subscriptionVideos(historyDao)
-                    .also { if (it.isEmpty()) Logger.i(TAG, "Subscriptions source empty/failed") }
-            }
-            if (settings.sourceTopCreators) {
-                sources += topCreatorVideos(historyDao)
-                    .also { if (it.isEmpty()) Logger.i(TAG, "Top creators source empty/failed") }
-            }
-            interleave(sources)
         }
 
     /** Source 1: the logged-in platform home feed, exactly like the plain home refresh. */
@@ -80,16 +96,25 @@ object HomebrewRecommendations {
     /** Source 2: recent videos from each subscribed channel, unwatched only, shuffled. */
     private suspend fun subscriptionVideos(historyDao: HistoryDao): List<Card> =
         runCatching {
-            val contents = mutableListOf<IPlatformContent>()
-            for (sub in StateSubscriptions.instance.getSubscriptions()) {
-                try {
-                    // A fresh pager has no results until a page is loaded.
-                    val pager = StatePlatform.instance.getChannelContent(sub.channel.url)
-                    contents += PagerFlow(pager, { it }, { it.id }).loadInitial()
-                } catch (e: Exception) {
-                    Logger.w(TAG, "Channel contents failed for ${sub.channel.url}", e)
-                }
+            val subs = StateSubscriptions.instance.getSubscriptions().shuffled().take(SUB_SAMPLE_SIZE)
+            val permits = Semaphore(CHANNEL_CONCURRENCY)
+            val perChannel = coroutineScope {
+                subs.map { sub ->
+                    async {
+                        permits.withPermit {
+                            try {
+                                // A fresh pager has no results until a page is loaded.
+                                val pager = StatePlatform.instance.getChannelContent(sub.channel.url)
+                                PagerFlow(pager, { it }, { it.id }).loadInitial()
+                            } catch (e: Exception) {
+                                Logger.w(TAG, "Channel contents failed for ${sub.channel.url}", e)
+                                emptyList()
+                            }
+                        }
+                    }
+                }.awaitAll()
             }
+            val contents = perChannel.flatten()
             unwatched(contents, historyDao)
                 .shuffled()
                 .take(SOURCE_ITEM_LIMIT)
@@ -101,15 +126,23 @@ object HomebrewRecommendations {
         runCatching {
             val sinceMs = System.currentTimeMillis() - WATCH_WINDOW_MS
             val creators = historyDao.topCreatorsByWatchTimeSince(sinceMs, MIN_WATCHED_MS, TOP_CREATOR_LIMIT)
-            val contents = mutableListOf<IPlatformContent>()
-            for (creator in creators) {
-                try {
-                    val pager = StatePlatform.instance.getChannelContent(creator.authorUrl)
-                    contents += PagerFlow(pager, { it }, { it.id }).loadInitial()
-                } catch (e: Exception) {
-                    Logger.w(TAG, "Channel contents failed for ${creator.authorUrl}", e)
-                }
+            val permits = Semaphore(CHANNEL_CONCURRENCY)
+            val perCreator = coroutineScope {
+                creators.map { creator ->
+                    async {
+                        permits.withPermit {
+                            try {
+                                val pager = StatePlatform.instance.getChannelContent(creator.authorUrl)
+                                PagerFlow(pager, { it }, { it.id }).loadInitial()
+                            } catch (e: Exception) {
+                                Logger.w(TAG, "Channel contents failed for ${creator.authorUrl}", e)
+                                emptyList()
+                            }
+                        }
+                    }
+                }.awaitAll()
             }
+            val contents = perCreator.flatten()
             unwatched(contents, historyDao)
                 .take(SOURCE_ITEM_LIMIT)
                 .let(EngineCardMapper::toCards)
