@@ -22,12 +22,17 @@ import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import javax.inject.Inject
@@ -51,6 +56,11 @@ class EngineHomeRepositoryImpl
         override val enabledSources: StateFlow<List<SourceInfo>> = _enabledSources.asStateFlow()
 
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
+
+        // Homebrew mode: the per-source pagers (home refresh, sampled sub
+        // channels, top creators) backing the merged feed, kept alive so
+        // loadNextPage() can page them — infinite scroll in homebrew mode.
+        private var _homebrewFlows: List<PagerFlow<IPlatformContent, Card>> = emptyList()
 
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -97,6 +107,8 @@ class EngineHomeRepositoryImpl
         private suspend fun doLoadInitial() {
             Logger.i("EngineHomeRepository", "loadInitial")
             _feed.update { it.copy(isLoading = true, error = null) }
+            // Homebrew pagers from a previous load are stale.
+            _homebrewFlows = emptyList()
 
             // Engine calls below (plugin init, home pager nextPage) run V8
             // `busy`/runBlocking and must not execute on the main thread —
@@ -139,17 +151,27 @@ class EngineHomeRepositoryImpl
             // fall through to the plain home refresh below (today's behavior).
             val recommendations = Settings.instance.recommendations
             if (recommendations.homebrewRecommendations) {
-                val merged = HomebrewRecommendations.buildFeed(historyDao, recommendations)
+                val merged =
+                    HomebrewRecommendations.buildFeed(
+                        historyDao,
+                        recommendations,
+                        onPartial = { partial -> mergePartialFeed(partial) },
+                        onFlows = { flows -> _homebrewFlows = flows },
+                    )
                 if (merged.isNotEmpty()) {
-                    // No pager backs the merged feed: infinite scroll is off.
+                    // No single pager backs the merged feed: loadNextPage()
+                    // pages the per-source flows instead (infinite scroll on).
                     _pagerFlow = null
                     val visible = applyContentFilters(merged)
-                    Logger.i("EngineHomeRepository", "Recommendations feed: ${visible.size} cards")
+                    Logger.i(
+                        "EngineHomeRepository",
+                        "Recommendations feed: ${visible.size} cards, flows=${_homebrewFlows.size}, hasMore=${_homebrewFlows.any { it.hasMore }}",
+                    )
                     _feed.update {
                         it.copy(
                             isLoading = false,
                             items = visible,
-                            hasMorePages = false,
+                            hasMorePages = _homebrewFlows.any { flow -> flow.hasMore },
                             error = null,
                             currentPage = 1,
                         )
@@ -157,6 +179,7 @@ class EngineHomeRepositoryImpl
                     cacheFeed(visible)
                     return@withContext
                 }
+                _homebrewFlows = emptyList()
                 if (recommendations.sourceYoutubeFeed) {
                     Logger.i("EngineHomeRepository", "Recommendations empty, falling back to home refresh")
                 } else {
@@ -309,10 +332,11 @@ class EngineHomeRepositoryImpl
             _feed.update { it.copy(isLoading = true) }
 
             try {
-                // Null pager = recommendations mode (merged list, no next page).
+                // Null pager = homebrew recommendations mode: page the
+                // per-source flows instead of a single pager.
                 val flow = _pagerFlow
                 if (flow == null) {
-                    _feed.update { it.copy(isLoading = false) }
+                    loadNextHomebrewPage()
                     return
                 }
                 Logger.i("EngineHomeRepository", "hasMore=${flow.hasMore}")
@@ -340,6 +364,67 @@ class EngineHomeRepositoryImpl
                 }
             } finally {
                 loadNextPageInFlight.set(false)
+            }
+        }
+
+        /**
+         * Homebrew mode has no single pager: run every per-source flow's
+         * loadNextPage() concurrently (Semaphore(4)), dedupe the appended
+         * cards by id, append them to the feed, and keep hasMorePages =
+         * any flow still has more.
+         */
+        private suspend fun loadNextHomebrewPage() {
+            val flows = _homebrewFlows
+            if (flows.isEmpty() || flows.none { it.hasMore }) {
+                _feed.update { it.copy(isLoading = false) }
+                return
+            }
+            val appended =
+                withContext(Dispatchers.IO) {
+                    val permits = Semaphore(4)
+                    coroutineScope {
+                        flows
+                            .map { f ->
+                                async {
+                                    if (!f.hasMore) {
+                                        emptyList<Card>()
+                                    } else {
+                                        permits.withPermit { f.loadNextPage() }
+                                    }
+                                }
+                            }.awaitAll()
+                            .flatten()
+                    }
+                }
+            val state = _feed.value
+            val seen = state.items.mapTo(mutableSetOf()) { it.id }
+            val fresh = appended.filter { seen.add(it.id) }
+            val visible = applyContentFilters(state.items + fresh)
+            Logger.i(
+                "EngineHomeRepository",
+                "Homebrew loadNextPage: +${fresh.size} new, ${visible.size} total, hasMore=${flows.any { it.hasMore }}",
+            )
+            _feed.update {
+                it.copy(
+                    isLoading = false,
+                    items = visible,
+                    hasMorePages = flows.any { f -> f.hasMore },
+                    currentPage = it.currentPage + 1,
+                )
+            }
+        }
+
+        /**
+         * Progressive homebrew emit: appends the source's unseen cards
+         * (deduped by id) while the other sources still run — isLoading
+         * stays true until buildFeed's final result replaces the feed.
+         */
+        private fun mergePartialFeed(partial: List<Card>) {
+            if (partial.isEmpty()) return
+            _feed.update { state ->
+                val seen = state.items.mapTo(mutableSetOf()) { it.id }
+                val fresh = partial.filter { seen.add(it.id) }
+                if (fresh.isEmpty()) state else state.copy(items = state.items + fresh)
             }
         }
 

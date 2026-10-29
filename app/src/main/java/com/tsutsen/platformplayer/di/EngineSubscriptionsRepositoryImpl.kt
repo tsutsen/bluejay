@@ -33,10 +33,36 @@ import javax.inject.Singleton
 
 /** On-disk payload for the Subs tab feed cache (file store: no Room bump). */
 @Serializable
-private data class SubsFeedCache(
+internal data class SubsFeedCache(
     val cachedAt: Long = 0L,
     val items: List<SerializedPlatformContent> = emptyList(),
 )
+
+/** File-store key of the subs feed cache (also read by HomebrewRecommendations source 2). */
+internal const val SUBS_FEED_CACHE_KEY = "subscriptions_feed_cache"
+
+/** Cached feed is a launch shortcut only; after this, wait for fresh data. */
+internal const val SUBS_FEED_CACHE_TTL_MS = 60L * 60L * 1000L
+
+/**
+ * The subs feed file cache when still fresh (< [SUBS_FEED_CACHE_TTL_MS]),
+ * else null. Read by the Subs tab (cache-first paint) and by
+ * HomebrewRecommendations (source 2 seeds from it).
+ */
+internal suspend fun readFreshSubsFeedCache(): List<IPlatformContent>? =
+    try {
+        val raw = FragmentedStorage.get<StringStorage>(SUBS_FEED_CACHE_KEY).value
+        if (raw.isBlank()) return null // StringStorage default is ""
+        val payload = Serializer.json.decodeFromString<SubsFeedCache>(raw)
+        if (System.currentTimeMillis() - payload.cachedAt > SUBS_FEED_CACHE_TTL_MS || payload.items.isEmpty()) {
+            null
+        } else {
+            payload.items.toList()
+        }
+    } catch (e: Exception) {
+        Logger.w("SubsFeedCache", "Failed to load cached feed", e)
+        null
+    }
 
 /**
  * Bridges the engine subscription machinery (StateSubscriptions +
@@ -72,7 +98,7 @@ class EngineSubscriptionsRepositoryImpl
 
         // File-backed cache of the last loaded global feed; painted on launch
         // while a fresh fetch runs (same UX as the home feed's Room cache).
-        private val feedCache by lazy { FragmentedStorage.get<StringStorage>("subscriptions_feed_cache") }
+        private val feedCache by lazy { FragmentedStorage.get<StringStorage>(SUBS_FEED_CACHE_KEY) }
 
         // Cached items currently backing the UI (initial load in flight or a
         // failed refresh); cleared once fresh data lands.
@@ -207,21 +233,7 @@ class EngineSubscriptionsRepositoryImpl
         }
 
         /** @return the cached feed when fresh enough (< [FEED_CACHE_TTL_MS]), else null. */
-        private suspend fun loadCachedFeed(): List<IPlatformContent>? {
-            return try {
-                val raw = feedCache.value
-                if (raw.isBlank()) return null // StringStorage default is ""
-                val payload = Serializer.json.decodeFromString<SubsFeedCache>(raw)
-                if (System.currentTimeMillis() - payload.cachedAt > FEED_CACHE_TTL_MS || payload.items.isEmpty()) {
-                    null
-                } else {
-                    payload.items.toList()
-                }
-            } catch (e: Exception) {
-                Logger.w(TAG, "Failed to load cached feed", e)
-                null
-            }
-        }
+        private suspend fun loadCachedFeed(): List<IPlatformContent>? = readFreshSubsFeedCache()
 
         private suspend fun saveFeedCache(items: List<IPlatformContent>) {
             if (items.isEmpty()) return
@@ -423,7 +435,6 @@ class EngineSubscriptionsRepositoryImpl
 
         private companion object {
             const val TAG = "EngineSubscriptionsRepository"
-            // Cached feed is a launch shortcut only; after this, wait for fresh data.
-            const val FEED_CACHE_TTL_MS = 60L * 60L * 1000L
+            const val FEED_CACHE_TTL_MS = SUBS_FEED_CACHE_TTL_MS
         }
     }
