@@ -13,6 +13,14 @@ interface HistoryDao {
     @Query("SELECT * FROM history WHERE contentUrl = :url")
     suspend fun getByUrl(url: String): HistoryEntity?
 
+    /** Batch lookup for feed filtering (one query for a whole page of urls). */
+    @Query("SELECT * FROM history WHERE contentUrl IN (:urls)")
+    suspend fun getByUrls(urls: List<String>): List<HistoryEntity>
+
+    /** Total watched time per channel url (subscriptions "watch time" ordering). */
+    @Query("SELECT authorUrl AS authorUrl, SUM(watchedMs) AS watchedMs FROM history WHERE authorUrl IS NOT NULL GROUP BY authorUrl")
+    suspend fun watchedTimeByAuthor(): List<AuthorWatchTime>
+
     @Query("SELECT * FROM history ORDER BY watchedAt DESC LIMIT :limit OFFSET :offset")
     suspend fun getPaginated(limit: Int, offset: Int): List<HistoryEntity>
 
@@ -40,3 +48,9 @@ interface HistoryDao {
     @Query("SELECT COUNT(*) FROM history")
     suspend fun count(): Int
 }
+
+/** Room POJO for [HistoryDao.watchedTimeByAuthor]. */
+data class AuthorWatchTime(
+    val authorUrl: String,
+    val watchedMs: Long,
+)

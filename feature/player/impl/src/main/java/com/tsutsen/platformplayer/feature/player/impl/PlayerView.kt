@@ -1436,6 +1436,7 @@ private fun CurrentVideoOptionsSheet(
             }
         },
         onAddToQueue = { viewModel.addToQueue(video) },
+        onHide = { viewModel.hideVideo(video.url) },
         isInQueue = queue.any { it.url == video.url },
         isCurrentlyPlaying = isCurrentlyPlaying,
         onRemoveFromQueue = { viewModel.removeQueueItemUrl(video.url) },

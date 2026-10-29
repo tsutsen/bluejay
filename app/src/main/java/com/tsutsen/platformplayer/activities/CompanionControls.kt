@@ -191,6 +191,12 @@ internal fun CompanionVideoOptionsSheet(
             // choosing actions.
             playbackQueueRepository.add(card.toContentItem())
         },
+        onHide = {
+            // App module: persist directly on the Settings singleton.
+            val s = com.tsutsen.platformplayer.Settings.instance
+            s.content.hiddenVideoUrls = (s.content.hiddenVideoUrls + card.url).distinct()
+            s.save()
+        },
         isInQueue = queue.any { it.url == card.url },
         isCurrentlyPlaying = currentVideoUrl != null && currentVideoUrl == card.url,
         onRemoveFromQueue = {

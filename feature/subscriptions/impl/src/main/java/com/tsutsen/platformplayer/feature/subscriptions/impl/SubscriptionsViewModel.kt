@@ -22,6 +22,7 @@ sealed interface SubscriptionsUiState {
         val filterWatched: Boolean = false,
         val filterVideo: Boolean = true,
         val filterStreams: Boolean = false,
+        val filterShorts: Boolean = false,
         val isLoading: Boolean = false,
         val hasMorePages: Boolean = false,
         val error: String? = null,
@@ -72,6 +73,7 @@ class SubscriptionsViewModel
                             filterWatched = feed.filterWatched,
                             filterVideo = feed.filterVideo,
                             filterStreams = feed.filterStreams,
+                            filterShorts = feed.filterShorts,
                             isLoading = feed.isLoading,
                             hasMorePages = feed.hasMorePages,
                             error = feed.error,
@@ -111,5 +113,9 @@ class SubscriptionsViewModel
 
         fun toggleStreams() {
             viewModelScope.launch { subscriptionRepository.toggleStreams() }
+        }
+
+        fun toggleShorts() {
+            viewModelScope.launch { subscriptionRepository.toggleShorts() }
         }
     }

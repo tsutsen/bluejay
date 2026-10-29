@@ -26,6 +26,13 @@ interface SettingsRepository {
     suspend fun setSearchHistory(history: List<String>)
     suspend fun setShowRecommendedVideos(show: Boolean)
     suspend fun setShowComments(show: Boolean)
+    suspend fun setShowWatchedVideos(show: Boolean)
+    suspend fun setShowStartedVideos(show: Boolean)
+    suspend fun setDockTabOrder(order: List<String>)
+    suspend fun setDefaultDockTab(key: String)
+    suspend fun setSubscriptionsOrder(order: String)
+    /** Persist a video URL as hidden (long-press sheet "Hide"); filtered from the home feed. */
+    suspend fun addHiddenVideoUrl(url: String)
     suspend fun setAutoUpdatePlugins(enabled: Boolean)
     suspend fun setSubtitleFont(font: String)
     suspend fun setSubtitleFontSize(sizeSp: Int)
@@ -67,4 +74,5 @@ interface SettingsRepository {
     suspend fun updateLibrarySectionOrder(order: List<String>)
     suspend fun updateLibrarySectionsEnabled(ids: List<String>)
     suspend fun resetToDefaults()
+
 }

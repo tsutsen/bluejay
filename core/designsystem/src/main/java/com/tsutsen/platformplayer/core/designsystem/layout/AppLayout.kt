@@ -436,6 +436,8 @@ private fun NavigationRailSurface(
 fun AppNavigationChrome(
     currentDestination: String?,
     onTabSelected: (String) -> Unit,
+    // Persisted dock order (Settings); defaults to [bluejayNavItems].
+    items: List<NavItemDef> = bluejayNavItems,
     isWide: Boolean =
         currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM ||
             currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED,
@@ -451,14 +453,14 @@ fun AppNavigationChrome(
         )
     if (isWide) {
         AppNavigationRail(
-            items = bluejayNavItems,
+            items = items,
             currentDestination = currentDestination,
             onTabSelected = onTabSelected,
             labelAlpha = labelAlpha,
         )
     } else {
         AppNavigationBar(
-            items = bluejayNavItems,
+            items = items,
             currentDestination = currentDestination,
             onTabSelected = onTabSelected,
             labelAlpha = labelAlpha,

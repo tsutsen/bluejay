@@ -36,6 +36,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.pip.PictureInPictureDelegate
 import androidx.core.pip.VideoPlaybackPictureInPicture
 import androidx.lifecycle.lifecycleScope
+import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
 import com.tsutsen.platformplayer.gettingstarted.GettingStartedFlow
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
@@ -47,6 +48,8 @@ import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
 import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
+import com.tsutsen.platformplayer.core.designsystem.layout.NavItemDef
+import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
@@ -426,6 +429,9 @@ class MainActivity :
         // Set navigator for non-Compose code access
         StateApp.instance.navigator = navigator
 
+        // Start on the configured default tab (Settings > Content > Dock).
+        navigator.setStartDestination(dockKeyToDestination(Settings.instance.other.defaultDockTab))
+
         enableEdgeToEdge()
 
         setContent {
@@ -512,6 +518,7 @@ private fun BluejayMainActivity(
                     activity,
                     navigator,
                     playerRepository,
+                    settingsRepository,
                 )
                 // One-time first-launch tour: shown until completed or skipped.
                 if (!p.gettingStartedCompleted) {
@@ -535,8 +542,13 @@ private fun bluejayMainActivityContent(
     activity: MainActivity,
     navigator: Navigator,
     playerRepository: PlayerRepository,
+    settingsRepository: SettingsRepository,
 ) {
     val config = rememberAppLayoutConfig()
+    // Dock chrome follows the persisted tab order / default tab (Settings > Content > Dock).
+    val prefs by settingsRepository.preferences.collectAsState()
+    val dockItems = remember(prefs.dockTabOrder) { orderedDockItems(prefs.dockTabOrder) }
+    val startDestination = remember(prefs.defaultDockTab) { dockKeyToDestination(prefs.defaultDockTab) }
     // The shell only reads a few flags — project to them so the 10 Hz
     // position ticks in playerState don't recompose the whole app shell.
     val playerFlags =
@@ -579,6 +591,7 @@ private fun bluejayMainActivityContent(
         navMorphed = navMorphed,
         navigationContent = {
             AppNavigationChrome(
+                items = dockItems,
                 currentDestination =
                     navigator.currentRoute.collectAsState().value?.let { dest ->
                         when (dest) {
@@ -617,7 +630,7 @@ private fun bluejayMainActivityContent(
         content = {
             BluejayNavGraph(
                 navigator = navigator,
-                startDestination = NavDestination.Home,
+                startDestination = startDestination,
             )
             // Player overlay — only rendered when there's a video to play
             if (hasVideo) {
@@ -626,3 +639,21 @@ private fun bluejayMainActivityContent(
         },
     )
 }
+
+/** Dock items in the persisted order; unknown keys dropped, missing keys appended. */
+private fun orderedDockItems(order: List<String>): List<NavItemDef> {
+    val known = bluejayNavItems
+    return order.mapNotNull { key -> known.find { it.key == key } } +
+        known.filter { item -> item.key !in order }
+}
+
+/** Maps a dock tab key to its start destination (default: Home). */
+private fun dockKeyToDestination(key: String): NavDestination =
+    when (key) {
+        "search" -> NavDestination.Search
+        "subscriptions" -> NavDestination.Subscriptions
+        "library" -> NavDestination.Library
+        "notifications" -> NavDestination.Notifications
+        "settings" -> NavDestination.Settings
+        else -> NavDestination.Home
+    }

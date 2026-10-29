@@ -549,6 +549,11 @@ class PlayerViewModel
             toggleSaveType(SavedVideoType.FAVOURITE, saved)
         }
 
+        /** "Hide" tile on the options sheet: persist the url as hidden (filtered from the home feed). */
+        fun hideVideo(url: String) {
+            viewModelScope.launch { settingsRepository.addHiddenVideoUrl(url) }
+        }
+
         /**
          * Toggle the current video in/out of a saved list. Like and dislike are
          * mutually exclusive: adding one removes the other.

@@ -23,4 +23,6 @@ data class SubscriptionFeed(
     val filterWatched: Boolean = true,
     val filterVideo: Boolean = true,
     val filterStreams: Boolean = false,
+    // When on, the feed shows only shorts (IPlatformVideo.isShort).
+    val filterShorts: Boolean = false,
 )

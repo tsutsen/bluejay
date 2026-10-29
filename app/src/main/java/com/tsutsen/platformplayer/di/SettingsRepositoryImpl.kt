@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.di
 
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
@@ -99,7 +100,12 @@ class SettingsRepositoryImpl
                 homeLoginPromptsDismissed = s.feed.loginPromptsDismissed,
                 showRecommendedVideos = s.content.showRecommendedVideos,
                 showComments = s.content.showComments,
+                showWatchedVideos = s.content.showWatchedVideos,
+                showStartedVideos = s.content.showStartedVideos,
                 autoUpdatePlugins = s.plugins.autoUpdatePlugins,
+                dockTabOrder = s.other.dockTabOrder,
+                defaultDockTab = s.other.defaultDockTab,
+                subscriptionsOrder = s.subscriptions.subscriptionsOrder,
             )
         }
 
@@ -188,6 +194,24 @@ class SettingsRepositoryImpl
 
         override suspend fun setShowComments(show: Boolean) =
             persist { it.content.showComments = show }
+
+        override suspend fun setShowWatchedVideos(show: Boolean) =
+            persist { it.content.showWatchedVideos = show }
+
+        override suspend fun setShowStartedVideos(show: Boolean) =
+            persist { it.content.showStartedVideos = show }
+
+        override suspend fun setDockTabOrder(order: List<String>) =
+            persist { it.other.dockTabOrder = order }
+
+        override suspend fun setDefaultDockTab(key: String) =
+            persist { it.other.defaultDockTab = key }
+
+        override suspend fun setSubscriptionsOrder(order: String) =
+            persist { it.subscriptions.subscriptionsOrder = order }
+
+        override suspend fun addHiddenVideoUrl(url: String) =
+            persist { it.content.hiddenVideoUrls = (it.content.hiddenVideoUrls + url).distinct() }
 
         override suspend fun setAutoUpdatePlugins(enabled: Boolean) =
             persist { it.plugins.autoUpdatePlugins = enabled }
@@ -382,6 +406,11 @@ class SettingsRepositoryImpl
             s.feed.gridColumns = 3
             s.content.showRecommendedVideos = true
             s.content.showComments = true
+            s.content.showWatchedVideos = true
+            s.content.showStartedVideos = true
+            s.other.dockTabOrder = bluejayNavItems.map { it.key }
+            s.other.defaultDockTab = "home"
+            s.subscriptions.subscriptionsOrder = "watchtime"
             s.playback.defaultPlaybackSpeed = 1f
             s.playback.defaultSpeedup = 2f
             s.playback.speedupSensitivity = 1f

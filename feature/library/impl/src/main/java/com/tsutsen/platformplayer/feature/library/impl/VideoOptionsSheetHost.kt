@@ -99,6 +99,7 @@ fun VideoOptionsSheetHost(
             }
         },
         onRemoveFromHistory = onRemoveFromHistory,
+        onHide = { viewModel.hideVideo(video.url) },
         onAddToQueue = {
             // No onDismiss: the sheet stays open so the user can keep
             // choosing actions.

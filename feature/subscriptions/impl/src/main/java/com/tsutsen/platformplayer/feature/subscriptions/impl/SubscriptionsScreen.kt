@@ -136,6 +136,7 @@ fun SubscriptionsScreen(
                         onWatchedToggle = viewModel::toggleWatched,
                         onVideoToggle = viewModel::toggleVideo,
                         onStreamsToggle = viewModel::toggleStreams,
+                        onShortsToggle = viewModel::toggleShorts,
                         onRefresh = viewModel::refresh,
                         onLoadMore = viewModel::loadMore,
                         onVideoLongClick = { optionsCard = it },
@@ -198,6 +199,7 @@ private fun SubscriptionsContent(
     onWatchedToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onStreamsToggle: () -> Unit,
+    onShortsToggle: () -> Unit,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onItemClicked: (ModelVideoCard) -> Unit,
@@ -283,10 +285,12 @@ private fun SubscriptionsContent(
                         filterWatched = state.filterWatched,
                         filterVideo = state.filterVideo,
                         filterStreams = state.filterStreams,
+                        filterShorts = state.filterShorts,
                         onStartedToggle = onStartedToggle,
                         onWatchedToggle = onWatchedToggle,
                         onVideoToggle = onVideoToggle,
                         onStreamsToggle = onStreamsToggle,
+                        onShortsToggle = onShortsToggle,
                     )
 
                     // Videos in grid
@@ -365,10 +369,12 @@ private fun SubscriptionsContent(
                     filterWatched = state.filterWatched,
                     filterVideo = state.filterVideo,
                     filterStreams = state.filterStreams,
+                    filterShorts = state.filterShorts,
                     onStartedToggle = onStartedToggle,
                     onWatchedToggle = onWatchedToggle,
                     onVideoToggle = onVideoToggle,
                     onStreamsToggle = onStreamsToggle,
+                    onShortsToggle = onShortsToggle,
                 )
 
                 // Creator avatar strip
@@ -578,10 +584,12 @@ private fun SubsHeader(
     filterWatched: Boolean,
     filterVideo: Boolean,
     filterStreams: Boolean,
+    filterShorts: Boolean,
     onStartedToggle: () -> Unit,
     onWatchedToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onStreamsToggle: () -> Unit,
+    onShortsToggle: () -> Unit,
 ) {
     Row(
         modifier =
@@ -621,6 +629,12 @@ private fun SubsHeader(
             selected = filterWatched,
             onClick = onWatchedToggle,
             label = { Text("Watched") },
+            shapes = tokenizedChipShapes(),
+        )
+        FilterChip(
+            selected = filterShorts,
+            onClick = onShortsToggle,
+            label = { Text("Shorts") },
             shapes = tokenizedChipShapes(),
         )
     }

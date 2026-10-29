@@ -1,11 +1,14 @@
 package com.tsutsen.platformplayer.di
 
+import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
+import com.tsutsen.platformplayer.core.database.dao.HistoryDao
 import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.model.SubscriptionFeed
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.models.Subscription
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.CoroutineScope
@@ -39,7 +42,9 @@ import javax.inject.Singleton
 @Singleton
 class EngineSubscriptionsRepositoryImpl
     @Inject
-    constructor() : SubscriptionRepository {
+    constructor(
+        private val historyDao: HistoryDao,
+    ) : SubscriptionRepository {
         // Starts "loading" so the screen shows a spinner from the first
         // frame instead of a momentary empty state.
         private val _feed = MutableStateFlow(SubscriptionFeed(isLoading = true))
@@ -61,7 +66,8 @@ class EngineSubscriptionsRepositoryImpl
         override suspend fun loadCreators() {
             Logger.i(TAG, "Loading creators...")
             try {
-                _feed.update { it.copy(creators = scanCreators()) }
+                val creators = scanCreators()
+                _feed.update { it.copy(creators = creators) }
                 loadFeed()
             } catch (e: Exception) {
                 Logger.e(TAG, "Error loading creators", e)
@@ -128,6 +134,11 @@ class EngineSubscriptionsRepositoryImpl
             applyFilters()
         }
 
+        override suspend fun toggleShorts() {
+            _feed.update { it.copy(filterShorts = !it.filterShorts) }
+            applyFilters()
+        }
+
         /** Rebuilds the pager for the current scope and applies filters. */
         private suspend fun reload(updated: Boolean) {
             _feed.update { it.copy(isLoading = true) }
@@ -169,7 +180,8 @@ class EngineSubscriptionsRepositoryImpl
          */
         private suspend fun resyncSubscriptions() {
             withContext(Dispatchers.IO) {
-                _feed.update { it.copy(creators = scanCreators()) }
+                val creators = scanCreators()
+                _feed.update { it.copy(creators = creators) }
                 val active = _feed.value.activeCreatorId
                 when {
                     // A still-subscribed channel: its own pager is
@@ -209,8 +221,38 @@ class EngineSubscriptionsRepositoryImpl
             }
         }
 
-        private fun scanCreators(): List<SubscriptionCreator> {
-            val subs = StateSubscriptions.instance.getSubscriptions()
+        // Stable per app session: the "random" order reshuffles only when the
+        // subscription count changes, not on every fetch.
+        private var randomSubOrder: List<Subscription>? = null
+
+        /** Orders the subs list for the Subs tab per Settings > subscriptionsOrder. */
+        private suspend fun orderedSubscriptions(subs: List<Subscription>): List<Subscription> =
+            when (Settings.instance.subscriptions.subscriptionsOrder) {
+                "random" -> {
+                    val cached = randomSubOrder
+                    if (cached != null && cached.size == subs.size) {
+                        cached
+                    } else {
+                        subs.shuffled().also { randomSubOrder = it }
+                    }
+                }
+
+                "alphabetical" -> subs.sortedBy { it.channel.name.lowercase() }
+
+                // "watchtime" (default): total watched time from history per
+                // channel, alphabetical fallback for channels without history.
+                else -> {
+                    val times =
+                        historyDao.watchedTimeByAuthor().associate { it.authorUrl to it.watchedMs }
+                    subs.sortedWith(
+                        compareByDescending<Subscription> { times[it.channel.url] ?: 0L }
+                            .thenBy { it.channel.name.lowercase() },
+                    )
+                }
+            }
+
+        private suspend fun scanCreators(): List<SubscriptionCreator> {
+            val subs = orderedSubscriptions(StateSubscriptions.instance.getSubscriptions())
             return subs.mapNotNull { sub ->
                 val channel = sub.channel
                 SubscriptionCreator(
@@ -249,6 +291,10 @@ class EngineSubscriptionsRepositoryImpl
             val showWatched = state.filterWatched
             filtered =
                 filtered.filter { content ->
+                    // Shorts filter: on = only short videos (hides non-videos too).
+                    if (state.filterShorts && (content as? IPlatformVideo)?.isShort != true) {
+                        return@filter false
+                    }
                     val video = content as? IPlatformVideo ?: return@filter true
                     if (video.isLive) {
                         if (!showLive) return@filter false

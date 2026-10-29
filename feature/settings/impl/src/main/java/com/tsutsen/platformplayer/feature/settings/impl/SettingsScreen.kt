@@ -68,12 +68,15 @@ import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.RoundedCorner
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.AlertDialog
@@ -118,6 +121,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.SettingsSliderCard
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
 import com.tsutsen.platformplayer.core.designsystem.component.groupShape
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
+import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
@@ -560,6 +564,56 @@ fun SettingsSectionScreen(
                             if (checked) it.librarySectionsEnabled + key else it.librarySectionsEnabled - key,
                         )
                     },
+                )
+            }
+        }
+
+        Choice.DOCK_TAB_ORDER -> {
+            loaded?.let {
+                val names = bluejayNavItems.associate { item -> item.key to item.label }
+                ReorderDialog(
+                    title = "Tab order",
+                    // The saved list is the order; show all known tabs, missing keys appended.
+                    items =
+                        (it.dockTabOrder + (names.keys - it.dockTabOrder))
+                            .map { id -> id to (names[id] ?: id) },
+                    onChange = { newOrder -> viewModel.setDockTabOrder(newOrder) },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.DEFAULT_DOCK_TAB -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Default tab",
+                    options = bluejayNavItems.map { it.label to it.key },
+                    selected = it.defaultDockTab,
+                    onSelected = { value ->
+                        viewModel.setDefaultDockTab(value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.SUBSCRIPTIONS_ORDER -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Subscriptions list order",
+                    options =
+                        listOf(
+                            "Watch time" to "watchtime",
+                            "Alphabetical" to "alphabetical",
+                            "Random" to "random",
+                        ),
+                    selected = it.subscriptionsOrder,
+                    onSelected = { value ->
+                        viewModel.setSubscriptionsOrder(value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
                 )
             }
         }
@@ -1050,6 +1104,95 @@ private fun SectionItems(
                         title = "Library sections",
                         subtitle = "Order and visibility of sections on the library screen",
                         onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Home feed",
+                        reset =
+                            if (
+                                state.showWatchedVideos != defaults.showWatchedVideos ||
+                                state.showStartedVideos != defaults.showStartedVideos
+                            ) {
+                                {
+                                    viewModel.setShowWatchedVideos(defaults.showWatchedVideos)
+                                    viewModel.setShowStartedVideos(defaults.showStartedVideos)
+                                }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.Visibility,
+                        title = "Show watched videos",
+                        subtitle = "Hide fully watched videos from the home feed",
+                        checked = state.showWatchedVideos,
+                        onCheckedChange = { viewModel.setShowWatchedVideos(it) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.History,
+                        title = "Show started videos",
+                        subtitle = "Hide partially watched videos from the home feed",
+                        checked = state.showStartedVideos,
+                        onCheckedChange = { viewModel.setShowStartedVideos(it) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Dock",
+                        reset =
+                            if (
+                                state.dockTabOrder != defaults.dockTabOrder ||
+                                state.defaultDockTab != defaults.defaultDockTab
+                            ) {
+                                {
+                                    viewModel.setDockTabOrder(defaults.dockTabOrder)
+                                    viewModel.setDefaultDockTab(defaults.defaultDockTab)
+                                }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Reorder,
+                        title = "Tab order",
+                        subtitle = "Drag to reorder the bottom navigation tabs",
+                        onClick = { onChoiceSelected(Choice.DOCK_TAB_ORDER) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.PlayCircle,
+                        title = "Default tab",
+                        subtitle =
+                            bluejayNavItems.firstOrNull { it.key == state.defaultDockTab }?.label
+                                ?: "Home",
+                        onClick = { onChoiceSelected(Choice.DEFAULT_DOCK_TAB) },
+                        groupPosition = GroupPosition.Last,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                    SettingsHeader(
+                        title = "Subscriptions",
+                        reset =
+                            if (state.subscriptionsOrder != defaults.subscriptionsOrder) {
+                                { viewModel.setSubscriptionsOrder(defaults.subscriptionsOrder) }
+                            } else {
+                                null
+                            },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Subscriptions,
+                        title = "List order",
+                        subtitle =
+                            when (state.subscriptionsOrder) {
+                                "random" -> "Random"
+                                "alphabetical" -> "Alphabetical"
+                                else -> "Watch time"
+                            },
+                        onClick = { onChoiceSelected(Choice.SUBSCRIPTIONS_ORDER) },
+                        groupPosition = GroupPosition.First,
                     )
                 }
             }
@@ -1883,6 +2026,9 @@ private enum class Choice {
     DUAL_SLOTS,
     DUAL_FEED_SOURCES,
     LIBRARY_SECTION_ORDER,
+    DOCK_TAB_ORDER,
+    DEFAULT_DOCK_TAB,
+    SUBSCRIPTIONS_ORDER,
     PLAYBACK_SPEED,
     SPEEDUP_SENSITIVITY,
     JUMP_STEP,

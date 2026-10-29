@@ -61,4 +61,9 @@ interface SubscriptionRepository {
      * Toggle "Live" filter: only live streams.
      */
     suspend fun toggleStreams()
+
+    /**
+     * Toggle "Shorts" filter: when on, only short videos (isShort) are shown.
+     */
+    suspend fun toggleShorts()
 }

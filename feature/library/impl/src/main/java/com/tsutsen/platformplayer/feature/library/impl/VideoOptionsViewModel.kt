@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.ContentType
@@ -36,6 +37,7 @@ class VideoOptionsViewModel
         private val libraryRepository: LibraryRepository,
         private val downloadsRepository: DownloadsRepository,
         private val playbackQueueRepository: PlaybackQueueRepository,
+        private val settingsRepository: SettingsRepository,
     ) : ViewModel() {
         private val savedTypesCache = mutableMapOf<String, StateFlow<Set<SavedVideoType>>>()
 
@@ -50,6 +52,11 @@ class VideoOptionsViewModel
 
         fun removeFromQueue(url: String) {
             playbackQueueRepository.remove(url)
+        }
+
+        /** "Hide" tile: persist the url as hidden (filtered from the home feed). */
+        fun hideVideo(url: String) {
+            viewModelScope.launch { settingsRepository.addHiddenVideoUrl(url) }
         }
 
         fun consumeDownloadMessage() {

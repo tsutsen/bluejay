@@ -40,7 +40,12 @@ sealed interface SettingsUiState {
         val gridColumns: Int,
         val showRecommendedVideos: Boolean,
         val showComments: Boolean,
+        val showWatchedVideos: Boolean,
+        val showStartedVideos: Boolean,
         val autoUpdatePlugins: Boolean,
+        val dockTabOrder: List<String>,
+        val defaultDockTab: String,
+        val subscriptionsOrder: String,
         val playerGestures: PlayerGesturePreferences,
         val jumpStepSeconds: Int = 5,
         val controller: ControllerPreferences = ControllerPreferences(),
@@ -121,7 +126,12 @@ class SettingsViewModel
                                 gridColumns = prefs.gridColumns,
                                 showRecommendedVideos = prefs.showRecommendedVideos,
                                 showComments = prefs.showComments,
+                                showWatchedVideos = prefs.showWatchedVideos,
+                                showStartedVideos = prefs.showStartedVideos,
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
+                                dockTabOrder = prefs.dockTabOrder,
+                                defaultDockTab = prefs.defaultDockTab,
+                                subscriptionsOrder = prefs.subscriptionsOrder,
                                 playerGestures = prefs.playerGestures,
                                 jumpStepSeconds = prefs.jumpStepSeconds,
                                 controller = prefs.controller,
@@ -257,6 +267,26 @@ class SettingsViewModel
                 bottomCenter = if (slot == "bottomCenter") map else bottomCenter,
                 bottomRight = if (slot == "bottomRight") map else bottomRight,
             )
+
+        fun setShowWatchedVideos(show: Boolean) {
+            viewModelScope.launch { settingsRepository.setShowWatchedVideos(show) }
+        }
+
+        fun setShowStartedVideos(show: Boolean) {
+            viewModelScope.launch { settingsRepository.setShowStartedVideos(show) }
+        }
+
+        fun setDockTabOrder(order: List<String>) {
+            viewModelScope.launch { settingsRepository.setDockTabOrder(order) }
+        }
+
+        fun setDefaultDockTab(key: String) {
+            viewModelScope.launch { settingsRepository.setDefaultDockTab(key) }
+        }
+
+        fun setSubscriptionsOrder(order: String) {
+            viewModelScope.launch { settingsRepository.setSubscriptionsOrder(order) }
+        }
 
         fun setLibrarySectionOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateLibrarySectionOrder(order) }

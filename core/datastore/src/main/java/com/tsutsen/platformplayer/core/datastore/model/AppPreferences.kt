@@ -42,10 +42,21 @@ data class AppPreferences(
     val searchHistory: List<String> = emptyList(),
     val showRecommendedVideos: Boolean = true,
     val showComments: Boolean = true,
+    /** Home feed: hide fully watched videos (history position >= 95% of duration). */
+    val showWatchedVideos: Boolean = true,
+    /** Home feed: hide started-but-unfinished videos (history position > 0). */
+    val showStartedVideos: Boolean = true,
     val autoUpdatePlugins: Boolean = true,
     val gettingStartedCompleted: Boolean = false,
     /** Source ids whose home-feed login notice was declined. */
     val homeLoginPromptsDismissed: List<String> = emptyList(),
+    /** Dock tab keys in display order (empty/partial = default order, missing keys appended). */
+    val dockTabOrder: List<String> =
+        listOf("home", "search", "subscriptions", "library", "notifications", "settings"),
+    /** Dock tab key the app starts on ("home" by default). */
+    val defaultDockTab: String = "home",
+    /** Subscriptions tab list order: "random" | "watchtime" | "alphabetical". */
+    val subscriptionsOrder: String = "watchtime",
 )
 
 /**

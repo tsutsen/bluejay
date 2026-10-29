@@ -36,6 +36,17 @@ class Navigator
         }
 
         /**
+         * Override the start destination (Settings > default tab). Applies
+         * only before any navigation happened, so a recreated activity on
+         * another tab keeps its route.
+         */
+        fun setStartDestination(destination: NavDestination) {
+            if (_backStack.value.isEmpty() && _currentRoute.value == NavDestination.Home) {
+                _currentRoute.value = destination
+            }
+        }
+
+        /**
          * Update the current route from external sources.
          */
         fun updateCurrentRoute(route: String) {

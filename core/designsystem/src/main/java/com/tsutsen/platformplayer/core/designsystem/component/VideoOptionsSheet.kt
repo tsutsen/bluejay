@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -128,6 +129,9 @@ fun VideoOptionsSheet(
     // history contexts pass it (the library's History strip, the history
     // page) so the tile never appears where the video isn't a history item.
     onRemoveFromHistory: (() -> Unit)? = null,
+    // Non-null = show a "Hide" tile: adds the video's url to the persisted
+    // hidden set (filtered out of the home feed).
+    onHide: (() -> Unit)? = null,
     // Queue state: the tile becomes a highlighted "Remove from queue" when
     // the video is already queued, and a dimmed "Now playing" when it is
     // the current video.
@@ -305,6 +309,18 @@ fun VideoOptionsSheet(
                         ),
                     )
                 }
+                onHide?.let { onHide ->
+                    add(
+                        OptionTile(
+                            label = "Hide",
+                            icon = Icons.Filled.VisibilityOff,
+                            onClick = {
+                                onHide()
+                                onDismiss()
+                            },
+                        ),
+                    )
+                }
                 onRemoveFromHistory?.let { onRemove ->
                     add(
                         OptionTile(
@@ -327,33 +343,19 @@ fun VideoOptionsSheet(
         ) {
             optionTileRow(tiles, 0)
             optionTileRow(tiles, 3)
-            // Last row: the remaining tiles, then the download group takes
-            // the rest of the row and matches the tiles' height, so it reads
-            // as part of the grid instead of a lone row underneath.
-            // ponytail: 3 unrolled rows cap the grid at 9 tiles; add a row
-            // here if a 10th action is ever added.
-            val remainingTiles = (tiles.size - 6).coerceIn(0, 2)
-            Row(modifier = Modifier.fillMaxWidth()) {
-                if (tiles.size > 6) {
-                    OptionTileView(
-                        tile = tiles[6],
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (tiles.size > 7) {
-                    OptionTileView(
-                        tile = tiles[7],
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                // The group sits in the same slot a tile occupies: the
-                // tile's outer gap around it, and its natural height (the
-                // segments mirror the tile's content stack) makes it
-                // exactly one tile tall — no measurement needed.
+            // Tail rows (3 tiles per row) from index 6; the download group
+            // fills the free slots of the last tail row and matches the
+            // tiles' height, so it reads as part of the grid instead of a
+            // lone row underneath. A full tail (or no tail) gives the group
+            // a row of its own.
+            // The group sits in the same slot a tile occupies: the
+            // tile's outer gap around it, and its natural height (the
+            // segments mirror the tile's content stack) makes it
+            // exactly one tile tall — no measurement needed.
+            val downloadGroup: @Composable (Modifier) -> Unit = { modifier ->
                 Box(
                     modifier =
-                        Modifier
-                            .weight(3f - remainingTiles)
+                        modifier
                             .padding(Tokens.SpaceXs)
                             .height(IntrinsicSize.Min),
                 ) {
@@ -363,6 +365,30 @@ fun VideoOptionsSheet(
                         onDownloadWithQuality = onDownloadWithQuality,
                         modifier = Modifier.fillMaxSize(),
                     )
+                }
+            }
+            var index = 6
+            var downloadWeight = 0f
+            while (index < tiles.size) {
+                val slots = minOf(3, tiles.size - index)
+                val isLastRow = index + slots >= tiles.size
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    for (i in 0 until slots) {
+                        OptionTileView(
+                            tile = tiles[index + i],
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (isLastRow && slots < 3) {
+                        downloadWeight = 3f - slots
+                        downloadGroup(Modifier.weight(downloadWeight))
+                    }
+                }
+                index += slots
+            }
+            if (downloadWeight == 0f) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    downloadGroup(Modifier.weight(3f))
                 }
             }
         }

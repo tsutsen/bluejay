@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer
 
 import android.content.Context
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
+import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.logging.LogLevel
@@ -226,6 +227,15 @@ class Settings {
         var showRecommendedVideos: Boolean = true
         var showComments: Boolean = true
 
+        // Home feed: hide fully watched videos (history position >= 95% of duration).
+        var showWatchedVideos: Boolean = true
+
+        // Home feed: hide started-but-unfinished videos (history position > 0).
+        var showStartedVideos: Boolean = true
+
+        // Video urls hidden via the long-press sheet "Hide" — filtered out of the home feed.
+        var hiddenVideoUrls: List<String> = emptyList()
+
         // "Auto" or "NNNp" — quality the player starts each video at.
         var defaultVideoResolution: String = "Auto"
 
@@ -269,6 +279,14 @@ class Settings {
         var watchLaterAddStart: Boolean = false
         var playlistAllowDups: Boolean = false
         var polycentricEnabled: Boolean = false
+
+        // Dock tab keys in display order (Settings > Content > Dock).
+        // Defaults to the designsystem's tab list; unknown keys are ignored
+        // and missing keys are appended by the reader.
+        var dockTabOrder: List<String> = bluejayNavItems.map { it.key }
+
+        // Dock tab key the app starts on.
+        var defaultDockTab: String = "home"
     }
 
     @Serializable
@@ -341,6 +359,9 @@ class Settings {
         var fetchOnAppBoot: Boolean = true
         var useSubscriptionExchange: Boolean = false
         var peekChannelContents: Boolean = true
+
+        // Subscriptions tab list order: "random" | "watchtime" | "alphabetical".
+        var subscriptionsOrder: String = "watchtime"
 
         fun getSubscriptionsBackgroundIntervalMinutes(): Int = 60
 

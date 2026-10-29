@@ -1,24 +1,33 @@
 package com.tsutsen.platformplayer.di
 
+import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
+import com.tsutsen.platformplayer.core.database.dao.HistoryDao
 import com.tsutsen.platformplayer.core.database.dao.HomeFeedCacheDao
+import com.tsutsen.platformplayer.core.model.ArticleCard
 import com.tsutsen.platformplayer.core.model.Card
+import com.tsutsen.platformplayer.core.model.ChannelCard
 import com.tsutsen.platformplayer.core.model.FeedPage
+import com.tsutsen.platformplayer.core.model.PlaylistCard
+import com.tsutsen.platformplayer.core.model.PostCard
 import com.tsutsen.platformplayer.core.model.SourceInfo
+import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import javax.inject.Inject
@@ -33,6 +42,7 @@ class EngineHomeRepositoryImpl
     @Inject
     constructor(
         private val homeFeedCacheDao: HomeFeedCacheDao,
+        private val historyDao: HistoryDao,
     ) : HomeRepository {
         private val _feed = MutableStateFlow(FeedPage())
         override val feed: StateFlow<FeedPage> = _feed.asStateFlow()
@@ -41,6 +51,8 @@ class EngineHomeRepositoryImpl
         override val enabledSources: StateFlow<List<SourceInfo>> = _enabledSources.asStateFlow()
 
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
+
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         // Single-flight: loadInitial re-runs the full plugin init + client
         // enable + home fetch, so overlapping calls (e.g. refresh() racing a
@@ -86,6 +98,10 @@ class EngineHomeRepositoryImpl
             Logger.i("EngineHomeRepository", "loadInitial")
             _feed.update { it.copy(isLoading = true, error = null) }
 
+            // Engine calls below (plugin init, home pager nextPage) run V8
+            // `busy`/runBlocking and must not execute on the main thread —
+            // callers reach this via viewModelScope (Dispatchers.Main).
+            withContext(Dispatchers.IO) {
             // Cache-first: paint the last successful feed immediately while
             // the refresh below runs. Only for a truly empty feed, so a
             // pull-to-refresh never collapses loaded pages back to page 1.
@@ -126,7 +142,7 @@ class EngineHomeRepositoryImpl
                 // client lands first, the rest join in via onPagerChanged.
                 // Merge them into the feed as they arrive (grayjay's
                 // FeedView subscribes the same way).
-                refreshPager?.onPagerChanged?.subscribe(this) {
+                refreshPager?.onPagerChanged?.subscribe(this@EngineHomeRepositoryImpl) {
                     // A refresh may have replaced _pagerFlow: a late sub-pager
                     // from the OLD load must not clobber the new feed.
                     if (flow !== _pagerFlow) return@subscribe
@@ -134,13 +150,16 @@ class EngineHomeRepositoryImpl
                     if (merged.isNotEmpty()) {
                         Logger.i("EngineHomeRepository", "Merged late source: +${merged.size}, ${flow.items.size} total")
                     }
-                    _feed.update {
-                        it.copy(
-                            items = flow.items,
-                            hasMorePages = flow.hasMore,
-                            error = flow.error,
-                            isLoading = refreshPager.pendingPagers > 0,
-                        )
+                    scope.launch {
+                        val visible = applyContentFilters(flow.items)
+                        _feed.update {
+                            it.copy(
+                                items = visible,
+                                hasMorePages = flow.hasMore,
+                                error = flow.error,
+                                isLoading = refreshPager.pendingPagers > 0,
+                            )
+                        }
                     }
                 }
                 val items = flow.loadInitial()
@@ -150,6 +169,10 @@ class EngineHomeRepositoryImpl
                     "EngineHomeRepository",
                     "Converted to ${items.size} cards (noThumb=$noThumb), hasMore=${flow.hasMore}, pending=${refreshPager?.pendingPagers ?: 0}",
                 )
+                // Content filters (hidden/watched/started) apply before emit
+                // AND before the cache write, so the Room cache only ever
+                // stores what the user actually sees.
+                val visible = applyContentFilters(flow.items)
                 _feed.update {
                     // flow.items (not the local): onPagerChanged may have
                     // merged a late source's cards in between loadInitial()
@@ -160,13 +183,13 @@ class EngineHomeRepositoryImpl
                     // lands a couple of seconds later.
                     it.copy(
                         isLoading = refreshPager != null && refreshPager.pendingPagers > 0,
-                        items = flow.items,
+                        items = visible,
                         hasMorePages = flow.hasMore,
                         error = flow.error,
                         currentPage = 1,
                     )
                 }
-                cacheFeed(flow.items)
+                cacheFeed(visible)
             } catch (e: Exception) {
                 Logger.e("EngineHomeRepository", "loadInitial failed", e)
                 _feed.update {
@@ -178,6 +201,7 @@ class EngineHomeRepositoryImpl
                     )
                 }
             }
+            }
         }
 
         private suspend fun loadCachedFeed() {
@@ -185,9 +209,10 @@ class EngineHomeRepositoryImpl
                 val entities = homeFeedCacheDao.observeValidCache().first()
                 val cards = entities.mapNotNull { EngineCardMapper.toCardFromCache(it) }
                 if (cards.isEmpty()) return
-                Logger.i("EngineHomeRepository", "Showing ${cards.size} cached cards")
+                val visible = applyContentFilters(cards)
+                Logger.i("EngineHomeRepository", "Showing ${visible.size} cached cards")
                 _feed.update {
-                    it.copy(items = cards, isLoading = true, currentPage = 1)
+                    it.copy(items = visible, isLoading = true, currentPage = 1)
                 }
             } catch (e: Exception) {
                 Logger.w("EngineHomeRepository", "Failed to load cached feed", e)
@@ -248,10 +273,11 @@ class EngineHomeRepositoryImpl
 
                 val newItems = withContext(Dispatchers.IO) { flow.loadNextPage() }
                 Logger.i("EngineHomeRepository", "Got ${newItems.size} new items, ${flow.items.size} total, hasMore=${flow.hasMore}")
+                val visible = applyContentFilters(flow.items)
                 _feed.update {
                     it.copy(
                         isLoading = false,
-                        items = flow.items,
+                        items = visible,
                         hasMorePages = flow.hasMore,
                         error = flow.error,
                         currentPage = it.currentPage + 1,
@@ -281,4 +307,57 @@ class EngineHomeRepositoryImpl
         override suspend fun filterByAuthor(authorId: String) {
             // TODO: Implement
         }
+
+        /**
+         * Applies the persisted content settings to a freshly loaded feed
+         * page: hidden video urls (long-press "Hide"), plus the watched /
+         * started toggles backed by the history table. Runs before emit and
+         * before the Room cache write. History is batch-queried once per
+         * page, and only when a toggle is actually off.
+         */
+        private suspend fun applyContentFilters(cards: List<Card>): List<Card> {
+            val content = Settings.instance.content
+            val hidden = content.hiddenVideoUrls
+            val filterWatched = !content.showWatchedVideos
+            val filterStarted = !content.showStartedVideos
+            if (!filterWatched && !filterStarted && hidden.isEmpty()) return cards
+            val history =
+                if (filterWatched || filterStarted) {
+                    val urls = cards.mapNotNull { cardUrl(it) }
+                    if (urls.isEmpty()) {
+                        emptyMap()
+                    } else {
+                        historyDao.getByUrls(urls).associateBy { it.contentUrl }
+                    }
+                } else {
+                    emptyMap()
+                }
+            return cards.filter { card ->
+                val url = cardUrl(card)
+                if (url != null && url in hidden) return@filter false
+                if (filterWatched || filterStarted) {
+                    val h = url?.let { history[it] } ?: return@filter true
+                    val duration = h.totalDurationMs
+                    // Same watched/started split as the subs feed chips:
+                    // watched = >= 95% of duration (position or watched time),
+                    // started = in progress but not finished.
+                    val watched =
+                        duration > 0 &&
+                            (h.lastPositionMs >= 0.95 * duration || h.watchedMs >= 0.95 * duration)
+                    val started = h.lastPositionMs > 0 && !watched
+                    if (filterWatched && watched) return@filter false
+                    if (filterStarted && started) return@filter false
+                }
+                true
+            }
+        }
+
+        private fun cardUrl(card: Card): String? =
+            when (card) {
+                is VideoCard -> card.url
+                is PlaylistCard -> card.url
+                is ChannelCard -> card.url
+                is PostCard -> card.url
+                is ArticleCard -> card.url
+            }
     }
