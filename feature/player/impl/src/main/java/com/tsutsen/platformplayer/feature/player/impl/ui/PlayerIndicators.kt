@@ -7,20 +7,17 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -42,17 +39,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.delay
 
 /**
- * State for the centre text badge (seek, speed, etc).
+ * State for the centre badge (seek ring, speed text, etc).
+ *
+ * When [progress] is non-null the badge renders as a wavy progress ring with
+ * [icon] inside and no text label; otherwise it renders icon + [label].
  */
 data class GestureBadgeState(
     val key: String = "",
     val label: String = "",
     val icon: ImageVector = Icons.Default.Replay10,
+    val progress: Float? = null,
     val visible: Boolean = false,
     val keepAlive: Int = 0, // increments on every emission to force effect restart
 )
@@ -80,6 +82,7 @@ internal fun GestureIndicatorOverlay(
         val key: String,
         val label: String,
         val icon: ImageVector,
+        val progress: Float?,
         val visible: Boolean,
         val hideAt: Long,
     )
@@ -103,6 +106,7 @@ internal fun GestureIndicatorOverlay(
                         key = badgeState.key,
                         label = badgeState.label,
                         icon = badgeState.icon,
+                        progress = badgeState.progress,
                         visible = true,
                         hideAt = System.currentTimeMillis() + GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS,
                     )
@@ -114,6 +118,7 @@ internal fun GestureIndicatorOverlay(
                     session!!.copy(
                         label = badgeState.label,
                         icon = badgeState.icon,
+                        progress = badgeState.progress,
                         hideAt = System.currentTimeMillis() + GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS,
                     )
             }
@@ -163,7 +168,6 @@ internal fun GestureIndicatorOverlay(
                 ProgressIndicator(
                     value = indicator.value,
                     icon = indicator.icon,
-                    format = indicator.format,
                     modifier = Modifier.align(Alignment.Center),
                 )
             }
@@ -201,26 +205,66 @@ internal fun GestureIndicatorOverlay(
                 shape = RoundedCornerShape(BluejayTokens().radius.sm),
                 modifier = Modifier.padding(horizontal = 16.dp),
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = s.icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp),
+                if (s.progress != null) {
+                    // Continuous-action badge (hold-seek): wavy ring with the
+                    // action icon inside, no text label.
+                    WavyRingBadge(
+                        progress = s.progress!!,
+                        icon = s.icon,
+                        modifier = Modifier.padding(12.dp),
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = s.label,
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                } else {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = s.icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = s.label,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * Wavy progress ring with the action icon drawn inside the ring — used for
+ * continuous gestures (volume / brightness) and the hold-seek preview.
+ * No numeric label.
+ */
+@Composable
+private fun WavyRingBadge(
+    progress: Float,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.size(64.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularWavyProgressIndicator(
+            progress = { progress.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxSize(),
+            color = Color.White,
+            trackColor = Color.White.copy(alpha = 0.25f),
+        )
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(Tokens.IconMd),
+        )
     }
 }
 
@@ -228,50 +272,22 @@ internal fun GestureIndicatorOverlay(
 private fun ProgressIndicator(
     value: Float,
     icon: ImageVector,
-    format: (Float) -> String = { "${(it * 100).toInt()}%" },
     modifier: Modifier = Modifier,
 ) {
-    // Android-style volume/brightness capsule: dark rounded panel, icon on
-    // top, slim fill bar, percentage at the bottom — all inside the panel.
-    Column(
+    // Volume/brightness badge: dark circular backdrop so the ring stays
+    // readable over bright video, ring + icon inside, no percentage text.
+    Box(
         modifier =
             modifier
-                .width(44.dp)
-                .clip(RoundedCornerShape(BluejayTokens().radius.md))
-                .background(Color.Black.copy(alpha = 0.6f))
-                .padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.6f)),
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(16.dp),
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Box(
-            modifier =
-                Modifier
-                    .width(6.dp)
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(CornerSize(100)))
-                    .background(Color.White.copy(alpha = 0.25f)),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(value)
-                        .align(Alignment.BottomCenter)
-                        .background(Color.White),
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = format(value),
-            color = Color.White.copy(alpha = 0.9f),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
+        WavyRingBadge(
+            progress = value,
+            icon = icon,
+            modifier = Modifier.padding(6.dp),
         )
     }
 }

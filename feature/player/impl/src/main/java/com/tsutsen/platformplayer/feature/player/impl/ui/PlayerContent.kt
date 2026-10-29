@@ -11,11 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -65,7 +61,6 @@ import kotlin.math.roundToInt
  * Per-frame values (video rect, alphas) flow through modifier lambdas, so the heavy
  * subtrees (details list, comments, live chat) never recompose on animation frames.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PlayerContent(
     playbackEngine: PlaybackEngine,
@@ -486,23 +481,5 @@ fun PlayerContent(
             onScrubFinished = onScrubFinished,
             bottomBarHeightPx = bottomBarHeightPx,
             )
-
-        // ==================== 5. Loading indicator (independent of controls) ====================
-        // Its own top layer so a buffering spinner stays visible while the
-        // control bars fade out — it must not hide with the controls.
-        // Gated on !isMinimized: FLOATING has its own compact row and no
-        // center spinner (the box is too small to host one).
-        if (isLoading && !state.isMinimized) {
-            Box(
-                modifier = videoModifier,
-                contentAlignment = Alignment.Center,
-            ) {
-                ContainedLoadingIndicator(
-                    modifier = Modifier.size(48.dp),
-                    containerColor = Color.Black.copy(alpha = 0.35f),
-                    indicatorColor = Color.White,
-                )
-            }
-        }
     }
 }

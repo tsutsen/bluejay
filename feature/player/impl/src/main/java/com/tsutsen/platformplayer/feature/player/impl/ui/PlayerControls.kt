@@ -297,6 +297,7 @@ fun PlayerControls(
                                                 positionMs = positionMs,
                                                 durationMs = state.durationMs,
                                                 isPlaying = state.isPlaying,
+                                                isLoading = state.isLoading,
                                                 onPlayPause = onPlayPause,
                                                 onPrevious = onPrevious,
                                                 onNext = onNext,
@@ -326,6 +327,7 @@ fun PlayerControls(
                                             if (collapsed) {
                                                 PlayerCompactOverlay(
                                                     isPlaying = state.isPlaying,
+                                                    isLoading = state.isLoading,
                                                     subtitlesOn = subtitlesOn,
                                                     onMinimize = onMinimize,
                                                     onPlayPause = onPlayPause,
@@ -341,6 +343,7 @@ fun PlayerControls(
                                                     positionMs = positionMs,
                                                     durationMs = state.durationMs,
                                                     isPlaying = state.isPlaying,
+                                                    isLoading = state.isLoading,
                                                     onPlayPause = onPlayPause,
                                                     onPrevious = onPrevious,
                                                     onNext = onNext,

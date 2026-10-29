@@ -24,15 +24,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import kotlinx.coroutines.flow.StateFlow
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun PlayerNormalBottomOverlay(
     positionMs: StateFlow<Long>,
     durationMs: Long,
     isPlaying: Boolean,
+    isLoading: Boolean = false,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -79,12 +82,21 @@ internal fun PlayerNormalBottomOverlay(
                 onClick = onPlayPause,
                 modifier = Modifier.size(56.dp),
             ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp),
-                )
+                // While loading, the button itself spins instead of showing
+                // play/pause (same pattern as the companion screen controls).
+                if (isLoading) {
+                    LoadingIndicator(
+                        modifier = Modifier.size(Tokens.IconMd),
+                        color = Color.White,
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp),
+                    )
+                }
             }
             IconButton(onClick = onNext) {
                 Icon(

@@ -26,9 +26,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.VolumeUp
@@ -632,10 +633,13 @@ fun PlayerView(
                 controlsActivityTick,
                 controlsVisible,
                 state.isPlaying,
+                state.isLoading,
                 isMinimizedAnim,
                 isFullscreenAnim,
             ) {
-                if (isMinimizedAnim || !controlsVisible) return@LaunchedEffect
+                // Never autohide while loading — the play/pause button hosts
+                // the spinner and the bars must stay up to show it.
+                if (isMinimizedAnim || !controlsVisible || state.isLoading) return@LaunchedEffect
                 // Wait (without restarting) until a morph in progress settles.
                 snapshotFlow { surface.morphProgress.value }
                     .first { p -> p <= 0.01f || p >= 0.99f }
@@ -645,6 +649,12 @@ fun PlayerView(
 
             LaunchedEffect(state.isPlaying) {
                 if (!state.isPlaying) controlsVisible = true
+            }
+
+            // Same for loading: keep the controls visible while the
+            // play/pause button shows the loading spinner.
+            LaunchedEffect(state.isLoading) {
+                if (state.isLoading) controlsVisible = true
             }
 
             LaunchedEffect(isMinimizedAnim) {
@@ -813,17 +823,20 @@ fun PlayerView(
 
                         is PlayerEvent.SeekPreview -> {
                             seekPreviewMs = event.targetMs
-                            val t = event.targetMs / 1000
-                            val label =
-                                if (t / 3600 > 0)
-                                    "%d:%02d:%02d".format(t / 3600, t / 60 % 60, t % 60)
-                                else "%d:%02d".format(t / 60, t % 60)
                             badgeKeepAliveCounter++
                             badgeState =
                                 GestureBadgeState(
                                     key = "seek_preview",
-                                    label = label,
-                                    icon = Icons.Default.AccessTime,
+                                    // Ring badge: progress = target / duration, seek
+                                    // icon inside the ring, no time label.
+                                    icon =
+                                        if (event.targetMs >= viewModel.positionMs.value)
+                                            Icons.Default.FastForward
+                                        else Icons.Default.FastRewind,
+                                    progress =
+                                        (event.targetMs.toFloat() /
+                                            state.durationMs.coerceAtLeast(1L))
+                                            .coerceIn(0f, 1f),
                                     visible = true,
                                     keepAlive = badgeKeepAliveCounter,
                                 )

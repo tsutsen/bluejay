@@ -8,9 +8,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.feature.player.impl.PlayerUiState
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Renders play/pause + close at the top, title + author + fullscreen at the bottom,
  * and a progress bar along the bottom edge.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun PlayerFloatingOverlay(
     state: PlayerUiState.Loaded,
@@ -50,12 +54,19 @@ internal fun PlayerFloatingOverlay(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onPlayPause, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (state.isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp),
-                )
+                if (state.isLoading) {
+                    LoadingIndicator(
+                        modifier = Modifier.size(Tokens.IconMd),
+                        color = Color.White,
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
             IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
                 Icon(

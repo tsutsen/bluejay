@@ -9,12 +9,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
  * @property key unique identifier for dedup (e.g. "brightness", "volume")
  */
 sealed interface GestureIndicator {
-    /** Progress bar indicator: icon + filled bar + percentage text. */
+    /** Wavy ring indicator: icon inside a CircularWavyProgressIndicator, no text. */
     data class Progress(
         override val key: String,
         val value: Float,
         val icon: ImageVector,
-        val format: (Float) -> String = { "${(it * 100).toInt()}%" },
     ) : GestureIndicator
 
     /** Badge indicator: shows a value without a progress bar (e.g. speed). */
