@@ -7,6 +7,7 @@ import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.models.video.SerializedPlatformContent
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
 import com.tsutsen.platformplayer.core.database.dao.HistoryDao
+import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.model.SubscriptionFeed
@@ -22,6 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -189,9 +191,15 @@ class EngineSubscriptionsRepositoryImpl
         }
 
         /** Rebuilds the pager for the current scope and applies filters. */
+        // History snapshot for the started/watched filters — refreshed on
+        // every reload; plugin items carry playbackTime = -1, so watch state
+        // must come from the history table.
+        @Volatile private var historyByUrl: Map<String, HistoryEntity> = emptyMap()
+
         private suspend fun reload(updated: Boolean) {
             _feed.update { it.copy(isLoading = true) }
             withContext(Dispatchers.IO) {
+                historyByUrl = historyDao.observeAll().first().associateBy { it.contentUrl }
                 // Cache-first on the initial load (not pull-to-refresh): paint
                 // the last feed immediately, refresh in background, replace
                 // when fresh data lands.
@@ -417,7 +425,10 @@ class EngineSubscriptionsRepositoryImpl
                         return@filter false
                     }
                     val d = video.duration
-                    val t = video.playbackTime
+                    // Plugin items report playbackTime = -1; watch progress
+                    // lives in history (refreshed per reload).
+                    val t = historyByUrl[content.url]?.lastPositionMs
+                        ?: video.playbackTime.coerceAtLeast(0)
                     when {
                         d > 0 && t >= 0.95 * d -> {
                             if (!showWatched) return@filter false
