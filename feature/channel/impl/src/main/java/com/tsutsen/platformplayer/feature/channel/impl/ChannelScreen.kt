@@ -54,6 +54,7 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -299,11 +300,7 @@ fun ChannelScreen(
                             onRefresh = { viewModel.refresh() },
                             modifier = Modifier.fillMaxSize(),
                             indicator = {
-                                PullToRefreshDefaults.LoadingIndicator(
-                                    state = refreshState,
-                                    isRefreshing = state.isRefreshing,
-                                    modifier = Modifier.align(Alignment.TopCenter),
-                                )
+                                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
                             },
                             content = {
                                 Column(modifier = Modifier.fillMaxSize()) {

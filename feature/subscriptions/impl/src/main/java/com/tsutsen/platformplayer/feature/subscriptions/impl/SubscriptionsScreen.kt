@@ -312,6 +312,9 @@ private fun SubscriptionsContent(
                         isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
                         state = pullToRefreshState,
                         onRefresh = onRefresh,
+                        indicator = {
+                            ContainedLoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
+                        },
                         content = {
                             ContentCard(modifier = Modifier.fillMaxSize()) {
                                 VideoContainer(
