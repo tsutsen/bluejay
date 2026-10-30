@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -352,11 +351,6 @@ private fun ThemeEditor(
                 )
             }
         }
-        Text(
-            text = style.label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
 
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
             Row(
@@ -440,10 +434,10 @@ private fun ThemeEditor(
 }
 
 /**
- * One key color as a tappable swatch: circle + label under it. A filled
- * optional slot clears on tap — the color fades away as an X turns in; an
- * empty slot shows the X and opens the picker, and the picked color fades
- * back in over it. The required (primary) slot always opens the picker.
+ * One key color as a tappable swatch: circle + label under it. The plus icon
+ * reads as an add (pick a color) when the slot is empty and turns 45° into
+ * an X when filled, so tapping clears it; the required (primary) slot has no
+ * clear state and always opens the picker.
  */
 @Composable
 private fun ThemeColorSlot(
@@ -459,23 +453,25 @@ private fun ThemeColorSlot(
     var shownColor by remember { mutableStateOf(color) }
     LaunchedEffect(color) { color?.let { shownColor = it } }
     val filled = color != null
+    // The X state only exists on optional slots; primary stays a plain plus.
+    val clearable = filled && optional
     val fillAlpha by
         animateFloatAsState(
             targetValue = if (filled) 1f else 0f,
             animationSpec = spatialSpec<Float>(),
             label = "slot-fill",
         )
-    val xScale by
+    val plusScale by
         animateFloatAsState(
-            targetValue = if (filled) 0f else 1f,
+            targetValue = if (clearable || !filled) 1f else 0f,
             animationSpec = spatialSpec<Float>(),
-            label = "slot-x-scale",
+            label = "slot-plus-scale",
         )
-    val xRotation by
+    val plusRotation by
         animateFloatAsState(
-            targetValue = if (filled) 90f else 0f,
+            targetValue = if (clearable) 45f else 0f,
             animationSpec = spatialSpec<Float>(),
-            label = "slot-x-rotation",
+            label = "slot-plus-rotation",
         )
     Column(
         modifier = modifier,
@@ -487,7 +483,7 @@ private fun ThemeColorSlot(
                 Modifier
                     .size(Tokens.SwatchLg)
                     .expressiveClickable(
-                        onClick = { if (filled && optional) onClear() else onPick() },
+                        onClick = { if (clearable) onClear() else onPick() },
                     )
                     .clip(CircleShape)
                     .background(scheme.surfaceContainerHighest)
@@ -495,14 +491,14 @@ private fun ThemeColorSlot(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = Icons.Outlined.Close,
-                contentDescription = if (filled) "Remove $label color" else "Pick $label color",
+                imageVector = Icons.Filled.Add,
+                contentDescription = if (clearable) "Remove $label color" else "Pick $label color",
                 tint = scheme.onSurfaceVariant,
                 modifier =
                     Modifier
                         .size(Tokens.IconMd)
-                        .scale(xScale)
-                        .rotate(xRotation),
+                        .scale(plusScale)
+                        .rotate(plusRotation),
             )
         }
         Text(
@@ -514,13 +510,13 @@ private fun ThemeColorSlot(
 }
 
 /**
- * Swatch square for the palette style selector: a 2x2 grid of the colors
- * each style derives from the user's key colors — secondary/tertiary plus
- * their containers, the cells that actually differ between styles (primary
- * is user-pinned and identical in every square). The swatches fill the
- * square edge to edge; selection grows a 2dp primary ring INTO the square
- * (the ring is the padding, so no background peeks behind it) while the
- * corner rounding morphs.
+ * Swatch square for the palette style selector: a 2x2 grid of primary |
+ * secondary over tertiary | surface. Surface is the divergent cell — styles
+ * treat neutrals differently (e.g. expressive shifts neutral hue, vibrant
+ * raises neutral chroma) while the key colors anchor the comparison.
+ * The swatches fill the square edge to edge; selection grows a 2dp primary
+ * ring INTO the square (the ring is the padding, so no background peeks
+ * behind it) while the corner rounding morphs.
  */
 @Composable
 private fun PaletteSwatchSquare(
@@ -576,14 +572,14 @@ private fun PaletteSwatchSquare(
                             Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(scheme.secondary),
+                                .background(scheme.primary),
                     )
                     Box(
                         modifier =
                             Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(scheme.tertiary),
+                                .background(scheme.secondary),
                     )
                 }
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -592,14 +588,14 @@ private fun PaletteSwatchSquare(
                             Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(scheme.secondaryContainer),
+                                .background(scheme.tertiary),
                     )
                     Box(
                         modifier =
                             Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(scheme.tertiaryContainer),
+                                .background(scheme.surface),
                     )
                 }
             }

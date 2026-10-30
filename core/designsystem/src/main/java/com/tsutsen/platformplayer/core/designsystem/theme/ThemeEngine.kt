@@ -32,8 +32,9 @@ object ThemeEngine {
      * @param secondary key color, ARGB, or null to derive from primary
      * @param tertiary key color, ARGB, or null to derive from secondary/primary
      * @param background optional surface color, ARGB — when set, the neutral
-     *        palettes (surfaces, backgrounds) come from it instead of being
-     *        derived from [primary], so themes are not locked to white/dark.
+     *        palettes (surfaces, backgrounds) take its hue at low chroma
+     *        instead of being derived from [primary], so themes are not
+     *        locked to white/dark.
      * @param contrast contrast refinement, -1 (minimum) to 1 (maximum),
      *        0 = standard. Drives the per-role ContrastCurves in the spec.
      */
@@ -50,8 +51,9 @@ object ThemeEngine {
         val level = contrast.toDouble().coerceIn(-1.0, 1.0)
         val source = Hct.fromInt(primary)
 
-        // The material 1.13.0-bundled DynamicScheme ignores `variant` when
-        // given explicit palettes (its role tones are variant-agnostic), so
+        // Verified against the material 1.13.0-bundled DynamicScheme: with
+        // explicit palettes the variant is only stored, never read for role
+        // tones (only FIDELITY/CONTENT/MONOCHROME variants alter tones), so
         // the style's behavior lives in [buildPalettes], not here.
         val variant = variantFor(style)
         return Schemes(
@@ -82,21 +84,32 @@ object ThemeEngine {
         )
     }
 
+    // Hue rotation tables from the material-color-utilities spec as bundled
+    // in material 1.13.0 (SchemeVibrant / SchemeExpressive).
+    private val VIBRANT_HUES =
+        doubleArrayOf(0.0, 41.0, 61.0, 101.0, 131.0, 181.0, 251.0, 301.0, 360.0)
+    private val VIBRANT_SECONDARY_ROTATIONS =
+        doubleArrayOf(18.0, 15.0, 10.0, 12.0, 15.0, 18.0, 15.0, 12.0, 12.0)
+    private val VIBRANT_TERTIARY_ROTATIONS =
+        doubleArrayOf(35.0, 30.0, 20.0, 25.0, 30.0, 35.0, 30.0, 25.0, 25.0)
+    private val EXPRESSIVE_HUES =
+        doubleArrayOf(0.0, 21.0, 51.0, 121.0, 151.0, 191.0, 271.0, 321.0, 360.0)
+    private val EXPRESSIVE_SECONDARY_ROTATIONS =
+        doubleArrayOf(45.0, 95.0, 45.0, 20.0, 45.0, 90.0, 45.0, 45.0, 45.0)
+    private val EXPRESSIVE_TERTIARY_ROTATIONS =
+        doubleArrayOf(120.0, 120.0, 20.0, 45.0, 20.0, 15.0, 20.0, 120.0, 120.0)
+
     /**
      * Per-style tonal palette construction.
      *
      * The user's picked colors are always respected verbatim ([TonalPalette.
      * fromInt]); the style only decides how the *unpicked* palettes
      * (secondary, tertiary, neutral, neutralVariant) are derived from the
-     * primary. This is what makes the four styles visually distinct.
-     *
-     * Hues follow the material-color-utilities 2021 spec (rotation tables,
-     * hue offsets), but the derived *chromas* are amplified above the spec's
-     * 16-36: at the key tone (40) the spec's values all converge to muted
-     * mid-tones, so four styles built strictly to spec look nearly identical
-     * — unusable for a user-facing style picker. Amplifying the chromas
-     * keeps each style's hue character (analogous-muted, rotated-vivid,
-     * salad) while making them read as distinct palettes.
+     * primary. Hues and chromas follow the material-color-utilities spec as
+     * bundled in material 1.13.0 (SchemeTonalSpot/Vibrant/Expressive/
+     * FruitSalad), so each style keeps its spec hue character (analogous,
+     * rotated, +15° neutrals, −50° salad) and the four read as distinct
+     * palettes.
      */
     private data class Palettes(
         val primary: TonalPalette,
@@ -119,63 +132,44 @@ object ThemeEngine {
 
         val secondaryTonal =
             when (style) {
-                // spec chroma 16 -> 24
-                PaletteStyle.TONAL_SPOT -> TonalPalette.fromHueAndChroma(hue, 24.0)
-                // spec chroma 24 -> 40 (vibrant = the saturated sibling)
+                PaletteStyle.TONAL_SPOT -> TonalPalette.fromHueAndChroma(hue, 16.0)
                 PaletteStyle.VIBRANT ->
                     TonalPalette.fromHueAndChroma(
-                        DynamicScheme.getRotatedHue(
-                            source,
-                            doubleArrayOf(0.0, 41.0, 61.0, 101.0, 131.0, 181.0, 251.0, 301.0, 360.0),
-                            doubleArrayOf(18.0, 15.0, 10.0, 12.0, 15.0, 18.0, 15.0, 12.0, 12.0),
-                        ),
-                        40.0,
+                        DynamicScheme.getRotatedHue(source, VIBRANT_HUES, VIBRANT_SECONDARY_ROTATIONS),
+                        24.0,
                     )
-                // spec chroma 24 -> 32
                 PaletteStyle.EXPRESSIVE ->
                     TonalPalette.fromHueAndChroma(
                         DynamicScheme.getRotatedHue(
                             source,
-                            doubleArrayOf(0.0, 21.0, 51.0, 121.0, 151.0, 191.0, 271.0, 321.0, 360.0),
-                            doubleArrayOf(45.0, 95.0, 45.0, 20.0, 45.0, 90.0, 45.0, 45.0, 45.0),
+                            EXPRESSIVE_HUES,
+                            EXPRESSIVE_SECONDARY_ROTATIONS,
                         ),
-                        32.0,
+                        24.0,
                     )
-                // spec chroma 36 -> 40
                 PaletteStyle.FRUIT_SALAD ->
-                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 50.0), 40.0)
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 50.0), 36.0)
             }
 
         val tertiaryTonal =
             when (style) {
-                // spec chroma 24 -> 32
                 PaletteStyle.TONAL_SPOT ->
-                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue + 60.0), 32.0)
-                // spec chroma 32 -> 48
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue + 60.0), 24.0)
                 PaletteStyle.VIBRANT ->
                     TonalPalette.fromHueAndChroma(
-                        DynamicScheme.getRotatedHue(
-                            source,
-                            doubleArrayOf(0.0, 41.0, 61.0, 101.0, 131.0, 181.0, 251.0, 301.0, 360.0),
-                            doubleArrayOf(35.0, 30.0, 20.0, 25.0, 30.0, 35.0, 30.0, 25.0, 25.0),
-                        ),
-                        48.0,
+                        DynamicScheme.getRotatedHue(source, VIBRANT_HUES, VIBRANT_TERTIARY_ROTATIONS),
+                        32.0,
                     )
-                // spec chroma 32 -> 40
                 PaletteStyle.EXPRESSIVE ->
                     TonalPalette.fromHueAndChroma(
                         DynamicScheme.getRotatedHue(
                             source,
-                            doubleArrayOf(0.0, 21.0, 51.0, 121.0, 151.0, 191.0, 271.0, 321.0, 360.0),
-                            doubleArrayOf(120.0, 120.0, 20.0, 45.0, 20.0, 15.0, 20.0, 120.0, 120.0),
+                            EXPRESSIVE_HUES,
+                            EXPRESSIVE_TERTIARY_ROTATIONS,
                         ),
-                        40.0,
+                        32.0,
                     )
-                // Spec uses (hue, 36) — a clone of the pinned primary hue,
-                // which reads as "same color as primary" here. A second jump
-                // keeps the salad character: (hue - 100, 40).
-                PaletteStyle.FRUIT_SALAD ->
-                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 100.0), 40.0)
+                PaletteStyle.FRUIT_SALAD -> TonalPalette.fromHueAndChroma(hue, 36.0)
             }
 
         val neutralChroma: Double
@@ -195,22 +189,20 @@ object ThemeEngine {
                 neutralChroma = 10.0; neutralVariantChroma = 16.0; neutralHueShift = 0.0
             }
         }
-        val neutralHue = MathUtils.sanitizeDegreesDouble(hue + neutralHueShift)
-
-        // A user-picked background owns the neutrals (both light and dark
-        // surfaces take its hue); otherwise the style derives them.
-        val neutral =
-            picked(background)
-                ?: TonalPalette.fromHueAndChroma(neutralHue, neutralChroma)
+        // A user-picked background owns the neutral hue (both light and dark
+        // surfaces keep its hue) but surfaces stay near-neutral: the palettes
+        // are rebuilt at the style's low spec chroma instead of taking the
+        // background's full chroma, and neutral/neutralVariant stay distinct.
+        val neutralHue =
+            background?.let { MathUtils.sanitizeDegreesDouble(Hct.fromInt(it).hue) }
+                ?: MathUtils.sanitizeDegreesDouble(hue + neutralHueShift)
 
         return Palettes(
             primary = TonalPalette.fromInt(primary),
             secondary = picked(secondary) ?: secondaryTonal,
             tertiary = picked(tertiary) ?: tertiaryTonal,
-            neutral = neutral,
-            neutralVariant =
-                picked(background)
-                    ?: TonalPalette.fromHueAndChroma(neutralHue, neutralVariantChroma),
+            neutral = TonalPalette.fromHueAndChroma(neutralHue, neutralChroma),
+            neutralVariant = TonalPalette.fromHueAndChroma(neutralHue, neutralVariantChroma),
         )
     }
 
