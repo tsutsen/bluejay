@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -52,9 +53,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupMenuState
-import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.Checkbox
@@ -540,24 +539,20 @@ private fun HideTileGroup(
 ) {
     val radius = BluejayTokens().radius
     val shapes = tileFlowGroupShapes(GroupPosition.Last, radius)
-    ButtonGroup(
-        overflowIndicator = { _ -> },
-        modifier = modifier,
+    // Plain Row, not ButtonGroup: with a weighted leading tile, ButtonGroup
+    // measures the fixed-width arrow at 0 width in beta02 (it renders ~1px).
+    // height(IntrinsicSize.Max) makes the arrow stretch to the tile's height.
+    Row(
+        modifier = modifier.height(IntrinsicSize.Max),
         horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
     ) {
-        customItem(
-            buttonGroupContent = {
-                OptionTileView(
-                    tile = tile,
-                    modifier = Modifier.weight(1f),
-                    connection = TileConnection.ConnectedLeading,
-                )
-            },
-            menuContent = {},
+        OptionTileView(
+            tile = tile,
+            modifier = Modifier.weight(1f),
+            connection = TileConnection.ConnectedLeading,
         )
-        customItem(
-            buttonGroupContent = {
-                val scheme = MaterialTheme.colorScheme
+        Box {
+            val scheme = MaterialTheme.colorScheme
                 ToggleButton(
                     checked = expanded,
                     onCheckedChange = { onExpandedChange(it) },
@@ -639,9 +634,7 @@ private fun HideTileGroup(
                         }
                     }
                 }
-            },
-            menuContent = {},
-        )
+        }
     }
 }
 
@@ -943,7 +936,8 @@ private val tileColorSpec = tween<Color>(200, easing = FastOutSlowInEasing)
  * composable context, only the item's content lambda is.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-private fun ButtonGroupScope.downloadLeadingItem(
+@Composable
+private fun RowScope.downloadLeadingItem(
     icon: ImageVector,
     label: String?,
     progress: Float?,
@@ -955,16 +949,13 @@ private fun ButtonGroupScope.downloadLeadingItem(
     onClick: () -> Unit,
 ) {
     val showBar = progress != null || indeterminate
-    customItem(
-        buttonGroupContent = {
-            Button(
-                onClick = onClick,
+    Button(
+        onClick = onClick,
                 shapes = ButtonShapes(shapes.shape, shapes.pressedShape),
                 modifier =
                     Modifier
                         .fillMaxHeight()
-                        .weight(1f)
-                        .animateWidth(interactionSource),
+                        .weight(1f),
                 // Same vertical padding as the sheet's tiles (their inner
                 // SpaceMd), so the segment's natural height equals a tile's.
                 contentPadding = PaddingValues(all = Tokens.SpaceMd),
@@ -1013,9 +1004,6 @@ private fun ButtonGroupScope.downloadLeadingItem(
                     }
                 }
             }
-        },
-        menuContent = {},
-    )
 }
 
 /**
@@ -1030,7 +1018,8 @@ private fun ButtonGroupScope.downloadLeadingItem(
  * Non-composable on purpose, see [downloadLeadingItem].
  */
 @OptIn(ExperimentalMaterial3Api::class)
-private fun ButtonGroupScope.downloadQualityItem(
+@Composable
+private fun RowScope.downloadQualityItem(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     enabled: Boolean,
@@ -1040,22 +1029,20 @@ private fun ButtonGroupScope.downloadQualityItem(
     shapes: GroupCornerShapes,
     interactionSource: MutableInteractionSource,
 ) {
-    customItem(
-        buttonGroupContent = {
-            val scheme = MaterialTheme.colorScheme
-            ToggleButton(
-                checked = expanded,
-                enabled = enabled,
-                // Toggle both ways: while open, tapping the arrow must close
-                // the menu (the old `if (it)` swallowed the false).
-                onCheckedChange = { onExpandedChange(it) },
+    Box {
+        val scheme = MaterialTheme.colorScheme
+        ToggleButton(
+            checked = expanded,
+            enabled = enabled,
+            // Toggle both ways: while open, tapping the arrow must close
+            // the menu (the old `if (it)` swallowed the false).
+            onCheckedChange = { onExpandedChange(it) },
                 shapes = ToggleButtonShapes(shapes.shape, shapes.pressedShape, shapes.checkedShape),
                 modifier =
                     Modifier
                         .fillMaxHeight()
                         .width(width)
-                        .clip(shapes.checkedShape)
-                        .animateWidth(interactionSource),
+                        .clip(shapes.checkedShape),
                 // Same vertical padding as the sheet's tiles, see the
                 // leading item.
                 contentPadding = PaddingValues(all = Tokens.SpaceMd),
@@ -1097,13 +1084,12 @@ private fun ButtonGroupScope.downloadQualityItem(
                     }
                 }
             }
-        },
-        menuContent = {},
-    )
+    }
 }
 
 /**
- * Download control for the options sheets. One native M3 [ButtonGroup] in
+ * Download control for the options sheets. One plain Row (see HideTileGroup): a
+ * ButtonGroup would measure the fixed-width chevron at 0 in material3 beta02.
  * every state — the grid-tile corner recipe, the tiles' colors, and the
  * expressive width animation — with deliberately unequal segments: the
  * leading action takes the remaining width, the trailing icon-only quality
@@ -1165,9 +1151,8 @@ fun DownloadSection(
             animationSpec = tileColorSpec,
             label = "download-content",
         )
-    ButtonGroup(
-        overflowIndicator = { _ -> },
-        modifier = modifier,
+    Row(
+        modifier = modifier.height(IntrinsicSize.Max),
         horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
     ) {
         downloadLeadingItem(
