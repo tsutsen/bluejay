@@ -40,6 +40,7 @@ sealed interface SettingsUiState {
         val gridColumns: Int,
         val showRecommendedVideos: Boolean,
         val showComments: Boolean,
+        val autoplay: Boolean,
         val showWatchedVideos: Boolean,
         val showStartedVideos: Boolean,
         val homebrewRecommendations: Boolean,
@@ -132,6 +133,7 @@ class SettingsViewModel
                                 gridColumns = prefs.gridColumns,
                                 showRecommendedVideos = prefs.showRecommendedVideos,
                                 showComments = prefs.showComments,
+                                autoplay = prefs.playback.autoPlay,
                                 showWatchedVideos = prefs.showWatchedVideos,
                                 showStartedVideos = prefs.showStartedVideos,
                                 homebrewRecommendations = prefs.homebrewRecommendations,
@@ -177,6 +179,11 @@ class SettingsViewModel
             viewModelScope.launch {
                 settingsRepository.updatePlayback(prefs)
             }
+        }
+
+        /** Toggle queue autoplay (Settings > Content > Video page). */
+        fun setAutoplay(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setAutoplay(enabled) }
         }
 
         fun updateGeneral(

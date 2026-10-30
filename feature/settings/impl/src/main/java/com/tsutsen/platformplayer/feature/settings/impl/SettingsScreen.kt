@@ -1069,12 +1069,20 @@ private fun SectionItems(
                             },
                     )
                     SettingsSwitchCard(
+                        icon = Icons.Filled.PlayCircle,
+                        title = "Autoplay",
+                        subtitle = "Play the next video in the queue when the current one ends",
+                        checked = state.autoplay,
+                        onCheckedChange = { viewModel.setAutoplay(it) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsSwitchCard(
                         icon = VideoTemplate,
                         title = "Show recommended videos",
                         subtitle = "Recommended tab on the video page",
                         checked = state.showRecommendedVideos,
                         onCheckedChange = { viewModel.updateGeneral("showRecommendedVideos", it) },
-                        groupPosition = GroupPosition.First,
+                        groupPosition = GroupPosition.Middle,
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.Chat,

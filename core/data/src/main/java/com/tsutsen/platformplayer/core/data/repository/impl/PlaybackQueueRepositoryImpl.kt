@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.core.data.repository.impl
 
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
+import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import android.util.Log
 import com.tsutsen.platformplayer.core.model.ContentItem
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +20,7 @@ class PlaybackQueueRepositoryImpl
     @Inject
     constructor(
         private val playerRepository: PlayerRepository,
+        private val settingsRepository: SettingsRepository,
     ) : PlaybackQueueRepository {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -27,14 +29,26 @@ class PlaybackQueueRepositoryImpl
 
         init {
             scope.launch {
+                // Advance only on the TRANSITION into completed: the
+                // position ticker re-emits isCompleted several times per
+                // second while a video sits at its end, and each emission
+                // used to fire another advance() (double-skip). Reset when
+                // playback is no longer completed (a new video started).
+                var wasCompleted = false
                 playerRepository.playerState.collect { state ->
                     val current = state.currentVideo ?: return@collect
                     if (state.isCompleted) {
                         // Auto-advance: when the current video ends, play
-                        // the next queued item.
-                        advance()
+                        // the next queued item — unless autoplay is off
+                        // (Settings > Content > Video page). Manual
+                        // playNext() (skip-next) ignores the setting.
+                        if (!wasCompleted && settingsRepository.preferences.value.playback.autoPlay) {
+                            advance()
+                        }
+                        wasCompleted = true
                         return@collect
                     }
+                    wasCompleted = false
                     // The current video is always the FIRST queue item, even
                     // when it was started from outside the queue (feed tap,
                     // recommendation, search...). Keeps the queue from ever

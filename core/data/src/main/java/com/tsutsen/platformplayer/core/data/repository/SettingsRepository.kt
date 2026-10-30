@@ -12,6 +12,8 @@ interface SettingsRepository {
 
     suspend fun updateAppearance(prefs: com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences)
     suspend fun updatePlayback(prefs: com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences)
+    /** Toggle queue autoplay (Settings > Content > Video page). */
+    suspend fun setAutoplay(enabled: Boolean)
     suspend fun updateGeneral(key: String, value: Any)
 
     // Typed per-key setters (the keys the settings screens use).

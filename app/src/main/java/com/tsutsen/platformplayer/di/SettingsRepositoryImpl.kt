@@ -149,6 +149,9 @@ class SettingsRepositoryImpl
             emit()
         }
 
+        override suspend fun setAutoplay(enabled: Boolean) =
+            persist { it.playback.autoplay = enabled }
+
         override suspend fun updateGeneral(
             key: String,
             value: Any,
