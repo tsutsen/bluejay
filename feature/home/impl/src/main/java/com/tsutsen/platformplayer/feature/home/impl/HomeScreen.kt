@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -293,7 +293,7 @@ private fun HomeFeedContent(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(Tokens.IconMd))
+                                        LoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
                                     }
                                 }
                             } else {

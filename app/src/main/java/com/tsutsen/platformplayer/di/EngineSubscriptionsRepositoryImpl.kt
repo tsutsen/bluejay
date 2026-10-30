@@ -137,6 +137,8 @@ class EngineSubscriptionsRepositoryImpl
             withContext(Dispatchers.IO) {
                 val f = flow
                 if (f != null && f.hasMore) {
+                    // Drive the load-more footer indicator.
+                    _feed.update { it.copy(isLoading = true) }
                     f.loadNextPage()
                     Logger.i(TAG, "Loaded more (total: ${f.items.size})")
                     applyFilters()

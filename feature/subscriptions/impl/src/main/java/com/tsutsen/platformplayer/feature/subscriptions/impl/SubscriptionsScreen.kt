@@ -8,7 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -327,7 +327,7 @@ private fun SubscriptionsContent(
                                                 modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
                                                 contentAlignment = Alignment.Center,
                                             ) {
-                                                androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(Tokens.IconMd))
+                                                androidx.compose.material3.LoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
                                             }
                                         }
                                     } else {
@@ -456,7 +456,7 @@ private fun SubscriptionsContent(
                                             modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
                                             contentAlignment = Alignment.Center,
                                         ) {
-                                            CircularProgressIndicator(modifier = Modifier.size(Tokens.IconMd))
+                                            LoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
                                         }
                                     }
                                 } else {
