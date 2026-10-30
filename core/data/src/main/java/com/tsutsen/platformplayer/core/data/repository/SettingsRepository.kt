@@ -32,12 +32,8 @@ interface SettingsRepository {
     suspend fun setSourceYoutubeFeed(enabled: Boolean)
     suspend fun setSourceSubscriptions(enabled: Boolean)
     suspend fun setSourceTopCreators(enabled: Boolean)
-    /** Spawn-probability range (percent 0..100) for the platform feed source. */
-    suspend fun setYoutubeProbRange(range: Pair<Int, Int>)
-    /** Spawn-probability range (percent 0..100) for the subscriptions source. */
-    suspend fun setSubsProbRange(range: Pair<Int, Int>)
-    /** Spawn-probability range (percent 0..100) for the top-creators source. */
-    suspend fun setTopCreatorsProbRange(range: Pair<Int, Int>)
+    /** Spawn-probability cut points (percent 0..100, coerced so cut1 <= cut2) splitting 0..100 into the three source segments. */
+    suspend fun setProbCuts(cut1: Int, cut2: Int)
     suspend fun setDockTabOrder(order: List<String>)
     suspend fun setDefaultDockTab(key: String)
     suspend fun setSubscriptionsOrder(order: String)
@@ -49,6 +45,24 @@ interface SettingsRepository {
 
     /** Live hidden video URLs (drives the options sheet's Hide/Unhide tile). */
     val hiddenVideoUrls: StateFlow<List<String>>
+
+    /** Persist a creator (authorUrl) as hidden; its cards are filtered out of the home feed. */
+    suspend fun addHiddenCreator(authorUrl: String)
+
+    /** Remove a creator from the hidden set (sheet arrow menu toggle). */
+    suspend fun removeHiddenCreator(authorUrl: String)
+
+    /** Persist a creator (authorUrl) as downranked; its cards sink to the end of the home feed. */
+    suspend fun addDownrankedCreator(authorUrl: String)
+
+    /** Remove a creator from the downranked set (sheet arrow menu toggle). */
+    suspend fun removeDownrankedCreator(authorUrl: String)
+
+    /** Live hidden creator urls (drives the options sheet's "Don't show this creator"). */
+    val hiddenCreators: StateFlow<List<String>>
+
+    /** Live downranked creator urls (drives the options sheet's "Show less from this creator"). */
+    val downrankedCreators: StateFlow<List<String>>
     suspend fun setAutoUpdatePlugins(enabled: Boolean)
     suspend fun setSubtitleFont(font: String)
     suspend fun setSubtitleFontSize(sizeSp: Int)

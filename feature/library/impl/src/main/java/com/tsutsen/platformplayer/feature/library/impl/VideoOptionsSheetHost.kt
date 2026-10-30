@@ -56,6 +56,10 @@ fun VideoOptionsSheetHost(
         .collectAsState(initial = emptySet())
     val queue by viewModel.queue.collectAsState(initial = emptyList())
     val hiddenUrls by viewModel.hiddenVideoUrls.collectAsState(initial = emptyList())
+    val hiddenCreators by viewModel.hiddenCreators.collectAsState(initial = emptyList())
+    val downrankedCreators by viewModel.downrankedCreators.collectAsState(initial = emptyList())
+    // Creator-level hide options are keyed by the video's authorUrl.
+    val creatorUrl = video.authorUrl?.takeIf { it.isNotEmpty() }
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
 
     // One-shot feedback for download failures as a system toast (success
@@ -120,7 +124,11 @@ fun VideoOptionsSheetHost(
             }
         },
         isHidden = video.url in hiddenUrls,
-        onHideToggle = { viewModel.toggleHiddenVideo(video.url) },
+        onHideVideo = { viewModel.toggleHiddenVideo(video.url) },
+        onDownrankCreator = creatorUrl?.let { url -> { viewModel.toggleDownrankedCreator(url) } },
+        onHideCreator = creatorUrl?.let { url -> { viewModel.toggleHiddenCreator(url) } },
+        isCreatorDownranked = creatorUrl != null && creatorUrl in downrankedCreators,
+        isCreatorHidden = creatorUrl != null && creatorUrl in hiddenCreators,
         onAddToQueue = {
             // No onDismiss: the sheet stays open so the user can keep
             // choosing actions.
@@ -137,7 +145,7 @@ fun VideoOptionsSheetHost(
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),
         isFavouriteSaved = savedTypes.contains(SavedVideoType.FAVOURITE),
         playlists = playlists,
-        authorUrl = video.authorUrl,
+        authorUrl = creatorUrl,
         title = video.title,
         durationMs = video.durationMs,
         viewCount = video.viewCount,

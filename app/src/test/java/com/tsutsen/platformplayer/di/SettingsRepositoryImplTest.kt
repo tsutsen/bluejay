@@ -33,12 +33,8 @@ class SettingsRepositoryImplTest {
         s.notifications.enabled = true
         s.advancedSettings = false
         s.feed.gridColumns = 3
-        s.recommendations.youtubeProbMin = 20
-        s.recommendations.youtubeProbMax = 80
-        s.recommendations.subsProbMin = 20
-        s.recommendations.subsProbMax = 80
-        s.recommendations.topCreatorsProbMin = 20
-        s.recommendations.topCreatorsProbMax = 80
+        s.recommendations.probCut1 = 33
+        s.recommendations.probCut2 = 66
         repo = SettingsRepositoryImpl()
     }
 
@@ -166,27 +162,23 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
-    fun probRangeSettersPersistAndEmit() =
+    fun probCutsSetterPersistsCoercesAndEmits() =
         runTest {
-            repo.setYoutubeProbRange(10 to 30)
-            repo.setSubsProbRange(0 to 0)
-            repo.setTopCreatorsProbRange(50 to 90)
+            repo.setProbCuts(10, 90)
 
-            val s = Settings.instance
-            assertEquals(10, s.recommendations.youtubeProbMin)
-            assertEquals(30, s.recommendations.youtubeProbMax)
-            assertEquals(0, s.recommendations.subsProbMin)
-            assertEquals(0, s.recommendations.subsProbMax)
-            assertEquals(50, s.recommendations.topCreatorsProbMin)
-            assertEquals(90, s.recommendations.topCreatorsProbMax)
+            var s = Settings.instance
+            assertEquals(10, s.recommendations.probCut1)
+            assertEquals(90, s.recommendations.probCut2)
+            assertEquals(10, repo.preferences.value.probCut1)
+            assertEquals(90, repo.preferences.value.probCut2)
 
-            val prefs = repo.preferences.value
-            assertEquals(10, prefs.youtubeProbMin)
-            assertEquals(30, prefs.youtubeProbMax)
-            assertEquals(0, prefs.subsProbMin)
-            assertEquals(0, prefs.subsProbMax)
-            assertEquals(50, prefs.topCreatorsProbMin)
-            assertEquals(90, prefs.topCreatorsProbMax)
+            // Out-of-range / inverted input is coerced to 0..100, cut1 <= cut2.
+            repo.setProbCuts(120, -5)
+            s = Settings.instance
+            assertEquals(100, s.recommendations.probCut1)
+            assertEquals(100, s.recommendations.probCut2)
+            assertEquals(100, repo.preferences.value.probCut1)
+            assertEquals(100, repo.preferences.value.probCut2)
         }
 
     @Test
@@ -212,5 +204,30 @@ class SettingsRepositoryImplTest {
             assertEquals(ThemeMode.AUTO, prefs.appearance.themeMode)
             assertEquals(3, prefs.gridColumns)
             assertEquals(1f, prefs.defaultPlaybackSpeed)
+        }
+
+    @Test
+    fun hiddenAndDownrankedCreatorsPersistAndEmit() =
+        runTest {
+            // Isolate from any state a previous run persisted.
+            Settings.instance.content.hiddenCreators = emptyList()
+            Settings.instance.content.downrankedCreators = emptyList()
+
+            repo.addHiddenCreator("https://ch/1")
+            repo.addDownrankedCreator("https://ch/2")
+            repo.addHiddenCreator("https://ch/1") // duplicate is deduped
+
+            val s = Settings.instance
+            assertEquals(listOf("https://ch/1"), s.content.hiddenCreators)
+            assertEquals(listOf("https://ch/2"), s.content.downrankedCreators)
+            assertEquals(listOf("https://ch/1"), repo.hiddenCreators.value)
+            assertEquals(listOf("https://ch/2"), repo.downrankedCreators.value)
+
+            repo.removeHiddenCreator("https://ch/1")
+            repo.removeDownrankedCreator("https://ch/2")
+            assertTrue(Settings.instance.content.hiddenCreators.isEmpty())
+            assertTrue(Settings.instance.content.downrankedCreators.isEmpty())
+            assertTrue(repo.hiddenCreators.value.isEmpty())
+            assertTrue(repo.downrankedCreators.value.isEmpty())
         }
 }

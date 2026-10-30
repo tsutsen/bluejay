@@ -445,7 +445,10 @@ class EngineHomeRepositoryImpl
 
         /**
          * Applies the persisted content settings to a freshly loaded feed
-         * page: hidden video urls (long-press "Hide"), plus the watched /
+         * page: hidden video urls (long-press "Hide"), hidden creators
+         * (arrow menu "Don't show this creator", keyed by authorUrl), the
+         * downranked creators ("Show less from this creator" — their cards
+         * sink to the end of the page, stable partition), plus the watched /
          * started toggles backed by the history table. Runs before emit and
          * before the Room cache write. History is batch-queried once per
          * page, and only when a toggle is actually off.
@@ -453,9 +456,15 @@ class EngineHomeRepositoryImpl
         private suspend fun applyContentFilters(cards: List<Card>): List<Card> {
             val content = Settings.instance.content
             val hidden = content.hiddenVideoUrls
+            val hiddenCreators = content.hiddenCreators
+            val downrankedCreators = content.downrankedCreators
             val filterWatched = !content.showWatchedVideos
             val filterStarted = !content.showStartedVideos
-            if (!filterWatched && !filterStarted && hidden.isEmpty()) return cards
+            if (!filterWatched && !filterStarted && hidden.isEmpty() &&
+                hiddenCreators.isEmpty() && downrankedCreators.isEmpty()
+            ) {
+                return cards
+            }
             val history =
                 if (filterWatched || filterStarted) {
                     val urls = cards.mapNotNull { cardUrl(it) }
@@ -467,25 +476,37 @@ class EngineHomeRepositoryImpl
                 } else {
                     emptyMap()
                 }
-            return cards.filter { card ->
-                val url = cardUrl(card)
-                if (url != null && url in hidden) return@filter false
-                if (filterWatched || filterStarted) {
-                    val h = url?.let { history[it] } ?: return@filter true
-                    val duration = h.totalDurationMs
-                    // Same watched/started split as the subs feed chips:
-                    // watched = >= 95% of duration (position or watched time),
-                    // started = in progress but not finished.
-                    val watched =
-                        duration > 0 &&
-                            (h.lastPositionMs >= 0.95 * duration || h.watchedMs >= 0.95 * duration)
-                    val started = h.lastPositionMs > 0 && !watched
-                    if (filterWatched && watched) return@filter false
-                    if (filterStarted && started) return@filter false
+            val visible =
+                cards.filter { card ->
+                    val url = cardUrl(card)
+                    if (url != null && url in hidden) return@filter false
+                    val authorUrl = cardAuthorUrl(card)
+                    if (authorUrl != null && authorUrl in hiddenCreators) return@filter false
+                    if (filterWatched || filterStarted) {
+                        val h = url?.let { history[it] } ?: return@filter true
+                        val duration = h.totalDurationMs
+                        // Same watched/started split as the subs feed chips:
+                        // watched = >= 95% of duration (position or watched time),
+                        // started = in progress but not finished.
+                        val watched =
+                            duration > 0 &&
+                                (h.lastPositionMs >= 0.95 * duration || h.watchedMs >= 0.95 * duration)
+                        val started = h.lastPositionMs > 0 && !watched
+                        if (filterWatched && watched) return@filter false
+                        if (filterStarted && started) return@filter false
+                    }
+                    true
                 }
-                true
-            }
+            if (downrankedCreators.isEmpty()) return visible
+            // Stable partition: downranked creators keep their relative order
+            // but move behind everything else.
+            val (normal, downranked) = visible.partition { cardAuthorUrl(it) !in downrankedCreators }
+            return normal + downranked
         }
+
+        /** The card's creator key (authorUrl) — only video cards carry one. */
+        private fun cardAuthorUrl(card: Card): String? =
+            (card as? VideoCard)?.authorUrl?.takeIf { it.isNotEmpty() }
 
         private fun cardUrl(card: Card): String? =
             when (card) {

@@ -1407,6 +1407,10 @@ private fun CurrentVideoOptionsSheet(
         }
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
     val hiddenUrls by viewModel.hiddenVideoUrls.collectAsState(initial = emptyList())
+    val hiddenCreators by viewModel.hiddenCreators.collectAsState(initial = emptyList())
+    val downrankedCreators by viewModel.downrankedCreators.collectAsState(initial = emptyList())
+    // Creator-level hide options are keyed by the video's authorUrl.
+    val creatorUrl = video.author?.url?.takeIf { it.isNotEmpty() }
     // "Watched" tile: upsert the history row directly (the player module
     // owns its DB access, same as HistoryTracker).
     val context = LocalContext.current
@@ -1459,7 +1463,11 @@ private fun CurrentVideoOptionsSheet(
             }
         },
         isHidden = video.url in hiddenUrls,
-        onHideToggle = { viewModel.toggleHiddenVideo(video.url) },
+        onHideVideo = { viewModel.toggleHiddenVideo(video.url) },
+        onDownrankCreator = creatorUrl?.let { url -> { viewModel.toggleDownrankedCreator(url) } },
+        onHideCreator = creatorUrl?.let { url -> { viewModel.toggleHiddenCreator(url) } },
+        isCreatorDownranked = creatorUrl != null && creatorUrl in downrankedCreators,
+        isCreatorHidden = creatorUrl != null && creatorUrl in hiddenCreators,
         isInQueue = queue.any { it.url == video.url },
         isCurrentlyPlaying = isCurrentlyPlaying,
         onRemoveFromQueue = { viewModel.removeQueueItemUrl(video.url) },
@@ -1468,7 +1476,7 @@ private fun CurrentVideoOptionsSheet(
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),
         isFavouriteSaved = savedTypes.contains(SavedVideoType.FAVOURITE),
         playlists = playlists,
-        authorUrl = video.author?.url,
+        authorUrl = creatorUrl,
         title = video.title,
         durationMs = video.durationMs,
         viewCount = video.viewCount,

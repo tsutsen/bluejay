@@ -564,6 +564,36 @@ class PlayerViewModel
             }
         }
 
+        /** Live hidden creator urls (drives the sheet's "Don't show this creator"). */
+        val hiddenCreators: StateFlow<List<String>>
+            get() = settingsRepository.hiddenCreators
+
+        /** Live downranked creator urls (drives the sheet's "Show less from this creator"). */
+        val downrankedCreators: StateFlow<List<String>>
+            get() = settingsRepository.downrankedCreators
+
+        /** Arrow menu: toggle the creator (authorUrl) in the persisted hidden-creator set. */
+        fun toggleHiddenCreator(authorUrl: String) {
+            viewModelScope.launch {
+                if (authorUrl in settingsRepository.hiddenCreators.value) {
+                    settingsRepository.removeHiddenCreator(authorUrl)
+                } else {
+                    settingsRepository.addHiddenCreator(authorUrl)
+                }
+            }
+        }
+
+        /** Arrow menu: toggle the creator (authorUrl) in the persisted downranked set. */
+        fun toggleDownrankedCreator(authorUrl: String) {
+            viewModelScope.launch {
+                if (authorUrl in settingsRepository.downrankedCreators.value) {
+                    settingsRepository.removeDownrankedCreator(authorUrl)
+                } else {
+                    settingsRepository.addDownrankedCreator(authorUrl)
+                }
+            }
+        }
+
         /**
          * Toggle the current video in/out of a saved list. Like and dislike are
          * mutually exclusive: adding one removes the other.

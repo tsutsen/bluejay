@@ -35,6 +35,15 @@ class SettingsRepositoryImpl
         private val _hiddenVideoUrls = MutableStateFlow(Settings.instance.content.hiddenVideoUrls)
         override val hiddenVideoUrls: StateFlow<List<String>> = _hiddenVideoUrls.asStateFlow()
 
+        // Same pattern as _hiddenVideoUrls: kept out of [AppPreferences] (the
+        // sheet only needs these lists); re-synced after each change below.
+        private val _hiddenCreators = MutableStateFlow(Settings.instance.content.hiddenCreators)
+        override val hiddenCreators: StateFlow<List<String>> = _hiddenCreators.asStateFlow()
+
+        private val _downrankedCreators =
+            MutableStateFlow(Settings.instance.content.downrankedCreators)
+        override val downrankedCreators: StateFlow<List<String>> = _downrankedCreators.asStateFlow()
+
         private fun fromSettings(): AppPreferences {
             val s = Settings.instance
             return AppPreferences(
@@ -111,12 +120,8 @@ class SettingsRepositoryImpl
                 sourceYoutubeFeed = s.recommendations.sourceYoutubeFeed,
                 sourceSubscriptions = s.recommendations.sourceSubscriptions,
                 sourceTopCreators = s.recommendations.sourceTopCreators,
-                youtubeProbMin = s.recommendations.youtubeProbMin,
-                youtubeProbMax = s.recommendations.youtubeProbMax,
-                subsProbMin = s.recommendations.subsProbMin,
-                subsProbMax = s.recommendations.subsProbMax,
-                topCreatorsProbMin = s.recommendations.topCreatorsProbMin,
-                topCreatorsProbMax = s.recommendations.topCreatorsProbMax,
+                probCut1 = s.recommendations.probCut1,
+                probCut2 = s.recommendations.probCut2,
                 autoUpdatePlugins = s.plugins.autoUpdatePlugins,
                 dockTabOrder = s.other.dockTabOrder,
                 defaultDockTab = s.other.defaultDockTab,
@@ -228,22 +233,12 @@ class SettingsRepositoryImpl
         override suspend fun setSourceTopCreators(enabled: Boolean) =
             persist { it.recommendations.sourceTopCreators = enabled }
 
-        override suspend fun setYoutubeProbRange(range: Pair<Int, Int>) =
+        override suspend fun setProbCuts(cut1: Int, cut2: Int) =
             persist {
-                it.recommendations.youtubeProbMin = range.first
-                it.recommendations.youtubeProbMax = range.second
-            }
-
-        override suspend fun setSubsProbRange(range: Pair<Int, Int>) =
-            persist {
-                it.recommendations.subsProbMin = range.first
-                it.recommendations.subsProbMax = range.second
-            }
-
-        override suspend fun setTopCreatorsProbRange(range: Pair<Int, Int>) =
-            persist {
-                it.recommendations.topCreatorsProbMin = range.first
-                it.recommendations.topCreatorsProbMax = range.second
+                val lo = cut1.coerceIn(0, 100)
+                val hi = cut2.coerceIn(lo, 100)
+                it.recommendations.probCut1 = lo
+                it.recommendations.probCut2 = hi
             }
 
         override suspend fun setDockTabOrder(order: List<String>) =
@@ -263,6 +258,28 @@ class SettingsRepositoryImpl
         override suspend fun removeHiddenVideoUrl(url: String) {
             persist { it.content.hiddenVideoUrls = it.content.hiddenVideoUrls - url }
             _hiddenVideoUrls.value = Settings.instance.content.hiddenVideoUrls
+        }
+
+        override suspend fun addHiddenCreator(authorUrl: String) {
+            persist { it.content.hiddenCreators = (it.content.hiddenCreators + authorUrl).distinct() }
+            _hiddenCreators.value = Settings.instance.content.hiddenCreators
+        }
+
+        override suspend fun removeHiddenCreator(authorUrl: String) {
+            persist { it.content.hiddenCreators = it.content.hiddenCreators - authorUrl }
+            _hiddenCreators.value = Settings.instance.content.hiddenCreators
+        }
+
+        override suspend fun addDownrankedCreator(authorUrl: String) {
+            persist {
+                it.content.downrankedCreators = (it.content.downrankedCreators + authorUrl).distinct()
+            }
+            _downrankedCreators.value = Settings.instance.content.downrankedCreators
+        }
+
+        override suspend fun removeDownrankedCreator(authorUrl: String) {
+            persist { it.content.downrankedCreators = it.content.downrankedCreators - authorUrl }
+            _downrankedCreators.value = Settings.instance.content.downrankedCreators
         }
 
         override suspend fun setAutoUpdatePlugins(enabled: Boolean) =

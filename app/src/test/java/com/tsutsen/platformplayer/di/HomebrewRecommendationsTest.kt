@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.di
 
+import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.VideoCard
 import org.junit.Assert.assertEquals
@@ -9,7 +10,9 @@ import org.junit.Test
 /**
  * Weighted-spawn merge in [HomebrewRecommendations.interleave]: dedupe by
  * card id, zero-weight sources contribute nothing, and the weights skew the
- * pick distribution.
+ * pick distribution. Also covers [HomebrewRecommendations.spawnWeights]:
+ * the cut points split 0..100 into three segments, disabled sources are
+ * zeroed, and the enabled weights renormalize to sum to 1.
  */
 class HomebrewRecommendationsTest {
     private fun card(id: String): Card =
@@ -53,5 +56,133 @@ class HomebrewRecommendationsTest {
         // P(pick b) per item is ~1%; getting more than a handful from b is
         // astronomically unlikely, so this margin cannot flake in practice.
         assertTrue(ids(out).count { it.startsWith("b") } < 20)
+    }
+
+    @Test
+    fun spawnWeightsDefaultCutsSplitIntoThirds() {
+        val w = HomebrewRecommendations.spawnWeights(Settings.RecommendationsSettings())
+        assertEquals(3, w.size)
+        assertEquals(0.33f, w[0], 0.0001f)
+        assertEquals(0.33f, w[1], 0.0001f)
+        assertEquals(0.34f, w[2], 0.0001f)
+        assertEquals(1f, w.sum(), 0.0001f)
+    }
+
+    @Test
+    fun spawnWeightsZeroAndRenormalizeDisabledSources() {
+        val s =
+            Settings.RecommendationsSettings().apply {
+                probCut1 = 20
+                probCut2 = 60
+                sourceSubscriptions = false
+            }
+        val w = HomebrewRecommendations.spawnWeights(s)
+        // Raw segments [0.2, 0.4, 0.4]; subs zeroed, the rest renormalized
+        // over the remaining 0.6.
+        assertEquals(0f, w[1], 0.0001f)
+        assertEquals(0.2f / 0.6f, w[0], 0.0001f)
+        assertEquals(0.4f / 0.6f, w[2], 0.0001f)
+        assertEquals(1f, w.sum(), 0.0001f)
+    }
+
+    @Test
+    fun spawnWeightsAllSourcesDisabledYieldZero() {
+        val s =
+            Settings.RecommendationsSettings().apply {
+                sourceYoutubeFeed = false
+                sourceSubscriptions = false
+                sourceTopCreators = false
+            }
+        assertEquals(listOf(0f, 0f, 0f), HomebrewRecommendations.spawnWeights(s))
+    }
+
+    @Test
+    fun spawnWeightsInvertedCutsAreCoerced() {
+        val s =
+            Settings.RecommendationsSettings().apply {
+                probCut1 = 80
+                probCut2 = 10
+            }
+        val w = HomebrewRecommendations.spawnWeights(s)
+        assertEquals(0.8f, w[0], 0.0001f)
+        assertEquals(0f, w[1], 0.0001f)
+        assertEquals(0.2f, w[2], 0.0001f)
+        assertEquals(1f, w.sum(), 0.0001f)
+    }
+
+    private fun vcard(
+        id: String,
+        author: String? = null,
+        authorUrl: String? = null,
+    ): Card =
+        VideoCard(
+            id = id,
+            title = id,
+            thumbnailUrl = null,
+            author = author,
+            authorUrl = authorUrl,
+            url = "https://youtu.be/$id",
+        )
+
+    @Test
+    fun interleaveAvoidsConsecutiveCardsFromSameCreator() {
+        // Source A is all creator X, source B all creator Y: whatever the
+        // roulette picks, the next card must come from the other creator
+        // while both still have items, so the output strictly alternates.
+        val a = (1..3).map { vcard("a$it", author = "X") }
+        val b = (1..3).map { vcard("b$it", author = "Y") }
+        repeat(20) {
+            val out = HomebrewRecommendations.interleave(listOf(a, b), listOf(1f, 1f))
+            assertEquals(6, out.size)
+            out.zipWithNext().forEach { (prev, next) ->
+                assertTrue(
+                    "consecutive cards from the same creator: ${prev.id}, ${next.id}",
+                    prev.id[0] != next.id[0],
+                )
+            }
+        }
+    }
+
+    @Test
+    fun interleaveAcceptsSameCreatorWhenNothingElseRemains() {
+        // Every candidate repeats the last creator — the pick must still be
+        // emitted (no deadlock).
+        val a = (1..2).map { vcard("a$it", author = "X") }
+        val b = (1..2).map { vcard("b$it", author = "X") }
+        val out = HomebrewRecommendations.interleave(listOf(a, b), listOf(1f, 1f))
+        assertEquals(4, out.size)
+        assertEquals(setOf("a1", "a2", "b1", "b2"), out.map { it.id }.toSet())
+    }
+
+    @Test
+    fun interleaveCreatorKeyPrefersAuthorUrlOverAuthor() {
+        // Same author name but different authorUrl = different creators;
+        // same authorUrl = same creator even when names differ.
+        val a = listOf(vcard("a1", author = "Same Name", authorUrl = "https://ch/1"))
+        val b = listOf(vcard("b1", author = "Same Name", authorUrl = "https://ch/1"))
+        val c = listOf(vcard("c1", author = "Same Name", authorUrl = "https://ch/2"))
+        val out = HomebrewRecommendations.interleave(listOf(a, b, c), listOf(1f, 1f, 1f))
+        assertEquals(3, out.size)
+        // a1 and b1 share a creator key: they may be adjacent only when the
+        // one different creator (c1) was already emitted, i.e. the repeat was
+        // forced — never while a different creator was still available.
+        val idxA = out.indexOfFirst { it.id == "a1" }
+        val idxB = out.indexOfFirst { it.id == "b1" }
+        val idxC = out.indexOfFirst { it.id == "c1" }
+        if (kotlin.math.abs(idxA - idxB) == 1) {
+            assertTrue(
+                "a1 and b1 adjacent while c1 was still pending: $out",
+                idxC < minOf(idxA, idxB),
+            )
+        }
+    }
+
+    @Test
+    fun interleaveStillDedupesWithAntiRepeat() {
+        val a = listOf(vcard("1", author = "X"), vcard("2", author = "X"))
+        val b = listOf(vcard("2", author = "Y"), vcard("3", author = "Y"))
+        val out = HomebrewRecommendations.interleave(listOf(a, b), listOf(1f, 1f))
+        assertEquals(3, out.size)
+        assertEquals(setOf("1", "2", "3"), out.map { it.id }.toSet())
     }
 }

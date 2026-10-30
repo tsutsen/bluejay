@@ -132,6 +132,8 @@ internal fun CompanionVideoOptionsSheet(
             downloadEntry.done -> DownloadButtonState.Downloaded
             else -> DownloadButtonState.Downloading(downloadEntry.progress)
         }
+    // Creator-level hide options are keyed by the video's authorUrl.
+    val creatorUrl = card.authorUrl?.takeIf { it.isNotEmpty() }
 
     VideoOptionsSheet(
         url = card.url,
@@ -192,7 +194,7 @@ internal fun CompanionVideoOptionsSheet(
             playbackQueueRepository.add(card.toContentItem())
         },
         isHidden = com.tsutsen.platformplayer.Settings.instance.content.hiddenVideoUrls.contains(card.url),
-        onHideToggle = {
+        onHideVideo = {
             // App module: persist directly on the Settings singleton.
             val s = com.tsutsen.platformplayer.Settings.instance
             s.content.hiddenVideoUrls =
@@ -202,6 +204,36 @@ internal fun CompanionVideoOptionsSheet(
                     (s.content.hiddenVideoUrls + card.url).distinct()
                 }
             s.save()
+        },
+        isCreatorHidden =
+            creatorUrl != null &&
+                creatorUrl in com.tsutsen.platformplayer.Settings.instance.content.hiddenCreators,
+        isCreatorDownranked =
+            creatorUrl != null &&
+                creatorUrl in com.tsutsen.platformplayer.Settings.instance.content.downrankedCreators,
+        onDownrankCreator = creatorUrl?.let { url ->
+            {
+                val s = com.tsutsen.platformplayer.Settings.instance
+                s.content.downrankedCreators =
+                    if (url in s.content.downrankedCreators) {
+                        s.content.downrankedCreators - url
+                    } else {
+                        (s.content.downrankedCreators + url).distinct()
+                    }
+                s.save()
+            }
+        },
+        onHideCreator = creatorUrl?.let { url ->
+            {
+                val s = com.tsutsen.platformplayer.Settings.instance
+                s.content.hiddenCreators =
+                    if (url in s.content.hiddenCreators) {
+                        s.content.hiddenCreators - url
+                    } else {
+                        (s.content.hiddenCreators + url).distinct()
+                    }
+                s.save()
+            }
         },
         isInQueue = queue.any { it.url == card.url },
         isCurrentlyPlaying = currentVideoUrl != null && currentVideoUrl == card.url,
@@ -214,7 +246,7 @@ internal fun CompanionVideoOptionsSheet(
         isLikedSaved = savedTypes.contains(SavedVideoType.LIKED),
         isFavouriteSaved = savedTypes.contains(SavedVideoType.FAVOURITE),
         playlists = playlists,
-        authorUrl = card.authorUrl?.takeIf { it.isNotEmpty() },
+        authorUrl = creatorUrl,
         title = card.title,
         durationMs = card.durationMs,
         viewCount = card.viewCount,

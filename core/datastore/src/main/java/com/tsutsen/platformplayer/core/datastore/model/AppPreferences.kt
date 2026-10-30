@@ -54,15 +54,10 @@ data class AppPreferences(
     val sourceSubscriptions: Boolean = true,
     /** Recommendation source: recent unwatched videos from top creators. */
     val sourceTopCreators: Boolean = true,
-    /** Spawn-probability range (percent) for the platform feed source. */
-    val youtubeProbMin: Int = 20,
-    val youtubeProbMax: Int = 80,
-    /** Spawn-probability range (percent) for the subscriptions source. */
-    val subsProbMin: Int = 20,
-    val subsProbMax: Int = 80,
-    /** Spawn-probability range (percent) for the top-creators source. */
-    val topCreatorsProbMin: Int = 20,
-    val topCreatorsProbMax: Int = 80,
+    /** Spawn-probability cut point 1 (percent 0..100): segment boundary between the platform feed source and subscriptions. */
+    val probCut1: Int = 33,
+    /** Spawn-probability cut point 2 (percent 0..100, >= [probCut1]): segment boundary between subscriptions and top creators. */
+    val probCut2: Int = 66,
     val autoUpdatePlugins: Boolean = true,
     val gettingStartedCompleted: Boolean = false,
     /** Source ids whose home-feed login notice was declined. */

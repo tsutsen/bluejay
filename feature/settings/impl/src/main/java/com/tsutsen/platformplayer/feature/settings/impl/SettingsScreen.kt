@@ -91,7 +91,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -1182,30 +1181,12 @@ private fun SectionItems(
                     )
                     SpawnProbabilityCard(
                         enabled = state.homebrewRecommendations,
-                        rows =
-                            listOf(
-                                SpawnProbabilityRow(
-                                    label = "Source picks",
-                                    active = state.sourceYoutubeFeed,
-                                    min = state.youtubeProbMin,
-                                    max = state.youtubeProbMax,
-                                    onRangeChange = { viewModel.setYoutubeProbRange(it) },
-                                ),
-                                SpawnProbabilityRow(
-                                    label = "Subscriptions",
-                                    active = state.sourceSubscriptions,
-                                    min = state.subsProbMin,
-                                    max = state.subsProbMax,
-                                    onRangeChange = { viewModel.setSubsProbRange(it) },
-                                ),
-                                SpawnProbabilityRow(
-                                    label = "Top creators",
-                                    active = state.sourceTopCreators,
-                                    min = state.topCreatorsProbMin,
-                                    max = state.topCreatorsProbMax,
-                                    onRangeChange = { viewModel.setTopCreatorsProbRange(it) },
-                                ),
-                            ),
+                        cut1 = state.probCut1,
+                        cut2 = state.probCut2,
+                        sourceYoutubeFeed = state.sourceYoutubeFeed,
+                        sourceSubscriptions = state.sourceSubscriptions,
+                        sourceTopCreators = state.sourceTopCreators,
+                        onCutsChange = { cut1, cut2 -> viewModel.setProbCuts(cut1, cut2) },
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
@@ -2270,28 +2251,34 @@ private fun SettingsHeader(
     }
 }
 
-/** One category row of the "Spawn probability" card. */
-private data class SpawnProbabilityRow(
-    val label: String,
-    /** Source toggle on: two-headed RangeSlider; off: greyed single Slider. */
-    val active: Boolean,
-    val min: Int,
-    val max: Int,
-    val onRangeChange: (Pair<Int, Int>) -> Unit,
-)
-
 /**
- * "Spawn probability" card in the Recommendations section: per-source
- * spawn-probability range (percent) for the homebrew feed. An enabled
- * category gets a two-headed [RangeSlider] (0..100%, 1% steps, heads coerced
- * so min <= max); a disabled category gets a plain [Slider], greyed out,
- * parked at the middle of its stored range.
+ * "Spawn probability" card in the Recommendations section: one two-headed
+ * [RangeSlider] (0..100%, 1% steps) whose heads are the two cut points. The
+ * cuts split 0..100 into three segments — source picks [0, cut1],
+ * subscriptions [cut1, cut2], top creators [cut2, 100] — so the spawn
+ * probabilities sum to 100% by construction. Each segment's label sits under
+ * its slice of the track (width proportional to the segment); a category
+ * whose source toggle is off shows its label greyed, the slider still works.
  */
 @Composable
 private fun SpawnProbabilityCard(
     enabled: Boolean,
-    rows: List<SpawnProbabilityRow>,
+    cut1: Int,
+    cut2: Int,
+    sourceYoutubeFeed: Boolean,
+    sourceSubscriptions: Boolean,
+    sourceTopCreators: Boolean,
+    onCutsChange: (Int, Int) -> Unit,
 ) {
+    // Coerce in case stored values are inverted; the engine reads them ordered.
+    val lo = cut1.coerceIn(0, 100)
+    val hi = cut2.coerceIn(lo, 100)
+    val segments =
+        listOf(
+            Triple("Source picks", lo, sourceYoutubeFeed),
+            Triple("Subscriptions", hi - lo, sourceSubscriptions),
+            Triple("Top creators", 100 - hi, sourceTopCreators),
+        )
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = groupShape(GroupPosition.Single),
@@ -2304,50 +2291,44 @@ private fun SpawnProbabilityCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
             )
-            rows.forEach { row ->
-                // Coerce in case stored values are inverted; the engine reads
-                // them as [min, max].
-                val lo = minOf(row.min, row.max)
-                val hi = maxOf(row.min, row.max)
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = Tokens.SpaceSm),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = row.label,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = "$lo–$hi%",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                if (row.active) {
-                    RangeSlider(
-                        value = lo.toFloat()..hi.toFloat(),
-                        onValueChange = { range ->
-                            val a = range.start.roundToInt()
-                            val b = range.endInclusive.roundToInt()
-                            row.onRangeChange(minOf(a, b) to maxOf(a, b))
-                        },
-                        valueRange = 0f..100f,
-                        // 99 steps = 1% resolution across 0..100.
-                        steps = 99,
-                        enabled = enabled,
-                    )
-                } else {
-                    Slider(
-                        value = (lo + hi) / 2f,
-                        onValueChange = {},
-                        valueRange = 0f..100f,
-                        enabled = false,
-                        modifier = Modifier.alpha(0.5f),
-                    )
+            RangeSlider(
+                value = lo.toFloat()..hi.toFloat(),
+                onValueChange = { range ->
+                    val a = range.start.roundToInt().coerceIn(0, 100)
+                    val b = range.endInclusive.roundToInt().coerceIn(0, 100)
+                    onCutsChange(minOf(a, b), maxOf(a, b))
+                },
+                valueRange = 0f..100f,
+                // 99 steps = 1% resolution across 0..100.
+                steps = 99,
+                enabled = enabled,
+                modifier = Modifier.padding(top = Tokens.SpaceSm),
+            )
+            // Segment labels under the track, each centered in its slice
+            // (width proportional to the segment = positioned by weight).
+            Row(modifier = Modifier.fillMaxWidth()) {
+                segments.forEach { (label, pct, active) ->
+                    Box(
+                        modifier =
+                            // weight() requires a positive weight; a zero-width
+                            // segment (cut at 0/100 or cut1 == cut2) gets none.
+                            if (pct > 0) Modifier.weight(pct.toFloat()) else Modifier.width(0.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "$label $pct%",
+                            style = MaterialTheme.typography.labelMedium,
+                            color =
+                                if (active) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.alpha(if (active) 1f else 0.5f),
+                        )
+                    }
                 }
             }
         }

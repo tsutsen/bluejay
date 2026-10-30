@@ -239,6 +239,14 @@ class Settings {
         // Video urls hidden via the long-press sheet "Hide" — filtered out of the home feed.
         var hiddenVideoUrls: List<String> = emptyList()
 
+        // Creator (authorUrl) hidden via the sheet's arrow menu "Don't show this
+        // creator" — that creator's cards are filtered out of the home feed.
+        var hiddenCreators: List<String> = emptyList()
+
+        // Creator (authorUrl) downranked via "Show less from this creator" —
+        // that creator's cards move to the end of the home feed.
+        var downrankedCreators: List<String> = emptyList()
+
         // "Auto" or "NNNp" — quality the player starts each video at.
         var defaultVideoResolution: String = "Auto"
 
@@ -335,14 +343,13 @@ class Settings {
         // Source 3: recent unwatched videos from the most-watched creators.
         var sourceTopCreators: Boolean = true
 
-        // Spawn-probability range (percent 0..100) per source, sampled once
-        // per feed build by HomebrewRecommendations (0-0 = never spawns).
-        var youtubeProbMin: Int = 20
-        var youtubeProbMax: Int = 80
-        var subsProbMin: Int = 20
-        var subsProbMax: Int = 80
-        var topCreatorsProbMin: Int = 20
-        var topCreatorsProbMax: Int = 80
+        // Spawn-probability cut points (percent 0..100, cut1 <= cut2): the two
+        // heads split 0..100 into three segments — source picks [0, cut1],
+        // subscriptions [cut1, cut2], top creators [cut2, 100] — so the
+        // probabilities sum to 1 by construction. HomebrewRecommendations
+        // renormalizes the segments of the enabled sources.
+        var probCut1: Int = 33
+        var probCut2: Int = 66
     }
 
     @Serializable

@@ -133,14 +133,24 @@ fun VideoOptionsSheet(
     // Non-null = show a "Watched" tile: marks the video fully watched in
     // the history (the sheet stays open, it's not destructive).
     onMarkWatched: (() -> Unit)? = null,
-    // Non-null = show a "Hide"/"Unhide" toggle tile (danger tone): adds or
-    // removes the video's url from the persisted hidden set (filtered out
-    // of the home feed). The sheet stays open so both directions are one
-    // tap away.
-    onHideToggle: (() -> Unit)? = null,
+    // Non-null = show the "Hide"/"Unhide" tile: adds or removes the video's
+    // url from the persisted hidden set (filtered out of the home feed).
+    // Danger tone only while hidden. The sheet stays open so both directions
+    // are one tap away. When a creator callback is present, the tile also
+    // carries an arrow submenu (see below).
+    onHideVideo: (() -> Unit)? = null,
     // Drives the Hide tile's label: "Hide" when not hidden, "Unhide" when it
     // is already in the hidden set.
     isHidden: Boolean = false,
+    // Arrow submenu next to the Hide tile, keyed by the video's authorUrl:
+    // "Show less from this creator" sinks the creator's cards to the end of
+    // the feed, "Don't show this creator" filters them out of it. Null =
+    // the option is omitted (and the arrow itself is hidden when both are
+    // null). Picking an option closes the menu only — the sheet stays open.
+    onDownrankCreator: (() -> Unit)? = null,
+    onHideCreator: (() -> Unit)? = null,
+    isCreatorDownranked: Boolean = false,
+    isCreatorHidden: Boolean = false,
     // Queue state: the tile becomes a highlighted "Remove from queue" when
     // the video is already queued, and a dimmed "Now playing" when it is
     // the current video.
@@ -169,6 +179,8 @@ fun VideoOptionsSheet(
 ) {
     val context = LocalContext.current
     var showPlaylists by remember { mutableStateOf(false) }
+    // Arrow submenu next to the Hide tile (creator-level hide options).
+    var hideMenuExpanded by remember { mutableStateOf(false) }
     // Snapshot of the (recency-sorted) list taken when the section opens.
     // The live list re-sorts on every add/remove (updatedAt bump), which
     // made rows jump under the finger while a box was being checked. Pin
@@ -218,6 +230,20 @@ fun VideoOptionsSheet(
             }
         }
 
+        // The Hide entry, kept as a reference so its grid slot can render as
+        // tile + arrow submenu (see renderTile below).
+        val hideTile =
+            onHideVideo?.let { onHide ->
+                OptionTile(
+                    label = if (isHidden) "Unhide" else "Hide",
+                    icon = Icons.Filled.VisibilityOff,
+                    // Danger only while the hide is active; a plain "Hide"
+                    // is not destructive yet. No onDismiss — it's a toggle,
+                    // so the sheet stays open (a tap can immediately undo it).
+                    tone = if (isHidden) TileTone.Danger else TileTone.Default,
+                    onClick = onHide,
+                )
+            }
         // Action tiles: 3 columns, unrolled rows (8 base tiles + optional
         // channel/hide/history tiles).
         val tiles =
@@ -328,19 +354,7 @@ fun VideoOptionsSheet(
                         ),
                     )
                 }
-                onHideToggle?.let { onHideToggle ->
-                    add(
-                        OptionTile(
-                            label = if (isHidden) "Unhide" else "Hide",
-                            icon = Icons.Filled.VisibilityOff,
-                            // Destructive for the feed: danger tone. No
-                            // onDismiss — it's a toggle, so the sheet stays
-                            // open (a tap can immediately undo it).
-                            tone = TileTone.Danger,
-                            onClick = onHideToggle,
-                        ),
-                    )
-                }
+                hideTile?.let { add(it) }
                 onRemoveFromHistory?.let { onRemove ->
                     add(
                         OptionTile(
@@ -355,14 +369,36 @@ fun VideoOptionsSheet(
                     )
                 }
             }
+        // Grid slot renderer: the Hide tile carries the arrow submenu when
+        // creator options exist; every other tile renders as-is.
+        val renderTile: @Composable (OptionTile, Modifier) -> Unit = { tile, modifier ->
+            if (onHideVideo != null && tile === hideTile &&
+                (onDownrankCreator != null || onHideCreator != null)
+            ) {
+                HideTileGroup(
+                    tile = tile,
+                    expanded = hideMenuExpanded,
+                    onExpandedChange = { hideMenuExpanded = it },
+                    isHidden = isHidden,
+                    isCreatorDownranked = isCreatorDownranked,
+                    isCreatorHidden = isCreatorHidden,
+                    onHideVideo = onHideVideo,
+                    onDownrankCreator = onDownrankCreator,
+                    onHideCreator = onHideCreator,
+                    modifier = modifier,
+                )
+            } else {
+                OptionTileView(tile = tile, modifier = modifier)
+            }
+        }
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 4.dp),
         ) {
-            optionTileRow(tiles, 0)
-            optionTileRow(tiles, 3)
+            optionTileRow(tiles, 0, renderTile)
+            optionTileRow(tiles, 3, renderTile)
             // Tail rows (3 tiles per row) from index 6; the download group
             // fills the free slots of the last tail row and matches the
             // tiles' height, so it reads as part of the grid instead of a
@@ -394,10 +430,7 @@ fun VideoOptionsSheet(
                 val isLastRow = index + slots >= tiles.size
                 Row(modifier = Modifier.fillMaxWidth()) {
                     for (i in 0 until slots) {
-                        OptionTileView(
-                            tile = tiles[index + i],
-                            modifier = Modifier.weight(1f),
-                        )
+                        renderTile(tiles[index + i], Modifier.weight(1f))
                     }
                     if (isLastRow && slots < 3) {
                         downloadWeight = 3f - slots
@@ -468,25 +501,147 @@ fun VideoOptionsSheet(
 private fun optionTileRow(
     tiles: List<OptionTile>,
     start: Int,
+    renderTile: @Composable (OptionTile, Modifier) -> Unit = { tile, modifier ->
+        OptionTileView(tile = tile, modifier = modifier)
+    },
 ) {
     if (start >= tiles.size) return
     Row(modifier = Modifier.fillMaxWidth()) {
-        OptionTileView(
-            tile = tiles[start],
-            modifier = Modifier.weight(1f),
-        )
+        renderTile(tiles[start], Modifier.weight(1f))
         if (start + 1 < tiles.size) {
-            OptionTileView(
-                tile = tiles[start + 1],
-                modifier = Modifier.weight(1f),
-            )
+            renderTile(tiles[start + 1], Modifier.weight(1f))
         }
         if (start + 2 < tiles.size) {
-            OptionTileView(
-                tile = tiles[start + 2],
-                modifier = Modifier.weight(1f),
-            )
+            renderTile(tiles[start + 2], Modifier.weight(1f))
         }
+    }
+}
+
+/**
+ * The Hide grid slot as one connected group: the Hide/Unhide tile (leading
+ * segment) plus a trailing arrow toggle anchoring the creator-level submenu —
+ * the same ButtonGroup pattern as the download quality chevron
+ * ([downloadQualityItem]). Picking an option invokes its callback and closes
+ * the menu only; the sheet itself stays open.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun HideTileGroup(
+    tile: OptionTile,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    isHidden: Boolean,
+    isCreatorDownranked: Boolean,
+    isCreatorHidden: Boolean,
+    onHideVideo: () -> Unit,
+    onDownrankCreator: (() -> Unit)?,
+    onHideCreator: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val radius = BluejayTokens().radius
+    val shapes = tileFlowGroupShapes(GroupPosition.Last, radius)
+    ButtonGroup(
+        overflowIndicator = { _ -> },
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
+    ) {
+        customItem(
+            buttonGroupContent = {
+                OptionTileView(
+                    tile = tile,
+                    modifier = Modifier.weight(1f),
+                    connection = TileConnection.ConnectedLeading,
+                )
+            },
+            menuContent = {},
+        )
+        customItem(
+            buttonGroupContent = {
+                val scheme = MaterialTheme.colorScheme
+                ToggleButton(
+                    checked = expanded,
+                    onCheckedChange = { onExpandedChange(it) },
+                    shapes =
+                        ToggleButtonShapes(
+                            shapes.shape,
+                            shapes.pressedShape,
+                            shapes.checkedShape,
+                        ),
+                    modifier =
+                        Modifier
+                            .fillMaxHeight()
+                            .width(Tokens.IconMd + Tokens.SpaceMd * 2)
+                            .clip(shapes.checkedShape),
+                    contentPadding = PaddingValues(all = Tokens.SpaceMd),
+                    colors =
+                        ToggleButtonDefaults.colors(
+                            containerColor = scheme.surfaceContainer,
+                            contentColor = scheme.onSurfaceVariant,
+                            checkedContainerColor = scheme.primaryContainer,
+                            checkedContentColor = scheme.onPrimaryContainer,
+                        ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = "More hide options",
+                        modifier = Modifier.size(Tokens.IconMd),
+                    )
+                }
+                DropdownMenuPopup(
+                    expanded = expanded,
+                    onDismissRequest = { onExpandedChange(false) },
+                ) {
+                    DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+                        MenuDefaults.DropdownMenuGroupLabel { Text("Hide options") }
+                        val count =
+                            1 + (if (onDownrankCreator != null) 1 else 0) +
+                                (if (onHideCreator != null) 1 else 0)
+                        var index = 0
+                        CheckableDropdownMenuItem(
+                            checked = isHidden,
+                            onCheckedChange = {
+                                onHideVideo()
+                                onExpandedChange(false)
+                            },
+                            text = { Text("Don't show this video") },
+                            shapes = MenuDefaults.itemShape(index++, count),
+                            checkedLeadingIcon = {
+                                Icon(Icons.Filled.Check, contentDescription = null)
+                            },
+                        )
+                        onDownrankCreator?.let { onDownrank ->
+                            CheckableDropdownMenuItem(
+                                checked = isCreatorDownranked,
+                                onCheckedChange = {
+                                    onDownrank()
+                                    onExpandedChange(false)
+                                },
+                                text = { Text("Show less from this creator") },
+                                shapes = MenuDefaults.itemShape(index++, count),
+                                checkedLeadingIcon = {
+                                    Icon(Icons.Filled.Check, contentDescription = null)
+                                },
+                            )
+                        }
+                        onHideCreator?.let { onHide ->
+                            CheckableDropdownMenuItem(
+                                checked = isCreatorHidden,
+                                onCheckedChange = {
+                                    onHide()
+                                    onExpandedChange(false)
+                                },
+                                text = { Text("Don't show this creator") },
+                                shapes = MenuDefaults.itemShape(index++, count),
+                                checkedLeadingIcon = {
+                                    Icon(Icons.Filled.Check, contentDescription = null)
+                                },
+                            )
+                        }
+                    }
+                }
+            },
+            menuContent = {},
+        )
     }
 }
 
@@ -891,7 +1046,9 @@ private fun ButtonGroupScope.downloadQualityItem(
             ToggleButton(
                 checked = expanded,
                 enabled = enabled,
-                onCheckedChange = { if (it) onExpandedChange(true) },
+                // Toggle both ways: while open, tapping the arrow must close
+                // the menu (the old `if (it)` swallowed the false).
+                onCheckedChange = { onExpandedChange(it) },
                 shapes = ToggleButtonShapes(shapes.shape, shapes.pressedShape, shapes.checkedShape),
                 modifier =
                     Modifier

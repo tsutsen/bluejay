@@ -3,7 +3,12 @@ package com.tsutsen.platformplayer.di
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.core.database.dao.HistoryDao
+import com.tsutsen.platformplayer.core.model.ArticleCard
 import com.tsutsen.platformplayer.core.model.Card
+import com.tsutsen.platformplayer.core.model.ChannelCard
+import com.tsutsen.platformplayer.core.model.PlaylistCard
+import com.tsutsen.platformplayer.core.model.PostCard
+import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
@@ -29,10 +34,11 @@ import kotlin.random.Random
  *  3. [sourceTopCreators] — creators with > 15 min watched in the last 28
  *     days (HistoryDao), their recent unwatched videos.
  *
- * The sources are merged by weighted spawn (see [interleave]): each enabled
- * source's weight is sampled once per feed build from its stored
- * spawn-probability range, and every emitted item comes from a source picked
- * with probability proportional to its weight. Cards are deduped by card id.
+ * The sources are merged by weighted spawn (see [interleave]): the stored
+ * spawn-probability cut points split 0..100 into three segments, one per
+ * source (see [spawnWeights]), and every emitted item comes from an enabled
+ * source picked with probability proportional to its segment, renormalized
+ * so the enabled weights sum to 1. Cards are deduped by card id.
  * Each source is isolated: a failing source contributes nothing, and an
  * empty result means the caller falls back to the plain home refresh.
  *
@@ -78,20 +84,21 @@ object HomebrewRecommendations {
             // the total is max(source), not the sum.
             coroutineScope {
                 val futures = mutableListOf<Deferred<SourceResult>>()
-                // Spawn-probability range (percent) per source, kept in
-                // submission order so it stays aligned with [sources] below.
-                val probRanges = mutableListOf<Pair<Int, Int>>()
+                // Fixed-order source index (0=youtube, 1=subs, 2=topCreators)
+                // per future, so the spawn weights stay aligned with
+                // [sources] below.
+                val sourceIndices = mutableListOf<Int>()
                 if (settings.sourceYoutubeFeed) {
                     futures += async { youtubeFeed() }
-                    probRanges += settings.youtubeProbMin to settings.youtubeProbMax
+                    sourceIndices += 0
                 }
                 if (settings.sourceSubscriptions) {
                     futures += async { subscriptionVideos(historyDao, onPartial) }
-                    probRanges += settings.subsProbMin to settings.subsProbMax
+                    sourceIndices += 1
                 }
                 if (settings.sourceTopCreators) {
                     futures += async { topCreatorVideos(historyDao) }
-                    probRanges += settings.topCreatorsProbMin to settings.topCreatorsProbMax
+                    sourceIndices += 2
                 }
                 val allFlows = mutableListOf<PagerFlow<IPlatformContent, Card>>()
                 val sources = mutableListOf<List<Card>>()
@@ -105,21 +112,33 @@ object HomebrewRecommendations {
                     allFlows += result.flows
                 }
                 onFlows(allFlows)
-                // One weight sample per source per feed build.
-                interleave(sources, probRanges.map { sampleWeight(it) })
+                val weights = spawnWeights(settings)
+                interleave(sources, sourceIndices.map { weights[it] })
             }
         }
 
     /**
-     * Samples one spawn weight (0..1) for a [min, max] percent range,
-     * inclusive at both ends. A 0-0 range yields weight 0 (never spawns);
-     * inverted ranges are coerced to min <= max.
+     * Spawn weights (0..1, summing to 1 among the enabled sources) for the
+     * three sources in fixed order (youtube, subs, topCreators). The cut
+     * points split 0..100 into three segments — [0, cut1], [cut1, cut2],
+     * [cut2, 100] — so the raw weights sum to 1 by construction; disabled
+     * sources are zeroed and the remaining weights renormalized to sum to 1.
+     * A segment of 0 means that source never spawns (empty feed -> the caller
+     * falls back to the plain home refresh).
      */
-    private fun sampleWeight(range: Pair<Int, Int>): Float {
-        val lo = range.first.coerceIn(0, 100)
-        val hi = range.second.coerceIn(lo, 100)
-        if (hi <= lo) return lo / 100f
-        return Random.nextInt(lo, hi + 1) / 100f
+    internal fun spawnWeights(settings: Settings.RecommendationsSettings): List<Float> {
+        val cut1 = settings.probCut1.coerceIn(0, 100)
+        val cut2 = settings.probCut2.coerceIn(cut1, 100)
+        val raw = listOf(cut1, cut2 - cut1, 100 - cut2).map { it / 100f }
+        val enabled =
+            listOf(
+                settings.sourceYoutubeFeed,
+                settings.sourceSubscriptions,
+                settings.sourceTopCreators,
+            )
+        val total = raw.mapIndexed { i, w -> if (enabled[i]) w else 0f }.sum()
+        if (total <= 0f) return List(raw.size) { 0f }
+        return raw.mapIndexed { i, w -> if (enabled[i]) w / total else 0f }
     }
 
     /** One source's contribution plus the pagers backing it (kept for loadNextPage). */
@@ -248,18 +267,36 @@ object HomebrewRecommendations {
     /**
      * Weighted-spawn interleave of the sources, deduped by card id (first
      * source to yield a card wins). [weights] aligns with [sources]; each
-     * entry is the weight sampled once per feed build. Every emitted item
+     * entry is the source's spawn weight from [spawnWeights]. Every emitted item
      * comes from a source picked with probability proportional to its weight
      * among the sources that still have items; a zero-weight source
      * contributes nothing.
+     *
+     * Anti-repeat: the creator key ([creatorKey]) of the last emitted card is
+     * tracked. When the roulette pick's next card would repeat that creator,
+     * the other candidate sources are tried in weight order for a different
+     * creator; if every remaining candidate is the same creator, the pick is
+     * accepted as-is (a creator dominating the feed must not deadlock).
      */
     internal fun interleave(sources: List<List<Card>>, weights: List<Float>): List<Card> {
         val seen = mutableSetOf<String>()
         val out = mutableListOf<Card>()
-        val iterators = sources.map { it.iterator() }
+        // Index cursors (not iterators) so a source's remaining items can be
+        // inspected without consuming them.
+        val cursors = IntArray(sources.size)
         val w = weights.map { it.coerceIn(0f, 1f) }
+        var lastCreator: String? = null
         while (true) {
-            val candidates = iterators.indices.filter { iterators[it].hasNext() && w[it] > 0f }
+            // Candidates = sources with weight and at least one non-duplicate
+            // item left (duplicates are drained as they are met).
+            val candidates = mutableListOf<Int>()
+            for (i in sources.indices) {
+                if (w[i] <= 0f) continue
+                while (cursors[i] < sources[i].size && sources[i][cursors[i]].id in seen) {
+                    cursors[i]++
+                }
+                if (cursors[i] < sources[i].size) candidates += i
+            }
             if (candidates.isEmpty()) return out
             // Roulette-wheel pick over the sources that still have items.
             val total = candidates.fold(0f) { acc, i -> acc + w[i] }
@@ -272,17 +309,38 @@ object HomebrewRecommendations {
                     break
                 }
             }
-            // Take the chosen source's next non-duplicate card; if its
-            // remaining items are all dupes they are drained and the loop
-            // re-picks among the rest.
-            val it = iterators[chosen]
-            while (it.hasNext()) {
-                val card = it.next()
-                if (seen.add(card.id)) {
-                    out += card
+            // Try the picked source first, then the other candidates in weight
+            // order: the first whose next card has a different creator wins.
+            val order = listOf(chosen) + candidates.filter { it != chosen }.sortedByDescending { w[it] }
+            var picked = -1
+            for (i in order) {
+                val creator = creatorKey(sources[i][cursors[i]])
+                if (creator == null || creator != lastCreator) {
+                    picked = i
                     break
                 }
             }
+            // All remaining candidates repeat the last creator: accept the
+            // roulette pick (no deadlock).
+            if (picked < 0) picked = chosen
+            val card = sources[picked][cursors[picked]]
+            seen.add(card.id)
+            out += card
+            lastCreator = creatorKey(card)
+            cursors[picked]++
         }
     }
+
+    /**
+     * Creator key for anti-repeat: the card's authorUrl when present, else the
+     * author name. Null (e.g. channel cards) never counts as a repeat.
+     */
+    private fun creatorKey(card: Card): String? =
+        when (card) {
+            is VideoCard -> card.authorUrl ?: card.author
+            is PlaylistCard -> card.author
+            is PostCard -> card.author
+            is ArticleCard -> card.author
+            is ChannelCard -> null
+        }
 }
