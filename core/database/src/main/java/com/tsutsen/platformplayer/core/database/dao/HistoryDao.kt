@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.core.database.dao
 
 import androidx.room.*
 import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
+import com.tsutsen.platformplayer.core.database.entity.isFullyWatched
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -71,6 +72,15 @@ interface HistoryDao {
         watchedAt: Long = System.currentTimeMillis(),
     )
 
+    /**
+     * Clear playback progress for [url] (the options sheet's "Watched"
+     * toggle switched off): the row stays (title/author/history metadata),
+     * but position and accumulated watched time reset, so the video counts
+     * as unwatched again and drops out of "Continue watching".
+     */
+    @Query("UPDATE history SET lastPositionMs = 0, watchedMs = 0 WHERE contentUrl = :url")
+    suspend fun clearProgress(url: String)
+
     @Query("DELETE FROM history WHERE contentUrl = :url")
     suspend fun deleteByUrl(url: String)
 
@@ -86,3 +96,23 @@ data class AuthorWatchTime(
     val authorUrl: String,
     val watchedMs: Long,
 )
+
+/**
+ * "Watched" tile toggle for the options sheet: marks [url] fully watched,
+ * or clears its progress when the row already counts as watched.
+ * @return the new watched state.
+ */
+suspend fun HistoryDao.toggleWatched(
+    url: String,
+    title: String,
+    author: String? = null,
+    thumbnailUrl: String? = null,
+    durationMs: Long,
+): Boolean =
+    if (getByUrl(url)?.isFullyWatched() == true) {
+        clearProgress(url)
+        false
+    } else {
+        markWatched(url, title, author, thumbnailUrl, durationMs)
+        true
+    }

@@ -62,6 +62,15 @@ class EngineHomeRepositoryImpl
         // loadNextPage() can page them — infinite scroll in homebrew mode.
         private var _homebrewFlows: List<PagerFlow<IPlatformContent, Card>> = emptyList()
 
+        // Per-load flag: true only while the current loadInitial painted
+        // cached rows into an empty feed (cold start). The merge points
+        // then keep those rows and append the fresh cards; any other load
+        // (a manual pull-to-refresh over a non-empty feed) replaces the
+        // feed. Reset at the start of every doLoadInitial — deliberately
+        // not when the load ends, so cold-start paging (loadNextPage) keeps
+        // the cached rows that never entered the pager.
+        private var lastLoadFromCache = false
+
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         // Single-flight: loadInitial re-runs the full plugin init + client
@@ -107,6 +116,8 @@ class EngineHomeRepositoryImpl
         private suspend fun doLoadInitial() {
             Logger.i("EngineHomeRepository", "loadInitial")
             _feed.update { it.copy(isLoading = true, error = null) }
+            // Reset per load: only a cold-start cache paint may append.
+            lastLoadFromCache = false
             // Homebrew pagers from a previous load are stale.
             _homebrewFlows = emptyList()
 
@@ -119,6 +130,9 @@ class EngineHomeRepositoryImpl
             // pull-to-refresh never collapses loaded pages back to page 1.
             if (_feed.value.items.isEmpty()) {
                 loadCachedFeed()
+            } else {
+                // Manual refresh over a non-empty feed: replace, never append.
+                lastLoadFromCache = false
             }
 
             // Ensure plugins are initialized before loading feed
@@ -162,11 +176,12 @@ class EngineHomeRepositoryImpl
                     // No single pager backs the merged feed: loadNextPage()
                     // pages the per-source flows instead (infinite scroll on).
                     _pagerFlow = null
-                    // Merge-append: a non-empty feed (cached cards painted by
-                    // loadCachedFeed) keeps its items; the fresh page lands as
-                    // the next page, deduped by card id.
+                    // Cold start (cached cards painted by loadCachedFeed):
+                    // they stay in place and the fresh page lands as the
+                    // next page, deduped by card id; a manual refresh
+                    // replaces the feed instead.
                     val state = _feed.value
-                    val mergedItems = appendUnseen(state.items, applyContentFilters(merged))
+                    val mergedItems = mergeFresh(state.items, applyContentFilters(merged))
                     Logger.i(
                         "EngineHomeRepository",
                         "Recommendations feed: ${mergedItems.size} cards, flows=${_homebrewFlows.size}, hasMore=${_homebrewFlows.any { it.hasMore }}",
@@ -177,7 +192,7 @@ class EngineHomeRepositoryImpl
                             items = mergedItems,
                             hasMorePages = _homebrewFlows.any { flow -> flow.hasMore },
                             error = null,
-                            currentPage = if (state.items.isEmpty()) 1 else state.currentPage + 1,
+                            currentPage = if (lastLoadFromCache) state.currentPage + 1 else 1,
                         )
                     }
                     cacheFeed(mergedItems)
@@ -223,9 +238,10 @@ class EngineHomeRepositoryImpl
                         Logger.i("EngineHomeRepository", "Merged late source: +${merged.size}, ${flow.items.size} total")
                     }
                     scope.launch {
-                        // Append-not-replace: cards already on screen (e.g. the
-                        // cached page) stay in place, late-source cards join them.
-                        val visible = applyContentFilters(appendUnseen(_feed.value.items, flow.items))
+                        // Cold start: cards already on screen (the cached
+                        // page) stay in place, late-source cards join them;
+                        // a manual refresh replaces instead.
+                        val visible = applyContentFilters(mergeFresh(_feed.value.items, flow.items))
                         _feed.update {
                             it.copy(
                                 items = visible,
@@ -249,12 +265,12 @@ class EngineHomeRepositoryImpl
                 // flow.items (not the local): onPagerChanged may have
                 // merged a late source's cards in between loadInitial()
                 // and this update — the local would clobber them.
-                // Merge-append: when the feed already shows items (cached
-                // first page), they stay in place and the fresh first page
-                // is appended as the next page (deduped by card id) instead
-                // of replacing them; on a truly empty feed it replaces.
+                // Cold start (cached first page on screen): the cached cards
+                // stay in place and the fresh first page is appended as the
+                // next page (deduped by card id); a manual refresh replaces
+                // the feed instead.
                 val state = _feed.value
-                val visible = appendUnseen(state.items, applyContentFilters(flow.items))
+                val visible = mergeFresh(state.items, applyContentFilters(flow.items))
                 _feed.update {
                     // isLoading stays up while late sources are still
                     // pending: the UI shows a spinner (filtered feeds)
@@ -265,7 +281,7 @@ class EngineHomeRepositoryImpl
                         items = visible,
                         hasMorePages = flow.hasMore,
                         error = flow.error,
-                        currentPage = if (state.items.isEmpty()) 1 else state.currentPage + 1,
+                        currentPage = if (lastLoadFromCache) state.currentPage + 1 else 1,
                     )
                 }
                 cacheFeed(visible)
@@ -289,6 +305,9 @@ class EngineHomeRepositoryImpl
                 val cards = entities.mapNotNull { EngineCardMapper.toCardFromCache(it) }
                 if (cards.isEmpty()) return
                 val visible = applyContentFilters(cards)
+                // Painted cached rows into the (empty) feed: this load's
+                // merge points append onto them instead of replacing.
+                if (visible.isNotEmpty()) lastLoadFromCache = true
                 Logger.i("EngineHomeRepository", "Showing ${visible.size} cached cards")
                 _feed.update {
                     it.copy(items = visible, isLoading = true, currentPage = 1)
@@ -299,11 +318,10 @@ class EngineHomeRepositoryImpl
         }
 
         /**
-         * Merge-append for a refresh over a non-empty feed: keeps [existing]
+         * Merge-append for a cold start: keeps [existing] (the cached rows)
          * in place and appends the [fresh] cards whose id is not already
-         * present (deduped by card id) — the fresh first page behaves as the
-         * next page instead of replacing what is shown. On a truly empty
-         * feed the fresh list is used as-is.
+         * present (deduped by card id). On a truly empty feed the fresh
+         * list is used as-is.
          */
         private fun appendUnseen(existing: List<Card>, fresh: List<Card>): List<Card> {
             if (existing.isEmpty()) return fresh
@@ -311,6 +329,16 @@ class EngineHomeRepositoryImpl
             val seen = existing.mapTo(mutableSetOf()) { it.id }
             return existing + fresh.filter { seen.add(it.id) }
         }
+
+        /**
+         * Merge policy for fresh cards landing on the feed: when this
+         * loadInitial painted cached rows (cold start, [lastLoadFromCache])
+         * they stay in place and the fresh cards append (deduped by id);
+         * otherwise — a manual pull-to-refresh over a non-empty feed — the
+         * fresh list replaces what is shown.
+         */
+        private fun mergeFresh(existing: List<Card>, fresh: List<Card>): List<Card> =
+            if (lastLoadFromCache) appendUnseen(existing, fresh) else fresh
 
         private suspend fun cacheFeed(cards: List<Card>) {
             if (cards.isEmpty()) return
@@ -373,8 +401,10 @@ class EngineHomeRepositoryImpl
                 val newItems = withContext(Dispatchers.IO) { flow.loadNextPage() }
                 Logger.i("EngineHomeRepository", "Got ${newItems.size} new items, ${flow.items.size} total, hasMore=${flow.hasMore}")
                 // Append onto what is already shown — cached cards never entered
-                // the pager, so flow.items alone would drop them.
-                val visible = applyContentFilters(appendUnseen(_feed.value.items, flow.items))
+                // the pager, so flow.items alone would drop them (cold start:
+                // lastLoadFromCache is still true, so they are kept; after a
+                // manual refresh the feed is all pager items anyway).
+                val visible = applyContentFilters(mergeFresh(_feed.value.items, flow.items))
                 _feed.update {
                     it.copy(
                         isLoading = false,
@@ -442,10 +472,11 @@ class EngineHomeRepositoryImpl
         }
 
         /**
-         * Progressive homebrew emit: append-only — the source's unseen cards
-         * (deduped by id) join whatever is already on screen (cached cards
-         * included) while the other sources still run; isLoading stays true
-         * until buildFeed's final result is merged the same way.
+         * Progressive homebrew emit: the source's unseen cards (deduped by
+         * id) accumulate on whatever is on screen while the other sources
+         * still run; the final buildFeed result applies the same merge
+         * policy (append on a cold start, replace on a manual refresh).
+         * isLoading stays true until then.
          */
         private fun mergePartialFeed(partial: List<Card>) {
             if (partial.isEmpty()) return

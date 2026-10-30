@@ -3,6 +3,9 @@ package com.tsutsen.platformplayer.feature.library.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
+import com.tsutsen.platformplayer.core.database.dao.HistoryDao
+import com.tsutsen.platformplayer.core.database.dao.toggleWatched
+import com.tsutsen.platformplayer.core.database.entity.isFullyWatched
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
@@ -38,6 +41,7 @@ class VideoOptionsViewModel
         private val downloadsRepository: DownloadsRepository,
         private val playbackQueueRepository: PlaybackQueueRepository,
         private val settingsRepository: SettingsRepository,
+        private val historyDao: HistoryDao,
     ) : ViewModel() {
         private val savedTypesCache = mutableMapOf<String, StateFlow<Set<SavedVideoType>>>()
 
@@ -98,6 +102,23 @@ class VideoOptionsViewModel
                 }
             }
         }
+
+        /** Watched state for the sheet's Watched tile (one-shot read on open). */
+        suspend fun isWatched(url: String): Boolean =
+            historyDao.getByUrl(url)?.isFullyWatched() == true
+
+        /**
+         * "Watched" tile toggle: marks [video] fully watched, or clears its
+         * progress when it already is. @return the new watched state.
+         */
+        suspend fun toggleWatched(video: VideoCard): Boolean =
+            historyDao.toggleWatched(
+                url = video.url,
+                title = video.title,
+                author = video.author,
+                thumbnailUrl = video.thumbnailUrl,
+                durationMs = video.durationMs ?: 0L,
+            )
 
         fun consumeDownloadMessage() {
             _downloadMessage.value = null

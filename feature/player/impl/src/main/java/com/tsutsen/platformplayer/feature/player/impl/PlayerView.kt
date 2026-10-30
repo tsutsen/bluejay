@@ -76,6 +76,8 @@ import androidx.media3.common.Player
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.QueueList
 import com.tsutsen.platformplayer.core.database.AppDatabaseProvider
+import com.tsutsen.platformplayer.core.database.dao.toggleWatched
+import com.tsutsen.platformplayer.core.database.entity.isFullyWatched
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.model.ContentItem
@@ -1411,10 +1413,16 @@ private fun CurrentVideoOptionsSheet(
     val downrankedCreators by viewModel.downrankedCreators.collectAsState(initial = emptyList())
     // Creator-level hide options are keyed by the video's authorUrl.
     val creatorUrl = video.author?.url?.takeIf { it.isNotEmpty() }
-    // "Watched" tile: upsert the history row directly (the player module
-    // owns its DB access, same as HistoryTracker).
+    // "Watched" tile: the player module owns its DB access directly (same
+    // as HistoryTracker); the state is read from history when the sheet
+    // opens.
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var isWatched by remember { mutableStateOf(false) }
+    LaunchedEffect(video.url) {
+        isWatched =
+            AppDatabaseProvider.get(context).historyDao().getByUrl(video.url)?.isFullyWatched() == true
+    }
 
     VideoOptionsSheet(
         url = video.url,
@@ -1447,21 +1455,28 @@ private fun CurrentVideoOptionsSheet(
             }
         },
         onAddToQueue = { viewModel.addToQueue(video) },
-        // "Watched" tile: mark the video fully watched, then a toast (plain
+        // "Watched" tile: toggle fully-watched in the history (mark, or
+        // clear the progress when already watched), then a toast (plain
         // Toast here — the app module's UIDialogs.toast is the same call but
         // unreachable from this module).
-        onMarkWatched = {
+        onToggleWatched = {
             scope.launch {
-                AppDatabaseProvider.get(context).historyDao().markWatched(
-                    url = video.url,
-                    title = video.title,
-                    author = video.author?.name,
-                    thumbnailUrl = video.thumbnailUrl,
-                    durationMs = video.durationMs ?: 0L,
-                )
-                Toast.makeText(context, "Marked as watched", Toast.LENGTH_SHORT).show()
+                isWatched =
+                    AppDatabaseProvider.get(context).historyDao().toggleWatched(
+                        url = video.url,
+                        title = video.title,
+                        author = video.author?.name,
+                        thumbnailUrl = video.thumbnailUrl,
+                        durationMs = video.durationMs ?: 0L,
+                    )
+                Toast.makeText(
+                    context,
+                    if (isWatched) "Marked as watched" else "Marked as unwatched",
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         },
+        isWatched = isWatched,
         isHidden = video.url in hiddenUrls,
         onHideVideo = { viewModel.toggleHiddenVideo(video.url) },
         onDownrankCreator = creatorUrl?.let { url -> { viewModel.toggleDownrankedCreator(url) } },

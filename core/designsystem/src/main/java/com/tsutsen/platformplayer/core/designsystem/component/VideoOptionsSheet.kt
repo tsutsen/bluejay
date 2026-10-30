@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -129,9 +130,14 @@ fun VideoOptionsSheet(
     // history contexts pass it (the library's History strip, the history
     // page) so the tile never appears where the video isn't a history item.
     onRemoveFromHistory: (() -> Unit)? = null,
-    // Non-null = show a "Watched" tile: marks the video fully watched in
-    // the history (the sheet stays open, it's not destructive).
-    onMarkWatched: (() -> Unit)? = null,
+    // Non-null = show the "Watched" tile: a state toggle like Like /
+    // Favourite — marks the video fully watched in the history, or clears
+    // that progress when [isWatched] is already true (the sheet stays open
+    // either way, it's not destructive).
+    onToggleWatched: (() -> Unit)? = null,
+    // Drives the Watched tile: filled/selected "Watched" when the video is
+    // fully watched, outlined "Mark as watched" otherwise.
+    isWatched: Boolean = false,
     // Non-null = show the "Hide"/"Unhide" tile: adds or removes the video's
     // url from the persisted hidden set (filtered out of the home feed).
     // Danger tone only while hidden. The sheet stays open so both directions
@@ -281,12 +287,13 @@ fun VideoOptionsSheet(
                         onClick = onToggleFavourite,
                     ),
                 )
-                onMarkWatched?.let { onMarkWatched ->
+                onToggleWatched?.let { onToggle ->
                     add(
                         OptionTile(
-                            label = "Watched",
-                            icon = Icons.Filled.CheckCircle,
-                            onClick = onMarkWatched,
+                            label = if (isWatched) "Watched" else "Mark as watched",
+                            icon = if (isWatched) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                            selected = isWatched,
+                            onClick = onToggle,
                         ),
                     )
                 }

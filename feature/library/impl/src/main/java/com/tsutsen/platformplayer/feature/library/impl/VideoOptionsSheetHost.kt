@@ -15,7 +15,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.tsutsen.platformplayer.core.database.AppDatabaseProvider
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
@@ -61,6 +60,9 @@ fun VideoOptionsSheetHost(
     // Creator-level hide options are keyed by the video's authorUrl.
     val creatorUrl = video.authorUrl?.takeIf { it.isNotEmpty() }
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
+    // Watched tile state, read from history when the sheet opens.
+    var isWatched by remember { mutableStateOf(false) }
+    LaunchedEffect(video.url) { isWatched = viewModel.isWatched(video.url) }
 
     // One-shot feedback for download failures as a system toast (success
     // and stop are visible on the button itself).
@@ -108,21 +110,22 @@ fun VideoOptionsSheetHost(
             }
         },
         onRemoveFromHistory = onRemoveFromHistory,
-        // "Watched" tile: upsert a history row at full duration, then a
-        // toast (plain Toast here — the app module's UIDialogs.toast is the
-        // same call but unreachable from this module).
-        onMarkWatched = {
+        // "Watched" tile: toggle fully-watched in the history (mark, or
+        // clear the progress when already watched), then a toast (plain
+        // Toast here — the app module's UIDialogs.toast is the same call
+        // but unreachable from this module).
+        onToggleWatched = {
             scope.launch {
-                AppDatabaseProvider.get(context).historyDao().markWatched(
-                    url = video.url,
-                    title = video.title,
-                    author = video.author,
-                    thumbnailUrl = video.thumbnailUrl,
-                    durationMs = video.durationMs ?: 0L,
-                )
-                Toast.makeText(context, "Marked as watched", Toast.LENGTH_SHORT).show()
+                isWatched = viewModel.toggleWatched(video)
+                Toast
+                    .makeText(
+                        context,
+                        if (isWatched) "Marked as watched" else "Marked as unwatched",
+                        Toast.LENGTH_SHORT,
+                    ).show()
             }
         },
+        isWatched = isWatched,
         isHidden = video.url in hiddenUrls,
         onHideVideo = { viewModel.toggleHiddenVideo(video.url) },
         onDownrankCreator = creatorUrl?.let { url -> { viewModel.toggleDownrankedCreator(url) } },

@@ -3,7 +3,9 @@ package com.tsutsen.platformplayer.core.database
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.tsutsen.platformplayer.core.database.dao.HistoryDao
+import com.tsutsen.platformplayer.core.database.dao.toggleWatched
 import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
+import com.tsutsen.platformplayer.core.database.entity.isFullyWatched
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -139,5 +141,45 @@ class HistoryDaoTest {
             assertEquals("chanA", row.authorUrl)
             assertEquals(42, row.viewCount)
             assertEquals(old - 60_000, row.postedAt)
+        }
+
+    @Test
+    fun `clearProgress resets position and watched time but keeps the row`() =
+        runBlocking {
+            val dao = dao()
+            dao.markWatched(url = "v1", title = "t1", durationMs = 90_000)
+
+            dao.clearProgress("v1")
+
+            val row = dao.getByUrl("v1")!!
+            assertEquals(0, row.lastPositionMs)
+            assertEquals(0, row.watchedMs)
+            // The row itself (and its duration/metadata) survives.
+            assertEquals(90_000, row.totalDurationMs)
+            assertEquals("t1", row.title)
+            assertEquals(false, row.isFullyWatched())
+        }
+
+    @Test
+    fun `toggleWatched marks then unmarks a video`() =
+        runBlocking {
+            val dao = dao()
+
+            assertEquals(true, dao.toggleWatched(url = "v1", title = "t1", durationMs = 90_000))
+            assertEquals(true, dao.getByUrl("v1")!!.isFullyWatched())
+
+            assertEquals(false, dao.toggleWatched(url = "v1", title = "t1", durationMs = 90_000))
+            assertEquals(false, dao.getByUrl("v1")!!.isFullyWatched())
+        }
+
+    @Test
+    fun `isFullyWatched follows the 95 percent threshold`() =
+        runBlocking {
+            val dao = dao()
+            // entry() uses totalDurationMs = 60_000, so the threshold is 57_000.
+            dao.upsert(entry("v1", lastPositionMs = 56_000))
+            assertEquals(false, dao.getByUrl("v1")!!.isFullyWatched())
+            dao.upsert(entry("v1", lastPositionMs = 58_000))
+            assertEquals(true, dao.getByUrl("v1")!!.isFullyWatched())
         }
 }
