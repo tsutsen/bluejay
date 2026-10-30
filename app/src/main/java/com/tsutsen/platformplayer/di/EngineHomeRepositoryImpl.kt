@@ -162,21 +162,25 @@ class EngineHomeRepositoryImpl
                     // No single pager backs the merged feed: loadNextPage()
                     // pages the per-source flows instead (infinite scroll on).
                     _pagerFlow = null
-                    val visible = applyContentFilters(merged)
+                    // Merge-append: a non-empty feed (cached cards painted by
+                    // loadCachedFeed) keeps its items; the fresh page lands as
+                    // the next page, deduped by card id.
+                    val state = _feed.value
+                    val mergedItems = appendUnseen(state.items, applyContentFilters(merged))
                     Logger.i(
                         "EngineHomeRepository",
-                        "Recommendations feed: ${visible.size} cards, flows=${_homebrewFlows.size}, hasMore=${_homebrewFlows.any { it.hasMore }}",
+                        "Recommendations feed: ${mergedItems.size} cards, flows=${_homebrewFlows.size}, hasMore=${_homebrewFlows.any { it.hasMore }}",
                     )
                     _feed.update {
                         it.copy(
                             isLoading = false,
-                            items = visible,
+                            items = mergedItems,
                             hasMorePages = _homebrewFlows.any { flow -> flow.hasMore },
                             error = null,
-                            currentPage = 1,
+                            currentPage = if (state.items.isEmpty()) 1 else state.currentPage + 1,
                         )
                     }
-                    cacheFeed(visible)
+                    cacheFeed(mergedItems)
                     return@withContext
                 }
                 _homebrewFlows = emptyList()
@@ -219,7 +223,9 @@ class EngineHomeRepositoryImpl
                         Logger.i("EngineHomeRepository", "Merged late source: +${merged.size}, ${flow.items.size} total")
                     }
                     scope.launch {
-                        val visible = applyContentFilters(flow.items)
+                        // Append-not-replace: cards already on screen (e.g. the
+                        // cached page) stay in place, late-source cards join them.
+                        val visible = applyContentFilters(appendUnseen(_feed.value.items, flow.items))
                         _feed.update {
                             it.copy(
                                 items = visible,
@@ -240,11 +246,16 @@ class EngineHomeRepositoryImpl
                 // Content filters (hidden/watched/started) apply before emit
                 // AND before the cache write, so the Room cache only ever
                 // stores what the user actually sees.
-                val visible = applyContentFilters(flow.items)
+                // flow.items (not the local): onPagerChanged may have
+                // merged a late source's cards in between loadInitial()
+                // and this update — the local would clobber them.
+                // Merge-append: when the feed already shows items (cached
+                // first page), they stay in place and the fresh first page
+                // is appended as the next page (deduped by card id) instead
+                // of replacing them; on a truly empty feed it replaces.
+                val state = _feed.value
+                val visible = appendUnseen(state.items, applyContentFilters(flow.items))
                 _feed.update {
-                    // flow.items (not the local): onPagerChanged may have
-                    // merged a late source's cards in between loadInitial()
-                    // and this update — the local would clobber them.
                     // isLoading stays up while late sources are still
                     // pending: the UI shows a spinner (filtered feeds)
                     // instead of flashing "No content yet" until the merge
@@ -254,7 +265,7 @@ class EngineHomeRepositoryImpl
                         items = visible,
                         hasMorePages = flow.hasMore,
                         error = flow.error,
-                        currentPage = 1,
+                        currentPage = if (state.items.isEmpty()) 1 else state.currentPage + 1,
                     )
                 }
                 cacheFeed(visible)
@@ -285,6 +296,20 @@ class EngineHomeRepositoryImpl
             } catch (e: Exception) {
                 Logger.w("EngineHomeRepository", "Failed to load cached feed", e)
             }
+        }
+
+        /**
+         * Merge-append for a refresh over a non-empty feed: keeps [existing]
+         * in place and appends the [fresh] cards whose id is not already
+         * present (deduped by card id) — the fresh first page behaves as the
+         * next page instead of replacing what is shown. On a truly empty
+         * feed the fresh list is used as-is.
+         */
+        private fun appendUnseen(existing: List<Card>, fresh: List<Card>): List<Card> {
+            if (existing.isEmpty()) return fresh
+            if (fresh.isEmpty()) return existing
+            val seen = existing.mapTo(mutableSetOf()) { it.id }
+            return existing + fresh.filter { seen.add(it.id) }
         }
 
         private suspend fun cacheFeed(cards: List<Card>) {
@@ -347,7 +372,9 @@ class EngineHomeRepositoryImpl
 
                 val newItems = withContext(Dispatchers.IO) { flow.loadNextPage() }
                 Logger.i("EngineHomeRepository", "Got ${newItems.size} new items, ${flow.items.size} total, hasMore=${flow.hasMore}")
-                val visible = applyContentFilters(flow.items)
+                // Append onto what is already shown — cached cards never entered
+                // the pager, so flow.items alone would drop them.
+                val visible = applyContentFilters(appendUnseen(_feed.value.items, flow.items))
                 _feed.update {
                     it.copy(
                         isLoading = false,
@@ -415,16 +442,16 @@ class EngineHomeRepositoryImpl
         }
 
         /**
-         * Progressive homebrew emit: appends the source's unseen cards
-         * (deduped by id) while the other sources still run — isLoading
-         * stays true until buildFeed's final result replaces the feed.
+         * Progressive homebrew emit: append-only — the source's unseen cards
+         * (deduped by id) join whatever is already on screen (cached cards
+         * included) while the other sources still run; isLoading stays true
+         * until buildFeed's final result is merged the same way.
          */
         private fun mergePartialFeed(partial: List<Card>) {
             if (partial.isEmpty()) return
             _feed.update { state ->
-                val seen = state.items.mapTo(mutableSetOf()) { it.id }
-                val fresh = partial.filter { seen.add(it.id) }
-                if (fresh.isEmpty()) state else state.copy(items = state.items + fresh)
+                val merged = appendUnseen(state.items, partial)
+                if (merged.size == state.items.size) state else state.copy(items = merged)
             }
         }
 

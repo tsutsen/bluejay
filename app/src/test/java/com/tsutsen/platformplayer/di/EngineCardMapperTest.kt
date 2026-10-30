@@ -146,4 +146,19 @@ class EngineCardMapperTest {
         assertEquals(1, cards.size)
         assertTrue(cards[0] is VideoCard)
     }
+
+    @Test
+    fun videoCard_statsRoundTripThroughCacheEntity() {
+        val card = EngineCardMapper.toCard(video()) as VideoCard
+        val entity = EngineCardMapper.toCacheEntity(card)
+        assertEquals(90_000L, entity.durationMs)
+        assertEquals(1234L, entity.viewCount)
+        assertEquals(card.publishedAt, entity.publishedAt)
+
+        val restored = EngineCardMapper.toCardFromCache(entity) as VideoCard
+        assertEquals(card.id, restored.id)
+        assertEquals(card.durationMs, restored.durationMs)
+        assertEquals(card.viewCount, restored.viewCount)
+        assertEquals(card.publishedAt, restored.publishedAt)
+    }
 }

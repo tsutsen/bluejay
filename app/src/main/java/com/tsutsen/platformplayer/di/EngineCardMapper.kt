@@ -174,11 +174,12 @@ object EngineCardMapper {
     private fun epochMs(datetime: OffsetDateTime?): Long? = datetime?.toInstant()?.toEpochMilli()
 
     /**
-     * Display-only snapshot for the home-feed cache: the entity has no room
-     * for duration/viewCount/publishedAt, so those come back null until the
-     * live refresh replaces the cached cards.
+     * Display-only snapshot for the home-feed cache. Video stats
+     * (durationMs/viewCount/publishedAt) ride along so cold-start cached
+     * cards paint the same pills as live cards; non-video cards have none.
      */
     fun toCacheEntity(card: Card): HomeFeedCacheEntity {
+        val video = card as? VideoCard
         val (contentUrl, author) =
             when (card) {
                 is VideoCard -> card.url to card.author
@@ -202,6 +203,9 @@ object EngineCardMapper {
             author = author,
             thumbnailUrl = card.thumbnailUrl,
             contentType = contentType,
+            durationMs = video?.durationMs,
+            viewCount = video?.viewCount,
+            publishedAt = video?.publishedAt,
         )
     }
 
@@ -215,6 +219,9 @@ object EngineCardMapper {
                     title = entity.title,
                     thumbnailUrl = entity.thumbnailUrl,
                     author = entity.author,
+                    durationMs = entity.durationMs,
+                    viewCount = entity.viewCount,
+                    publishedAt = entity.publishedAt,
                     url = entity.contentUrl,
                     sourceId = sourceId,
                 )

@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.core.database.entity.*
         SavedVideoEntity::class,
         NotificationEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -39,6 +39,21 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
 
     companion object {
+        /**
+         * v10 -> v11: stores the video stats (duration/view count/posted date)
+         * in the home-feed cache so cold-start cached cards paint with the
+         * same pills as live cards. Existing rows keep NULL (pills hidden)
+         * until the next refresh re-caches them.
+         */
+        val MIGRATION_10_11 =
+            object : Migration(10, 11) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `home_feed_cache` ADD COLUMN `durationMs` INTEGER")
+                    db.execSQL("ALTER TABLE `home_feed_cache` ADD COLUMN `viewCount` INTEGER")
+                    db.execSQL("ALTER TABLE `home_feed_cache` ADD COLUMN `publishedAt` INTEGER")
+                }
+            }
+
         /**
          * v9 -> v10: stores the video's real posted date (captured at
          * save/watch time) in saved videos, history, and playlist videos, so
