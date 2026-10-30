@@ -405,25 +405,25 @@ class EngineSubscriptionsRepositoryImpl
             // (both on by default = no filtering).
             val showVideos = state.filterVideo
             val showLive = state.filterStreams
+            val showShorts = state.filterShorts
             val showStarted = state.filterStarted
             val showWatched = state.filterWatched
             filtered =
                 filtered.filter { content ->
-                    // Shorts filter: on = only short videos (hides non-videos too).
-                    // isShort comes from the plugin; fall back to the /shorts/ URL
-                    // segment for plugins that don't set the flag (and for cached
-                    // rows serialized before the flag existed).
-                    if (state.filterShorts) {
-                        val v = content as? IPlatformVideo
-                        val isShort = v?.isShort == true || content.url.contains("/shorts/")
-                        if (!isShort) return@filter false
-                    }
                     val video = content as? IPlatformVideo ?: return@filter true
-                    if (video.isLive) {
-                        if (!showLive) return@filter false
-                    } else if (!showVideos) {
-                        return@filter false
-                    }
+                    // Type filter: Videos/Live/Shorts are OR categories — a video
+                    // shows if its own category's chip is on. isShort comes from
+                    // the plugin; fall back to the /shorts/ URL segment for
+                    // plugins that don't set the flag (and for cached rows
+                    // serialized before the flag existed).
+                    val isShort = video.isShort || content.url.contains("/shorts/")
+                    val categoryOn =
+                        when {
+                            video.isLive -> showLive
+                            isShort -> showShorts
+                            else -> showVideos
+                        }
+                    if (!categoryOn) return@filter false
                     val d = video.duration
                     // Plugin items report playbackTime = -1; watch progress
                     // lives in history (refreshed per reload).

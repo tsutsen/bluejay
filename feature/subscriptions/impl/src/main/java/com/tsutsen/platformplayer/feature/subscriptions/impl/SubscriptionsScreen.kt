@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -227,6 +228,18 @@ private fun SubscriptionsContent(
     // Selecting a creator (or "All") closes the peek.
     LaunchedEffect(state.activeCreatorId) { peek = null }
 
+    // Paging footer, same as home: only after a load-more has been running
+    // for 2s — never during the initial/refresh load (items empty then).
+    var showMore by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isLoading) {
+        if (state.isLoading) {
+            kotlinx.coroutines.delay(2000)
+            if (state.isLoading) showMore = true
+        } else {
+            showMore = false
+        }
+    }
+
     val headerTitle =
         state.creators
             .firstOrNull { it.id == state.activeCreatorId }
@@ -305,8 +318,21 @@ private fun SubscriptionsContent(
                                 VideoContainer(
                                 items = state.items,
                                 layout = ContainerLayout.Grid(gridColumns),
-                                isLoading = false,
+                                isLoading = state.isLoading,
                                 hasMorePages = state.hasMorePages,
+                                trailingContent =
+                                    if (showMore && state.isLoading && state.hasMorePages && state.items.isNotEmpty()) {
+                                        {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(Tokens.IconMd))
+                                            }
+                                        }
+                                    } else {
+                                        null
+                                    },
                                 onCardClick = { card -> onItemClicked(card as ModelVideoCard) },
                                 onLoadMore = onLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
@@ -421,8 +447,21 @@ private fun SubscriptionsContent(
                             VideoContainer(
                             items = state.items,
                             layout = ContainerLayout.List,
-                            isLoading = false,
+                            isLoading = state.isLoading,
                             hasMorePages = state.hasMorePages,
+                            trailingContent =
+                                if (showMore && state.isLoading && state.hasMorePages && state.items.isNotEmpty()) {
+                                    {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularProgressIndicator(modifier = Modifier.size(Tokens.IconMd))
+                                        }
+                                    }
+                                } else {
+                                    null
+                                },
                             onCardClick = { card -> onItemClicked(card as ModelVideoCard) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
