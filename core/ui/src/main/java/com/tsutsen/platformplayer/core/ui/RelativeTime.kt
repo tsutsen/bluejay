@@ -11,6 +11,8 @@ object RelativeTime {
         val diff = now - millis
 
         return when {
+            // Not yet published (premiere / scheduled): negative diff.
+            diff < 0 -> "Soon"
             diff < 60_000 -> "just now"
             diff < 3_600_000 -> "${diff / 60_000}m ago"
             diff < 86_400_000 -> "${diff / 3_600_000}h ago"
