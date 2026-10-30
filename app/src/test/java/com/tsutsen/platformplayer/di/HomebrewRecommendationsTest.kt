@@ -11,8 +11,8 @@ import org.junit.Test
  * Weighted-spawn merge in [HomebrewRecommendations.interleave]: dedupe by
  * card id, zero-weight sources contribute nothing, and the weights skew the
  * pick distribution. Also covers [HomebrewRecommendations.spawnWeights]:
- * the cut points split 0..100 into three segments, disabled sources are
- * zeroed, and the enabled weights renormalize to sum to 1.
+ * the cut points split 0..100 across the ENABLED sources only, so the enabled
+ * weights always sum to 1 and disabled sources get 0.
  */
 class HomebrewRecommendationsTest {
     private fun card(id: String): Card =
@@ -53,9 +53,10 @@ class HomebrewRecommendationsTest {
         val b = (1..100).map { card("b$it") }
         val out = HomebrewRecommendations.interleave(listOf(a, b), listOf(1f, 0.01f))
         assertEquals(200, out.size)
-        // P(pick b) per item is ~1%; getting more than a handful from b is
-        // astronomically unlikely, so this margin cannot flake in practice.
-        assertTrue(ids(out).count { it.startsWith("b") } < 20)
+        // P(pick b) per item is ~1%. Only the head matters: once source a is
+        // exhausted every remaining pick is b, so the tail is all b's.
+        // P(>= 10 b's in the first 60 picks at p~1%) is < 1e-8 — cannot flake.
+        assertTrue(ids(out).take(60).count { it.startsWith("b") } < 10)
     }
 
     @Test
@@ -69,7 +70,7 @@ class HomebrewRecommendationsTest {
     }
 
     @Test
-    fun spawnWeightsZeroAndRenormalizeDisabledSources() {
+    fun spawnWeightsCutsMapOntoEnabledSourcesOnly() {
         val s =
             Settings.RecommendationsSettings().apply {
                 probCut1 = 20
@@ -77,11 +78,11 @@ class HomebrewRecommendationsTest {
                 sourceSubscriptions = false
             }
         val w = HomebrewRecommendations.spawnWeights(s)
-        // Raw segments [0.2, 0.4, 0.4]; subs zeroed, the rest renormalized
-        // over the remaining 0.6.
+        // Two enabled sources (youtube, topCreators): the first cut (20)
+        // splits them — youtube 20%, top creators 80%, subs 0.
+        assertEquals(0.2f, w[0], 0.0001f)
         assertEquals(0f, w[1], 0.0001f)
-        assertEquals(0.2f / 0.6f, w[0], 0.0001f)
-        assertEquals(0.4f / 0.6f, w[2], 0.0001f)
+        assertEquals(0.8f, w[2], 0.0001f)
         assertEquals(1f, w.sum(), 0.0001f)
     }
 
@@ -104,8 +105,9 @@ class HomebrewRecommendationsTest {
                 probCut2 = 10
             }
         val w = HomebrewRecommendations.spawnWeights(s)
-        assertEquals(0.8f, w[0], 0.0001f)
-        assertEquals(0f, w[1], 0.0001f)
+        // Cuts are sorted: [10, 80] -> thirds-style segments [0.1, 0.7, 0.2].
+        assertEquals(0.1f, w[0], 0.0001f)
+        assertEquals(0.7f, w[1], 0.0001f)
         assertEquals(0.2f, w[2], 0.0001f)
         assertEquals(1f, w.sum(), 0.0001f)
     }

@@ -127,18 +127,21 @@ object HomebrewRecommendations {
      * falls back to the plain home refresh).
      */
     internal fun spawnWeights(settings: Settings.RecommendationsSettings): List<Float> {
-        val cut1 = settings.probCut1.coerceIn(0, 100)
-        val cut2 = settings.probCut2.coerceIn(cut1, 100)
-        val raw = listOf(cut1, cut2 - cut1, 100 - cut2).map { it / 100f }
+        // Cuts split 0..100 across the ENABLED sources only (fixed order:
+        // youtube, subs, topCreators), so enabled weights always sum to 1.
+        val cuts = listOf(settings.probCut1.coerceIn(0, 100), settings.probCut2.coerceIn(0, 100)).sorted()
         val enabled =
             listOf(
                 settings.sourceYoutubeFeed,
                 settings.sourceSubscriptions,
                 settings.sourceTopCreators,
             )
-        val total = raw.mapIndexed { i, w -> if (enabled[i]) w else 0f }.sum()
-        if (total <= 0f) return List(raw.size) { 0f }
-        return raw.mapIndexed { i, w -> if (enabled[i]) w / total else 0f }
+        val enabledIdx = enabled.indices.filter { enabled[it] }
+        val w = MutableList(3) { 0f }
+        if (enabledIdx.isEmpty()) return w
+        val bounds = listOf(0) + cuts.take(enabledIdx.size - 1) + listOf(100)
+        enabledIdx.forEachIndexed { k, idx -> w[idx] = (bounds[k + 1] - bounds[k]) / 100f }
+        return w
     }
 
     /** One source's contribution plus the pagers backing it (kept for loadNextPage). */

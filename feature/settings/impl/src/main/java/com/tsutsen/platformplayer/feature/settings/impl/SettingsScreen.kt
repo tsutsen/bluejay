@@ -90,6 +90,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -2270,15 +2271,21 @@ private fun SpawnProbabilityCard(
     sourceTopCreators: Boolean,
     onCutsChange: (Int, Int) -> Unit,
 ) {
-    // Coerce in case stored values are inverted; the engine reads them ordered.
-    val lo = cut1.coerceIn(0, 100)
-    val hi = cut2.coerceIn(lo, 100)
-    val segments =
+    // Cuts split 0..100 across the ENABLED sources only (fixed order), so the
+    // shown percentages always sum to 100. Disabled sources get no segment.
+    val cuts = listOf(cut1.coerceIn(0, 100), cut2.coerceIn(0, 100)).sorted()
+    val all =
         listOf(
-            Triple("Source picks", lo, sourceYoutubeFeed),
-            Triple("Subscriptions", hi - lo, sourceSubscriptions),
-            Triple("Top creators", 100 - hi, sourceTopCreators),
+            "Source picks" to sourceYoutubeFeed,
+            "Subscriptions" to sourceSubscriptions,
+            "Top creators" to sourceTopCreators,
         )
+    val active = all.filter { it.second }
+    val bounds = listOf(0) + cuts.take(active.size - 1) + listOf(100)
+    val segments =
+        active.mapIndexed { k, t -> Triple(t.first, bounds[k + 1] - bounds[k], true) }
+    val lo = cuts[0]
+    val hi = if (cuts.size > 1) cuts[1] else 100
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = groupShape(GroupPosition.Single),
@@ -2291,19 +2298,41 @@ private fun SpawnProbabilityCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
             )
-            RangeSlider(
-                value = lo.toFloat()..hi.toFloat(),
-                onValueChange = { range ->
-                    val a = range.start.roundToInt().coerceIn(0, 100)
-                    val b = range.endInclusive.roundToInt().coerceIn(0, 100)
-                    onCutsChange(minOf(a, b), maxOf(a, b))
-                },
-                valueRange = 0f..100f,
-                // 99 steps = 1% resolution across 0..100.
-                steps = 99,
-                enabled = enabled,
-                modifier = Modifier.padding(top = Tokens.SpaceSm),
-            )
+            when (active.size) {
+                // 3 enabled sources -> two heads (RangeSlider).
+                3 ->
+                    RangeSlider(
+                        value = lo.toFloat()..hi.toFloat(),
+                        onValueChange = { range ->
+                            val a = range.start.roundToInt().coerceIn(0, 100)
+                            val b = range.endInclusive.roundToInt().coerceIn(0, 100)
+                            onCutsChange(minOf(a, b), maxOf(a, b))
+                        },
+                        valueRange = 0f..100f,
+                        // 99 steps = 1% resolution across 0..100.
+                        steps = 99,
+                        enabled = enabled,
+                        modifier = Modifier.padding(top = Tokens.SpaceSm),
+                    )
+                // 2 enabled sources -> one head.
+                2 ->
+                    Slider(
+                        value = lo.toFloat(),
+                        onValueChange = { v -> onCutsChange(v.roundToInt().coerceIn(0, 100), hi) },
+                        valueRange = 0f..100f,
+                        steps = 99,
+                        enabled = enabled,
+                        modifier = Modifier.padding(top = Tokens.SpaceSm),
+                    )
+                // 0-1 enabled sources -> no split needed.
+                else ->
+                    Text(
+                        text = "100% ${segments.firstOrNull()?.first ?: ""}".trim(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Tokens.SpaceSm),
+                    )
+            }
             // Segment labels under the track, each centered in its slice
             // (width proportional to the segment = positioned by weight).
             Row(modifier = Modifier.fillMaxWidth()) {
