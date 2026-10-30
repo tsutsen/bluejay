@@ -130,13 +130,16 @@ object ThemeEngine {
         val hue = source.hue
         val picked = { argb: Int? -> argb?.let { TonalPalette.fromInt(it) } }
 
+        // Chroma ladder is deliberately spread (16..56) so the four styles read
+        // as distinct in the picker swatches while staying within pleasing
+        // territory (chroma <= ~56). Hues still follow the spec rotation tables.
         val secondaryTonal =
             when (style) {
                 PaletteStyle.TONAL_SPOT -> TonalPalette.fromHueAndChroma(hue, 16.0)
                 PaletteStyle.VIBRANT ->
                     TonalPalette.fromHueAndChroma(
                         DynamicScheme.getRotatedHue(source, VIBRANT_HUES, VIBRANT_SECONDARY_ROTATIONS),
-                        24.0,
+                        56.0,
                     )
                 PaletteStyle.EXPRESSIVE ->
                     TonalPalette.fromHueAndChroma(
@@ -145,10 +148,10 @@ object ThemeEngine {
                             EXPRESSIVE_HUES,
                             EXPRESSIVE_SECONDARY_ROTATIONS,
                         ),
-                        24.0,
+                        36.0,
                     )
                 PaletteStyle.FRUIT_SALAD ->
-                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 50.0), 36.0)
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 60.0), 48.0)
             }
 
         val tertiaryTonal =
@@ -158,7 +161,7 @@ object ThemeEngine {
                 PaletteStyle.VIBRANT ->
                     TonalPalette.fromHueAndChroma(
                         DynamicScheme.getRotatedHue(source, VIBRANT_HUES, VIBRANT_TERTIARY_ROTATIONS),
-                        32.0,
+                        48.0,
                     )
                 PaletteStyle.EXPRESSIVE ->
                     TonalPalette.fromHueAndChroma(
@@ -167,9 +170,10 @@ object ThemeEngine {
                             EXPRESSIVE_HUES,
                             EXPRESSIVE_TERTIARY_ROTATIONS,
                         ),
-                        32.0,
+                        40.0,
                     )
-                PaletteStyle.FRUIT_SALAD -> TonalPalette.fromHueAndChroma(hue, 36.0)
+                PaletteStyle.FRUIT_SALAD ->
+                    TonalPalette.fromHueAndChroma(MathUtils.sanitizeDegreesDouble(hue - 120.0), 44.0)
             }
 
         val neutralChroma: Double
@@ -180,13 +184,13 @@ object ThemeEngine {
                 neutralChroma = 6.0; neutralVariantChroma = 8.0; neutralHueShift = 0.0
             }
             PaletteStyle.VIBRANT -> {
-                neutralChroma = 10.0; neutralVariantChroma = 12.0; neutralHueShift = 0.0
+                neutralChroma = 12.0; neutralVariantChroma = 16.0; neutralHueShift = 0.0
             }
             PaletteStyle.EXPRESSIVE -> {
                 neutralChroma = 8.0; neutralVariantChroma = 12.0; neutralHueShift = 15.0
             }
             PaletteStyle.FRUIT_SALAD -> {
-                neutralChroma = 10.0; neutralVariantChroma = 16.0; neutralHueShift = 0.0
+                neutralChroma = 14.0; neutralVariantChroma = 20.0; neutralHueShift = 10.0
             }
         }
         // A user-picked background owns the neutral hue (both light and dark

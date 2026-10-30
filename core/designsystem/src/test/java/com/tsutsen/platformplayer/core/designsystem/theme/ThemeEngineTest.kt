@@ -20,6 +20,14 @@ class ThemeEngineTest {
 
         assertEquals(secondaries.size, secondaries.distinct().size)
         assertEquals(tertiaries.size, tertiaries.distinct().size)
+
+        // Styles must read as distinct in the swatch: secondary chroma spread
+        // across styles is wide (muted tonal-spot vs vivid vibrant).
+        val secChromas = light.values.map { Hct.fromInt(it.secondary.toArgb()).chroma }
+        assertTrue(
+            "secondary chroma spread too small: $secChromas",
+            secChromas.max() - secChromas.min() >= 24.0,
+        )
     }
 
     @Test
