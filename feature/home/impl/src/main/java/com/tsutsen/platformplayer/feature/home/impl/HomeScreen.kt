@@ -30,7 +30,6 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import android.content.Intent
 import android.net.Uri
@@ -263,11 +262,7 @@ private fun HomeFeedContent(
             state = refreshingState,
             onRefresh = onRefresh,
             indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = refreshingState,
-                    isRefreshing = isRefreshing || (isLoading && cards.isEmpty()),
-                    modifier = Modifier.align(Alignment.TopCenter),
-                )
+                LoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
             },
             content = {
                 ContentCard(modifier = Modifier.fillMaxSize()) {
