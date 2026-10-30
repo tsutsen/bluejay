@@ -402,8 +402,13 @@ class EngineSubscriptionsRepositoryImpl
             filtered =
                 filtered.filter { content ->
                     // Shorts filter: on = only short videos (hides non-videos too).
-                    if (state.filterShorts && (content as? IPlatformVideo)?.isShort != true) {
-                        return@filter false
+                    // isShort comes from the plugin; fall back to the /shorts/ URL
+                    // segment for plugins that don't set the flag (and for cached
+                    // rows serialized before the flag existed).
+                    if (state.filterShorts) {
+                        val v = content as? IPlatformVideo
+                        val isShort = v?.isShort == true || content.url.contains("/shorts/")
+                        if (!isShort) return@filter false
                     }
                     val video = content as? IPlatformVideo ?: return@filter true
                     if (video.isLive) {
