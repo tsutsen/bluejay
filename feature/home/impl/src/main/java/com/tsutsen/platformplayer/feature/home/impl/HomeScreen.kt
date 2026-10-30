@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material3.Button
-import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -262,7 +262,7 @@ private fun HomeFeedContent(
             state = refreshingState,
             onRefresh = onRefresh,
             indicator = {
-                LoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
+                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
             },
             content = {
                 ContentCard(modifier = Modifier.fillMaxSize()) {
@@ -288,7 +288,7 @@ private fun HomeFeedContent(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        LoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
+                                        ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
                                     }
                                 }
                             } else {

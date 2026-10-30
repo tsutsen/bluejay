@@ -8,7 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -326,7 +326,7 @@ private fun SubscriptionsContent(
                                                 modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
                                                 contentAlignment = Alignment.Center,
                                             ) {
-                                                androidx.compose.material3.LoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
+                                                androidx.compose.material3.ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
                                             }
                                         }
                                     } else {
@@ -435,7 +435,7 @@ private fun SubscriptionsContent(
                     state = pullToRefreshState,
                     onRefresh = onRefresh,
                     indicator = {
-                        LoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
+                        ContainedLoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
                     },
                     content = {
                         ContentCard(modifier = Modifier.fillMaxSize()) {
@@ -451,7 +451,7 @@ private fun SubscriptionsContent(
                                             modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
                                             contentAlignment = Alignment.Center,
                                         ) {
-                                            LoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
+                                            ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
                                         }
                                     }
                                 } else {
