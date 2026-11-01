@@ -2,6 +2,12 @@ package com.tsutsen.platformplayer.feature.home.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,6 +57,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.ArticleCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
+import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGap
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
 import com.tsutsen.platformplayer.core.designsystem.component.PostCardView
@@ -282,6 +290,15 @@ private fun HomeFeedContent(
                                 onNo = { onLoginDismiss(source.id) },
                             )
                         }
+                        // Surface: while the very first page is still in flight
+                        // (nothing cached, homebrew partials not landed yet),
+                        // show placeholder cards instead of a dead blank area.
+                        if (cards.isEmpty() && isLoading) {
+                            FeedPlaceholders(
+                                layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                            )
+                        } else {
                         VideoContainer(
                         items = cards,
                         layout = if (isWide) ContainerLayout.Grid(gridColumns) else ContainerLayout.List,
@@ -341,6 +358,7 @@ private fun HomeFeedContent(
                         }
                     }
                     }
+                        }
                 }
                 }
             },
@@ -394,5 +412,79 @@ private fun SourceLoginNoticeCard(
             Button(onClick = onYes) { Text("Yes") }
             TextButton(onClick = onNo) { Text("No") }
         }
+    }
+}
+
+/**
+ * Placeholder cards shown while the very first feed page is still loading and
+ * nothing is on screen yet — mirrors the real card shape (16:9 cover + text
+ * lines) so the feed doesn't look dead while homebrew sources stream in.
+ */
+@Composable
+private fun FeedPlaceholders(
+    layout: ContainerLayout,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(BluejayTokens().radius.sm)
+    val cover = MaterialTheme.colorScheme.surfaceVariant
+    when (layout) {
+        is ContainerLayout.List ->
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                contentPadding = PaddingValues(ContentCardInnerGap()),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg),
+            ) {
+                items(6) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .background(cover, shape),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.8f)
+                                .height(Tokens.SpaceMd)
+                                .padding(top = Tokens.SpaceSm)
+                                .background(cover, shape),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.5f)
+                                .height(Tokens.SpaceSm)
+                                .padding(top = Tokens.SpaceXs)
+                                .background(cover, shape),
+                        )
+                    }
+                }
+            }
+        is ContainerLayout.Grid ->
+            LazyVerticalGrid(
+                modifier = modifier.fillMaxSize(),
+                columns = GridCells.Fixed(layout.columns),
+                contentPadding = PaddingValues(ContentCardInnerGap()),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+            ) {
+                items(9) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .background(cover, shape),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.8f)
+                                .height(Tokens.SpaceMd)
+                                .padding(top = Tokens.SpaceSm)
+                                .background(cover, shape),
+                        )
+                    }
+                }
+            }
+        else -> Unit
     }
 }

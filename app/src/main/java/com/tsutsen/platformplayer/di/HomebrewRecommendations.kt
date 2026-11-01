@@ -88,26 +88,40 @@ object HomebrewRecommendations {
                 // per future, so the spawn weights stay aligned with
                 // [sources] below.
                 val sourceIndices = mutableListOf<Int>()
+                // Each source reports its cards via onPartial the moment it
+                // completes (completion order) — a slow first source must not
+                // delay the paint of an already-finished faster one. The await
+                // loop below only collects results in submission order for the
+                // interleave; mergePartialFeed dedupes re-emitted cards by id.
                 if (settings.sourceYoutubeFeed) {
-                    futures += async { youtubeFeed() }
+                    futures += async {
+                        val r = youtubeFeed()
+                        onPartial(r.cards)
+                        r
+                    }
                     sourceIndices += 0
                 }
                 if (settings.sourceSubscriptions) {
-                    futures += async { subscriptionVideos(historyDao, onPartial) }
+                    futures += async {
+                        val r = subscriptionVideos(historyDao, onPartial)
+                        onPartial(r.cards)
+                        r
+                    }
                     sourceIndices += 1
                 }
                 if (settings.sourceTopCreators) {
-                    futures += async { topCreatorVideos(historyDao) }
+                    futures += async {
+                        val r = topCreatorVideos(historyDao)
+                        onPartial(r.cards)
+                        r
+                    }
                     sourceIndices += 2
                 }
                 val allFlows = mutableListOf<PagerFlow<IPlatformContent, Card>>()
                 val sources = mutableListOf<List<Card>>()
-                // Await in submission order: onPartial fires as soon as each
-                // source lands, not only when all of them are done.
                 futures.forEachIndexed { i, future ->
                     val result = future.await()
                     if (result.cards.isEmpty()) Logger.i(TAG, "Source ${i + 1} empty/failed")
-                    onPartial(result.cards)
                     sources += result.cards
                     allFlows += result.flows
                 }
