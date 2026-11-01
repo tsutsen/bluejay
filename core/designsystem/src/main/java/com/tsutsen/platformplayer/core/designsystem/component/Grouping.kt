@@ -116,9 +116,9 @@ fun tokenizedChipShapes(): ChipShapes {
  * download group): the OUTER corners follow the grid tiles' own states —
  * medium radius at rest, small while pressed, large when active — so the
  * group reads as a tile, not as a capsule. The inner (seam) corners stay
- * small but visible: the segments stack FLUSH (no gap) in their Row, so
- * the trailing arrow reads as an attached trailing segment of one split
- * button — a gap made it look like a detached chip. The same
+ * small (radius.sm, squishing to xs on press) — the same value the leading
+ * tile's TileConnection seam uses, so both sides of the seam match and the
+ * arrow segment doesn't look different from its neighbor. The same
  * zero-rounding guard applies: with Dp radii near 0 the spring-morphed
  * corners overshoot into negative values, so every state takes a percent
  * pill instead.

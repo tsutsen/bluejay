@@ -10,6 +10,8 @@ data class HomeFeedCacheEntity(
     val contentUrl: String,
     val title: String,
     val author: String?,
+    /** Author channel url (null for pre-v12 rows) — drives the options sheet's Go-to-channel tile and Hide arrow. */
+    val authorUrl: String? = null,
     val thumbnailUrl: String?,
     val contentType: String,
     /** Video stats (null for non-video cards / pre-v11 rows) so cached cards paint duration/views/posted date. */

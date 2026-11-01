@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.core.database.entity.*
         SavedVideoEntity::class,
         NotificationEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 @TypeConverters(SavedVideoTypeConverter::class)
@@ -51,6 +51,19 @@ abstract class AppDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE `home_feed_cache` ADD COLUMN `durationMs` INTEGER")
                     db.execSQL("ALTER TABLE `home_feed_cache` ADD COLUMN `viewCount` INTEGER")
                     db.execSQL("ALTER TABLE `home_feed_cache` ADD COLUMN `publishedAt` INTEGER")
+                }
+            }
+
+        /**
+         * v11 -> v12: stores the author's channel url in the home-feed cache,
+         * so cold-start cached cards keep the options sheet's "Go to channel"
+         * tile and the Hide button's creator-level arrow. Existing rows keep
+         * NULL (tile/arrow hidden) until the next refresh re-caches them.
+         */
+        val MIGRATION_11_12 =
+            object : Migration(11, 12) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `home_feed_cache` ADD COLUMN `authorUrl` TEXT")
                 }
             }
 

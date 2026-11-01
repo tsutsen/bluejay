@@ -549,53 +549,23 @@ private fun HideTileGroup(
     // Plain Row, not ButtonGroup: with a weighted leading tile, ButtonGroup
     // measures the fixed-width arrow at 0 width in beta02 (it renders ~1px).
     // height(IntrinsicSize.Max) makes the arrow stretch to the tile's height.
-    // Flush (no spacedBy): the segments form one connected split button —
-    // the seam keeps a small rounding, so the arrow reads as an attached
-    // trailing segment, not a detached chip or a fully merged button.
     Row(
         modifier = modifier.height(IntrinsicSize.Max),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
         OptionTileView(
             tile = tile,
             modifier = Modifier.weight(1f),
             connection = TileConnection.ConnectedLeading,
         )
-        Box {
-            val scheme = MaterialTheme.colorScheme
-                ToggleButton(
-                    checked = expanded,
-                    onCheckedChange = { onExpandedChange(it) },
-                    shapes =
-                        ToggleButtonShapes(
-                            shapes.shape,
-                            shapes.pressedShape,
-                            shapes.checkedShape,
-                        ),
-                    modifier =
-                        Modifier
-                            .fillMaxHeight()
-                            .width(Tokens.IconMd + Tokens.SpaceMd * 2)
-                            .clip(shapes.checkedShape),
-                    contentPadding = PaddingValues(all = Tokens.SpaceMd),
-                    colors =
-                        ToggleButtonDefaults.colors(
-                            containerColor = scheme.surfaceContainer,
-                            contentColor = scheme.onSurfaceVariant,
-                            checkedContainerColor = scheme.primaryContainer,
-                            checkedContentColor = scheme.onPrimaryContainer,
-                        ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = "More hide options",
-                        modifier = Modifier.size(Tokens.IconMd),
-                    )
-                }
-                DropdownMenuPopup(
-                    expanded = expanded,
-                    onDismissRequest = { onExpandedChange(false) },
-                ) {
-                    DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+        SplitArrowToggle(
+            expanded = expanded,
+            onExpandedChange = onExpandedChange,
+            width = Tokens.IconMd + Tokens.SpaceMd * 2,
+            shapes = shapes,
+            contentDescription = "More hide options",
+        ) {
+            DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
                         MenuDefaults.DropdownMenuGroupLabel { Text("Hide options") }
                         val count =
                             1 + (if (onDownrankCreator != null) 1 else 0) +
@@ -641,9 +611,67 @@ private fun HideTileGroup(
                                 },
                             )
                         }
-                    }
-                }
+            }
         }
+    }
+}
+
+/**
+ * The trailing arrow segment of a split button (Hide group, download quality
+ * group): one ToggleButton with the group's Last corner shapes, stretched to
+ * the row height, anchoring a dropdown menu. Shared so both split buttons
+ * render the arrow segment identically.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SplitArrowToggle(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    width: Dp,
+    enabled: Boolean = true,
+    shapes: GroupCornerShapes,
+    contentDescription: String,
+    interactionSource: MutableInteractionSource? = null,
+    menu: @Composable () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Box(modifier = Modifier.fillMaxHeight()) {
+        ToggleButton(
+            checked = expanded,
+            enabled = enabled,
+            onCheckedChange = { onExpandedChange(it) },
+            shapes =
+                ToggleButtonShapes(
+                    shapes.shape,
+                    shapes.pressedShape,
+                    shapes.checkedShape,
+                ),
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .width(width)
+                    .clip(shapes.checkedShape),
+            contentPadding = PaddingValues(all = Tokens.SpaceMd),
+            colors =
+                ToggleButtonDefaults.colors(
+                    containerColor = scheme.surfaceContainer,
+                    contentColor = scheme.onSurfaceVariant,
+                    checkedContainerColor = scheme.primaryContainer,
+                    checkedContentColor = scheme.onPrimaryContainer,
+                ),
+            interactionSource = interactionSource,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(Tokens.IconMd),
+            )
+        }
+        DropdownMenuPopup(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            content = { menu() },
+        )
     }
 }
 
@@ -739,8 +767,9 @@ fun OptionTileView(
         when (connection) {
             TileConnection.Standalone -> RoundedCornerShape(cornerDp)
 
-            // Inner (facing) corners get a small fixed rounding — the
-            // visible seam of a connected split button (flush, no gap).
+            // Inner (facing) corners keep the same small rounding as the
+            // arrow's seam (tileFlowGroupShapes uses radius.sm) — a squared
+            // 0 here made the arrow segment look different next to the tile.
             TileConnection.ConnectedLeading ->
                 RoundedCornerShape(
                     topStart = cornerDp,
@@ -1039,61 +1068,33 @@ private fun RowScope.downloadQualityItem(
     shapes: GroupCornerShapes,
     interactionSource: MutableInteractionSource,
 ) {
-    Box {
-        val scheme = MaterialTheme.colorScheme
-        ToggleButton(
-            checked = expanded,
-            enabled = enabled,
-            // Toggle both ways: while open, tapping the arrow must close
-            // the menu (the old `if (it)` swallowed the false).
-            onCheckedChange = { onExpandedChange(it) },
-                shapes = ToggleButtonShapes(shapes.shape, shapes.pressedShape, shapes.checkedShape),
-                modifier =
-                    Modifier
-                        .fillMaxHeight()
-                        .width(width)
-                        .clip(shapes.checkedShape),
-                // Same vertical padding as the sheet's tiles, see the
-                // leading item.
-                contentPadding = PaddingValues(all = Tokens.SpaceMd),
-                colors =
-                    ToggleButtonDefaults.colors(
-                        containerColor = scheme.surfaceContainer,
-                        contentColor = scheme.onSurfaceVariant,
-                        checkedContainerColor = scheme.primaryContainer,
-                        checkedContentColor = scheme.onPrimaryContainer,
-                    ),
-                interactionSource = interactionSource,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
-                    contentDescription = "Download quality",
-                    modifier = Modifier.size(Tokens.IconMd),
+    SplitArrowToggle(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        width = width,
+        enabled = enabled,
+        shapes = shapes,
+        contentDescription = "Download quality",
+        interactionSource = interactionSource,
+    ) {
+        DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
+            MenuDefaults.DropdownMenuGroupLabel { Text("Download quality") }
+            val count = DownloadQuality.Options.size
+            DownloadQuality.Options.forEachIndexed { index, quality ->
+                CheckableDropdownMenuItem(
+                    checked = quality == selectedQuality,
+                    onCheckedChange = {
+                        onQualitySelected(quality)
+                        onExpandedChange(false)
+                    },
+                    text = { Text(quality.label) },
+                    shapes = MenuDefaults.itemShape(index, count),
+                    checkedLeadingIcon = {
+                        Icon(Icons.Filled.Check, contentDescription = null)
+                    },
                 )
             }
-            DropdownMenuPopup(
-                expanded = expanded,
-                onDismissRequest = { onExpandedChange(false) },
-            ) {
-                DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
-                    MenuDefaults.DropdownMenuGroupLabel { Text("Download quality") }
-                    val count = DownloadQuality.Options.size
-                    DownloadQuality.Options.forEachIndexed { index, quality ->
-                        CheckableDropdownMenuItem(
-                            checked = quality == selectedQuality,
-                            onCheckedChange = {
-                                onQualitySelected(quality)
-                                onExpandedChange(false)
-                            },
-                            text = { Text(quality.label) },
-                            shapes = MenuDefaults.itemShape(index, count),
-                            checkedLeadingIcon = {
-                                Icon(Icons.Filled.Check, contentDescription = null)
-                            },
-                        )
-                    }
-                }
-            }
+        }
     }
 }
 
@@ -1161,11 +1162,9 @@ fun DownloadSection(
             animationSpec = tileColorSpec,
             label = "download-content",
         )
-    // Flush (no spacedBy): the segments form one connected split button —
-    // the seam keeps a small rounding, so the chevron reads as an attached
-    // trailing segment, not a detached chip or a fully merged button.
     Row(
         modifier = modifier.height(IntrinsicSize.Max),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
         downloadLeadingItem(
             icon =
