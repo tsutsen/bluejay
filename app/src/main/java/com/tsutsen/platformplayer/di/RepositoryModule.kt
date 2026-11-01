@@ -15,6 +15,7 @@ import com.tsutsen.platformplayer.core.data.repository.PlaylistRepository
 import com.tsutsen.platformplayer.core.data.repository.SearchRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
+import com.tsutsen.platformplayer.core.data.repository.UpdateRepository
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.PlaybackQueueRepositoryImpl
@@ -82,6 +83,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUpdateRepository(impl: EngineUpdateRepositoryImpl): UpdateRepository
 }
 
 @Module

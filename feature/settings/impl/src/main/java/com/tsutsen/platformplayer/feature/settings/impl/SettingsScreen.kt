@@ -114,6 +114,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.data.repository.UpdateCheckState
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
@@ -1964,12 +1965,29 @@ private fun AboutItems(viewModel: SettingsViewModel) {
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+            val updateState by viewModel.updateCheckState.collectAsState()
+            SettingsOptionCard(
+                icon = Download,
+                title = "Check for updates",
+                subtitle =
+                    when (val s = updateState) {
+                        UpdateCheckState.Idle -> "Check GitHub releases — current $version"
+                        UpdateCheckState.Checking -> "Checking…"
+                        is UpdateCheckState.UpToDate -> "Up to date (${s.versionName})"
+                        is UpdateCheckState.Available -> "${s.tag} available — tap to download"
+                        is UpdateCheckState.Downloading -> "${s.tag} downloading…"
+                        is UpdateCheckState.Ready -> "${s.tag} downloaded — install from the notification"
+                        is UpdateCheckState.Failed -> "Check failed: ${s.message}"
+                    },
+                onClick = { viewModel.onUpdateCardClick() },
+                groupPosition = GroupPosition.First,
+            )
             SettingsOptionCard(
                 icon = Icons.Filled.PlayArrow,
                 title = "Launch initial setup",
                 subtitle = "Show the getting started flow again",
                 onClick = { viewModel.restartGettingStarted() },
-                groupPosition = GroupPosition.First,
+                groupPosition = GroupPosition.Middle,
             )
             SettingsOptionCard(
                 icon = Icons.Filled.Launch,

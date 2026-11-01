@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.data.repository.UpdateCheckState
+import com.tsutsen.platformplayer.core.data.repository.UpdateRepository
 import com.tsutsen.platformplayer.core.datastore.model.*
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SourceInfo
@@ -76,6 +78,7 @@ class SettingsViewModel
         private val libraryRepository: LibraryRepository,
         private val homeRepository: HomeRepository,
         private val backupProvider: BackupProvider,
+        private val updateRepository: UpdateRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -93,6 +96,26 @@ class SettingsViewModel
                 settingsRepository.updateGeneral("gettingStartedCompleted", false)
             }
         }
+
+        /** Manual "Check for updates" (About section): GitHub releases. */
+        val updateCheckState: StateFlow<UpdateCheckState> = updateRepository.checkState
+
+        /**
+         * Card click: an offered update ([UpdateCheckState.Available]) starts
+         * the download; otherwise run a fresh check. Re-checks while a check
+         * or download is running are ignored.
+         */
+        fun onUpdateCardClick() {
+            when (val s = updateRepository.checkState.value) {
+                is UpdateCheckState.Available -> updateRepository.downloadUpdate()
+                is UpdateCheckState.Checking,
+                is UpdateCheckState.Downloading,
+                is UpdateCheckState.Ready -> Unit
+                else -> updateRepository.checkForUpdates()
+            }
+        }
+
+        val currentVersionName: String get() = updateRepository.currentVersionName
 
         fun exportBackup() = backupProvider.exportBackup()
 
