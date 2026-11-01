@@ -394,7 +394,10 @@ class EngineHomeRepositoryImpl
                 }
                 Logger.i("EngineHomeRepository", "hasMore=${flow.hasMore}")
                 if (!flow.hasMore) {
-                    _feed.update { it.copy(isLoading = false) }
+                    // Don't clear isLoading while an initial/refresh load is
+                    // in flight — otherwise the VM resets isRefreshing and the
+                    // pull-to-refresh indicator unsticks mid-refresh.
+                    _feed.update { it.copy(isLoading = !loadInitialInFlight.get()) }
                     return
                 }
 
@@ -407,7 +410,7 @@ class EngineHomeRepositoryImpl
                 val visible = applyContentFilters(mergeFresh(_feed.value.items, flow.items))
                 _feed.update {
                     it.copy(
-                        isLoading = false,
+                        isLoading = !loadInitialInFlight.get(),
                         items = visible,
                         hasMorePages = flow.hasMore,
                         error = flow.error,
@@ -417,7 +420,7 @@ class EngineHomeRepositoryImpl
             } catch (e: Exception) {
                 Logger.e("EngineHomeRepository", "loadNextPage failed", e)
                 _feed.update {
-                    it.copy(isLoading = false, error = e.message ?: "Failed to load more")
+                    it.copy(isLoading = !loadInitialInFlight.get(), error = e.message ?: "Failed to load more")
                 }
             } finally {
                 loadNextPageInFlight.set(false)
@@ -433,7 +436,7 @@ class EngineHomeRepositoryImpl
         private suspend fun loadNextHomebrewPage() {
             val flows = _homebrewFlows
             if (flows.isEmpty() || flows.none { it.hasMore }) {
-                _feed.update { it.copy(isLoading = false) }
+                _feed.update { it.copy(isLoading = !loadInitialInFlight.get()) }
                 return
             }
             val appended =
@@ -463,7 +466,7 @@ class EngineHomeRepositoryImpl
             )
             _feed.update {
                 it.copy(
-                    isLoading = false,
+                    isLoading = !loadInitialInFlight.get(),
                     items = visible,
                     hasMorePages = flows.any { f -> f.hasMore },
                     currentPage = it.currentPage + 1,

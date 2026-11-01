@@ -174,7 +174,10 @@ object HomebrewRecommendations {
             flow.loadInitial()
             // Refresh pagers absorb late sub-sources after the first page.
             flow.mergeCurrentResults()
-            SourceResult(flow.items, listOf(flow))
+            // Shuffled copy (flow.items itself stays pager-ordered for paging):
+            // the platform home returns the same order every refresh, and the
+            // interleave only randomizes which source each slot comes from.
+            SourceResult(flow.items.shuffled(), listOf(flow))
         }.onFailure { Logger.w(TAG, "YouTube feed source failed", it) }.getOrDefault(FAILED_SOURCE)
 
     /**
@@ -258,6 +261,10 @@ object HomebrewRecommendations {
             val contents = perCreator.flatMap { it.second }
             SourceResult(
                 unwatched(contents, historyDao)
+                    // Shuffle before take: a random subset of the unwatched
+                    // pool, not just the pager's first page, so a refresh
+                    // surfaces different videos.
+                    .shuffled()
                     .take(SOURCE_ITEM_LIMIT)
                     .let(EngineCardMapper::toCards),
                 flows,
