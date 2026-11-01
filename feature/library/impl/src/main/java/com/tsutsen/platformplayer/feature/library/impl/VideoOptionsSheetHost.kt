@@ -39,9 +39,9 @@ fun VideoOptionsSheetHost(
     // The currently playing video's URL (null when unknown): its queue
     // tile shows "Now playing" and is disabled.
     currentVideoUrl: String? = null,
-    // Non-null = the "Remove from history" tile appears (history contexts
-    // only — the library's History strip and the history page).
-    onRemoveFromHistory: (() -> Unit)? = null,
+    // The "Hide"/"Unhide" tile is home-feed-only: only the home feed passes
+    // showHide = true.
+    showHide: Boolean = false,
 ) {
     val viewModel: VideoOptionsViewModel = hiltViewModel()
     val savedTypes by viewModel.savedTypes(video.url).collectAsState(initial = emptySet())
@@ -109,29 +109,21 @@ fun VideoOptionsSheetHost(
                 showNewPlaylistDialog = true
             }
         },
-        onRemoveFromHistory = onRemoveFromHistory,
         // "Watched" tile: toggle fully-watched in the history (mark, or
-        // clear the progress when already watched), then a toast (plain
-        // Toast here — the app module's UIDialogs.toast is the same call
-        // but unreachable from this module).
+        // clear the progress when already watched). No toast — the tile's
+        // state change is the feedback.
         onToggleWatched = {
             scope.launch {
                 isWatched = viewModel.toggleWatched(video)
-                Toast
-                    .makeText(
-                        context,
-                        if (isWatched) "Marked as watched" else "Marked as unwatched",
-                        Toast.LENGTH_SHORT,
-                    ).show()
             }
         },
         isWatched = isWatched,
-        isHidden = video.url in hiddenUrls,
-        onHideVideo = { viewModel.toggleHiddenVideo(video.url) },
-        onDownrankCreator = creatorUrl?.let { url -> { viewModel.toggleDownrankedCreator(url) } },
-        onHideCreator = creatorUrl?.let { url -> { viewModel.toggleHiddenCreator(url) } },
-        isCreatorDownranked = creatorUrl != null && creatorUrl in downrankedCreators,
-        isCreatorHidden = creatorUrl != null && creatorUrl in hiddenCreators,
+        isHidden = showHide && video.url in hiddenUrls,
+        onHideVideo = if (showHide) ({ viewModel.toggleHiddenVideo(video.url) }) else null,
+        onDownrankCreator = if (showHide) creatorUrl?.let { url -> { viewModel.toggleDownrankedCreator(url) } } else null,
+        onHideCreator = if (showHide) creatorUrl?.let { url -> { viewModel.toggleHiddenCreator(url) } } else null,
+        isCreatorDownranked = showHide && creatorUrl != null && creatorUrl in downrankedCreators,
+        isCreatorHidden = showHide && creatorUrl != null && creatorUrl in hiddenCreators,
         onAddToQueue = {
             // No onDismiss: the sheet stays open so the user can keep
             // choosing actions.
@@ -159,9 +151,10 @@ fun VideoOptionsSheetHost(
         NewPlaylistDialog(
             onDismiss = { showNewPlaylistDialog = false },
             onCreate = { name ->
+                // Close only the modal; the sheet stays open and the video
+                // is added to the new playlist.
                 viewModel.createPlaylistAndAdd(name, video)
                 showNewPlaylistDialog = false
-                onDismiss()
             },
         )
     }

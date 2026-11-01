@@ -126,10 +126,6 @@ fun VideoOptionsSheet(
     onDownloadWithQuality: ((DownloadQuality) -> Unit)? = null,
     onAddToPlaylist: (Long?) -> Unit,
     onAddToQueue: () -> Unit = {},
-    // Non-null = show a "Remove from history" tile (danger tone). Only the
-    // history contexts pass it (the library's History strip, the history
-    // page) so the tile never appears where the video isn't a history item.
-    onRemoveFromHistory: (() -> Unit)? = null,
     // Non-null = show the "Watched" tile: a state toggle like Like /
     // Favourite — marks the video fully watched in the history, or clears
     // that progress when [isWatched] is already true (the sheet stays open
@@ -344,7 +340,8 @@ fun VideoOptionsSheet(
                             context.startActivity(
                                 Intent.createChooser(intent, "Share video"),
                             )
-                            onDismiss()
+                            // No onDismiss: the system share sheet opens on top;
+                            // keep the options sheet open underneath.
                         },
                     ),
                 )
@@ -361,19 +358,6 @@ fun VideoOptionsSheet(
                     )
                 }
                 hideTile?.let { add(it) }
-                onRemoveFromHistory?.let { onRemove ->
-                    add(
-                        OptionTile(
-                            label = "Remove from history",
-                            icon = Icons.Filled.Delete,
-                            tone = TileTone.Danger,
-                            onClick = {
-                                onRemove()
-                                onDismiss()
-                            },
-                        ),
-                    )
-                }
             }
         // Grid slot renderer: the Hide tile carries the arrow submenu when
         // creator options exist; every other tile renders as-is.

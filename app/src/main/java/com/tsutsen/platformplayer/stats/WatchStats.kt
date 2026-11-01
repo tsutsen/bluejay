@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.stats
 
 import com.tsutsen.platformplayer.core.database.entity.HistoryEntity
+import com.tsutsen.platformplayer.core.database.entity.isFullyWatched
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -87,8 +88,12 @@ object WatchStatsBuilder {
         for (h in history) {
             val ms =
                 if (h.watchedMs > 0L) h.watchedMs
-                // Legacy row from before watched-time measurement.
-                else h.lastPositionMs
+                // Legacy row from before watched-time measurement: use the
+                // position — but NOT for rows merely marked as watched via
+                // the sheet (position = full duration, watchedMs = 0), those
+                // contributed no real watch time.
+                else if (!h.isFullyWatched()) h.lastPositionMs
+                else 0L
             if (ms <= 0L) continue
             // Attribute each video to the day it was last watched in the
             // device's local zone (watchedAt is an epoch-millis instant).

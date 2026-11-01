@@ -127,12 +127,6 @@ fun LibraryScreen(
             onDismiss = { optionsCard = null },
             onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
-            onRemoveFromHistory =
-                if (optionsSectionId == LibraryRepository.HISTORY_ID) {
-                    { viewModel.deleteFromHistory(card.url) }
-                } else {
-                    null
-                },
         )
     }
 

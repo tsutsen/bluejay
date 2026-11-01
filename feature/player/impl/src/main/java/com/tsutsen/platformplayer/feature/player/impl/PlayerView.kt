@@ -1469,20 +1469,17 @@ private fun CurrentVideoOptionsSheet(
                         thumbnailUrl = video.thumbnailUrl,
                         durationMs = video.durationMs ?: 0L,
                     )
-                Toast.makeText(
-                    context,
-                    if (isWatched) "Marked as watched" else "Marked as unwatched",
-                    Toast.LENGTH_SHORT,
-                ).show()
+                // No toast: the tile's state change is the feedback.
             }
         },
         isWatched = isWatched,
-        isHidden = video.url in hiddenUrls,
-        onHideVideo = { viewModel.toggleHiddenVideo(video.url) },
-        onDownrankCreator = creatorUrl?.let { url -> { viewModel.toggleDownrankedCreator(url) } },
-        onHideCreator = creatorUrl?.let { url -> { viewModel.toggleHiddenCreator(url) } },
-        isCreatorDownranked = creatorUrl != null && creatorUrl in downrankedCreators,
-        isCreatorHidden = creatorUrl != null && creatorUrl in hiddenCreators,
+        // The Hide tile is home-feed-only; the player sheet omits it.
+        isHidden = false,
+        onHideVideo = null,
+        onDownrankCreator = null,
+        onHideCreator = null,
+        isCreatorDownranked = false,
+        isCreatorHidden = false,
         isInQueue = queue.any { it.url == video.url },
         isCurrentlyPlaying = isCurrentlyPlaying,
         onRemoveFromQueue = { viewModel.removeQueueItemUrl(video.url) },
@@ -1517,9 +1514,10 @@ private fun CurrentVideoOptionsSheet(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        // Close only the modal; the sheet stays open and the
+                        // video is added to the new playlist.
                         viewModel.createPlaylistAndAdd(name)
                         showNewPlaylistDialog = false
-                        onDismiss()
                     },
                     enabled = name.isNotBlank(),
                 ) {

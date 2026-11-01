@@ -222,6 +222,7 @@ fun HomeScreen(
             onDismiss = { optionsCard = null },
             onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
+            showHide = true,
         )
     }
 }

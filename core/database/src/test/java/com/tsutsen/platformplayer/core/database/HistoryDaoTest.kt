@@ -104,8 +104,10 @@ class HistoryDaoTest {
             val row = dao.getByUrl("v1")!!
             assertEquals(90_000, row.lastPositionMs)
             assertEquals(90_000, row.totalDurationMs)
-            assertEquals(90_000, row.watchedMs)
+            // watchedMs is NOT set by a manual mark — stats count actual watch time.
+            assertEquals(0, row.watchedMs)
             assertEquals(now, row.watchedAt)
+            assertEquals(true, row.isFullyWatched())
         }
 
     @Test
@@ -135,7 +137,8 @@ class HistoryDaoTest {
 
             val row = dao.getByUrl("v1")!!
             assertEquals(90_000, row.lastPositionMs)
-            assertEquals(90_000, row.watchedMs)
+            // watchedMs keeps the previously accumulated (real) watch time.
+            assertEquals(12_000, row.watchedMs)
             // Fields the tile doesn't know about survive the upsert.
             assertEquals(old, row.viewedAt)
             assertEquals("chanA", row.authorUrl)
@@ -144,19 +147,22 @@ class HistoryDaoTest {
         }
 
     @Test
-    fun `clearProgress resets position and watched time but keeps the row`() =
+    fun `clearProgress resets position but keeps watched time and the row`() =
         runBlocking {
             val dao = dao()
+            dao.upsert(entry("v1", "chanA", watchedMs = 12_000, lastPositionMs = 30_000))
             dao.markWatched(url = "v1", title = "t1", durationMs = 90_000)
 
             dao.clearProgress("v1")
 
             val row = dao.getByUrl("v1")!!
             assertEquals(0, row.lastPositionMs)
-            assertEquals(0, row.watchedMs)
-            // The row itself (and its duration/metadata) survives.
+            // Accumulated real watch time survives an unmark.
+            assertEquals(12_000, row.watchedMs)
+            // The row itself (and its duration/metadata) survives; the
+            // pre-existing title is kept (conflict updates position only).
             assertEquals(90_000, row.totalDurationMs)
-            assertEquals("t1", row.title)
+            assertEquals("v1", row.title)
             assertEquals(false, row.isFullyWatched())
         }
 

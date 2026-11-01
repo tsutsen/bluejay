@@ -50,18 +50,20 @@ interface HistoryDao {
 
     /**
      * Mark [url] as fully watched (long-press sheet "Watched" tile):
-     * lastPositionMs and watchedMs become [durationMs]. Existing rows keep
-     * their other fields (viewedAt, authorUrl, viewCount, postedAt) — a
-     * plain REPLACE upsert would reset them.
+     * lastPositionMs becomes [durationMs] so the row counts as watched.
+     * watchedMs is deliberately NOT set — watch-time stats sum watchedMs
+     * (actual time watched); a manual "watched" mark must not inflate it.
+     * Existing rows keep their other fields (viewedAt, authorUrl, viewCount,
+     * postedAt, watchedMs) — a plain REPLACE upsert would reset them.
      */
     // viewedAt/viewCount/postedAt have no table defaults (NOT NULL, set by
     // the entity constructor), so a raw INSERT must name them; on conflict
-    // only the watched fields change.
+    // only the position/duration/timestamp fields change.
     @Query(
         "INSERT INTO history (contentUrl, title, author, thumbnailUrl, lastPositionMs, totalDurationMs, watchedMs, watchedAt, viewedAt, viewCount, postedAt) " +
-            "VALUES (:url, :title, :author, :thumbnailUrl, :durationMs, :durationMs, :durationMs, :watchedAt, :watchedAt, 0, 0) " +
+            "VALUES (:url, :title, :author, :thumbnailUrl, :durationMs, :durationMs, 0, :watchedAt, :watchedAt, 0, 0) " +
             "ON CONFLICT (contentUrl) DO UPDATE SET lastPositionMs = excluded.lastPositionMs, " +
-            "totalDurationMs = excluded.totalDurationMs, watchedMs = excluded.watchedMs, watchedAt = excluded.watchedAt",
+            "totalDurationMs = excluded.totalDurationMs, watchedAt = excluded.watchedAt",
     )
     suspend fun markWatched(
         url: String,
@@ -73,12 +75,13 @@ interface HistoryDao {
     )
 
     /**
-     * Clear playback progress for [url] (the options sheet's "Watched"
-     * toggle switched off): the row stays (title/author/history metadata),
-     * but position and accumulated watched time reset, so the video counts
-     * as unwatched again and drops out of "Continue watching".
+     * Clear playback position for [url] (the options sheet's "Watched"
+     * toggle switched off): the row stays (title/author/history metadata)
+     * and watchedMs is KEPT — it is the actual time the user watched, which
+     * the watch-time stats report. Only the position resets, so the video
+     * counts as unwatched again and drops out of "Continue watching".
      */
-    @Query("UPDATE history SET lastPositionMs = 0, watchedMs = 0 WHERE contentUrl = :url")
+    @Query("UPDATE history SET lastPositionMs = 0 WHERE contentUrl = :url")
     suspend fun clearProgress(url: String)
 
     @Query("DELETE FROM history WHERE contentUrl = :url")
@@ -108,11 +111,17 @@ suspend fun HistoryDao.toggleWatched(
     author: String? = null,
     thumbnailUrl: String? = null,
     durationMs: Long,
-): Boolean =
-    if (getByUrl(url)?.isFullyWatched() == true) {
+): Boolean {
+    val existing = getByUrl(url)
+    if (existing?.isFullyWatched() == true) {
         clearProgress(url)
-        false
-    } else {
-        markWatched(url, title, author, thumbnailUrl, durationMs)
-        true
+        return false
     }
+    // Fall back to the stored duration when the caller doesn't know it
+    // (e.g. a history card with durationMs = 0) — otherwise the mark would
+    // write position 0 / duration 0 and never register as watched, making
+    // the toggle one-way.
+    val duration = if (durationMs > 0) durationMs else (existing?.totalDurationMs ?: 0L)
+    markWatched(url, title, author, thumbnailUrl, duration.coerceAtLeast(1L))
+    return true
+}

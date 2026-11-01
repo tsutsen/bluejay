@@ -73,9 +73,10 @@ class HomeFeedCacheMigrationTest {
         runBlocking {
             val db = v10DatabaseWithCachedRow()
             AppDatabase.MIGRATION_10_11.migrate(db.openHelper.writableDatabase)
+            AppDatabase.MIGRATION_11_12.migrate(db.openHelper.writableDatabase)
 
             val columns = columnNames(db, "home_feed_cache")
-            for (name in listOf("durationMs", "viewCount", "publishedAt")) {
+            for (name in listOf("durationMs", "viewCount", "publishedAt", "authorUrl")) {
                 assertEquals("column $name missing", true, name in columns)
                 assertEquals("column $name must be nullable", false, columns.getValue(name))
             }
@@ -93,6 +94,7 @@ class HomeFeedCacheMigrationTest {
         runBlocking {
             val db = v10DatabaseWithCachedRow()
             AppDatabase.MIGRATION_10_11.migrate(db.openHelper.writableDatabase)
+            AppDatabase.MIGRATION_11_12.migrate(db.openHelper.writableDatabase)
             val dao = db.homeFeedCacheDao()
 
             dao.insert(

@@ -155,13 +155,6 @@ fun LibrarySectionDetailScreen(
             onDismiss = { optionsCard = null },
             onPlay = { playerViewModel.play(card) },
             onGoToChannel = { navigator.navigateToChannel(it) },
-            // Every item on the history page is a history entry.
-            onRemoveFromHistory =
-                if (sectionId == LibraryRepository.HISTORY_ID) {
-                    { viewModel.deleteFromHistory(card.url) }
-                } else {
-                    null
-                },
         )
     }
 
