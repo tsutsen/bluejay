@@ -68,7 +68,7 @@ class BackgroundWorker(
                     14,
                     NotificationCompat
                         .Builder(appContext, notificationChannel.id)
-                        .setSmallIcon(com.tsutsen.platformplayer.R.drawable.foreground)
+                        .setSmallIcon(com.tsutsen.platformplayer.R.drawable.ic_launcher_symbolic)
                         .setContentTitle("Bluejay")
                         .setContentText("Failed subscriptions update\n${ex.message}")
                         .setSilent(true)
@@ -112,7 +112,7 @@ class BackgroundWorker(
         val notif =
             NotificationCompat
                 .Builder(appContext, backgroundChannel.id)
-                .setSmallIcon(com.tsutsen.platformplayer.R.drawable.foreground)
+                .setSmallIcon(com.tsutsen.platformplayer.R.drawable.ic_launcher_symbolic)
                 .setContentTitle("Bluejay")
                 .setContentText("Updating subscriptions...")
                 .setSilent(true)
@@ -205,7 +205,7 @@ class BackgroundWorker(
         }
         /*
             manager.notify(13, NotificationCompat.Builder(appContext, notificationChannel.id)
-                .setSmallIcon(com.tsutsen.platformplayer.R.drawable.foreground)
+                .setSmallIcon(com.tsutsen.platformplayer.R.drawable.ic_launcher_symbolic)
                 .setContentTitle("Bluejay")
                 .setContentText("${newItems.size} new content from ${newSubChanges.size} creators")
                 .setSilent(true)

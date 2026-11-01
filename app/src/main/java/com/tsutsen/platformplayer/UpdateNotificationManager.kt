@@ -65,7 +65,7 @@ object UpdateNotificationManager {
         }
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.foreground)
+            .setSmallIcon(R.drawable.ic_launcher_symbolic)
             .setContentTitle("Update installed")
             .setContentText("Version $version installed. Tap to open.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -95,7 +95,7 @@ object UpdateNotificationManager {
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.foreground)
+            .setSmallIcon(R.drawable.ic_launcher_symbolic)
             .setContentTitle("Downloading update")
             .setContentText("Downloading version $version")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -131,7 +131,7 @@ object UpdateNotificationManager {
         val installPendingIntent = PendingIntent.getActivity(context, REQUEST_CODE_INSTALL, installIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.foreground)
+            .setSmallIcon(R.drawable.ic_launcher_symbolic)
             .setContentTitle("Update downloaded")
             .setContentText("Tap to install version $version.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -151,7 +151,7 @@ object UpdateNotificationManager {
         ensureChannel(context)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.foreground)
+            .setSmallIcon(R.drawable.ic_launcher_symbolic)
             .setContentTitle("Failed to download update")
             .setContentText(error?.message ?: "Unknown error")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -170,7 +170,7 @@ object UpdateNotificationManager {
         val installIntent = InstallUpdateActivity.createIntent(context, version, apkFile.absolutePath)
         val installPendingIntent = PendingIntent.getActivity(context, REQUEST_CODE_INSTALL, installIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.foreground)
+            .setSmallIcon(R.drawable.ic_launcher_symbolic)
             .setContentTitle("Failed to install update")
             .setContentText(if (error != null && error.isNotBlank()) "$error Tap to try again." else "Tap to try again.")
             .setAutoCancel(true)

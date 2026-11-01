@@ -147,7 +147,7 @@ class StateNotifications {
 
     fun notifyNewContent(context: Context, manager: NotificationManager, notificationChannel: NotificationChannel, id: Int, content: IPlatformContent, thumbnail: Bitmap? = null) {
         val notifBuilder = NotificationCompat.Builder(context, notificationChannel.id)
-            .setSmallIcon(com.tsutsen.platformplayer.R.drawable.foreground)
+            .setSmallIcon(com.tsutsen.platformplayer.R.drawable.ic_launcher_symbolic)
             .setContentTitle("New by [${content.author.name}]")
             .setContentText("${content.name}")
             .setSubText(content.datetime?.toHumanNowDiffStringMinDay())
