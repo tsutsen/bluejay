@@ -11,6 +11,8 @@ import com.tsutsen.platformplayer.logging.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -116,9 +118,10 @@ class StateUpdate {
                 Logger.i(TAG, "Current version ${currentVersion} latest version ${latestVersion}.");
 
                 if (latestVersion > currentVersion) {
+                    val label = latestGithubRelease?.tag?.removePrefix("v") ?: latestVersion.toString();
                     withContext(Dispatchers.Main) {
                         try {
-                            UIDialogs.showUpdateAvailableDialog(context, latestVersion.toString(), hideExceptionButtons);
+                            UIDialogs.showUpdateAvailableDialog(context, label, hideExceptionButtons);
                         } catch (e: Throwable) {
                             UIDialogs.toast(context, "Failed to show update dialog");
                             Logger.w(TAG, "Error occurred in update dialog.");
@@ -147,22 +150,15 @@ class StateUpdate {
         }
     }
 
+    /** Fetches the latest GitHub release and returns its versionCode (semver tag → code). */
     fun downloadVersionCode(client: ManagedHttpClient): Int? {
-        val response = client.get(VERSION_URL);
-        if (!response.isOk || response.body == null) {
-            return null;
-        }
-
-        return response.body.string().trim().toInt();
+        val release = fetchLatestRelease(client) ?: return null;
+        latestGithubRelease = release;
+        return release.versionCode;
     }
 
     fun downloadChangelog(client: ManagedHttpClient, version: Int): String? {
-        val response = client.get("${CHANGELOG_BASE_URL}/${version}");
-        if (!response.isOk || response.body == null) {
-            return null;
-        }
-
-        return response.body.string().trim();
+        return fetchReleaseByVersion(client, version)?.changelog;
     }
 
     companion object {
@@ -187,17 +183,115 @@ class StateUpdate {
 
             throw Exception("App is not compatible. Supported ABIS: ${Build.SUPPORTED_ABIS.joinToString()}}.");
         };
-        val VERSION_URL = if (BuildConfig.IS_UNSTABLE_BUILD) {
-            "https://rel.bluejay.app/version-unstable.txt"
-        } else {
-            "https://rel.bluejay.app/version.txt"
+        /** Latest GitHub release fetched by the last check — reused for APK URL/changelog. */
+        @Volatile
+        var latestGithubRelease: GithubRelease? = null
+            private set
+
+        const val GITHUB_REPO = "tsutsen/bluejay"
+        private val GITHUB_API = "https://api.github.com/repos/$GITHUB_REPO/releases"
+        private fun githubHeaders(): MutableMap<String, String> = mutableMapOf(
+            "User-Agent" to "bluejay-android",
+            "Accept" to "application/vnd.github+json",
+        )
+
+        /** A parsed GitHub release. */
+        class GithubRelease(
+            val tag: String,
+            val versionCode: Int,
+            val name: String?,
+            val changelog: String?,
+            val apkUrl: String?,
+            val apkSize: Long,
+        )
+
+        /** Semver tag (vX.Y.Z) → versionCode, same formula as app/build.gradle. */
+        fun versionCodeFromTag(tag: String): Int {
+            val semver = tag.removePrefix("v").split('-')[0].split('.')
+            return if (semver.size == 3 && semver.all { it.toIntOrNull() != null }) {
+                semver[0].toInt() * 1_000_000 + semver[1].toInt() * 1_000 + semver[2].toInt()
+            } else {
+                1
+            }
         }
-        fun getApkUrl(version: Int): String = if (BuildConfig.IS_UNSTABLE_BUILD) {
-            "https://rel.bluejay.app/$version/app-$DESIRED_ABI-release-unstable.apk"
-        } else {
-            "https://rel.bluejay.app/$version/app-$DESIRED_ABI-release.apk"
+
+        /** Picks the best APK asset for this device: ABI match beats universal. */
+        private fun pickApkAsset(assets: JSONArray): Pair<String, Long>? {
+            val abi = try { DESIRED_ABI } catch (t: Throwable) { return null }
+            var best: Pair<String, Long>? = null
+            var bestScore = 0
+            for (i in 0 until assets.length()) {
+                val a = assets.optJSONObject(i) ?: continue
+                val name = a.optString("name")
+                if (!name.endsWith(".apk")) continue
+                val url = a.optString("browser_download_url").takeIf { it.isNotEmpty() } ?: continue
+                var score = 0
+                if (name.contains(abi)) score += 4
+                if (name.contains("universal")) score += 1
+                if (name.contains("stable")) score += 1
+                if (score > bestScore) {
+                    bestScore = score
+                    best = url to a.optLong("size", 0L)
+                }
+            }
+            return best
         }
-        val CHANGELOG_BASE_URL = "https://rel.bluejay.app/changelogs";
+
+        private fun parseRelease(json: JSONObject): GithubRelease? {
+            val tag = json.optString("tag_name").takeIf { it.isNotBlank() } ?: return null
+            val apk = pickApkAsset(json.optJSONArray("assets") ?: JSONArray())
+            return GithubRelease(
+                tag = tag,
+                versionCode = versionCodeFromTag(tag),
+                name = json.optString("name").takeIf { it.isNotBlank() },
+                changelog = json.optString("body").takeIf { it.isNotBlank() },
+                apkUrl = apk?.first,
+                apkSize = apk?.second ?: 0L,
+            )
+        }
+
+        /** Latest release: /releases/latest for stable builds, newest (incl. prereleases) for unstable. */
+        fun fetchLatestRelease(client: ManagedHttpClient): GithubRelease? {
+            val unstable = BuildConfig.IS_UNSTABLE_BUILD
+            val url = if (unstable) "$GITHUB_API?per_page=1" else "$GITHUB_API/latest"
+            val response = client.get(url, githubHeaders())
+            if (!response.isOk || response.body == null) return null
+            val text = response.body.string()
+            return try {
+                if (unstable) {
+                    val arr = JSONArray(text)
+                    if (arr.length() > 0) parseRelease(arr.getJSONObject(0)) else null
+                } else {
+                    parseRelease(JSONObject(text))
+                }
+            } catch (t: Throwable) {
+                Logger.w(TAG, "Failed to parse GitHub release", t)
+                null
+            }
+        }
+
+        /** Finds a release by versionCode: cached latest first, then the recent releases list. */
+        fun fetchReleaseByVersion(client: ManagedHttpClient, version: Int): GithubRelease? {
+            latestGithubRelease?.let { if (it.versionCode == version) return it }
+            val response = client.get("$GITHUB_API?per_page=100", githubHeaders())
+            if (!response.isOk || response.body == null) return null
+            return try {
+                val arr = JSONArray(response.body.string())
+                for (i in 0 until arr.length()) {
+                    val r = parseRelease(arr.optJSONObject(i) ?: continue)
+                    if (r != null && r.versionCode == version) return r
+                }
+                null
+            } catch (t: Throwable) {
+                Logger.w(TAG, "Failed to parse GitHub releases list", t)
+                null
+            }
+        }
+
+        /** APK download URL from the GitHub release assets, or null if no compatible asset. */
+        fun getApkUrl(client: ManagedHttpClient, version: Int): String? {
+            return fetchReleaseByVersion(client, version)?.apkUrl
+        }
 
         fun getApkFile(context: Context, version: Int): File {
             val dir = File(context.filesDir, "updates");

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationManagerCompat
+import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.ImageVariable
 import com.tsutsen.platformplayer.states.AnnouncementType
@@ -125,6 +126,15 @@ class UpdateDownloadService : Service() {
                 Logger.e(TAG, "Failed to set progress announcement", ex);
             }
 
+            val apkUrl = StateUpdate.getApkUrl(ManagedHttpClient.shared, version)
+            if (apkUrl == null) {
+                val t = IllegalStateException("No compatible APK asset in the GitHub release")
+                Logger.e(TAG, "No APK asset for version $version", t)
+                UpdateNotificationManager.showDownloadFailedNotification(this, version, t)
+                StateUpdate.Companion.instance.setUiFailed(version, t.message)
+                return
+            }
+
             var backoffMs = INITIAL_BACKOFF_MS
 
             for (attempt in 0 until MAX_RETRIES) {
@@ -134,7 +144,7 @@ class UpdateDownloadService : Service() {
                 }
 
                 try {
-                    performDownload(StateUpdate.getApkUrl(version), partialFile, version, {
+                    performDownload(apkUrl, partialFile, version, {
                         try {
                             if (announcement != null)
                                 announcement?.setProgress(it);
