@@ -546,17 +546,29 @@ private fun HideTileGroup(
 ) {
     val radius = BluejayTokens().radius
     val shapes = tileFlowGroupShapes(GroupPosition.Last, radius)
-    // Plain Row, not ButtonGroup: with a weighted leading tile, ButtonGroup
-    // measures the fixed-width arrow at 0 width in beta02 (it renders ~1px).
-    // height(IntrinsicSize.Max) makes the arrow stretch to the tile's height.
-    Row(
-        modifier = modifier.height(IntrinsicSize.Max),
-        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+    // Same container recipe as the download group (Box padding SpaceXs,
+    // IntrinsicSize.Min) and no self-padding on the leading tile, so the Hide
+    // split button measures exactly like the Download one: same segment
+    // heights, same seam gap (only the Row's spacedBy).
+    Box(
+        modifier =
+            modifier
+                .padding(Tokens.SpaceXs)
+                .height(IntrinsicSize.Min),
     ) {
+        // Plain Row, not ButtonGroup: with a weighted leading tile, ButtonGroup
+        // measures the fixed-width arrow at 0 width in beta02 (it renders ~1px).
+        // height(IntrinsicSize.Max) makes the arrow stretch to the tile's height.
+        Row(
+            modifier = Modifier.fillMaxSize().height(IntrinsicSize.Max),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+        ) {
         OptionTileView(
             tile = tile,
             modifier = Modifier.weight(1f),
             connection = TileConnection.ConnectedLeading,
+            outerHPadding = 0.dp,
+            outerVPadding = 0.dp,
         )
         SplitArrowToggle(
             expanded = expanded,
@@ -612,6 +624,7 @@ private fun HideTileGroup(
                             )
                         }
             }
+        }
         }
     }
 }
@@ -1164,7 +1177,7 @@ fun DownloadSection(
         )
     Row(
         modifier = modifier.height(IntrinsicSize.Max),
-        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
         downloadLeadingItem(
             icon =
