@@ -549,9 +549,11 @@ private fun HideTileGroup(
     // Plain Row, not ButtonGroup: with a weighted leading tile, ButtonGroup
     // measures the fixed-width arrow at 0 width in beta02 (it renders ~1px).
     // height(IntrinsicSize.Max) makes the arrow stretch to the tile's height.
+    // Flush (no spacedBy): the segments form one connected split button —
+    // the seam keeps a small rounding, so the arrow reads as an attached
+    // trailing segment, not a detached chip or a fully merged button.
     Row(
         modifier = modifier.height(IntrinsicSize.Max),
-        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
     ) {
         OptionTileView(
             tile = tile,
@@ -737,21 +739,22 @@ fun OptionTileView(
         when (connection) {
             TileConnection.Standalone -> RoundedCornerShape(cornerDp)
 
-            // Inner (facing) corners stay square — they form the seam.
+            // Inner (facing) corners get a small fixed rounding — the
+            // visible seam of a connected split button (flush, no gap).
             TileConnection.ConnectedLeading ->
                 RoundedCornerShape(
                     topStart = cornerDp,
-                    topEnd = 0.dp,
-                    bottomEnd = 0.dp,
+                    topEnd = radius.sm,
+                    bottomEnd = radius.sm,
                     bottomStart = cornerDp,
                 )
 
             TileConnection.ConnectedTrailing ->
                 RoundedCornerShape(
-                    topStart = 0.dp,
+                    topStart = radius.sm,
                     topEnd = cornerDp,
                     bottomEnd = cornerDp,
-                    bottomStart = 0.dp,
+                    bottomStart = radius.sm,
                 )
         }
     val bgAnim by
@@ -1158,9 +1161,11 @@ fun DownloadSection(
             animationSpec = tileColorSpec,
             label = "download-content",
         )
+    // Flush (no spacedBy): the segments form one connected split button —
+    // the seam keeps a small rounding, so the chevron reads as an attached
+    // trailing segment, not a detached chip or a fully merged button.
     Row(
         modifier = modifier.height(IntrinsicSize.Max),
-        horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXxs),
     ) {
         downloadLeadingItem(
             icon =

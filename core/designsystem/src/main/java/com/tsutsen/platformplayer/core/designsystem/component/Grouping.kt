@@ -5,6 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ChipShapes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.RadiusScale
 
@@ -115,9 +116,12 @@ fun tokenizedChipShapes(): ChipShapes {
  * download group): the OUTER corners follow the grid tiles' own states —
  * medium radius at rest, small while pressed, large when active — so the
  * group reads as a tile, not as a capsule. The inner (seam) corners stay
- * small, as in [connectedGroupShapes]. The same zero-rounding guard
- * applies: with Dp radii near 0 the spring-morphed corners overshoot into
- * negative values, so every state takes a percent pill instead.
+ * small but visible: the segments stack FLUSH (no gap) in their Row, so
+ * the trailing arrow reads as an attached trailing segment of one split
+ * button — a gap made it look like a detached chip. The same
+ * zero-rounding guard applies: with Dp radii near 0 the spring-morphed
+ * corners overshoot into negative values, so every state takes a percent
+ * pill instead.
  */
 fun tileFlowGroupShapes(
     position: GroupPosition,
