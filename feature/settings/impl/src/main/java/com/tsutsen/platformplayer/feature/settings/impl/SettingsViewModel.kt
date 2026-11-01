@@ -102,15 +102,16 @@ class SettingsViewModel
 
         /**
          * Card click: an offered update ([UpdateCheckState.Available]) starts
-         * the download; otherwise run a fresh check. Re-checks while a check
-         * or download is running are ignored.
+         * the download, a downloaded one ([UpdateCheckState.Ready]) retries the
+         * install; otherwise run a fresh check. Re-checks while a check or
+         * download is running are ignored.
          */
         fun onUpdateCardClick() {
             when (val s = updateRepository.checkState.value) {
                 is UpdateCheckState.Available -> updateRepository.downloadUpdate()
+                is UpdateCheckState.Ready -> updateRepository.installUpdate()
                 is UpdateCheckState.Checking,
-                is UpdateCheckState.Downloading,
-                is UpdateCheckState.Ready -> Unit
+                is UpdateCheckState.Downloading -> Unit
                 else -> updateRepository.checkForUpdates()
             }
         }

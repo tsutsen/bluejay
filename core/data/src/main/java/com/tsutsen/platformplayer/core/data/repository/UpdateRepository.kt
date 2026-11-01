@@ -31,4 +31,7 @@ interface UpdateRepository {
 
     /** Starts the APK download for the currently offered [UpdateCheckState.Available]. */
     fun downloadUpdate()
+
+    /** Re-attempts the install of a downloaded update ([UpdateCheckState.Ready]). */
+    fun installUpdate()
 }

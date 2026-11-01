@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.tsutsen.platformplayer.BuildConfig
 import com.tsutsen.platformplayer.UpdateDownloadService
+import com.tsutsen.platformplayer.UpdateInstaller
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.core.data.repository.UpdateCheckState
 import com.tsutsen.platformplayer.core.data.repository.UpdateRepository
@@ -103,6 +104,18 @@ class EngineUpdateRepositoryImpl
                 putExtra(UpdateDownloadService.EXTRA_VERSION, versionCode)
             }
         ContextCompat.startForegroundService(context, intent)
+    }
+
+    override fun installUpdate() {
+        val apk = StateUpdate.instance.uiApkFile
+        val version = StateUpdate.instance.uiVersion
+        if (apk == null || version <= 0) return
+        try {
+            UpdateInstaller.startInstall(context, version, apk)
+        } catch (t: Throwable) {
+            Logger.w(TAG, "Install attempt failed", t)
+            _checkState.value = UpdateCheckState.Failed(t.message ?: "Install failed")
+        }
     }
 
     companion object {

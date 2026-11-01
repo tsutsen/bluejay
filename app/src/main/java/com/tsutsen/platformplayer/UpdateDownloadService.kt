@@ -278,6 +278,13 @@ class UpdateDownloadService : Service() {
         Logger.i(TAG, "Download complete for version=$version, file=${apkFile.absolutePath}")
         UpdateNotificationManager.showDownloadCompleteNotification(this, version, apkFile)
         StateUpdate.Companion.instance.setUiReady(version, apkFile)
+        // Auto-attempt the install: opens the system install sheet, or the
+        // unknown-sources permission screen if that grant is missing.
+        try {
+            UpdateInstaller.startInstall(applicationContext, version, apkFile)
+        } catch (t: Throwable) {
+            Logger.w(TAG, "Auto install attempt failed", t)
+        }
 
         try {
             val ctx = applicationContext

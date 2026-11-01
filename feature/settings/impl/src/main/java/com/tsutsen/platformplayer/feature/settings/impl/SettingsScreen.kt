@@ -1976,7 +1976,7 @@ private fun AboutItems(viewModel: SettingsViewModel) {
                         is UpdateCheckState.UpToDate -> "Up to date (${s.versionName})"
                         is UpdateCheckState.Available -> "${s.tag} available — tap to download"
                         is UpdateCheckState.Downloading -> "${s.tag} downloading…"
-                        is UpdateCheckState.Ready -> "${s.tag} downloaded — install from the notification"
+                        is UpdateCheckState.Ready -> "${s.tag} downloaded — installing… (tap to retry)"
                         is UpdateCheckState.Failed -> "Check failed: ${s.message}"
                     },
                 onClick = { viewModel.onUpdateCardClick() },
