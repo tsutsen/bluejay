@@ -648,6 +648,13 @@ private fun SplitArrowToggle(
     menu: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val pressed by (interactionSource ?: remember { MutableInteractionSource() }).collectIsPressedAsState()
+    val pressScale by
+        animateFloatAsState(
+            targetValue = if (pressed && enabled) 1.04f else 1f,
+            animationSpec = spatialSpec<Float>(),
+            label = "arrow-press-scale",
+        )
     Box(modifier = Modifier.fillMaxHeight()) {
         ToggleButton(
             checked = expanded,
@@ -663,7 +670,8 @@ private fun SplitArrowToggle(
                 Modifier
                     .fillMaxHeight()
                     .width(width)
-                    .clip(shapes.checkedShape),
+                    .clip(shapes.shape)
+                    .scale(pressScale),
             contentPadding = PaddingValues(all = Tokens.SpaceMd),
             colors =
                 ToggleButtonDefaults.colors(
@@ -1001,13 +1009,22 @@ private fun RowScope.downloadLeadingItem(
     onClick: () -> Unit,
 ) {
     val showBar = progress != null || indeterminate
+    // Same expressive press-scale as the grid tiles (OptionTileView).
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressScale by
+        animateFloatAsState(
+            targetValue = if (pressed) 1.04f else 1f,
+            animationSpec = spatialSpec<Float>(),
+            label = "download-press-scale",
+        )
     Button(
         onClick = onClick,
                 shapes = ButtonShapes(shapes.shape, shapes.pressedShape),
                 modifier =
                     Modifier
                         .fillMaxHeight()
-                        .weight(1f),
+                        .weight(1f)
+                        .scale(pressScale),
                 // Same vertical padding as the sheet's tiles (their inner
                 // SpaceMd), so the segment's natural height equals a tile's.
                 contentPadding = PaddingValues(all = Tokens.SpaceMd),
