@@ -48,7 +48,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -558,7 +557,14 @@ fun SearchScreen(
                                     viewModel.search(searchQuery)
                                 },
                                 indicator = {
-                                    ContainedLoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
+                                    // State-driven indicator: drag ring while pulling,
+                                    // ContainedLoadingIndicator stuck at the threshold
+                                    // while searching, hidden when idle.
+                                    PullToRefreshDefaults.LoadingIndicator(
+                                        state = refreshingState,
+                                        isRefreshing = uiState.isLoading,
+                                        modifier = Modifier.align(Alignment.TopCenter),
+                                    )
                                 },
                                 content = {
                                     Column(modifier = Modifier.fillMaxSize()) {

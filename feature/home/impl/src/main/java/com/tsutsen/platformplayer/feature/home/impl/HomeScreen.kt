@@ -30,6 +30,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import android.content.Intent
 import android.net.Uri
@@ -242,12 +243,12 @@ private fun HomeFeedContent(
 ) {
     val refreshingState = rememberPullToRefreshState()
 
-    // Paging footer: shown only when a load-more is still running 2s after
+    // Paging footer: shown only when a load-more is still running 1s after
     // it started — never during the initial/refresh load (cards empty then).
     var showMore by remember { mutableStateOf(false) }
     LaunchedEffect(isLoading) {
         if (isLoading) {
-            delay(2000)
+            delay(1000)
             if (isLoading) showMore = true
         } else {
             showMore = false
@@ -262,7 +263,14 @@ private fun HomeFeedContent(
             state = refreshingState,
             onRefresh = onRefresh,
             indicator = {
-                ContainedLoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
+                // Single state-driven indicator: drag ring while pulling,
+                // ContainedLoadingIndicator stuck at the threshold while
+                // refreshing, hidden when idle — never a constant spinner.
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = refreshingState,
+                    isRefreshing = isRefreshing || (isLoading && cards.isEmpty()),
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
             },
             content = {
                 ContentCard(modifier = Modifier.fillMaxSize()) {

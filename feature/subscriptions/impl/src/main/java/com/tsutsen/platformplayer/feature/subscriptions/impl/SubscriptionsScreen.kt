@@ -38,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -313,7 +314,14 @@ private fun SubscriptionsContent(
                         state = pullToRefreshState,
                         onRefresh = onRefresh,
                         indicator = {
-                            ContainedLoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
+                            // State-driven indicator: drag ring while pulling,
+                            // ContainedLoadingIndicator stuck at the threshold
+                            // while refreshing, hidden when idle.
+                            PullToRefreshDefaults.LoadingIndicator(
+                                state = pullToRefreshState,
+                                isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
+                                modifier = Modifier.align(Alignment.TopCenter),
+                            )
                         },
                         content = {
                             ContentCard(modifier = Modifier.fillMaxSize()) {
@@ -438,7 +446,14 @@ private fun SubscriptionsContent(
                     state = pullToRefreshState,
                     onRefresh = onRefresh,
                     indicator = {
-                        ContainedLoadingIndicator(modifier = Modifier.align(Alignment.TopCenter))
+                        // State-driven indicator: drag ring while pulling,
+                        // ContainedLoadingIndicator stuck at the threshold
+                        // while refreshing, hidden when idle.
+                        PullToRefreshDefaults.LoadingIndicator(
+                            state = pullToRefreshState,
+                            isRefreshing = state.isRefreshing || (state.isLoading && state.items.isEmpty()),
+                            modifier = Modifier.align(Alignment.TopCenter),
+                        )
                     },
                     content = {
                         ContentCard(modifier = Modifier.fillMaxSize()) {
