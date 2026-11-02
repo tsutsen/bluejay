@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.di
+import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
@@ -75,7 +76,7 @@ object HomebrewRecommendations {
      */
     suspend fun buildFeed(
         historyDao: HistoryDao,
-        settings: Settings.RecommendationsSettings,
+        settings: AppPreferences,
         onPartial: (List<Card>) -> Unit = {},
         onFlows: (List<PagerFlow<IPlatformContent, Card>>) -> Unit = {},
     ): List<Card> =
@@ -140,7 +141,7 @@ object HomebrewRecommendations {
      * A segment of 0 means that source never spawns (empty feed -> the caller
      * falls back to the plain home refresh).
      */
-    internal fun spawnWeights(settings: Settings.RecommendationsSettings): List<Float> {
+    internal fun spawnWeights(settings: AppPreferences): List<Float> {
         // Cuts split 0..100 across the ENABLED sources only (fixed order:
         // youtube, subs, topCreators), so enabled weights always sum to 1.
         val cuts = listOf(settings.probCut1.coerceIn(0, 100), settings.probCut2.coerceIn(0, 100)).sorted()

@@ -170,7 +170,7 @@ class EngineHomeRepositoryImpl
                 val merged =
                     HomebrewRecommendations.buildFeed(
                         historyDao,
-                        Settings.instance.recommendations,
+                        preferences,
                         onPartial = { partial -> mergePartialFeed(partial) },
                         onFlows = { flows -> _homebrewFlows = flows },
                     )

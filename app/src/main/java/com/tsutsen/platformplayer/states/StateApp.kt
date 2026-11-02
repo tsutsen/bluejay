@@ -533,6 +533,8 @@ class StateApp {
         }
 
         val logFile = File(context.filesDir, "log.txt");
+        // Cap the log file: truncate once at startup instead of growing forever.
+        if (logFile.exists() && logFile.length() > MAX_LOG_BYTES) logFile.writeBytes(ByteArray(0))
         if (Settings.instance.logging.logLevel > LogLevel.NONE.value) {
             val fileLogConsumer = FileLogConsumer(logFile, LogLevel.fromInt(Settings.instance.logging.logLevel), false);
             Logger.setLogConsumers(listOf(
@@ -1036,6 +1038,7 @@ class StateApp {
     }
 
     companion object {
+        private const val MAX_LOG_BYTES = 2L * 1024 * 1024 // 2MB cap, truncated on startup
         private val TAG = "StateApp";
         @SuppressLint("StaticFieldLeak") //This is only alive while MainActivity is alive
         private var _instance : StateApp? = null;

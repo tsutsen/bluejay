@@ -33,11 +33,11 @@ private const val TAG = "BluejayTheme"
 class PlatformPlayerApp : Application(), ImageLoaderFactory {
     // Coil 2.x: implementing ImageLoaderFactory makes context.imageLoader()
     // return this — cap the caches up front (largeHeap=true makes the
-    // defaults huge): 128MB memory / 256MB disk bounds image memory usage.
+    // defaults huge): 48MB memory / 128MB disk bounds image memory usage.
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
-            .memoryCache { MemoryCache.Builder(this).maxSizeBytes(128 * 1024 * 1024).build() }
-            .diskCache { DiskCache.Builder().directory(File(cacheDir, "image_cache")).maxSizeBytes(256 * 1024 * 1024).build() }
+            .memoryCache { MemoryCache.Builder(this).maxSizeBytes(48 * 1024 * 1024).build() }
+            .diskCache { DiskCache.Builder().directory(File(cacheDir, "image_cache")).maxSizeBytes(128 * 1024 * 1024).build() }
             .build()
     init {
         // The Hilt-generated subclass injects the @Inject fields (the

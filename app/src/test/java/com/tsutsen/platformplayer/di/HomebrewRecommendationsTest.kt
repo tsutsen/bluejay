@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.di
+import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.core.model.Card
@@ -61,7 +62,7 @@ class HomebrewRecommendationsTest {
 
     @Test
     fun spawnWeightsDefaultCutsSplitIntoThirds() {
-        val w = HomebrewRecommendations.spawnWeights(Settings.RecommendationsSettings())
+        val w = HomebrewRecommendations.spawnWeights(AppPreferences())
         assertEquals(3, w.size)
         assertEquals(0.33f, w[0], 0.0001f)
         assertEquals(0.33f, w[1], 0.0001f)
@@ -72,11 +73,7 @@ class HomebrewRecommendationsTest {
     @Test
     fun spawnWeightsCutsMapOntoEnabledSourcesOnly() {
         val s =
-            Settings.RecommendationsSettings().apply {
-                probCut1 = 20
-                probCut2 = 60
-                sourceSubscriptions = false
-            }
+            AppPreferences(probCut1 = 20, probCut2 = 60, sourceSubscriptions = false)
         val w = HomebrewRecommendations.spawnWeights(s)
         // Two enabled sources (youtube, topCreators): the first cut (20)
         // splits them — youtube 20%, top creators 80%, subs 0.
@@ -89,21 +86,14 @@ class HomebrewRecommendationsTest {
     @Test
     fun spawnWeightsAllSourcesDisabledYieldZero() {
         val s =
-            Settings.RecommendationsSettings().apply {
-                sourceYoutubeFeed = false
-                sourceSubscriptions = false
-                sourceTopCreators = false
-            }
+            AppPreferences(sourceYoutubeFeed = false, sourceSubscriptions = false, sourceTopCreators = false)
         assertEquals(listOf(0f, 0f, 0f), HomebrewRecommendations.spawnWeights(s))
     }
 
     @Test
     fun spawnWeightsInvertedCutsAreCoerced() {
         val s =
-            Settings.RecommendationsSettings().apply {
-                probCut1 = 80
-                probCut2 = 10
-            }
+            AppPreferences(probCut1 = 80, probCut2 = 10)
         val w = HomebrewRecommendations.spawnWeights(s)
         // Cuts are sorted: [10, 80] -> thirds-style segments [0.1, 0.7, 0.2].
         assertEquals(0.1f, w[0], 0.0001f)
