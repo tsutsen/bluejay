@@ -9,5 +9,3 @@ class SabrBlockedException(message: String) : SabrException(message)
 class SabrReloadRequiredException(message: String) : SabrException(message)
 
 class SabrFormatSubstitutedException(message: String) : SabrException(message)
-
-class CastSupersededException(message: String) : Exception(message)

@@ -40,7 +40,7 @@ class ManagedHttpServer(private val _requestedPort: Int = 0) {
         if (active)
             return;
 
-        val socket = ServerSocket(_requestedPort);
+        val socket = ServerSocket(_requestedPort, 50, InetAddress.getLoopbackAddress());
         _serverSocket = socket;
         port = socket.localPort;
         active = true;

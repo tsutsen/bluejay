@@ -3,5 +3,8 @@
     <cloud-backup>
         <include domain="sharedpref" path="." />
         <include domain="file" path="." />
+        <exclude domain="file" path="plugins/" />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
     </cloud-backup>
 </data-extraction-rules>
