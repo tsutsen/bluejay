@@ -30,3 +30,13 @@ app/graphify-out/
 # Build outputs (all modules)
 **/build/
 **/tmp/
+
+# Local agent/session docs — not for GitHub
+GLOSSARY.md
+HANDOFF.md
+docs/INDEX.md
+docs/ponytail-audit*.md
+docs/refactoring-opportunities.md
+docs/video-playback-troubleshooting.md
+docs/features/player/
+docs/integrations/polycentric.md
