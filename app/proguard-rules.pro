@@ -19,3 +19,21 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# --- release shrinking keeps (no obfuscation; these survive minification) ---
+-dontobfuscate
+-dontwarn
+
+# JS engine bridge: kotlin-reflect reads @JSDocs annotations at runtime
+-keepclassmembers class com.tsutsen.platformplayer.api.media.platforms.js.JSClient {
+    @com.tsutsen.platformplayer.api.media.platforms.js.JSDocs <methods>;
+}
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+
+# WebView JS interfaces
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# kotlinx-serialization plugin generates its own keeps for @Serializable;
+# keep serializers reachable via reflection just in case
+-keep class kotlinx.serialization.** { *; }

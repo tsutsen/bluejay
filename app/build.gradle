@@ -111,7 +111,10 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            minifyEnabled false
+            // Shrink only, no obfuscation yet: -dontobfuscate keeps names for
+            // kotlin-reflect (JSClient @JSDocs bridge) and crash readability.
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
