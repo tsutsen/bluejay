@@ -212,8 +212,9 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.21.2'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
-    // ffmpeg-kit via JitPack (replaces the unrecoverable local app/aar/ffmpeg-kit.aar binary).
-    implementation 'com.github.arthenica:ffmpeg-kit:v5.1.LTS'
+    // ffmpeg-kit-next (FFmpeg 9.0.2, core-only) built locally from arthenica/ffmpeg-kit-next v9.0.2
+    // on the build machine; same com.arthenica.ffmpegkit API as classic ffmpeg-kit.
+    implementation files('aar/ffmpeg-kit-next-9.0.2.aar')
     implementation 'org.jetbrains.kotlin:kotlin-reflect:2.2.0'
     implementation 'androidx.webkit:webkit:1.15.0'
 

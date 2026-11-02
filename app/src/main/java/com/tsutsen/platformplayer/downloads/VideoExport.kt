@@ -197,13 +197,13 @@ class VideoExport {
             val session = FFmpegKit.executeAsync(cmd,
                 { session ->
                     try {
-                        if (ReturnCode.isSuccess(session.returnCode)) {
+                        if (ReturnCode.isSuccess(session.getReturnCode())) {
                             resumeSuccessSafely(continuation)
                         } else {
-                            val errorMessage = if (ReturnCode.isCancel(session.returnCode)) {
+                            val errorMessage = if (ReturnCode.isCancel(session.getReturnCode())) {
                                 "Command cancelled"
                             } else {
-                                "Command failed with state '${session.state}' and return code ${session.returnCode}, stack trace ${session.failStackTrace}"
+                                "Command failed with state '${session.getState()}' and return code ${session.getReturnCode()}, stack trace ${session.getFailStackTrace()}"
                             }
                             resumeFailureSafely(continuation, RuntimeException(errorMessage))
 

@@ -50,15 +50,15 @@ class HlsSegmentDownloader(
                 { completedSession ->
                     executorService.shutdown()
 
-                    if (ReturnCode.isSuccess(completedSession.returnCode)) {
+                    if (ReturnCode.isSuccess(completedSession.getReturnCode())) {
                         continuation.resumeWith(Result.success(Unit))
                     } else {
-                        val errorMessage = if (ReturnCode.isCancel(completedSession.returnCode)) {
+                        val errorMessage = if (ReturnCode.isCancel(completedSession.getReturnCode())) {
                             "Command cancelled"
                         } else {
-                            "Command failed with state '${completedSession.state}' " +
-                                    "and return code ${completedSession.returnCode}, " +
-                                    "stack trace ${completedSession.failStackTrace}"
+                            "Command failed with state '${completedSession.getState()}' " +
+                                    "and return code ${completedSession.getReturnCode()}, " +
+                                    "stack trace ${completedSession.getFailStackTrace()}"
                         }
                         continuation.resumeWithException(RuntimeException(errorMessage))
                     }
