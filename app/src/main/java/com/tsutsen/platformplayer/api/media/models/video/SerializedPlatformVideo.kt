@@ -58,7 +58,8 @@ open class SerializedPlatformVideo(
                 video.url,
                 video.shareUrl,
                 video.duration,
-                video.viewCount
+                video.viewCount,
+                isShort = video.isShort
             );
         }
     }
