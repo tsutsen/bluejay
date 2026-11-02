@@ -112,12 +112,10 @@
     <string name="send_your_identity_to_another_app">IDを別のアプリに送信</string>
     <string name="copy">コピー</string>
     <string name="copy_your_identity_to_clipboard">IDをクリップボードにコピー</string>
-    <string name="polycentric">多心的</string>
     <string name="profile_name">プロファイル名</string>
     <string name="this_will_be_visible_to_other_users">これは他のユーザーに表示されます</string>
     <string name="create_profile">プロファイルを作成</string>
     <string name="or_capitalized">または</string>
-    <string name="paste_profile_here_polycentric">ここにプロファイルを貼り付け polycentric://…</string>
     <string name="import_profile">プロファイルをインポート</string>
     <string name="you_re_apparantly_a_developer">あなたは明らかに開発者です</string>
     <string name="developer_settings">開発者設定</string>
@@ -269,8 +267,6 @@
     <string name="live_chat_webview">ライブチャットWebビュー</string>
     <string name="log_level">ログレベル</string>
     <string name="logging">ロギング</string>
-    <string name="manage_polycentric_identity">ポリセントリックアイデンティティを管理</string>
-    <string name="manage_your_polycentric_identity">あなたのポリセントリックアイデンティティを管理</string>
     <string name="manual_check">手動チェック</string>
     <string name="manually_check_for_updates">手動で更新を確認</string>
     <string name="payment">支払い</string>
@@ -378,7 +374,6 @@
     <string name="invalid_license_format">無効なライセンス形式</string>
     <string name="unknown_content_format">不明なコンテンツ形式</string>
     <string name="unknown_file_format">不明なファイル形式</string>
-    <string name="unknown_polycentric_format">不明なポリセントリック形式</string>
     <string name="unknown_url_format">不明なURL形式</string>
     <string name="failed_to_handle_file">ファイルの処理に失敗しました</string>
     <string name="unknown_reconstruction_type">不明な再構築タイプ</string>
@@ -600,7 +595,6 @@
     <string name="export">エクスポート</string>
     <string name="delete">削除</string>
     <string name="loading_update">アップデートを読み込み中…</string>
-    <string name="polycentric_explanation">オンラインビデオを閲覧し、コメントを残したいと考える際に、Polycentricという新しい方法を試してみてください。以下に、Polycentricプロファイルを作成する素晴らしい理由をいくつか挙げます：\n\n1. コントロールが可能: Polycentricでは、データは一カ所に格納されるのではなく、複数の場所に分散されています。よって、オンラインプレゼンスに対するコントロールが高まります。データをどこに保存するか決定でき、プロバイダーを簡単に切り替えたり新しいものを追加したりできます。\n\n2. プライバシーとセキュリティ: Polycentricは高度なセキュリティ手法を用いており、個人情報がしっかりと保護されています。\n\n3. シームレスなネットワーキング: Polycentricを使用すると、特定のプラットフォームに縛られることなく、他の人々と接続し、そのコンテンツと対話できます。\n\n4. スマートな検索と推薦: Polycentricは検索と推薦に複数のソースを使用しており、高いパフォーマンスを実現しながらも、単一のプロバイダーが結果に過度な影響を与えることがありません。\n\n5. 適応性とオープン性: Polycentricは、柔軟で新しい開発に対応できるように設計されています。\n\n6. Polycentricプロファイルを作成することで、オンラインビデオにコメントを残し、よりパーソナライズされたオンライン体験を楽しむことができます。</string>
     <string name="publish">公開</string>
     <string name="usage">使用状況</string>
     <string name="enable_in_home">ホームで有効にする</string>

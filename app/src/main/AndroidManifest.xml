@@ -101,14 +101,6 @@
 
                 <data android:scheme="bluejay" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="fcast" />
-            </intent-filter>
             <intent-filter android:autoVerify="true">
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -168,12 +160,6 @@
                 <data android:scheme="content" />
 
                 <data android:mimeType="application/zip" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="polycentric" />
             </intent-filter>
         </activity>
         <activity

@@ -123,7 +123,6 @@
     <string name="export">Exporter</string>
     <string name="delete">Supprimer</string>
     <string name="loading_update">Chargement de la mise à jour…</string>
-    <string name="polycentric_explanation">Lorsque vous parcourez des vidéos en ligne et souhaitez laisser un commentaire, pensez à essayer Polycentric, une nouvelle manière de gérer votre présence en ligne qui est à la fois facile à utiliser et axée sur vos besoins. Voici pourquoi créer un profil Polycentric est un excellent choix :\n\n 1. Vous êtes en contrôle : Avec Polycentric, vos données ne sont pas stockées dans un seul endroit contrôlé par une seule entreprise. Au lieu de cela, elles sont réparties entre plusieurs emplacements, vous donnant plus de contrôle sur votre présence en ligne. Vous décidez où vos données sont stockées et pouvez facilement passer d\'un fournisseur à un autre ou en ajouter de nouveaux.\n\n 2. Confidentialité et sécurité : Polycentric protège vos informations en utilisant des techniques de sécurité avancées. Vous pouvez avoir confiance que vos données personnelles sont bien protégées et uniquement accessibles par ceux avec qui vous choisissez de les partager.\n\n 3. Réseautage sans couture : Polycentric vous permet de vous connecter avec d\'autres et d\'interagir avec leur contenu sans être lié à une seule plateforme. Si un fournisseur devient peu fiable ou tente de bloquer l\'accès, votre client Polycentric trouvera automatiquement des informations provenant d\'autres sources, vous maintenant connecté.\n\n 4. Recherche intelligente et recommandations : Polycentric utilise plusieurs sources pour la recherche et les recommandations, vous offrant des performances de premier ordre tout en veillant à ce qu\'aucun fournisseur n\'ait trop d\'influence sur les résultats que vous voyez.\n\n 5. Adaptable et ouvert : Polycentric est conçu pour être flexible et ouvert aux nouveaux développements, permettant des améliorations constantes et de nouvelles fonctionnalités qui s\'adaptent aux besoins de ses utilisateurs.\n\n 6. En créant un profil Polycentric, vous pouvez laisser des commentaires sur des vidéos en ligne et profiter d\'une expérience en ligne plus personnalisée. Découvrez par vous-même comment cette solution conviviale vous met aux commandes de votre vie numérique. Inscrivez-vous à Polycentric aujourd\'hui !</string>
     <string name="publish">Publier</string>
     <string name="usage">Utilisation</string>
     <string name="enable_in_home">Activer à la maison</string>
@@ -148,12 +147,10 @@
     <string name="send_your_identity_to_another_app">Envoyer votre identité à une autre application</string>
     <string name="copy">Copier</string>
     <string name="copy_your_identity_to_clipboard">Copier votre identité dans le presse-papiers</string>
-    <string name="polycentric">Polycentrique</string>
     <string name="profile_name">Nom du profil</string>
     <string name="this_will_be_visible_to_other_users">Cela sera visible pour les autres utilisateurs</string>
     <string name="create_profile">Créer un profil</string>
     <string name="or_capitalized">OU</string>
-    <string name="paste_profile_here_polycentric">Coller le profil ici polycentric://…</string>
     <string name="import_profile">Importer un profil</string>
     <string name="you_re_apparantly_a_developer">Vous êtes apparemment un développeur</string>
     <string name="developer_settings">Paramètres pour développeurs</string>
@@ -305,8 +302,6 @@
     <string name="live_chat_webview">Vue Web du chat en direct</string>
     <string name="log_level">Niveau de journalisation</string>
     <string name="logging">Journalisation</string>
-    <string name="manage_polycentric_identity">Gérer l\'identité polycentrique</string>
-    <string name="manage_your_polycentric_identity">Gérez votre identité polycentrique</string>
     <string name="manual_check">Vérification manuelle</string>
     <string name="manually_check_for_updates">Vérifier manuellement les mises à jour</string>
     <string name="number_of_concurrent_threads_to_multiply_download_speeds_from_throttled_sources">Nombre de threads concurrents pour multiplier les vitesses de téléchargement depuis des sources limitées</string>
@@ -415,7 +410,6 @@
     <string name="invalid_license_format">Format de licence invalide</string>
     <string name="unknown_content_format">Format de contenu inconnu</string>
     <string name="unknown_file_format">Format de fichier inconnu</string>
-    <string name="unknown_polycentric_format">Format polycentrique inconnu</string>
     <string name="unknown_url_format">Format d\'URL inconnu</string>
     <string name="failed_to_handle_file">Échec du traitement du fichier</string>
     <string name="unknown_reconstruction_type">Type de reconstruction inconnu</string>

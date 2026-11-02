@@ -123,7 +123,6 @@
     <string name="export">エクスポート</string>
     <string name="delete">削除</string>
     <string name="loading_update">アップデートを読み込み中…</string>
-    <string name="polycentric_explanation">オンラインビデオを閲覧し、コメントを残したい場合は、Polycentricを試してみてください。新しいオンラインプレゼンスの管理方法で、使いやすく、ユーザーのニーズに焦点を当てています。Polycentricプロフィールを作成する理由は次のとおりです：\n\n 1. コントロール：Polycentricでは、データは単一の企業が管理する1か所に保存されません。代わりに、複数の場所に広がっており、オンラインプレゼンスに対するコントロールが増します。データが保存される場所を自由に選び、プロバイダーを簡単に切り替えたり新たに追加することができます。\n\n 2. プライバシーとセキュリティ：Polycentricは高度なセキュリティ手法を使用して情報を安全に保ちます。個人情報はよく保護されており、共有する相手だけがアクセスできます。\n\n 3. シームレスなネットワーキング：Polycentricを使用すると、単一のプラットフォームに縛られずに他のユーザーと接続し、コンテンツに対話できます。プロバイダーが信頼できなくなったり、アクセスをブロックしようとすると、Polycentricクライアントは自動的に他のソースから情報を見つけます。\n\n 4. スマート検索と推奨：Polycentricは検索と推奨に複数のソースを使用し、優れたパフォーマンスを提供しながら、単一のプロバイダーが結果に対して影響力を持ちすぎないようにします。\n\n 5. 適応性とオープン性：Polycentricは柔軟性があり、新しい開発にオープンです。そのため、ユーザーのニーズに適応した絶えず改善される新機能があります。\n\n 6. Polycentricプロフィールを作成することで、オンラインビデオにコメントを残し、よりパーソナライズされたオンライン体験を楽しむことができます。この使いやすいソリューションがデジタルライフをコントロールする方法を自分で確認してください。今日Polycentricにサインアップ！</string>
     <string name="publish">公開</string>
     <string name="usage">使用法</string>
     <string name="enable_in_home">ホームで有効にする</string>
@@ -147,12 +146,10 @@
     <string name="send_your_identity_to_another_app">다른 앱에 아이덴티티 전송</string>
     <string name="copy">복사</string>
     <string name="copy_your_identity_to_clipboard">클립보드에 아이덴티티 복사</string>
-    <string name="polycentric">폴리센트릭</string>
     <string name="profile_name">프로필 이름</string>
     <string name="this_will_be_visible_to_other_users">이것은 다른 사용자에게 보여집니다</string>
     <string name="create_profile">프로필 생성</string>
     <string name="or_capitalized">또는</string>
-    <string name="paste_profile_here_polycentric">여기에 프로필 붙여넣기 polycentric://…</string>
     <string name="import_profile">프로필 가져오기</string>
     <string name="you_re_apparantly_a_developer">당신은 명백히 개발자인 것 같습니다</string>
     <string name="developer_settings">개발자 설정</string>
@@ -304,8 +301,6 @@
     <string name="live_chat_webview">실시간 채팅 웹뷰</string>
     <string name="log_level">로그 레벨</string>
     <string name="logging">로깅</string>
-    <string name="manage_polycentric_identity">다중 중심 아이덴티티 관리</string>
-    <string name="manage_your_polycentric_identity">자신의 다중 중심 아이덴티티 관리</string>
     <string name="manual_check">수동 확인</string>
     <string name="manually_check_for_updates">수동으로 업데이트 확인</string>
     <string name="number_of_concurrent_threads_to_multiply_download_speeds_from_throttled_sources">제한된 소스에서 다운로드 속도를 증가시키기 위한 동시 스레드 수</string>
@@ -414,7 +409,6 @@
     <string name="invalid_license_format">잘못된 라이선스 형식</string>
     <string name="unknown_content_format">알 수 없는 콘텐츠 형식</string>
     <string name="unknown_file_format">알 수 없는 파일 형식</string>
-    <string name="unknown_polycentric_format">알 수 없는 폴리센트릭 형식</string>
     <string name="unknown_url_format">알 수 없는 URL 형식</string>
     <string name="failed_to_handle_file">파일을 처리하는 데 실패했습니다</string>
     <string name="unknown_reconstruction_type">알 수 없는 복구 유형</string>

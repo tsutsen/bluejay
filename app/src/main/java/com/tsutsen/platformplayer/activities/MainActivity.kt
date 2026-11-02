@@ -59,7 +59,6 @@ import com.tsutsen.platformplayer.feature.player.impl.PipSurface
 import com.tsutsen.platformplayer.feature.player.impl.PlayerView
 import com.tsutsen.platformplayer.feature.player.impl.SystemControls
 import com.tsutsen.platformplayer.states.StateApp
-import com.tsutsen.platformplayer.states.StateCasting
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -312,9 +311,6 @@ class MainActivity :
         if (!pipActive.value && playerRepository.playerState.value.isPlaying) {
             lifecycleScope.launch { playerRepository.pause() }
         }
-        // Paired with the (deferred) casting start below — restore both
-        // together when re-enabling casting.
-        // StateCasting.instance.onStop()
     }
 
     override fun onDestroy() {
@@ -381,7 +377,7 @@ class MainActivity :
         // library pushes params on every call, and playerState ticks 10/s.
         lifecycleScope.launch {
             playerRepository.playerState
-                .map { it.isPlaying && !it.isCasting && it.currentVideo != null }
+                .map { it.isPlaying && it.currentVideo != null }
                 .distinctUntilChanged()
                 .collect { pip.setEnabled(it) }
         }
@@ -410,13 +406,6 @@ class MainActivity :
                 .distinctUntilChanged()
                 .collect { pip.setPlayerView(it) }
         }
-
-        // Casting deferred: fcast only reaches fcast-receiver apps (not
-        // Chromecast TVs), which is niche — users can use system screen cast.
-        // This also stops the background mDNS discovery + cast proxy server.
-        // Re-enable together with the onStop() call above and the cast
-        // button in PlayerView.
-        // StateCasting.instance.start(this)
 
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

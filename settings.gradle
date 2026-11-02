@@ -14,18 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-includeBuild('dep/polycentricandroid') {
-    dependencySubstitution {
-        substitute module('com.polycentric.core:app') using project(':app')
-    }
-}
-
-includeBuild('dep/futopay/android') {
-    dependencySubstitution {
-        substitute module('com.tsutsen.futopay:app') using project(':app')
-    }
-}
-
 rootProject.name = "FutoVideo"
 include ':app'
 

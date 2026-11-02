@@ -2,7 +2,6 @@ package com.tsutsen.platformplayer.feature.player.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tsutsen.platformplayer.core.data.repository.CastingRepository
 import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
@@ -16,8 +15,6 @@ import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.model.AudioTrackInfo
 import com.tsutsen.platformplayer.core.model.Card
-import com.tsutsen.platformplayer.core.model.CastDevice
-import com.tsutsen.platformplayer.core.model.CastState
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.ContentType
@@ -92,8 +89,6 @@ sealed interface PlayerUiState {
         val isLiked: Boolean = false,
         val isDisliked: Boolean = false,
         val isSubscribedChannel: Boolean = false,
-        val isCasting: Boolean = false,
-        val castDeviceName: String? = null,
         val isLive: Boolean = false,
     ) : PlayerUiState
 
@@ -120,7 +115,6 @@ class PlayerViewModel
         private val channelRepository: ChannelRepository,
         private val downloadsRepository: DownloadsRepository,
         private val playbackQueueRepository: PlaybackQueueRepository,
-        private val castingRepository: CastingRepository,
         private val liveChatRepository: LiveChatRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Initial)
@@ -229,9 +223,6 @@ class PlayerViewModel
         val queue: StateFlow<List<com.tsutsen.platformplayer.core.model.ContentItem>> =
             playbackQueueRepository.queue
 
-        /** Cast connection / discovery state for the casting sheet. */
-        val castState: StateFlow<CastState> = castingRepository.state
-
         /** Watch state per video url, live from local history. Empty entry =
          * not (meaningfully) watched. Feeds use this for progress bars and
          * the watched checkmark on video cards. */
@@ -293,18 +284,6 @@ class PlayerViewModel
                     libraryRepository.backfillDuration(video.url, durationMs)
                 }
             }
-        }
-
-        fun castConnect(device: CastDevice) {
-            castingRepository.connect(device)
-        }
-
-        fun castConnectByUrl(url: String) {
-            castingRepository.connectByUrl(url)
-        }
-
-        fun castDisconnect() {
-            castingRepository.disconnect()
         }
 
         /** Enqueue the given video (starts playing if nothing is). */
@@ -440,8 +419,6 @@ class PlayerViewModel
                                 showRecommended =
                                     settingsRepository.preferences.value
                                         .showRecommendedVideos,
-                                isCasting = playerState.isCasting,
-                                castDeviceName = playerState.castDeviceName,
                                 isLive =
                                     playerState.currentVideo?.contentType ==
                                     ContentType.LIVE,

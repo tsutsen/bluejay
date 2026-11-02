@@ -4,7 +4,7 @@ import android.content.Context
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import com.arthenica.ffmpegkit.StatisticsCallback
-import com.futo.polycentric.core.hexStringToByteArray
+import com.tsutsen.platformplayer.hexStringToByteArray
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.parsers.HLS
 import kotlinx.coroutines.CancellationException

@@ -18,7 +18,6 @@ import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.HistoryVideo
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.StringDateMapStorage
-import com.tsutsen.platformplayer.sync.internal.GJSyncOpcodes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import java.time.Instant

@@ -278,10 +278,6 @@ object UIDialogs {
         toast(context, "Automatic restore not yet migrated to Compose")
     }
 
-    fun showCastingDialog(context: Context) {
-        toast(context, "Casting dialog not yet migrated to Compose")
-    }
-
     fun showChangelogDialog(context: Context, version: Any, changelog: Map<Int, String>) {
         toast(context, "Changelog for v${version} not yet migrated to Compose")
     }

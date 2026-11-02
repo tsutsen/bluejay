@@ -9,11 +9,6 @@ import androidx.media3.exoplayer.source.MediaSource
 data class ResolutionResult(
     val mediaSource: MediaSource?,
     val videoDetails: VideoDetails?,
-    /**
-     * True when the resolver handed the video to the cast subsystem instead
-     * of producing a local [MediaSource] — [mediaSource] is null in that case.
-     */
-    val casted: Boolean = false,
 )
 
 /**
@@ -25,8 +20,8 @@ interface VideoUrlResolver {
     /**
      * Resolve [contentUrl] to a playable [ResolutionResult].
      *
-     * [resumePositionMs] is the position this video was last watched at; the
-     * cast path uses it as its start position.
+     * [resumePositionMs] is the position this video was last watched at; it
+     * is used as the playback start position.
      */
     suspend fun resolve(contentUrl: String, resumePositionMs: Long = 0): ResolutionResult
 }

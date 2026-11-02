@@ -6,7 +6,6 @@ import com.tsutsen.platformplayer.api.media.structures.DedupContentPager
 import com.tsutsen.platformplayer.api.media.structures.IPager
 import com.tsutsen.platformplayer.api.media.structures.MultiChronoContentPager
 import com.tsutsen.platformplayer.logging.Logger
-import com.tsutsen.platformplayer.resolveChannelUrl
 import com.tsutsen.platformplayer.serializers.PlatformContentSerializer
 import com.tsutsen.platformplayer.stores.db.ManagedDBStore
 import com.tsutsen.platformplayer.stores.db.types.DBSubscriptionCache
@@ -47,7 +46,7 @@ class StateCache {
     fun getSubscriptionCachePager(): DedupContentPager {
         Logger.i(TAG, "Subscriptions CachePager get subscriptions");
         val subs = StateSubscriptions.instance.getSubscriptions();
-        Logger.i(TAG, "Subscriptions CachePager polycentric urls");
+        Logger.i(TAG, "Subscriptions CachePager channel urls");
         val allUrls = subs
             .map { it.channel.url }
             .distinct()

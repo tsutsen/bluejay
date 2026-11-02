@@ -50,9 +50,6 @@ import com.tsutsen.platformplayer.receivers.AudioNoisyReceiver
 import com.tsutsen.platformplayer.services.DownloadService
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.v2.ManagedStore
-import com.futo.polycentric.core.ApiMethods
-import com.futo.polycentric.core.toBase64Url
-import com.tsutsen.platformplayer.polycentric.ModerationsManager
 import kotlinx.coroutines.*
 import java.io.File
 import java.time.OffsetDateTime
@@ -524,11 +521,6 @@ class StateApp {
             }
         }
 
-        if(Settings.instance.other.polycentricLocalCache) {
-            Logger.i(TAG, "Initialize Polycentric Disk Cache")
-            _cacheDirectory?.let { ApiMethods.initCache(it) };
-        }
-
         if(Settings.instance.plugins.shouldClearWebviewCookies()) {
             try {
                 Logger.i(TAG, "Clearing cookies on startup");
@@ -537,29 +529,6 @@ class StateApp {
                 cookieManager.removeAllCookies(null);
             } catch (ex: Throwable) {
                 Logger.e("StateApp", "Failed to clear cookies", ex);
-            }
-        }
-
-        Logger.i(TAG, "MainApp Starting: Initializing [ModerationsManager]");
-        ModerationsManager.initialize(context);
-
-        Logger.i(TAG, "MainApp Starting: Setting [ModerationLevelProvider]");
-        ApiMethods.setModerationLevelProvider {
-            try {
-                ModerationsManager.getInstance().getCurrentModerationLevels()
-            } catch (e: IllegalStateException) {
-                Logger.e(TAG, "Failed to get moderation levels from manager", e);
-                null
-            }
-        }
-
-        Logger.i(TAG, "MainApp Starting: Setting [ModerationExemptSystemProvider]");
-        ApiMethods.setModerationExemptSystemProvider {
-            try {
-                StatePolycentric.instance.processHandle?.system?.toProto()?.toByteArray()?.toBase64Url()
-            } catch (e: Throwable) {
-                Logger.e(TAG, "Failed to get moderation exempt system from manager", e);
-                null
             }
         }
 
@@ -579,11 +548,6 @@ class StateApp {
 
             Logger.setLogConsumers(listOf(AndroidLogConsumer()));
         }
-        StatePayment.instance.initialize();
-
-        Logger.i(TAG, "MainApp Starting: Initializing [Polycentric]");
-        StatePolycentric.instance.load(context);
-
         Logger.i(TAG, "MainApp Starting: Initializing [Connectivity]");
         displayMetrics = context.resources.displayMetrics;
         ensureConnectivityManager(context);
@@ -597,13 +561,6 @@ class StateApp {
             StateTelemetry.instance.initialize();
             StateTelemetry.instance.upload();
         }
-
-        if (Settings.instance.synchronization.enabled) {
-            StateSync.instance.start(context)
-        }
-
-        // SettingsFragment removed - Compose SettingsScreen doesn't have onClosed event.
-        // Sync start/stop is now handled by SettingsScreen's own state management.
 
         Logger.onLogSubmitted.subscribe {
             scopeOrNull?.launch(Dispatchers.Main) {
@@ -850,20 +807,6 @@ class StateApp {
             Settings.instance.didFirstStart = true;
             Settings.instance.save();
         }
-        /*
-        if(!Settings.instance.comments.didAskPolycentricDefault) {
-            UIDialogs.showDialog(context, R.drawable.neopass, "Default Comment Section", "Bluejay supports 2 comment sections, the Platform comments and Polycentric comments. You can easily toggle between them, but which would you like to be selected by default? This choice can be changed in settings.\n\nPolycentric is still under active development.", null, 1,
-                UIDialogs.Action("Polycentric", {
-                    Settings.instance.comments.didAskPolycentricDefault = true;
-                    Settings.instance.comments.defaultCommentSection = 0;
-                    Settings.instance.save();
-                }, UIDialogs.ActionStyle.PRIMARY, true),
-                UIDialogs.Action("Platform", {
-                    Settings.instance.comments.didAskPolycentricDefault = true;
-                    Settings.instance.comments.defaultCommentSection = 1;
-                    Settings.instance.save();
-                }, UIDialogs.ActionStyle.PRIMARY, true))
-        }*/
         if(Settings.instance.backup.shouldAutomaticBackup()) {
             try {
                 StateBackup.startAutomaticBackup();
@@ -940,8 +883,6 @@ class StateApp {
         _connectivityManager?.unregisterNetworkCallback(_connectivityEvents);
 
         StatePlayer.instance.closeMediaSession();
-        StateCasting.instance.stop();
-        StateSync.instance.stop();
         StatePlayer.dispose();
         Companion.dispose();
         _fileLogConsumer?.close();

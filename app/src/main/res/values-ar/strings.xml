@@ -135,12 +135,10 @@
     <string name="send_your_identity_to_another_app">إرسال هويتك إلى تطبيق آخر</string>
     <string name="copy">نسخ</string>
     <string name="copy_your_identity_to_clipboard">نسخ هويتك إلى الحافظة</string>
-    <string name="polycentric">متعدد المراكز</string>
     <string name="profile_name">اسم الملف الشخصي</string>
     <string name="this_will_be_visible_to_other_users">سيكون ذلك مرئياً للمستخدمين الآخرين</string>
     <string name="create_profile">إنشاء ملف شخصي</string>
     <string name="or_capitalized">أو</string>
-    <string name="paste_profile_here_polycentric">الصق الملف الشخصي هنا polycentric://…</string>
     <string name="import_profile">استيراد الملف الشخصي</string>
     <string name="you_re_apparantly_a_developer">يبدو أنك مطور</string>
     <string name="developer_settings">إعدادات المطور</string>
@@ -282,8 +280,6 @@
     <string name="live_chat_webview">ويب فيو للدردشة المباشرة</string>
     <string name="log_level">مستوى السجل</string>
     <string name="logging">التسجيل</string>
-    <string name="manage_polycentric_identity">إدارة الهوية المتعددة المراكز</string>
-    <string name="manage_your_polycentric_identity">إدارة هويتك المتعددة المراكز</string>
     <string name="manual_check">فحص يدوي</string>
     <string name="manually_check_for_updates">التحقق يدويًا للتحديثات</string>
     <string name="number_of_concurrent_threads_to_multiply_download_speeds_from_throttled_sources">عدد الخيوط المتزامنة لزيادة سرعة التحميل من المصادر المقيدة</string>
@@ -392,7 +388,6 @@
     <string name="invalid_license_format">تنسيق الترخيص غير صالح</string>
     <string name="unknown_content_format">تنسيق المحتوى غير معروف</string>
     <string name="unknown_file_format">تنسيق الملف غير معروف</string>
-    <string name="unknown_polycentric_format">تنسيق متعدد المراكز غير معروف</string>
     <string name="unknown_url_format">تنسيق URL غير معروف</string>
     <string name="failed_to_handle_file">فشل في التعامل مع الملف</string>
     <string name="unknown_reconstruction_type">نوع الإعادة البناء غير معروف</string>
@@ -600,7 +595,6 @@
     <string name="end_of_playlist_reached">تم الوصول إلى نهاية القائمة</string>
     <string name="end_of_watch_later_reached">تم الوصول إلى نهاية قائمة مشاهدة لاحقا</string>
     <string name="reached_the_end_of_the_queue">تم الوصول إلى نهاية الطابور</string>
-    <string name="polycentric_explanation">عندما تتصفح مقاطع الفيديو عبر الإنترنت وترغب في ترك تعليق، فكر في استخدام Polycentric، وهو طريقة جديدة لإدارة حضورك على الإنترنت تركز على احتياجاتك وسهلة الاستخدام. إليك الأسباب التي تجعل من إنشاء ملف Polycentric خيارًا رائعًا:\n\n 1. أنت تتحكم: في Polycentric، لا يتم تخزين بياناتك في مكان واحد تتحكم فيه شركة واحدة. بدلاً من ذلك، يتم نشرها عبر مواقع متعددة، مما يعطيك المزيد من السيطرة على حضورك على الإنترنت. يمكنك تحديد مكان تخزين البيانات والتبديل بسهولة بين مزودين أو إضافة مزودين جدد.\n\n 2. الخصوصية والأمان: يحافظ Polycentric على أمان معلوماتك من خلال استخدام تقنيات الأمان المتقدمة. يمكنك الثقة في أن تفاصيلك الشخصية محمية جيدًا ومتاحة فقط لأولئك الذين تختار مشاركتهم بها.\n\n 3. التواصل السلس: يتيح لك Polycentric الاتصال بالآخرين والتفاعل مع محتواهم دون الارتباط بمنصة واحدة. إذا أصبح المزود غير موثوق أو حاول حجب الوصول، سيجد عميل Polycentric المعلومات تلقائيًا من مصادر أخرى، مما يبقيك متصلاً.\n\n 4. البحث الذكي والتوصيات: يستخدم Polycentric مصادر متعددة للبحث والتوصيات، مما يقدم لك أداءً رائعًا مع ضمان عدم وجود تأثير كبير لأي مزود على النتائج التي تراها.\n\n 5. متكيف ومفتوح: تم تصميم Polycentric ليكون مرنًا ومفتوحًا للتطورات الجديدة، مما يسمح بتحسينات مستمرة وميزات جديدة تتكيف مع احتياجات مستخدميه.\n\n 6. من خلال إنشاء ملف Polycentric، يمكنك ترك تعليقات على مقاطع الفيديو عبر الإنترنت والتمتع بتجربة على الإنترنت أكثر تخصيصًا. جرب بنفسك كيف يضع هذا الحل السهل الاستخدام في يديك السيطرة على حياتك الرقمية. سجل في Polycentric اليوم!</string>
     <string name="publish">نشر</string>
     <string name="usage">الاستخدام</string>
     <string name="enable_in_home">تمكين في الصفحة الرئيسية</string>

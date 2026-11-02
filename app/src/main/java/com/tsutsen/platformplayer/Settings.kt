@@ -74,17 +74,11 @@ class Settings {
     // Logging settings (used by StateApp.kt)
     val logging = LoggingSettings()
 
-    // Synchronization settings (used by StateApp.kt)
-    val synchronization = SynchronizationSettings()
-
     // Subscriptions settings (used by StateApp.kt)
     val subscriptions = SubscriptionsSettings()
 
     // Backup settings (used by StateApp.kt)
     val backup = BackupSettings()
-
-    // Polycentric settings (used by StateApp.kt)
-    val polycentric = PolycentricSettings()
 
     // Tabs settings
     var advancedSettings: Boolean = false
@@ -285,11 +279,9 @@ class Settings {
 
     @Serializable
     class OtherSettings {
-        var polycentricLocalCache: Boolean = false
         var shouldClearWebviewCookies: Boolean = false
         var watchLaterAddStart: Boolean = false
         var playlistAllowDups: Boolean = false
-        var polycentricEnabled: Boolean = false
 
         // Dock tab keys in display order (Settings > Content > Dock).
         // Defaults to the designsystem's tab list; unknown keys are ignored
@@ -375,20 +367,6 @@ class Settings {
     }
 
     @Serializable
-    class SynchronizationSettings {
-        var enabled: Boolean = false
-        var connectThroughRelay: Boolean = false
-        var connectLocalDirectThroughRelay: Boolean = false
-        var connectDiscovered: Boolean = false
-        var syncServer: String? = null
-        var broadcast: Boolean = false
-        var localConnections: Boolean = false
-        var connectLast: Boolean = false
-        var pairThroughRelay: Boolean = false
-        var discoverThroughRelay: Boolean = false
-    }
-
-    @Serializable
     class SubscriptionsSettings {
         var fetchOnAppBoot: Boolean = true
         var useSubscriptionExchange: Boolean = false
@@ -410,14 +388,6 @@ class Settings {
         var lastAutoBackupTime: OffsetDateTime = OffsetDateTime.now()
 
         fun shouldAutomaticBackup(): Boolean = false
-    }
-
-    @Serializable
-    class PolycentricSettings {
-        var watchLaterAddStart: Boolean = false
-        var polycentricEnabled: Boolean = true
-        var pairThroughRelay: Boolean = false
-        var discoverThroughRelay: Boolean = false
     }
 
     // Persist the whole config as JSON so settings survive app restarts.
@@ -530,15 +500,6 @@ class Settings {
                 raw
             }
         }
-    }
-
-    // Stub methods for deleted functionality
-    fun syncGrayjay() {
-        UIDialogs.toast(null, "Sync not yet migrated to Compose")
-    }
-
-    fun managePolycentricIdentity() {
-        UIDialogs.toast(null, "Polycentric identity not yet migrated to Compose")
     }
 
     fun manageLinks() {

@@ -1,7 +1,6 @@
 package com.tsutsen.platformplayer.di
 
 import android.content.Context
-import com.tsutsen.platformplayer.core.data.repository.CastingRepository
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
@@ -101,16 +100,9 @@ object PlayerRepositoryModule {
 
     @Provides
     @Singleton
-    fun provideCastingRepository(
-        @ApplicationContext context: Context,
-    ): CastingRepository = CastingRepositoryImpl(context)
-
-    @Provides
-    @Singleton
     fun providePlayerRepository(
         @ApplicationContext context: Context,
         urlResolver: VideoUrlResolver,
-        castingRepository: CastingRepository,
         commentRepository: CommentRepository,
         contentExtrasRepository: ContentExtrasRepository,
         settingsRepository: SettingsRepository,
@@ -118,7 +110,6 @@ object PlayerRepositoryModule {
     ): PlayerRepository {
         val impl = PlayerRepositoryImpl(context)
         impl.setUrlResolver(urlResolver)
-        impl.setCastingRepository(castingRepository)
         impl.setExtrasRepositories(commentRepository, contentExtrasRepository, settingsRepository)
         impl.setHistoryDao(historyDao)
         return impl

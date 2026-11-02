@@ -16,7 +16,6 @@ import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.ImportCache
 import com.tsutsen.platformplayer.models.Subscription
 import com.tsutsen.platformplayer.models.SubscriptionGroup
-import com.tsutsen.platformplayer.resolveChannelUrl
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.StringDateMapStorage
 import com.tsutsen.platformplayer.stores.StringStorage
@@ -26,8 +25,6 @@ import com.tsutsen.platformplayer.stores.v2.ReconstructStore
 import com.tsutsen.platformplayer.stores.v2.ManagedStore
 import com.tsutsen.platformplayer.subscription.SubscriptionFetchAlgorithm
 import com.tsutsen.platformplayer.subscription.SubscriptionFetchAlgorithms
-import com.tsutsen.platformplayer.sync.internal.GJSyncOpcodes
-import com.tsutsen.platformplayer.sync.models.SyncSubscriptionsPackage
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -268,22 +265,6 @@ class StateSubscriptions {
         _subscriptions.save(subObj);
         onSubscriptionsChanged.emit(getSubscriptions(), true);
 
-        StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-            try {
-                StateSync.instance.broadcastData(
-                    GJSyncOpcodes.syncSubscriptions, Json.encodeToString(
-                        SyncSubscriptionsPackage(
-                            listOf(subObj),
-                            mapOf<String, Long>()
-                        )
-                    )
-                );
-            }
-            catch(ex: Exception) {
-                Logger.w(TAG, "Failed to send subs changes to sync clients", ex);
-            }
-        }
-
         return subObj;
     }
 
@@ -316,22 +297,6 @@ class StateSubscriptions {
             if(isUserAction) {
                 val removalTime = OffsetDateTime.now();
                 _subscriptionsRemoved.setAndSave(sub.channel.url, removalTime);
-
-                StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-                    try {
-                        StateSync.instance.broadcastData(
-                            GJSyncOpcodes.syncSubscriptions, Json.encodeToString(
-                                SyncSubscriptionsPackage(
-                                    listOf(),
-                                    mapOf(Pair(sub.channel.url, removalTime.toEpochSecond()))
-                                )
-                            )
-                        );
-                    }
-                    catch(ex: Exception) {
-                        Logger.w(TAG, "Failed to send subs changes to sync clients", ex);
-                    }
-                }
             }
 
             if(StateSubscriptionGroups.instance.hasSubscriptionGroup(sub.channel.url)) {
@@ -387,7 +352,7 @@ class StateSubscriptions {
             };
         } ?: subs;
         return SubscriptionFetchAlgorithm.getAlgorithm(_algorithmSubscriptions, StateApp.instance.scope)
-            .countRequests(emulatedSubs.associateWith { StatePolycentric.instance.getChannelUrls(it.channel.url, it.channel.id, true) });
+            .countRequests(emulatedSubs.associateWith { listOf(it.channel.url) });
     }
 
     fun getSubscriptionsFeedWithExceptions(allowFailure: Boolean = false, withCacheFallback: Boolean = false, cacheScope: CoroutineScope, onProgress: ((Int, Int)->Unit)? = null, onNewCacheHit: ((Subscription, IPlatformContent)->Unit)? = null, subGroup: SubscriptionGroup? = null): Pair<IPager<IPlatformContent>, List<Throwable>> {
@@ -418,24 +383,7 @@ class StateSubscriptions {
         } ?: subs;
 
 
-        val usePolycentric = true;
-        val lock = Object();
-        var polycentricBudget: Int = 10;
-        val subUrls = emulatedSubs.parallelStream().map {
-            if(usePolycentric) {
-                val result = StatePolycentric.instance.getChannelUrlsWithUpdateResult(it.channel.url, it.channel.id, polycentricBudget <= 0, true);
-                if(result.first) {
-                    synchronized(lock) {
-                        polycentricBudget--;
-                    }
-                }
-                Pair(it, result.second);
-            }
-            else
-                Pair(it, listOf(it.channel.url));
-        }.asSequence()
-            .toList()
-            .associate { it };
+        val subUrls = emulatedSubs.associateWith { listOf(it.channel.url) };
 
         val result = algo.getSubscriptions(subUrls);
         return Pair(result.pager, result.exceptions);
@@ -466,15 +414,6 @@ class StateSubscriptions {
         _legacySubscriptions.delete();
     }
 
-
-    fun getSyncSubscriptionsPackageString(): String{
-        return Json.encodeToString(
-            SyncSubscriptionsPackage(
-                getSubscriptions(),
-                getSubscriptionRemovals()
-            )
-        );
-    }
 
     companion object {
         const val TAG = "StateSubscriptions";

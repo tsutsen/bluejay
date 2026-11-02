@@ -123,7 +123,6 @@
     <string name="export">导出</string>
     <string name="delete">删除</string>
     <string name="loading_update">正在加载更新…</string>
-    <string name="polycentric_explanation">当您浏览在线视频并想留下评论时，考虑尝试Polycentric，这是一种易于使用且以您的需求为重点的新方法来管理您的在线存在。创建Polycentric配置文件是一个很好的选择，原因如下：\n\n 1. 你掌握控制权：在Polycentric中，您的数据不会存储在由单个公司控制的一个地方。相反，它分布在多个位置，让您更多地控制您的在线存在。您决定您的数据存储在哪里，并且可以轻松地在提供商之间切换或添加新的。\n\n 2. 隐私和安全：Polycentric使用先进的安全技术来保护您的信息。您可以信任您的个人详细信息得到了很好的保护，并且只有您选择与之分享的人才能访问。\n\n 3. 无缝网络：Polycentric允许您与他人建立联系并与他们的内容互动，而不会被束缚在单一平台上。如果提供商变得不可靠或试图阻止访问，您的Polycentric客户端将自动从其他来源查找信息，使您保持连接。\n\n 4. 智能搜索和推荐：Polycentric使用多个搜索和推荐来源，为您提供一流的性能，同时确保没有单个提供商对您看到的结果有太多影响。\n\n 5. 可适应和开放：Polycentric旨在灵活并对新发展开放，允许不断改进和添加适应其用户需求的新功能。\n\n 6. 通过创建Polycentric配置文件，您可以在在线视频上发表评论，并享受更个性化的在线体验。亲自体验这种用户友好的解决方案如何让您掌控自己的数字生活。立即注册Polycentric！</string>
     <string name="publish">发布</string>
     <string name="usage">使用</string>
     <string name="enable_in_home">在家中启用</string>
@@ -148,12 +147,10 @@
     <string name="send_your_identity_to_another_app">将您的身份发送到另一个应用</string>
     <string name="copy">复制</string>
     <string name="copy_your_identity_to_clipboard">将您的身份复制到剪贴板</string>
-    <string name="polycentric">多心</string>
     <string name="profile_name">配置名</string>
     <string name="this_will_be_visible_to_other_users">这将对其他用户可见</string>
     <string name="create_profile">创建配置</string>
     <string name="or_capitalized">或者</string>
-    <string name="paste_profile_here_polycentric">在此处粘贴配置 polycentric://…</string>
     <string name="import_profile">导入配置</string>
     <string name="you_re_apparantly_a_developer">您显然是一名开发者</string>
     <string name="developer_settings">开发者设置</string>
@@ -305,8 +302,6 @@
     <string name="live_chat_webview">实时聊天网页视图</string>
     <string name="log_level">日志级别</string>
     <string name="logging">日志记录</string>
-    <string name="manage_polycentric_identity">管理多心身份</string>
-    <string name="manage_your_polycentric_identity">管理您的多心身份</string>
     <string name="manual_check">手动检查</string>
     <string name="manually_check_for_updates">手动检查更新</string>
     <string name="number_of_concurrent_threads_to_multiply_download_speeds_from_throttled_sources">用于从受限制的来源提高下载速度的并发线程数</string>
@@ -415,7 +410,6 @@
     <string name="invalid_license_format">无效的许可证格式</string>
     <string name="unknown_content_format">未知的内容格式</string>
     <string name="unknown_file_format">未知的文件格式</string>
-    <string name="unknown_polycentric_format">未知的多中心格式</string>
     <string name="unknown_url_format">未知的网址格式</string>
     <string name="failed_to_handle_file">无法处理文件</string>
     <string name="unknown_reconstruction_type">未知的重建类型</string>

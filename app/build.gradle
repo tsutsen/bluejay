@@ -207,15 +207,14 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.21.2'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
-    implementation fileTree(dir: 'aar', include: ['*.aar'])
+    // ffmpeg-kit via JitPack (replaces the unrecoverable local app/aar/ffmpeg-kit.aar binary).
+    implementation 'com.github.arthenica:ffmpeg-kit:v5.1.LTS'
     implementation 'org.jetbrains.kotlin:kotlin-reflect:2.2.0'
     implementation 'androidx.webkit:webkit:1.15.0'
 
     //Protobuf
     implementation 'com.google.protobuf:protobuf-javalite:4.33.0'
 
-    implementation 'com.polycentric.core:app:1.0'
-    implementation 'com.tsutsen.futopay:app:1.0'
     implementation 'androidx.work:work-runtime-ktx:2.11.0'
 
     //Database

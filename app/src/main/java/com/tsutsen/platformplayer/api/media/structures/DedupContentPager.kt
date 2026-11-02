@@ -6,7 +6,7 @@ import com.tsutsen.platformplayer.constructs.Event2
 import com.tsutsen.platformplayer.getDiffDays
 import com.tsutsen.platformplayer.getNowDiffDays
 import com.tsutsen.platformplayer.logging.Logger
-import com.futo.polycentric.core.combineHashCodes
+import com.tsutsen.platformplayer.combineHashCodes
 import kotlin.math.abs
 
 //TODO: If common pattern, create ModifierPager that implements all this composition

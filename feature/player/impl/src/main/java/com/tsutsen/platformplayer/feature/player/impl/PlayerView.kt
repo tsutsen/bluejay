@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessHigh
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Forward10
@@ -89,7 +88,6 @@ import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationCo
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureEffects
-import com.tsutsen.platformplayer.feature.player.impl.ui.CastingSheet
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -1184,11 +1182,6 @@ fun PlayerView(
                             },
                         isWatchLater = savedTypes.contains(SavedVideoType.WATCH_LATER),
                         onQueue = remember { { showQueueSheet = true } },
-                        // Casting deferred: the fcast protocol only reaches fcast
-                        // receiver apps (not Chromecast TVs), which is niche. Users
-                        // can use system screen cast instead. Re-enable by
-                        // restoring this line + the sheet block below.
-                        // onCast = { showCastingSheet = true },
                         onPrevious = remember { { viewModel.skipPrevious() } },
                         onNext = remember { { viewModel.skipNext() } },
                         onSeek =
@@ -1215,35 +1208,6 @@ fun PlayerView(
                                 { px, velocity -> finishOverscrollMorph(px, velocity) }
                             },
                     )
-                }
-
-                // Casting indicator — while mirrored to a receiver, a chip
-                // above the controls names the active device.
-                if (state.isCasting) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = 64.dp)
-                                .background(
-                                    Color.Black.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(BluejayTokens().radius.card),
-                                ).padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Cast,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp),
-                        )
-                        Text(
-                            text = "Casting to ${state.castDeviceName ?: "receiver"}",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
                 }
 
                 // ==================== Modals ====================
@@ -1320,28 +1284,6 @@ fun PlayerView(
                         onGoToChannel = onChannelClick,
                     )
                 }
-
-                // Cast button (top row) → the casting sheet.
-                // Deferred — see the onCast note above. Kept (commented) so the
-                // cast stack (StateCasting, repository, resolver path) stays
-                // wired and re-enabling is a two-line change.
-                // if (showCastingSheet) {
-                //     BluejayModalBottomSheet(
-                //         onDismiss = { showCastingSheet = false },
-                //         title = "Cast to…",
-                //     ) {
-                //         CastingSheet(
-                //             castState = viewModel.castState,
-                //             onConnect = { viewModel.castConnect(it) },
-                //             onConnectByUrl = { viewModel.castConnectByUrl(it) },
-                //             onDisconnect = {
-                //                 viewModel.castDisconnect()
-                //                 showCastingSheet = false
-                //             },
-                //             onDismiss = { showCastingSheet = false },
-                //         )
-                //     }
-                // }
 
                 // Queue button (top row) → the queue sheet.
                 if (showQueueSheet) {

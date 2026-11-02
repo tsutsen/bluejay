@@ -87,7 +87,6 @@ fun PlayerControls(
     onLoopMode: () -> Unit,
     onQueue: () -> Unit,
     onOptions: () -> Unit,
-    onCast: (() -> Unit)? = null,
     onSeek: (Long) -> Unit,
     onScrubFinished: () -> Unit = {},
     bottomBarHeightPx: MutableIntState,
@@ -266,7 +265,6 @@ fun PlayerControls(
                                         isWatchLater = isWatchLater,
                                         onQueue = onQueue,
                                         onOptions = onOptions,
-                                        onCast = onCast,
                                     )
                                 }
                             }

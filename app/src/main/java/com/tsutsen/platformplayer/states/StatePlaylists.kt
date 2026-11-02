@@ -26,9 +26,6 @@ import com.tsutsen.platformplayer.stores.StringDateMapStorage
 import com.tsutsen.platformplayer.stores.StringStorage
 import com.tsutsen.platformplayer.stores.v2.ManagedStore
 import com.tsutsen.platformplayer.stores.v2.ReconstructStore
-import com.tsutsen.platformplayer.sync.internal.GJSyncOpcodes
-import com.tsutsen.platformplayer.sync.models.SyncPlaylistsPackage
-import com.tsutsen.platformplayer.sync.models.SyncWatchLaterPackage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
@@ -130,7 +127,6 @@ class StatePlaylists {
 
         if(isUserInteraction) {
             setWatchLaterReorderTime();
-            broadcastWatchLater(!wasModified);
         }
 
         if(StateDownloads.instance.getWatchLaterDescriptor() != null) {
@@ -163,10 +159,7 @@ class StatePlaylists {
             val now = OffsetDateTime.now();
             if(time == null) {
                 _watchLaterRemovals.setAndSave(video.url, now);
-                broadcastWatchLaterRemoval(video.url, now);
             }
-            else
-                broadcastWatchLaterRemoval(video.url, time);
         }
 
         if(StateDownloads.instance.getWatchLaterDescriptor() != null) {
@@ -192,7 +185,6 @@ class StatePlaylists {
         if (isUserInteraction) {
             val now = OffsetDateTime.now();
             _watchLaterAdds.setAndSave(video.url, now);
-            broadcastWatchLaterAddition(video, now);
         }
 
         StateDownloads.instance.checkForOutdatedPlaylists();
@@ -225,58 +217,6 @@ class StatePlaylists {
         }
     }
 
-    public fun getWatchLaterSyncPacket(orderOnly: Boolean = false): SyncWatchLaterPackage{
-        return SyncWatchLaterPackage(
-            if (orderOnly) listOf() else getWatchLater(),
-            if (orderOnly) mapOf() else _watchLaterAdds.all(),
-            if (orderOnly) mapOf() else _watchLaterRemovals.all(),
-            getWatchLaterLastReorderTime().toEpochSecond(),
-            _watchlistOrderStore.values.toList()
-        )
-    }
-    private fun broadcastWatchLater(orderOnly: Boolean = false) {
-        StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-            try {
-                StateSync.instance.broadcastJsonData(
-                    GJSyncOpcodes.syncWatchLater, getWatchLaterSyncPacket(orderOnly)
-                );
-            } catch (e: Throwable) {
-                Logger.w(TAG, "Failed to broadcast watch later", e)
-            }
-        };
-    }
-    private fun broadcastWatchLaterAddition(video: SerializedPlatformVideo, time: OffsetDateTime) {
-        StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-            try {
-                StateSync.instance.broadcastJsonData(
-                    GJSyncOpcodes.syncWatchLater, SyncWatchLaterPackage(
-                        listOf(video),
-                        mapOf(Pair(video.url, time.toEpochSecond())),
-                        mapOf(),
-
-                        )
-                )
-            } catch (e: Throwable) {
-                Logger.w(TAG, "Failed to broadcast watch later addition", e)
-            }
-        };
-    }
-    private fun broadcastWatchLaterRemoval(url: String, time: OffsetDateTime) {
-        StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-            try {
-                StateSync.instance.broadcastJsonData(
-                    GJSyncOpcodes.syncWatchLater, SyncWatchLaterPackage(
-                        listOf(),
-                        mapOf(),
-                        mapOf(Pair(url, time.toEpochSecond()))
-                    )
-                )
-            } catch (e: Throwable) {
-                Logger.w(TAG, "Failed to broadcast watch later removal", e)
-            }
-        };
-    }
-
     suspend fun createPlaylistFromChannel(channelUrl: String, onPage: (Int) -> Unit): Playlist {
         val channel = StatePlatform.instance.getChannel(channelUrl).await();
         return createPlaylistFromChannel(channel, onPage);
@@ -305,8 +245,6 @@ class StatePlaylists {
             if (StateDownloads.instance.isPlaylistCached(playlist.id)) {
                 StateDownloads.instance.checkForOutdatedPlaylistVideos(playlist.id);
             }
-            if(isUserInteraction)
-                broadcastSyncPlaylist(playlist);
         }
     }
     fun addToPlaylist(id: String, video: IPlatformVideo): Boolean {
@@ -320,23 +258,8 @@ class StatePlaylists {
             playlist.dateUpdate = OffsetDateTime.now();
             playlistStore.saveAsync(playlist, true);
 
-            broadcastSyncPlaylist(playlist);
             return true;
         }
-    }
-
-    private fun broadcastSyncPlaylist(playlist: Playlist){
-        StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-            try {
-                Logger.i(StateSubscriptionGroups.TAG, "SyncPlaylist (${playlist.name})");
-                StateSync.instance.broadcastJsonData(
-                    GJSyncOpcodes.syncPlaylists,
-                    SyncPlaylistsPackage(listOf(playlist), mapOf())
-                );
-            } catch (e: Throwable) {
-                Logger.e(TAG, "Failed to broadcast sync playlist", e)
-            }
-        };
     }
 
     fun removePlaylist(playlist: Playlist, isUserInteraction: Boolean = true) {
@@ -346,18 +269,6 @@ class StatePlaylists {
         }
         if(isUserInteraction) {
             _playlistRemoved.setAndSave(playlist.id, OffsetDateTime.now());
-
-            StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-                try {
-                    Logger.i(StateSubscriptionGroups.TAG, "SyncPlaylist (${playlist.name})");
-                    StateSync.instance.broadcastJsonData(
-                        GJSyncOpcodes.syncPlaylists,
-                        SyncPlaylistsPackage(listOf(), mapOf(Pair(playlist.id, OffsetDateTime.now().toEpochSecond())))
-                    );
-                } catch (e: Throwable) {
-                    Logger.e(TAG, "Failed to broadcast sync playlists", e)
-                }
-            };
         }
     }
 
@@ -382,15 +293,6 @@ class StatePlaylists {
         return FileProvider.getUriForFile(context, context.resources.getString(R.string.authority), newFile);
     }
 
-
-    fun getSyncPlaylistsPackageString(): String{
-        return Json.encodeToString(
-            SyncPlaylistsPackage(
-                getPlaylists(),
-                getPlaylistRemovals()
-            )
-        );
-    }
 
     companion object {
         val TAG = "StatePlaylists";

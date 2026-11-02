@@ -123,7 +123,6 @@
     <string name="export">Exportar</string>
     <string name="delete">Excluir</string>
     <string name="loading_update">Carregando atualização…</string>
-    <string name="polycentric_explanation">Ao navegar por vídeos online e querer deixar um comentário, considere experimentar o Polycentric, uma nova forma de gerenciar sua presença online que é fácil de usar e focada nas suas necessidades. Eis por que criar um perfil Polycentric é uma ótima escolha:\n\n1. Você está no controle: Com o Polycentric, seus dados não são armazenados em um único local controlado por uma única empresa. Em vez disso, estão distribuídos em vários locais, dando a você mais controle sobre sua presença online. Você decide onde seus dados são armazenados e pode facilmente alternar entre provedores ou adicionar novos.\n\n2. Privacidade e Segurança: O Polycentric mantém suas informações seguras, usando técnicas de segurança avançadas. Você pode confiar que seus dados pessoais estão bem protegidos e acessíveis apenas por aqueles com quem você escolhe compartilhá-los.\n\n3. Rede contínua: O Polycentric permite que você se conecte com outras pessoas e interaja com o conteúdo delas sem estar vinculado a uma única plataforma. Se um provedor se tornar pouco confiável ou tentar bloquear o acesso, seu cliente Polycentric encontrará automaticamente informações de outras fontes, mantendo você conectado.\n\n4. Pesquisa Inteligente e Recomendações: O Polycentric usa várias fontes para pesquisa e recomendações, oferecendo desempenho de primeira enquanto garante que nenhum provedor único tenha muita influência sobre os resultados que você vê.\n\n5. Adaptável e Aberto: O Polycentric é projetado para ser flexível e aberto a novos desenvolvimentos, permitindo melhorias constantes e novos recursos que se adaptam às necessidades de seus usuários.\n\n6. Ao criar um perfil Polycentric, você pode deixar comentários em vídeos online e desfrutar de uma experiência online mais personalizada. Veja por si mesmo como essa solução fácil de usar coloca você no controle de sua vida digital. Inscreva-se no Polycentric hoje!</string>
     <string name="publish">Publicar</string>
     <string name="usage">Uso</string>
     <string name="enable_in_home">Habilitar em casa</string>
@@ -148,12 +147,10 @@
     <string name="send_your_identity_to_another_app">Enviar sua identidade para outro aplicativo</string>
     <string name="copy">Copiar</string>
     <string name="copy_your_identity_to_clipboard">Copiar sua identidade para a área de transferência</string>
-    <string name="polycentric">Policêntrico</string>
     <string name="profile_name">Nome do Perfil</string>
     <string name="this_will_be_visible_to_other_users">Isso será visível para outros usuários</string>
     <string name="create_profile">Criar Perfil</string>
     <string name="or_capitalized">OU</string>
-    <string name="paste_profile_here_polycentric">Cole o perfil aqui policêntrico://…</string>
     <string name="import_profile">Importar Perfil</string>
     <string name="you_re_apparantly_a_developer">Você aparentemente é um desenvolvedor</string>
     <string name="developer_settings">Configurações de Desenvolvedor</string>
@@ -305,8 +302,6 @@
     <string name="live_chat_webview">Chat ao Vivo em Webview</string>
     <string name="log_level">Nível de Log</string>
     <string name="logging">Registros</string>
-    <string name="manage_polycentric_identity">Gerenciar Identidade Policêntrica</string>
-    <string name="manage_your_polycentric_identity">Gerencie sua Identidade Policêntrica</string>
     <string name="manual_check">Verificação Manual</string>
     <string name="manually_check_for_updates">Verificar atualizações manualmente</string>
     <string name="number_of_concurrent_threads_to_multiply_download_speeds_from_throttled_sources">Número de threads simultâneas para multiplicar velocidades de download de fontes limitadas</string>
@@ -411,7 +406,6 @@
     <string name="invalid_license_format">Formato de licença inválido</string>
     <string name="unknown_content_format">Formato de conteúdo desconhecido</string>
     <string name="unknown_file_format">Formato de arquivo desconhecido</string>
-    <string name="unknown_polycentric_format">Formato policêntrico desconhecido</string>
     <string name="unknown_url_format">Formato de URL desconhecido</string>
     <string name="failed_to_handle_file">Falha ao manipular o arquivo</string>
     <string name="unknown_reconstruction_type">Tipo de reconstrução desconhecido</string>

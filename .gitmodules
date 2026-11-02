@@ -1,6 +1,3 @@
-[submodule "dep/polycentricandroid"]
-	path = dep/polycentricandroid
-	url = ../polycentricandroid.git
 [submodule "app/src/stable/assets/sources/kick"]
 	path = app/src/stable/assets/sources/kick
 	url = ../plugins/kick.git
@@ -55,9 +52,6 @@
 [submodule "app/src/unstable/assets/sources/youtube"]
 	path = app/src/unstable/assets/sources/youtube
 	url = ../plugins/youtube.git
-[submodule "dep/futopay"]
-	path = dep/futopay
-	url = ../futopayclientlibraries.git
 [submodule "app/src/unstable/assets/sources/bilibili"]
 	path = app/src/unstable/assets/sources/bilibili
 	url = ../plugins/bilibili.git

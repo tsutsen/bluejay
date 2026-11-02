@@ -1,16 +1,9 @@
 package com.tsutsen.platformplayer.states
 
 import com.tsutsen.platformplayer.constructs.Event0
-import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.SubscriptionGroup
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.StringDateMapStorage
-import com.tsutsen.platformplayer.sync.internal.GJSyncOpcodes
-import com.tsutsen.platformplayer.sync.models.SyncSubscriptionGroupsPackage
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.time.OffsetDateTime
 
 /***
@@ -35,24 +28,11 @@ class StateSubscriptionGroups {
     fun getSubscriptionGroupsRemovals(): Map<String, Long> {
         return _groupsRemoved.all();
     }
-    fun updateSubscriptionGroup(subGroup: SubscriptionGroup, preventNotify: Boolean = false, preventSync: Boolean = false) {
+    fun updateSubscriptionGroup(subGroup: SubscriptionGroup, preventNotify: Boolean = false) {
         subGroup.lastChange = OffsetDateTime.now();
         _subGroups.save(subGroup);
         if(!preventNotify)
             onGroupsChanged.emit();
-        if(!preventSync) {
-            StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-                try {
-                    Logger.i(TAG, "SyncSubscriptionGroup (${subGroup.name})");
-                    StateSync.instance.broadcastJsonData(
-                        GJSyncOpcodes.syncSubscriptionGroups,
-                        SyncSubscriptionGroupsPackage(listOf(subGroup), mapOf())
-                    );
-                } catch (e: Throwable) {
-                    Logger.e(TAG, "Failed to broadcast update subscription group", e)
-                }
-            };
-        }
     }
     fun deleteSubscriptionGroup(id: String, isUserInteraction: Boolean = true){
         val group = getSubscriptionGroup(id);
@@ -62,17 +42,6 @@ class StateSubscriptionGroups {
 
             if(isUserInteraction) {
                 _groupsRemoved.setAndSave(id, OffsetDateTime.now());
-                StateApp.instance.scopeOrNull?.launch(Dispatchers.IO) {
-                    try {
-                        Logger.i(TAG, "SyncSubscriptionGroup delete (${group.name})");
-                        StateSync.instance.broadcastJsonData(
-                            GJSyncOpcodes.syncSubscriptionGroups,
-                            SyncSubscriptionGroupsPackage(listOf(), mapOf(Pair(id, OffsetDateTime.now().toEpochSecond())))
-                        );
-                    } catch (e: Throwable) {
-                        Logger.e(TAG, "Failed to delete subscription group", e)
-                    }
-                };
             }
         }
     }
@@ -84,16 +53,6 @@ class StateSubscriptionGroups {
                 return true;
         }
         return false;
-    }
-
-
-    fun getSyncSubscriptionGroupsPackageString(): String{
-        return Json.encodeToString(
-            SyncSubscriptionGroupsPackage(
-                getSubscriptionGroups(),
-                getSubscriptionGroupsRemovals()
-            )
-        );
     }
 
 

@@ -517,8 +517,8 @@ open class JSClient : IPlatformClient {
     }
 
     @JSOptional
-    @JSDocs(11, "source.getChannelUrlByClaim(claimType, claimValues)", "Gets the channel url that should be used to fetch a given polycentric claim")
-    @JSDocsParameter("claimType", "Polycentric claimtype id")
+    @JSDocs(11, "source.getChannelUrlByClaim(claimType, claimValues)", "Gets the channel url that should be used to fetch a given claim")
+    @JSDocsParameter("claimType", "Claim type id")
     @JSDocsParameter("claimValues", "A map of values associated with the claim")
     override fun getChannelUrlByClaim(claimType: Int, claimValues: Map<Int, String>): String? {
         if(!capabilities.hasGetChannelUrlByClaim)
@@ -533,7 +533,7 @@ open class JSClient : IPlatformClient {
     }
     @JSOptional
     @JSDocs(12, "source.getChannelTemplateByClaimMap()", "Get a map for every supported claimtype mapping field to urls")
-    @JSDocsParameter("claimType", "Polycentric claimtype id")
+    @JSDocsParameter("claimType", "Claim type id")
     @JSDocsParameter("claimValues", "A map of values associated with the claim")
     fun getChannelTemplateByClaimMap(): Map<Int,Map<Int, String>>{
         if(!capabilities.hasGetChannelTemplateByClaimMap)
