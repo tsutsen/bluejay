@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.di
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.Serializer
@@ -332,7 +333,7 @@ class EngineSubscriptionsRepositoryImpl
 
         /** Orders the subs list for the Subs tab per Settings > subscriptionsOrder. */
         private suspend fun orderedSubscriptions(subs: List<Subscription>): List<Subscription> =
-            when (Settings.instance.subscriptions.subscriptionsOrder) {
+            when (SettingsRepositoryImpl.instance.preferences.value.subscriptionsOrder) {
                 "random" -> {
                     val cached = randomSubOrder
                     if (cached != null && cached.size == subs.size) {

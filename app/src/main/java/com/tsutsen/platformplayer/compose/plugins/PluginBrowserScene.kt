@@ -6,6 +6,7 @@
  */
 
 package com.tsutsen.platformplayer.compose.plugins
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 
 import android.content.Intent
 import android.net.Uri
@@ -223,7 +224,7 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                                     // are already enabled — a freshly enabled
                                     // plugin would stay on its old version. Update
                                     // it here, when it becomes relevant.
-                                    if (Settings.instance.plugins.autoUpdatePlugins) {
+                                    if (SettingsRepositoryImpl.instance.preferences.value.autoUpdatePlugins) {
                                         installedPlugins.value
                                             .find { it.id == plugin.id }
                                             ?.let { cfg ->

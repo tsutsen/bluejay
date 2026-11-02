@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.di
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 
 import android.net.Uri
 import android.util.Log
@@ -274,7 +275,7 @@ class EngineVideoUrlResolver
                     .filter { it.height > 0 && it.getVideoUrl().isNotBlank() }
             if (sources.isEmpty()) return null
             val defaultHeight =
-                Settings.instance.content.defaultVideoResolution.removeSuffix("p").toIntOrNull()
+                SettingsRepositoryImpl.instance.preferences.value.defaultVideoResolution.removeSuffix("p").toIntOrNull()
             if (defaultHeight == null) return sources.first()
             return sources.minWith(
                 compareBy<IVideoUrlSource> { kotlin.math.abs(it.height - defaultHeight) }
@@ -426,7 +427,7 @@ class EngineVideoUrlResolver
             // Load the source closest to the configured default resolution —
             // for unmuxed streams the loaded file IS the quality (no ABR to
             // correct the initial pick later), so this must honor the setting.
-            val defaultResolution = Settings.instance.content.defaultVideoResolution
+            val defaultResolution = SettingsRepositoryImpl.instance.preferences.value.defaultVideoResolution
             val videoMediaSource =
                 pickUnmuxedVideoSource(video)?.let { chosen ->
                     Log.i(TAG, "Unmuxed: loading ${chosen.height}p source (default: $defaultResolution)")

@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.activities
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 
 import android.app.Activity
 import android.app.Presentation
@@ -193,7 +194,7 @@ internal fun CompanionVideoOptionsSheet(
             // choosing actions.
             playbackQueueRepository.add(card.toContentItem())
         },
-        isHidden = com.tsutsen.platformplayer.Settings.instance.content.hiddenVideoUrls.contains(card.url),
+        isHidden = SettingsRepositoryImpl.instance.hiddenVideoUrls.value.contains(card.url),
         onHideVideo = {
             // App module: persist directly on the Settings singleton.
             val s = com.tsutsen.platformplayer.Settings.instance
@@ -207,10 +208,10 @@ internal fun CompanionVideoOptionsSheet(
         },
         isCreatorHidden =
             creatorUrl != null &&
-                creatorUrl in com.tsutsen.platformplayer.Settings.instance.content.hiddenCreators,
+                creatorUrl in SettingsRepositoryImpl.instance.hiddenCreators.value,
         isCreatorDownranked =
             creatorUrl != null &&
-                creatorUrl in com.tsutsen.platformplayer.Settings.instance.content.downrankedCreators,
+                creatorUrl in SettingsRepositoryImpl.instance.downrankedCreators.value,
         onDownrankCreator = creatorUrl?.let { url ->
             {
                 val s = com.tsutsen.platformplayer.Settings.instance

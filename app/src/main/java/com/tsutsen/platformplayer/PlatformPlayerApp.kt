@@ -1,5 +1,8 @@
 package com.tsutsen.platformplayer
 
+import com.tsutsen.platformplayer.di.SettingsRepositoryEntryPoint
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
+
 import android.app.Application
 import android.content.Context
 import android.util.Log
@@ -66,7 +69,7 @@ class PlatformPlayerApp : Application(), ImageLoaderFactory {
         /** Apply theme mode from the single config ([Settings] singleton). */
         fun applyThemeMode() {
             val nightMode =
-                when (Settings.instance.appearance.themeMode) {
+                when (SettingsRepositoryImpl.instance.preferences.value.appearance.themeMode.name) {
                     "LIGHT" -> AppCompatDelegate.MODE_NIGHT_NO
                     "DARK" -> AppCompatDelegate.MODE_NIGHT_YES
                     else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
@@ -89,9 +92,14 @@ class PlatformPlayerApp : Application(), ImageLoaderFactory {
 
         super.onCreate()
 
+        SettingsRepositoryImpl.bind(
+            dagger.hilt.EntryPoints.get(this, SettingsRepositoryEntryPoint::class.java)
+                .settingsRepository() as SettingsRepositoryImpl,
+        )
+
         applyThemeMode()
 
-        if (Settings.instance.appearance.dynamicColor) {
+        if (SettingsRepositoryImpl.instance.preferences.value.appearance.dynamicColor) {
             Log.d(TAG, "DynamicColors.applyToActivitiesIfAvailable(this)")
             DynamicColors.applyToActivitiesIfAvailable(this)
         }

@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.di
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
@@ -164,12 +165,12 @@ class EngineHomeRepositoryImpl
             // master toggle ON → build the feed from the enabled sources and
             // cache the merged result; OFF, or every source empty/failed →
             // fall through to the plain home refresh below (today's behavior).
-            val recommendations = Settings.instance.recommendations
-            if (recommendations.homebrewRecommendations) {
+            val preferences = SettingsRepositoryImpl.instance.preferences.value
+            if (preferences.homebrewRecommendations) {
                 val merged =
                     HomebrewRecommendations.buildFeed(
                         historyDao,
-                        recommendations,
+                        Settings.instance.recommendations,
                         onPartial = { partial -> mergePartialFeed(partial) },
                         onFlows = { flows -> _homebrewFlows = flows },
                     )
@@ -200,7 +201,7 @@ class EngineHomeRepositoryImpl
                     return@withContext
                 }
                 _homebrewFlows = emptyList()
-                if (recommendations.sourceYoutubeFeed) {
+                if (preferences.sourceYoutubeFeed) {
                     Logger.i("EngineHomeRepository", "Recommendations empty, falling back to home refresh")
                 } else {
                     // Homebrew is on but no source produced items and the

@@ -115,3 +115,9 @@ object PlayerRepositoryModule {
         return impl
     }
 }
+
+@dagger.hilt.EntryPoint
+@InstallIn(SingletonComponent::class)
+interface SettingsRepositoryEntryPoint {
+    fun settingsRepository(): SettingsRepository
+}

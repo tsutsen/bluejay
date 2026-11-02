@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.background
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -88,7 +89,7 @@ class BackgroundWorker(
     private suspend fun doPluginAutoUpdate() {
         val updates = StatePlugins.instance.checkForUpdates()
         if (updates.isEmpty()) return
-        if (!Settings.instance.plugins.autoUpdatePlugins) {
+        if (!SettingsRepositoryImpl.instance.preferences.value.autoUpdatePlugins) {
             Logger.i("BackgroundWorker", "${updates.size} plugin update(s) available, auto-update off")
             return
         }

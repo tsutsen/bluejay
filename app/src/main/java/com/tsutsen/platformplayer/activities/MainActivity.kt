@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.activities
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 
 import android.Manifest
 import android.content.Context
@@ -419,7 +420,7 @@ class MainActivity :
         StateApp.instance.navigator = navigator
 
         // Start on the configured default tab (Settings > Content > Dock).
-        navigator.setStartDestination(dockKeyToDestination(Settings.instance.other.defaultDockTab))
+        navigator.setStartDestination(dockKeyToDestination(SettingsRepositoryImpl.instance.preferences.value.defaultDockTab))
 
         enableEdgeToEdge()
 

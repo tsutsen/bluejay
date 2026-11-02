@@ -496,4 +496,14 @@ class SettingsRepositoryImpl
             s.save()
             emit()
         }
+    
+    companion object {
+        /** Single accessor for the typed settings seam; set once in PlatformPlayerApp.onCreate. */
+        lateinit var instance: SettingsRepositoryImpl
+            private set
+
+        fun bind(instance: SettingsRepositoryImpl) {
+            this.instance = instance
+        }
     }
+}
