@@ -1055,12 +1055,8 @@ internal fun continueEntry(
     history
         .filter { !(isPlaying && it.contentUrl == currentVideoUrl) }
         .filter { it.contentUrl !in discarded || it.contentUrl == currentVideoUrl }
-        .take(5)
-        .filter { it.lastPositionMs > 0L && it.totalDurationMs > 0L }
-        .filter {
-            it.lastPositionMs.toFloat() <
-                it.totalDurationMs * WatchState.WATCHED_FRACTION
-        }
+        .take(WatchState.CONTINUE_POOL_SIZE)
+        .filter { !WatchState.finished(it.lastPositionMs, it.totalDurationMs) }
         .firstOrNull()
 
 /** Pre-filled details for playback (title/channel/thumb are known). */

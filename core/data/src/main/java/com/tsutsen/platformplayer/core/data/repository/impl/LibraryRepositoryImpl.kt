@@ -201,8 +201,7 @@ class LibraryRepositoryImpl
                     .filter { s ->
                         historyByContentUrl[s.contentUrl]
                             ?.let { h ->
-                                h.totalDurationMs > 0 &&
-                                    h.lastPositionMs >= h.totalDurationMs * WatchState.WATCHED_FRACTION
+                                WatchState.finished(h.lastPositionMs, h.totalDurationMs)
                             }
                             ?: false
                     }

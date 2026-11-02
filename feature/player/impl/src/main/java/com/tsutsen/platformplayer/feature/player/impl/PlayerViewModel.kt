@@ -42,9 +42,6 @@ import javax.inject.Inject
 /** Minimum watch time before a video counts as "in progress" on cards. */
 private const val MIN_WATCH_MS = 15_000L
 
-/** Position/duration fraction at or above which a video is "watched". */
-private const val WATCHED_FRACTION = 0.95f
-
 /** How often playback history is persisted while a video plays (was: every 100ms tick). */
 private const val HISTORY_SAVE_INTERVAL_MS = 15_000L
 
@@ -238,9 +235,10 @@ class PlayerViewModel
                                     progress =
                                         (it.lastPositionMs.toFloat() / it.totalDurationMs)
                                             .coerceIn(0f, 1f),
-                                    isWatched =
-                                        it.lastPositionMs >=
-                                            it.totalDurationMs * WatchState.WATCHED_FRACTION,
+                                    isWatched = WatchState.finished(
+                                        it.lastPositionMs,
+                                        it.totalDurationMs,
+                                    ),
                                 )
                         }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())

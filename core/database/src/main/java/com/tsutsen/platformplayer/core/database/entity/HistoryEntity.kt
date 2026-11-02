@@ -34,6 +34,4 @@ data class HistoryEntity(
  * the full duration, so it always satisfies this.
  */
 fun HistoryEntity.isFullyWatched(): Boolean =
-    lastPositionMs > 0 &&
-        totalDurationMs > 0 &&
-        lastPositionMs >= totalDurationMs * WatchState.WATCHED_FRACTION
+    WatchState.finished(lastPositionMs, totalDurationMs)

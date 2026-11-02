@@ -18,5 +18,17 @@ data class WatchState(
          * "remove watched".
          */
         const val WATCHED_FRACTION = 0.95f
+
+        /** Recent history entries scanned for a continue-watching pick. */
+        const val CONTINUE_POOL_SIZE = 5
+
+        /**
+         * True once playback is at/over [WATCHED_FRACTION] of [totalDurationMs].
+         * Entries with no meaningful progress or an unknown duration never
+         * count as finished.
+         */
+        fun finished(lastPositionMs: Long, totalDurationMs: Long): Boolean =
+            lastPositionMs > 0 && totalDurationMs > 0 &&
+                lastPositionMs >= totalDurationMs * WATCHED_FRACTION
     }
 }
