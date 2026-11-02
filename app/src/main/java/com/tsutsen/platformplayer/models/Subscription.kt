@@ -7,7 +7,7 @@ import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.getNowDiffDays
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.serializers.OffsetDateTimeSerializer
-import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import java.time.OffsetDateTime
 
@@ -73,7 +73,7 @@ class Subscription {
     fun shouldFetchLiveStreams() = doFetchLive && (lastLiveStream.getNowDiffDays() < 14);
     fun shouldFetchPosts() = doFetchPosts && (lastPost.getNowDiffDays() < 5);
 
-    fun getClient() = StatePlatform.instance.getChannelClientOrNull(channel.url);
+    fun getClient() = EnabledClientResolver.channelClientForUrl(channel.url);
 
     fun save() {
         if(isOther)

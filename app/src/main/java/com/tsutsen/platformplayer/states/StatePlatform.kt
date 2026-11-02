@@ -279,17 +279,6 @@ class StatePlatform {
         };
     }
 
-    fun isClientEnabled(id: String): Boolean {
-        synchronized(_clientsLock) {
-            return _enabledClients.any { it.id == id };
-        }
-    }
-    fun isClientEnabled(client: IPlatformClient): Boolean {
-        synchronized (_clientsLock) {
-            return _enabledClients.contains(client);
-        }
-    }
-
     fun getAvailableClients(): List<IPlatformClient> {
         synchronized(_clientsLock) {
             return _availableClients.toList();
@@ -304,17 +293,8 @@ class StatePlatform {
     //TODO: getEnabledClients should already be ordered, remove after verify that that is the case
     fun getSortedEnabledClient(): List<IPlatformClient> {
         synchronized(_clientsLock) {
-            val enabledClients = _enabledClients;
-            val orderedSources = platformOrder.mapNotNull { order ->
-                enabledClients.firstOrNull { it.name == order }
-            }
-
-            val remainingSources = enabledClients.filter { it !in orderedSources }
-            return orderedSources + remainingSources;
+            return EnabledClientResolver.orderedClients(_enabledClients, platformOrder);
         }
-    }
-    fun getClientOrNullByUrl(url: String): IPlatformClient? {
-        return getChannelClientOrNull(url) ?: getPlaylistClientOrNull(url) ?: getContentClientOrNull(url);
     }
     fun getClientOrNull(id: String): IPlatformClient? {
         synchronized(_clientsLock) {
@@ -800,7 +780,6 @@ class StatePlatform {
 
 
     //Video
-    fun hasEnabledContentClient(url: String) : Boolean = getEnabledClients().any { _instantClientPool.getClientPooled(it).isContentDetailsUrl(url) };
     fun getContentClient(url: String) : IPlatformClient = getContentClientOrNull(url)
         ?: throw NoPlatformClientException("No client enabled that supports this content url (${url})");
     fun getContentClientOrNull(url: String) : IPlatformClient? = getEnabledClients().find { _instantClientPool.getClientPooled(it).isContentDetailsUrl(url) };
@@ -844,7 +823,6 @@ class StatePlatform {
         return client.getContentRecommendations(url);
     }
 
-    fun hasEnabledChannelClient(url : String) : Boolean = getEnabledClients().any { _instantClientPool.getClientPooled(it).isChannelUrl(url) };
     fun getChannelClient(url : String, exclude: List<String>? = null) : IPlatformClient = getChannelClientOrNull(url, exclude)
         ?: throw NoPlatformClientException("No client enabled that supports this channel url (${url})");
     fun getChannelClientOrNull(url : String, exclude: List<String>? = null) : IPlatformClient? =
@@ -1047,7 +1025,6 @@ class StatePlatform {
         return urls;
     }
 
-    fun hasEnabledPlaylistClient(url: String) : Boolean = getEnabledClients().any { _instantClientPool.getClientPooled(it).isPlaylistUrl(url) };
     fun getPlaylistClientOrNull(url: String): IPlatformClient? = getEnabledClients().find { _instantClientPool.getClientPooled(it).isPlaylistUrl(url) }
     fun getPlaylistClient(url: String): IPlatformClient = getEnabledClients().find { _instantClientPool.getClientPooled(it).isPlaylistUrl(url) }
         ?: throw NoPlatformClientException("No client enabled that supports this playlist url (${url})");

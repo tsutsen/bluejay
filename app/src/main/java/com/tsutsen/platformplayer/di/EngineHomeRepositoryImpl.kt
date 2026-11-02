@@ -16,6 +16,7 @@ import com.tsutsen.platformplayer.core.model.PostCard
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
@@ -148,7 +149,7 @@ class EngineHomeRepositoryImpl
                         StatePlatform.instance.getAvailableClients().find {
                             it.name.contains("Youtube", ignoreCase = true)
                         }
-                    if (youtubeClient != null && !StatePlatform.instance.isClientEnabled(youtubeClient)) {
+                    if (youtubeClient != null && !EnabledClientResolver.isClientEnabled(youtubeClient)) {
                         Logger.i("EngineHomeRepository", "Enabling YouTube by default")
                         StatePlatform.instance.enableClient(listOf(youtubeClient.id))
                     }
@@ -361,8 +362,8 @@ class EngineHomeRepositoryImpl
         /** Enabled clients → display info (id, name, icon url, login state). */
         private fun publishEnabledSources() {
             _enabledSources.value =
-                StatePlatform.instance
-                    .getEnabledClients()
+                EnabledClientResolver
+                    .enabledClients()
                     .map { client ->
                         val js = client as? JSClient
                         SourceInfo(

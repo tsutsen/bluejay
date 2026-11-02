@@ -8,6 +8,7 @@ import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.ChannelInfo
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import com.tsutsen.platformplayer.states.StateSubscriptions
@@ -36,8 +37,8 @@ class EngineChannelRepositoryImpl
             withContext(Dispatchers.IO) {
             val channel = StatePlatform.instance.getChannel(url).await()
             // Source badge only earns its place with >1 enabled source.
-            val client = StatePlatform.instance.getClientOrNullByUrl(url)
-            val multiSource = StatePlatform.instance.getEnabledClients().size > 1
+            val client = EnabledClientResolver.clientForUrl(url)
+            val multiSource = EnabledClientResolver.isMultiSourceEnabled()
             // Shorts tab: only if the plugin's channel capabilities include it
             // (YouTube does; most plugins don't implement the call at all).
             val hasShorts =
@@ -137,7 +138,7 @@ class EngineChannelRepositoryImpl
 
         private fun newContentFlow(url: String, type: String?): PagerFlow<IPlatformContent, Card> {
             val client =
-                StatePlatform.instance.getClientOrNullByUrl(url)
+                EnabledClientResolver.clientForUrl(url)
                     ?: throw IllegalStateException("No client found for channel url: $url")
             return PagerFlow(
                 StatePlatform.instance.getChannelContent(client, url, type),

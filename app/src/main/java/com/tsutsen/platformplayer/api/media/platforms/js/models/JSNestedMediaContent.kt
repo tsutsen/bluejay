@@ -7,7 +7,7 @@ import com.tsutsen.platformplayer.api.media.models.nested.IPlatformNestedContent
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.getOrDefault
 import com.tsutsen.platformplayer.getOrThrow
-import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 
 //TODO: Refactor into video-only
 class JSNestedMediaContent: IPlatformNestedContent, JSContent {
@@ -22,7 +22,7 @@ class JSNestedMediaContent: IPlatformNestedContent, JSContent {
     override val contentThumbnails: Thumbnails;
 
     override val contentPlugin: String?;
-    override val contentSupported: Boolean get() = contentPlugin != null && StatePlatform.instance.isClientEnabled(contentPlugin);
+    override val contentSupported: Boolean get() = contentPlugin != null && EnabledClientResolver.isClientEnabled(contentPlugin);
 
     constructor(config: SourcePluginConfig, obj: V8ValueObject): super(config, obj) {
         val contextName = "PlatformNestedContent";
@@ -34,6 +34,6 @@ class JSNestedMediaContent: IPlatformNestedContent, JSContent {
         this.contentThumbnails = obj.getOrDefault<V8ValueObject?>(config, "contentThumbnails", contextName, null)?.let {
             return@let Thumbnails.fromV8(config, it);
         } ?: Thumbnails();
-        this.contentPlugin = StatePlatform.instance.getContentClientOrNull(this.contentUrl)?.id;
+        this.contentPlugin = EnabledClientResolver.contentClientForUrl(this.contentUrl)?.id;
     }
 }

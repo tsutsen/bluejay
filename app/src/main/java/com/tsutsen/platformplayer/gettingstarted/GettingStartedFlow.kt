@@ -84,6 +84,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.feature.settings.impl.ControllerBindingPopup
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
@@ -135,7 +136,7 @@ fun GettingStartedFlow(
             }
             // Now that the plugins are loaded, fetch the currently enabled
             // ones and check them.
-            checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+            checkedSources = EnabledClientResolver.enabledClientIdSet()
         }
     }
 
@@ -173,7 +174,7 @@ fun GettingStartedFlow(
                 loginConfig = null
             } else {
                 selectedSourceUrl = null
-                checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+                checkedSources = EnabledClientResolver.enabledClientIdSet()
             }
         }
         // Step content: centered in a box (so it scrolls instead of
@@ -306,7 +307,7 @@ fun GettingStartedFlow(
                     selectedSourceUrl = null
                     // The detail scene can toggle the plugin's enable state —
                     // resync the flow's selection so "Next" doesn't clobber it.
-                    checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+                    checkedSources = EnabledClientResolver.enabledClientIdSet()
                 },
                 onLogin = { cfg -> loginConfig = cfg },
             )
@@ -324,8 +325,7 @@ fun GettingStartedFlow(
                     if (auth != null) {
                         StatePlugins.instance.setPluginAuth(cfg.id, auth)
                         // Logging in implies the source is wanted: enable it.
-                        val currentEnabled = StatePlatform.instance.getEnabledClients()
-                        if (!currentEnabled.any { it.id == cfg.id }) {
+                        if (!EnabledClientResolver.isClientEnabled(cfg.id)) {
                             StateApp.instance.scope.launch(Dispatchers.IO) {
                                 StatePlatform.instance.enableClient(listOf(cfg.id))
                             }
@@ -334,7 +334,7 @@ fun GettingStartedFlow(
                             StatePlatform.instance.reloadClient(StateApp.instance.context, cfg.id)
                         }
                     }
-                    checkedSources = StatePlatform.instance.getEnabledClients().map { it.id }.toSet()
+                    checkedSources = EnabledClientResolver.enabledClientIdSet()
                     loginConfig = null
                     selectedSourceUrl = null
                 },

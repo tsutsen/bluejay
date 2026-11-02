@@ -49,6 +49,7 @@ import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.downloads.VideoLocal
 import com.tsutsen.platformplayer.sabr.media3.SabrMediaSource
 import com.tsutsen.platformplayer.states.StateDownloads
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import java.io.File
@@ -328,7 +329,7 @@ class EngineVideoUrlResolver
          */
         private fun resolveSourceIcon(pluginId: String?): String? {
             if (pluginId.isNullOrEmpty()) return null
-            if (StatePlatform.instance.getEnabledClients().size <= 1) return null
+            if (!EnabledClientResolver.isMultiSourceEnabled()) return null
             return StatePlugins.instance.getPluginIconUriOrNull(pluginId)
         }
 

@@ -7,7 +7,7 @@ import com.tsutsen.platformplayer.api.media.models.Thumbnails
 import com.tsutsen.platformplayer.api.media.models.contents.ContentType
 import com.tsutsen.platformplayer.api.media.models.nested.IPlatformNestedContent
 import com.tsutsen.platformplayer.serializers.OffsetDateTimeNullableSerializer
-import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -31,7 +31,7 @@ open class SerializedPlatformNestedContent(
 ) : IPlatformNestedContent, SerializedPlatformContent {
     final override val contentType: ContentType = ContentType.NESTED_VIDEO;
 
-    override val contentPlugin: String? = StatePlatform.instance.getContentClientOrNull(contentUrl)?.id;
+    override val contentPlugin: String? = EnabledClientResolver.contentClientForUrl(contentUrl)?.id;
     override val contentSupported: Boolean get() = contentPlugin != null;
 
     override fun toJson() : String {

@@ -48,6 +48,7 @@ import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlaylists
@@ -122,11 +123,7 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
 
     fun loadPluginsAndEnabledState() {
         val clients = StatePlatform.instance.getAvailableClients()
-        val enabledIds =
-            StatePlatform.instance
-                .getEnabledClients()
-                .map { it.id }
-                .toSet()
+        val enabledIds = EnabledClientResolver.enabledClientIdSet()
         val installed = clients.filterIsInstance<JSClient>().map { it.config }
         installedPlugins.value = installed
         enabledClientIds.value = enabledIds
@@ -247,9 +244,8 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                                 } else {
                                     Logger.i(TAG, "Disabling ${plugin.name}")
                                     val newEnabled =
-                                        StatePlatform.instance
-                                            .getEnabledClients()
-                                            .map { it.id }
+                                        EnabledClientResolver
+                                            .enabledClientIds()
                                             .filter { it != plugin.id }
                                     StatePlatform.instance.selectClients(*newEnabled.toTypedArray())
                                 }
@@ -260,10 +256,7 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
                             // selectClients swallows per-client init failures, so sync
                             // from backend truth either way (reverts the switch on failure).
                             enabledClientIds.value =
-                                StatePlatform.instance
-                                    .getEnabledClients()
-                                    .map { it.id }
-                                    .toSet()
+                                EnabledClientResolver.enabledClientIdSet()
                             refreshKey++
                             UIDialogs.toast(
                                 context,
@@ -321,8 +314,7 @@ fun PluginDetailScene(
                     HashMap(StatePlugins.instance.getPlugin(installedConfig.id)?.settings ?: emptyMap())
 
                 // Check if this plugin is enabled
-                val enabledClients = StatePlatform.instance.getEnabledClients()
-                isEnabled = enabledClients.any { it.id == installedConfig.id }
+                isEnabled = EnabledClientResolver.isClientEnabled(installedConfig.id)
 
                 // Check if plugin has auth
                 val descriptor = StatePlugins.instance.getPlugin(installedConfig.id)
@@ -343,8 +335,7 @@ fun PluginDetailScene(
                     Logger.i(TAG, "Loaded config: ${loadedConfig.name}")
 
                     // Check if this plugin is enabled
-                    val enabledClients = StatePlatform.instance.getEnabledClients()
-                    isEnabled = enabledClients.any { it.id == loadedConfig.id }
+                    isEnabled = EnabledClientResolver.isClientEnabled(loadedConfig.id)
 
                     // Check if plugin has auth
                     val descriptor = StatePlugins.instance.getPlugin(loadedConfig.id)
@@ -559,8 +550,7 @@ fun PluginDetailScene(
                                                 StatePlugins.instance.setPluginAuth(config!!.id, auth)
                                                 Logger.i(TAG, "Auth saved successfully")
                                                 // Enable the plugin if not already enabled
-                                                val currentEnabled = StatePlatform.instance.getEnabledClients()
-                                                if (!currentEnabled.any { it.id == config!!.id }) {
+                                                if (!EnabledClientResolver.isClientEnabled(config!!.id)) {
                                                     Logger.i(TAG, "Enabling plugin ${config!!.name} after login")
                                                     StateApp.instance.scope.launch(Dispatchers.IO) {
                                                         StatePlatform.instance.enableClient(listOf(config!!.id))

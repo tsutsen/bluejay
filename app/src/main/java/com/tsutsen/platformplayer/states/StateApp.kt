@@ -763,7 +763,7 @@ class StateApp {
             withContext(Dispatchers.Main) {
                 val toNotify = mutableListOf<Pair<SourcePluginConfig, SourcePluginConfig>>();
                 for(update in updateAvailable) {
-                    if(!StatePlatform.instance.isClientEnabled(update.first.id))
+                    if(!EnabledClientResolver.isClientEnabled(update.first.id))
                         continue;
                     val descriptor = StatePlugins.instance.getPlugin(update.first.id);
                     if(descriptor?.appSettings?.automaticUpdate == true)
@@ -783,7 +783,7 @@ class StateApp {
         }
 
         scopeOrNull?.launch(Dispatchers.IO) {
-            val enabledPlugins = StatePlatform.instance.getEnabledClients();
+            val enabledPlugins = EnabledClientResolver.enabledClients();
             for(plugin in enabledPlugins) {
                 try {
                     if(plugin is JSClient) {

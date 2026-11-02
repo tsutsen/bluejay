@@ -111,7 +111,7 @@ class StatePlugins {
         // Only ENABLED plugins: updating a disabled plugin wastes network
         // and tears down/installs a runtime nobody is using. Disabled
         // plugins get checked when they are enabled (PluginBrowserScene).
-        for (availableClient in StatePlatform.instance.getEnabledClients().filter { it is JSClient && it.descriptor.appSettings.checkForUpdates }) {
+        for (availableClient in EnabledClientResolver.enabledClients().filter { it is JSClient && it.descriptor.appSettings.checkForUpdates }) {
             if (availableClient !is JSClient) {
                 continue
             }

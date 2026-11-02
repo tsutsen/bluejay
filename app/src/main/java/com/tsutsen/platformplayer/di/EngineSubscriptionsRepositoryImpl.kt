@@ -13,6 +13,7 @@ import com.tsutsen.platformplayer.core.model.SubscriptionCreator
 import com.tsutsen.platformplayer.core.model.SubscriptionFeed
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Subscription
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import com.tsutsen.platformplayer.stores.FragmentedStorage
@@ -270,7 +271,7 @@ class EngineSubscriptionsRepositoryImpl
                     )
                 } else {
                     val client =
-                        StatePlatform.instance.getClientOrNullByUrl(creatorId)
+                        EnabledClientResolver.clientForUrl(creatorId)
                             ?: throw IllegalStateException("No client found for channel $creatorId")
                     StatePlatform.instance.getChannelContent(client, creatorId)
                 }

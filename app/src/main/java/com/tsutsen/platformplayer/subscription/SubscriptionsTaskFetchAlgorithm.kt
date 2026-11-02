@@ -24,6 +24,7 @@ import com.tsutsen.platformplayer.findNonRuntimeException
 import com.tsutsen.platformplayer.getNowDiffMiliseconds
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Subscription
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateCache
 import com.tsutsen.platformplayer.states.StatePlatform
@@ -254,7 +255,7 @@ abstract class SubscriptionsTaskFetchAlgorithm(
         val pager = MultiChronoContentPager(groupedPagers, allowFailure, 15);
         pager.initialize();
 
-        return Result(DedupContentPager(pager, StatePlatform.instance.getEnabledClients().map { it.id }), exs);
+        return Result(DedupContentPager(pager, EnabledClientResolver.enabledClientIds()), exs);
     }
 
     fun executeSubscriptionTasks(tasks: List<SubscriptionTask>, failedPlugins: MutableList<String>, cachedChannels: MutableList<String>): List<ForkJoinTask<SubscriptionTaskResult>> {

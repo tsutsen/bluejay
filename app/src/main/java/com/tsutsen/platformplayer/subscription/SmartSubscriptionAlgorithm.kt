@@ -7,7 +7,7 @@ import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.getNowDiffHours
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Subscription
-import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import kotlinx.coroutines.CoroutineScope
 import java.time.OffsetDateTime
 import java.util.concurrent.ForkJoinPool
@@ -23,7 +23,7 @@ class SmartSubscriptionAlgorithm(
         val allTasks: List<SubscriptionTask> = subs.flatMap { entry ->
             val sub = entry.key;
             //Get all urls associated with this subscriptions
-            val allPlatforms = entry.value.associateWith { StatePlatform.instance.getChannelClientOrNull(it) }
+            val allPlatforms = entry.value.associateWith { EnabledClientResolver.channelClientForUrl(it) }
                 .filterValues { it is JSClient };
 
             //For every platform, get all sub-queries associated with that platform

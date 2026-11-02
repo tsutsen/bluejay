@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.data.repository.PlaylistRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistInfo
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StatePlatform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -71,6 +72,6 @@ class EnginePlaylistRepositoryImpl
             )
 
         private fun clientFor(url: String) =
-            StatePlatform.instance.getClientOrNullByUrl(url)
+            EnabledClientResolver.clientForUrl(url)
                 ?: throw IllegalStateException("No client found for playlist url: $url")
     }

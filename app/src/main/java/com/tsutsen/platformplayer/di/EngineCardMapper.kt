@@ -20,7 +20,7 @@ import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PostCard
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
-import com.tsutsen.platformplayer.states.StatePlatform
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StatePlugins
 import java.time.OffsetDateTime
 
@@ -284,7 +284,7 @@ object EngineCardMapper {
      */
     private fun sourceIcon(pluginId: String?): String? {
         if (pluginId.isNullOrEmpty()) return null
-        if (StatePlatform.instance.getEnabledClients().size <= 1) return null
+        if (!EnabledClientResolver.isMultiSourceEnabled()) return null
         return StatePlugins.instance.getPluginIconUriOrNull(pluginId)
     }
 }

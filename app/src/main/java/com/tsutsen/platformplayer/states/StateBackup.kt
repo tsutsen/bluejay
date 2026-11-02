@@ -407,7 +407,7 @@ class StateBackup {
                     Logger.i(TAG, "Starting import");
                     if (!doImport)
                         return@multiShowDialog;
-                    val enabledBefore = StatePlatform.instance.getEnabledClients().map { it.id };
+                    val enabledBefore = EnabledClientResolver.enabledClientIds();
 
                     val onConclusion = {
                         scope.launch(Dispatchers.IO) {
@@ -436,7 +436,7 @@ class StateBackup {
                             val afterPluginInstalls = {
                                 scope.launch(Dispatchers.IO) {
                                     if (doEnablePlugins) {
-                                        val availableClients = StatePlatform.instance.getEnabledClients().toMutableList();
+                                        val availableClients = EnabledClientResolver.enabledClients().toMutableList();
                                         availableClients.addAll(StatePlatform.instance.getAvailableClients().filter { !availableClients.contains(it) });
                                         Logger.i(TAG, "Import enabling plugins [${availableClients.map { it.name }.joinToString(", ")}]");
                                         StatePlatform.instance.updateAvailableClients(context, false);

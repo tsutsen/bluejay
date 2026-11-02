@@ -41,7 +41,7 @@ class StateCache {
         val pagers = MultiChronoContentPager(channelUrls.map { _subscriptionCache.queryPager(DBSubscriptionCache.Index::channelUrl, it, pageSize) {
             it.obj;
         } }, false, pageSize);
-        return DedupContentPager(pagers, StatePlatform.instance.getEnabledClients().map { it.id });
+        return DedupContentPager(pagers, EnabledClientResolver.enabledClientIds());
     }
     fun getSubscriptionCachePager(): DedupContentPager {
         Logger.i(TAG, "Subscriptions CachePager get subscriptions");
@@ -50,7 +50,7 @@ class StateCache {
         val allUrls = subs
             .map { it.channel.url }
             .distinct()
-            .filter { StatePlatform.instance.hasEnabledChannelClient(it) };
+            .filter { EnabledClientResolver.hasChannelClientForUrl(it) };
 
         Logger.i(TAG, "Subscriptions CachePager get pagers");
         val pagers: List<IPager<IPlatformContent>>;
@@ -75,7 +75,7 @@ class StateCache {
         val pager = MultiChronoContentPager(pagers, false, 20);
         pager.initialize();
         Logger.i(TAG, "Subscriptions CachePager compiled");
-        return DedupContentPager(pager, StatePlatform.instance.getEnabledClients().map { it.id });
+        return DedupContentPager(pager, EnabledClientResolver.enabledClientIds());
     }
 
 

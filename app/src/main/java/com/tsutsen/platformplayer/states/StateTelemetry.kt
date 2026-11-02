@@ -40,7 +40,7 @@ class StateTelemetry {
                     Build.MANUFACTURER,
                     Build.MODEL,
                     Build.VERSION.SDK_INT,
-                    StatePlatform.instance.getEnabledClients().map { it.id }.toList()
+                    EnabledClientResolver.enabledClientIds()
                 );
 
                 val headers = hashMapOf(

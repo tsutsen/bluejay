@@ -8,6 +8,7 @@ import com.tsutsen.platformplayer.core.model.SearchSort
 import com.tsutsen.platformplayer.core.model.SearchType
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.Dispatchers
@@ -50,8 +51,8 @@ class EngineSearchRepositoryImpl
 
         private fun publishEnabledSources() {
             _enabledSources.value =
-                StatePlatform.instance
-                    .getEnabledClients()
+                EnabledClientResolver
+                    .enabledClients()
                     .map { SourceInfo(it.id, it.name, StatePlugins.instance.getPluginIconUriOrNull(it.id)) }
                     .sortedBy { it.name.lowercase() }
         }
