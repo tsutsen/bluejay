@@ -1,16 +1,19 @@
 package com.tsutsen.platformplayer.feature.player.impl.gesture
 
+import com.tsutsen.platformplayer.core.model.GestureAction
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 import com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode
 
 /**
- * Player-side effects a gesture can trigger. The pipeline owns recognition
- * and action dispatch; this port is everything it reaches out to (playback,
- * brightness/volume, morph animations).
+ * Pure playback vocabulary a gesture drives: seek/position/duration/play
+ * state/speed, the drag-normalising screen height, and the brightness/volume
+ * levels the handler applies. This is the narrow port
+ * [PlayerGestureActionHandler] unit tests fake; mode transitions and morph
+ * drags live in [LayoutEffects].
  */
-interface GestureEffects {
+interface PlaybackEffects {
     fun seekBy(deltaMs: Long)
 
     fun seekTo(positionMs: Long)
@@ -45,34 +48,45 @@ interface GestureEffects {
     fun volume(): Float
 
     fun setVolume(level: Float)
+}
 
-    fun minimize()
+/**
+ * Layout side of the port: player-mode transitions and the morph /
+ * fullscreen / shrink drag callbacks the surface animates. Every member
+ * defaults to a no-op so tests can ignore layout without a recording
+ * fake; the production adapter overrides everything.
+ */
+interface LayoutEffects {
+    fun minimize() {}
 
-    fun toggleFullscreen()
+    fun toggleFullscreen() {}
 
-    fun exitFullscreen()
+    fun exitFullscreen() {}
 
-    fun enterPip()
+    fun enterPip() {}
 
     // Morph drag callbacks — the surface owns the animations.
-    fun morphDragStart()
+    fun morphDragStart() {}
 
-    fun morphDrag(dragY: Float)
+    fun morphDrag(dragY: Float) {}
 
-    fun morphDragEnd(dragY: Float, velocityPxPerMs: Float)
+    fun morphDragEnd(dragY: Float, velocityPxPerMs: Float) {}
 
-    fun fullscreenDragStart()
+    fun fullscreenDragStart() {}
 
-    fun fullscreenDrag(dragY: Float)
+    fun fullscreenDrag(dragY: Float) {}
 
-    fun fullscreenDragEnd(dragY: Float, velocityPxPerMs: Float)
+    fun fullscreenDragEnd(dragY: Float, velocityPxPerMs: Float) {}
 
-    fun shrinkDragStart()
+    fun shrinkDragStart() {}
 
-    fun shrinkDrag(dragY: Float)
+    fun shrinkDrag(dragY: Float) {}
 
-    fun shrinkDragEnd(dragY: Float, velocityPxPerMs: Float)
+    fun shrinkDragEnd(dragY: Float, velocityPxPerMs: Float) {}
 }
+
+/** The full port the pipeline dispatches to: playback + layout. */
+interface GestureEffects : PlaybackEffects, LayoutEffects
 
 /**
  * Deep gesture seam: builds the sector configs from the user's preferences,
@@ -125,7 +139,7 @@ class DefaultGesturePipeline(
     effects: GestureEffects,
 ) : GesturePipeline {
     private val recognizer = PlayerGestureRecognizer()
-    private val actions = PlayerGestureActionHandler(effects)
+    private val actions = PlayerGestureActionHandler(effects, effects)
 
     override fun configs(prefs: PlayerGesturePreferences): GestureConfigs = buildGestureConfigs(prefs)
 
@@ -235,7 +249,7 @@ private fun buildModeConfig(
     mode: String,
     slotFor: Map<GestureSector, String>,
 ): GestureConfig {
-    val slotMaps: Map<String, Map<String, String>> =
+    val slotMaps: Map<String, Map<String, GestureAction>> =
         mapOf(
             "top" to slotSet.top,
             "bottomLeft" to slotSet.bottomLeft,
@@ -249,35 +263,14 @@ private fun buildModeConfig(
             sector to
                 GestureSlotConfig(
                     swipeVertical =
-                        PlayerGestures.resolve(mode, slot, "swipe_v", map).toEngineAction(),
+                        PlayerGestures.resolve(mode, slot, "swipe_v", map),
                     swipeHorizontal =
-                        PlayerGestures.resolve(mode, slot, "swipe_h", map).toEngineAction(),
+                        PlayerGestures.resolve(mode, slot, "swipe_h", map),
                     doubleTap =
-                        PlayerGestures.resolve(mode, slot, "double_tap", map).toEngineAction(),
+                        PlayerGestures.resolve(mode, slot, "double_tap", map),
                     hold =
-                        PlayerGestures.resolve(mode, slot, "hold", map).toEngineAction(),
+                        PlayerGestures.resolve(mode, slot, "hold", map),
                 )
         },
     )
 }
-
-/** Flat action id → engine [GestureAction] (unknown/empty → NONE). */
-internal fun String?.toEngineAction(): GestureAction =
-    when (this) {
-        PlayerGestures.NONE, null -> GestureAction.NONE
-        PlayerGestures.VOLUME -> GestureAction.VOLUME
-        PlayerGestures.BRIGHTNESS -> GestureAction.BRIGHTNESS
-        PlayerGestures.SPEEDUP -> GestureAction.SPEEDUP
-        PlayerGestures.SPEEDDOWN -> GestureAction.SPEEDDOWN
-        PlayerGestures.REWIND_BACK -> GestureAction.REWIND_BACK
-        PlayerGestures.REWIND_FORWARD -> GestureAction.REWIND_FORWARD
-        PlayerGestures.CONTEXT_MENU -> GestureAction.CONTEXT_MENU
-        PlayerGestures.MORPH_TO_FLOATING -> GestureAction.MORPH_TO_FLOATING
-        PlayerGestures.MORPH_TO_FULLSCREEN -> GestureAction.MORPH_TO_FULLSCREEN
-        PlayerGestures.MORPH_TO_NORMAL -> GestureAction.MORPH_TO_NORMAL
-        PlayerGestures.MORPH_VERTICAL -> GestureAction.MORPH_VERTICAL
-        PlayerGestures.SEEK_HOLD -> GestureAction.SEEK_HOLD
-        PlayerGestures.PLAY_PAUSE -> GestureAction.PLAY_PAUSE
-        PlayerGestures.PIP -> GestureAction.PIP
-        else -> GestureAction.NONE
-    }

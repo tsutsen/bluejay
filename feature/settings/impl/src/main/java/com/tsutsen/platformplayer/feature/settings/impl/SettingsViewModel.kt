@@ -8,6 +8,7 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.UpdateCheckState
 import com.tsutsen.platformplayer.core.data.repository.UpdateRepository
 import com.tsutsen.platformplayer.core.datastore.model.*
+import com.tsutsen.platformplayer.core.model.GestureAction
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -276,7 +277,7 @@ class SettingsViewModel
             mode: String,
             slot: String,
             type: String,
-            action: String,
+            action: GestureAction,
         ) {
             viewModelScope.launch {
                 val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
@@ -302,7 +303,7 @@ class SettingsViewModel
 
         private fun PlayerGestureSlotSet.updated(
             slot: String,
-            map: Map<String, String>,
+            map: Map<String, GestureAction>,
         ): PlayerGestureSlotSet =
             copy(
                 top = if (slot == "top") map else top,

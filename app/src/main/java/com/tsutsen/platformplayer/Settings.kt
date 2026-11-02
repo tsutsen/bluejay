@@ -132,7 +132,9 @@ class Settings {
 
     // Player gesture assignments per player mode and surface slot
     // (see PlayerGesturePreferences). Each map: gesture type
-    // ("swipe_v"|"swipe_h"|"double_tap"|"hold") → action id.
+    // ("swipe_v"|"swipe_h"|"double_tap"|"hold") → GestureAction name
+    // (older installs may still carry the legacy flat action ids —
+    // SettingsRepository migrates them on read).
     // Empty = shipped defaults for that slot.
     var playerGestures: PlayerGesturePreferences = PlayerGesturePreferences()
 

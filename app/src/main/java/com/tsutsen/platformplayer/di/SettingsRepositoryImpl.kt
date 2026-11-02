@@ -12,6 +12,7 @@ import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
 import com.tsutsen.platformplayer.core.datastore.model.SubtitlePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
+import com.tsutsen.platformplayer.core.model.GestureAction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -80,17 +81,17 @@ class SettingsRepositoryImpl
                     PlayerGesturePreferences(
                         fullscreen =
                             PlayerGestureSlotSet(
-                                top = s.playerGestures.fullscreen.top,
-                                bottomLeft = s.playerGestures.fullscreen.bottomLeft,
-                                bottomCenter = s.playerGestures.fullscreen.bottomCenter,
-                                bottomRight = s.playerGestures.fullscreen.bottomRight,
+                                top = s.playerGestures.fullscreen.top.mapValues { GestureAction.fromPersisted(it.value) },
+                                bottomLeft = s.playerGestures.fullscreen.bottomLeft.mapValues { GestureAction.fromPersisted(it.value) },
+                                bottomCenter = s.playerGestures.fullscreen.bottomCenter.mapValues { GestureAction.fromPersisted(it.value) },
+                                bottomRight = s.playerGestures.fullscreen.bottomRight.mapValues { GestureAction.fromPersisted(it.value) },
                             ),
                         normal =
                             PlayerGestureSlotSet(
-                                top = s.playerGestures.normal.top,
-                                bottomLeft = s.playerGestures.normal.bottomLeft,
-                                bottomCenter = s.playerGestures.normal.bottomCenter,
-                                bottomRight = s.playerGestures.normal.bottomRight,
+                                top = s.playerGestures.normal.top.mapValues { GestureAction.fromPersisted(it.value) },
+                                bottomLeft = s.playerGestures.normal.bottomLeft.mapValues { GestureAction.fromPersisted(it.value) },
+                                bottomCenter = s.playerGestures.normal.bottomCenter.mapValues { GestureAction.fromPersisted(it.value) },
+                                bottomRight = s.playerGestures.normal.bottomRight.mapValues { GestureAction.fromPersisted(it.value) },
                             ),
                     ),
                 defaultVideoResolution = s.content.defaultVideoResolution,
@@ -383,17 +384,17 @@ class SettingsRepositoryImpl
                 Settings.PlayerGesturePreferences(
                     fullscreen =
                         Settings.PlayerGestureSlotSet(
-                            top = fullscreen.top,
-                            bottomLeft = fullscreen.bottomLeft,
-                            bottomCenter = fullscreen.bottomCenter,
-                            bottomRight = fullscreen.bottomRight,
+                            top = fullscreen.top.mapValues { it.value.name },
+                            bottomLeft = fullscreen.bottomLeft.mapValues { it.value.name },
+                            bottomCenter = fullscreen.bottomCenter.mapValues { it.value.name },
+                            bottomRight = fullscreen.bottomRight.mapValues { it.value.name },
                         ),
                     normal =
                         Settings.PlayerGestureSlotSet(
-                            top = normal.top,
-                            bottomLeft = normal.bottomLeft,
-                            bottomCenter = normal.bottomCenter,
-                            bottomRight = normal.bottomRight,
+                            top = normal.top.mapValues { it.value.name },
+                            bottomLeft = normal.bottomLeft.mapValues { it.value.name },
+                            bottomCenter = normal.bottomCenter.mapValues { it.value.name },
+                            bottomRight = normal.bottomRight.mapValues { it.value.name },
                         ),
                 )
             s.save()

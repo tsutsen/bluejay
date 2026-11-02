@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.player.impl.gesture
 
 import androidx.compose.ui.geometry.Offset
+import com.tsutsen.platformplayer.core.model.GestureAction
 
 /**
  * 9 equal rectangular sectors forming a 3×3 grid over the player surface.
@@ -33,49 +34,6 @@ enum class GestureType {
     SWIPE_HORIZONTAL,
     DOUBLE_TAP,
     HOLD
-}
-
-/**
- * Preset actions a gesture slot can hold.
- *
- * Swipe actions — strength driven by [GestureFrame.instantDelta] each frame.
- * Hold actions  — base effect on START, modulated by [GestureFrame.totalDelta]
- *                while finger drifts, restored on END.
- * Instant actions — fired once on [GestureFrame.Phase.START] (double-tap).
- */
-enum class GestureAction {
-    // No-op
-    NONE,
-
-    // Swipe (continuous)
-    VOLUME,
-    BRIGHTNESS,
-
-    // Hold (base + optional swipe modulation)
-    SPEEDUP,
-    SPEEDDOWN,
-
-    // Hold: pause + horizontal scrub, commit seek on release.
-    SEEK_HOLD,
-
-    // Instant (double-tap)
-    REWIND_FORWARD,
-    REWIND_BACK,
-    CONTEXT_MENU,
-    PLAY_PAUSE,
-    PIP,
-
-    // Morph transitions (swipe or instant depending on config)
-    MORPH_TO_FLOATING,
-    MORPH_TO_FULLSCREEN,
-
-    // Fullscreen only: shrink the surface back toward normal size
-    // (downward v-swipe, commit crosses the normal layout).
-    MORPH_TO_NORMAL,
-
-    // Direction-aware vertical morph: swipe up → FULLSCREEN, swipe down → FLOATING.
-    // Direction is resolved from the sign of GestureFrame.totalDelta.y in the handler.
-    MORPH_VERTICAL
 }
 
 /**

@@ -2,7 +2,7 @@ package com.tsutsen.platformplayer.feature.player.impl.gesture
 
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
-import com.tsutsen.platformplayer.core.model.PlayerGestures
+import com.tsutsen.platformplayer.core.model.GestureAction
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -18,7 +18,7 @@ class GestureSettingsBridgeTest {
             PlayerGesturePreferences(
                 fullscreen =
                     PlayerGestureSlotSet(
-                        top = mapOf("swipe_v" to PlayerGestures.VOLUME),
+                        top = mapOf("swipe_v" to GestureAction.VOLUME),
                     ),
             )
         val configs = buildGestureConfigs(prefs)
@@ -49,7 +49,7 @@ class GestureSettingsBridgeTest {
             PlayerGesturePreferences(
                 fullscreen =
                     PlayerGestureSlotSet(
-                        bottomRight = mapOf("double_tap" to PlayerGestures.MORPH_TO_FLOATING),
+                        bottomRight = mapOf("double_tap" to GestureAction.MORPH_TO_FLOATING),
                     ),
             )
         val configs = buildGestureConfigs(prefs)
@@ -92,9 +92,17 @@ class GestureSettingsBridgeTest {
     }
 
     @Test
-    fun unknownActionMapsToNone() {
-        assertEquals(GestureAction.NONE, "garbage".toEngineAction())
-        assertEquals(GestureAction.NONE, null.toEngineAction())
-        assertEquals(GestureAction.MORPH_TO_NORMAL, PlayerGestures.MORPH_TO_NORMAL.toEngineAction())
+    fun persistedActionValuesMapToEngineActions() {
+        // Current persistence format: the enum name.
+        assertEquals(GestureAction.MORPH_TO_NORMAL, GestureAction.fromPersisted("MORPH_TO_NORMAL"))
+        // Read migration: legacy flat ids (pre-consolidation persistence) —
+        // users keep their saved mappings.
+        assertEquals(GestureAction.MORPH_TO_NORMAL, GestureAction.fromPersisted("morph_normal"))
+        assertEquals(GestureAction.MORPH_TO_FLOATING, GestureAction.fromPersisted("morph_floating"))
+        assertEquals(GestureAction.SEEK_HOLD, GestureAction.fromPersisted("seek_hold"))
+        // Unknown / null / empty → NONE (same rule the old id layer used).
+        assertEquals(GestureAction.NONE, GestureAction.fromPersisted("garbage"))
+        assertEquals(GestureAction.NONE, GestureAction.fromPersisted(null))
+        assertEquals(GestureAction.NONE, GestureAction.fromPersisted(""))
     }
 }

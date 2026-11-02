@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl.gesture
 
+import com.tsutsen.platformplayer.core.model.GestureAction
 import com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

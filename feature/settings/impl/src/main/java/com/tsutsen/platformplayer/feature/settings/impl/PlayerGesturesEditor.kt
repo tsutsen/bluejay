@@ -38,6 +38,7 @@ import com.tsutsen.platformplayer.core.designsystem.icon.TouchDouble
 import com.tsutsen.platformplayer.core.designsystem.icon.TouchLong
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.model.GestureAction
 import com.tsutsen.platformplayer.core.model.PlayerGestures
 
 // The editor mimics a video player: pure black cards with flat tiles
@@ -73,7 +74,7 @@ internal fun PlayerGesturesEditor(
     onCellChange: (
         slot: String,
         type: String,
-        action: String,
+        action: GestureAction,
     ) -> Unit,
 ) {
     // (slot, type) of the cell being picked; null = no popup.
@@ -156,20 +157,21 @@ internal fun PlayerGesturesEditor(
         PlayerHintBar(shape = RoundedCornerShape(inner, inner, outer, outer))
     }
 
-    // The single popup: action list for the selected cell.
+    // The single popup: action list for the selected cell. The dialog is
+    // label-keyed; the action travels as its persisted [GestureAction.name].
     picking?.let { (slot, type) ->
         val options =
-            PlayerGestures.optionsFor(mode, type).map { id ->
-                PlayerGestures.DISPLAY_NAMES[id].orEmpty() to id
+            PlayerGestures.optionsFor(mode, type).map { action ->
+                action.displayName to action.name
             }
         ChoiceDialog(
             title =
                 "${PlayerGestures.SLOT_LABELS[slot].orEmpty()} — " +
                     "${PlayerGestures.TYPE_LABELS[type].orEmpty()}",
             options = options,
-            selected = PlayerGestures.resolve(mode, slot, type, slotSet[slot]),
-            onSelected = { action ->
-                onCellChange(slot, type, action)
+            selected = PlayerGestures.resolve(mode, slot, type, slotSet[slot]).name,
+            onSelected = { name ->
+                onCellChange(slot, type, GestureAction.valueOf(name))
                 picking = null
             },
             onDismiss = { picking = null },
@@ -177,7 +179,7 @@ internal fun PlayerGesturesEditor(
     }
 }
 
-private operator fun PlayerGestureSlotSet.get(slot: String): Map<String, String> =
+private operator fun PlayerGestureSlotSet.get(slot: String): Map<String, GestureAction> =
     when (slot) {
         "top" -> top
         "bottomLeft" -> bottomLeft
@@ -208,11 +210,11 @@ private fun GesturePanel(
 @Composable
 private fun GestureTile(
     type: String,
-    action: String,
+    action: GestureAction,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val isAssigned = action != PlayerGestures.NONE
+    val isAssigned = action != GestureAction.NONE
     Column(
         modifier =
             modifier
@@ -233,7 +235,7 @@ private fun GestureTile(
         }
         Spacer(modifier = Modifier.height(Tokens.SpaceXs))
         Text(
-            text = PlayerGestures.DISPLAY_NAMES[action].orEmpty(),
+            text = action.displayName,
             style = MaterialTheme.typography.labelSmall,
             color = if (isAssigned) TextBright else TextDim,
             textAlign = TextAlign.Center,

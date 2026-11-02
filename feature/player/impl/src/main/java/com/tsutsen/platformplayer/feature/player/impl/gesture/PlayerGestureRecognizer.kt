@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl.gesture
 
+import com.tsutsen.platformplayer.core.model.GestureAction
 import androidx.compose.ui.geometry.Offset
 import com.tsutsen.platformplayer.feature.player.impl.PlayerOverlayMode
 import kotlin.math.abs

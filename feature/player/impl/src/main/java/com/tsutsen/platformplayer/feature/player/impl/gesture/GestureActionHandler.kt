@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl.gesture
 
+import com.tsutsen.platformplayer.core.model.GestureAction
 import com.tsutsen.platformplayer.feature.player.impl.PlayerEvent
 import com.tsutsen.platformplayer.feature.player.impl.PlayerEventBus
 import kotlinx.coroutines.CoroutineScope
@@ -16,12 +17,13 @@ import kotlin.math.abs
  * Instant actions (double-tap) receive a single [InstantActionEvent].
  *
  * Action feedback (badges) is not handled here: the actions flow through
- * [PlayerEventBus] (the seek/speed calls go via [GestureEffects], brightness
+ * [PlayerEventBus] (the seek/speed calls go via [PlaybackEffects], brightness
  * and volume are emitted directly), so badges show for every origin, not
  * just gestures.
  */
 internal class PlayerGestureActionHandler(
-    private val effects: GestureEffects,
+    private val playback: PlaybackEffects,
+    private val layout: LayoutEffects,
 ) {
 
     // --- brightness state (device-wide via SystemControls, window-local fallback) ---
@@ -86,7 +88,7 @@ internal class PlayerGestureActionHandler(
             GestureAction.BRIGHTNESS -> handleBrightness(frame)
             GestureAction.VOLUME -> handleVolume(frame)
             GestureAction.SPEEDUP ->
-                handleSpeedHold(frame, baseMultiplier = effects.defaultSpeedup())
+                handleSpeedHold(frame, baseMultiplier = playback.defaultSpeedup())
             GestureAction.SPEEDDOWN -> handleSpeedHold(frame, baseMultiplier = 0.5f)
             GestureAction.SEEK_HOLD -> handleHoldSeek(frame)
             GestureAction.MORPH_TO_FLOATING -> handleMorphToFloating(frame)
@@ -108,14 +110,14 @@ internal class PlayerGestureActionHandler(
         when (event.action) {
             GestureAction.REWIND_BACK,
             GestureAction.REWIND_FORWARD -> handleAccumulatedSeek(event.action)
-            GestureAction.MORPH_TO_FLOATING -> effects.minimize()
-            GestureAction.MORPH_TO_FULLSCREEN -> effects.toggleFullscreen()
-            GestureAction.MORPH_TO_NORMAL -> effects.exitFullscreen()
+            GestureAction.MORPH_TO_FLOATING -> layout.minimize()
+            GestureAction.MORPH_TO_FULLSCREEN -> layout.toggleFullscreen()
+            GestureAction.MORPH_TO_NORMAL -> layout.exitFullscreen()
             GestureAction.CONTEXT_MENU -> {} // stub
             GestureAction.PLAY_PAUSE -> {
-                if (effects.isPlaying()) effects.pause() else effects.resume()
+                if (playback.isPlaying()) playback.pause() else playback.resume()
             }
-            GestureAction.PIP -> effects.enterPip()
+            GestureAction.PIP -> layout.enterPip()
             else -> {}
         }
     }
@@ -126,22 +128,22 @@ internal class PlayerGestureActionHandler(
      * events on the bus, not here — so seeks from any origin badge identically.
      */
     private fun handleAccumulatedSeek(action: GestureAction) {
-        effects.seekBy(if (action == GestureAction.REWIND_BACK) -effects.jumpStepMs() else effects.jumpStepMs())
+        playback.seekBy(if (action == GestureAction.REWIND_BACK) -playback.jumpStepMs() else playback.jumpStepMs())
     }
 
     // ---- Brightness (swipe vertical, continuous) ----
     private fun handleBrightness(frame: GestureFrame) {
         when (frame.phase) {
             GesturePhase.START -> {
-                currentBrightness = effects.brightness()
+                currentBrightness = playback.brightness()
             }
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (brighter), positive = down (darker)
-                val delta = -frame.instantDelta.y / effects.screenHeightPx()
+                val delta = -frame.instantDelta.y / playback.screenHeightPx()
                 currentBrightness = (currentBrightness + delta).coerceIn(0f, 1f)
                 // All screens: device-wide when granted, plus this window
                 // (the companion window follows through SystemControls.brightness).
-                effects.applyBrightness(currentBrightness)
+                playback.applyBrightness(currentBrightness)
                 PlayerEventBus.emit(PlayerEvent.BrightnessChanged(currentBrightness))
             }
             GesturePhase.END -> {
@@ -154,13 +156,13 @@ internal class PlayerGestureActionHandler(
     private fun handleVolume(frame: GestureFrame) {
         when (frame.phase) {
             GesturePhase.START -> {
-                currentVolume = effects.volume()
+                currentVolume = playback.volume()
             }
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (louder), positive = down (quieter)
-                val delta = -frame.instantDelta.y / effects.screenHeightPx()
+                val delta = -frame.instantDelta.y / playback.screenHeightPx()
                 currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
-                effects.setVolume(currentVolume)
+                playback.setVolume(currentVolume)
                 PlayerEventBus.emit(PlayerEvent.VolumeChanged(currentVolume))
             }
             GesturePhase.END -> {
@@ -193,10 +195,10 @@ internal class PlayerGestureActionHandler(
         // speed buttons): holding at 2x goes to 4x, not to a fixed 2x.
         when (frame.phase) {
             GesturePhase.START -> {
-                originalSpeed = effects.playbackSpeed()
+                originalSpeed = playback.playbackSpeed()
                 val base = (originalSpeed * baseMultiplier).coerceIn(0.25f, 4f)
                 lastSpeedHoldReported = base
-                effects.setPlaybackSpeed(base)
+                playback.setPlaybackSpeed(base)
                 // Start keep-alive coroutine — re-emits the *current* speed periodically so
                 // the badge stays visible during still holds. Re-emitting the base here would
                 // snap the badge back to x2 while the finger is held after a movement step.
@@ -220,19 +222,19 @@ internal class PlayerGestureActionHandler(
                 val dx = frame.totalDelta.x
                 val steps =
                     if (abs(dx) < SPEED_HOLD_DEADZONE_PX) 0
-                    else (dx / (SPEED_SWIPE_STEP_PX / effects.speedupSensitivity())).toInt()
+                    else (dx / (SPEED_SWIPE_STEP_PX / playback.speedupSensitivity())).toInt()
                 val speed = (base + steps * SPEED_STEP).coerceIn(0.25f, 4f)
                 // Round to nearest 0.1 to avoid floating-point drift
                 val snapped = (speed * 10).toInt() / 10f
                 if (snapped != lastSpeedHoldReported) {
                     lastSpeedHoldReported = snapped
-                    effects.setPlaybackSpeed(snapped)
+                    playback.setPlaybackSpeed(snapped)
                 }
             }
             GesturePhase.END -> {
                 speedHoldJob?.cancel()
                 speedHoldJob = null
-                effects.setPlaybackSpeed(originalSpeed)
+                playback.setPlaybackSpeed(originalSpeed)
             }
         }
     }
@@ -241,13 +243,13 @@ internal class PlayerGestureActionHandler(
     private fun handleHoldSeek(frame: GestureFrame) {
         when (frame.phase) {
             GesturePhase.START -> {
-                val durationMs = effects.durationMs()
+                val durationMs = playback.durationMs()
                 if (durationMs <= 0) return
-                holdSeekWasPlaying = effects.isPlaying()
+                holdSeekWasPlaying = playback.isPlaying()
                 holdSeekDurationMs = durationMs
-                holdSeekStartMs = effects.positionMs()
+                holdSeekStartMs = playback.positionMs()
                 holdSeekTargetMs = holdSeekStartMs
-                if (holdSeekWasPlaying) effects.pause()
+                if (holdSeekWasPlaying) playback.pause()
             }
             GesturePhase.ACTIVE -> {
                 val dx = frame.totalDelta.x
@@ -259,12 +261,12 @@ internal class PlayerGestureActionHandler(
                 }
             }
             GesturePhase.END -> {
-                effects.seekTo(holdSeekTargetMs)
+                playback.seekTo(holdSeekTargetMs)
                 // The preview position becomes the committed one — consumers
                 // (the badge, the timeline playhead) can hand over to the live
                 // position flow from here.
                 PlayerEventBus.emit(PlayerEvent.SeekCommitted(holdSeekTargetMs))
-                if (holdSeekWasPlaying) effects.resume()
+                if (holdSeekWasPlaying) playback.resume()
             }
         }
     }
@@ -276,18 +278,18 @@ internal class PlayerGestureActionHandler(
             GesturePhase.START -> {
                 morphStartDelta = 0f
                 hasDragSample = false
-                effects.morphDragStart()
+                layout.morphDragStart()
             }
             GesturePhase.ACTIVE -> {
                 val dragY = frame.totalDelta.y.coerceAtLeast(0f)
                 if (dragY > 0f) {
                     morphStartDelta = dragY
                     sampleDragVelocity(frame.elapsedMs, dragY)
-                    effects.morphDrag(dragY)
+                    layout.morphDrag(dragY)
                 }
             }
             GesturePhase.END -> {
-                effects.morphDragEnd(morphStartDelta, releaseDragVelocity())
+                layout.morphDragEnd(morphStartDelta, releaseDragVelocity())
             }
         }
     }
@@ -300,18 +302,18 @@ internal class PlayerGestureActionHandler(
             GesturePhase.START -> {
                 morphStartDelta = 0f
                 hasDragSample = false
-                effects.shrinkDragStart()
+                layout.shrinkDragStart()
             }
             GesturePhase.ACTIVE -> {
                 val dragY = frame.totalDelta.y.coerceAtLeast(0f)
                 if (dragY > 0f) {
                     morphStartDelta = dragY
                     sampleDragVelocity(frame.elapsedMs, dragY)
-                    effects.shrinkDrag(dragY)
+                    layout.shrinkDrag(dragY)
                 }
             }
             GesturePhase.END -> {
-                effects.shrinkDragEnd(morphStartDelta, releaseDragVelocity())
+                layout.shrinkDragEnd(morphStartDelta, releaseDragVelocity())
             }
         }
     }
@@ -338,17 +340,17 @@ internal class PlayerGestureActionHandler(
                 if (y == 0f) return
                 if (morphVerticalDir == null) {
                     morphVerticalDir = if (y < 0f) -1 else 1
-                    if (morphVerticalDir == -1) effects.fullscreenDragStart() else effects.morphDragStart()
+                    if (morphVerticalDir == -1) layout.fullscreenDragStart() else layout.morphDragStart()
                 }
                 morphVerticalDrag = if (morphVerticalDir == -1) -y else y
                 sampleDragVelocity(frame.elapsedMs, morphVerticalDrag)
-                if (morphVerticalDir == -1) effects.fullscreenDrag(morphVerticalDrag) else effects.morphDrag(morphVerticalDrag)
+                if (morphVerticalDir == -1) layout.fullscreenDrag(morphVerticalDrag) else layout.morphDrag(morphVerticalDrag)
             }
 
             GesturePhase.END -> {
                 when (morphVerticalDir) {
-                    -1 -> effects.fullscreenDragEnd(morphVerticalDrag, releaseDragVelocity())
-                    1 -> effects.morphDragEnd(morphVerticalDrag, releaseDragVelocity())
+                    -1 -> layout.fullscreenDragEnd(morphVerticalDrag, releaseDragVelocity())
+                    1 -> layout.morphDragEnd(morphVerticalDrag, releaseDragVelocity())
                     else -> {}
                 }
                 morphVerticalDir = null
