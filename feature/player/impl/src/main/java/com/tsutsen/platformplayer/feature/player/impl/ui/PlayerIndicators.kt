@@ -201,33 +201,23 @@ internal fun GestureIndicatorOverlay(
                 shape = RoundedCornerShape(BluejayTokens().radius.sm),
                 modifier = Modifier.padding(horizontal = 16.dp),
             ) {
-                if (s.progress != null) {
-                    // Continuous-action badge (hold-seek): wavy ring with the
-                    // action icon inside, no text label.
-                    WavyRingBadge(
-                        progress = s.progress!!,
-                        icon = s.icon,
-                        modifier = Modifier.padding(12.dp),
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = s.icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
                     )
-                } else {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = s.icon,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = s.label,
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = s.label,
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }

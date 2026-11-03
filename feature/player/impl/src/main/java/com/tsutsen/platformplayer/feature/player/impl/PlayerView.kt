@@ -780,6 +780,14 @@ fun PlayerView(
                 // the hide timer on each emission, so no per-badge timer job.
                 val seekAccumulator = SeekBadgeAccumulator()
 
+                fun formatTimestamp(ms: Long): String {
+                    val totalSec = (ms / 1000).toInt()
+                    val h = totalSec / 3600
+                    val m = (totalSec % 3600) / 60
+                    val s = totalSec % 60
+                    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+                }
+
                 fun showBadge(key: String, icon: ImageVector, label: String = "", progress: Float? = null) {
                     badgeKeepAliveCounter++
                     badgeState =
@@ -822,16 +830,11 @@ fun PlayerView(
                             seekPreviewMs = event.targetMs
                             showBadge(
                                 key = "seek_preview",
-                                // Ring badge: progress = target / duration, seek
-                                // icon inside the ring, no time label.
+                                label = formatTimestamp(event.targetMs),
                                 icon =
                                     if (event.targetMs >= viewModel.positionMs.value)
                                         Icons.Default.FastForward
                                     else Icons.Default.FastRewind,
-                                progress =
-                                    (event.targetMs.toFloat() /
-                                        state.durationMs.coerceAtLeast(1L))
-                                        .coerceIn(0f, 1f),
                             )
                         }
 
@@ -842,10 +845,10 @@ fun PlayerView(
                         }
 
                         is PlayerEvent.BrightnessChanged ->
-                            showBadge("brightness", Icons.Default.BrightnessHigh, progress = event.level)
+                            showBadge("brightness", Icons.Default.BrightnessHigh, label = "${(event.level * 100).toInt()}%")
 
                         is PlayerEvent.VolumeChanged ->
-                            showBadge("volume", Icons.Default.VolumeUp, progress = event.level)
+                            showBadge("volume", Icons.Default.VolumeUp, label = "${(event.level * 100).toInt()}%")
 
                         // PlayPauseToggled / NextRequested / PreviousRequested /
                         // Closed: no badge yet — they still pass through the bus
