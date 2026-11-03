@@ -1,7 +1,6 @@
 package com.tsutsen.platformplayer.core.designsystem.layout
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
-import androidx.compose.animation.AnimatedVisibility
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.effectsSpec
 import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
@@ -42,6 +41,7 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -60,6 +61,19 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowWidthSizeClass
+import kotlin.math.roundToInt
+
+/**
+ * Continuous mirror of the player's fullscreen axis (0 = normal, 1 =
+ * fullscreen), written per animation frame by the player (PlayerView sync
+ * effect) and consumed by the portrait dock's choreography. Composition
+ * reads would recompose the whole app shell every frame — the shell's
+ * playerFlags projection exists to avoid exactly that — so consumers must
+ * read this only inside layout/graphicsLayer lambdas (deferred reads).
+ */
+object DockChromeProgress {
+    var fullscreen by mutableFloatStateOf(0f)
+}
 
 /**
  * Configuration for the app layout.
@@ -549,6 +563,9 @@ fun AppLayout(
             val barState = remember(barVisible) { BottomAppBarState() }
             val scrollBehavior =
                 BottomAppBarDefaults.exitAlwaysScrollBehavior(state = barState)
+
+            /** Dock slot height at rest; the bar draws itself this tall. */
+            val DockExpandedHeight = 80.dp
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier =
@@ -560,19 +577,39 @@ fun AppLayout(
                 ) {
                     content()
                 }
-                AnimatedVisibility(
-                    visible = barVisible,
-                    enter = fadeIn(animationSpec = effectsSpec<Float>()),
-                    exit = fadeOut(animationSpec = effectsSpec<Float>()),
+                // The dock choreographs with the player morph: alpha and
+                // slot height shrink with the growing video, driven by
+                // [DockChromeProgress] — replacing the old boolean
+                // AnimatedVisibility fade that started only when fullscreen
+                // committed, leaving the bar riding fully visible over the
+                // video through the whole gesture, then popping away at the
+                // end. The bar is drawn at its natural height and slides off
+                // the bottom edge as the slot shrinks (no content squeeze);
+                // reads are deferred into layout/draw, so no per-frame
+                // recomposition.
+                Box(
+                    modifier =
+                        Modifier
+                            .layout { measurable, constraints ->
+                                val slot =
+                                    (DockExpandedHeight.toPx() *
+                                        (1f - DockChromeProgress.fullscreen.coerceIn(0f, 1f)))
+                                        .roundToInt()
+                                val placeable = measurable.measure(constraints)
+                                layout(placeable.width, slot) { placeable.place(0, 0) }
+                            }
+                            .graphicsLayer {
+                                alpha = 1f - DockChromeProgress.fullscreen.coerceIn(0f, 1f)
+                            },
                 ) {
                     FlexibleBottomAppBar(
                         scrollBehavior = scrollBehavior,
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         contentPadding = PaddingValues(horizontal = 0.dp),
-                        // NavigationBarItems render at the 80dp "tall"
-                        // height; the flexible bar's own default (64dp)
-                        // would clip the labels.
-                        expandedHeight = 80.dp,
+                        // NavigationBarItems render at the "tall" height;
+                        // the flexible bar's own default (64dp) would clip
+                        // the labels.
+                        expandedHeight = DockExpandedHeight,
                         content = { navigationContent() },
                     )
                 }

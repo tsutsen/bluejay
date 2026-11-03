@@ -82,6 +82,7 @@ import com.tsutsen.platformplayer.core.database.AppDatabaseProvider
 import com.tsutsen.platformplayer.core.database.dao.toggleWatched
 import com.tsutsen.platformplayer.core.database.entity.isFullyWatched
 import com.tsutsen.platformplayer.core.designsystem.component.VideoOptionsSheet
+import com.tsutsen.platformplayer.core.designsystem.layout.DockChromeProgress
 import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
@@ -539,6 +540,21 @@ fun PlayerView(
         surface.isFullscreenAnim.value = fullscreen
         // Button / back flips move the axis to the new rest position.
         settleFullscreenTo(if (fullscreen) 1f else 0f)
+    }
+
+    // Portrait dock choreography: mirror the fullscreen axis (shrink
+    // included) into the app shell's DockChromeProgress every animation
+    // frame, so the dock slides out with the growing video continuously
+    // instead of popping on the isFullscreen flag flip (which lands at
+    // drag-end commit — too late, the video already covers the dock).
+    // Reset on dispose so a closed player never strands the dock hidden.
+    LaunchedEffect(surface) {
+        snapshotFlow { surface.effectiveFullscreenNow() }.collect {
+            DockChromeProgress.fullscreen = it.coerceIn(0f, 1f)
+        }
+    }
+    DisposableEffect(surface) {
+        onDispose { DockChromeProgress.fullscreen = 0f }
     }
 
     LaunchedEffect(uiState) {
