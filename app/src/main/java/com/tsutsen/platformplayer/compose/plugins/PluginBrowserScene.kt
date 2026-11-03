@@ -112,6 +112,12 @@ fun PluginBrowserScene(onBack: (() -> Unit)? = null) {
     var selectedPluginUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
 
+    // The plugin detail is local state, not a backstack entry — intercept the
+    // system back gesture so it returns to the plugin list, not to Settings.
+    androidx.activity.compose.BackHandler(enabled = selectedPluginUrl != null) {
+        selectedPluginUrl = null
+    }
+
     // If a plugin is selected, show its details
     if (selectedPluginUrl != null) {
         PluginDetailScene(
