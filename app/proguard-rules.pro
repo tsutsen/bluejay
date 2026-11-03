@@ -55,3 +55,15 @@
 # App-side bridge packages are bound into the JS global object by name
 -keep class com.tsutsen.platformplayer.engine.** { *; }
 -keep class com.tsutsen.platformplayer.api.media.platforms.js.** { *; }
+
+# protobuf-lite runtime builds its schema by reflecting over the generated
+# message classes' declared fields (MessageSchema.reflectField ->
+# Class.getDeclaredField). R8 can't see those reflective reads and stripped
+# the fields, so playback died with
+#   NoSuchFieldException: No field deviceMake_ ... sabr.proto.ClientInfo
+#   -> ExoPlaybackException "Unexpected runtime error"
+-keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
+-keep class * extends com.google.protobuf.GeneratedMessageLite$Builder { *; }
+-keep class com.google.protobuf.** { *; }
+# SABR innertube protos (generated into build/ from app/src/main/proto/sabr)
+-keep class com.tsutsen.platformplayer.sabr.proto.** { *; }
