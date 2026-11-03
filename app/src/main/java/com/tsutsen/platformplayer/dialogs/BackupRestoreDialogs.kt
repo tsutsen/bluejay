@@ -28,6 +28,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
@@ -166,7 +167,16 @@ object BackupRestoreDialogs {
         // activity window), but Compose requires one in the hierarchy — bind
         // the owning activity's lifecycle (same as CompanionPresentation),
         // falling back to a permanently-resumed owner.
-        val lifecycleOwner = (context as? LifecycleOwner) ?: object : LifecycleOwner {
+        // The passed context may be a ContextWrapper, not the Activity itself —
+        // unwrap to find the real one; Compose needs all three view-tree owners.
+        fun Context.findActivity(): android.app.Activity? =
+            when (this) {
+                is android.app.Activity -> this
+                is android.content.ContextWrapper -> baseContext.findActivity()
+                else -> null
+            }
+        val activity = context.findActivity()
+        val lifecycleOwner: LifecycleOwner = activity ?: object : LifecycleOwner {
             private val registry = LifecycleRegistry(this)
 
             init {
@@ -176,9 +186,16 @@ object BackupRestoreDialogs {
             override val lifecycle: Lifecycle
                 get() = registry
         }
+        val savedStateOwner: SavedStateRegistryOwner =
+            activity ?: object : SavedStateRegistryOwner {
+                private val controller = androidx.savedstate.SavedStateRegistryController.create(this)
+                override val savedStateRegistry get() = controller.savedStateRegistry
+                init { controller.performRestore(null) }
+            }
         val composeView = ComposeView(context).apply {
             setViewTreeLifecycleOwner(lifecycleOwner)
-            (context as? SavedStateRegistryOwner)?.let { setViewTreeSavedStateRegistryOwner(it) }
+            setViewTreeSavedStateRegistryOwner(savedStateOwner)
+            (activity as? androidx.lifecycle.ViewModelStoreOwner)?.let { setViewTreeViewModelStoreOwner(it) }
             setContent {
                 BluejayTheme {
                     content()
