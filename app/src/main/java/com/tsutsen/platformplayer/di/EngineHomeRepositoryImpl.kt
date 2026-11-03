@@ -313,9 +313,12 @@ class EngineHomeRepositoryImpl
                 // Paint only rows from currently-enabled sources: the cache is
                 // keyed per card, so a disabled plugin's rows would otherwise
                 // reappear on cold start until the fresh load replaces them.
+                // At cold start the enabled-client set may not be loaded yet
+                // (StatePlatform initializes it later in doLoadInitial) — an empty
+                // set here must NOT wipe the cache, so only filter once known.
                 val enabledSources = EnabledClientResolver.enabledClientIdSet()
                 val cards = entities.mapNotNull { EngineCardMapper.toCardFromCache(it) }
-                    .filter { it.sourceId == null || it.sourceId in enabledSources }
+                    .filter { enabledSources.isEmpty() || it.sourceId == null || it.sourceId in enabledSources }
                 if (cards.isEmpty()) return
                 val visible = applyContentFilters(cards)
                 // Painted cached rows into the (empty) feed: this load's
