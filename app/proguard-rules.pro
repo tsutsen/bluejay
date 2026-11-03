@@ -37,3 +37,7 @@
 # kotlinx-serialization plugin generates its own keeps for @Serializable;
 # keep serializers reachable via reflection just in case
 -keep class kotlinx.serialization.** { *; }
+
+# Javet V8: called via JNI/reflection from native — R8 must not strip or rename
+-keep class com.caoccao.javet.** { *; }
+-dontwarn com.caoccao.javet.**
