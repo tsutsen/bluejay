@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ComposeViewContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -64,17 +65,37 @@ object BackupRestoreDialogs {
         onImport: (ImportOptions) -> Unit,
         onCancel: () -> Unit
     ): Dialog {
-        var dialogRef: Dialog? = null
-        val dialog = showInDialogWindow(context) {
-            ImportOptionsContent(
-                export,
-                unknownPluginUrls,
-                onImport = { dialogRef?.dismiss(); onImport(it) },
-                onCancel = { dialogRef?.dismiss(); onCancel() },
-            )
+        // One system dialog with every restore section as a checkbox — no
+        // ComposeView in a bare Dialog window (that crashed with
+        // ViewTreeSavedStateRegistryOwner).
+        val labels = mutableListOf<String>()
+        val keys = mutableListOf<String>()
+        fun add(label: String, key: String, present: Boolean, default: Boolean) {
+            if (present) { labels.add(label); keys.add(key) }
         }
-        dialogRef = dialog
-        return dialog
+        add("Settings", "settings", export.settings != null, true)
+        add("Plugins (${unknownPluginUrls.size})", "plugins", unknownPluginUrls.isNotEmpty(), true)
+        add("Enable all plugins", "enableAll", true, true)
+        add("Plugin settings (${export.pluginSettings.size})", "pluginSettings", export.pluginSettings.isNotEmpty(), true)
+        add("Stores (${export.stores.size})", "stores", export.stores.isNotEmpty(), true)
+
+        val checked = BooleanArray(labels.size) { true }
+        return AlertDialog.Builder(context)
+            .setTitle("Import backup")
+            .setMultiChoiceItems(labels.toTypedArray(), checked) { _, _, _ -> }
+            .setPositiveButton("Import") { _, _ ->
+                val opts = ImportOptions(
+                    importSettings = "settings" in keys.filterIndexed { i, _ -> checked[i] },
+                    installPlugins = "plugins" in keys.filterIndexed { i, _ -> checked[i] },
+                    enablePlugins = "enableAll" in keys.filterIndexed { i, _ -> checked[i] },
+                    importPluginSettings = "pluginSettings" in keys.filterIndexed { i, _ -> checked[i] },
+                    importStores = "stores" in keys.filterIndexed { i, _ -> checked[i] },
+                )
+                onImport(opts)
+            }
+            .setNegativeButton("Cancel") { _, _ -> onCancel() }
+            .setCancelable(false)
+            .show()
     }
 
     /**
@@ -93,137 +114,5 @@ object BackupRestoreDialogs {
             cont.invokeOnCancellation { dialog.dismiss() }
         }
 
-    @Composable
-    private fun ImportOptionsContent(
-        export: StateBackup.ExportStructure,
-        unknownPluginUrls: List<String>,
-        onImport: (ImportOptions) -> Unit,
-        onCancel: () -> Unit
-    ) {
-        // Every section the archive contains starts selected.
-        var importSettings by remember { mutableStateOf(export.settings != null) }
-        var installPlugins by remember { mutableStateOf(unknownPluginUrls.isNotEmpty()) }
-        var enablePlugins by remember { mutableStateOf(true) }
-        var importPluginSettings by remember { mutableStateOf(export.pluginSettings.isNotEmpty()) }
-        var importStores by remember { mutableStateOf(export.stores.isNotEmpty()) }
 
-        AlertDialog(
-            onDismissRequest = onCancel,
-            title = { Text("Import backup") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (export.settings != null)
-                        SectionRow("Settings", "App preferences", importSettings) { importSettings = it }
-                    if (unknownPluginUrls.isNotEmpty())
-                        SectionRow("Plugins (${unknownPluginUrls.size})", unknownPluginUrls.joinToString("\n"), installPlugins) { installPlugins = it }
-                    if (export.pluginSettings.isNotEmpty())
-                        SectionRow("Plugin settings (${export.pluginSettings.size})", null, importPluginSettings) { importPluginSettings = it }
-                    SectionRow("Enable all plugins", "Enables all available sources during import", enablePlugins) { enablePlugins = it }
-                    if (export.stores.isNotEmpty())
-                        SectionRow(
-                            "Stores",
-                            export.stores.entries.joinToString("\n") { "${it.key} (${it.value.size})" },
-                            importStores
-                        ) { importStores = it }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onImport(ImportOptions(importSettings, installPlugins, enablePlugins, importPluginSettings, importStores))
-                }) { Text("Import") }
-            },
-            dismissButton = {
-                TextButton(onClick = onCancel) { Text("Cancel") }
-            },
-        )
-    }
-
-    @Composable
-    private fun SectionRow(label: String, detail: String?, checked: Boolean, onChecked: (Boolean) -> Unit) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onChecked(!checked) },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(checked = checked, onCheckedChange = onChecked)
-            Column(Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.bodyLarge)
-                if (detail != null)
-                    Text(
-                        detail,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-            }
-        }
-    }
-
-    private fun showInDialogWindow(context: Context, content: @Composable () -> Unit): Dialog {
-        val dialog = Dialog(context)
-        // A Dialog window carries no ViewTreeLifecycleOwner (unlike an
-        // activity window), but Compose requires one in the hierarchy — bind
-        // the owning activity's lifecycle (same as CompanionPresentation),
-        // falling back to a permanently-resumed owner.
-        // The passed context may be a ContextWrapper, not the Activity itself —
-        // unwrap to find the real one; Compose needs all three view-tree owners.
-        fun Context.findActivity(): android.app.Activity? =
-            when (this) {
-                is android.app.Activity -> this
-                is android.content.ContextWrapper -> baseContext.findActivity()
-                else -> null
-            }
-        val activity = context.findActivity()
-        val lifecycleOwner: LifecycleOwner = (activity as? LifecycleOwner) ?: object : LifecycleOwner {
-            private val registry = LifecycleRegistry(this)
-
-            init {
-                registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-            }
-
-            override val lifecycle: Lifecycle
-                get() = registry
-        }
-        val savedStateOwner: SavedStateRegistryOwner =
-            (activity as? SavedStateRegistryOwner) ?: object : SavedStateRegistryOwner {
-                private val registry = LifecycleRegistry(this)
-                private val controller = androidx.savedstate.SavedStateRegistryController.create(this)
-                override val savedStateRegistry get() = controller.savedStateRegistry
-                override val lifecycle: Lifecycle get() = registry
-                init {
-                    registry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-                    registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-                    controller.performRestore(null)
-                }
-            }
-        val composeView = ComposeView(context).apply {
-            setViewTreeLifecycleOwner(lifecycleOwner)
-            setViewTreeSavedStateRegistryOwner(savedStateOwner)
-            (activity as? androidx.lifecycle.ViewModelStoreOwner)?.let { setViewTreeViewModelStoreOwner(it) }
-
-            setContent {
-                BluejayTheme {
-                    content()
-                }
-            }
-        }
-        // Not cancelable: only the Import/Cancel buttons (or back on the
-        // AlertDialog, which routes to onCancel) may close it.
-        dialog.setCancelable(false)
-        dialog.setContentView(
-            composeView,
-            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        )
-        dialog.show()
-        // decorView only exists after show(); propagate owners to the window
-        // root so Compose's attach-time lookup finds them.
-        dialog.window?.decorView?.let { decor ->
-            decor.setViewTreeLifecycleOwner(lifecycleOwner)
-            decor.setViewTreeSavedStateRegistryOwner(savedStateOwner)
-            (activity as? androidx.lifecycle.ViewModelStoreOwner)?.let { decor.setViewTreeViewModelStoreOwner(it) }
-        }
-        return dialog
-    }
 }
