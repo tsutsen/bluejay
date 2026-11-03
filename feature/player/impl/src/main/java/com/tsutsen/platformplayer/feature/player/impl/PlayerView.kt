@@ -1290,8 +1290,27 @@ fun PlayerView(
         }
 
         is PlayerUiState.Error -> {
+            // Scoped to the video surface (same geometry as the player), not the
+            // whole view — the rest of the UI stays visible/interactive.
+            val density = LocalDensity.current
+            val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             Box(
-                modifier = Modifier.fillMaxSize().background(Color.Black),
+                modifier = Modifier
+                    .offset {
+                        val layout = surface.videoLayout(isLandscape, density)
+                        IntOffset(layout.offsetX.toInt(), layout.offsetY.toInt())
+                    }
+                    .layout { measurable, constraints ->
+                        val layout = surface.videoLayout(isLandscape, density)
+                        val placeable = measurable.measure(
+                            Constraints(
+                                layout.widthPx.roundToInt(), layout.widthPx.roundToInt(),
+                                layout.heightPx.roundToInt(), layout.heightPx.roundToInt(),
+                            ),
+                        )
+                        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                    }
+                    .background(Color.Black),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
