@@ -35,6 +35,7 @@ println("Version Code: $gitVersionCode")
 
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('/opt/key.properties')
+if (!keystorePropertiesFile.exists()) keystorePropertiesFile = rootProject.file('keystore.properties')
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
@@ -133,7 +134,7 @@ android {
             enable true
             reset()
 
-            include "x86", "x86_64", "arm64-v8a", "armeabi-v7a"
+            include "arm64-v8a"
             universalApk true
         }
     }

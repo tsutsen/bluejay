@@ -40,3 +40,6 @@ docs/refactoring-opportunities.md
 docs/video-playback-troubleshooting.md
 docs/features/player/
 docs/integrations/polycentric.md
+
+# Release signing material — never commit
+keystore.properties
