@@ -15,7 +15,7 @@ import androidx.media3.exoplayer.text.TextOutput
 import androidx.media3.exoplayer.text.TextRenderer
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import com.tsutsen.platformplayer.R
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.UIDialogs
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideoDetails
@@ -56,7 +56,7 @@ class StatePlayer {
             onRotationLockChanged.emit(value)
         }
     val onRotationLockChanged = Event1<Boolean>()
-    var autoplay: Boolean = Settings.instance.playback.autoplay
+    var autoplay: Boolean = SettingsRepositoryImpl.instance.preferences.value.playback.autoPlay
         get() = field
         set(value) {
             if (field != value)

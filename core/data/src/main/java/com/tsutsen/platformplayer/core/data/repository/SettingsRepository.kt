@@ -5,6 +5,7 @@ import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import kotlinx.coroutines.flow.StateFlow
+import java.time.OffsetDateTime
 
 interface SettingsRepository {
 
@@ -105,6 +106,22 @@ interface SettingsRepository {
 
     suspend fun updateLibrarySectionOrder(order: List<String>)
     suspend fun updateLibrarySectionsEnabled(ids: List<String>)
+
+    /** Persist the external general directory (SAF tree uri string, null = unset). */
+    suspend fun setStorageGeneral(uri: String?)
+
+    /** Persist the external download-export directory (SAF tree uri string, null = unset). */
+    suspend fun setStorageDownload(uri: String?)
+
+    /** Mark the auto-backup prompt as answered (never shown again). */
+    suspend fun setDidAskAutoBackup(asked: Boolean)
+
+    /** Mark the first-launch flow (auto-backup restore prompt) as done. */
+    suspend fun setDidFirstStart(firstStart: Boolean)
+
+    /** Stamp the last automatic backup time. */
+    suspend fun setLastAutoBackupTime(time: OffsetDateTime)
+
     suspend fun resetToDefaults()
 
 }

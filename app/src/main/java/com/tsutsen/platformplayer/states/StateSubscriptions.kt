@@ -1,7 +1,7 @@
 package com.tsutsen.platformplayer.states
 
 import SubsExchangeClient
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.api.media.PlatformID
 import com.tsutsen.platformplayer.api.media.models.channels.IPlatformChannel
 import com.tsutsen.platformplayer.api.media.models.channels.SerializedChannel
@@ -55,7 +55,7 @@ class StateSubscriptions {
     private val _subscriptionsRemoved = FragmentedStorage.get<StringDateMapStorage>("subscriptions_removed");
 
 
-    private val _subscriptionsPool = ForkJoinPool(Settings.instance.subscriptions.getSubscriptionsConcurrency());
+    private val _subscriptionsPool = ForkJoinPool(SettingsRepositoryImpl.instance.preferences.value.subscriptions.concurrency);
     private val _legacySubscriptions = FragmentedStorage.get<SubscriptionStorage>();
 
     private val _algorithmSubscriptions = SubscriptionFetchAlgorithms.SMART;
@@ -357,7 +357,7 @@ class StateSubscriptions {
 
     fun getSubscriptionsFeedWithExceptions(allowFailure: Boolean = false, withCacheFallback: Boolean = false, cacheScope: CoroutineScope, onProgress: ((Int, Int)->Unit)? = null, onNewCacheHit: ((Subscription, IPlatformContent)->Unit)? = null, subGroup: SubscriptionGroup? = null): Pair<IPager<IPlatformContent>, List<Throwable>> {
         var exchangeClient: SubsExchangeClient? = null;
-        if(Settings.instance.subscriptions.useSubscriptionExchange) {
+        if(SettingsRepositoryImpl.instance.preferences.value.subscriptions.useSubscriptionExchange) {
             try {
                 exchangeClient = getSubsExchangeClient();
             }

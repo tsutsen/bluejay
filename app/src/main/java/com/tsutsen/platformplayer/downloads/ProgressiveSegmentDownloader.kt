@@ -1,6 +1,6 @@
 package com.tsutsen.platformplayer.downloads
 
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.api.media.models.modifier.IRequestModifier
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
@@ -40,11 +40,11 @@ class ProgressiveSegmentDownloader(
         try {
             val head = ctx.client.tryHead(url, ctx.modifier);
             val relatedPlugin = (owner.video?.url ?: owner.videoDetails?.url)?.let { StatePlatform.instance.getContentClient(it) }?.let { if(it is JSClient) it else null };
-            if(Settings.instance.downloads.byteRangeDownload && head?.containsKey("accept-ranges") == true && head.containsKey("content-length"))
+            if(SettingsRepositoryImpl.instance.preferences.value.downloads.byteRangeDownload && head?.containsKey("accept-ranges") == true && head.containsKey("content-length"))
             {
                 val maxParallel = if(relatedPlugin != null && relatedPlugin.config.maxDownloadParallelism > 0)
                     relatedPlugin.config.maxDownloadParallelism else 99;
-                val concurrency = Math.min(maxParallel, Settings.instance.downloads.getByteRangeThreadCount());
+                val concurrency = Math.min(maxParallel, SettingsRepositoryImpl.instance.preferences.value.downloads.byteRangeThreadCount);
                 Logger.i(VideoDownload.TAG, "Download $name ByteRange Parallel (${concurrency}): " + url);
                 sourceLength = head["content-length"]!!.toLong();
                 onProgress(sourceLength, 0, 0);

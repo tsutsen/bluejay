@@ -8,9 +8,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.OffsetDateTime
 
 /**
  * Each setter on the Settings-backed repository must persist to the legacy
@@ -35,6 +37,18 @@ class SettingsRepositoryImplTest {
         s.feed.gridColumns = 3
         s.recommendations.probCut1 = 33
         s.recommendations.probCut2 = 66
+        // Fields the legacy-group tests mutate; reset so test order never
+        // leaks state through the shared Settings singleton.
+        s.playback.preferOriginalAudio = false
+        s.playback.restartPlaybackAfterLoss = 0
+        s.other.watchLaterAddStart = false
+        s.other.playlistAllowDups = false
+        s.backup.didAskAutoBackup = false
+        s.notifications.plannedContentNotification = false
+        s.downloads.byteRangeDownload = true
+        s.didFirstStart = false
+        s.storage.storage_general = null
+        s.storage.storage_download = null
         repo = SettingsRepositoryImpl()
     }
 
@@ -204,6 +218,81 @@ class SettingsRepositoryImplTest {
             assertEquals(ThemeMode.AUTO, prefs.appearance.themeMode)
             assertEquals(3, prefs.gridColumns)
             assertEquals(1f, prefs.defaultPlaybackSpeed)
+        }
+
+    @Test
+    fun legacyGroupDefaultsMapFromSettings() =
+        runTest {
+            val prefs = repo.preferences.first()
+            assertTrue(prefs.downloads.byteRangeDownload)
+            assertTrue(prefs.downloads.shouldDownload)
+            assertEquals(4, prefs.downloads.byteRangeThreadCount)
+            assertNull(prefs.storage.storageGeneralUri)
+            assertTrue(prefs.storage.isStorageMainValid)
+            assertTrue(prefs.subscriptions.fetchOnAppBoot)
+            assertTrue(prefs.subscriptions.peekChannelContents)
+            assertFalse(prefs.subscriptions.useSubscriptionExchange)
+            assertEquals(60, prefs.subscriptions.backgroundIntervalMinutes)
+            assertEquals(4, prefs.subscriptions.concurrency)
+            assertTrue(prefs.autoUpdate.isAutoUpdateEnabled)
+            assertTrue(prefs.autoUpdate.shouldBackgroundDownload)
+            assertTrue(prefs.browsing.videoCache)
+            assertFalse(prefs.browsing.useDownloadedCABundle)
+            assertFalse(prefs.notifications.plannedContentNotification)
+            assertFalse(prefs.other.watchLaterAddStart)
+            assertFalse(prefs.other.playlistAllowDups)
+            assertFalse(prefs.playback.preferOriginalAudio)
+            assertEquals(0, prefs.playback.restartPlaybackAfterLoss)
+            assertFalse(prefs.didFirstStart)
+        }
+
+    @Test
+    fun newTypedSettersPersistAndEmit() =
+        runTest {
+            val time = OffsetDateTime.now()
+            repo.setStorageGeneral("content://general")
+            repo.setStorageDownload("content://downloads")
+            repo.setDidAskAutoBackup(true)
+            repo.setDidFirstStart(true)
+            repo.setLastAutoBackupTime(time)
+
+            val s = Settings.instance
+            assertEquals("content://general", s.storage.storage_general)
+            assertEquals("content://downloads", s.storage.storage_download)
+            assertTrue(s.backup.didAskAutoBackup)
+            assertTrue(s.didFirstStart)
+            assertEquals(time, s.backup.lastAutoBackupTime)
+
+            val prefs = repo.preferences.value
+            assertEquals("content://general", prefs.storage.storageGeneral)
+            assertEquals("content://downloads", prefs.storage.storageDownload)
+            assertTrue(prefs.backup.didAskAutoBackup)
+            assertTrue(prefs.didFirstStart)
+            assertEquals(time, prefs.backup.lastAutoBackupTime)
+        }
+
+    @Test
+    fun reloadFromLegacyReEmitsExternalSettingsSwap() =
+        runTest {
+            // The backup import path swaps the legacy singleton directly;
+            // reloadFromLegacy must re-map the prefs snapshot.
+            Settings.instance.playback.preferOriginalAudio = true
+            Settings.instance.other.watchLaterAddStart = true
+            repo.reloadFromLegacy()
+
+            val prefs = repo.preferences.value
+            assertTrue(prefs.playback.preferOriginalAudio)
+            assertTrue(prefs.other.watchLaterAddStart)
+        }
+
+    @Test
+    fun encodeLegacySettingsReturnsSettingsJson() =
+        runTest {
+            // Default-valued fields are omitted (Json.encodeDefaults=false),
+            // so flip one first to prove real settings JSON comes out.
+            Settings.instance.downloads.byteRangeDownload = false
+            val json = repo.encodeLegacySettings()
+            assertTrue(json.contains("\"byteRangeDownload\":false"))
         }
 
     @Test

@@ -29,7 +29,7 @@ import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.size.Size
 import com.tsutsen.platformplayer.R
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.activities.MainActivity
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.logging.Logger
@@ -464,10 +464,10 @@ class MediaPlaybackService : Service() {
                         val audioFocusLossDuration = _audioFocusLossTime_ms?.let { System.currentTimeMillis() - it }
                         _audioFocusLossTime_ms = null
 
-                        Log.i(TAG, "Audio focus gained (restartPlaybackAfterLoss = ${Settings.instance.playback.restartPlaybackAfterLoss}, _audioFocusLossTime_ms = $_audioFocusLossTime_ms, audioFocusLossDuration = ${audioFocusLossDuration})");
+                        Log.i(TAG, "Audio focus gained (restartPlaybackAfterLoss = ${SettingsRepositoryImpl.instance.preferences.value.playback.restartPlaybackAfterLoss}, _audioFocusLossTime_ms = $_audioFocusLossTime_ms, audioFocusLossDuration = ${audioFocusLossDuration})");
 
                         if (audioFocusLossDuration == null) return@OnAudioFocusChangeListener
-                        when (Settings.instance.playback.restartPlaybackAfterLoss) {
+                        when (SettingsRepositoryImpl.instance.preferences.value.playback.restartPlaybackAfterLoss) {
                             1 -> if (audioFocusLossDuration < 10_000) MediaControlReceiver.onPlayReceived.emit()
                             2 -> if (audioFocusLossDuration < 30_000) MediaControlReceiver.onPlayReceived.emit()
                             3 -> MediaControlReceiver.onPlayReceived.emit()

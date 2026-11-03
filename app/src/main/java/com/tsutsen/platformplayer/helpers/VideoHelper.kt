@@ -9,7 +9,7 @@ import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.dash.manifest.DashManifestParser
 import androidx.media3.exoplayer.source.MediaSource
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.api.media.models.streams.IVideoSourceDescriptor
 import com.tsutsen.platformplayer.api.media.models.streams.VideoUnMuxedSourceDescriptor
 import com.tsutsen.platformplayer.api.media.models.streams.sources.IAudioSource
@@ -74,7 +74,7 @@ class VideoHelper {
 
             //Filter Original
             val hasOriginal = altSources.any { it.original == true };
-            if(hasOriginal && Settings.instance.playback.preferOriginalAudio)
+            if(hasOriginal && SettingsRepositoryImpl.instance.preferences.value.playback.preferOriginalAudio)
                 altSources = altSources.filter { it.original == true };
 
             //Filter Language
@@ -115,7 +115,7 @@ class VideoHelper {
             val hasPriority = sources.any { it.priority };
             var altSources = if(hasPriority) sources.filter { it.priority } else sources;
             val hasOriginal = altSources.any { it.original };
-            if(hasOriginal && Settings.instance.playback.preferOriginalAudio)
+            if(hasOriginal && SettingsRepositoryImpl.instance.preferences.value.playback.preferOriginalAudio)
                 altSources = altSources.filter { it.original };
             val languageToFilter = if(preferredLanguage != null && altSources.any { it.language == preferredLanguage }) {
                 preferredLanguage

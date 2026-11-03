@@ -5,24 +5,35 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
+import com.tsutsen.platformplayer.core.datastore.model.AutoUpdatePreferences
+import com.tsutsen.platformplayer.core.datastore.model.BackupPreferences
+import com.tsutsen.platformplayer.core.datastore.model.BrowsingPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
+import com.tsutsen.platformplayer.core.datastore.model.DownloadsPreferences
+import com.tsutsen.platformplayer.core.datastore.model.LoggingPreferences
+import com.tsutsen.platformplayer.core.datastore.model.NotificationPreferences
+import com.tsutsen.platformplayer.core.datastore.model.OtherPreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGesturePreferences
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences
+import com.tsutsen.platformplayer.core.datastore.model.StoragePreferences
+import com.tsutsen.platformplayer.core.datastore.model.SubscriptionsPreferences
 import com.tsutsen.platformplayer.core.datastore.model.SubtitlePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.model.GestureAction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.time.OffsetDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * SettingsRepository backed by the legacy [Settings] singleton (single source
- * of truth — 21 reader files read it directly, no migration). Each setter is
- * field access + [Settings.save], then a re-emit so the UI updates live.
+ * SettingsRepository backed by the legacy [Settings] singleton — the only
+ * reader left (all other files read the typed [AppPreferences] seam). Each
+ * setter is field access + [Settings.save], then a re-emit so the UI updates
+ * live.
  */
 @Singleton
 class SettingsRepositoryImpl
@@ -58,7 +69,12 @@ class SettingsRepositoryImpl
                         customThemes = s.appearance.customThemes,
                         activeThemeId = s.appearance.activeThemeId,
                     ),
-                playback = PlaybackPreferences(autoPlay = s.playback.autoplay),
+                playback =
+                    PlaybackPreferences(
+                        autoPlay = s.playback.autoplay,
+                        preferOriginalAudio = s.playback.preferOriginalAudio,
+                        restartPlaybackAfterLoss = s.playback.restartPlaybackAfterLoss,
+                    ),
                 subtitle =
                     SubtitlePreferences(
                         font = s.playback.subtitleFont,
@@ -127,6 +143,57 @@ class SettingsRepositoryImpl
                 dockTabOrder = s.other.dockTabOrder,
                 defaultDockTab = s.other.defaultDockTab,
                 subscriptionsOrder = s.subscriptions.subscriptionsOrder,
+                didFirstStart = s.didFirstStart,
+                downloads =
+                    DownloadsPreferences(
+                        byteRangeDownload = s.downloads.byteRangeDownload,
+                        // shouldDownload / byteRangeThreadCount: legacy stub
+                        // getters returned the constants true / 4.
+                    ),
+                storage =
+                    StoragePreferences(
+                        storageGeneral = s.storage.storage_general,
+                        storageDownload = s.storage.storage_download,
+                        isStorageMainValid = s.storage.isStorageMainValid,
+                        // storageGeneralUri: the legacy stub getter returned a
+                        // constant null, unrelated to storageGeneral.
+                    ),
+                subscriptions =
+                    SubscriptionsPreferences(
+                        fetchOnAppBoot = s.subscriptions.fetchOnAppBoot,
+                        useSubscriptionExchange = s.subscriptions.useSubscriptionExchange,
+                        peekChannelContents = s.subscriptions.peekChannelContents,
+                        // backgroundIntervalMinutes / concurrency: legacy stub
+                        // getters returned the constants 60 / 4.
+                    ),
+                backup =
+                    BackupPreferences(
+                        // shouldAutomaticBackup: legacy stub getter returned
+                        // the constant false.
+                        didAskAutoBackup = s.backup.didAskAutoBackup,
+                        lastAutoBackupTime = s.backup.lastAutoBackupTime,
+                    ),
+                notifications =
+                    NotificationPreferences(
+                        plannedContentNotification = s.notifications.plannedContentNotification,
+                    ),
+                logging = LoggingPreferences(logLevel = s.logging.logLevel),
+                browsing =
+                    BrowsingPreferences(
+                        useDownloadedCABundle = s.browsing.useDownloadedCABundle,
+                        videoCache = s.browsing.videoCache,
+                    ),
+                autoUpdate =
+                    AutoUpdatePreferences(
+                        // isAutoUpdateEnabled: legacy stub getter returned the
+                        // constant true.
+                        shouldBackgroundDownload = s.autoUpdate.shouldBackgroundDownload,
+                    ),
+                other =
+                    OtherPreferences(
+                        watchLaterAddStart = s.other.watchLaterAddStart,
+                        playlistAllowDups = s.other.playlistAllowDups,
+                    ),
             )
         }
 
@@ -453,6 +520,27 @@ class SettingsRepositoryImpl
             s.save()
             emit()
         }
+
+        override suspend fun setStorageGeneral(uri: String?) =
+            persist { it.storage.storage_general = uri }
+
+        override suspend fun setStorageDownload(uri: String?) =
+            persist { it.storage.storage_download = uri }
+
+        override suspend fun setDidAskAutoBackup(asked: Boolean) =
+            persist { it.backup.didAskAutoBackup = asked }
+
+        override suspend fun setDidFirstStart(firstStart: Boolean) =
+            persist { it.didFirstStart = firstStart }
+
+        override suspend fun setLastAutoBackupTime(time: OffsetDateTime) =
+            persist { it.backup.lastAutoBackupTime = time }
+
+        /** Full legacy-settings JSON (backup export + custom-settings diffing). */
+        fun encodeLegacySettings(): String = Settings.instance.encode()
+
+        /** Re-emit prefs after the legacy Settings object was swapped (backup import). */
+        fun reloadFromLegacy() = emit()
 
         override suspend fun resetToDefaults() {
             val s = Settings.instance

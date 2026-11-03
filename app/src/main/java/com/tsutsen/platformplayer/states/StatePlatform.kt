@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.collection.LruCache
 import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.R
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.UIDialogs
 import com.tsutsen.platformplayer.api.media.IPlatformClient
 import com.tsutsen.platformplayer.api.media.IPluginSourced
@@ -138,7 +138,7 @@ class StatePlatform {
             }
         },
         {
-            if(!Settings.instance.browsing.videoCache || StateApp.instance.privateMode)
+            if(!SettingsRepositoryImpl.instance.preferences.value.browsing.videoCache || StateApp.instance.privateMode)
                 return@BatchedTaskHandler null;
             else {
                 val cached = synchronized(_cache) { _cache.get(it); } ?: return@BatchedTaskHandler null;
@@ -154,7 +154,7 @@ class StatePlatform {
             }
         },
         { para, result ->
-            if(!Settings.instance.browsing.videoCache || (result is IPlatformVideo && result.isLive) || StateApp.instance.privateMode)
+            if(!SettingsRepositoryImpl.instance.preferences.value.browsing.videoCache || (result is IPlatformVideo && result.isLive) || StateApp.instance.privateMode)
                 return@BatchedTaskHandler
             else {
                 Logger.i(TAG, "Caching [${para}]");
@@ -980,7 +980,7 @@ class StatePlatform {
         return getChannelContent(client, channelUrl, type, ordering);
     }
     fun getChannelContent(baseClient: IPlatformClient, channelUrl: String, type: String?, ordering: String = ResultCapabilities.ORDER_CHONOLOGICAL): IPager<IPlatformContent> {
-        val client = _channelClientPool.getClientPooled(baseClient, Settings.instance.subscriptions.getSubscriptionsConcurrency());
+        val client = _channelClientPool.getClientPooled(baseClient, SettingsRepositoryImpl.instance.preferences.value.subscriptions.concurrency);
         return client.getChannelContents(channelUrl, type, ordering) ;
     }
 
@@ -990,7 +990,7 @@ class StatePlatform {
     }
 
     fun peekChannelContents(baseClient: IPlatformClient, channelUrl: String, type: String?): List<IPlatformContent> {
-        val client = _channelClientPool.getClientPooled(baseClient, Settings.instance.subscriptions.getSubscriptionsConcurrency());
+        val client = _channelClientPool.getClientPooled(baseClient, SettingsRepositoryImpl.instance.preferences.value.subscriptions.concurrency);
         return client.peekChannelContents(channelUrl, type) ;
     }
 

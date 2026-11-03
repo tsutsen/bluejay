@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.database.dao.SavedVideoDao
 import com.tsutsen.platformplayer.readBytes
 import com.tsutsen.platformplayer.feature.settings.impl.BackupProvider
 import com.tsutsen.platformplayer.feature.settings.impl.BackupSummary
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateBackup
 import com.tsutsen.platformplayer.states.StateSubscriptions
@@ -81,7 +82,7 @@ class AppBackupProvider @Inject constructor(private val savedVideoDao: SavedVide
     // startup, so it would count as "custom" on every install.
     private fun countCustomSettings(): Int {
         val current =
-            runCatching { Json.parseToJsonElement(Settings.instance.encode()).jsonObject }
+            runCatching { Json.parseToJsonElement(SettingsRepositoryImpl.instance.encodeLegacySettings()).jsonObject }
                 .getOrNull()
             ?: return 0
         val defaults =

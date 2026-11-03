@@ -1,7 +1,4 @@
 package com.tsutsen.platformplayer.di
-import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
-
-import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.api.media.structures.IRefreshPager
@@ -517,12 +514,13 @@ class EngineHomeRepositoryImpl
          * page, and only when a toggle is actually off.
          */
         private suspend fun applyContentFilters(cards: List<Card>): List<Card> {
-            val content = Settings.instance.content
-            val hidden = content.hiddenVideoUrls
-            val hiddenCreators = content.hiddenCreators
-            val downrankedCreators = content.downrankedCreators
-            val filterWatched = !content.showWatchedVideos
-            val filterStarted = !content.showStartedVideos
+            val repo = SettingsRepositoryImpl.instance
+            val prefs = repo.preferences.value
+            val hidden = repo.hiddenVideoUrls.value
+            val hiddenCreators = repo.hiddenCreators.value
+            val downrankedCreators = repo.downrankedCreators.value
+            val filterWatched = !prefs.showWatchedVideos
+            val filterStarted = !prefs.showStartedVideos
             if (!filterWatched && !filterStarted && hidden.isEmpty() &&
                 hiddenCreators.isEmpty() && downrankedCreators.isEmpty()
             ) {

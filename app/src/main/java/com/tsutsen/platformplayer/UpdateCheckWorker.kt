@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateUpdate
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +15,7 @@ import kotlinx.coroutines.withContext
 class UpdateCheckWorker(appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        if (!Settings.instance.autoUpdate.isAutoUpdateEnabled()) {
+        if (!SettingsRepositoryImpl.instance.preferences.value.autoUpdate.isAutoUpdateEnabled) {
             Logger.i(TAG, "Auto-update disabled, skipping worker run")
             return Result.success()
         }

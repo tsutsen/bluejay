@@ -12,6 +12,7 @@ import com.tsutsen.platformplayer.activities.MainActivity
 import com.tsutsen.platformplayer.api.media.models.channels.SerializedChannel
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.models.video.SerializedPlatformVideo
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.copyTo
 import com.tsutsen.platformplayer.encryption.GPasswordEncryptionProvider
 import com.tsutsen.platformplayer.encryption.GPasswordEncryptionProviderV0
@@ -74,9 +75,9 @@ class StateBackup {
                     this[5] == AUTO_MARKER[1]
 
         private fun getAutomaticBackupDocumentFiles(context: Context, create: Boolean = false): Pair<DocumentFile?, DocumentFile?> {
-            if(!Settings.instance.storage.isStorageMainValid(context))
+            if(!SettingsRepositoryImpl.instance.preferences.value.storage.isStorageMainValid)
                 return Pair(null, null);
-            val uri = Settings.instance.storage.getStorageGeneralUri() ?: return Pair(null, null);
+            val uri = SettingsRepositoryImpl.instance.preferences.value.storage.storageGeneralUri ?: return Pair(null, null);
             val dir = DocumentFile.fromTreeUri(context, uri) ?: return Pair(null, null);
             val mainBackupFile = dir.findFile("BluejayBackup.ezip") ?: if(create) dir.createFile("bluejay/ezip", "BluejayBackup.ezip") else null;
             val secondaryBackupFile = dir.findFile("BluejayBackup.ezip.old") ?: if(create) dir.createFile("bluejay/ezip", "BluejayBackup.ezip.old") else null;
@@ -109,13 +110,13 @@ class StateBackup {
 
         fun hasAutomaticBackup(): Boolean {
             val context = StateApp.instance.contextOrNull ?: return false;
-            if(!Settings.instance.storage.isStorageMainValid(context))
+            if(!SettingsRepositoryImpl.instance.preferences.value.storage.isStorageMainValid)
                 return false;
             val files = getAutomaticBackupDocumentFiles(context,);
             return files.first?.exists() ?: false || files.second?.exists() ?: false;
         }
         fun startAutomaticBackup(force: Boolean = false) {
-            val lastBackupHoursAgo = Settings.instance.backup.lastAutoBackupTime.getNowDiffHours();
+            val lastBackupHoursAgo = SettingsRepositoryImpl.instance.preferences.value.backup.lastAutoBackupTime.getNowDiffHours();
             if(!force && lastBackupHoursAgo < 24) {
                 Logger.i(TAG, "Not AutoBackuping, last backup ${lastBackupHoursAgo} hours ago");
                 return;
@@ -124,12 +125,13 @@ class StateBackup {
             StateApp.instance.scopeOrNull?.launch(Dispatchers.IO){
                 try {
                     Logger.i(TAG, "Starting AutoBackup (Last ${lastBackupHoursAgo} ago)");
+                    var backupWritten = false
                     synchronized(_autoBackupLock) {
                         val context = StateApp.instance.contextOrNull ?: return@synchronized;
                         val data = export();
                         val zip = data.asZip();
 
-                        if(!Settings.instance.storage.isStorageMainValid(context)) {
+                        if(!SettingsRepositoryImpl.instance.preferences.value.storage.isStorageMainValid) {
                             StateApp.instance.scopeOrNull?.launch(Dispatchers.Main) {
                                 UIDialogs.toast("Missing permissions for auto-backup, please set the external general directory in settings");
                             }
@@ -142,10 +144,14 @@ class StateBackup {
                             val backupBytes = AUTO_MAGIC + AUTO_MARKER + byteArrayOf(AUTO_FORMAT_VERSION, 0x00.toByte()) + zip
                             exportFile!!.writeBytes(context, backupBytes)
 
-                            Settings.instance.backup.lastAutoBackupTime = OffsetDateTime.now(); //OffsetDateTime.now();
-                            Settings.instance.save();
+                            backupWritten = true
                         }
                     }
+                    // Stamp outside the monitor: the repo setter is suspend and
+                    // may not suspend inside a synchronized section. The backup
+                    // file write itself is still serialized by the lock.
+                    if (backupWritten)
+                        SettingsRepositoryImpl.instance.setLastAutoBackupTime(OffsetDateTime.now())
                     Logger.i(TAG, "Finished AutoBackup");
                 }
                 catch(ex: Throwable) {
@@ -357,7 +363,7 @@ class StateBackup {
                 Logger.e(TAG, "Failed to serialize history");
             }
 
-            val settings = Settings.instance.encode();
+            val settings = SettingsRepositoryImpl.instance.encodeLegacySettings();
             val pluginSettings = StatePlugins.instance.getPlugins()
                 .associateBy { it.config.id }
                 .mapValues { it.value.settings };
@@ -425,6 +431,9 @@ class StateBackup {
                                 Logger.i(TAG, "Importing settings");
                                 try {
                                     Settings.replace(export.settings);
+                                    // Settings readers go through the repo's
+                                    // prefs snapshot — re-map after the swap.
+                                    SettingsRepositoryImpl.instance.reloadFromLegacy()
                                 } catch (ex: Throwable) {
                                     UIDialogs.toast(
                                         context,

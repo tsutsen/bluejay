@@ -1,6 +1,6 @@
 package com.tsutsen.platformplayer.downloads
 
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.api.media.models.streams.sources.LocalAudioSource
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
@@ -250,7 +250,7 @@ class UmpSegmentDownloader(
     private fun umpDownloadConcurrency(): Int {
         val plugin = (owner.video?.url ?: owner.videoDetails?.url)?.let { StatePlatform.instance.getContentClient(it) }?.let { if(it is JSClient) it else null };
         val maxParallel = if(plugin != null && plugin.config.maxDownloadParallelism > 0) plugin.config.maxDownloadParallelism else 99;
-        return Math.min(maxParallel, Settings.instance.downloads.getByteRangeThreadCount()).coerceIn(1, 6);
+        return Math.min(maxParallel, SettingsRepositoryImpl.instance.preferences.value.downloads.byteRangeThreadCount).coerceIn(1, 6);
     }
 
     private fun awaitUMPSegmentAt(session: SabrSession, buffer: com.tsutsen.platformplayer.sabr.SabrTrackBuffer, positionUs: Long): com.tsutsen.platformplayer.sabr.SabrSegment? {

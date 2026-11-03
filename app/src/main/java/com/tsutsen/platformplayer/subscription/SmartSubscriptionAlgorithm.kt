@@ -1,7 +1,7 @@
 package com.tsutsen.platformplayer.subscription
 
 import SubsExchangeClient
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.api.media.models.ResultCapabilities
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.getNowDiffHours
@@ -81,7 +81,7 @@ class SmartSubscriptionAlgorithm(
                         fetchTasks.add(task);
                     } else {
                         if(peekTasks.size < 100 &&
-                                Settings.instance.subscriptions.peekChannelContents &&
+                                SettingsRepositoryImpl.instance.preferences.value.subscriptions.peekChannelContents &&
                                 (task.sub.lastPeekVideo.year < 1971 || task.sub.lastPeekVideo < task.sub.lastVideoUpdate) &&
                                 task.client.capabilities.hasPeekChannelContents &&
                                 task.client.getPeekChannelTypes().contains(task.type)) {

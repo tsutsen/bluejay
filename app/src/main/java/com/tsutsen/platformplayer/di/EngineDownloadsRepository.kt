@@ -4,6 +4,7 @@ import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.core.data.repository.DownloadsRepository
 import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.DownloadQuality
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.downloads.VideoDownload
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.services.DownloadService
@@ -95,7 +96,7 @@ class EngineDownloadsRepository
                             ?: run {
                                 val def =
                                     DownloadQuality.fromLabel(
-                                        com.tsutsen.platformplayer.Settings.instance.content
+                                        SettingsRepositoryImpl.instance.preferences.value
                                             .defaultDownloadResolution,
                                     )
                                 def.targetPixelCount to def.targetBitrate

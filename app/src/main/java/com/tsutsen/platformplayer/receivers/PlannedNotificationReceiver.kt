@@ -5,7 +5,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.states.StateNotifications
@@ -16,7 +16,7 @@ class PlannedNotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         try {
             Logger.i(TAG, "Planned Notification received");
-            if(!Settings.instance.notifications.plannedContentNotification)
+            if(!SettingsRepositoryImpl.instance.preferences.value.notifications.plannedContentNotification)
                 return;
             if(StateApp.instance.contextOrNull == null)
                 StateApp.instance.initializeFiles();

@@ -2,7 +2,7 @@ package com.tsutsen.platformplayer.api.http
 
 import androidx.collection.arrayMapOf
 import com.tsutsen.platformplayer.PlatformPlayerApp
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.SettingsDev
 import com.tsutsen.platformplayer.constructs.Event1
 import com.tsutsen.platformplayer.ensureNotMainThread
@@ -90,7 +90,7 @@ open class ManagedHttpClient {
         _builderTemplate = builder;
         if(FragmentedStorage.isInitialized && StateApp.instance.isMainActive && SettingsDev.instance.developerMode && SettingsDev.instance.networking.allowAllCertificates)
             trustAllCertificates(builder);
-        else if(FragmentedStorage.isInitialized && Settings.instance.browsing.useDownloadedCABundle)
+        else if(FragmentedStorage.isInitialized && SettingsRepositoryImpl.instance.preferences.value.browsing.useDownloadedCABundle)
             applyMergedTrustStore(builder);
         client = buildClientFrom(builder);
     }

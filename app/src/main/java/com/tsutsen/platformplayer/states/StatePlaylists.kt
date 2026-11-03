@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.tsutsen.platformplayer.R
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.api.media.exceptions.NoPlatformClientException
 import com.tsutsen.platformplayer.api.media.models.channels.IPlatformChannel
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
@@ -173,7 +173,7 @@ class StatePlaylists {
             }
 
             _watchlistStore.saveAsync(video)
-            if (Settings.instance.other.watchLaterAddStart) {
+            if (SettingsRepositoryImpl.instance.preferences.value.other.watchLaterAddStart) {
                 _watchlistOrderStore.set(*(listOf(video.url) + _watchlistOrderStore.values).toTypedArray())
             } else {
                 _watchlistOrderStore.set(*(_watchlistOrderStore.values + listOf(video.url)).toTypedArray())
@@ -250,7 +250,7 @@ class StatePlaylists {
     fun addToPlaylist(id: String, video: IPlatformVideo): Boolean {
         synchronized(playlistStore) {
             val playlist = getPlaylist(id) ?: return false;
-            if(!Settings.instance.other.playlistAllowDups && playlist.videos.any { it.url == video.url })
+            if(!SettingsRepositoryImpl.instance.preferences.value.other.playlistAllowDups && playlist.videos.any { it.url == video.url })
                 return false;
 
 

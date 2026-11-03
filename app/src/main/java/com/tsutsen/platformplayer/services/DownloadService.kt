@@ -11,7 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.tsutsen.platformplayer.R
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.activities.MainActivity
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.downloads.VideoDownload
@@ -233,7 +233,7 @@ class DownloadService : Service() {
 
 
     private suspend fun doDownload(download: VideoDownload) {
-        if(!Settings.instance.downloads.shouldDownload())
+        if(!SettingsRepositoryImpl.instance.preferences.value.downloads.shouldDownload)
             throw IllegalStateException("Downloading disabled on current network");
 
         if((download.prepareTime?.getNowDiffMinutes() ?: 99) > 15) {

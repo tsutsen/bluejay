@@ -69,6 +69,17 @@ data class AppPreferences(
     val defaultDockTab: String = "home",
     /** Subscriptions tab list order: "random" | "watchtime" | "alphabetical". */
     val subscriptionsOrder: String = "watchtime",
+    /** Set once the first-launch flow (auto-backup restore prompt) has run. */
+    val didFirstStart: Boolean = false,
+    val downloads: DownloadsPreferences = DownloadsPreferences(),
+    val storage: StoragePreferences = StoragePreferences(),
+    val subscriptions: SubscriptionsPreferences = SubscriptionsPreferences(),
+    val backup: BackupPreferences = BackupPreferences(),
+    val notifications: NotificationPreferences = NotificationPreferences(),
+    val logging: LoggingPreferences = LoggingPreferences(),
+    val browsing: BrowsingPreferences = BrowsingPreferences(),
+    val autoUpdate: AutoUpdatePreferences = AutoUpdatePreferences(),
+    val other: OtherPreferences = OtherPreferences(),
 )
 
 /**

@@ -219,9 +219,10 @@ private fun ByteArray.toInetAddress(): InetAddress {
 fun getConnectedSocket(attemptAddresses: List<InetAddress>, port: Int, timeoutMs: Int = 10_000): Socket? {
     ensureNotMainThread()
 
-    val addresses = if(!Settings.instance.casting.allowIpv6) attemptAddresses.filterIsInstance<Inet4Address>() else attemptAddresses;
+    // Casting (the only allowIpv6 writer) was deleted — accept all addresses.
+    val addresses = attemptAddresses;
     if(addresses.isEmpty())
-        throw IllegalStateException("No valid addresses found (ipv6: ${(if(Settings.instance.casting.allowIpv6) "enabled" else "disabled")})");
+        throw IllegalStateException("No valid addresses found");
 
     if (addresses.isEmpty()) {
         return null;

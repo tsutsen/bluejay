@@ -196,15 +196,13 @@ internal fun CompanionVideoOptionsSheet(
         },
         isHidden = SettingsRepositoryImpl.instance.hiddenVideoUrls.value.contains(card.url),
         onHideVideo = {
-            // App module: persist directly on the Settings singleton.
-            val s = com.tsutsen.platformplayer.Settings.instance
-            s.content.hiddenVideoUrls =
-                if (card.url in s.content.hiddenVideoUrls) {
-                    s.content.hiddenVideoUrls - card.url
-                } else {
-                    (s.content.hiddenVideoUrls + card.url).distinct()
-                }
-            s.save()
+            // Persist via the settings repo so the hidden-set flows re-emit.
+            scope.launch {
+                if (card.url in SettingsRepositoryImpl.instance.hiddenVideoUrls.value)
+                    SettingsRepositoryImpl.instance.removeHiddenVideoUrl(card.url)
+                else
+                    SettingsRepositoryImpl.instance.addHiddenVideoUrl(card.url)
+            }
         },
         isCreatorHidden =
             creatorUrl != null &&
@@ -214,26 +212,22 @@ internal fun CompanionVideoOptionsSheet(
                 creatorUrl in SettingsRepositoryImpl.instance.downrankedCreators.value,
         onDownrankCreator = creatorUrl?.let { url ->
             {
-                val s = com.tsutsen.platformplayer.Settings.instance
-                s.content.downrankedCreators =
-                    if (url in s.content.downrankedCreators) {
-                        s.content.downrankedCreators - url
-                    } else {
-                        (s.content.downrankedCreators + url).distinct()
-                    }
-                s.save()
+                scope.launch {
+                    if (url in SettingsRepositoryImpl.instance.downrankedCreators.value)
+                        SettingsRepositoryImpl.instance.removeDownrankedCreator(url)
+                    else
+                        SettingsRepositoryImpl.instance.addDownrankedCreator(url)
+                }
             }
         },
         onHideCreator = creatorUrl?.let { url ->
             {
-                val s = com.tsutsen.platformplayer.Settings.instance
-                s.content.hiddenCreators =
-                    if (url in s.content.hiddenCreators) {
-                        s.content.hiddenCreators - url
-                    } else {
-                        (s.content.hiddenCreators + url).distinct()
-                    }
-                s.save()
+                scope.launch {
+                    if (url in SettingsRepositoryImpl.instance.hiddenCreators.value)
+                        SettingsRepositoryImpl.instance.removeHiddenCreator(url)
+                    else
+                        SettingsRepositoryImpl.instance.addHiddenCreator(url)
+                }
             }
         },
         isInQueue = queue.any { it.url == card.url },

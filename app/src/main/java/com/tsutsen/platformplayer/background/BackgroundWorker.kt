@@ -9,7 +9,6 @@ import android.graphics.Bitmap
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.activities.MainActivity
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
@@ -157,7 +156,7 @@ class BackgroundWorker(
                                         now.plusMinutes(
                                             StateNotifications.instance.plannedWarningMinutesEarly,
                                         ) &&
-                                        Settings.instance.notifications.plannedContentNotification
+                                        SettingsRepositoryImpl.instance.preferences.value.notifications.plannedContentNotification
                                     ) {
                                         StateNotifications.instance.scheduleContentNotification(applicationContext, content)
                                     }

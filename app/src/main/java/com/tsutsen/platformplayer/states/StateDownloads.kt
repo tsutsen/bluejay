@@ -5,7 +5,7 @@ import android.content.Context
 import android.os.StatFs
 import androidx.documentfile.provider.DocumentFile
 import com.tsutsen.platformplayer.R
-import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.UIDialogs
 import com.tsutsen.platformplayer.activities.IWithResultLauncher
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
@@ -203,7 +203,7 @@ class StateDownloads {
         val hasPlaylistChanged = checkForOutdatedPlaylists();
         val hasDownloads = _downloading.hasItems();
 
-        if((hasPlaylistChanged || hasDownloads) && Settings.instance.downloads.shouldDownload())
+        if((hasPlaylistChanged || hasDownloads) && SettingsRepositoryImpl.instance.preferences.value.downloads.shouldDownload)
             StateApp.withContext {
                 DownloadService.getOrCreateService(it);
             }
@@ -278,7 +278,7 @@ class StateDownloads {
                 }
             }
         }
-        if(watchLater.isNotEmpty() && Settings.instance.downloads.shouldDownload()) {
+        if(watchLater.isNotEmpty() && SettingsRepositoryImpl.instance.preferences.value.downloads.shouldDownload) {
             if(hasNew) {
                 UIDialogs.toast("Downloading [Watch Later]")
                 StateApp.withContext {
@@ -320,7 +320,7 @@ class StateDownloads {
                 }
             }
         }
-        if(playlist.videos.isNotEmpty() && Settings.instance.downloads.shouldDownload()) {
+        if(playlist.videos.isNotEmpty() && SettingsRepositoryImpl.instance.preferences.value.downloads.shouldDownload) {
             if(hasNew) {
                 UIDialogs.toast("Downloading [${playlist.name}]")
                 StateApp.withContext {
@@ -359,7 +359,7 @@ class StateDownloads {
 
 
             if(notify) {
-                if(Settings.instance.downloads.shouldDownload()) {
+                if(SettingsRepositoryImpl.instance.preferences.value.downloads.shouldDownload) {
                     UIDialogs.toast("Downloading [${shortName}]")
                     StateApp.withContext {
                         DownloadService.getOrCreateService(it);

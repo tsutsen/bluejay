@@ -18,7 +18,6 @@ import android.os.Looper
 import android.provider.DocumentsContract
 import android.util.DisplayMetrics
 import android.util.Log
-import android.webkit.CookieManager
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -40,6 +39,7 @@ import com.tsutsen.platformplayer.background.BackgroundWorker
 
 import com.tsutsen.platformplayer.constructs.Event0
 import com.tsutsen.platformplayer.constructs.Event1
+import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.engine.exceptions.ScriptCaptchaRequiredException
 import com.tsutsen.platformplayer.logging.AndroidLogConsumer
 import com.tsutsen.platformplayer.logging.FileLogConsumer
@@ -98,13 +98,12 @@ class StateApp {
     var hasMediaStoreVideoPermission: Boolean = false;
 
     fun getExternalGeneralDirectory(context: Context): DocumentFile? {
-        val generalUri = Settings.instance.storage.getStorageGeneralUri()
+        val generalUri = SettingsRepositoryImpl.instance.preferences.value.storage.storageGeneralUri
         val document = getAccessibleTreeDirectory(context, generalUri)
 
         if (document == null && generalUri != null) {
             Logger.w(TAG, "Stored general directory is no longer valid, clearing setting [$generalUri]")
-            Settings.instance.storage.storage_general = null
-            Settings.instance.save()
+            scope.launch { SettingsRepositoryImpl.instance.setStorageGeneral(null) }
         }
 
         return document
@@ -116,10 +115,10 @@ class StateApp {
                     context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_WRITE_URI_PERMISSION.or(Intent.FLAG_GRANT_READ_URI_PERMISSION));
                 if(it != null && isValidStorageUri(context, it)) {
                     Logger.i(TAG, "Changed external general directory: ${it}");
-                    Settings.instance.storage.storage_general = it.toString();
-                    Settings.instance.save();
-
-                    onChanged?.invoke(getExternalGeneralDirectory(context));
+                    scope.launch {
+                        SettingsRepositoryImpl.instance.setStorageGeneral(it.toString());
+                        onChanged?.invoke(getExternalGeneralDirectory(context));
+                    };
                 }
                 else
                     scopeOrNull?.launch(Dispatchers.Main) {
@@ -128,13 +127,12 @@ class StateApp {
             };
     }
     fun getExternalDownloadDirectory(context: Context): DocumentFile? {
-        val downloadUri = Settings.instance.storage.storage_download?.let { Uri.parse(it) }
+        val downloadUri = SettingsRepositoryImpl.instance.preferences.value.storage.storageDownload?.let { Uri.parse(it) }
         val document = getAccessibleTreeDirectory(context, downloadUri)
 
         if (document == null && downloadUri != null) {
             Logger.w(TAG, "Stored download directory is no longer valid, clearing setting [$downloadUri]")
-            Settings.instance.storage.storage_download = null
-            Settings.instance.save()
+            scope.launch { SettingsRepositoryImpl.instance.setStorageDownload(null) }
         }
 
         return document
@@ -146,10 +144,10 @@ class StateApp {
                     context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_WRITE_URI_PERMISSION.or(Intent.FLAG_GRANT_READ_URI_PERMISSION));
                 if(it != null && isValidStorageUri(context, it)) {
                     Logger.i(TAG, "Changed external download directory: ${it}");
-                    Settings.instance.storage.storage_download = it.toString();
-                    Settings.instance.save();
-
-                    onChanged?.invoke(getExternalDownloadDirectory(context));
+                    scope.launch {
+                        SettingsRepositoryImpl.instance.setStorageDownload(it.toString());
+                        onChanged?.invoke(getExternalDownloadDirectory(context));
+                    };
                 }
             };
     }
@@ -521,22 +519,15 @@ class StateApp {
             }
         }
 
-        if(Settings.instance.plugins.shouldClearWebviewCookies()) {
-            try {
-                Logger.i(TAG, "Clearing cookies on startup");
-                val cookieManager: CookieManager =
-                    CookieManager.getInstance();
-                cookieManager.removeAllCookies(null);
-            } catch (ex: Throwable) {
-                Logger.e("StateApp", "Failed to clear cookies", ex);
-            }
-        }
+        // (plugins.shouldClearWebviewCookies was a stub constant false —
+        // the toggle was removed with the old settings UI — block deleted.)
 
         val logFile = File(context.filesDir, "log.txt");
         // Cap the log file: truncate once at startup instead of growing forever.
         if (logFile.exists() && logFile.length() > MAX_LOG_BYTES) logFile.writeBytes(ByteArray(0))
-        if (Settings.instance.logging.logLevel > LogLevel.NONE.value) {
-            val fileLogConsumer = FileLogConsumer(logFile, LogLevel.fromInt(Settings.instance.logging.logLevel), false);
+        val logLevel = SettingsRepositoryImpl.instance.preferences.value.logging.logLevel
+        if (logLevel > LogLevel.NONE.value) {
+            val fileLogConsumer = FileLogConsumer(logFile, LogLevel.fromInt(logLevel), false);
             Logger.setLogConsumers(listOf(
                 AndroidLogConsumer(),
                 fileLogConsumer
@@ -610,7 +601,7 @@ class StateApp {
         if(StateSubscriptions.instance.shouldMigrate())
             StateSubscriptions.instance.tryMigrateIfNecessary();
 
-        if(Settings.instance.downloads.shouldDownload()) {
+        if(SettingsRepositoryImpl.instance.preferences.value.downloads.shouldDownload) {
             Logger.i(TAG, "MainApp Started: Check [Downloads]");
             StateDownloads.instance.checkForOutdatedPlaylists();
 
@@ -619,8 +610,8 @@ class StateApp {
                 DownloadService.getOrCreateService(context);
         }
 
-        if (Settings.instance.autoUpdate.isAutoUpdateEnabled()) {
-            if (Settings.instance.autoUpdate.shouldBackgroundDownload) {
+        if (SettingsRepositoryImpl.instance.preferences.value.autoUpdate.isAutoUpdateEnabled) {
+            if (SettingsRepositoryImpl.instance.preferences.value.autoUpdate.shouldBackgroundDownload) {
                 Logger.i(TAG, "MainApp Started: Initialize [AutoUpdate Background]");
                 scopeOrNull?.launch(Dispatchers.IO) {
                     StateUpdate.instance.seedUiFromDisk(context)
@@ -683,7 +674,7 @@ class StateApp {
             }
         }
 
-        if(Settings.instance.subscriptions.fetchOnAppBoot) {
+        if(SettingsRepositoryImpl.instance.preferences.value.subscriptions.fetchOnAppBoot) {
             scope.launch(Dispatchers.IO) {
                 Logger.i(TAG, "MainApp Started: Fetch [Subscriptions]");
                 val subRequestCounts = StateSubscriptions.instance.getSubscriptionRequestCount();
@@ -705,13 +696,13 @@ class StateApp {
         }
 
         Logger.i(TAG, "MainApp Started: Initialize [BackgroundWork]");
-        val interval = Settings.instance.subscriptions.getSubscriptionsBackgroundIntervalMinutes();
+        val interval = SettingsRepositoryImpl.instance.preferences.value.subscriptions.backgroundIntervalMinutes;
         scheduleBackgroundWork(context, interval != 0, interval);
 
         Logger.i(TAG, "MainApp Started: Initialize [AutoBackup]");
-        if(!Settings.instance.backup.didAskAutoBackup && !Settings.instance.backup.shouldAutomaticBackup()) {
+        if(!SettingsRepositoryImpl.instance.preferences.value.backup.didAskAutoBackup && !SettingsRepositoryImpl.instance.preferences.value.backup.shouldAutomaticBackup) {
             StateAnnouncement.instance.registerAnnouncement("backup", "Set Automatic Backup", "Configure daily backups of your data to restore in case of catastrophic failure.", AnnouncementType.SESSION, null, null, "Configure", {
-                if(context is IWithResultLauncher && !Settings.instance.storage.isStorageMainValid(context)) {
+                if(context is IWithResultLauncher && !SettingsRepositoryImpl.instance.preferences.value.storage.isStorageMainValid) {
                     UIDialogs.toast("Missing general directory");
                     changeExternalGeneralDirectory(context) {
                         UIDialogs.showAutomaticBackupDialog(context);
@@ -723,11 +714,10 @@ class StateApp {
                     StateAnnouncement.instance.deleteAnnouncement("backup");
                 }
             }, "No Backup", {
-                Settings.instance.backup.didAskAutoBackup = true;
-                Settings.instance.save();
+                scope.launch { SettingsRepositoryImpl.instance.setDidAskAutoBackup(true) };
             });
         }
-        else if(Settings.instance.backup.didAskAutoBackup && Settings.instance.backup.shouldAutomaticBackup() && !Settings.instance.storage.isStorageMainValid(context)) {
+        else if(SettingsRepositoryImpl.instance.preferences.value.backup.didAskAutoBackup && SettingsRepositoryImpl.instance.preferences.value.backup.shouldAutomaticBackup && !SettingsRepositoryImpl.instance.preferences.value.storage.isStorageMainValid) {
             if(context is IWithResultLauncher) {
                 Logger.i(TAG, "Backup set without general directory, please select general external directory");
                 changeExternalGeneralDirectory(context) {
@@ -800,16 +790,14 @@ class StateApp {
     }
 
     fun mainAppStartedWithExternalFiles(context: Context) {
-        if(!Settings.instance.didFirstStart) {
+        if(!SettingsRepositoryImpl.instance.preferences.value.didFirstStart) {
             if(StateBackup.hasAutomaticBackup()) {
                 UIDialogs.showAutomaticRestoreDialog(context, if(context is LifecycleOwner) context.lifecycleScope else scope);
             }
 
-
-            Settings.instance.didFirstStart = true;
-            Settings.instance.save();
+            scope.launch { SettingsRepositoryImpl.instance.setDidFirstStart(true) };
         }
-        if(Settings.instance.backup.shouldAutomaticBackup()) {
+        if(SettingsRepositoryImpl.instance.preferences.value.backup.shouldAutomaticBackup) {
             try {
                 StateBackup.startAutomaticBackup();
             }
@@ -937,7 +925,7 @@ class StateApp {
             updateNetworkState();
 
             try {
-                if(FragmentedStorage.isInitialized && Settings.instance.downloads.shouldDownload())
+                if(FragmentedStorage.isInitialized && SettingsRepositoryImpl.instance.preferences.value.downloads.shouldDownload)
                     StateDownloads.instance.checkForDownloadsTodos();
             } catch(ex: Throwable) {
                 Logger.w(TAG, "Failed to handle capabilities changed event", ex);
