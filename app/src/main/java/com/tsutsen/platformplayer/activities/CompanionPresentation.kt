@@ -24,10 +24,12 @@ import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
-import com.tsutsen.platformplayer.logging.Logger
-import java.lang.reflect.Proxy
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 
 /**
@@ -89,7 +91,7 @@ class CompanionPresentation(
                     get() = registry
             }
         composeView.setViewTreeLifecycleOwner(lifecycleOwner)
-        attachSavedStateOwner(composeView)
+        composeView.setViewTreeSavedStateRegistryOwner(CompanionSavedStateOwner())
 
         composeView.layoutParams =
             ViewGroup.LayoutParams(
@@ -155,54 +157,32 @@ class CompanionPresentation(
     }
 
     /**
-     * Compose requires a ViewTreeSavedStateRegistryOwner in the hierarchy.
-     * The androidx.savedstate classes ship in the APK but are not exposed to
-     * this module's Kotlin compile classpath (KMP variant quirk), so the
-     * owner is wired up reflectively — it is plain, stable API.
+     * Self-contained [SavedStateRegistryOwner] for the Presentation window.
+     * Compose's rememberSaveable requires one in the ViewTree; a Presentation
+     * window has none (it is not an activity), so provide a registry that is
+     * never persisted — the companion UI is rebuilt from the shared
+     * repositories on every show().
+     *
+     * Typed API, not reflection: R8 shrinking renamed
+     * androidx.savedstate.ViewTreeSavedStateRegistryOwner out of the dex, so
+     * the old Class.forName lookup failed silently and the ComposeView
+     * crashed at attach with "doesn't propagate
+     * ViewTreeSavedStateRegistryOwner" (repro: restore-from-backup → SAF
+     * picker round-trip → onStop dismisses the presentation → onStart
+     * re-creates it).
      */
-    private fun attachSavedStateOwner(view: android.view.View) {
-        // The savedstate classes aren't on this module's compile classpath (KMP
-        // quirk), so wire the owner reflectively. IMPORTANT: load all classes
-        // through the SAME classloader — mixing loaders made getMethod("set", ...)
-        // throw NoSuchMethodException, which the old catch swallowed, leaving the
-        // Presentation window without an owner -> Compose crash at attach.
-        try {
-            val viewTreeCls = Class.forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
-            val cl = viewTreeCls.classLoader
-            val ownerItf = Class.forName("androidx.savedstate.SavedStateRegistryOwner", true, cl)
-            val controllerCls = Class.forName("androidx.savedstate.SavedStateRegistryController", true, cl)
-            val lifecycleCls = Class.forName("androidx.lifecycle.Lifecycle", true, cl)
-            val savedStateLifecycle = object : androidx.lifecycle.LifecycleOwner {
-                private val registry = LifecycleRegistry(this)
-                override val lifecycle get() = registry
-            }
-            val companion = controllerCls.getField("Companion").get(null)
-            val create = controllerCls.getMethod("create", ownerItf)
-            val owner = java.lang.reflect.Proxy.newProxyInstance(cl, arrayOf(ownerItf)) { proxy, method, args ->
-                when (method.name) {
-                    "getLifecycle" -> savedStateLifecycle.lifecycle
-                    "getSavedStateRegistry" -> {
-                        val controller = create.invoke(companion, proxy)
-                        controller.javaClass.getMethod("getSavedStateRegistry").invoke(controller)
-                    }
-                    "hashCode" -> System.identityHashCode(proxy)
-                    "equals" -> proxy === args?.getOrNull(0)
-                    "toString" -> "CompanionSavedStateOwner"
-                    else -> throw UnsupportedOperationException(method.name)
-                }
-            }
-            create.invoke(companion, owner).let { controller ->
-                controller.javaClass.getMethod("performRestore", android.os.Bundle::class.java).invoke(controller, null)
-            }
-            viewTreeCls.getMethod("set", android.view.View::class.java, ownerItf).invoke(null, view, owner)
-            Logger.i(TAG, "SavedStateRegistryOwner attached to presentation view")
-        } catch (t: Throwable) {
-            Logger.e(TAG, "Could not attach saved-state owner", t)
+    private class CompanionSavedStateOwner : SavedStateRegistryOwner {
+        private val controller = SavedStateRegistryController.create(this)
+        private val lifecycleRegistry = LifecycleRegistry(this)
+
+        override val lifecycle: Lifecycle get() = lifecycleRegistry
+        override val savedStateRegistry: SavedStateRegistry get() = controller.savedStateRegistry
+
+        init {
+            // Attach the registry; there is no state to restore (null bundle).
+            controller.performRestore(null)
         }
     }
 
-    private companion object {
-        const val TAG = "CompanionPresentation"
-    }
 }
 
