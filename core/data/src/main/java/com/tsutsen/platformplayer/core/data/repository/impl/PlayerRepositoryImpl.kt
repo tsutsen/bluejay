@@ -736,7 +736,8 @@ class PlayerRepositoryImpl(
             Log.e(TAG, "========================================")
             Log.e(TAG, "Failed to play video: $videoId", e)
             Log.e(TAG, "========================================")
-            _playerState.update { it.copy(isLoading = false, error = e.message ?: "Failed to play video") }
+            val pluginId = (e as? com.tsutsen.platformplayer.core.model.PluginScriptException)?.pluginId
+            _playerState.update { it.copy(isLoading = false, error = e.message ?: "Failed to play video", errorPluginId = pluginId) }
         } finally {
             // Never let a resume position leak into the next play() call — but
             // don't clobber one a newer play() has already loaded in its place.

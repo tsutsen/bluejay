@@ -130,6 +130,10 @@ class EngineVideoUrlResolver
                 Log.w(TAG, "No video MediaSource found, returning details only")
                 Log.i(TAG, "========================================")
                 ResolutionResult(null, mappedDetails)
+            } catch (e: com.tsutsen.platformplayer.engine.exceptions.PluginException) {
+                // Plugin-side block (e.g. content gate): surface it so the player
+                // can show the warning with a "Go to plugin settings" action.
+                throw com.tsutsen.platformplayer.core.model.PluginScriptException((e.config as? com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig)?.id ?: e.config.name, e.message ?: "Plugin error")
             } catch (e: Exception) {
                 Log.e(TAG, "========================================")
                 Log.e(TAG, "Failed to resolve URL via engine: $contentUrl", e)

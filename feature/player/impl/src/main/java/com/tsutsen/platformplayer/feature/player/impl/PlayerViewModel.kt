@@ -93,6 +93,7 @@ sealed interface PlayerUiState {
 
     data class Error(
         val message: String,
+        val pluginId: String? = null,
     ) : PlayerUiState
 }
 
@@ -379,6 +380,9 @@ class PlayerViewModel
                             return@collect
                         }
                         _uiState.value =
+                            if (playerState.error != null)
+                                PlayerUiState.Error(playerState.error!!, playerState.errorPluginId)
+                            else
                             PlayerUiState.Loaded(
                                 isPlaying = playerState.isPlaying,
                                 durationMs = playerState.durationMs,

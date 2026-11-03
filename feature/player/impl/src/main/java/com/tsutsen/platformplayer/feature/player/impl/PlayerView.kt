@@ -18,6 +18,10 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -104,6 +108,7 @@ private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
 fun PlayerView(
     viewModel: PlayerViewModel = hiltViewModel(),
     onChannelClick: (String) -> Unit = {},
+    onPluginSettingsClick: (String) -> Unit = {},
     isPip: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -1300,11 +1305,19 @@ fun PlayerView(
                 modifier = Modifier.fillMaxSize().background(Color.Black),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = state.message,
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = state.message,
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    if (state.pluginId != null) {
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { onPluginSettingsClick(state.pluginId) }) {
+                            Text("Go to plugin settings")
+                        }
+                    }
+                }
             }
         }
     }

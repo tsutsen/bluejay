@@ -624,7 +624,7 @@ private fun bluejayMainActivityContent(
             )
             // Player overlay — only rendered when there's a video to play
             if (hasVideo) {
-                PlayerView(onChannelClick = { navigator.navigateToChannel(it) })
+                PlayerView(onChannelClick = { navigator.navigateToChannel(it) }, onPluginSettingsClick = { navigator.navigateToPluginBrowser() })
             }
         },
     )

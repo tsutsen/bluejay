@@ -13,6 +13,8 @@ data class PlayerState(
     val queue: List<ContentItem> = emptyList(),
     val selectedIndex: Int = 0,
     val error: String? = null,
+    /** Plugin that produced [error] (when it's a plugin-side block), for a 'Go to plugin settings' action. */
+    val errorPluginId: String? = null,
     val isLoading: Boolean = false,
     val isCompleted: Boolean = false,
     val comments: List<CommentItem> = emptyList(),
