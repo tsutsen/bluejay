@@ -41,3 +41,17 @@
 # Javet V8: called via JNI/reflection from native — R8 must not strip or rename
 -keep class com.caoccao.javet.** { *; }
 -dontwarn com.caoccao.javet.**
+
+# Javet injects @V8Function/@V8Function-called members reflectively from JS —
+# R8 must keep every annotated member on every class, not just javet's own.
+-keepclassmembers class * {
+    @com.caoccao.javet.annotations.V8Function <methods>;
+    @com.caoccao.javet.annotations.V8Getter <methods>;
+    @com.caoccao.javet.annotations.V8Setter <methods>;
+}
+-keepclasseswithmembers class * {
+    @com.caoccao.javet.annotations.V8Function <methods>;
+}
+# App-side bridge packages are bound into the JS global object by name
+-keep class com.tsutsen.platformplayer.engine.** { *; }
+-keep class com.tsutsen.platformplayer.api.media.platforms.js.** { *; }
