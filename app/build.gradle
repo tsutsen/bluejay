@@ -225,6 +225,7 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.21.2'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+    implementation 'androidx.savedstate:savedstate:1.3.2'
     // ffmpeg-kit-next (FFmpeg 9.0.2, core-only) built locally from arthenica/ffmpeg-kit-next v9.0.2
     // on the build machine; same com.arthenica.ffmpegkit API as classic ffmpeg-kit.
     implementation files('aar/ffmpeg-kit-next-9.0.2.aar')

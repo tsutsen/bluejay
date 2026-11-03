@@ -15,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
@@ -161,74 +162,19 @@ class CompanionPresentation(
      * owner is wired up reflectively — it is plain, stable API.
      */
     private fun attachSavedStateOwner(view: android.view.View) {
-        // Dedicated registry (not the activity's): performRestore() must run
-        // while the owner is still in its initialization stage (like
-        // ComponentActivity does in onCreate), so it must start INITIALIZED
-        // and never be advanced.
-        val savedStateLifecycle =
-            object : LifecycleOwner {
-                private val registry = LifecycleRegistry(this)
-                override val lifecycle: Lifecycle
-                    get() = registry
+        // Direct typed API (the old reflection proxy broke on newer savedstate,
+        // leaving the Presentation window without an owner -> Compose crash).
+        val owner = object : androidx.savedstate.SavedStateRegistryOwner {
+            private val registry = LifecycleRegistry(this)
+            private val controller = androidx.savedstate.SavedStateRegistryController.create(this)
+            override val savedStateRegistry get() = controller.savedStateRegistry
+            override val lifecycle: Lifecycle get() = registry
+            init {
+                registry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+                controller.performRestore(null)
             }
-        try {
-            val ownerItf = Class.forName("androidx.savedstate.SavedStateRegistryOwner")
-            val controllerCls = Class.forName("androidx.savedstate.SavedStateRegistryController")
-            val companion = controllerCls.getField("Companion").get(null)
-            val create = controllerCls.getMethod("create", ownerItf)
-            var controller: Any? = null
-            val owner =
-                Proxy.newProxyInstance(
-                    ownerItf.classLoader,
-                    arrayOf(ownerItf),
-                ) { proxy, method, args ->
-                    when (method.name) {
-                        "getLifecycle" -> {
-                            savedStateLifecycle.lifecycle
-                        }
-
-                        "getSavedStateRegistry" -> {
-                            if (controller == null) controller = create.invoke(companion, proxy)
-                            controller!!
-                                .javaClass
-                                .getMethod("getSavedStateRegistry")
-                                .invoke(controller)
-                        }
-
-                        "hashCode" -> {
-                            System.identityHashCode(proxy)
-                        }
-
-                        "equals" -> {
-                            proxy === args?.getOrNull(0)
-                        }
-
-                        "toString" -> {
-                            "CompanionSavedStateOwner"
-                        }
-
-                        else -> {
-                            throw UnsupportedOperationException(method.name)
-                        }
-                    }
-                }
-            // create() only calls getLifecycle() (not getSavedStateRegistry),
-            // so this cannot recurse.
-            controller = create.invoke(companion, owner)
-            controller!!
-                .javaClass
-                .getMethod("performRestore", android.os.Bundle::class.java)
-                .invoke(controller, null)
-            val set =
-                Class
-                    .forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
-                    .getMethod("set", android.view.View::class.java, ownerItf)
-            set.invoke(null, view, owner)
-        } catch (t: Throwable) {
-            var root: Throwable? = t
-            while (root?.cause != null) root = root.cause
-            Logger.w(TAG, t) { "Could not attach saved-state owner (root: $root)" }
         }
+        androidx.savedstate.ViewTreeSavedStateRegistryOwner.set(view, owner)
     }
 
     private companion object {
