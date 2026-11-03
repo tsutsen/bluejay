@@ -110,6 +110,13 @@ android {
     }
 
     buildTypes {
+        // Macrobenchmark target: release code + debuggable so benchmark can drive it
+        benchmark {
+            initWith release
+            signingConfig signingConfigs.release
+            debuggable true
+            matchingFallbacks += ['release']
+        }
         release {
             signingConfig signingConfigs.release
             // Shrink only, no obfuscation yet: -dontobfuscate keeps names for
