@@ -1,75 +1,75 @@
 [submodule "app/src/stable/assets/sources/kick"]
 	path = app/src/stable/assets/sources/kick
-	url = https://gitlab.futo.org/videostreaming/plugins/kick.git
+	url = https://github.com/futo-org/grayjay-plugin-kick.git
 [submodule "app/src/stable/assets/sources/odysee"]
 	path = app/src/stable/assets/sources/odysee
-	url = https://gitlab.futo.org/videostreaming/plugins/odysee.git
+	url = https://github.com/futo-org/grayjay-plugin-odysee.git
 [submodule "app/src/stable/assets/sources/nebula"]
 	path = app/src/stable/assets/sources/nebula
-	url = https://gitlab.futo.org/videostreaming/plugins/nebula.git
+	url = https://github.com/futo-org/grayjay-plugin-nebula.git
 [submodule "app/src/stable/assets/sources/patreon"]
 	path = app/src/stable/assets/sources/patreon
-	url = https://gitlab.futo.org/videostreaming/plugins/patreon.git
+	url = https://github.com/futo-org/grayjay-plugin-patreon.git
 [submodule "app/src/stable/assets/sources/peertube"]
 	path = app/src/stable/assets/sources/peertube
-	url = https://gitlab.futo.org/videostreaming/plugins/peertube.git
+	url = https://github.com/futo-org/grayjay-plugin-peertube.git
 [submodule "app/src/stable/assets/sources/rumble"]
 	path = app/src/stable/assets/sources/rumble
-	url = https://gitlab.futo.org/videostreaming/plugins/rumble.git
+	url = https://github.com/futo-org/grayjay-plugin-rumble.git
 [submodule "app/src/stable/assets/sources/soundcloud"]
 	path = app/src/stable/assets/sources/soundcloud
-	url = https://gitlab.futo.org/videostreaming/plugins/soundcloud.git
+	url = https://github.com/futo-org/grayjay-plugin-soundcloud.git
 [submodule "app/src/stable/assets/sources/twitch"]
 	path = app/src/stable/assets/sources/twitch
-	url = https://gitlab.futo.org/videostreaming/plugins/twitch.git
+	url = https://github.com/futo-org/grayjay-plugin-twitch.git
 [submodule "app/src/stable/assets/sources/youtube"]
 	path = app/src/stable/assets/sources/youtube
-	url = https://gitlab.futo.org/videostreaming/plugins/youtube.git
+	url = https://github.com/futo-org/grayjay-plugin-youtube.git
 [submodule "app/src/unstable/assets/sources/kick"]
 	path = app/src/unstable/assets/sources/kick
-	url = https://gitlab.futo.org/videostreaming/plugins/kick.git
+	url = https://github.com/futo-org/grayjay-plugin-kick.git
 [submodule "app/src/unstable/assets/sources/nebula"]
 	path = app/src/unstable/assets/sources/nebula
-	url = https://gitlab.futo.org/videostreaming/plugins/nebula.git
+	url = https://github.com/futo-org/grayjay-plugin-nebula.git
 [submodule "app/src/unstable/assets/sources/odysee"]
 	path = app/src/unstable/assets/sources/odysee
-	url = https://gitlab.futo.org/videostreaming/plugins/odysee.git
+	url = https://github.com/futo-org/grayjay-plugin-odysee.git
 [submodule "app/src/unstable/assets/sources/patreon"]
 	path = app/src/unstable/assets/sources/patreon
-	url = https://gitlab.futo.org/videostreaming/plugins/patreon.git
+	url = https://github.com/futo-org/grayjay-plugin-patreon.git
 [submodule "app/src/unstable/assets/sources/peertube"]
 	path = app/src/unstable/assets/sources/peertube
-	url = https://gitlab.futo.org/videostreaming/plugins/peertube.git
+	url = https://github.com/futo-org/grayjay-plugin-peertube.git
 [submodule "app/src/unstable/assets/sources/rumble"]
 	path = app/src/unstable/assets/sources/rumble
-	url = https://gitlab.futo.org/videostreaming/plugins/rumble.git
+	url = https://github.com/futo-org/grayjay-plugin-rumble.git
 [submodule "app/src/unstable/assets/sources/soundcloud"]
 	path = app/src/unstable/assets/sources/soundcloud
-	url = https://gitlab.futo.org/videostreaming/plugins/soundcloud.git
+	url = https://github.com/futo-org/grayjay-plugin-soundcloud.git
 [submodule "app/src/unstable/assets/sources/twitch"]
 	path = app/src/unstable/assets/sources/twitch
-	url = https://gitlab.futo.org/videostreaming/plugins/twitch.git
+	url = https://github.com/futo-org/grayjay-plugin-twitch.git
 [submodule "app/src/unstable/assets/sources/youtube"]
 	path = app/src/unstable/assets/sources/youtube
-	url = https://gitlab.futo.org/videostreaming/plugins/youtube.git
+	url = https://github.com/futo-org/grayjay-plugin-youtube.git
 [submodule "app/src/unstable/assets/sources/bilibili"]
 	path = app/src/unstable/assets/sources/bilibili
-	url = https://gitlab.futo.org/videostreaming/plugins/bilibili.git
+	url = https://github.com/futo-org/grayjay-plugin-bilibili.git
 [submodule "app/src/stable/assets/sources/bilibili"]
 	path = app/src/stable/assets/sources/bilibili
-	url = https://gitlab.futo.org/videostreaming/plugins/bilibili.git
+	url = https://github.com/futo-org/grayjay-plugin-bilibili.git
 [submodule "app/src/stable/assets/sources/bitchute"]
 	path = app/src/stable/assets/sources/bitchute
-	url = https://gitlab.futo.org/videostreaming/plugins/bitchute.git
+	url = https://github.com/futo-org/grayjay-plugin-bitchute.git
 [submodule "app/src/unstable/assets/sources/bitchute"]
 	path = app/src/unstable/assets/sources/bitchute
-	url = https://gitlab.futo.org/videostreaming/plugins/bitchute.git
+	url = https://github.com/futo-org/grayjay-plugin-bitchute.git
 [submodule "app/src/unstable/assets/sources/dailymotion"]
 	path = app/src/unstable/assets/sources/dailymotion
-	url = https://gitlab.futo.org/videostreaming/plugins/dailymotion.git
+	url = https://github.com/futo-org/grayjay-plugin-dailymotion.git
 [submodule "app/src/stable/assets/sources/dailymotion"]
 	path = app/src/stable/assets/sources/dailymotion
-	url = https://gitlab.futo.org/videostreaming/plugins/dailymotion.git
+	url = https://github.com/futo-org/grayjay-plugin-dailymotion.git
 [submodule "app/src/stable/assets/sources/apple-podcast"]
 	path = app/src/stable/assets/sources/apple-podcasts
 	url = https://gitlab.futo.org/videostreaming/plugins/apple-podcasts.git
