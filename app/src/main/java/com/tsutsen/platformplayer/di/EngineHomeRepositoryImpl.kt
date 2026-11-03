@@ -80,6 +80,10 @@ class EngineHomeRepositoryImpl
             java.util.concurrent.atomic
                 .AtomicBoolean(false)
 
+        // Handle of the in-flight initial load, so a manual refresh can
+        // cancel it and start a fresh one instead of being skipped.
+        private val loadInitialJob = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>(null)
+
         // Single-flight: auto-fill and scroll-prefetch can both ask for the
         // next page in the same frame; concurrent nextPage() calls on the
         // same pager corrupt its window. Concurrent callers bail out.
@@ -110,6 +114,11 @@ class EngineHomeRepositoryImpl
 
         override suspend fun loadInitial() {
             tryLoadInitial()
+        }
+
+        /** Runs [block] as the current initial load, cancelling any in-flight one. */
+        private fun runInitialLoad(block: suspend () -> Unit) {
+            loadInitialJob.getAndSet(scope.launch { block() })?.cancel()
         }
 
         private suspend fun doLoadInitial() {
@@ -495,9 +504,19 @@ class EngineHomeRepositoryImpl
 
         override suspend fun refresh() {
             Logger.i("EngineHomeRepository", "refresh")
-            // A skipped load (one already in flight) must not orphan the
-            // current pager: the in-flight run publishes the fresh results.
-            tryLoadInitial()
+            // Interrupt any in-flight load and start a fresh one with the
+            // current enabled sources — a skipped load would keep serving
+            // the stale pager (and the refresh spinner would drop early).
+            loadInitialJob.get()?.cancel()
+            loadInitialInFlight.set(false)
+            runInitialLoad {
+                loadInitialInFlight.set(true)
+                try {
+                    doLoadInitial()
+                } finally {
+                    loadInitialInFlight.set(false)
+                }
+            }
         }
 
         override suspend fun filterByTag(tag: String) {
