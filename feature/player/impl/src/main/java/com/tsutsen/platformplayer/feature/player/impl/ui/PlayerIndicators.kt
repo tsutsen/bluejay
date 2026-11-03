@@ -6,6 +6,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -201,6 +206,7 @@ internal fun GestureIndicatorOverlay(
                 shape = RoundedCornerShape(BluejayTokens().radius.sm),
                 modifier = Modifier.padding(horizontal = 16.dp),
             ) {
+                Column {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -218,6 +224,24 @@ internal fun GestureIndicatorOverlay(
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
+                }
+                // Optional thin progress line on the badge's bottom edge
+                // (volume / brightness / hold-seek level).
+                if (s.progress != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(Color.White.copy(alpha = 0.25f)),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(s.progress!!.coerceIn(0f, 1f))
+                                .background(Color.White),
+                        )
+                    }
+                }
                 }
             }
         }

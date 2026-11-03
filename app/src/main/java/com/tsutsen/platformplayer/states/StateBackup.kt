@@ -381,19 +381,31 @@ class StateBackup {
 
 
         fun importZipBytes(context: Context, scope: CoroutineScope, zipData: ByteArray) {
-            val import: StateBackup.ExportStructure;
-            try {
-                ByteArrayInputStream(zipData).use {
-                    ZipInputStream(it).use {
-                        import = StateBackup.ExportStructure.fromZip(it);
+            UIDialogs.showDialogProgress(context) { progress ->
+                progress.setText("Parsing zip..");
+                scope.launch(Dispatchers.IO) {
+                    var parsed: StateBackup.ExportStructure? = null;
+                    var parseError: Throwable? = null;
+                    try {
+                        ByteArrayInputStream(zipData).use {
+                            ZipInputStream(it).use {
+                                parsed = StateBackup.ExportStructure.fromZip(it);
+                            }
+                        }
+                    }
+                    catch(ex: Throwable) {
+                        parseError = ex;
+                    }
+                    withContext(Dispatchers.Main) {
+                        progress.dismiss();
+                        val import = parsed;
+                        if (import != null)
+                            import(context, scope, import);
+                        else
+                            UIDialogs.showGeneralErrorDialog(context, "Failed to import zip", parseError!!);
                     }
                 }
             }
-            catch(ex: Throwable) {
-                UIDialogs.showGeneralErrorDialog(context, "Failed to import zip", ex);
-                return;
-            }
-            import(context, scope, import);
         }
         fun import(context: Context, scope: CoroutineScope, export: ExportStructure) {
 

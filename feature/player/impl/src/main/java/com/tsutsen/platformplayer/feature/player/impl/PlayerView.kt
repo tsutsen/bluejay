@@ -835,6 +835,10 @@ fun PlayerView(
                                     if (event.targetMs >= viewModel.positionMs.value)
                                         Icons.Default.FastForward
                                     else Icons.Default.FastRewind,
+                                progress =
+                                    (event.targetMs.toFloat() /
+                                        state.durationMs.coerceAtLeast(1L))
+                                        .coerceIn(0f, 1f),
                             )
                         }
 
@@ -845,10 +849,10 @@ fun PlayerView(
                         }
 
                         is PlayerEvent.BrightnessChanged ->
-                            showBadge("brightness", Icons.Default.BrightnessHigh, label = "${(event.level * 100).toInt()}%")
+                            showBadge("brightness", Icons.Default.BrightnessHigh, label = "${(event.level * 100).toInt()}%", progress = event.level)
 
                         is PlayerEvent.VolumeChanged ->
-                            showBadge("volume", Icons.Default.VolumeUp, label = "${(event.level * 100).toInt()}%")
+                            showBadge("volume", Icons.Default.VolumeUp, label = "${(event.level * 100).toInt()}%", progress = event.level)
 
                         // PlayPauseToggled / NextRequested / PreviousRequested /
                         // Closed: no badge yet — they still pass through the bus
