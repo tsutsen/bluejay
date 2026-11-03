@@ -202,6 +202,13 @@ object BackupRestoreDialogs {
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(savedStateOwner)
             (activity as? androidx.lifecycle.ViewModelStoreOwner)?.let { setViewTreeViewModelStoreOwner(it) }
+            // Belt and braces: also set on the dialog's decor so the whole
+            // window hierarchy propagates the owners.
+            dialog.window?.decorView?.let { decor ->
+                decor.setViewTreeLifecycleOwner(lifecycleOwner)
+                decor.setViewTreeSavedStateRegistryOwner(savedStateOwner)
+                (activity as? androidx.lifecycle.ViewModelStoreOwner)?.let { decor.setViewTreeViewModelStoreOwner(it) }
+            }
             setContent {
                 BluejayTheme {
                     content()
