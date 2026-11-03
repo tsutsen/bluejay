@@ -202,13 +202,7 @@ object BackupRestoreDialogs {
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(savedStateOwner)
             (activity as? androidx.lifecycle.ViewModelStoreOwner)?.let { setViewTreeViewModelStoreOwner(it) }
-            // Belt and braces: also set on the dialog's decor so the whole
-            // window hierarchy propagates the owners.
-            dialog.window?.decorView?.let { decor ->
-                decor.setViewTreeLifecycleOwner(lifecycleOwner)
-                decor.setViewTreeSavedStateRegistryOwner(savedStateOwner)
-                (activity as? androidx.lifecycle.ViewModelStoreOwner)?.let { decor.setViewTreeViewModelStoreOwner(it) }
-            }
+
             setContent {
                 BluejayTheme {
                     content()
@@ -223,6 +217,13 @@ object BackupRestoreDialogs {
             ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         )
         dialog.show()
+        // decorView only exists after show(); propagate owners to the window
+        // root so Compose's attach-time lookup finds them.
+        dialog.window?.decorView?.let { decor ->
+            decor.setViewTreeLifecycleOwner(lifecycleOwner)
+            decor.setViewTreeSavedStateRegistryOwner(savedStateOwner)
+            (activity as? androidx.lifecycle.ViewModelStoreOwner)?.let { decor.setViewTreeViewModelStoreOwner(it) }
+        }
         return dialog
     }
 }
