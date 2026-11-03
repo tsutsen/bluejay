@@ -187,7 +187,7 @@ object BackupRestoreDialogs {
                 get() = registry
         }
         val savedStateOwner: SavedStateRegistryOwner =
-            activity ?: object : SavedStateRegistryOwner {
+            (activity as? SavedStateRegistryOwner) ?: object : SavedStateRegistryOwner {
                 private val registry = LifecycleRegistry(this)
                 private val controller = androidx.savedstate.SavedStateRegistryController.create(this)
                 override val savedStateRegistry get() = controller.savedStateRegistry
