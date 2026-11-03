@@ -501,6 +501,11 @@ class V8Plugin {
                     PackageBrowser(this)
                 else if(config is SourcePluginConfig && config.id == StateDeveloper.DEV_ID)
                     PackageBrowser(this)
+                else if(allowNull)
+                    //Optional package the plugin is not allowed to use (e.g. embedded Youtube with unsigned
+                    //config): degrade to no-browser instead of failing the whole plugin. Scripts must
+                    //guard with bridge.hasPackage("Browser") — YoutubeScript.js does.
+                    null
                 else
                     throw IllegalArgumentException("Browser is only allowed for debug and official plugins due to security");
             };

@@ -316,7 +316,9 @@ class StatePlugins {
             else null;
 
             //config.version = config.version - 1;
-            createPlugin(config, script, icon, true);
+            //createPlugin returns failures instead of throwing — surface them so
+            //embedded install failures are visible (and retried) instead of silent.
+            createPlugin(config, script, icon, true)?.let { throw it };
             return true;
         }
         catch(ex: Throwable) {
