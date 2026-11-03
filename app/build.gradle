@@ -138,6 +138,11 @@ android {
             universalApk true
         }
     }
+    lint {
+        // lintVital misfires on this inherited manifest (7k false Instantiatable errors)
+        checkReleaseBuilds false
+    }
+
     buildFeatures {
         buildConfig true
     }
