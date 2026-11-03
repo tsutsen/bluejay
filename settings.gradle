@@ -34,6 +34,3 @@ include ':feature:library:impl'
 include ':feature:channel:impl'
 include ':feature:subscriptions:impl'
 include ':feature:settings:impl'
-
-// Macrobenchmarks (jank/startup profiling)
-include ':benchmark'

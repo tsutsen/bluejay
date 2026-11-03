@@ -36,7 +36,7 @@ class BluejayBenchmarks {
             device.waitForIdle()
         },
     ) {
-        val device = UiDevice.getInstance(instrumentation)
+        val device = UiDevice.getInstance(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation())
         repeat(3) {
             device.swipe(630, 2000, 630, 600, 30)
             device.waitForIdle()
@@ -58,7 +58,7 @@ class BluejayBenchmarks {
             device.waitForIdle()
         },
     ) {
-        val device = UiDevice.getInstance(instrumentation)
+        val device = UiDevice.getInstance(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation())
         // swipe-to-fullscreen morph from the middle of the screen, then back
         device.swipe(630, 1400, 630, 2500, 40)
         device.waitForIdle()
