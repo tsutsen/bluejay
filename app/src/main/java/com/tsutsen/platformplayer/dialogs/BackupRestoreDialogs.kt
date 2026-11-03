@@ -176,7 +176,7 @@ object BackupRestoreDialogs {
                 else -> null
             }
         val activity = context.findActivity()
-        val lifecycleOwner: LifecycleOwner = activity ?: object : LifecycleOwner {
+        val lifecycleOwner: LifecycleOwner = (activity as? LifecycleOwner) ?: object : LifecycleOwner {
             private val registry = LifecycleRegistry(this)
 
             init {
