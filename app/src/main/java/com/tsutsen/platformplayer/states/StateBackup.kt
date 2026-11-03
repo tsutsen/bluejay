@@ -14,6 +14,7 @@ import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.api.media.models.video.SerializedPlatformVideo
 import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 import com.tsutsen.platformplayer.copyTo
+import com.tsutsen.platformplayer.dialogs.BackupRestoreDialogs
 import com.tsutsen.platformplayer.encryption.GPasswordEncryptionProvider
 import com.tsutsen.platformplayer.encryption.GPasswordEncryptionProviderV0
 import com.tsutsen.platformplayer.getNowDiffHours
@@ -28,7 +29,9 @@ import com.tsutsen.platformplayer.writeBytes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayInputStream
@@ -407,184 +410,160 @@ class StateBackup {
                 }
             }
         }
+
         fun import(context: Context, scope: CoroutineScope, export: ExportStructure) {
-
-            val availableStores = getAllMigrationStores();
             val unknownPlugins = export.plugins.filter { !StatePlugins.instance.hasPlugin(it.key) };
-
-            var doImport = false;
-            var doImportSettings = false;
-            var doImportPlugins = false;
-            var doImportPluginSettings = false;
-            var doEnablePlugins = false;
-            var doImportStores = false;
             Logger.i(TAG, "Starting import choices");
 
             scope.launch(Dispatchers.Main) {
-                UIDialogs.multiShowDialog(context, {
-                    Logger.i(TAG, "Starting import");
-                    if (!doImport)
-                        return@multiShowDialog;
-                    val enabledBefore = EnabledClientResolver.enabledClientIds();
+                // One dialog collects every restore choice at once — replaces
+                // the old chain of sequential per-section system AlertDialogs.
+                BackupRestoreDialogs.showImportOptionsDialog(
+                    context,
+                    export,
+                    unknownPlugins.map { it.value },
+                    onImport = { options ->
+                        runImport(context, scope, export, unknownPlugins, options);
+                    },
+                    onCancel = {
+                        Logger.i(TAG, "Import cancelled");
+                    }
+                );
+            }
+        }
 
-                    val onConclusion = {
-                        scope.launch(Dispatchers.IO) {
-                            StatePlatform.instance.selectClients(*enabledBefore.toTypedArray());
+        private fun runImport(
+            context: Context,
+            scope: CoroutineScope,
+            export: ExportStructure,
+            unknownPlugins: Map<String, String>,
+            options: BackupRestoreDialogs.ImportOptions
+        ) {
+            val availableStores = getAllMigrationStores();
+            Logger.i(TAG, "Starting import");
+            val enabledBefore = EnabledClientResolver.enabledClientIds();
 
-                            withContext(Dispatchers.Main) {
-                                UIDialogs.showDialog(context, R.drawable.ic_update_success_251dp, "Import has finished", null, null,0, UIDialogs.Action("Ok", {}));
+            UIDialogs.showDialogProgress(context) { progress ->
+                scope.launch(Dispatchers.IO) {
+                    fun step(text: String) {
+                        scope.launch(Dispatchers.Main) { progress.setText(text); }
+                    }
+                    try {
+                        if (options.importSettings && export.settings != null) {
+                            Logger.i(TAG, "Importing settings");
+                            step("Importing settings..");
+                            try {
+                                Settings.replace(export.settings);
+                                // Settings readers go through the repo's
+                                // prefs snapshot — re-map after the swap.
+                                SettingsRepositoryImpl.instance.reloadFromLegacy()
+                            } catch (ex: Throwable) {
+                                UIDialogs.toast(
+                                    context,
+                                    "Failed to import settings\n(" + ex.message + ")"
+                                );
                             }
                         }
-                    };
-                    //TODO: Probably restructure this to be less nested
-                    scope.launch(Dispatchers.IO) {
-                        try {
-                            if (doImportSettings && export.settings != null) {
-                                Logger.i(TAG, "Importing settings");
-                                try {
-                                    Settings.replace(export.settings);
-                                    // Settings readers go through the repo's
-                                    // prefs snapshot — re-map after the swap.
-                                    SettingsRepositoryImpl.instance.reloadFromLegacy()
-                                } catch (ex: Throwable) {
-                                    UIDialogs.toast(
-                                        context,
-                                        "Failed to import settings\n(" + ex.message + ")"
-                                    );
-                                }
-                            }
 
-                            val afterPluginInstalls = {
-                                scope.launch(Dispatchers.IO) {
-                                    if (doEnablePlugins) {
-                                        val availableClients = EnabledClientResolver.enabledClients().toMutableList();
-                                        availableClients.addAll(StatePlatform.instance.getAvailableClients().filter { !availableClients.contains(it) });
-                                        Logger.i(TAG, "Import enabling plugins [${availableClients.map { it.name }.joinToString(", ")}]");
-                                        StatePlatform.instance.updateAvailableClients(context, false);
-                                        StatePlatform.instance.selectClients(*availableClients.map { it.id }.toTypedArray());
-                                    }
-                                    if (doImportPluginSettings) {
-                                        for (settings in export.pluginSettings) {
-                                            Logger.i(TAG, "Importing Plugin settings [${settings.key}]");
-                                            StatePlugins.instance.setPluginSettings(settings.key, settings.value);
-                                        }
-                                    }
-                                    val toAwait = export.stores.map { it.key }.toMutableList();
-                                    if (doImportStores) {
-                                        for (store in export.stores) {
-                                            Logger.i(TAG, "Importing store [${store.key}]");
-                                            if (store.key == "history") {
-                                                withContext(Dispatchers.Main) {
-                                                    UIDialogs.showDialog(context, R.drawable.ic_move_up, "Import History", "Would you like to import history?", null, 0,
-                                                        UIDialogs.Action("No", {
-                                                        }, UIDialogs.ActionStyle.NONE),
-                                                        UIDialogs.Action("Yes", {
-                                                            scope.launch(Dispatchers.IO) {
-                                                                for (historyStr in store.value) {
-                                                                    try {
-                                                                        val histObj = HistoryVideo.fromReconString(historyStr) { url -> return@fromReconString export.cache?.videos?.firstOrNull { it.url == url }; }
-                                                                        StateHistory.instance.importHistoryVideos(listOf(histObj));
-                                                                    } catch (ex: Throwable) {
-                                                                        Logger.e(TAG, "Failed to import subscription group", ex);
-                                                                    }
-                                                                }
-                                                            }
-                                                        }, UIDialogs.ActionStyle.PRIMARY)
-                                                    )
-                                                }
-                                            } else if (store.key == "subscription_groups") {
-                                                withContext(Dispatchers.Main) {
-                                                    UIDialogs.showDialog(context, R.drawable.ic_move_up, "Import Subscription Groups", "Would you like to import subscription groups?\nExisting groups with the same id will be overridden!", null, 0,
-                                                        UIDialogs.Action("No", {
-                                                        }, UIDialogs.ActionStyle.NONE),
-                                                        UIDialogs.Action("Yes", {
-                                                            scope.launch(Dispatchers.IO) {
-                                                                for (groupStr in store.value) {
-                                                                    try {
-                                                                        val group = Json.decodeFromString<SubscriptionGroup>(groupStr);
-                                                                        val existing = StateSubscriptionGroups.instance.getSubscriptionGroup(group.id);
-                                                                        if (existing != null)
-                                                                            StateSubscriptionGroups.instance.deleteSubscriptionGroup(existing.id, false);
-                                                                        StateSubscriptionGroups.instance.updateSubscriptionGroup(group);
-                                                                    } catch (ex: Throwable) {
-                                                                        Logger.e(TAG, "Failed to import subscription group", ex);
-                                                                    }
-                                                                }
-                                                            }
-                                                        }, UIDialogs.ActionStyle.PRIMARY)
-                                                    )
-                                                }
-                                            } else {
-                                                val relevantStore = availableStores.find { it.name == store.key };
-                                                if (relevantStore == null) {
-                                                    Logger.w(TAG, "Unknown store [${store.key}] import");
-                                                    continue;
-                                                }
-                                                withContext(Dispatchers.Main) {
-                                                    UIDialogs.showImportDialog(context, relevantStore, store.key, store.value, export.cache) {
-                                                        synchronized(toAwait) {
-                                                            toAwait.remove(store.key);
-                                                            if (toAwait.isEmpty())
-                                                                onConclusion();
-                                                        }
-                                                    };
-                                                }
+                        if (options.installPlugins) {
+                            Logger.i(TAG, "Importing plugins");
+                            step("Installing plugins..");
+                            val pluginsOk = suspendCancellableCoroutine { cont ->
+                                StatePlugins.instance.installPlugins(context, scope, unknownPlugins.map { it.value }) { cont.resume(it) };
+                            };
+                            if (!pluginsOk)
+                                Logger.w(TAG, "Some plugins failed to install");
+                        }
+
+                        if (options.enablePlugins) {
+                            val availableClients = EnabledClientResolver.enabledClients().toMutableList();
+                            availableClients.addAll(StatePlatform.instance.getAvailableClients().filter { !availableClients.contains(it) });
+                            Logger.i(TAG, "Import enabling plugins [${availableClients.map { it.name }.joinToString(", ")}]");
+                            StatePlatform.instance.updateAvailableClients(context, false);
+                            StatePlatform.instance.selectClients(*availableClients.map { it.id }.toTypedArray());
+                        }
+
+                        if (options.importPluginSettings) {
+                            step("Importing plugin settings..");
+                            for (settings in export.pluginSettings) {
+                                Logger.i(TAG, "Importing Plugin settings [${settings.key}]");
+                                StatePlugins.instance.setPluginSettings(settings.key, settings.value);
+                            }
+                        }
+
+                        if (options.importStores) {
+                            for (store in export.stores) {
+                                Logger.i(TAG, "Importing store [${store.key}]");
+                                if (store.key == "history") {
+                                    step("Importing history..");
+                                    val doImportHistory = withContext(Dispatchers.Main) {
+                                        BackupRestoreDialogs.askYesNo(context, "Import History", "Would you like to import history?");
+                                    };
+                                    if (doImportHistory) {
+                                        for (historyStr in store.value) {
+                                            try {
+                                                val histObj = HistoryVideo.fromReconString(historyStr) { url -> return@fromReconString export.cache?.videos?.firstOrNull { it.url == url }; }
+                                                StateHistory.instance.importHistoryVideos(listOf(histObj));
+                                            } catch (ex: Throwable) {
+                                                Logger.e(TAG, "Failed to import history", ex);
                                             }
                                         }
                                     }
+                                } else if (store.key == "subscription_groups") {
+                                    step("Importing subscription groups..");
+                                    val doImportGroups = withContext(Dispatchers.Main) {
+                                        BackupRestoreDialogs.askYesNo(context, "Import Subscription Groups", "Would you like to import subscription groups?\nExisting groups with the same id will be overridden!");
+                                    };
+                                    if (doImportGroups) {
+                                        for (groupStr in store.value) {
+                                            try {
+                                                val group = Json.decodeFromString<SubscriptionGroup>(groupStr);
+                                                val existing = StateSubscriptionGroups.instance.getSubscriptionGroup(group.id);
+                                                if (existing != null)
+                                                    StateSubscriptionGroups.instance.deleteSubscriptionGroup(existing.id, false);
+                                                StateSubscriptionGroups.instance.updateSubscriptionGroup(group);
+                                            } catch (ex: Throwable) {
+                                                Logger.e(TAG, "Failed to import subscription group", ex);
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    val relevantStore = availableStores.find { it.name == store.key };
+                                    if (relevantStore == null) {
+                                        Logger.w(TAG, "Unknown store [${store.key}] import");
+                                        continue;
+                                    }
+                                    // The legacy per-store import dialog was a
+                                    // stub that never completed — import the
+                                    // reconstructions directly so the restore
+                                    // finishes with a result.
+                                    step("Importing store [${store.key}]..");
+                                    val result = relevantStore.importReconstructions(store.value, export.cache) { done, total ->
+                                        step("Importing store [${store.key}] (${done}/${total})..");
+                                        scope.launch(Dispatchers.Main) {
+                                            progress.setProgress(if (total == 0) 1f else done.toFloat() / total.toFloat());
+                                        }
+                                    };
+                                    Logger.i(TAG, "Imported store [${store.key}]: ${result.success}/${store.value.size}");
+                                    if (result.exceptions.isNotEmpty())
+                                        throw IllegalStateException("Failed to import ${result.exceptions.size} of ${store.value.size} items from store [${store.key}]: ${result.exceptions.first().message}");
                                 }
                             }
+                        }
 
-                            if (doImportPlugins) {
-                                Logger.i(TAG, "Importing plugins");
-                                StatePlugins.instance.installPlugins(context, scope, unknownPlugins.map { it.value }) {
-                                    afterPluginInstalls();
-                                }
-                            } else
-                                afterPluginInstalls();
-                        } catch (ex: Throwable) {
-                            Logger.e(TAG, "Import failed", ex);
+                        withContext(Dispatchers.Main) {
+                            StatePlatform.instance.selectClients(*enabledBefore.toTypedArray());
+                            progress.dismiss();
+                            UIDialogs.showDialog(context, R.drawable.ic_update_success_251dp, "Import has finished", null, null, 0, UIDialogs.Action("Ok", {}));
+                        }
+                    } catch (ex: Throwable) {
+                        Logger.e(TAG, "Import failed", ex);
+                        withContext(Dispatchers.Main) {
+                            progress.dismiss();
                             UIDialogs.showGeneralErrorDialog(context, "Import failed", ex);
                         }
                     }
-                },
-                    UIDialogs.Descriptor(R.drawable.ic_move_up, "Do you want to import data?", "Several dialogs will follow asking individual parts",
-                        "Settings: ${export.settings != null}\n" +
-                                "Plugins: ${unknownPlugins.size}\n" +
-                                "Plugin Settings: ${export.pluginSettings.size}\n" +
-                                export.stores.map { "${it.key}: ${it.value.size}" }.joinToString("\n").trim(),
-                        1,
-                        UIDialogs.Action("Import", {
-                            doImport = true;
-                        }, UIDialogs.ActionStyle.PRIMARY),
-                        UIDialogs.Action("Cancel", { doImport = false })
-                    ),
-                    if (export.settings != null) UIDialogs.Descriptor(R.drawable.ic_settings, "Would you like to import settings", "These are the settings that configure how your app works", null, 0,
-                        UIDialogs.Action("Yes", {
-                            doImportSettings = true;
-                        }, UIDialogs.ActionStyle.PRIMARY), UIDialogs.Action("No", {})
-                    ).withCondition { doImport } else null,
-                    if (unknownPlugins.isNotEmpty()) UIDialogs.Descriptor(R.drawable.ic_sources, "Would you like to import plugins?", "Your import contains the following plugins", unknownPlugins.map { it.value }.joinToString("\n"), 1,
-                        UIDialogs.Action("Yes", {
-                            doImportPlugins = true;
-                        }, UIDialogs.ActionStyle.PRIMARY), UIDialogs.Action("No", {})
-                    ).withCondition { doImport } else null,
-                    if (export.pluginSettings.isNotEmpty()) UIDialogs.Descriptor(R.drawable.ic_sources, "Would you like to import plugin settings?", null, null, 1,
-                        UIDialogs.Action("Yes", {
-                            doImportPluginSettings = true;
-                        }, UIDialogs.ActionStyle.PRIMARY), UIDialogs.Action("No", {})
-                    ).withCondition { doImport } else null,
-                    UIDialogs.Descriptor(R.drawable.ic_sources, "Would you like to enable all plugins?", "Enabling all plugins ensures all required plugins are available during import", null, 0,
-                        UIDialogs.Action("Yes", {
-                            doEnablePlugins = true;
-                        }, UIDialogs.ActionStyle.PRIMARY), UIDialogs.Action("No", {})
-                    ).withCondition { doImport },
-                    if (export.stores.isNotEmpty()) UIDialogs.Descriptor(R.drawable.ic_move_up, "Would you like to import stores", "Stores contain playlists, watch later, subscriptions, etc", null, 0,
-                        UIDialogs.Action("Yes", {
-                            doImportStores = true;
-                        }, UIDialogs.ActionStyle.PRIMARY), UIDialogs.Action("No", {})
-                    ).withCondition { doImport } else null
-                );
+                }
             }
         }
 

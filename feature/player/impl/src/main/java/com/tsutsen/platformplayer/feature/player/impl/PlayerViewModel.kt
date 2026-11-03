@@ -141,6 +141,9 @@ class PlayerViewModel
 
         @Volatile
         private var lastHistorySavedUrl: String? = null
+        private var lastSampledVideo: com.tsutsen.platformplayer.core.model.ContentItem? = null
+        private var lastSampledPositionMs: Long = 0
+        private var lastSampledDurationMs: Long = 0
 
         /** Job running live chat start for the current video. */
         @Volatile
@@ -364,6 +367,26 @@ class PlayerViewModel
                         // long gaps between them, so watchedMs tracked only
                         // a few percent of real playback.
                         playerState.currentVideo?.let { video ->
+                            // On a video switch, flush the PREVIOUS video with its own
+                            // last position — a tick landing after currentVideo flipped
+                            // but before the position reset would otherwise write the old
+                            // position under the new video's url (new video shows as
+                            // watched/progressed). The new video starts sampling next tick.
+                            if (lastSampledVideo != null && lastSampledVideo!!.url != video.url) {
+                                persistPlaybackHistory(
+                                    video = lastSampledVideo!!,
+                                    positionMs = lastSampledPositionMs,
+                                    durationMs = lastSampledDurationMs,
+                                    force = true,
+                                )
+                                lastSampledVideo = video
+                                lastSampledPositionMs = playerState.currentPositionMs
+                                lastSampledDurationMs = playerState.durationMs
+                                return@let
+                            }
+                            lastSampledVideo = video
+                            lastSampledPositionMs = playerState.currentPositionMs
+                            lastSampledDurationMs = playerState.durationMs
                             persistPlaybackHistory(
                                 video = video,
                                 positionMs = playerState.currentPositionMs,
