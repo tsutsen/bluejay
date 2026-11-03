@@ -139,8 +139,10 @@ internal class PlayerGestureActionHandler(
             }
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (brighter), positive = down (darker)
+                // Re-read the live value each frame as the base: the cached START value
+                // goes stale if the system level changed mid-gesture (hardware keys etc.)
                 val delta = -frame.instantDelta.y / playback.screenHeightPx()
-                currentBrightness = (currentBrightness + delta).coerceIn(0f, 1f)
+                currentBrightness = (playback.brightness() + delta).coerceIn(0f, 1f)
                 // All screens: device-wide when granted, plus this window
                 // (the companion window follows through SystemControls.brightness).
                 playback.applyBrightness(currentBrightness)
@@ -160,8 +162,9 @@ internal class PlayerGestureActionHandler(
             }
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (louder), positive = down (quieter)
+                // Re-read the live system volume each frame as the base (see brightness)
                 val delta = -frame.instantDelta.y / playback.screenHeightPx()
-                currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
+                currentVolume = (playback.volume() + delta).coerceIn(0f, 1f)
                 playback.setVolume(currentVolume)
                 PlayerEventBus.emit(PlayerEvent.VolumeChanged(currentVolume))
             }
