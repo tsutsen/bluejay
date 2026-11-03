@@ -43,3 +43,5 @@ docs/integrations/polycentric.md
 
 # Release signing material — never commit
 keystore.properties
+*.jks
+*.keystore
