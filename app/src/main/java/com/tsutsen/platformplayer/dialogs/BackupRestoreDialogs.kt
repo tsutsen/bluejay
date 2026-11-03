@@ -188,9 +188,15 @@ object BackupRestoreDialogs {
         }
         val savedStateOwner: SavedStateRegistryOwner =
             activity ?: object : SavedStateRegistryOwner {
+                private val registry = LifecycleRegistry(this)
                 private val controller = androidx.savedstate.SavedStateRegistryController.create(this)
                 override val savedStateRegistry get() = controller.savedStateRegistry
-                init { controller.performRestore(null) }
+                override val lifecycle: Lifecycle get() = registry
+                init {
+                    registry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+                    registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+                    controller.performRestore(null)
+                }
             }
         val composeView = ComposeView(context).apply {
             setViewTreeLifecycleOwner(lifecycleOwner)
