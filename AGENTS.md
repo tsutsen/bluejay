@@ -63,3 +63,34 @@ LSP import + empty cache) or (b) keeping the LSP off (see
   resolves the right one. Never an actionable code issue.
 - ast-grep style warnings (`kotlin-no-var` in `@Serializable` settings classes,
   `kotlin-no-lateinit` on Android app fields) — pre-existing by design in this codebase.
+
+## Performance profiling (jank / frametimes / resources)
+
+On-device, no build needed — drive a scenario and read `gfxinfo`:
+
+    adb connect <phone>            # e.g. 192.168.1.159:<wireless-adb-port>
+    ./scripts/profile_jank.sh morph   # or: feed | player
+
+Reports frames rendered, janky % (>16.7 ms), p50/p90/p95/p99 frame ms.
+Baseline on a Nothing phone (API 34, arm64) after the morph-dock fix:
+**morph = 477 frames, 0.63% janky, p95 15 ms**. Re-run after UI changes and compare.
+
+Macrobenchmarks (CI / API<=32 devices): `BluejayBenchmarks` in
+`app/src/androidTest/.../benchmark/` — startup cold, feed scroll, morph gesture,
+`FrameTimingMetric`. Run: `./gradlew :app:connectedUnstableDebugAndroidTest
+-Pandroid.testInstrumentationRunnerArguments.class=com.tsutsen.platformplayer.benchmark.BluejayBenchmarks`
+(known issue: GrantPermissionRule fails on API 33+ — use the gfxinfo script there).
+
+Resource watch: `adb -s <dev> shell dumpsys meminfo com.tsutsen.platformplayer.d` (PSS).
+
+## Build machine / signing
+
+- Build on the remote machine `ssh 100.107.89.14` (62 GB RAM; local laptop OOMs on
+  big Gradle builds). Repo at `~/projects/bluejay` on branch `dev`; the remote shell
+  is **fish** — write bash to a file, `scp` it, run `bash file.sh`. Warm builds ~1.5 min.
+- Release signing key: `keystore.properties` + `release-test.jks` in repo root
+  (both gitignored; `/opt/key.properties` takes precedence if present).
+  Backup copies: `~/keystore-backup/` locally and `~/keystore-backup-bluejay-release.jks`
+  on the remote. Never commit them.
+- Plugin source submodules: `futo-org/grayjay-plugin-*` on GitHub where the pinned
+  (signed) commit exists, else `gitlab.futo.org/videostreaming/plugins/*`.
