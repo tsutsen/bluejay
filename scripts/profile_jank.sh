@@ -12,7 +12,7 @@ sleep 1
 $ADB shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
 sleep 8
 $ADB shell input keyevent KEYCODE_HOME >/dev/null 2>&1
-$ADB shell am start -n "$PKG/.activities.MainActivity" >/dev/null 2>&1
+$ADB shell am start -n "$($ADB shell cmd package resolve-activity --brief "$PKG" | tail -1 | tr -d '\r')" >/dev/null 2>&1
 sleep 3
 $ADB shell dumpsys gfxinfo "$PKG" reset >/dev/null 2>&1   # start counting AFTER app is foreground
 sleep 1

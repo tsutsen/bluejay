@@ -1,6 +1,5 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.VectorConverter

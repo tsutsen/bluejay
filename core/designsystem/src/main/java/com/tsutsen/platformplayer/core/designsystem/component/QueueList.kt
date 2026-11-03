@@ -8,6 +8,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.effectsSpec
 import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -148,7 +149,11 @@ fun QueueList(
             AnimatedVisibility(
                 visible = hasAppeared && item.url !in removing.value,
                 enter = fadeIn(effectsSpec<Float>()) + expandVertically(spatialSpec<IntSize>()),
-                exit = fadeOut(effectsSpec<Float>()) + shrinkVertically(spatialSpec<IntSize>())
+                // Time-boxed to the ANIM hold below: the data drop after
+                // delay(ANIM) removes the row mid-animation — a spring exit
+                // is cut before it finishes and the rows below jump. Enter
+                // keeps the token spring (nothing drops it mid-flight).
+                exit = fadeOut(tween(ANIM)) + shrinkVertically(tween(ANIM))
             ) {
                 FlipItem(
                     flip = flipAnims.getOrPut(item.url) { Animatable(Offset.Zero, Offset.VectorConverter) },
