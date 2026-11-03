@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Replay10
@@ -31,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
@@ -41,11 +38,12 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
-import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import kotlinx.coroutines.delay
 
 /**
- * State for the centre badge (seek ring, speed text, etc).
+ * State for the ONE player action badge (seek, speed, volume, brightness,
+ * hold-seek preview). Every action emits this same state; the overlay renders
+ * it as a single capsule that swaps its content.
  *
  * When [progress] is non-null the badge renders as a wavy progress ring with
  * [icon] inside and no text label; otherwise it renders icon + [label].
@@ -60,6 +58,27 @@ data class GestureBadgeState(
 )
 
 /**
+ * Pure accumulator for consecutive same-direction seeks: taps within
+ * [windowMs] of each other in the same direction add up into one running
+ * badge total (double-tap -5s -5s -> "-10s"); a direction flip or a gap
+ * longer than [windowMs] restarts the total from the new delta.
+ */
+class SeekBadgeAccumulator(private val windowMs: Long = 800L) {
+    private var totalMs = 0L
+    private var dir = 0
+    private var lastAt = 0L
+
+    /** Feed one seek [deltaMs] emitted at [nowMs]; returns the running total. */
+    fun accumulate(deltaMs: Long, nowMs: Long): Long {
+        val d = if (deltaMs < 0) -1 else 1
+        totalMs = if (d == dir && nowMs - lastAt < windowMs) totalMs + deltaMs else deltaMs
+        dir = d
+        lastAt = nowMs
+        return totalMs
+    }
+}
+
+/**
  * Unified gesture indicator overlay.
  *
  * Session-based: the container animates in/out once per badge session.
@@ -68,7 +87,6 @@ data class GestureBadgeState(
  */
 @Composable
 internal fun GestureIndicatorOverlay(
-    activeProgressIndicator: GestureIndicator.Progress?,
     badgeState: GestureBadgeState,
     topBarHeightPx: Int = 0,
     bottomBarHeightPx: Int = 0,
@@ -152,28 +170,6 @@ internal fun GestureIndicatorOverlay(
         }
     }
 
-    // Progress indicator (brightness/volume — Android-style side capsule)
-    AnimatedVisibility(
-        visible = activeProgressIndicator != null,
-        enter = fadeIn(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
-        exit = fadeOut(animationSpec = tween(GestureAnimationConstants.INDICATOR_ANIM_MS)),
-    ) {
-        activeProgressIndicator?.let { indicator ->
-            // Badge appears on the OPPOSITE side of the swiped area:
-            // right swipe (volume) → badge on the left, left swipe
-            // (brightness) → badge on the right.
-            val alignment =
-                if (indicator.key == "brightness") Alignment.CenterEnd else Alignment.CenterStart
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
-                ProgressIndicator(
-                    value = indicator.value,
-                    icon = indicator.icon,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            }
-        }
-    }
-
     // Centre text badge — AnimatedVisibility owns enter/exit, content recomposes freely.
     // Vertical padding tracks the control bars so the badge never overlaps them.
     val density = LocalDensity.current
@@ -240,8 +236,8 @@ internal fun GestureIndicatorOverlay(
 
 /**
  * Wavy progress ring with the action icon drawn inside the ring — used for
- * continuous gestures (volume / brightness) and the hold-seek preview.
- * No numeric label.
+ * continuous actions (volume / brightness / hold-seek) rendered inside the
+ * shared capsule. No numeric label.
  */
 @Composable
 private fun WavyRingBadge(
@@ -264,30 +260,6 @@ private fun WavyRingBadge(
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size(Tokens.IconMd),
-        )
-    }
-}
-
-@Composable
-private fun ProgressIndicator(
-    value: Float,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-) {
-    // Volume/brightness badge: dark circular backdrop so the ring stays
-    // readable over bright video, ring + icon inside, no percentage text.
-    Box(
-        modifier =
-            modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.6f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        WavyRingBadge(
-            progress = value,
-            icon = icon,
-            modifier = Modifier.padding(6.dp),
         )
     }
 }

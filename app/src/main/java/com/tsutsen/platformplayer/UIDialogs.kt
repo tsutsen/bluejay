@@ -31,7 +31,9 @@ object UIDialogs {
         val subtitle: String?,
         val details: String?,
         val actionCount: Int,
-        val actions: List<Action> = emptyList()
+        val actions: List<Action> = emptyList(),
+        /** Evaluated lazily each time the queue reaches this dialog, so earlier answers can gate later ones. */
+        val condition: (() -> Boolean)? = null,
     ) {
         // Legacy constructor accepting vararg Actions
         constructor(
@@ -40,7 +42,7 @@ object UIDialogs {
         ) : this(icon, title, subtitle, details, actionCount, actions.toList())
 
         fun withCondition(condition: Boolean): Descriptor? = if (condition) this else null
-        fun withCondition(condition: () -> Boolean): Descriptor? = if (condition()) this else null
+        fun withCondition(condition: () -> Boolean): Descriptor = copy(condition = condition)
     }
 
     /**
@@ -209,12 +211,18 @@ object UIDialogs {
             return
         }
 
-        val next = dialogDescriptor.filterNotNull().firstOrNull() ?: return
+        val remaining = dialogDescriptor.filterNotNull()
+        val next = remaining.firstOrNull { it.condition?.invoke() != false }
+        if (next == null) {
+            finally?.invoke()
+            return
+        }
         showDialog(context, next.icon, next.title, next.subtitle, next.details, next.actionCount,
             *next.actions.toTypedArray())
 
-        if (dialogDescriptor.size > 1) {
-            multiShowDialog(context, dialogDescriptor.drop(1), finally)
+        val rest = remaining.filter { it !== next }
+        if (rest.isNotEmpty()) {
+            multiShowDialog(context, rest, finally)
         } else {
             finally?.invoke()
         }

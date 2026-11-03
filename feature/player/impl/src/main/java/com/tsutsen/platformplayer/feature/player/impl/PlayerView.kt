@@ -91,7 +91,6 @@ import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
 import com.tsutsen.platformplayer.feature.player.impl.gesture.DefaultGesturePipeline
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator
 import com.tsutsen.platformplayer.feature.player.impl.gesture.MorphCoordinator
 import com.tsutsen.platformplayer.feature.player.impl.gesture.PlayerGestureEffects
 import kotlinx.coroutines.Job
@@ -101,9 +100,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private const val TAG = "PlayerScreen"
-
-/** Window in which same-direction seeks accumulate into one running badge total. */
-private const val SEEK_ACCUMULATE_WINDOW_MS = 800L
 
 @Composable
 fun PlayerView(
@@ -181,7 +177,6 @@ fun PlayerView(
     // ==================== State ====================
     var showOptionsModal by remember { mutableStateOf(false) }
     var showChapters by remember { mutableStateOf(false) }
-    var activeProgressIndicator by remember { mutableStateOf<GestureIndicator.Progress?>(null) }
     var badgeState by remember { mutableStateOf(GestureBadgeState()) }
     var badgeKeepAliveCounter by remember { mutableStateOf(0) }
     // Video options sheet (three-dot menu + long-press on queue cards): the
@@ -779,86 +774,65 @@ fun PlayerView(
             // handler, so the same badges show for actions from the
             // controller, the companion screen, etc. — not just gestures.
             LaunchedEffect(Unit) {
-                // Consecutive same-direction seeks within the window accumulate
-                // into one running total (double-tap -5s -5s -> "-10s").
-                var seekTotalMs = 0L
-                var seekDir = 0
-                var seekTime = 0L
-                var capsuleJob: Job? = null
+                // All badges (seek, speed, volume, brightness, hold-seek
+                // preview) share ONE element: every event emits a
+                // [GestureBadgeState]; the overlay's session keep-alive resets
+                // the hide timer on each emission, so no per-badge timer job.
+                val seekAccumulator = SeekBadgeAccumulator()
 
-                fun showCapsule(key: String, level: Float, icon: ImageVector) {
-                    activeProgressIndicator =
-                        GestureIndicator.Progress(key = key, value = level, icon = icon)
-                    capsuleJob?.cancel()
-                    capsuleJob = launch {
-                        delay(GestureAnimationConstants.INDICATOR_HIDE_DELAY_MS)
-                        if (activeProgressIndicator?.key == key) activeProgressIndicator = null
-                    }
+                fun showBadge(key: String, icon: ImageVector, label: String = "", progress: Float? = null) {
+                    badgeKeepAliveCounter++
+                    badgeState =
+                        GestureBadgeState(
+                            key = key,
+                            label = label,
+                            icon = icon,
+                            progress = progress,
+                            visible = true,
+                            keepAlive = badgeKeepAliveCounter,
+                        )
                 }
 
                 PlayerEventBus.events.collect { event ->
                     when (event) {
                         is PlayerEvent.Seek -> {
-                            val now = System.currentTimeMillis()
-                            val dir = if (event.deltaMs < 0) -1 else 1
-                            seekTotalMs =
-                                if (dir == seekDir && now - seekTime < SEEK_ACCUMULATE_WINDOW_MS)
-                                    seekTotalMs + event.deltaMs
-                                else event.deltaMs
-                            seekDir = dir
-                            seekTime = now
-                            val seconds = seekTotalMs / 1000
-                            badgeKeepAliveCounter++
-                            badgeState =
-                                GestureBadgeState(
-                                    key = if (dir < 0) "rewind_back" else "rewind_forward",
-                                    label = if (seconds > 0) "+${seconds}s" else "${seconds}s",
-                                    icon =
-                                        if (dir < 0)
-                                            Icons.Default.Replay10
-                                        else Icons.Default.Forward10,
-                                    visible = true,
-                                    keepAlive = badgeKeepAliveCounter,
-                                )
+                            val totalMs = seekAccumulator.accumulate(event.deltaMs, System.currentTimeMillis())
+                            val seconds = totalMs / 1000
+                            showBadge(
+                                key = if (event.deltaMs < 0) "rewind_back" else "rewind_forward",
+                                label = if (seconds > 0) "+${seconds}s" else "${seconds}s",
+                                icon = if (event.deltaMs < 0) Icons.Default.Replay10 else Icons.Default.Forward10,
+                            )
                         }
 
-                        is PlayerEvent.PlaybackSpeedChanged -> {
-                            badgeKeepAliveCounter++
-                            badgeState =
-                                GestureBadgeState(
-                                    key = "speed",
-                                    // "2.00" -> "2.0", "0.25" -> "0.25", + the × glyph.
-                                    label =
-                                        run {
-                                            var t = "%.2f".format(event.speed).trimEnd('0')
-                                            if (t.endsWith(".")) t += "0"
-                                            "$t×"
-                                        },
-                                    icon = Icons.Outlined.Speed,
-                                    visible = true,
-                                    keepAlive = badgeKeepAliveCounter,
-                                )
-                        }
+                        is PlayerEvent.PlaybackSpeedChanged ->
+                            showBadge(
+                                key = "speed",
+                                // "2.00" -> "2.0", "0.25" -> "0.25", + the × glyph.
+                                label =
+                                    run {
+                                        var t = "%.2f".format(event.speed).trimEnd('0')
+                                        if (t.endsWith(".")) t += "0"
+                                        "$t×"
+                                    },
+                                icon = Icons.Outlined.Speed,
+                            )
 
                         is PlayerEvent.SeekPreview -> {
                             seekPreviewMs = event.targetMs
-                            badgeKeepAliveCounter++
-                            badgeState =
-                                GestureBadgeState(
-                                    key = "seek_preview",
-                                    // Ring badge: progress = target / duration, seek
-                                    // icon inside the ring, no time label.
-                                    icon =
-                                        if (event.targetMs >= viewModel.positionMs.value)
-                                            Icons.Default.FastForward
-                                        else Icons.Default.FastRewind,
-                                    progress =
-                                        (event.targetMs.toFloat() /
-                                            state.durationMs.coerceAtLeast(1L))
-                                            .coerceIn(0f, 1f),
-                                    visible = true,
-                                    keepAlive = badgeKeepAliveCounter,
-                                )
+                            showBadge(
+                                key = "seek_preview",
+                                // Ring badge: progress = target / duration, seek
+                                // icon inside the ring, no time label.
+                                icon =
+                                    if (event.targetMs >= viewModel.positionMs.value)
+                                        Icons.Default.FastForward
+                                    else Icons.Default.FastRewind,
+                                progress =
+                                    (event.targetMs.toFloat() /
+                                        state.durationMs.coerceAtLeast(1L))
+                                        .coerceIn(0f, 1f),
+                            )
                         }
 
                         is PlayerEvent.SeekCommitted -> {
@@ -868,10 +842,10 @@ fun PlayerView(
                         }
 
                         is PlayerEvent.BrightnessChanged ->
-                            showCapsule("brightness", event.level, Icons.Default.BrightnessHigh)
+                            showBadge("brightness", Icons.Default.BrightnessHigh, progress = event.level)
 
                         is PlayerEvent.VolumeChanged ->
-                            showCapsule("volume", event.level, Icons.Default.VolumeUp)
+                            showBadge("volume", Icons.Default.VolumeUp, progress = event.level)
 
                         // PlayPauseToggled / NextRequested / PreviousRequested /
                         // Closed: no badge yet — they still pass through the bus
@@ -1159,7 +1133,6 @@ fun PlayerView(
                         onLoadMoreComments =
                             remember(state) { { viewModel.loadMoreComments(state.currentVideo?.url ?: "") } },
                         isLoading = state.isLoading,
-                        activeProgressIndicator = activeProgressIndicator,
                         badgeState = badgeState,
                         onBadgeSessionEnded = remember { { badgeState = GestureBadgeState() } },
                         scrubPositionMs = scrubPositionMs,

@@ -63,7 +63,6 @@ fun PlayerControls(
     surface: PlayerSurface,
     isLandscape: Boolean,
     controlsVisible: Boolean,
-    activeProgressIndicator: com.tsutsen.platformplayer.feature.player.impl.gesture.GestureIndicator.Progress?,
     badgeState: GestureBadgeState,
     onBadgeSessionEnded: () -> Unit = {},
     state: PlayerUiState.Loaded,
@@ -370,7 +369,6 @@ fun PlayerControls(
             if (normalBarVisible) {
                 Box(modifier = videoBoxModifier) {
                     GestureIndicatorOverlay(
-                        activeProgressIndicator = activeProgressIndicator,
                         badgeState = badgeState,
                         topBarHeightPx = topBarHeightPx,
                         bottomBarHeightPx = bottomBarHeightPx.value,
