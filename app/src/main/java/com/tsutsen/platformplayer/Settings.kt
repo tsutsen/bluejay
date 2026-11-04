@@ -363,9 +363,12 @@ class Settings {
 
     @Serializable
     class LoggingSettings {
-        // Debug: file + logcat at INFO. Release: no consumers are attached
-        // (StateApp checks logLevel > NONE), so logging stays off.
-        var logLevel: Int = if (BuildConfig.DEBUG) LogLevel.INFORMATION.value else LogLevel.NONE.value
+        // INFORMATION everywhere: without the AndroidLogConsumer the plugin
+        // engine's console (botguard mint path, UMP recovery, PackageBrowser)
+        // is invisible in logcat — that blindness cost hours diagnosing the
+        // SABR attestation failures. The file consumer stays level-gated
+        // (StateApp checks logLevel > NONE) so disk usage follows the level.
+        var logLevel: Int = LogLevel.INFORMATION.value
     }
 
     @Serializable
