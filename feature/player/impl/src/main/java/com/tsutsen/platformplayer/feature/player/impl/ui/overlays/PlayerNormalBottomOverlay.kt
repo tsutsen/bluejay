@@ -62,10 +62,13 @@ internal fun PlayerNormalBottomOverlay(
     val currentPositionMs by positionMs.collectAsState(initial = positionMs.value)
 
     // After the scrub releases, keep showing the scrub target: the live
-    // position is still the pre-seek value until ExoPlayer applies the seek,
-    // and switching over immediately flashes the playhead back to the old
-    // spot for a frame. The pending target clears once the live position
-    // lands on it (or after a timeout, so a failed seek can't pin it).
+    // position is still the pre-seek value until ExoPlayer applies the seek
+    // (the view model's seekTo is double-async — viewModelScope.launch ->
+    // withContext(Main)), and switching over immediately flashes the
+    // playhead back to the old spot for a frame. The pending target clears
+    // once a tick lands on it — tolerance is one 10 Hz tick plus playback
+    // advance (~150ms); anything wider shows as a visible jump. A timeout
+    // guards against a failed seek pinning the playhead.
     var pendingSeekMs by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(isScrubbing) {
         if (isScrubbing) pendingSeekMs = null
@@ -75,7 +78,7 @@ internal fun PlayerNormalBottomOverlay(
         val target = pendingSeekMs ?: return@LaunchedEffect
         withTimeoutOrNull(1_000) {
             snapshotFlow { currentPositionMs }
-                .first { kotlin.math.abs(it - target) <= 750 }
+                .first { kotlin.math.abs(it - target) <= 150 }
         }
         pendingSeekMs = null
     }
