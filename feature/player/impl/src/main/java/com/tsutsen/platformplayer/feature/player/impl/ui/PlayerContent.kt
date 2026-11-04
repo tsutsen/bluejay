@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -262,6 +263,31 @@ fun PlayerContent(
                     translationX = zoomPanX
                     translationY = zoomPanY
                 },
+        )
+
+        // ==================== 1a. End-of-playback dim ====================
+        // When playback ends (no autoplay next / queue drained), dim the
+        // frozen surface so it doesn't read as "still playing". Uses the
+        // same video-rect modifier as the subtitle overlay, so the scrim
+        // follows the surface across morph/fullscreen transitions.
+        val endDim = remember { Animatable(0f) }
+        LaunchedEffect(state.isCompleted) {
+            if (state.isCompleted) {
+                // Grace period: an auto-advanced video passes through
+                // STATE_ENDED for a beat — don't flash the dim between
+                // videos; a real end sits in STATE_ENDED with nothing
+                // following.
+                kotlinx.coroutines.delay(400)
+                endDim.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
+            } else {
+                endDim.snapTo(0f)
+            }
+        }
+        Box(
+            modifier =
+                videoModifier.background(
+                    Color.Black.copy(alpha = 0.45f * endDim.value),
+                ),
         )
 
         // ==================== 1b. Subtitle overlay ====================
