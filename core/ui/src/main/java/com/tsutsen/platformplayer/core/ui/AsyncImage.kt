@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -17,6 +20,13 @@ import androidx.compose.ui.unit.dp
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import coil.compose.AsyncImage as CoilAsyncImage
+
+/**
+ * User thumbnail tint (Settings > Appearance > Thumbnail tint), provided at
+ * the theme roots. Null = no overlay. The tint carries its own alpha, so
+ * SrcOver reads as a translucent color wash over the image.
+ */
+val LocalThumbnailTint = compositionLocalOf<Color?> { null }
 
 /**
  * Wrapper around Coil's AsyncImage with built-in placeholder and error handling.
@@ -89,5 +99,6 @@ fun AsyncImage(
         contentScale = contentScale,
         placeholder = placeholder,
         error = error,
+        colorFilter = LocalThumbnailTint.current?.let { ColorFilter.tint(it) },
     )
 }

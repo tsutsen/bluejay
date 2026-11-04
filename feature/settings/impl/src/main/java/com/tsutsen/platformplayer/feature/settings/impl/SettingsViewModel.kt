@@ -187,6 +187,35 @@ class SettingsViewModel
             }
         }
 
+        /** Appearance > Font. */
+        fun setFontFamily(family: FontFamily) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                settingsRepository.updateAppearance(p.appearance.copy(fontFamily = family))
+            }
+        }
+
+        /** Appearance > Font size scale (1.0 = shipped sizes). */
+        fun setFontSizeScale(scale: Float) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                settingsRepository.updateAppearance(p.appearance.copy(fontSizeScale = scale))
+            }
+        }
+
+        /** Appearance > Surface styles: upsert/remove one surface override. */
+        fun setSurfaceStyle(
+            key: String,
+            style: SurfaceStyle?,
+        ) {
+            viewModelScope.launch { settingsRepository.setSurfaceStyle(key, style) }
+        }
+
+        /** Appearance > Thumbnail tint (ARGB incl. alpha; null = none). */
+        fun setThumbnailTint(argb: Long?) {
+            viewModelScope.launch { settingsRepository.setThumbnailTint(argb) }
+        }
+
         /** Save or update a custom theme (Settings > Appearance > Custom themes). */
         fun saveTheme(theme: CustomTheme) {
             viewModelScope.launch { settingsRepository.saveCustomTheme(theme) }

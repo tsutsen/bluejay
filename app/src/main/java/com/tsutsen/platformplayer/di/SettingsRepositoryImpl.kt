@@ -11,6 +11,7 @@ import com.tsutsen.platformplayer.core.datastore.model.BrowsingPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
+import com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle
 import com.tsutsen.platformplayer.core.datastore.model.DownloadsPreferences
 import com.tsutsen.platformplayer.core.datastore.model.LoggingPreferences
 import com.tsutsen.platformplayer.core.datastore.model.NotificationPreferences
@@ -92,10 +93,16 @@ class SettingsRepositoryImpl
                         themeMode =
                             runCatching { ThemeMode.valueOf(s.appearance.themeMode) }
                                 .getOrDefault(ThemeMode.AUTO),
+                        fontFamily =
+                            runCatching { com.tsutsen.platformplayer.core.datastore.model.FontFamily.valueOf(s.appearance.fontFamily) }
+                                .getOrDefault(com.tsutsen.platformplayer.core.datastore.model.FontFamily.DEFAULT),
+                        fontSizeScale = s.appearance.fontSizeScale,
                         dynamicColor = s.appearance.dynamicColor,
                         uiRounding = s.appearance.uiRounding,
                         customThemes = s.appearance.customThemes,
                         activeThemeId = s.appearance.activeThemeId,
+                        surfaceStyles = s.appearance.surfaceStyles,
+                        thumbnailTintArgb = s.appearance.thumbnailTintArgb,
                     ),
                 playback =
                     PlaybackPreferences(
@@ -233,10 +240,28 @@ class SettingsRepositoryImpl
         override suspend fun updateAppearance(prefs: AppearancePreferences) {
             val s = Settings.instance
             s.appearance.themeMode = prefs.themeMode.name
+            s.appearance.fontFamily = prefs.fontFamily.name
+            s.appearance.fontSizeScale = prefs.fontSizeScale
             s.appearance.dynamicColor = prefs.dynamicColor
             s.appearance.uiRounding = prefs.uiRounding
+            s.appearance.surfaceStyles = prefs.surfaceStyles
+            s.appearance.thumbnailTintArgb = prefs.thumbnailTintArgb
             s.save()
             emit()
+        }
+
+        /** Upsert one surface style (null style = remove the override). */
+        override suspend fun setSurfaceStyle(key: String, style: SurfaceStyle?) {
+            val s = Settings.instance
+            s.appearance.surfaceStyles =
+                if (style == null) s.appearance.surfaceStyles - key
+                else s.appearance.surfaceStyles + (key to style)
+            s.save()
+            emit()
+        }
+
+        override suspend fun setThumbnailTint(argb: Long?) {
+            persist { it.appearance.thumbnailTintArgb = argb }
         }
 
         override suspend fun updatePlayback(prefs: PlaybackPreferences) {

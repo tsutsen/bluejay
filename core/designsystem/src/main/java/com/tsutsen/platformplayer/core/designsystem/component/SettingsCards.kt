@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import kotlin.math.roundToInt
 import kotlin.ranges.ClosedFloatingPointRange
@@ -69,9 +72,10 @@ fun SettingsOptionCard(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .surfaceOutline(SurfaceKeys.SETTINGS_ROW, groupShape(groupPosition))
                 .clickable(enabled = enabled, onClick = onClick),
         shape = groupShape(groupPosition),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
@@ -138,9 +142,10 @@ fun SettingsSwitchCard(
     Card(
         modifier =
             Modifier
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .surfaceOutline(SurfaceKeys.SETTINGS_ROW, groupShape(groupPosition)),
         shape = groupShape(groupPosition),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
@@ -208,7 +213,7 @@ fun SettingsSliderCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = groupShape(groupPosition),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(modifier = Modifier.padding(Tokens.SpaceMd)) {
@@ -282,9 +287,10 @@ fun SettingsSwitchOptionCard(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .surfaceOutline(SurfaceKeys.SETTINGS_ROW, groupShape(groupPosition))
                 .clickable(onClick = onClick),
         shape = groupShape(groupPosition),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(

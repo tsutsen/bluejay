@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
+import com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle
 import com.tsutsen.platformplayer.logging.LogLevel
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -315,11 +316,24 @@ class Settings {
         // UI rounding as a percent (100 = shipped radii, 0 = sharp)
         var uiRounding: Int = 100
 
+        // App font family (FontFamily name: DEFAULT | INTER | ROBOTO | OPEN_SANS)
+        var fontFamily: String = "DEFAULT"
+
+        // Font size scale (1.0 = shipped sizes)
+        var fontSizeScale: Float = 1.0f
+
         // User-created themes (key colors → generated scheme)
         var customThemes: List<CustomTheme> = emptyList()
 
         // Active custom theme id (null = default theming)
         var activeThemeId: String? = null
+
+        // Per-surface user skins (Settings > Appearance > Surface styles),
+        // keyed by SurfaceKeys.
+        var surfaceStyles: Map<String, SurfaceStyle> = emptyMap()
+
+        // Thumbnail tint overlay (ARGB incl. alpha; null = none).
+        var thumbnailTintArgb: Long? = null
     }
 
     @Serializable

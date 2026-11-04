@@ -8,8 +8,10 @@ import android.view.ViewGroup
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -20,6 +22,9 @@ import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.compose.buildAppTypography
+import com.tsutsen.platformplayer.compose.buildSurfaceSkins
+import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
@@ -130,11 +135,19 @@ class CompanionPresentation(
                     }
                 }
 
-            BluejayTheme(
+            CompositionLocalProvider(
+                LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it) },
+            ) {
+                BluejayTheme(
                 darkTheme = darkTheme,
                 dynamicColor = appearance.dynamicColor,
                 uiRounding = appearance.uiRounding,
                 colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
+                typography =
+                    remember(appearance.fontFamily, appearance.fontSizeScale) {
+                        buildAppTypography(appearance.fontFamily, appearance.fontSizeScale)
+                    },
+                surfaceSkins = remember(appearance.surfaceStyles) { buildSurfaceSkins(appearance) },
             ) {
                 CompanionContent(
                     playerRepository = playerRepository,
@@ -152,6 +165,7 @@ class CompanionPresentation(
                     onPlaylistClick = onPlaylistClick,
                     onWatchStats = onWatchStats,
                 )
+                }
             }
         }
     }

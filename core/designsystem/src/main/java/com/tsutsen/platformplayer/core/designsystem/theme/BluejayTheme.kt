@@ -58,6 +58,8 @@ fun BluejayTheme(
     typography: Typography = BluejayTypography,
     /** 0..100 — user's UI rounding preference (Settings > Appearance). */
     uiRounding: Int = 100,
+    /** Per-surface user skins (Settings > Appearance > Surface styles). */
+    surfaceSkins: Map<String, SurfaceSkin> = emptyMap(),
     /** M3 expressive motion physics for every animation in the app. */
     motionScheme: MotionScheme = safeExpressiveMotionScheme,
     content: @Composable () -> Unit,
@@ -94,6 +96,7 @@ fun BluejayTheme(
                 LocalSemanticColors provides
                     if (darkTheme) SemanticColorsDark else SemanticColorsLight,
                 LocalBluejayTokens provides tokens,
+                LocalSurfaceSkins provides surfaceSkins,
             ) {
                 // Surface (not Box) so LocalContentColor resolves to onSurface —
                 // bare Text/Icons would otherwise default to hardcoded Color.Black.

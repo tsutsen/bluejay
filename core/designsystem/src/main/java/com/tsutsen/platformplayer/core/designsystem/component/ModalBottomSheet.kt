@@ -1,6 +1,8 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +45,7 @@ fun BluejayModalBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = surfaceColor(SurfaceKeys.SHEET, MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         // Scrollable so long sheets (e.g. many playlists) never clip their
         // bottom rows ("Go to channel" was cut off below the fold).

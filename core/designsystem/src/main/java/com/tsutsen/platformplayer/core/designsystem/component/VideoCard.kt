@@ -30,6 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -126,7 +128,7 @@ fun VideoCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surface),
             ),
     ) {
         Column(
@@ -415,7 +417,7 @@ fun VideoCardFull(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                containerColor = surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surfaceContainer),
             ),
     ) {
         Column(
@@ -579,7 +581,7 @@ fun VideoCardShorts(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surface),
             ),
     ) {
         Row(

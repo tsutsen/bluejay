@@ -33,7 +33,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
 import com.tsutsen.platformplayer.core.model.Card
 
 /**
@@ -74,7 +77,8 @@ fun ContentCard(
                     bottom = Tokens.SpaceLg,
                 )
                 .clip(RoundedCornerShape(BluejayTokens().radius.card))
-                .background(MaterialTheme.colorScheme.surfaceContainer),
+                .background(surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surfaceContainer))
+                .surfaceOutline(SurfaceKeys.VIDEO_CARD, MaterialTheme.shapes.large),
     ) {
         content()
     }

@@ -683,7 +683,7 @@ private fun PreviewSwatch(color: Color) {
  * composable, so a preset palette is the whole picker — tap picks.
  */
 @Composable
-private fun ColorPickerDialog(
+internal fun ColorPickerDialog(
     initialColor: Color,
     onPick: (Color) -> Unit,
     onDismiss: () -> Unit,
@@ -730,7 +730,7 @@ private fun ColorPickerDialog(
 }
 
 @Composable
-private fun ColorSwatch(
+internal fun ColorSwatch(
     color: Color,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -755,7 +755,7 @@ private fun ColorSwatch(
     }
 }
 
-private val PresetColors: List<Int> =
+internal val PresetColors: List<Int> =
     listOf(
         0xFF6750A4.toInt(),
         0xFF7C4DFF.toInt(),

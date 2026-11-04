@@ -39,13 +39,18 @@ import androidx.core.pip.VideoPlaybackPictureInPicture
 import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
+import com.tsutsen.platformplayer.compose.buildAppTypography
+import com.tsutsen.platformplayer.compose.buildSurfaceSkins
 import com.tsutsen.platformplayer.gettingstarted.GettingStartedFlow
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
 import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
+import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
 import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
@@ -494,12 +499,24 @@ private fun BluejayMainActivity(
             }
         }
 
-    BluejayTheme(
-        darkTheme = darkTheme,
-        dynamicColor = appearance.dynamicColor,
-        uiRounding = appearance.uiRounding,
-        colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
+    // Deep theming: user font family/scale + per-surface skins.
+    val appTypography =
+        remember(appearance.fontFamily, appearance.fontSizeScale) {
+            buildAppTypography(appearance.fontFamily, appearance.fontSizeScale)
+        }
+    val surfaceSkins = remember(appearance.surfaceStyles) { buildSurfaceSkins(appearance) }
+
+    CompositionLocalProvider(
+        LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it) },
     ) {
+        BluejayTheme(
+            darkTheme = darkTheme,
+            dynamicColor = appearance.dynamicColor,
+            uiRounding = appearance.uiRounding,
+            colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
+            typography = appTypography,
+            surfaceSkins = surfaceSkins,
+        ) {
         if (pip) {
             PlayerView(isPip = true)
         } else {
@@ -523,6 +540,7 @@ private fun BluejayMainActivity(
                     )
                 }
             }
+        }
         }
     }
 }
