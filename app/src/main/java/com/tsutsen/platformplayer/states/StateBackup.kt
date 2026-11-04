@@ -22,6 +22,11 @@ import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.HistoryVideo
 import com.tsutsen.platformplayer.models.ImportCache
 import com.tsutsen.platformplayer.models.SubscriptionGroup
+import com.tsutsen.platformplayer.core.database.AppDatabaseProvider
+import com.tsutsen.platformplayer.core.database.entity.PlaylistEntity
+import com.tsutsen.platformplayer.core.database.entity.PlaylistVideoEntity
+import com.tsutsen.platformplayer.core.database.entity.SavedVideoEntity
+import com.tsutsen.platformplayer.core.model.SavedVideoType
 import com.tsutsen.platformplayer.readBytes
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.v2.ManagedStore
@@ -29,9 +34,11 @@ import com.tsutsen.platformplayer.writeBytes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayInputStream
@@ -43,6 +50,49 @@ import java.time.OffsetDateTime
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+
+/**
+ * Serializable backup shapes for the Room library tables (the Library
+ * screen's real storage — the legacy FragmentedStorage playlist stores the
+ * old export covered are empty in current builds).
+ */
+@Serializable
+data class SavedVideoBackup(
+    val contentUrl: String,
+    val type: String,
+    val title: String,
+    val author: String? = null,
+    val authorUrl: String? = null,
+    val thumbnailUrl: String? = null,
+    val durationMs: Long = 0,
+    val viewCount: Long = 0,
+    val addedAt: Long = 0,
+    val postedAt: Long = 0,
+)
+
+@Serializable
+data class PlaylistVideoBackup(
+    val videoOrder: Int = 0,
+    val contentUrl: String,
+    val title: String,
+    val author: String? = null,
+    val authorUrl: String? = null,
+    val thumbnailUrl: String? = null,
+    val addedAt: Long = 0,
+    val durationMs: Long = 0,
+    val viewCount: Long = 0,
+    val postedAt: Long = 0,
+)
+
+@Serializable
+data class PlaylistBackup(
+    val name: String,
+    val description: String? = null,
+    val thumbnailUrl: String? = null,
+    val createdAt: Long = 0,
+    val updatedAt: Long = 0,
+    val videos: List<PlaylistVideoBackup> = emptyList(),
+)
 
 class StateBackup {
     companion object {
@@ -363,7 +413,50 @@ class StateBackup {
                 storesToSave.set("history", history.map { StateHistory.instance.toReconString(it) });
             }
             catch(ex: Throwable) {
-                Logger.e(TAG, "Failed to serialize history");
+                Logger.e(TAG, "Failed to serialize history", ex);
+            }
+            // Room library (the real storage behind the Library screen):
+            // saved sections (Watch Later, Liked, Disliked, Favourite) and
+            // custom playlists with their ordered videos. The legacy
+            // FragmentedStorage playlist stores above are empty in current
+            // builds — without these the backup carries no playlist data.
+            try {
+                val db = AppDatabaseProvider.get(StateApp.instance.context);
+                val saved = runBlocking { db.savedVideoDao().getAll() };
+                val playlists = runBlocking { db.playlistDao().getAll() };
+                Logger.i(TAG, "Room library export: savedVideos=${saved.size} playlists=${playlists.size}");
+                if (saved.isNotEmpty())
+                    storesToSave.set("saved_videos", saved.map {
+                        Json.encodeToString(SavedVideoBackup(
+                            contentUrl = it.contentUrl, type = it.type.name, title = it.title,
+                            author = it.author, authorUrl = it.authorUrl, thumbnailUrl = it.thumbnailUrl,
+                            durationMs = it.durationMs, viewCount = it.viewCount,
+                            addedAt = it.addedAt, postedAt = it.postedAt,
+                        ));
+                    });
+                val videosByPlaylist = runBlocking { db.playlistDao().getAllVideos() }.groupBy { it.playlistId };
+                val playlistBackups = playlists.map { playlist ->
+                    Json.encodeToString(PlaylistBackup(
+                        name = playlist.name,
+                        description = playlist.description,
+                        thumbnailUrl = playlist.thumbnailUrl,
+                        createdAt = playlist.createdAt,
+                        updatedAt = playlist.updatedAt,
+                        videos = (videosByPlaylist[playlist.id] ?: emptyList()).sortedBy { it.videoOrder }.map {
+                            PlaylistVideoBackup(
+                                videoOrder = it.videoOrder, contentUrl = it.contentUrl, title = it.title,
+                                author = it.author, authorUrl = it.authorUrl, thumbnailUrl = it.thumbnailUrl,
+                                addedAt = it.addedAt, durationMs = it.durationMs,
+                                viewCount = it.viewCount, postedAt = it.postedAt,
+                            );
+                        },
+                    ));
+                };
+                if (playlistBackups.isNotEmpty())
+                    storesToSave.set("custom_playlists", playlistBackups);
+            }
+            catch(ex: Throwable) {
+                Logger.e(TAG, "Failed to serialize Room library", ex);
             }
 
             val settings = SettingsRepositoryImpl.instance.encodeLegacySettings();
@@ -525,6 +618,84 @@ class StateBackup {
                                             } catch (ex: Throwable) {
                                                 Logger.e(TAG, "Failed to import subscription group", ex);
                                             }
+                                        }
+                                    }
+                                } else if (store.key == "saved_videos") {
+                                    // Room saved sections (Watch Later, Liked, ...).
+                                    // Upsert: a re-restore or existing entry just refreshes.
+                                    step("Importing saved videos..");
+                                    val db = AppDatabaseProvider.get(context);
+                                    for (savedStr in store.value) {
+                                        try {
+                                            val backup = Json.decodeFromString<SavedVideoBackup>(savedStr);
+                                            val type = SavedVideoType.entries.firstOrNull { it.name == backup.type };
+                                            if (type == null) {
+                                                Logger.w(TAG, "Unknown saved-video type [${backup.type}]");
+                                                continue;
+                                            }
+                                            db.savedVideoDao().upsert(SavedVideoEntity(
+                                                contentUrl = backup.contentUrl,
+                                                type = type,
+                                                title = backup.title,
+                                                author = backup.author,
+                                                authorUrl = backup.authorUrl,
+                                                thumbnailUrl = backup.thumbnailUrl,
+                                                durationMs = backup.durationMs,
+                                                viewCount = backup.viewCount,
+                                                addedAt = if (backup.addedAt > 0) backup.addedAt else System.currentTimeMillis(),
+                                                postedAt = backup.postedAt,
+                                            ));
+                                        } catch (ex: Throwable) {
+                                            Logger.e(TAG, "Failed to import saved video", ex);
+                                        }
+                                    }
+                                } else if (store.key == "custom_playlists") {
+                                    // Room custom playlists; merges into an existing
+                                    // playlist with the same name, else creates one.
+                                    // Videos append at the end (IGNORE skips dups).
+                                    step("Importing playlists..");
+                                    val db = AppDatabaseProvider.get(context);
+                                    for (playlistStr in store.value) {
+                                        try {
+                                            val backup = Json.decodeFromString<PlaylistBackup>(playlistStr);
+                                            val existing = db.playlistDao().getByName(backup.name);
+                                            val playlistId = existing?.id ?: db.playlistDao().insert(PlaylistEntity(
+                                                name = backup.name,
+                                                description = backup.description,
+                                                thumbnailUrl = backup.thumbnailUrl,
+                                                videoCount = 0,
+                                                createdAt = if (backup.createdAt > 0) backup.createdAt else System.currentTimeMillis(),
+                                                updatedAt = System.currentTimeMillis(),
+                                            ));
+                                            var order = db.playlistDao().nextVideoOrder(playlistId);
+                                            for (video in backup.videos.sortedBy { it.videoOrder }) {
+                                                db.playlistDao().insertVideo(PlaylistVideoEntity(
+                                                    playlistId = playlistId,
+                                                    videoOrder = order++,
+                                                    contentUrl = video.contentUrl,
+                                                    title = video.title,
+                                                    author = video.author,
+                                                    thumbnailUrl = video.thumbnailUrl,
+                                                    addedAt = if (video.addedAt > 0) video.addedAt else System.currentTimeMillis(),
+                                                    durationMs = video.durationMs,
+                                                    authorUrl = video.authorUrl,
+                                                    viewCount = video.viewCount,
+                                                    postedAt = video.postedAt,
+                                                ));
+                                            }
+                                            val count = db.playlistDao().countVideos(playlistId);
+                                            (existing?.copy(videoCount = count, updatedAt = System.currentTimeMillis())
+                                                ?: PlaylistEntity(
+                                                    id = playlistId,
+                                                    name = backup.name,
+                                                    description = backup.description,
+                                                    thumbnailUrl = backup.thumbnailUrl,
+                                                    videoCount = count,
+                                                    createdAt = if (backup.createdAt > 0) backup.createdAt else System.currentTimeMillis(),
+                                                    updatedAt = System.currentTimeMillis(),
+                                                )).let { db.playlistDao().update(it) };
+                                        } catch (ex: Throwable) {
+                                            Logger.e(TAG, "Failed to import playlist", ex);
                                         }
                                     }
                                 } else {

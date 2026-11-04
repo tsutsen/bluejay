@@ -119,6 +119,20 @@ interface PlaylistDao {
         url: String,
         durationMs: Long,
     )
+
+    // --- Backup export/import (one-shot reads, no reactive flow) ---
+
+    /** Every playlist, unordered (backup export). */
+    @Query("SELECT * FROM playlists")
+    suspend fun getAll(): List<PlaylistEntity>
+
+    /** Every playlist video across all playlists (backup export; group by playlistId). */
+    @Query("SELECT * FROM playlist_videos")
+    suspend fun getAllVideos(): List<PlaylistVideoEntity>
+
+    /** First playlist with the given name (backup import merges into it). */
+    @Query("SELECT * FROM playlists WHERE name = :name LIMIT 1")
+    suspend fun getByName(name: String): PlaylistEntity?
 }
 
 /** Row mapping for [PlaylistDao.observePlaylistStats]. */

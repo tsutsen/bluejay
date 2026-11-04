@@ -45,7 +45,11 @@ class StateHistory {
     /** History entries newer than [minDate], newest first (max [max]). */
     fun getRecentHistory(minDate: OffsetDateTime, max: Int = 1000): List<HistoryEntity> {
         return runBlocking {
-            historyDao.getSince(minDate.toInstant().toEpochMilli(), max)
+            // OffsetDateTime.MIN.toEpochMilli() overflows (ArithmeticException
+            // in Instant.toEpochMilli) — clamp to a representable epoch floor.
+            val sinceMs = runCatching { minDate.toInstant().toEpochMilli() }
+                .getOrElse { Long.MIN_VALUE / 2 }
+            historyDao.getSince(sinceMs, max)
         }
     }
 

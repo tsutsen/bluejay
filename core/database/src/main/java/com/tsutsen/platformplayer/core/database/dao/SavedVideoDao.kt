@@ -48,4 +48,8 @@ interface SavedVideoDao {
     /** How many save types (Watch Later, Liked, ...) hold at least one video. */
     @Query("SELECT COUNT(DISTINCT type) FROM saved_video")
     fun countTypesWithVideos(): Int
+
+    /** One-shot read of every saved video (backup export). */
+    @Query("SELECT * FROM saved_video")
+    suspend fun getAll(): List<SavedVideoEntity>
 }
