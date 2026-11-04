@@ -24,4 +24,13 @@ interface VideoUrlResolver {
      * is used as the playback start position.
      */
     suspend fun resolve(contentUrl: String, resumePositionMs: Long = 0): ResolutionResult
+
+    /**
+     * Ask the source layer to drop cached per-video/session state so the next
+     * [resolve] produces a genuinely fresh source (new attestation token).
+     * Called by the player's source-error recovery before re-resolving — a
+     * plain re-resolve can return the same rejected token from a cache.
+     * Default: no-op (resolvers without caches need nothing).
+     */
+    suspend fun invalidateSourceCache(contentUrl: String) {}
 }

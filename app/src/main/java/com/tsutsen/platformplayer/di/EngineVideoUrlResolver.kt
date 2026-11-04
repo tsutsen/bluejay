@@ -68,7 +68,35 @@ class EngineVideoUrlResolver
     constructor() : VideoUrlResolver {
         private val TAG = "EngineVideoUrlResolver"
 
-        override suspend fun resolve(contentUrl: String, resumePositionMs: Long): ResolutionResult {
+        /**
+     * Clears the plugins' in-memory attestation (po-token) caches so the next
+     * [resolve] mints a fresh token. The YouTube plugin's BotGuard cache never
+     * expires in-process ("//TODO: check expiry?"), so after a token is
+     * rejected every plain re-resolve returns the same dead token — the
+     * source-recovery path calls this first.
+     */
+    override suspend fun invalidateSourceCache(contentUrl: String) {
+        for (client in StatePlatform.instance.getAvailableClients()) {
+            val jsClient = client as? com.tsutsen.platformplayer.api.media.platforms.js.JSClient ?: continue
+            try {
+                val result = jsClient.getUnderlyingPlugin().executeString(
+                    "(function(){" +
+                        "try{" +
+                        "if (typeof getExistingBotguard !== 'function') return 'no-fn';" +
+                        "var bg = getExistingBotguard();" +
+                        "if (bg && bg.generatedTokens) { var n = Object.keys(bg.generatedTokens).length; bg.generatedTokens = {}; return 'cleared:' + n; }" +
+                        "return 'no-cache';" +
+                        "}catch(ex){ return 'err:' + ex; }" +
+                        "})()",
+                )
+                Log.i(TAG, "invalidateSourceCache [$contentUrl] ${client.id}: $result")
+            } catch (e: Exception) {
+                Log.w(TAG, "invalidateSourceCache failed for ${client.id}", e)
+            }
+        }
+    }
+
+    override suspend fun resolve(contentUrl: String, resumePositionMs: Long): ResolutionResult {
             // Downloaded videos play from local files — no network, no engine.
             val local = StateDownloads.instance.getDownloadedVideos().find { it.url == contentUrl }
             if (local != null) {

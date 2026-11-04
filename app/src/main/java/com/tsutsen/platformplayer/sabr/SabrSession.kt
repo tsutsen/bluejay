@@ -750,7 +750,10 @@ class SabrSession(
             sabrLog("Response carried no new media ($emptyResponses/$MAX_EMPTY_RESPONSES) " +
                 "at playerTimeMs=${positionUs / 1000} demandedHeaders=$demandedHeaders foreign=$foreignHeaders")
             if (emptyResponses >= MAX_EMPTY_RESPONSES)
-                throw SabrException("Server returned no media for $emptyResponses consecutive requests")
+                // Reload-required (not plain SabrException): the player
+                // repository recovers it by re-resolving with a fresh source —
+                // a plain exception surfaces as a dead player instead.
+                throw SabrReloadRequiredException("Server returned no media for $emptyResponses consecutive requests")
         } else if (!isLive && !aborting && !redirected) {
             updateProgress(video, videoBefore, positionUs)
             updateProgress(audio, audioBefore, positionUs)
@@ -982,8 +985,14 @@ class SabrSession(
                             "sentContexts=${activeSabrContexts.sorted()} heldContexts=${sabrContexts.keys.sorted()} " +
                             "cookie=${playbackCookie?.size() ?: 0}b " +
                             "poTokenBytes=${resolvePoToken()?.size() ?: 0}")
-                        if (status == PROTECTION_STATUS_ATTESTATION_REQUIRED)
-                            throw SabrBlockedException("po token rejected (attestation required)")
+                        // Do NOT abort on ATTESTATION_PENDING/REQUIRED: the reference
+                        // JS executor records the status and keeps parsing the
+                        // response (media typically keeps flowing — YouTube grants
+                        // a grace period). Throwing here killed the whole session
+                        // on seek/rebuffer ("Unexpected runtime error" / "Source
+                        // error"). If YouTube truly cuts media off, the stall
+                        // backoff below handles it; a hard HTTP 403 still throws
+                        // from performRequest and triggers the recovery path.
                     }
 
                     UmpPartType.SABR_REDIRECT -> redirect = SabrRedirect.parseFrom(part.data).url
