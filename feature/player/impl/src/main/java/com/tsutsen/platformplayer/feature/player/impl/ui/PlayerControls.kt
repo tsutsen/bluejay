@@ -67,6 +67,7 @@ fun PlayerControls(
     onBadgeSessionEnded: () -> Unit = {},
     state: PlayerUiState.Loaded,
     positionMs: StateFlow<Long>,
+    seekThumbnails: kotlinx.coroutines.flow.StateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?>? = null,
     subtitlesOn: Boolean,
     isScrubbing: Boolean,
     scrubPositionMs: Long,
@@ -292,6 +293,7 @@ fun PlayerControls(
                                         ) {
                                             PlayerNormalBottomOverlay(
                                                 positionMs = positionMs,
+                                                seekThumbnails = seekThumbnails,
                                                 durationMs = state.durationMs,
                                                 isPlaying = state.isPlaying,
                                                 isLoading = state.isLoading,
@@ -338,6 +340,7 @@ fun PlayerControls(
                                             } else {
                                                 PlayerNormalBottomOverlay(
                                                     positionMs = positionMs,
+                                                    seekThumbnails = seekThumbnails,
                                                     durationMs = state.durationMs,
                                                     isPlaying = state.isPlaying,
                                                     isLoading = state.isLoading,

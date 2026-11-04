@@ -47,8 +47,14 @@ import com.tsutsen.platformplayer.core.data.repository.VideoAudioTrack
 import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoStreamOption
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
+import com.caoccao.javet.values.reference.V8ValueObject
 import com.tsutsen.platformplayer.downloads.VideoLocal
+import com.tsutsen.platformplayer.getOrThrow
+import com.tsutsen.platformplayer.getOrThrowList
+import com.tsutsen.platformplayer.getOrDefault
+import com.tsutsen.platformplayer.invokeV8
 import com.tsutsen.platformplayer.sabr.media3.SabrMediaSource
+import com.tsutsen.platformplayer.getSourcePlugin
 import com.tsutsen.platformplayer.states.StateDownloads
 import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StatePlatform
@@ -76,6 +82,10 @@ class EngineVideoUrlResolver
      * source-recovery path calls this first.
      */
     override suspend fun invalidateSourceCache(contentUrl: String) {
+        // The platform layer caches content details for 5 minutes — a cached
+        // player response re-serves the same (server-rejected) ustreamer
+        // config, so drop it for this video before the plugins re-resolve.
+        runCatching { StatePlatform.instance.clearContentDetailCache(contentUrl) }
         for (client in StatePlatform.instance.getAvailableClients()) {
             val jsClient = client as? com.tsutsen.platformplayer.api.media.platforms.js.JSClient ?: continue
             try {
@@ -131,6 +141,14 @@ class EngineVideoUrlResolver
 
                 // Map IPlatformVideoDetails to lightweight VideoDetails for the data layer
                 val mappedDetails = mapToVideoDetails(videoDetails, contentUrl)
+
+                // Storyboard scrub previews, when the plugin exposes a
+                // provider on the details object (YouTube v367+); falls back
+                // to a direct innertube storyboard fetch for plugins that
+                // predate the provider (signed v366).
+                val seekThumbnails =
+                    extractSeekThumbnails(details)
+                        ?: YouTubeStoryboardProvider.fetch(contentUrl)
                 Log.i(
                     TAG,
                     "Mapped details: title=${mappedDetails.title}, authorName=${mappedDetails.authorName}, thumbnail=${mappedDetails.thumbnailUrl}",
@@ -151,13 +169,13 @@ class EngineVideoUrlResolver
                 if (videoMediaSource != null) {
                     Log.i(TAG, "Resolved video MediaSource: ${videoMediaSource.javaClass.simpleName}")
                     Log.i(TAG, "========================================")
-                    return ResolutionResult(videoMediaSource, mappedDetails)
+                    return ResolutionResult(videoMediaSource, mappedDetails, seekThumbnails)
                 }
 
                 // Fallback: no MediaSource but we still have the video details
                 Log.w(TAG, "No video MediaSource found, returning details only")
                 Log.i(TAG, "========================================")
-                ResolutionResult(null, mappedDetails)
+                ResolutionResult(null, mappedDetails, seekThumbnails)
             } catch (e: com.tsutsen.platformplayer.engine.exceptions.PluginException) {
                 // Plugin-side block (e.g. content gate): surface it so the player
                 // can show the warning with a "Go to plugin settings" action.
@@ -360,6 +378,71 @@ class EngineVideoUrlResolver
          * when more than one source is enabled (single-source makes the
          * badge pointless).
          */
+        /**
+         * Storyboard scrub previews: the plugin (YouTube v367+) attaches a
+         * getSeekThumbnailProvider() to the details object returning
+         * { resolutionMs, getThumbnail(timeMs) -> { url, frames: [{time,x,y,w,h}] } }
+         * — sprite sheets on i.ytimg.com signed with a sigh parameter. Wrapped
+         * here as a [SeekThumbnailProvider]: each call re-invokes the V8
+         * function inside the plugin's busy lock (pure math over the parsed
+         * spec — no network on that path; sheets are fetched by the UI layer).
+         */
+        private fun extractSeekThumbnails(details: com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent): com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider? =
+            runCatching {
+                val jsDetails = details as? com.tsutsen.platformplayer.api.media.platforms.js.models.JSVideoDetails
+                    ?: return@runCatching null
+                val content = jsDetails.getUnderlyingObject() ?: return@runCatching null
+                val config = jsDetails.sourceConfig
+                val plugin = content.getSourcePlugin() ?: return@runCatching null
+                plugin.busy {
+                    if (!content.has("getSeekThumbnailProvider")) return@busy null
+                    val providerObj =
+                        content.invokeV8<com.caoccao.javet.values.reference.V8ValueObject>("getSeekThumbnailProvider")
+                            ?: return@busy null
+                    val resolutionMs =
+                        providerObj.getOrDefault<Long>(config, "resolutionMs", "SeekThumbnailProvider", 0L) ?: 0L
+                    if (resolutionMs <= 0) return@busy null
+
+                    object : com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider {
+                        override val intervalMs: Long = resolutionMs
+
+                        override suspend fun thumbnailFor(timeMs: Long): com.tsutsen.platformplayer.core.data.repository.SeekThumbnailFrame? =
+                            runCatching {
+                                plugin.busy {
+                                    val thumb =
+                                        providerObj.invokeV8<com.caoccao.javet.values.reference.V8ValueObject>(
+                                            "getThumbnail",
+                                            timeMs,
+                                        ) ?: return@busy null
+                                    val url = thumb.getOrThrow<String>(config, "url", "SeekThumbnailProvider")
+                                    val frames =
+                                        thumb.getOrThrowList<com.caoccao.javet.values.reference.V8ValueObject>(
+                                            config,
+                                            "frames",
+                                            "SeekThumbnailProvider",
+                                        )
+                                    // The last frame whose time is not past the
+                                    // requested position (frames are ordered).
+                                    val frame =
+                                        frames.lastOrNull { f ->
+                                            (f.getOrDefault<Long>(config, "time", "SeekThumbnailProvider", -1L)
+                                                ?: -1L) <= timeMs
+                                        } ?: frames.firstOrNull()
+                                        ?: return@busy null
+                                    com.tsutsen.platformplayer.core.data.repository.SeekThumbnailFrame(
+                                        sheetUrl = url,
+                                        x = frame.getOrThrow<Int>(config, "x", "SeekThumbnailProvider"),
+                                        y = frame.getOrThrow<Int>(config, "y", "SeekThumbnailProvider"),
+                                        width = frame.getOrThrow<Int>(config, "w", "SeekThumbnailProvider"),
+                                        height = frame.getOrThrow<Int>(config, "h", "SeekThumbnailProvider"),
+                                        timeMs = timeMs,
+                                    )
+                                }
+                            }.getOrNull()
+                    }
+                }
+            }.onFailure { Log.w(TAG, "Failed to extract seek thumbnails", it) }.getOrNull()
+
         private fun resolveSourceIcon(pluginId: String?): String? {
             if (pluginId.isNullOrEmpty()) return null
             if (!EnabledClientResolver.isMultiSourceEnabled()) return null

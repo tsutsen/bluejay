@@ -20,6 +20,13 @@ interface PlayerRepository {
     val videoSize: PlaybackVideoSize?
 
     /**
+     * Storyboard-backed scrub previews for the currently loaded video, when
+     * the source plugin offers them; null otherwise. Set on resolve, cleared
+     * on the next play().
+     */
+    val seekThumbnails: kotlinx.coroutines.flow.StateFlow<SeekThumbnailProvider?>
+
+    /**
      * Engine-neutral playback port: state, controls and surface binding
      * without Media3 types on the interface.
      */

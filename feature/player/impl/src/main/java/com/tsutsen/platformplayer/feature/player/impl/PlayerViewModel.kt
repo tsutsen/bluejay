@@ -124,6 +124,11 @@ class PlayerViewModel
         private val _positionMs = MutableStateFlow(0L)
         val positionMs: StateFlow<Long> = _positionMs.asStateFlow()
 
+        /** Storyboard scrub previews for the current video (null when the
+         *  plugin offers none). Straight from the repository — low-frequency. */
+        val seekThumbnails: StateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?> =
+            playerRepository.seekThumbnails
+
         /** Last value emitted to [positionMs]. Emissions are quantized to 500 ms so the
          *  timeline leaves recompose at 2 Hz instead of the ticker's 10 Hz (every 10th
          *  recompose was otherwise a no-op re-layout). A seek shows on the first tick

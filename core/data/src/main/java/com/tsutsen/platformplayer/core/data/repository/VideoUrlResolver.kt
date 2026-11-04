@@ -9,6 +9,7 @@ import androidx.media3.exoplayer.source.MediaSource
 data class ResolutionResult(
     val mediaSource: MediaSource?,
     val videoDetails: VideoDetails?,
+    val seekThumbnails: SeekThumbnailProvider? = null,
 )
 
 /**

@@ -8,8 +8,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material3.*
+import android.graphics.drawable.BitmapDrawable
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -20,17 +24,26 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
+import coil.imageLoader
+import coil.request.ImageRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -55,6 +68,8 @@ internal fun PlayerNormalBottomOverlay(
     // preview. While set, it drives the playhead (the live position is
     // frozen until the scrub commits).
     seekPreviewMs: Long? = null,
+    // Storyboard scrub previews, when the source plugin provides them.
+    seekThumbnails: kotlinx.coroutines.flow.StateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?>? = null,
     chapters: List<VideoChapter> = emptyList(),
 ) {
     // Collected here — at the leaf — so the 10 Hz position ticks recompose
@@ -70,9 +85,20 @@ internal fun PlayerNormalBottomOverlay(
     // advance (~150ms); anything wider shows as a visible jump. A timeout
     // guards against a failed seek pinning the playhead.
     var pendingSeekMs by remember { mutableStateOf<Long?>(null) }
+    // Guards the capture below: the overlay re-composes on every show, and a
+    // bare "isScrubbing == false" test would then re-capture the STALE
+    // scrubPositionMs from the previous video session's scrub — the playhead
+    // would lag at the old spot until the timeout. Only a real true->false
+    // transition (a scrub that just released while composed) may capture.
+    var wasScrubbing by remember { mutableStateOf(false) }
     LaunchedEffect(isScrubbing) {
-        if (isScrubbing) pendingSeekMs = null
-        else if (scrubPositionMs > 0L) pendingSeekMs = scrubPositionMs
+        if (isScrubbing) {
+            pendingSeekMs = null
+            wasScrubbing = true
+        } else if (wasScrubbing) {
+            wasScrubbing = false
+            if (scrubPositionMs > 0L) pendingSeekMs = scrubPositionMs
+        }
     }
     LaunchedEffect(pendingSeekMs) {
         val target = pendingSeekMs ?: return@LaunchedEffect
@@ -194,7 +220,31 @@ internal fun PlayerNormalBottomOverlay(
             else if (durationMs > 0) effectivePositionMs.toFloat() / durationMs
             else 0f
 
-        Box {
+        // Storyboard frame preview above the thumb while dragging. The frame
+        // is a cell of a sprite sheet: the sheet is fetched once per URL
+        // (Coil memory cache), the cell is cropped at draw time.
+        val emptyThumbnails =
+            remember { kotlinx.coroutines.flow.MutableStateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?>(null) }
+        val thumbnailProvider by (seekThumbnails ?: emptyThumbnails).collectAsState()
+        val scrubTimeMs = (playheadFraction * durationMs).toLong()
+        var previewFrame by remember {
+            mutableStateOf<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailFrame?>(null)
+        }
+        val previewQuantum = thumbnailProvider?.intervalMs?.coerceAtLeast(1L) ?: 1L
+        LaunchedEffect(isDragging, thumbnailProvider, durationMs, scrubTimeMs / previewQuantum) {
+            val provider = thumbnailProvider
+            if (!isDragging || provider == null || durationMs <= 0) {
+                previewFrame = null
+                return@LaunchedEffect
+            }
+            previewFrame =
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    runCatching { provider.thumbnailFor(scrubTimeMs) }.getOrNull()
+                }
+        }
+        val sheetBitmap = rememberSheetBitmap(previewFrame?.sheetUrl)
+
+        BoxWithConstraints {
             Slider(
                 value = playheadFraction,
                 onValueChange = {
@@ -217,6 +267,37 @@ internal fun PlayerNormalBottomOverlay(
                 colors = SliderDefaults.colors(),
                 interactionSource = remember { MutableInteractionSource() },
             )
+            // Storyboard preview bubble, floating above the thumb while the
+            // timeline is being dragged.
+            val frame = previewFrame
+            if (isDragging && sheetBitmap != null && frame != null) {
+                val previewWidth = 160.dp
+                val previewHeight =
+                    (previewWidth * frame.height / frame.width.coerceAtLeast(1))
+                val bubbleOffsetX =
+                    (maxWidth * playheadFraction - previewWidth / 2)
+                        .coerceIn(0.dp, maxWidth - previewWidth)
+                Column(
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .offset(x = bubbleOffsetX, y = (-previewHeight - 14.dp))
+                            .background(
+                                Color.Black.copy(alpha = 0.85f),
+                                RoundedCornerShape(8.dp),
+                            )
+                            .padding(3.dp),
+                ) {
+                    Canvas(modifier = Modifier.size(previewWidth, previewHeight)) {
+                        drawImage(
+                            image = sheetBitmap,
+                            srcOffset = IntOffset(frame.x, frame.y),
+                            srcSize = IntSize(frame.width, frame.height),
+                            dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+                        )
+                    }
+                }
+            }
             // Chapter dots over the timeline (drawn after the slider so they
             // sit on the track), skipping the leading edge. Played part ->
             // secondary, unplayed part -> primary.
@@ -247,4 +328,30 @@ internal fun PlayerNormalBottomOverlay(
             }
         }
     }
+}
+
+/**
+ * Decodes a storyboard sprite sheet once per URL through the app's shared
+ * Coil loader (memory + disk cached); the caller crops the wanted cell at
+ * draw time with a src-rect [androidx.compose.ui.graphics.drawscope.DrawScope.drawImage].
+ */
+@Composable
+private fun rememberSheetBitmap(url: String?): ImageBitmap? {
+    if (url == null) return null
+    val context = LocalContext.current
+    return produceState<ImageBitmap?>(initialValue = null, url) {
+        value =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val request =
+                        ImageRequest
+                            .Builder(context)
+                            .data(url)
+                            .allowHardware(false)
+                            .build()
+                    val drawable = context.imageLoader.execute(request).drawable
+                    (drawable as? BitmapDrawable)?.bitmap?.asImageBitmap()
+                }.getOrNull()
+            }
+    }.value
 }

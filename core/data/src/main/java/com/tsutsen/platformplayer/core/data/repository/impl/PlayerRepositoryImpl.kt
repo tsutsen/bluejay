@@ -165,6 +165,11 @@ class PlayerRepositoryImpl(
     // every play path goes through). Recovery re-resolves this.
     private var currentPlayUrl: String? = null
 
+    private val _seekThumbnails =
+        MutableStateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?>(null)
+    override val seekThumbnails: kotlinx.coroutines.flow.StateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?> =
+        _seekThumbnails.asStateFlow()
+
     // Transparent source-error recovery (SABR po-token rejection / server
     // reload): budget per play() so a persistently rejected stream can't
     // loop recoveries forever, plus a minimum spacing between attempts.
@@ -436,6 +441,7 @@ class PlayerRepositoryImpl(
         // Publish loading state IMMEDIATELY, before any network/resolve/ExoPlayer work.
         // This is what lets the UI show a spinner right away instead of a blank gap.
         // Also set currentVideo to a placeholder so PlayerScreen gets composed immediately.
+        _seekThumbnails.value = null
         _playerState.update {
             it.copy(
                 isLoading = true,
@@ -618,6 +624,7 @@ class PlayerRepositoryImpl(
                 currentAudioTracks = resolution.videoDetails?.audioTracks ?: emptyList()
                 currentVideoStreams = resolution.videoDetails?.videoStreams ?: emptyList()
                 currentVideoStreamUrl = resolution.videoDetails?.videoStreamUrl
+                _seekThumbnails.value = resolution.seekThumbnails
                 // Unmuxed streams: the loaded file IS the quality — seed the
                 // options and highlight the actually-loaded resolution
                 // (overrides the prefs default, which ABR-only streams use).

@@ -1126,6 +1126,7 @@ fun PlayerView(
                         playbackEngine = playbackEngine,
                         state = state,
                         positionMs = viewModel.positionMs,
+                        seekThumbnails = viewModel.seekThumbnails,
                         surface = surface,
                         isLandscape = isLandscape,
                         controlsVisible = controlsVisible,
