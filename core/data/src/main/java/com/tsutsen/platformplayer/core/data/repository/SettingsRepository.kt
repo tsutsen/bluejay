@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.core.data.repository
 
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
+import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PlayerGestureSlotSet
 import kotlinx.coroutines.flow.StateFlow
@@ -37,35 +38,38 @@ interface SettingsRepository {
     suspend fun setSourceTopCreators(enabled: Boolean)
     /** Spawn-probability cut points (percent 0..100, coerced so cut1 <= cut2) splitting 0..100 into the three source segments. */
     suspend fun setProbCuts(cut1: Int, cut2: Int)
+
+    /** Homebrew recency window (Settings > Content > Recommendations): "any" | "1w" | "1m" | "3m" | "6m" | "1y" | "3y". */
+    suspend fun setRecency(recency: String)
     suspend fun setDockTabOrder(order: List<String>)
     suspend fun setDefaultDockTab(key: String)
     suspend fun setSubscriptionsOrder(order: String)
-    /** Persist a video URL as hidden (long-press sheet "Hide"); filtered from the home feed. */
-    suspend fun addHiddenVideoUrl(url: String)
 
-    /** Remove a video URL from the hidden set (long-press sheet "Unhide"). */
-    suspend fun removeHiddenVideoUrl(url: String)
+    /**
+     * Assign a video's spawn probability (Hidden content page, sheet "Hide").
+     * 0 = never shown; 100 removes the entry (fully shown). [name] and
+     * [imageUrl] (thumbnail) are captured on first creation.
+     */
+    suspend fun setVideoProbability(
+        url: String,
+        name: String,
+        probability: Int,
+        imageUrl: String = "",
+    )
 
-    /** Live hidden video URLs (drives the options sheet's Hide/Unhide tile). */
-    val hiddenVideoUrls: StateFlow<List<String>>
+    /** Same as [setVideoProbability] for a creator (keyed by authorUrl). */
+    suspend fun setCreatorProbability(
+        authorUrl: String,
+        name: String,
+        probability: Int,
+        imageUrl: String = "",
+    )
 
-    /** Persist a creator (authorUrl) as hidden; its cards are filtered out of the home feed. */
-    suspend fun addHiddenCreator(authorUrl: String)
+    /** Live per-video hidden/reduced entries (drives the sheet + Hidden content page). */
+    val hiddenVideos: StateFlow<List<HiddenContentEntry>>
 
-    /** Remove a creator from the hidden set (sheet arrow menu toggle). */
-    suspend fun removeHiddenCreator(authorUrl: String)
-
-    /** Persist a creator (authorUrl) as downranked; its cards sink to the end of the home feed. */
-    suspend fun addDownrankedCreator(authorUrl: String)
-
-    /** Remove a creator from the downranked set (sheet arrow menu toggle). */
-    suspend fun removeDownrankedCreator(authorUrl: String)
-
-    /** Live hidden creator urls (drives the options sheet's "Don't show this creator"). */
-    val hiddenCreators: StateFlow<List<String>>
-
-    /** Live downranked creator urls (drives the options sheet's "Show less from this creator"). */
-    val downrankedCreators: StateFlow<List<String>>
+    /** Live per-creator hidden/reduced entries (drives the sheet + Hidden content page). */
+    val hiddenCreators: StateFlow<List<HiddenContentEntry>>
     suspend fun setAutoUpdatePlugins(enabled: Boolean)
     suspend fun setSubtitleFont(font: String)
     suspend fun setSubtitleFontSize(sizeSp: Int)

@@ -53,7 +53,8 @@ fun groupShape(position: GroupPosition): Shape {
 private fun iconTileShape() = RoundedCornerShape(BluejayTokens().radius.sm)
 
 /**
- * Settings card that opens a sub-screen or dialog.
+ * Settings card that opens a sub-screen or dialog. [enabled] = false greys
+ * the card out and disables the tap (e.g. rows under a master toggle).
  */
 @Composable
 fun SettingsOptionCard(
@@ -62,12 +63,13 @@ fun SettingsOptionCard(
     subtitle: String,
     onClick: () -> Unit,
     groupPosition: GroupPosition = GroupPosition.Single,
+    enabled: Boolean = true,
 ) {
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick),
+                .clickable(enabled = enabled, onClick = onClick),
         shape = groupShape(groupPosition),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -76,6 +78,7 @@ fun SettingsOptionCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .alpha(if (enabled) 1f else 0.5f)
                     .padding(Tokens.SpaceMd),
             horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,

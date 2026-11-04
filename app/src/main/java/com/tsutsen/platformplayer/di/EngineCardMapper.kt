@@ -125,6 +125,7 @@ object EngineCardMapper {
                     publishedAt = epochMs(content.datetime),
                     url = content.url,
                     authorUrl = content.author.url,
+                    authorThumbnailUrl = content.author.thumbnail,
                     sourceId = content.id.pluginId,
                 )
             }
@@ -161,6 +162,7 @@ object EngineCardMapper {
             publishedAt = epochMs(video.playbackDate ?: video.datetime),
             url = video.url,
             authorUrl = video.author.url,
+            authorThumbnailUrl = video.author.thumbnail,
             sourceId = video.id.pluginId,
         )
 

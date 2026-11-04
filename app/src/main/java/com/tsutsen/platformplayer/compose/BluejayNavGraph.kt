@@ -377,6 +377,7 @@ fun BluejayNavGraph(
                     category = destination.category,
                     onBack = { navigator.goBack() },
                     onPluginsClick = { navigator.navigateToPluginBrowser() },
+                    onHiddenContentClick = { navigator.navigateToSettingsFragment("hiddenContent") },
                 )
             }
 

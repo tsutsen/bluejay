@@ -10,6 +10,7 @@ import com.tsutsen.platformplayer.core.datastore.model.BackupPreferences
 import com.tsutsen.platformplayer.core.datastore.model.BrowsingPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
+import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
 import com.tsutsen.platformplayer.core.datastore.model.DownloadsPreferences
 import com.tsutsen.platformplayer.core.datastore.model.LoggingPreferences
 import com.tsutsen.platformplayer.core.datastore.model.NotificationPreferences
@@ -39,22 +40,49 @@ import javax.inject.Singleton
 class SettingsRepositoryImpl
     @Inject
     constructor() : SettingsRepository {
+        init {
+            migrateLegacyHiddenSets()
+        }
+
         private val _preferences = MutableStateFlow(fromSettings())
         override val preferences: StateFlow<AppPreferences> = _preferences.asStateFlow()
 
-        // Kept out of [AppPreferences] (the sheet only needs this one list);
-        // re-synced after the hidden-set changes below.
-        private val _hiddenVideoUrls = MutableStateFlow(Settings.instance.content.hiddenVideoUrls)
-        override val hiddenVideoUrls: StateFlow<List<String>> = _hiddenVideoUrls.asStateFlow()
+        // Kept out of [AppPreferences] (only the sheet + Hidden content page
+        // need these); re-synced after the probability changes below.
+        private val _hiddenVideos =
+            MutableStateFlow(Settings.instance.content.hiddenVideoEntries)
+        override val hiddenVideos: StateFlow<List<HiddenContentEntry>> = _hiddenVideos.asStateFlow()
 
-        // Same pattern as _hiddenVideoUrls: kept out of [AppPreferences] (the
-        // sheet only needs these lists); re-synced after each change below.
-        private val _hiddenCreators = MutableStateFlow(Settings.instance.content.hiddenCreators)
-        override val hiddenCreators: StateFlow<List<String>> = _hiddenCreators.asStateFlow()
+        private val _hiddenCreators =
+            MutableStateFlow(Settings.instance.content.hiddenCreatorEntries)
+        override val hiddenCreators: StateFlow<List<HiddenContentEntry>> =
+            _hiddenCreators.asStateFlow()
 
-        private val _downrankedCreators =
-            MutableStateFlow(Settings.instance.content.downrankedCreators)
-        override val downrankedCreators: StateFlow<List<String>> = _downrankedCreators.asStateFlow()
+        /**
+         * One-time migration: the legacy binary hide sets (hiddenVideoUrls =
+         * 0%, hiddenCreators = 0%, downrankedCreators = "show less" ≈ 50%)
+         * become probability entries; the legacy lists are cleared.
+         */
+        private fun migrateLegacyHiddenSets() {
+            val c = Settings.instance.content
+            if (c.hiddenVideoUrls.isEmpty() && c.hiddenCreators.isEmpty() && c.downrankedCreators.isEmpty()) {
+                return
+            }
+            val videos =
+                c.hiddenVideoUrls
+                    .filter { url -> c.hiddenVideoEntries.none { it.url == url } }
+                    .map { HiddenContentEntry(url = it, name = "", probability = 0) }
+            val creators =
+                (c.hiddenCreators.map { HiddenContentEntry(url = it, name = "", probability = 0) } +
+                    c.downrankedCreators.map { HiddenContentEntry(url = it, name = "", probability = 50) })
+                    .filter { e -> c.hiddenCreatorEntries.none { it.url == e.url } }
+            c.hiddenVideoEntries = (c.hiddenVideoEntries + videos).distinctBy { it.url }
+            c.hiddenCreatorEntries = (c.hiddenCreatorEntries + creators).distinctBy { it.url }
+            c.hiddenVideoUrls = emptyList()
+            c.hiddenCreators = emptyList()
+            c.downrankedCreators = emptyList()
+            Settings.instance.save()
+        }
 
         private fun fromSettings(): AppPreferences {
             val s = Settings.instance
@@ -139,6 +167,7 @@ class SettingsRepositoryImpl
                 sourceTopCreators = s.recommendations.sourceTopCreators,
                 probCut1 = s.recommendations.probCut1,
                 probCut2 = s.recommendations.probCut2,
+                recency = s.recommendations.recency,
                 autoUpdatePlugins = s.plugins.autoUpdatePlugins,
                 dockTabOrder = s.other.dockTabOrder,
                 defaultDockTab = s.other.defaultDockTab,
@@ -312,6 +341,69 @@ class SettingsRepositoryImpl
                 it.recommendations.probCut2 = hi
             }
 
+        override suspend fun setRecency(recency: String) =
+            persist { it.recommendations.recency = recency }
+
+        override suspend fun setVideoProbability(
+            url: String,
+            name: String,
+            probability: Int,
+            imageUrl: String,
+        ) {
+            persist {
+                val p = probability.coerceIn(0, 100)
+                val list = it.content.hiddenVideoEntries
+                it.content.hiddenVideoEntries =
+                    if (p >= 100) {
+                        list.filterNot { e -> e.url == url }
+                    } else {
+                        list.upsertEntry(url, name, p, imageUrl)
+                    }
+            }
+            _hiddenVideos.value = Settings.instance.content.hiddenVideoEntries
+        }
+
+        override suspend fun setCreatorProbability(
+            authorUrl: String,
+            name: String,
+            probability: Int,
+            imageUrl: String,
+        ) {
+            persist {
+                val p = probability.coerceIn(0, 100)
+                val list = it.content.hiddenCreatorEntries
+                it.content.hiddenCreatorEntries =
+                    if (p >= 100) {
+                        list.filterNot { e -> e.url == authorUrl }
+                    } else {
+                        list.upsertEntry(authorUrl, name, p, imageUrl)
+                    }
+            }
+            _hiddenCreators.value = Settings.instance.content.hiddenCreatorEntries
+        }
+
+        /** Insert-or-update by url, keeping the stored name/image when the new ones are blank. */
+        private fun List<HiddenContentEntry>.upsertEntry(
+            url: String,
+            name: String,
+            probability: Int,
+            imageUrl: String,
+        ): List<HiddenContentEntry> {
+            val existing = firstOrNull { it.url == url }
+                ?: return this + HiddenContentEntry(url, name, imageUrl, probability)
+            return map {
+                if (it.url == url) {
+                    it.copy(
+                        probability = probability,
+                        name = name.ifEmpty { it.name },
+                        imageUrl = imageUrl.ifEmpty { it.imageUrl },
+                    )
+                } else {
+                    it
+                }
+            }
+        }
+
         override suspend fun setDockTabOrder(order: List<String>) =
             persist { it.other.dockTabOrder = order }
 
@@ -320,38 +412,6 @@ class SettingsRepositoryImpl
 
         override suspend fun setSubscriptionsOrder(order: String) =
             persist { it.subscriptions.subscriptionsOrder = order }
-
-        override suspend fun addHiddenVideoUrl(url: String) {
-            persist { it.content.hiddenVideoUrls = (it.content.hiddenVideoUrls + url).distinct() }
-            _hiddenVideoUrls.value = Settings.instance.content.hiddenVideoUrls
-        }
-
-        override suspend fun removeHiddenVideoUrl(url: String) {
-            persist { it.content.hiddenVideoUrls = it.content.hiddenVideoUrls - url }
-            _hiddenVideoUrls.value = Settings.instance.content.hiddenVideoUrls
-        }
-
-        override suspend fun addHiddenCreator(authorUrl: String) {
-            persist { it.content.hiddenCreators = (it.content.hiddenCreators + authorUrl).distinct() }
-            _hiddenCreators.value = Settings.instance.content.hiddenCreators
-        }
-
-        override suspend fun removeHiddenCreator(authorUrl: String) {
-            persist { it.content.hiddenCreators = it.content.hiddenCreators - authorUrl }
-            _hiddenCreators.value = Settings.instance.content.hiddenCreators
-        }
-
-        override suspend fun addDownrankedCreator(authorUrl: String) {
-            persist {
-                it.content.downrankedCreators = (it.content.downrankedCreators + authorUrl).distinct()
-            }
-            _downrankedCreators.value = Settings.instance.content.downrankedCreators
-        }
-
-        override suspend fun removeDownrankedCreator(authorUrl: String) {
-            persist { it.content.downrankedCreators = it.content.downrankedCreators - authorUrl }
-            _downrankedCreators.value = Settings.instance.content.downrankedCreators
-        }
 
         override suspend fun setAutoUpdatePlugins(enabled: Boolean) =
             persist { it.plugins.autoUpdatePlugins = enabled }

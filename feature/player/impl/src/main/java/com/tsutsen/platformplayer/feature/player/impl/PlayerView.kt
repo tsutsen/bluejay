@@ -1386,9 +1386,6 @@ private fun CurrentVideoOptionsSheet(
             else -> DownloadButtonState.Downloading(downloadInfo.progress)
         }
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
-    val hiddenUrls by viewModel.hiddenVideoUrls.collectAsState(initial = emptyList())
-    val hiddenCreators by viewModel.hiddenCreators.collectAsState(initial = emptyList())
-    val downrankedCreators by viewModel.downrankedCreators.collectAsState(initial = emptyList())
     // Creator-level hide options are keyed by the video's authorUrl.
     val creatorUrl = video.author?.url?.takeIf { it.isNotEmpty() }
     // "Watched" tile: the player module owns its DB access directly (same

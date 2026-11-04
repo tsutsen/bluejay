@@ -52,6 +52,7 @@ sealed interface SettingsUiState {
         val sourceTopCreators: Boolean,
         val probCut1: Int,
         val probCut2: Int,
+        val recency: String,
         val autoUpdatePlugins: Boolean,
         val dockTabOrder: List<String>,
         val defaultDockTab: String,
@@ -167,6 +168,7 @@ class SettingsViewModel
                                 sourceTopCreators = prefs.sourceTopCreators,
                                 probCut1 = prefs.probCut1,
                                 probCut2 = prefs.probCut2,
+                                recency = prefs.recency,
                                 autoUpdatePlugins = prefs.autoUpdatePlugins,
                                 dockTabOrder = prefs.dockTabOrder,
                                 defaultDockTab = prefs.defaultDockTab,
@@ -338,6 +340,34 @@ class SettingsViewModel
 
         fun setProbCuts(cut1: Int, cut2: Int) {
             viewModelScope.launch { settingsRepository.setProbCuts(cut1, cut2) }
+        }
+
+        fun setRecency(recency: String) {
+            viewModelScope.launch { settingsRepository.setRecency(recency) }
+        }
+
+        /** Live per-video hidden/reduced entries (Hidden content subpage). */
+        val hiddenVideos: StateFlow<List<HiddenContentEntry>>
+            get() = settingsRepository.hiddenVideos
+
+        /** Live per-creator hidden/reduced entries (Hidden content subpage). */
+        val hiddenCreators: StateFlow<List<HiddenContentEntry>>
+            get() = settingsRepository.hiddenCreators
+
+        /** Hidden content subpage: change a video's spawn probability. */
+        fun setHiddenVideoProbability(url: String, probability: Int) {
+            viewModelScope.launch {
+                val entry = settingsRepository.hiddenVideos.value.firstOrNull { it.url == url }
+                settingsRepository.setVideoProbability(url, entry?.name ?: "", probability, entry?.imageUrl ?: "")
+            }
+        }
+
+        /** Hidden content subpage: change a creator's spawn probability. */
+        fun setHiddenCreatorProbability(url: String, probability: Int) {
+            viewModelScope.launch {
+                val entry = settingsRepository.hiddenCreators.value.firstOrNull { it.url == url }
+                settingsRepository.setCreatorProbability(url, entry?.name ?: "", probability, entry?.imageUrl ?: "")
+            }
         }
 
         fun setDockTabOrder(order: List<String>) {

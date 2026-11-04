@@ -499,8 +499,22 @@ class EngineHomeRepositoryImpl
          */
         private fun mergePartialFeed(partial: List<Card>) {
             if (partial.isEmpty()) return
+            // Recency applies to partial paints too: a slow source's older
+            // videos must not flash on screen before the final merge filters
+            // them out (the other filters re-run on the full merge anyway).
+            val cutoff = recencyCutoffMs(SettingsRepositoryImpl.instance.preferences.value)
+            val fresh =
+                if (cutoff == null) {
+                    partial
+                } else {
+                    partial.filter {
+                        val published = (it as? VideoCard)?.publishedAt
+                        published == null || published >= cutoff
+                    }
+                }
+            if (fresh.isEmpty()) return
             _feed.update { state ->
-                val merged = appendUnseen(state.items, partial)
+                val merged = appendUnseen(state.items, fresh)
                 if (merged.size == state.items.size) state else state.copy(items = merged)
             }
         }
@@ -532,24 +546,23 @@ class EngineHomeRepositoryImpl
 
         /**
          * Applies the persisted content settings to a freshly loaded feed
-         * page: hidden video urls (long-press "Hide"), hidden creators
-         * (arrow menu "Don't show this creator", keyed by authorUrl), the
-         * downranked creators ("Show less from this creator" — their cards
-         * sink to the end of the page, stable partition), plus the watched /
-         * started toggles backed by the history table. Runs before emit and
-         * before the Room cache write. History is batch-queried once per
-         * page, and only when a toggle is actually off.
+         * page: the per-item spawn probabilities (Hidden content — videos via
+         * long-press "Hide", creators via the arrow menu), the homebrew
+         * recency window, plus the watched / started toggles backed by the
+         * history table. Runs before emit and before the Room cache write.
+         * History is batch-queried once per page, and only when a toggle is
+         * actually off.
          */
         private suspend fun applyContentFilters(cards: List<Card>): List<Card> {
             val repo = SettingsRepositoryImpl.instance
             val prefs = repo.preferences.value
-            val hidden = repo.hiddenVideoUrls.value
-            val hiddenCreators = repo.hiddenCreators.value
-            val downrankedCreators = repo.downrankedCreators.value
+            val videoProbs = repo.hiddenVideos.value.associate { it.url to it.probability }
+            val creatorProbs = repo.hiddenCreators.value.associate { it.url to it.probability }
             val filterWatched = !prefs.showWatchedVideos
             val filterStarted = !prefs.showStartedVideos
-            if (!filterWatched && !filterStarted && hidden.isEmpty() &&
-                hiddenCreators.isEmpty() && downrankedCreators.isEmpty()
+            val recencyCutoff = recencyCutoffMs(prefs)
+            if (!filterWatched && !filterStarted && recencyCutoff == null &&
+                videoProbs.isEmpty() && creatorProbs.isEmpty()
             ) {
                 return cards
             }
@@ -564,32 +577,61 @@ class EngineHomeRepositoryImpl
                 } else {
                     emptyMap()
                 }
-            val visible =
-                cards.filter { card ->
-                    val url = cardUrl(card)
-                    if (url != null && url in hidden) return@filter false
-                    val authorUrl = cardAuthorUrl(card)
-                    if (authorUrl != null && authorUrl in hiddenCreators) return@filter false
-                    if (filterWatched || filterStarted) {
-                        val h = url?.let { history[it] } ?: return@filter true
-                        val duration = h.totalDurationMs
-                        // Same watched/started split as the subs feed chips:
-                        // watched = >= 95% of duration (position or watched time),
-                        // started = in progress but not finished.
-                        val watched =
-                            duration > 0 &&
-                                (h.lastPositionMs >= 0.95 * duration || h.watchedMs >= 0.95 * duration)
-                        val started = h.lastPositionMs > 0 && !watched
-                        if (filterWatched && watched) return@filter false
-                        if (filterStarted && started) return@filter false
-                    }
-                    true
+            return cards.filter { card ->
+                val url = cardUrl(card)
+                // Per-item spawn probability (Hidden content): a deterministic
+                // hash sample keyed by the url, so an item is kept or dropped
+                // consistently across reloads and re-filters (the Room feed
+                // cache and paged appends would otherwise flicker).
+                if (url != null) {
+                    val p = videoProbs[url]
+                    if (p != null && p < 100 && url.hashCode().mod(100) >= p) return@filter false
                 }
-            if (downrankedCreators.isEmpty()) return visible
-            // Stable partition: downranked creators keep their relative order
-            // but move behind everything else.
-            val (normal, downranked) = visible.partition { cardAuthorUrl(it) !in downrankedCreators }
-            return normal + downranked
+                val authorUrl = cardAuthorUrl(card)
+                if (authorUrl != null) {
+                    val p = creatorProbs[authorUrl]
+                    if (p != null && p < 100 && authorUrl.hashCode().mod(100) >= p) return@filter false
+                }
+                if (recencyCutoff != null) {
+                    val published = (card as? VideoCard)?.publishedAt
+                    if (published != null && published < recencyCutoff) return@filter false
+                }
+                if (filterWatched || filterStarted) {
+                    val h = url?.let { history[it] } ?: return@filter true
+                    val duration = h.totalDurationMs
+                    // Same watched/started split as the subs feed chips:
+                    // watched = >= 95% of duration (position or watched time),
+                    // started = in progress but not finished.
+                    val watched =
+                        duration > 0 &&
+                            (h.lastPositionMs >= 0.95 * duration || h.watchedMs >= 0.95 * duration)
+                    val started = h.lastPositionMs > 0 && !watched
+                    if (filterWatched && watched) return@filter false
+                    if (filterStarted && started) return@filter false
+                }
+                true
+            }
+        }
+
+        /**
+         * Homebrew recency window (Settings > Content > Recommendations >
+         * Recency): epoch-ms cutoff for "1w".."3y", null for "any" — and
+         * always null when homebrew recommendations are off (the window only
+         * applies to the homebrew feed).
+         */
+        private fun recencyCutoffMs(prefs: com.tsutsen.platformplayer.core.datastore.model.AppPreferences): Long? {
+            if (!prefs.homebrewRecommendations) return null
+            val days =
+                when (prefs.recency) {
+                    "1w" -> 7L
+                    "1m" -> 30L
+                    "3m" -> 91L
+                    "6m" -> 182L
+                    "1y" -> 365L
+                    "3y" -> 1095L
+                    else -> return null
+                }
+            return System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
         }
 
         /** The card's creator key (authorUrl) — only video cards carry one. */

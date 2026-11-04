@@ -1,4 +1,5 @@
 package com.tsutsen.platformplayer.activities
+import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
 import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
 
 import android.app.Activity
@@ -194,39 +195,59 @@ internal fun CompanionVideoOptionsSheet(
             // choosing actions.
             playbackQueueRepository.add(card.toContentItem())
         },
-        isHidden = SettingsRepositoryImpl.instance.hiddenVideoUrls.value.contains(card.url),
+        isHidden =
+            SettingsRepositoryImpl.instance.hiddenVideos.value
+                .firstOrNull { it.url == card.url }?.probability == 0,
         onHideVideo = {
-            // Persist via the settings repo so the hidden-set flows re-emit.
+            // Persist via the settings repo so the hidden flows re-emit.
             scope.launch {
-                if (card.url in SettingsRepositoryImpl.instance.hiddenVideoUrls.value)
-                    SettingsRepositoryImpl.instance.removeHiddenVideoUrl(card.url)
-                else
-                    SettingsRepositoryImpl.instance.addHiddenVideoUrl(card.url)
+                val repo = SettingsRepositoryImpl.instance
+                val p = repo.hiddenVideos.value.firstOrNull { it.url == card.url }?.probability ?: 100
+                repo.setVideoProbability(
+                    card.url,
+                    card.title,
+                    if (p == 0) 100 else 0,
+                    card.thumbnailUrl.orEmpty(),
+                )
             }
         },
         isCreatorHidden =
             creatorUrl != null &&
-                creatorUrl in SettingsRepositoryImpl.instance.hiddenCreators.value,
+                SettingsRepositoryImpl.instance.hiddenCreators.value
+                    .firstOrNull { it.url == creatorUrl }?.probability == 0,
         isCreatorDownranked =
             creatorUrl != null &&
-                creatorUrl in SettingsRepositoryImpl.instance.downrankedCreators.value,
+                (SettingsRepositoryImpl.instance.hiddenCreators.value
+                    .firstOrNull { it.url == creatorUrl }?.probability ?: 100) in 1..99,
         onDownrankCreator = creatorUrl?.let { url ->
             {
                 scope.launch {
-                    if (url in SettingsRepositoryImpl.instance.downrankedCreators.value)
-                        SettingsRepositoryImpl.instance.removeDownrankedCreator(url)
-                    else
-                        SettingsRepositoryImpl.instance.addDownrankedCreator(url)
+                    val repo = SettingsRepositoryImpl.instance
+                    val p =
+                        repo.hiddenCreators.value.firstOrNull { it.url == url }?.probability ?: 100
+                    HiddenContentEntry.lowerTier(p)?.let { lower ->
+                        repo.setCreatorProbability(
+                            url,
+                            card.author ?: "",
+                            lower,
+                            card.authorThumbnailUrl.orEmpty(),
+                        )
+                    }
                 }
             }
         },
         onHideCreator = creatorUrl?.let { url ->
             {
                 scope.launch {
-                    if (url in SettingsRepositoryImpl.instance.hiddenCreators.value)
-                        SettingsRepositoryImpl.instance.removeHiddenCreator(url)
-                    else
-                        SettingsRepositoryImpl.instance.addHiddenCreator(url)
+                    val repo = SettingsRepositoryImpl.instance
+                    val p =
+                        repo.hiddenCreators.value.firstOrNull { it.url == url }?.probability ?: 100
+                    repo.setCreatorProbability(
+                        url,
+                        card.author ?: "",
+                        if (p == 0) 100 else 0,
+                        card.authorThumbnailUrl.orEmpty(),
+                    )
                 }
             }
         },

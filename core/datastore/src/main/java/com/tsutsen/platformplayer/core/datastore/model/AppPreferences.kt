@@ -58,6 +58,8 @@ data class AppPreferences(
     val probCut1: Int = 33,
     /** Spawn-probability cut point 2 (percent 0..100, >= [probCut1]): segment boundary between subscriptions and top creators. */
     val probCut2: Int = 66,
+    /** Homebrew recency window: "any" | "1w" | "1m" | "3m" | "6m" | "1y" | "3y". */
+    val recency: String = "any",
     val autoUpdatePlugins: Boolean = true,
     val gettingStartedCompleted: Boolean = false,
     /** Source ids whose home-feed login notice was declined. */

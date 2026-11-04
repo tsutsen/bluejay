@@ -22,6 +22,8 @@ data class VideoCard(
     override val thumbnailUrl: String?,
     val author: String?,
     val authorUrl: String? = null,
+    /** Channel avatar from the plugin (null when the source doesn't provide one). */
+    val authorThumbnailUrl: String? = null,
     val durationMs: Long? = null,
     val viewCount: Long? = null,
     val publishedAt: Long? = null,

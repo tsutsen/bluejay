@@ -5,6 +5,7 @@ import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
+import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
 import com.tsutsen.platformplayer.logging.LogLevel
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -232,15 +233,24 @@ class Settings {
         // Home feed: hide started-but-unfinished videos (history position > 0).
         var showStartedVideos: Boolean = true
 
-        // Video urls hidden via the long-press sheet "Hide" — filtered out of the home feed.
+        // Videos hidden or reduced via the long-press sheet "Hide": per-video
+        // spawn probability into the homebrew feed (0 = never). Supersedes the
+        // legacy hiddenVideoUrls list (migrated and cleared on first read).
+        var hiddenVideoEntries: List<HiddenContentEntry> = emptyList()
+
+        // Creators (authorUrl) hidden or reduced via the sheet's arrow menu:
+        // per-creator spawn probability into the homebrew feed (0 = never).
+        // Supersedes hiddenCreators (0%) / downrankedCreators (50%).
+        var hiddenCreatorEntries: List<HiddenContentEntry> = emptyList()
+
+        // Legacy binary hide sets (pre-probability); kept only as the
+        // migration source, always empty after SettingsRepositoryImpl runs.
         var hiddenVideoUrls: List<String> = emptyList()
 
-        // Creator (authorUrl) hidden via the sheet's arrow menu "Don't show this
-        // creator" — that creator's cards are filtered out of the home feed.
+        // Legacy hidden creators (see hiddenVideoUrls).
         var hiddenCreators: List<String> = emptyList()
 
-        // Creator (authorUrl) downranked via "Show less from this creator" —
-        // that creator's cards move to the end of the home feed.
+        // Legacy downranked creators (see hiddenVideoUrls).
         var downrankedCreators: List<String> = emptyList()
 
         // "Auto" or "NNNp" — quality the player starts each video at.
@@ -344,6 +354,11 @@ class Settings {
         // renormalizes the segments of the enabled sources.
         var probCut1: Int = 33
         var probCut2: Int = 66
+
+        // Recency window for homebrew recommendations ("any" | "1w" | "1m" |
+        // "3m" | "6m" | "1y" | "3y"): only videos published within the window
+        // spawn into the feed. "any" = no date filter.
+        var recency: String = "any"
     }
 
     @Serializable

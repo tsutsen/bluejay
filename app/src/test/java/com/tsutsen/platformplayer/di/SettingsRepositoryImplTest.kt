@@ -296,27 +296,31 @@ class SettingsRepositoryImplTest {
         }
 
     @Test
-    fun hiddenAndDownrankedCreatorsPersistAndEmit() =
+    fun hiddenContentProbabilitiesPersistAndEmit() =
         runTest {
             // Isolate from any state a previous run persisted.
-            Settings.instance.content.hiddenCreators = emptyList()
-            Settings.instance.content.downrankedCreators = emptyList()
+            Settings.instance.content.hiddenVideoEntries = emptyList()
+            Settings.instance.content.hiddenCreatorEntries = emptyList()
 
-            repo.addHiddenCreator("https://ch/1")
-            repo.addDownrankedCreator("https://ch/2")
-            repo.addHiddenCreator("https://ch/1") // duplicate is deduped
+            repo.setVideoProbability("https://v/1", "Video one", 0)
+            repo.setCreatorProbability("https://ch/1", "Channel", 50)
+            repo.setCreatorProbability("https://ch/1", "Channel", 25) // same url updates
 
             val s = Settings.instance
-            assertEquals(listOf("https://ch/1"), s.content.hiddenCreators)
-            assertEquals(listOf("https://ch/2"), s.content.downrankedCreators)
-            assertEquals(listOf("https://ch/1"), repo.hiddenCreators.value)
-            assertEquals(listOf("https://ch/2"), repo.downrankedCreators.value)
+            assertEquals(listOf("https://v/1"), s.content.hiddenVideoEntries.map { it.url })
+            assertEquals("Video one", s.content.hiddenVideoEntries[0].name)
+            assertEquals(0, s.content.hiddenVideoEntries[0].probability)
+            assertEquals(listOf("https://ch/1"), s.content.hiddenCreatorEntries.map { it.url })
+            assertEquals(25, s.content.hiddenCreatorEntries[0].probability)
+            assertEquals(listOf("https://ch/1"), repo.hiddenCreators.value.map { it.url })
+            assertEquals(25, repo.hiddenCreators.value[0].probability)
 
-            repo.removeHiddenCreator("https://ch/1")
-            repo.removeDownrankedCreator("https://ch/2")
-            assertTrue(Settings.instance.content.hiddenCreators.isEmpty())
-            assertTrue(Settings.instance.content.downrankedCreators.isEmpty())
+            // 100 removes the entry (fully shown again).
+            repo.setVideoProbability("https://v/1", "Video one", 100)
+            repo.setCreatorProbability("https://ch/1", "Channel", 100)
+            assertTrue(Settings.instance.content.hiddenVideoEntries.isEmpty())
+            assertTrue(Settings.instance.content.hiddenCreatorEntries.isEmpty())
+            assertTrue(repo.hiddenVideos.value.isEmpty())
             assertTrue(repo.hiddenCreators.value.isEmpty())
-            assertTrue(repo.downrankedCreators.value.isEmpty())
         }
 }

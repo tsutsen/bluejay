@@ -54,11 +54,14 @@ fun VideoOptionsSheetHost(
         .playlistsContaining(video.url)
         .collectAsState(initial = emptySet())
     val queue by viewModel.queue.collectAsState(initial = emptyList())
-    val hiddenUrls by viewModel.hiddenVideoUrls.collectAsState(initial = emptyList())
+    val hiddenVideos by viewModel.hiddenVideos.collectAsState(initial = emptyList())
     val hiddenCreators by viewModel.hiddenCreators.collectAsState(initial = emptyList())
-    val downrankedCreators by viewModel.downrankedCreators.collectAsState(initial = emptyList())
     // Creator-level hide options are keyed by the video's authorUrl.
     val creatorUrl = video.authorUrl?.takeIf { it.isNotEmpty() }
+    // Probability lookups (100 = no entry): 0% = hidden, in between = reduced.
+    val videoProbability = hiddenVideos.firstOrNull { it.url == video.url }?.probability ?: 100
+    val creatorProbability =
+        creatorUrl?.let { url -> hiddenCreators.firstOrNull { it.url == url }?.probability } ?: 100
     var showNewPlaylistDialog by remember { mutableStateOf(false) }
     // Watched tile state, read from history when the sheet opens.
     var isWatched by remember { mutableStateOf(false) }
@@ -118,12 +121,26 @@ fun VideoOptionsSheetHost(
             }
         },
         isWatched = isWatched,
-        isHidden = showHide && video.url in hiddenUrls,
-        onHideVideo = if (showHide) ({ viewModel.toggleHiddenVideo(video.url) }) else null,
-        onDownrankCreator = if (showHide) creatorUrl?.let { url -> { viewModel.toggleDownrankedCreator(url) } } else null,
-        onHideCreator = if (showHide) creatorUrl?.let { url -> { viewModel.toggleHiddenCreator(url) } } else null,
-        isCreatorDownranked = showHide && creatorUrl != null && creatorUrl in downrankedCreators,
-        isCreatorHidden = showHide && creatorUrl != null && creatorUrl in hiddenCreators,
+        isHidden = showHide && videoProbability == 0,
+        onHideVideo = if (showHide) ({ viewModel.toggleHiddenVideo(video) }) else null,
+        onDownrankCreator =
+            if (showHide) {
+                creatorUrl?.let { url ->
+                    { viewModel.downrankCreator(url, video.author, video.authorThumbnailUrl) }
+                }
+            } else {
+                null
+            },
+        onHideCreator =
+            if (showHide) {
+                creatorUrl?.let { url ->
+                    { viewModel.toggleHiddenCreator(url, video.author, video.authorThumbnailUrl) }
+                }
+            } else {
+                null
+            },
+        isCreatorDownranked = showHide && creatorProbability in 1..99,
+        isCreatorHidden = showHide && creatorProbability == 0,
         onAddToQueue = {
             // No onDismiss: the sheet stays open so the user can keep
             // choosing actions.

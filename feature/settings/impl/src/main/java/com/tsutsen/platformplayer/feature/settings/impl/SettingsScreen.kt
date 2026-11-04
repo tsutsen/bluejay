@@ -77,6 +77,8 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.AlertDialog
@@ -84,6 +86,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -117,6 +121,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.tsutsen.platformplayer.core.data.repository.UpdateCheckState
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
+import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.ReorderableList
@@ -128,6 +133,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.groupShape
 import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.ui.AsyncImage
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
 import com.tsutsen.platformplayer.core.model.PlayerGestures
@@ -268,6 +274,7 @@ fun SettingsSectionScreen(
     category: String,
     onBack: () -> Unit,
     onPluginsClick: () -> Unit,
+    onHiddenContentClick: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -304,6 +311,7 @@ fun SettingsSectionScreen(
                     onChoiceSelected = { selectedChoice = it },
                     onBindRequested = { bindingAction = it },
                     onPluginsClick = onPluginsClick,
+                    onHiddenContentClick = onHiddenContentClick,
                 )
             }
         }
@@ -616,6 +624,30 @@ fun SettingsSectionScreen(
                     selected = it.subscriptionsOrder,
                     onSelected = { value ->
                         viewModel.setSubscriptionsOrder(value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
+        Choice.RECENCY -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Recency",
+                    options =
+                        listOf(
+                            "1 week" to "1w",
+                            "1 month" to "1m",
+                            "3 months" to "3m",
+                            "6 months" to "6m",
+                            "1 year" to "1y",
+                            "3 years" to "3y",
+                            "Any time" to "any",
+                        ),
+                    selected = it.recency,
+                    onSelected = { value ->
+                        viewModel.setRecency(value)
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -968,6 +1000,7 @@ private fun SectionItems(
     onChoiceSelected: (Choice) -> Unit,
     onBindRequested: (String) -> Unit,
     onPluginsClick: () -> Unit,
+    onHiddenContentClick: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
         when (category) {
@@ -1187,7 +1220,7 @@ private fun SectionItems(
                         checked = state.sourceTopCreators,
                         onCheckedChange = { viewModel.setSourceTopCreators(it) },
                         enabled = state.homebrewRecommendations,
-                        groupPosition = GroupPosition.Last,
+                        groupPosition = GroupPosition.Middle,
                     )
                     SpawnProbabilityCard(
                         enabled = state.homebrewRecommendations,
@@ -1197,6 +1230,19 @@ private fun SectionItems(
                         sourceSubscriptions = state.sourceSubscriptions,
                         sourceTopCreators = state.sourceTopCreators,
                         onCutsChange = { cut1, cut2 -> viewModel.setProbCuts(cut1, cut2) },
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.History,
+                        title = "Recency",
+                        subtitle = recencyLabel(state.recency),
+                        onClick = { onChoiceSelected(Choice.RECENCY) },
+                        enabled = state.homebrewRecommendations,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.VisibilityOff,
+                        title = "Hidden content",
+                        subtitle = "Videos and creators you hid or reduced",
+                        onClick = onHiddenContentClick,
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
@@ -1254,6 +1300,56 @@ private fun SectionItems(
                         onClick = { onChoiceSelected(Choice.SUBSCRIPTIONS_ORDER) },
                         groupPosition = GroupPosition.First,
                     )
+                }
+            }
+
+            "hiddenContent" -> {
+                val hiddenCreators by viewModel.hiddenCreators.collectAsState(initial = emptyList())
+                val hiddenVideos by viewModel.hiddenVideos.collectAsState(initial = emptyList())
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
+                    Text(
+                        text =
+                            "How likely hidden or reduced items still appear in the home feed. " +
+                                "0% never shows, 100% is fully shown.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                        SettingsHeader("Authors")
+                        if (hiddenCreators.isEmpty()) {
+                            EmptyHiddenContentHint("No creators adjusted yet")
+                        } else {
+                            hiddenCreators
+                                .sortedBy { it.name.ifEmpty { it.url }.lowercase() }
+                                .forEachIndexed { i, entry ->
+                                    HiddenContentRow(
+                                        entry = entry,
+                                        position = groupPositionFor(i, hiddenCreators.size),
+                                        onProbabilityChange = {
+                                            viewModel.setHiddenCreatorProbability(entry.url, it)
+                                        },
+                                    )
+                                }
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                        SettingsHeader("Videos")
+                        if (hiddenVideos.isEmpty()) {
+                            EmptyHiddenContentHint("No videos adjusted yet")
+                        } else {
+                            hiddenVideos
+                                .sortedBy { it.name.ifEmpty { it.url }.lowercase() }
+                                .forEachIndexed { i, entry ->
+                                    HiddenContentRow(
+                                        entry = entry,
+                                        position = groupPositionFor(i, hiddenVideos.size),
+                                        onProbabilityChange = {
+                                            viewModel.setHiddenVideoProbability(entry.url, it)
+                                        },
+                                    )
+                                }
+                        }
+                    }
                 }
             }
 
@@ -2027,10 +2123,145 @@ private fun openUrl(context: android.content.Context, url: String) {
     }
 }
 
+/** Recency option label shown as the Recency row's subtitle. */
+private fun recencyLabel(recency: String): String =
+    when (recency) {
+        "1w" -> "1 week and newer"
+        "1m" -> "1 month and newer"
+        "3m" -> "3 months and newer"
+        "6m" -> "6 months and newer"
+        "1y" -> "1 year and newer"
+        "3y" -> "3 years and newer"
+        else -> "Any time"
+    }
+
+/** Grouped-card rounding for a row at [index] within a [size]-item group. */
+private fun groupPositionFor(
+    index: Int,
+    size: Int,
+): GroupPosition =
+    when {
+        size == 1 -> GroupPosition.Single
+        index == 0 -> GroupPosition.First
+        index == size - 1 -> GroupPosition.Last
+        else -> GroupPosition.Middle
+    }
+
+/** Subdued hint shown when a Hidden content section is empty. */
+@Composable
+private fun EmptyHiddenContentHint(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(vertical = Tokens.SpaceSm),
+    )
+}
+
+/** One Hidden content entry: art, name, url, and a probability tier dropdown. */
+@Composable
+private fun HiddenContentRow(
+    entry: HiddenContentEntry,
+    position: GroupPosition,
+    onProbabilityChange: (Int) -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = groupShape(position),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Thumbnail (video) / channel avatar (creator) captured when the
+            // item was hidden; the settings-row icon tile is the fallback.
+            Box(
+                modifier =
+                    Modifier
+                        .size(Tokens.AvatarMd)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(BluejayTokens().radius.sm),
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (entry.imageUrl.isNotEmpty()) {
+                    AsyncImage(
+                        url = entry.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.small),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.PlayCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(Tokens.IconMd),
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.name.ifEmpty { entry.url },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = entry.url,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box {
+                TextButton(onClick = { menuOpen = true }) {
+                    Text(
+                        text = "${entry.probability}%",
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                ) {
+                    HiddenContentEntry.TIERS.forEach { tier ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    when (tier) {
+                                        0 -> "0% — never"
+                                        100 -> "100% — fully shown"
+                                        else -> "$tier%"
+                                    },
+                                )
+                            },
+                            onClick = {
+                                onProbabilityChange(tier)
+                                menuOpen = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 private fun sectionTitle(category: String): String =
     when (category) {
         "appearance" -> "Appearance"
         "content" -> "Content"
+        "hiddenContent" -> "Hidden content"
         "playback" -> "Playback"
         "gestures" -> "Gestures"
         "controller" -> "Controller"
@@ -2113,6 +2344,7 @@ private enum class Choice {
     CONTROLLER_SEEK_FORWARD,
     VIDEO_RESOLUTION,
     DOWNLOAD_RESOLUTION,
+    RECENCY,
 }
 
 @Composable

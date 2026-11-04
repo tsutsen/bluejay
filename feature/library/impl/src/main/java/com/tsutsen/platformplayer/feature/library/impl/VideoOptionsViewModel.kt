@@ -9,6 +9,7 @@ import com.tsutsen.platformplayer.core.database.entity.isFullyWatched
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
+import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
 import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.ContentType
@@ -58,48 +59,73 @@ class VideoOptionsViewModel
             playbackQueueRepository.remove(url)
         }
 
-        /** Live hidden video URLs (drives the sheet's Hide/Unhide tile). */
-        val hiddenVideoUrls: StateFlow<List<String>>
-            get() = settingsRepository.hiddenVideoUrls
+        /** Live per-video hidden/reduced entries (drives the sheet's Hide/Unhide tile). */
+        val hiddenVideos: StateFlow<List<HiddenContentEntry>>
+            get() = settingsRepository.hiddenVideos
 
-        /** "Hide"/"Unhide" tile: toggle the url in the persisted hidden set. */
-        fun toggleHiddenVideo(url: String) {
-            viewModelScope.launch {
-                if (url in settingsRepository.hiddenVideoUrls.value) {
-                    settingsRepository.removeHiddenVideoUrl(url)
-                } else {
-                    settingsRepository.addHiddenVideoUrl(url)
-                }
-            }
-        }
-
-        /** Live hidden creator urls (drives the sheet's "Don't show this creator"). */
-        val hiddenCreators: StateFlow<List<String>>
+        /** Live per-creator hidden/reduced entries (drives the sheet's creator menu). */
+        val hiddenCreators: StateFlow<List<HiddenContentEntry>>
             get() = settingsRepository.hiddenCreators
 
-        /** Live downranked creator urls (drives the sheet's "Show less from this creator"). */
-        val downrankedCreators: StateFlow<List<String>>
-            get() = settingsRepository.downrankedCreators
+        /** Current video probability (100 when no entry). */
+        fun videoProbability(url: String): Int =
+            settingsRepository.hiddenVideos.value.firstOrNull { it.url == url }?.probability ?: 100
 
-        /** Arrow menu: toggle the creator (authorUrl) in the persisted hidden-creator set. */
-        fun toggleHiddenCreator(authorUrl: String) {
+        /** Current creator probability (100 when no entry). */
+        fun creatorProbability(authorUrl: String): Int =
+            settingsRepository.hiddenCreators.value.firstOrNull { it.url == authorUrl }?.probability ?: 100
+
+        /**
+         * "Hide"/"Unhide" tile + "Don't show this video" menu item: 0% when
+         * hidden, back to 100% (entry removed) when un-hidden. Name and
+         * thumbnail are captured for the Hidden content page.
+         */
+        fun toggleHiddenVideo(video: VideoCard) {
             viewModelScope.launch {
-                if (authorUrl in settingsRepository.hiddenCreators.value) {
-                    settingsRepository.removeHiddenCreator(authorUrl)
-                } else {
-                    settingsRepository.addHiddenCreator(authorUrl)
-                }
+                val p = videoProbability(video.url)
+                settingsRepository.setVideoProbability(
+                    url = video.url,
+                    name = video.title,
+                    probability = if (p == 0) 100 else 0,
+                    imageUrl = video.thumbnailUrl.orEmpty(),
+                )
             }
         }
 
-        /** Arrow menu: toggle the creator (authorUrl) in the persisted downranked set. */
-        fun toggleDownrankedCreator(authorUrl: String) {
+        /**
+         * "Don't show this creator": 0%, or back to 100% (entry removed) when
+         * already at 0 — the menu item is checkable, so it toggles.
+         */
+        fun toggleHiddenCreator(
+            authorUrl: String,
+            authorName: String?,
+            authorImageUrl: String?,
+        ) {
             viewModelScope.launch {
-                if (authorUrl in settingsRepository.downrankedCreators.value) {
-                    settingsRepository.removeDownrankedCreator(authorUrl)
-                } else {
-                    settingsRepository.addDownrankedCreator(authorUrl)
-                }
+                val p = creatorProbability(authorUrl)
+                settingsRepository.setCreatorProbability(
+                    authorUrl = authorUrl,
+                    name = authorName ?: "",
+                    probability = if (p == 0) 100 else 0,
+                    imageUrl = authorImageUrl.orEmpty(),
+                )
+            }
+        }
+
+        /** "Show less from this creator": one tier down (100→75→50→25→0). */
+        fun downrankCreator(
+            authorUrl: String,
+            authorName: String?,
+            authorImageUrl: String?,
+        ) {
+            viewModelScope.launch {
+                val lower = HiddenContentEntry.lowerTier(creatorProbability(authorUrl)) ?: return@launch
+                settingsRepository.setCreatorProbability(
+                    authorUrl,
+                    authorName ?: "",
+                    lower,
+                    authorImageUrl.orEmpty(),
+                )
             }
         }
 
