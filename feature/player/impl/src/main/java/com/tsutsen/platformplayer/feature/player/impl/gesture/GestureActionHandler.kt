@@ -139,10 +139,12 @@ internal class PlayerGestureActionHandler(
             }
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (brighter), positive = down (darker)
-                // Re-read the live value each frame as the base: the cached START value
-                // goes stale if the system level changed mid-gesture (hardware keys etc.)
+                // Accumulate on the START-anchored value: re-reading the live value
+                // each frame would quantize the base (device setting is 0..255,
+                // window brightness rounds too) and discard sub-step progress,
+                // so the value stalls and oscillates at step boundaries.
                 val delta = -frame.instantDelta.y / playback.screenHeightPx()
-                currentBrightness = (playback.brightness() + delta).coerceIn(0f, 1f)
+                currentBrightness = (currentBrightness + delta).coerceIn(0f, 1f)
                 // All screens: device-wide when granted, plus this window
                 // (the companion window follows through SystemControls.brightness).
                 playback.applyBrightness(currentBrightness)
@@ -162,9 +164,12 @@ internal class PlayerGestureActionHandler(
             }
             GesturePhase.ACTIVE -> {
                 // instantDelta.y: negative = swipe up (louder), positive = down (quieter)
-                // Re-read the live system volume each frame as the base (see brightness)
+                // Accumulate on the START-anchored value — see handleBrightness.
+                // Re-reading playback.volume() each frame re-reads the QUANTIZED
+                // stream step (setVolume floors to an int step), so slow swipes
+                // never cross a step and the badge value jumps back and forth.
                 val delta = -frame.instantDelta.y / playback.screenHeightPx()
-                currentVolume = (playback.volume() + delta).coerceIn(0f, 1f)
+                currentVolume = (currentVolume + delta).coerceIn(0f, 1f)
                 playback.setVolume(currentVolume)
                 PlayerEventBus.emit(PlayerEvent.VolumeChanged(currentVolume))
             }

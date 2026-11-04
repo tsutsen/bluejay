@@ -6,8 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.background
@@ -206,42 +204,50 @@ internal fun GestureIndicatorOverlay(
                 shape = RoundedCornerShape(BluejayTokens().radius.sm),
                 modifier = Modifier.padding(horizontal = 16.dp),
             ) {
-                Column {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = s.icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = s.label,
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                // Optional thin progress line on the badge's bottom edge
-                // (volume / brightness / hold-seek level).
-                if (s.progress != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(2.dp)
-                            .background(Color.White.copy(alpha = 0.25f)),
+                // The badge must wrap its Row content (like skip/speed badges).
+                // The progress line is overlaid with matchParentSize — putting it
+                // in the same Column with fillMaxWidth() stretched the capsule
+                // to the full screen width (loose maxWidth from the fullscreen
+                // Box), inflating every progress-carrying badge.
+                Box {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(s.progress!!.coerceIn(0f, 1f))
-                                .background(Color.White),
+                        Icon(
+                            imageVector = s.icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = s.label,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
-                }
+                    // Optional thin progress line on the badge's bottom edge
+                    // (volume / brightness / hold-seek level).
+                    if (s.progress != null) {
+                        Box(modifier = Modifier.matchParentSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .fillMaxWidth()
+                                    .height(2.dp)
+                                    .background(Color.White.copy(alpha = 0.25f)),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .fillMaxWidth(s.progress!!.coerceIn(0f, 1f))
+                                    .height(2.dp)
+                                    .background(Color.White),
+                            )
+                        }
+                    }
                 }
             }
         }
