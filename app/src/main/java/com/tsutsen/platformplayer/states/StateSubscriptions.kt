@@ -29,6 +29,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.LocalDateTime
+import com.tsutsen.platformplayer.getNowDiffDays
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.ForkJoinPool
@@ -249,7 +250,17 @@ class StateSubscriptions {
         }
     }
     fun getSubscriptions(): List<Subscription> {
-        return _subscriptions.getItems();
+        val subs = _subscriptions.getItems();
+        // Repair already-corrupted dates: MIN/MAX values (unknown stream dates
+        // stored by pre-guard builds) make getNowDiffDays ~365B, which keeps
+        // shouldFetch* false forever and drops the channel from "All subs".
+        // Reset to MAX = the model's "unknown, keep fetching" default.
+        for (sub in subs) {
+            if (sub.lastVideo.getNowDiffDays() > 36500 || sub.lastVideo.year > 3000) sub.lastVideo = OffsetDateTime.MAX;
+            if (sub.lastLiveStream.getNowDiffDays() > 36500 || sub.lastLiveStream.year > 3000) sub.lastLiveStream = OffsetDateTime.MAX;
+            if (sub.lastPost.getNowDiffDays() > 36500 || sub.lastPost.year > 3000) sub.lastPost = OffsetDateTime.MAX;
+        }
+        return subs;
     }
     fun getSubscriptionRemovals(): Map<String, Long> {
         return _subscriptionsRemoved.all();

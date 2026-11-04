@@ -61,6 +61,7 @@ class SubscriptionsViewModel
         private val _isRefreshing = MutableStateFlow(false)
 
         init {
+            android.util.Log.w("SubsDebug", "SubscriptionsViewModel init")
             viewModelScope.launch {
                 subscriptionRepository.feed.collect { feed ->
                     if (!feed.isLoading) _isRefreshing.value = false
@@ -82,6 +83,7 @@ class SubscriptionsViewModel
                 }
             }
             viewModelScope.launch {
+                android.util.Log.w("SubsDebug", "calling loadCreators")
                 subscriptionRepository.loadCreators()
             }
         }

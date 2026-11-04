@@ -378,6 +378,16 @@ fun BluejayNavGraph(
                     onBack = { navigator.goBack() },
                     onPluginsClick = { navigator.navigateToPluginBrowser() },
                     onHiddenContentClick = { navigator.navigateToSettingsFragment("hiddenContent") },
+                    onNavigateTab = { tab ->
+                        when (tab) {
+                            "home" -> navigator.navigateHome()
+                            "search" -> navigator.navigateSearch()
+                            "subscriptions" -> navigator.navigateSubscriptions()
+                            "library" -> navigator.navigateLibrary()
+                            "notifications" -> navigator.navigateNotifications()
+                            "settings" -> navigator.navigateSettings()
+                        }
+                    },
                 )
             }
 

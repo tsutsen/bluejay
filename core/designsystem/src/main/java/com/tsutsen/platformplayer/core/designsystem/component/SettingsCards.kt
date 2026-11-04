@@ -265,7 +265,9 @@ fun SettingsSliderCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = surfaceBorder(SurfaceKeys.SETTINGS_ROW),
     ) {
-        Column(modifier = Modifier.padding(Tokens.SpaceMd)) {
+        // No outer padding: SettingsContent already insets the icon/title;
+        // double padding made the icon sit deeper than in regular rows.
+        Column {
             SettingsContent(icon = icon, title = title, subtitle = subtitle) {
                 Text(
                     text = value.roundToInt().toString(),
@@ -278,7 +280,10 @@ fun SettingsSliderCard(
                 onValueChange = onValueChange,
                 valueRange = valueRange,
                 steps = steps,
-                modifier = Modifier.padding(top = Tokens.SpaceXs),
+                modifier =
+                    Modifier
+                        .padding(top = Tokens.SpaceXs)
+                        .padding(horizontal = Tokens.SpaceMd),
             )
         }
     }

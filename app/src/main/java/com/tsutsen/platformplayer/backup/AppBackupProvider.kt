@@ -29,7 +29,10 @@ import javax.inject.Singleton
  * a single IO pass, no background work.
  */
 @Singleton
-class AppBackupProvider @Inject constructor(private val savedVideoDao: SavedVideoDao) :
+class AppBackupProvider @Inject constructor(
+    private val savedVideoDao: SavedVideoDao,
+    private val historyDao: com.tsutsen.platformplayer.core.database.dao.HistoryDao,
+) :
     BackupProvider {
 
     override suspend fun summary(): BackupSummary = withContext(Dispatchers.IO) {
@@ -48,8 +51,9 @@ class AppBackupProvider @Inject constructor(private val savedVideoDao: SavedVide
         BackupSummary(
             subscriptions = subscriptions.size,
             sources = sources,
-            savedVideos = savedVideoDao.countAll(),
-            savedPlaylists = savedVideoDao.countTypesWithVideos(),
+            // History is one of the backed-up playlists: count its videos in.
+            savedVideos = savedVideoDao.countAll() + historyDao.countHistory(),
+            savedPlaylists = savedVideoDao.countTypesWithVideos() + 1,
             customSettings = countCustomSettings(),
             sections = SECTION_COUNT,
         )

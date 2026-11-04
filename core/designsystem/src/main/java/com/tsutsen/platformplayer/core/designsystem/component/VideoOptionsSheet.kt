@@ -857,8 +857,8 @@ fun OptionTileView(
                 text = tile.label,
                 style = MaterialTheme.typography.labelSmall,
                 color = contentAnim,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                // No maxLines: labels like "Add to playlist" were cut off in
+                // narrow sheets — let them wrap.
                 textAlign = TextAlign.Center,
             )
         }

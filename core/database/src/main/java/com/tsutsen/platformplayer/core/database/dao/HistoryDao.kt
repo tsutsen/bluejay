@@ -14,6 +14,10 @@ interface HistoryDao {
     @Query("SELECT * FROM history WHERE contentUrl = :url")
     suspend fun getByUrl(url: String): HistoryEntity?
 
+    @Query("SELECT COUNT(*) FROM history")
+    suspend fun countHistory(): Int
+
+
     /** Batch lookup for feed filtering (one query for a whole page of urls). */
     @Query("SELECT * FROM history WHERE contentUrl IN (:urls)")
     suspend fun getByUrls(urls: List<String>): List<HistoryEntity>
@@ -90,8 +94,6 @@ interface HistoryDao {
     @Query("DELETE FROM history")
     suspend fun clearAll()
 
-    @Query("SELECT COUNT(*) FROM history")
-    suspend fun count(): Int
 }
 
 /** Room POJO for [HistoryDao.watchedTimeByAuthor]. */

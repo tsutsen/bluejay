@@ -926,16 +926,18 @@ class StatePlatform {
             var hasChanges = false;
             val lastVideo = pagerResult.getResults().firstOrNull();
 
-            val saneVideoDate = lastVideo?.datetime?.takeIf { it.isBefore(OffsetDateTime.now().plusDays(1)) }
+            fun saneDate(dt: OffsetDateTime?): OffsetDateTime? {
+                if (dt == null || dt.year < 1971 || !dt.isBefore(OffsetDateTime.now().plusDays(1))) return null
+                return dt
+            }
+            val saneVideoDate = saneDate(lastVideo?.datetime)
             if(saneVideoDate != null && sub.lastVideo.getNowDiffDays() != saneVideoDate.getNowDiffDays()) {
                 Logger.i(TAG, "Subscription [${channelUrl}] has new last video date [${saneVideoDate.getNowDiffDays()} Days]");
                 sub.lastVideo = saneVideoDate;
                 hasChanges = true;
             }
 
-            // Same absurd-date guard: a MAX datetime (scheduled/unknown stream
-            // parsed wrong by the plugin) would disable stream fetching forever.
-            val saneStreamDate = lastStream?.takeIf { it.isBefore(OffsetDateTime.now().plusDays(1)) }
+            val saneStreamDate = saneDate(lastStream)
             if(saneStreamDate != null && sub.lastLiveStream.getNowDiffDays() != saneStreamDate.getNowDiffDays()) {
                 Logger.i(TAG, "Subscription [${channelUrl}] has new last stream date [${saneStreamDate.getNowDiffDays()} Days]");
                 sub.lastLiveStream = saneStreamDate;

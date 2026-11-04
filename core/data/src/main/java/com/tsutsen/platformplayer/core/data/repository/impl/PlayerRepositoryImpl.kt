@@ -21,6 +21,7 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.source.SingleSampleMediaSource
@@ -160,6 +161,9 @@ class PlayerRepositoryImpl(
     private var currentAudioTracks: List<VideoAudioTrack> = emptyList()
     private var currentVideoStreams: List<VideoStreamOption> = emptyList()
     private var currentVideoStreamUrl: String? = null
+
+    /** Pre-merged subtitle sources of the current video (see [buildAllSubtitleMediaSource]). */
+    private var currentSubtitleSource: MediaSource? = null
 
     // The URL of the video currently loaded (set by play(), the one place
     // every play path goes through). Recovery re-resolves this.
@@ -654,7 +658,8 @@ class PlayerRepositoryImpl(
                     )
                 }
 
-                val subtitleSource = buildSubtitleMediaSource()
+                currentSubtitleSource = buildAllSubtitleMediaSource()
+                val subtitleSource = currentSubtitleSource
                 val mediaSource =
                     if (subtitleSource != null) {
                         MergingMediaSource(true, resolution.mediaSource, subtitleSource)
@@ -1034,7 +1039,7 @@ class PlayerRepositoryImpl(
         selectedSubtitle = selection
         applyTrackSelectionParameters()
         _playerState.update { it.copy(selectedSubtitle = selection) }
-        applySubtitleSource()
+        applySubtitleSelection()
     }
 
     override suspend fun setAudioTrack(selection: String) {
@@ -1080,10 +1085,10 @@ class PlayerRepositoryImpl(
                         .Factory(createHttpDataSourceFactory())
                         .createMediaSource(MediaItem.fromUri(Uri.parse(audio.url)))
                 val base = MergingMediaSource(true, videoSource, audioSource)
-                // Subtitle toggles rebuild from the primary source — point it
-                // at the new merge so the choices survive.
+                // Subtitle toggles are track-selection changes over the
+                // pre-merged sources — keep the merge alive across the swap.
                 currentPrimarySource = base
-                val subtitleSource = buildSubtitleMediaSource()
+                val subtitleSource = currentSubtitleSource
                 player.setMediaSource(
                     if (subtitleSource != null) MergingMediaSource(true, base, subtitleSource)
                     else base,
@@ -1110,46 +1115,57 @@ class PlayerRepositoryImpl(
     }
 
     /**
-     * Rebuilds the player's media source with (or without) the subtitle
-     * source matching [selectedSubtitle], keeping the current position.
+     * Applies [selectedSubtitle] as a track-selection change over the
+     * pre-merged subtitle sources — instant, no re-prepare (a source
+     * rebuild blanked the surface and stalled playback for a beat).
+     * "Off"/"Auto" disable the text renderer; a specific name overrides
+     * the text track tagged "sub_<name>".
      */
-    private suspend fun applySubtitleSource() {
-        withContext(Dispatchers.Main) {
-            val player = _exoPlayer ?: return@withContext
-            val primary = currentPrimarySource ?: return@withContext
-            val positionBefore = player.currentPosition
-            val wasReady = player.playWhenReady
-            val subtitleSource = buildSubtitleMediaSource()
-            player.setMediaSource(
-                if (subtitleSource != null) MergingMediaSource(true, primary, subtitleSource) else primary,
-            )
-            player.prepare()
-            player.playWhenReady = wasReady
-            if (positionBefore > 0) player.seekTo(positionBefore)
+    private fun applySubtitleSelection() {
+        val player = _exoPlayer ?: return
+        val builder = player.trackSelectionParameters.buildUpon()
+        val wanted = selectedSubtitle
+        val targetId = if (wanted == "Off" || wanted == "Auto") null else "sub_$wanted"
+        var applied = false
+        if (targetId != null) {
+            for (group in player.currentTracks.groups) {
+                if (group.type != C.TRACK_TYPE_TEXT) continue
+                for (i in 0 until group.length) {
+                    if (group.getTrackFormat(i).id == targetId) {
+                        builder.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, i))
+                        applied = true
+                    }
+                }
+            }
         }
+        builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !applied)
+        player.trackSelectionParameters = builder.build()
     }
 
     /**
-     * Builds a [SingleSampleMediaSource] for the currently selected
-     * subtitle, or null when no subtitle is selected ("Auto"/"Off"),
-     * the selection doesn't match a track of the current video, the
-     * format is unsupported, or resolving the content fails.
+     * ALL supported subtitle tracks of the current video, merged once when
+     * the media source is assembled (each tagged with id "sub_<name>").
+     * Selecting/toggling them is then a track-selection change — instant,
+     * no source rebuild — instead of a re-prepare that blanks the surface.
+     * Null when the video has no supported subtitle.
      */
-    private suspend fun buildSubtitleMediaSource(): MediaSource? {
-        val subtitle = currentSubtitles.firstOrNull { it.name == selectedSubtitle } ?: return null
-        val format = subtitle.format?.lowercase() ?: return null
-        if (format !in SUPPORTED_SUBTITLE_FORMATS) return null
-        val uri = runCatching { subtitle.contentUri() }.getOrNull() ?: return null
-        return SingleSampleMediaSource
-            .Factory(DefaultDataSource.Factory(context, createHttpDataSourceFactory()))
-            .createMediaSource(
+    private suspend fun buildAllSubtitleMediaSource(): MediaSource? {
+        val configs =
+            currentSubtitles.mapNotNull { subtitle ->
+                val format = subtitle.format?.lowercase() ?: return@mapNotNull null
+                if (format !in SUPPORTED_SUBTITLE_FORMATS) return@mapNotNull null
+                val uri = runCatching { subtitle.contentUri() }.getOrNull() ?: return@mapNotNull null
                 MediaItem.SubtitleConfiguration
                     .Builder(uri)
+                    .setId("sub_${subtitle.name}")
                     .setMimeType(subtitle.format)
                     .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                    .build(),
-                C.TIME_UNSET,
-            )
+                    .build()
+            }
+        if (configs.isEmpty()) return null
+        val factory = SingleSampleMediaSource.Factory(DefaultDataSource.Factory(context, createHttpDataSourceFactory()))
+        val sources = configs.map { factory.createMediaSource(it, C.TIME_UNSET) }
+        return if (sources.size == 1) sources[0] else MergingMediaSource(true, *sources.toTypedArray())
     }
 
     /**

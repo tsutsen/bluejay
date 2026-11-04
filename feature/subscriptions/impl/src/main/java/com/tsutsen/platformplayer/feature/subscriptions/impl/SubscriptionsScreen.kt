@@ -6,6 +6,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -72,7 +74,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
+import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
+import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGap
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
@@ -104,6 +108,7 @@ fun SubscriptionsScreen(
     viewModel: SubscriptionsViewModel = hiltViewModel(),
     playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
+    android.util.Log.w("SubsDebug", "SubscriptionsScreen composed")
     val gridColumns by viewModel.gridColumns.collectAsState()
     // Paused while this keep-alive tab is hidden (LocalTabActive).
     val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())
@@ -217,6 +222,52 @@ private fun SubscriptionsContent(
     val rootOrigin = remember { mutableStateOf(Offset.Zero) }
     val pillSize = remember { mutableStateOf(IntSize.Zero) }
     val slide = remember { Animatable(0f) }
+    var showCreatorsGrid by remember { mutableStateOf(false) }
+    if (showCreatorsGrid) {
+        BluejayModalBottomSheet(
+            onDismiss = { showCreatorsGrid = false },
+            title = "Subscriptions",
+        ) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.SpaceLg),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                contentPadding = PaddingValues(bottom = Tokens.SpaceLg),
+            ) {
+                items(state.creators.size) { i ->
+                    val creator = state.creators[i]
+                    Column(
+                        modifier =
+                            Modifier
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable {
+                                    onCreatorSelected(creator.id)
+                                    showCreatorsGrid = false
+                                }
+                                .padding(Tokens.SpaceSm),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+                    ) {
+                        CreatorAvatar(
+                            creator = creator,
+                            isSelected = creator.id == state.activeCreatorId,
+                            onClick = {
+                                onCreatorSelected(creator.id)
+                                showCreatorsGrid = false
+                            },
+                        )
+                        Text(
+                            text = creator.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
     LaunchedEffect(peek) {
         if (peek != null) {
             slide.snapTo(0f)
@@ -371,6 +422,8 @@ private fun SubscriptionsContent(
                     contentPadding = PaddingValues(top = TabContentTopPadding),
                 ) {
                     item {
+                        // Long-press opens the full creators grid (same layout
+                        // as the search results' creator grid).
                         CreatorAvatar(
                             creator =
                                 SubscriptionCreator(
@@ -382,6 +435,7 @@ private fun SubscriptionsContent(
                                 ),
                             isSelected = state.activeCreatorId == null,
                             onClick = { onCreatorSelected(null) },
+                            onLongClick = { showCreatorsGrid = true },
                         )
                     }
                     items(state.creators) { creator ->
@@ -420,6 +474,8 @@ private fun SubscriptionsContent(
                     contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
                 ) {
                     item {
+                        // Long-press opens the full creators grid (same layout
+                        // as the search results' creator grid).
                         CreatorAvatar(
                             creator =
                                 SubscriptionCreator(
@@ -431,6 +487,7 @@ private fun SubscriptionsContent(
                                 ),
                             isSelected = state.activeCreatorId == null,
                             onClick = { onCreatorSelected(null) },
+                            onLongClick = { showCreatorsGrid = true },
                         )
                     }
                     items(state.creators) { creator ->

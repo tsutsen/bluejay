@@ -1081,7 +1081,27 @@ private fun SurfaceSlotDialog(
         text = {
             Column {
                 val pagerState = rememberPagerState { 4 }
-                HorizontalPager(state = pagerState, modifier = Modifier.height(330.dp)) { page ->
+                // Page indicator + switcher (the dots alone were too subtle).
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    listOf("Background", "Outline", "Text", "Texture").forEachIndexed { i, label ->
+                        val selected = pagerState.currentPage == i
+                        TextButton(onClick = { scope.launch { pagerState.animateScrollToPage(i) } }) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                color =
+                                    if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                HorizontalPager(state = pagerState, modifier = Modifier.height(310.dp)) { page ->
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.SpaceXs),
                         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
@@ -1145,26 +1165,6 @@ private fun SurfaceSlotDialog(
                                 }
                             }
                         }
-                    }
-                }
-                // Carousel position dots.
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    repeat(4) { i ->
-                        Box(
-                            modifier =
-                                Modifier
-                                    .padding(horizontal = Tokens.SpaceXxs)
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (pagerState.currentPage == i) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    ),
-                        )
                     }
                 }
             }

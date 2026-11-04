@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -291,7 +292,15 @@ fun PlayerContent(
                 videoModifier.background(
                     Color.Black.copy(alpha = 0.45f * endDim.value),
                 ),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "The End!",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = endDim.value),
+            )
+        }
 
         // ==================== 1b. Subtitle overlay ====================
         // Rendered inside the video's offset/size space (clipped with it) so

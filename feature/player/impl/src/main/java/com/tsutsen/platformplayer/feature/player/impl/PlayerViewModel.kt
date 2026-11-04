@@ -384,9 +384,15 @@ class PlayerViewModel
                                     durationMs = lastSampledDurationMs,
                                     force = true,
                                 )
+                                // The tick that flipped currentVideo still
+                                // carries the OLD media's position/duration —
+                                // sampling the new video with them wrote the
+                                // previous video's progress onto the tapped
+                                // card. Skip this tick; the new video starts
+                                // sampling on the next one.
                                 lastSampledVideo = video
-                                lastSampledPositionMs = playerState.currentPositionMs
-                                lastSampledDurationMs = playerState.durationMs
+                                lastSampledPositionMs = 0
+                                lastSampledDurationMs = 0
                                 return@let
                             }
                             lastSampledVideo = video

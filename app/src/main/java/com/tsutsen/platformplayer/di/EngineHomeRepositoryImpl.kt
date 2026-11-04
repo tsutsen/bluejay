@@ -474,7 +474,11 @@ class EngineHomeRepositoryImpl
                 }
             val state = _feed.value
             val seen = state.items.mapTo(mutableSetOf()) { it.id }
-            val fresh = appended.filter { seen.add(it.id) }
+            // Shuffle the appended batch: fresh pages arrive in per-channel
+            // chronological order, so without a shuffle the tail of the feed
+            // was long unshuffled runs of the same creator (the initial merge
+            // interleave-shuffles, the appends didn't).
+            val fresh = appended.filter { seen.add(it.id) }.shuffled()
             val visible = applyContentFilters(state.items + fresh)
             Logger.i(
                 "EngineHomeRepository",

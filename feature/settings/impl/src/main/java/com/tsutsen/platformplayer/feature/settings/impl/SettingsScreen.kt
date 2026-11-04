@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Copyright
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
@@ -68,7 +69,11 @@ import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.RoundedCorner
 import androidx.compose.material.icons.filled.RssFeed
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.VolumeDown
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Subtitles
@@ -276,6 +281,7 @@ fun SettingsSectionScreen(
     onBack: () -> Unit,
     onPluginsClick: () -> Unit,
     onHiddenContentClick: () -> Unit = {},
+    onNavigateTab: (String) -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -313,6 +319,7 @@ fun SettingsSectionScreen(
                     onBindRequested = { bindingAction = it },
                     onPluginsClick = onPluginsClick,
                     onHiddenContentClick = onHiddenContentClick,
+                    onNavigateTab = onNavigateTab,
                 )
             }
         }
@@ -884,6 +891,22 @@ fun SettingsSectionScreen(
  * with). Tap to bind a new key; Clear removes the custom binding (back to
  * the default key).
  */
+/** Icon tile per controller action, matching the other settings rows. */
+private fun controllerActionIcon(id: String) =
+    when (id) {
+        PlayerControllerActions.PLAY_PAUSE -> Icons.Filled.PlayArrow
+        PlayerControllerActions.SEEK_BACK -> Icons.Filled.Replay10
+        PlayerControllerActions.SEEK_FORWARD -> Icons.Filled.Forward30
+        PlayerControllerActions.SPEED_UP, PlayerControllerActions.SPEED_DOWN -> Icons.Filled.Speed
+        PlayerControllerActions.NEXT -> Icons.Filled.SkipNext
+        PlayerControllerActions.PREVIOUS -> Icons.Filled.SkipPrevious
+        PlayerControllerActions.CLOSE -> Icons.Filled.Close
+        PlayerControllerActions.BRIGHTNESS_UP, PlayerControllerActions.BRIGHTNESS_DOWN -> Icons.Filled.BrightnessAuto
+        PlayerControllerActions.VOLUME_UP -> Icons.Filled.VolumeUp
+        PlayerControllerActions.VOLUME_DOWN -> Icons.Filled.VolumeDown
+        else -> Icons.Filled.Games
+    }
+
 @Composable
 private fun ControllerBindingRow(
     action: PlayerControllerActions.Action,
@@ -909,6 +932,23 @@ private fun ControllerBindingRow(
             horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(Tokens.AvatarMd)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(BluejayTokens().radius.sm),
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    controllerActionIcon(action.id),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(Tokens.IconMd),
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(action.label, style = MaterialTheme.typography.titleSmall)
                 val b = binding
@@ -1037,11 +1077,12 @@ private fun SectionItems(
     onBindRequested: (String) -> Unit,
     onPluginsClick: () -> Unit,
     onHiddenContentClick: () -> Unit,
+    onNavigateTab: (String) -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
         when (category) {
             "backup" -> {
-                BackupItems(viewModel)
+                BackupItems(viewModel, onNavigateTab)
             }
 
             "about" -> {
@@ -1939,7 +1980,10 @@ private fun dualOrderLabel(
  * handles the file pickers, the zip format and the import UI.
  */
 @Composable
-private fun BackupItems(viewModel: SettingsViewModel) {
+private fun BackupItems(
+    viewModel: SettingsViewModel,
+    onNavigateTab: (String) -> Unit = {},
+) {
     val summary by viewModel.backupSummary.collectAsState()
     var confirmRestore by remember { mutableStateOf(false) }
 
@@ -1954,12 +1998,14 @@ private fun BackupItems(viewModel: SettingsViewModel) {
                     label = "subscriptions",
                     detail = "across ${summary?.sources ?: 0} sources",
                     modifier = Modifier.weight(1f),
+                    onClick = { onNavigateTab("subscriptions") },
                 )
                 BackupTile(
                     count = summary?.savedVideos ?: 0,
                     label = "videos",
                     detail = "across ${summary?.savedPlaylists ?: 0} playlists",
                     modifier = Modifier.weight(1f),
+                    onClick = { onNavigateTab("library") },
                 )
             }
             BackupTile(
@@ -1967,6 +2013,7 @@ private fun BackupItems(viewModel: SettingsViewModel) {
                 label = "custom settings",
                 detail = "across ${summary?.sections ?: 0} sections",
                 modifier = Modifier.fillMaxWidth(),
+                onClick = { onNavigateTab("settings") },
             )
         }
 
@@ -2026,9 +2073,12 @@ private fun BackupTile(
     label: String,
     detail: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     Card(
+        onClick = onClick ?: {},
+        enabled = onClick != null,
         shape = RoundedCornerShape(BluejayTokens().radius.card),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = scheme.surfaceContainer),

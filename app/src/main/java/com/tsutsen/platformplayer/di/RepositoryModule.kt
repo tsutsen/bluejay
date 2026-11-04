@@ -95,8 +95,9 @@ object PlayerRepositoryModule {
     @Singleton
     fun provideBackupProvider(
         savedVideoDao: com.tsutsen.platformplayer.core.database.dao.SavedVideoDao,
+        historyDao: com.tsutsen.platformplayer.core.database.dao.HistoryDao,
     ): com.tsutsen.platformplayer.feature.settings.impl.BackupProvider =
-        com.tsutsen.platformplayer.backup.AppBackupProvider(savedVideoDao)
+        com.tsutsen.platformplayer.backup.AppBackupProvider(savedVideoDao, historyDao)
 
     @Provides
     @Singleton

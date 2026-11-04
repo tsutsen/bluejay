@@ -100,12 +100,17 @@ class Subscription {
     }
 
     fun updateSubscriptionState(type: String, initialPage: List<IPlatformContent>) {
-        // Plugins occasionally report absurd datetimes (OffsetDateTime.MAX for
-        // scheduled/unknown streams). Stored as-is they permanently disable
-        // shouldFetch* (diff-days < 7/30) and starve the channel out of the
-        // "All subs" feed — only accept plausibly-past dates.
-        fun sane(dt: OffsetDateTime?): OffsetDateTime? =
-            dt?.takeIf { it.isBefore(OffsetDateTime.now().plusDays(1)) }
+        // Plugins occasionally report absurd datetimes (OffsetDateTime.MIN /
+        // MAX for unknown streams). Stored as-is they permanently disable
+        // shouldFetch* (diff-days < 7/30 — MIN lands +365B days in the "past")
+        // and starve the channel out of the "All subs" feed. Accept only
+        // plausibly real dates: after 1971, not in the future.
+        fun sane(dt: OffsetDateTime?): OffsetDateTime? {
+            val d = dt ?: return null
+            if (d.year < 1971) return null
+            if (!d.isBefore(OffsetDateTime.now().plusDays(1))) return null
+            return d
+        }
 
         val interval: Int;
         val mostRecent: OffsetDateTime?;
@@ -138,8 +143,8 @@ class Subscription {
                 uploadInterval = interval;
                 if(mostRecent != null)
                     lastVideo = mostRecent;
-                else if(lastVideo.year > 3000)
-                    lastVideo = OffsetDateTime.MIN;
+                else if(lastVideo.getNowDiffDays() > 36500 || lastVideo.year > 3000)
+                    lastVideo = OffsetDateTime.MAX;
                 lastVideoUpdate = OffsetDateTime.now();
                 lastPeekVideo = OffsetDateTime.MIN;
             }
@@ -147,8 +152,8 @@ class Subscription {
                 uploadInterval = interval;
                 if(mostRecent != null)
                     lastVideo = mostRecent;
-                else if(lastVideo.year > 3000)
-                    lastVideo = OffsetDateTime.MIN;
+                else if(lastVideo.getNowDiffDays() > 36500 || lastVideo.year > 3000)
+                    lastVideo = OffsetDateTime.MAX;
                 lastVideoUpdate = OffsetDateTime.now();
                 lastPeekVideo = OffsetDateTime.MIN;
             }
@@ -156,24 +161,24 @@ class Subscription {
                 uploadInterval = interval;
                 if(mostRecent != null)
                     lastVideo = mostRecent;
-                else if(lastVideo.year > 3000)
-                    lastVideo = OffsetDateTime.MIN;
+                else if(lastVideo.getNowDiffDays() > 36500 || lastVideo.year > 3000)
+                    lastVideo = OffsetDateTime.MAX;
                 lastVideoUpdate = OffsetDateTime.now();
             }
             ResultCapabilities.TYPE_STREAMS -> {
                 uploadStreamInterval = interval;
                 if(mostRecent != null)
                     lastLiveStream = mostRecent;
-                else if(lastLiveStream.year > 3000)
-                    lastLiveStream = OffsetDateTime.MIN;
+                else if(lastLiveStream.getNowDiffDays() > 36500 || lastLiveStream.year > 3000)
+                    lastLiveStream = OffsetDateTime.MAX;
                 lastStreamUpdate = OffsetDateTime.now();
             }
             ResultCapabilities.TYPE_POSTS -> {
                 uploadPostInterval = interval;
                 if(mostRecent != null)
                     lastPost = mostRecent;
-                else if(lastPost.year > 3000)
-                    lastPost = OffsetDateTime.MIN;
+                else if(lastPost.getNowDiffDays() > 36500 || lastPost.year > 3000)
+                    lastPost = OffsetDateTime.MAX;
                 lastPostUpdate = OffsetDateTime.now();
             }
         }
