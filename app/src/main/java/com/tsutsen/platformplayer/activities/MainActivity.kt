@@ -40,7 +40,7 @@ import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.Settings
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
 import com.tsutsen.platformplayer.compose.buildAppTypography
-import com.tsutsen.platformplayer.compose.buildSurfaceSkins
+import com.tsutsen.platformplayer.compose.rememberSurfaceSkins
 import com.tsutsen.platformplayer.gettingstarted.GettingStartedFlow
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
@@ -504,7 +504,7 @@ private fun BluejayMainActivity(
         remember(appearance.fontFamily, appearance.fontSizeScale) {
             buildAppTypography(appearance.fontFamily, appearance.fontSizeScale)
         }
-    val surfaceSkins = remember(appearance.surfaceStyles) { buildSurfaceSkins(appearance) }
+    val surfaceSkins = rememberSurfaceSkins(appearance)
 
     CompositionLocalProvider(
         LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it) },

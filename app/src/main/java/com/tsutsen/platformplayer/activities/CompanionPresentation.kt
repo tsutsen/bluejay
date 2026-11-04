@@ -23,7 +23,7 @@ import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.compose.buildAppTypography
-import com.tsutsen.platformplayer.compose.buildSurfaceSkins
+import com.tsutsen.platformplayer.compose.rememberSurfaceSkins
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
@@ -147,7 +147,7 @@ class CompanionPresentation(
                     remember(appearance.fontFamily, appearance.fontSizeScale) {
                         buildAppTypography(appearance.fontFamily, appearance.fontSizeScale)
                     },
-                surfaceSkins = remember(appearance.surfaceStyles) { buildSurfaceSkins(appearance) },
+                surfaceSkins = rememberSurfaceSkins(appearance),
             ) {
                 CompanionContent(
                     playerRepository = playerRepository,

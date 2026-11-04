@@ -203,14 +203,6 @@ class SettingsViewModel
             }
         }
 
-        /** Appearance > Surface styles: upsert/remove one surface override. */
-        fun setSurfaceStyle(
-            key: String,
-            style: SurfaceStyle?,
-        ) {
-            viewModelScope.launch { settingsRepository.setSurfaceStyle(key, style) }
-        }
-
         /** Appearance > Thumbnail tint (ARGB incl. alpha; null = none). */
         fun setThumbnailTint(argb: Long?) {
             viewModelScope.launch { settingsRepository.setThumbnailTint(argb) }

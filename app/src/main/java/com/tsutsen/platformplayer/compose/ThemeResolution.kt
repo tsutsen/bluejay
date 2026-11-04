@@ -1,15 +1,24 @@
 package com.tsutsen.platformplayer.compose
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.material3.Typography
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import com.tsutsen.platformplayer.R
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
+import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.FontFamily as FontFamilyPref
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTypography
 import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceSkin
@@ -73,12 +82,42 @@ fun buildAppTypography(
     )
 }
 
-/** Per-surface skins resolved from the user's stored ARGB overrides. */
-fun buildSurfaceSkins(appearance: AppearancePreferences): Map<String, SurfaceSkin> =
-    appearance.surfaceStyles.mapValues { (_, style) ->
+/**
+ * Per-surface skins of the ACTIVE theme (surface styles are per-theme, not a
+ * global layer): color + outline overrides, plus textures decoded from the
+ * files the theme editor copied into app storage (downsampled to ≤ 640px).
+ */
+@Composable
+fun rememberSurfaceSkins(appearance: AppearancePreferences): Map<String, SurfaceSkin> {
+    val activeTheme = appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
+    return remember(activeTheme) { buildSurfaceSkins(activeTheme) }
+}
+
+fun buildSurfaceSkins(activeTheme: CustomTheme?): Map<String, SurfaceSkin> =
+    (activeTheme?.surfaceStyles ?: emptyMap()).mapValues { (_, style) ->
         SurfaceSkin(
             color = style.colorArgb?.let { Color(it) },
             outlineColor = style.outlineColorArgb?.let { Color(it) },
-            outlineWidth = style.outlineWidthDp?.let { androidx.compose.ui.unit.Dp(it) },
+            outlineWidth = style.outlineWidthDp?.let { Dp(it) },
+            texture = style.texturePath?.let { decodeTexture(it) },
         )
     }
+
+/** Max decoded texture edge in px — wallpapers tile, they don't need detail. */
+private const val TEXTURE_MAX_EDGE = 640
+
+private fun decodeTexture(path: String): ImageBitmap? =
+    runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= TEXTURE_MAX_EDGE &&
+            bounds.outHeight / (sample * 2) >= TEXTURE_MAX_EDGE
+        ) {
+            sample *= 2
+        }
+        BitmapFactory
+            .decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?.asImageBitmap()
+    }.getOrNull()

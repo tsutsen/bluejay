@@ -36,6 +36,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
 import com.tsutsen.platformplayer.core.model.Card
 
@@ -78,6 +79,7 @@ fun ContentCard(
                 )
                 .clip(RoundedCornerShape(BluejayTokens().radius.card))
                 .background(surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surfaceContainer))
+                .surfaceTexture(SurfaceKeys.VIDEO_CARD)
                 .surfaceOutline(SurfaceKeys.VIDEO_CARD, MaterialTheme.shapes.large),
     ) {
         content()

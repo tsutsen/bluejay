@@ -11,6 +11,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
@@ -99,6 +100,8 @@ fun AsyncImage(
         contentScale = contentScale,
         placeholder = placeholder,
         error = error,
-        colorFilter = LocalThumbnailTint.current?.let { ColorFilter.tint(it) },
+        // SrcAtop (not the SrcIn default): the tint only lands on opaque image
+        // pixels, preserving the picture — a translucent wash, not a silhouette.
+        colorFilter = LocalThumbnailTint.current?.let { ColorFilter.tint(it, BlendMode.SrcAtop) },
     )
 }

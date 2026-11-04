@@ -4,11 +4,19 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,8 +31,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ElevatedButton
@@ -45,18 +56,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PaletteStyle
+import com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
@@ -65,6 +84,9 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -85,6 +107,13 @@ fun ThemesSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
+        // "Default" is the always-present first entry (Material You / brand);
+        // selecting it deactivates any custom theme.
+        DefaultThemeRow(
+            isActive = appearance.activeThemeId == null,
+            groupPosition = GroupPosition.fromIndex(0, appearance.customThemes.size + 1),
+            onUse = { viewModel.setActiveTheme(null) },
+        )
         if (appearance.customThemes.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                 appearance.customThemes.forEachIndexed { index, theme ->
@@ -92,7 +121,7 @@ fun ThemesSection(
                         theme = theme,
                         isActive = theme.id == appearance.activeThemeId,
                         groupPosition =
-                            GroupPosition.fromIndex(index, appearance.customThemes.size),
+                            GroupPosition.fromIndex(index + 1, appearance.customThemes.size + 1),
                         onClick = {
                             editing = theme
                             editorOpen = true
@@ -101,15 +130,6 @@ fun ThemesSection(
                         onDelete = { viewModel.deleteTheme(theme.id) },
                     )
                 }
-            }
-        }
-
-        if (appearance.activeThemeId != null) {
-            TextButton(
-                onClick = { viewModel.setActiveTheme(null) },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) {
-                Text("Use default theme")
             }
         }
 
@@ -143,6 +163,81 @@ fun ThemesSection(
                     editorOpen = false
                 },
             )
+        }
+    }
+}
+
+/** The always-present "Default" theme entry (Material You / brand colors). */
+@Composable
+private fun DefaultThemeRow(
+    isActive: Boolean,
+    groupPosition: GroupPosition = GroupPosition.Single,
+    onUse: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = groupShape(groupPosition),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isActive) scheme.secondaryContainer else scheme.surfaceContainer,
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+                modifier = Modifier.clip(CircleShape),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(Tokens.SwatchSm)
+                            .background(scheme.primary, CircleShape),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .size(Tokens.SwatchSm)
+                            .background(scheme.secondary, CircleShape),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .size(Tokens.SwatchSm)
+                            .background(scheme.tertiary, CircleShape),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Default",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = "Material You / brand",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (isActive) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = "Active theme",
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(Tokens.IconMd),
+                )
+            } else {
+                TextButton(onClick = onUse) { Text("Use") }
+            }
         }
     }
 }
@@ -262,6 +357,12 @@ private fun ThemeEditor(
     }
     var contrast by remember(initial) { mutableStateOf(initial?.contrast ?: 0f) }
     var pickSlot by remember { mutableStateOf<ThemeSlot?>(null) }
+    var tab by remember(initial) { mutableStateOf(0) }
+    var surfaceStyles by remember(initial) { mutableStateOf(initial?.surfaceStyles ?: emptyMap()) }
+    // The id is generated up front so uploaded textures can be filed under it
+    // before the theme is ever saved.
+    val themeId = remember(initial) { initial?.id ?: UUID.randomUUID().toString() }
+    var editSlot by remember { mutableStateOf<String?>(null) }
 
     // One generated scheme per style, so each swatch square shows what that
     // style actually does with the user's current colors.
@@ -294,104 +395,130 @@ private fun ThemeEditor(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
-        ) {
-            ThemeColorSlot(
-                label = "Primary",
-                color = primary,
-                optional = false,
-                modifier = Modifier.weight(1f),
-                onPick = { pickSlot = ThemeSlot.PRIMARY },
-                onClear = {},
-            )
-            ThemeColorSlot(
-                label = "Secondary",
-                color = secondary,
-                optional = true,
-                modifier = Modifier.weight(1f),
-                onPick = { pickSlot = ThemeSlot.SECONDARY },
-                onClear = { secondary = null },
-            )
-            ThemeColorSlot(
-                label = "Tertiary",
-                color = tertiary,
-                optional = true,
-                modifier = Modifier.weight(1f),
-                onPick = { pickSlot = ThemeSlot.TERTIARY },
-                onClear = { tertiary = null },
-            )
-            // Background (surfaces) is the fourth optional key color.
-            ThemeColorSlot(
-                label = "Background",
-                color = background,
-                optional = true,
-                modifier = Modifier.weight(1f),
-                onPick = { pickSlot = ThemeSlot.BACKGROUND },
-                onClear = { background = null },
-            )
+        TabRow(selectedTabIndex = tab) {
+            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Palette") })
+            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Custom") })
         }
 
-        Text(
-            text = "Palette style",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-        ) {
-            PaletteStyle.entries.forEach { option ->
-                PaletteSwatchSquare(
-                    scheme = styleSchemes.getValue(option),
-                    selected = style == option,
-                    onClick = { style = option },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+        if (tab == 0) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
-                Text(
-                    text = "Contrast",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
+                ThemeColorSlot(
+                    label = "Primary",
+                    color = primary,
+                    optional = false,
+                    modifier = Modifier.weight(1f),
+                    onPick = { pickSlot = ThemeSlot.PRIMARY },
+                    onClear = {},
                 )
-                Text(
-                    text = if (contrast == 0f) "standard" else (contrast * 100).roundToInt().toString() + "%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ThemeColorSlot(
+                    label = "Secondary",
+                    color = secondary,
+                    optional = true,
+                    modifier = Modifier.weight(1f),
+                    onPick = { pickSlot = ThemeSlot.SECONDARY },
+                    onClear = { secondary = null },
+                )
+                ThemeColorSlot(
+                    label = "Tertiary",
+                    color = tertiary,
+                    optional = true,
+                    modifier = Modifier.weight(1f),
+                    onPick = { pickSlot = ThemeSlot.TERTIARY },
+                    onClear = { tertiary = null },
+                )
+                // Background (surfaces) is the fourth optional key color.
+                ThemeColorSlot(
+                    label = "Background",
+                    color = background,
+                    optional = true,
+                    modifier = Modifier.weight(1f),
+                    onPick = { pickSlot = ThemeSlot.BACKGROUND },
+                    onClear = { background = null },
                 )
             }
-            // -1 = minimum, 0 = standard (as specced), 1 = maximum — the
-            // spec's contrast level drives the per-role contrast curves.
-            Slider(
-                value = contrast,
-                onValueChange = { contrast = it },
-                valueRange = -1f..1f,
-                steps = 3,
-            )
-        }
 
-        ThemePreview(
-            primary = primary,
-            secondary = secondary,
-            tertiary = tertiary,
-            background = background,
-            style = style,
-            contrast = contrast,
-        )
+            Text(
+                text = "Palette style",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+            ) {
+                PaletteStyle.entries.forEach { option ->
+                    PaletteSwatchSquare(
+                        scheme = styleSchemes.getValue(option),
+                        selected = style == option,
+                        onClick = { style = option },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "Contrast",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = if (contrast == 0f) "standard" else (contrast * 100).roundToInt().toString() + "%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // -1 = minimum, 0 = standard (as specced), 1 = maximum — the
+                // spec's contrast level drives the per-role contrast curves.
+                Slider(
+                    value = contrast,
+                    onValueChange = { contrast = it },
+                    valueRange = -1f..1f,
+                    steps = 3,
+                )
+            }
+
+            ThemePreview(
+                primary = primary,
+                secondary = secondary,
+                tertiary = tertiary,
+                background = background,
+                style = style,
+                contrast = contrast,
+            )
+        } else {
+            Text(
+                text = "Per-surface overrides — slots left empty use the palette scheme.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+            ) {
+                SurfaceKeys.ALL.forEach { key ->
+                    SurfaceStyleSlot(
+                        label = SurfaceKeys.label(key),
+                        style = surfaceStyles[key],
+                        modifier = Modifier.weight(1f),
+                        onPick = { editSlot = key },
+                    )
+                }
+            }
+        }
 
         Button(
             onClick = {
                 onSave(
                     CustomTheme(
-                        id = initial?.id ?: UUID.randomUUID().toString(),
+                        id = themeId,
                         name = name.ifBlank { "My theme" },
                         primary = primary,
                         secondary = secondary,
@@ -399,6 +526,7 @@ private fun ThemeEditor(
                         background = background,
                         paletteStyle = style,
                         contrast = contrast,
+                        surfaceStyles = surfaceStyles,
                     ),
                 )
             },
@@ -429,6 +557,19 @@ private fun ThemeEditor(
                 pickSlot = null
             },
             onDismiss = { pickSlot = null },
+        )
+    }
+
+    editSlot?.let { key ->
+        SurfaceSlotDialog(
+            key = key,
+            style = surfaceStyles[key],
+            themeId = themeId,
+            onUpdate = { style ->
+                surfaceStyles =
+                    if (style == null) surfaceStyles - key else surfaceStyles + (key to style)
+            },
+            onDismiss = { editSlot = null },
         )
     }
 }
@@ -803,3 +944,222 @@ private val PaletteStyle.label: String
         }
 
 private fun Int.toColor(): Color = Color(this)
+
+/** Texture preview for a slot circle, decoded small. */
+@Composable
+private fun rememberTextureThumbnail(path: String): ImageBitmap? =
+    remember(path) {
+        runCatching {
+            BitmapFactory
+                .decodeFile(path, BitmapFactory.Options().apply { inSampleSize = 4 })
+                ?.asImageBitmap()
+        }.getOrNull()
+    }
+
+/**
+ * One surface slot in the theme editor's Custom tab: circle + label, filled
+ * with the slot's custom color (or a texture thumbnail); the plus icon reads
+ * as "pick a color / texture".
+ */
+@Composable
+private fun SurfaceStyleSlot(
+    label: String,
+    style: SurfaceStyle?,
+    modifier: Modifier = Modifier,
+    onPick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val texture = style?.texturePath?.let { rememberTextureThumbnail(it) }
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(Tokens.SwatchLg)
+                    .expressiveClickable(onClick = onPick)
+                    .clip(CircleShape)
+                    .background(scheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center,
+        ) {
+            val slotColor = style?.colorArgb
+            when {
+                texture != null ->
+                    Image(
+                        bitmap = texture,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    )
+                slotColor != null ->
+                    Box(Modifier.fillMaxSize().background(Color(slotColor), CircleShape))
+                else ->
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = "Pick $label style",
+                        tint = scheme.onSurfaceVariant,
+                        modifier = Modifier.size(Tokens.IconMd),
+                    )
+            }
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * One surface slot's editor: container color, outline color + width, and an
+ * uploaded texture (tiled over the color). Saving an all-default style
+ * removes the slot override. Textures are copied into app storage under
+ * [themeId] so they survive restarts.
+ */
+@Composable
+private fun SurfaceSlotDialog(
+    key: String,
+    style: SurfaceStyle?,
+    themeId: String,
+    onUpdate: (SurfaceStyle?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var colorArgb by remember { mutableStateOf(style?.colorArgb) }
+    var outlineColorArgb by remember { mutableStateOf(style?.outlineColorArgb) }
+    var outlineWidth by remember { mutableStateOf(style?.outlineWidthDp ?: 0f) }
+    var texturePath by remember { mutableStateOf(style?.texturePath) }
+    val texture = texturePath?.let { rememberTextureThumbnail(it) }
+
+    val texPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                scope.launch(Dispatchers.IO) {
+                    runCatching {
+                        val dir = File(File(context.filesDir, "theme_textures"), themeId)
+                        dir.mkdirs()
+                        val file = File(dir, "$key.jpg")
+                        val bmp =
+                            context.contentResolver.openInputStream(uri)?.use {
+                                BitmapFactory.decodeStream(it)
+                            }
+                        if (bmp != null) {
+                            file.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+                            texturePath = file.absolutePath
+                        }
+                    }
+                }
+            }
+        }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${SurfaceKeys.label(key)} style") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Container color", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(Tokens.SpaceXs))
+                SwatchRow(
+                    selected = colorArgb,
+                    onSelect = { colorArgb = it },
+                )
+                Spacer(Modifier.height(Tokens.SpaceMd))
+                Text("Outline color", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(Tokens.SpaceXs))
+                SwatchRow(
+                    selected = outlineColorArgb,
+                    onSelect = { outlineColorArgb = it },
+                )
+                Spacer(Modifier.height(Tokens.SpaceMd))
+                Text("Outline width", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(Tokens.SpaceXs))
+                Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+                    listOf("None" to 0f, "1 dp" to 1f, "2 dp" to 2f, "3 dp" to 3f).forEach { (label, width) ->
+                        TextButton(onClick = { outlineWidth = width }) {
+                            Text(
+                                label,
+                                color =
+                                    if (outlineWidth == width) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(Tokens.SpaceMd))
+                Text("Texture", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(Tokens.SpaceXs))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                ) {
+                    if (texture != null) {
+                        Image(
+                            bitmap = texture,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(Tokens.AvatarMd).clip(MaterialTheme.shapes.small),
+                        )
+                    }
+                    TextButton(onClick = { texPicker.launch("image/*") }) { Text("Upload") }
+                    if (texturePath != null) {
+                        TextButton(onClick = { texturePath = null }) { Text("Remove") }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val s =
+                    if (colorArgb == null && outlineColorArgb == null && outlineWidth <= 0f && texturePath == null) {
+                        null
+                    } else {
+                        SurfaceStyle(
+                            colorArgb = colorArgb,
+                            outlineColorArgb = outlineColorArgb,
+                            outlineWidthDp = outlineWidth.takeIf { it > 0f },
+                            texturePath = texturePath,
+                        )
+                    }
+                onUpdate(s)
+                onDismiss()
+            }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+/** One preset-swatch row plus a leading "None" button (unset). */
+@Composable
+private fun SwatchRow(
+    selected: Long?,
+    onSelect: (Long?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+        PresetColors.chunked(8).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+                row.forEach { argb ->
+                    ColorSwatch(
+                        color = Color(argb),
+                        isSelected = selected == argb.toLong(),
+                        onClick = { onSelect(argb.toLong()) },
+                    )
+                }
+            }
+        }
+        TextButton(onClick = { onSelect(null) }) {
+            Text(
+                "None",
+                color =
+                    if (selected == null) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}

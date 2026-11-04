@@ -14,12 +14,6 @@ interface SettingsRepository {
 
     suspend fun updateAppearance(prefs: com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences)
 
-    /** Upsert one surface style override (null = remove it). */
-    suspend fun setSurfaceStyle(
-        key: String,
-        style: com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle?,
-    )
-
     /** Thumbnail tint overlay (ARGB incl. alpha; null = none). */
     suspend fun setThumbnailTint(argb: Long?)
     suspend fun updatePlayback(prefs: com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences)

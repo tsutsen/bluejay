@@ -123,8 +123,6 @@ import com.tsutsen.platformplayer.core.data.repository.UpdateCheckState
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
-import com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle
-import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.ReorderableList
@@ -1051,7 +1049,6 @@ private fun SectionItems(
             }
 
             "appearance" -> {
-                var editingSurface by remember { mutableStateOf<String?>(null) }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsOptionCard(
                         icon = Icons.Filled.BrightnessAuto,
@@ -1114,24 +1111,11 @@ private fun SectionItems(
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
-                    SettingsHeader("Custom themes")
+                    SettingsHeader("Themes")
                     ThemesSection(state.appearance, viewModel)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
-                    SettingsHeader("Surface styles")
-                    SurfaceKeys.ALL.forEach { key ->
-                        val style = state.appearance.surfaceStyles[key]
-                        SettingsOptionCard(
-                            icon = Icons.Filled.BorderStyle,
-                            title = SurfaceKeys.label(key),
-                            subtitle =
-                                when {
-                                    style == null -> "Theme default"
-                                    else -> "Customized"
-                                },
-                            onClick = { editingSurface = key },
-                        )
-                    }
+                    SettingsHeader("Thumbnail tint")
                     SettingsOptionCard(
                         icon = Icons.Filled.Palette,
                         title = "Thumbnail tint",
@@ -1139,17 +1123,7 @@ private fun SectionItems(
                             if (state.appearance.thumbnailTintArgb == null) "None"
                             else "Custom color wash",
                         onClick = { onChoiceSelected(Choice.THUMBNAIL_TINT) },
-                    )
-                }
-                editingSurface?.let { key ->
-                    SurfaceStyleDialog(
-                        key = key,
-                        style = state.appearance.surfaceStyles[key],
-                        onDismiss = { editingSurface = null },
-                        onSave = { style ->
-                            viewModel.setSurfaceStyle(key, style)
-                            editingSurface = null
-                        },
+                        groupPosition = GroupPosition.First,
                     )
                 }
             }
@@ -2233,100 +2207,6 @@ private fun fontFamilyLabel(family: com.tsutsen.platformplayer.core.datastore.mo
         com.tsutsen.platformplayer.core.datastore.model.FontFamily.OPEN_SANS -> "Open Sans"
         com.tsutsen.platformplayer.core.datastore.model.FontFamily.DEFAULT -> "System"
     }
-
-/**
- * One surface's style editor: container color, outline color, outline width.
- * Saving an all-default style removes the override.
- */
-@Composable
-private fun SurfaceStyleDialog(
-    key: String,
-    style: SurfaceStyle?,
-    onDismiss: () -> Unit,
-    onSave: (SurfaceStyle?) -> Unit,
-) {
-    var colorArgb by remember { mutableStateOf(style?.colorArgb) }
-    var outlineColorArgb by remember { mutableStateOf(style?.outlineColorArgb) }
-    var outlineWidth by remember { mutableStateOf(style?.outlineWidthDp ?: 0f) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("${SurfaceKeys.label(key)} style") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Container color", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(Tokens.SpaceXs))
-                SwatchRow(
-                    selected = colorArgb,
-                    onSelect = { colorArgb = it },
-                )
-                Spacer(Modifier.height(Tokens.SpaceMd))
-                Text("Outline color", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(Tokens.SpaceXs))
-                SwatchRow(
-                    selected = outlineColorArgb,
-                    onSelect = { outlineColorArgb = it },
-                )
-                Spacer(Modifier.height(Tokens.SpaceMd))
-                Text("Outline width", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(Tokens.SpaceXs))
-                Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                    listOf("None" to 0f, "1 dp" to 1f, "2 dp" to 2f, "3 dp" to 3f).forEach { (label, width) ->
-                        TextButton(onClick = { outlineWidth = width }) {
-                            Text(
-                                label,
-                                color =
-                                    if (outlineWidth == width) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val s =
-                    if (colorArgb == null && outlineColorArgb == null && outlineWidth <= 0f) {
-                        null
-                    } else {
-                        SurfaceStyle(
-                            colorArgb = colorArgb,
-                            outlineColorArgb = outlineColorArgb,
-                            outlineWidthDp = outlineWidth.takeIf { it > 0f },
-                        )
-                    }
-                onSave(s)
-            }) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
-/** One preset-swatch row plus a leading "None" swatch (hollow = unset). */
-@Composable
-private fun SwatchRow(
-    selected: Long?,
-    onSelect: (Long?) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-        PresetColors.chunked(8).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                row.forEach { argb ->
-                    ColorSwatch(
-                        color = Color(argb),
-                        isSelected = selected == argb.toLong(),
-                        onClick = { onSelect(argb.toLong()) },
-                    )
-                }
-            }
-        }
-        TextButton(onClick = { onSelect(null) }) {
-            Text("None", color = if (selected == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
 
 /**
  * Thumbnail tint picker: preset hues offered as a ~30%-alpha wash, plus None.

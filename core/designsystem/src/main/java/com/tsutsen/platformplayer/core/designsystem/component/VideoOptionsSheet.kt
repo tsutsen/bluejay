@@ -92,6 +92,7 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceSkin
 import com.tsutsen.platformplayer.core.designsystem.theme.LocalSemanticColors
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
@@ -722,7 +723,7 @@ fun OptionTileView(
     // the background/content: danger = M3 error*, warning = semantic
     // yellow, highlight = M3 primaryContainer.
     val highlighted = tile.selected || tile.tone == TileTone.Highlight
-    // User tile skin (Settings > Appearance > Surface styles) overrides the tone color.
+    // User tile skin (theme editor > Custom tab) overrides the tone color.
     val skinBg = surfaceSkin(SurfaceKeys.TILE).color
     val (bg, content, iconColor) =
         when {
@@ -835,6 +836,7 @@ fun OptionTileView(
                 .scale(scale)
                 .clip(corner)
                 .background(bgAnim)
+                .surfaceTexture(SurfaceKeys.TILE)
                 .surfaceOutline(SurfaceKeys.TILE, corner)
                 .then(click)
                 .padding(vertical = Tokens.SpaceMd),

@@ -43,6 +43,7 @@ class SettingsRepositoryImpl
     constructor() : SettingsRepository {
         init {
             migrateLegacyHiddenSets()
+            migrateLegacySurfaceStyles()
         }
 
         private val _preferences = MutableStateFlow(fromSettings())
@@ -58,6 +59,24 @@ class SettingsRepositoryImpl
             MutableStateFlow(Settings.instance.content.hiddenCreatorEntries)
         override val hiddenCreators: StateFlow<List<HiddenContentEntry>> =
             _hiddenCreators.asStateFlow()
+
+        /**
+         * One-time migration: the old global per-surface overrides move into
+         * the active theme (they are per-theme now); parked untouched when no
+         * theme is active.
+         */
+        private fun migrateLegacySurfaceStyles() {
+            val a = Settings.instance.appearance
+            if (a.surfaceStyles.isEmpty()) return
+            val id = a.activeThemeId ?: return
+            a.customThemes.firstOrNull { it.id == id }?.let { theme ->
+                a.customThemes =
+                    a.customThemes.filter { it.id != id } +
+                        theme.copy(surfaceStyles = theme.surfaceStyles + a.surfaceStyles)
+                a.surfaceStyles = emptyMap()
+                Settings.instance.save()
+            }
+        }
 
         /**
          * One-time migration: the legacy binary hide sets (hiddenVideoUrls =
@@ -101,7 +120,6 @@ class SettingsRepositoryImpl
                         uiRounding = s.appearance.uiRounding,
                         customThemes = s.appearance.customThemes,
                         activeThemeId = s.appearance.activeThemeId,
-                        surfaceStyles = s.appearance.surfaceStyles,
                         thumbnailTintArgb = s.appearance.thumbnailTintArgb,
                     ),
                 playback =
@@ -244,18 +262,7 @@ class SettingsRepositoryImpl
             s.appearance.fontSizeScale = prefs.fontSizeScale
             s.appearance.dynamicColor = prefs.dynamicColor
             s.appearance.uiRounding = prefs.uiRounding
-            s.appearance.surfaceStyles = prefs.surfaceStyles
             s.appearance.thumbnailTintArgb = prefs.thumbnailTintArgb
-            s.save()
-            emit()
-        }
-
-        /** Upsert one surface style (null style = remove the override). */
-        override suspend fun setSurfaceStyle(key: String, style: SurfaceStyle?) {
-            val s = Settings.instance
-            s.appearance.surfaceStyles =
-                if (style == null) s.appearance.surfaceStyles - key
-                else s.appearance.surfaceStyles + (key to style)
             s.save()
             emit()
         }

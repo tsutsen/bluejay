@@ -12,8 +12,6 @@ data class AppearancePreferences(
     val customThemes: List<CustomTheme> = emptyList(),
     /** Active custom theme id; null = default (Material You / brand). */
     val activeThemeId: String? = null,
-    /** Per-surface user skins (Settings > Appearance > Surface styles). */
-    val surfaceStyles: Map<String, SurfaceStyle> = emptyMap(),
     /** Thumbnail tint overlay (ARGB incl. alpha); null = none. */
     val thumbnailTintArgb: Long? = null,
 )

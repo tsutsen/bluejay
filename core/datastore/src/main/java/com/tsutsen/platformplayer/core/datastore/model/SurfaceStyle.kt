@@ -17,4 +17,6 @@ data class SurfaceStyle(
     val outlineColorArgb: Long? = null,
     /** Border width in dp; 0/absent = no outline. */
     val outlineWidthDp: Float? = null,
+    /** Texture image (copied into app files); drawn tiled over the color. */
+    val texturePath: String? = null,
 )
