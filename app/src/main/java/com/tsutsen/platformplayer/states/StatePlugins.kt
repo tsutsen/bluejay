@@ -12,6 +12,7 @@ import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginConfig
 import com.tsutsen.platformplayer.api.media.platforms.js.SourcePluginDescriptor
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.auth.LoginDialog
+import com.tsutsen.platformplayer.states.StateApp
 import com.tsutsen.platformplayer.models.ImageVariable
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.PluginIconStorage
@@ -49,6 +50,9 @@ class StatePlugins {
 
     private val _isUpdating: HashSet<String> = hashSetOf();
 
+    // Plugin ids with an unsigned-config heal in flight (see healUnsignedFromSource).
+    private val _healingIds: HashSet<String> = hashSetOf();
+
     fun getPluginIconOrNull(id: String): ImageVariable? {
         if(iconsDir.hasIcon(id))
             return iconsDir.getIconBinary(id);
@@ -70,6 +74,33 @@ class StatePlugins {
     fun reloadPluginFile(){
         _plugins = FragmentedStorage.storeJson<SourcePluginDescriptor>("plugins")
             .load();
+        dedupePlugins();
+    }
+
+    /**
+     * Repair pass for duplicate plugin store entries (same config id stored
+     * more than once — concurrent installs can interleave delete+save): keep
+     * the signed descriptor when there is one, else the newest, delete the
+     * rest. Without this the "Duplicate plugin ids detected" warning re-fires
+     * on every client update.
+     */
+    private fun dedupePlugins() {
+        val items = _plugins.getItems();
+        val byId = items.groupBy { it.config.id };
+        for ((_, group) in byId) {
+            if (group.size <= 1) continue;
+            val keeper = group.firstOrNull { !it.config.scriptSignature.isNullOrBlank() }
+                ?: group.maxByOrNull { it.config.version }
+                ?: group.first();
+            for (entry in group) {
+                if (entry !== keeper)
+                    _plugins.delete(entry);
+            }
+            _plugins.save(keeper);
+            Logger.i(TAG, "Deduped plugin [${keeper.config.id}] ${keeper.config.name}: kept v${keeper.config.version}" +
+                (if (keeper.config.scriptSignature.isNullOrBlank()) " (unsigned)" else " (signed)") +
+                ", removed ${group.size - 1}");
+        }
     }
 
     fun isUpdating(id: String): Boolean{
@@ -263,7 +294,28 @@ class StatePlugins {
             val embeddedConfig = getEmbeddedPluginConfig(context, embedded.value);
             if(embeddedConfig != null) {
                 val existing = getPlugin(embedded.key);
-                if(existing == null || (existing.config.version < embeddedConfig.version || (force || FORCE_REINSTALL_EMBEDDED))) {
+                // An UNSIGNED embedded config must never replace a SIGNED
+                // installed plugin: the embedded copies in the repo are signed
+                // only on FUTO's deploy server, so shipping a newer pin (e.g.
+                // Youtube v367 unsigned vs installed v366 signed) silently
+                // downgraded the plugin to unsigned — isOfficialAuthor() went
+                // false, the gated Browser package disappeared, the plugin's
+                // BotGuard fell back to the in-V8 minter and YouTube rejected
+                // every po token (SABR "attestation required", no media).
+                // Only a SIGNED embedded config may overwrite a signed install.
+                val embeddedIsSigned = !embeddedConfig.scriptSignature.isNullOrBlank();
+                val existingIsSigned = existing != null && !existing.config.scriptSignature.isNullOrBlank();
+                if (existing != null && existingIsSigned && !embeddedIsSigned) {
+                    if(_isFirstEmbedUpdate)
+                        Logger.i(TAG, "Embedded plugin [${existing.config.id}] ${existing.config.name} skipped: installed v${existing.config.version} is signed, embedded v${embeddedConfig.version} is not");
+                }
+                else if (existing != null && !existingIsSigned && !embeddedIsSigned && existing.config.sourceUrl != null) {
+                    // Already-poisoned installs (the unsigned embedded plugin
+                    // replaced a signed one before this guard existed): quietly
+                    // re-fetch the signed config from the plugin's sourceUrl.
+                    healUnsignedFromSource(context, existing.config.sourceUrl!!, existing.config.id, existing.config.version)
+                }
+                else if(existing == null || (existing.config.version < embeddedConfig.version || (force || FORCE_REINSTALL_EMBEDDED))) {
                     if (existing != null)
                         Logger.i(TAG, "Outdated Embedded plugin [${existing.config.id}] ${existing.config.name} (${existing.config.version} < ${embeddedConfig.version}), reinstalling");
                     else
@@ -297,6 +349,72 @@ class StatePlugins {
         if(!embedded.containsKey(pluginId))
             return null;
         return getEmbeddedPluginConfig(context, embedded[pluginId]!!);
+    }
+
+    /**
+     * Quiet re-install of an unsigned plugin from its [sourceUrl], used to
+     * heal installs that the (now-guarded) embedded replacement downgraded to
+     * an unsigned config — see [updateEmbeddedPlugins]. No dialogs: failures
+     * only log and are retried on the next update pass.
+     */
+    private fun healUnsignedFromSource(context: Context, sourceUrl: String, pluginId: String, currentVersion: Int) {
+        // Serialize heals per plugin: concurrent update passes would otherwise
+        // interleave deletePlugin/createPlugin and duplicate store entries
+        // ("Duplicate plugin ids detected" loop).
+        synchronized(_healingIds) {
+            if (!_healingIds.add(pluginId)) return;
+        }
+        val scope = StateApp.instance.scopeOrNull ?: run {
+            synchronized(_healingIds) { _healingIds.remove(pluginId) };
+            return;
+        };
+        scope.launch(Dispatchers.IO) {
+            try {
+                Logger.i(TAG, "Healing unsigned plugin [$pluginId] v$currentVersion from [$sourceUrl]");
+                val config = requestConfig(sourceUrl);
+                if (config.id != pluginId) {
+                    Logger.w(TAG, "Heal source config id mismatch [${config.id} != $pluginId]");
+                    return@launch;
+                }
+                if (config.scriptSignature.isNullOrBlank()) {
+                    Logger.i(TAG, "Heal source config for [$pluginId] is unsigned too; leaving as is");
+                    return@launch;
+                }
+                if (config.version < currentVersion) {
+                    // The signed source is older than the active unsigned copy
+                    // (e.g. embedded 367 > published 366) — still prefer the
+                    // signed one: it keeps the Browser package and botguard.
+                    Logger.i(TAG, "Healing [$pluginId] with older signed v${config.version} over unsigned v$currentVersion");
+                }
+                val scriptResp = ManagedHttpClient.shared.get(config.absoluteScriptUrl);
+                if (!scriptResp.isOk) {
+                    scriptResp.close();
+                    Logger.w(TAG, "Heal script fetch failed [${scriptResp.code}] for [$pluginId]");
+                    return@launch;
+                }
+                val script = scriptResp.body?.string();
+                if (script.isNullOrEmpty()) {
+                    Logger.w(TAG, "Heal script empty for [$pluginId]");
+                    return@launch;
+                }
+                val icon = config.absoluteIconUrl?.let { absIconUrl ->
+                    try {
+                        val iconResp = ManagedHttpClient.shared.get(absIconUrl);
+                        if (iconResp.isOk) iconResp.body?.byteStream()?.use { it.readBytes() } else null
+                    } catch (ex: Throwable) { null }
+                };
+                val failure = createPlugin(config, script, icon, true);
+                if (failure != null)
+                    Logger.w(TAG, "Heal install failed for [$pluginId]", failure);
+                else
+                    Logger.i(TAG, "Healed plugin [$pluginId] to signed v${config.version}");
+                StatePlatform.instance.updateAvailableClients(context);
+            } catch (ex: Throwable) {
+                Logger.w(TAG, "Heal failed for [$pluginId]", ex);
+            } finally {
+                synchronized(_healingIds) { _healingIds.remove(pluginId) };
+            }
+        }
     }
 
     fun installEmbeddedPlugin(context: Context, assetConfigPath: String, id: String? = null): Boolean {
