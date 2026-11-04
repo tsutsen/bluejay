@@ -23,8 +23,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -36,6 +38,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceContentColor
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
 import com.tsutsen.platformplayer.core.model.Card
@@ -82,7 +85,12 @@ fun ContentCard(
                 .surfaceTexture(SurfaceKeys.VIDEO_CARD)
                 .surfaceOutline(SurfaceKeys.VIDEO_CARD, MaterialTheme.shapes.large),
     ) {
-        content()
+        CompositionLocalProvider(
+            LocalContentColor provides
+                surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurface),
+        ) {
+            content()
+        }
     }
 }
 

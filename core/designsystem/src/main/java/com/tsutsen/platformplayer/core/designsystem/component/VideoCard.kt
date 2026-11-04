@@ -31,7 +31,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceBorder
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceContentColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.core.ui.AsyncImage
@@ -130,6 +133,7 @@ fun VideoCard(
             CardDefaults.cardColors(
                 containerColor = surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surface),
             ),
+            border = surfaceBorder(SurfaceKeys.VIDEO_CARD),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -419,6 +423,7 @@ fun VideoCardFull(
             CardDefaults.cardColors(
                 containerColor = surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surfaceContainer),
             ),
+            border = surfaceBorder(SurfaceKeys.VIDEO_CARD),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(Tokens.SpaceMd),
@@ -583,6 +588,7 @@ fun VideoCardShorts(
             CardDefaults.cardColors(
                 containerColor = surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surface),
             ),
+            border = surfaceBorder(SurfaceKeys.VIDEO_CARD),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(Tokens.SpaceSm),

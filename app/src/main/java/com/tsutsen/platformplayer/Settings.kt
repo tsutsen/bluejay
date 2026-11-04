@@ -334,6 +334,9 @@ class Settings {
 
         // Thumbnail tint overlay (ARGB incl. alpha; null = none).
         var thumbnailTintArgb: Long? = null
+
+        // Thumbnail desaturation (1 = full color, 0 = grayscale).
+        var thumbnailSaturation: Float = 1f
     }
 
     @Serializable

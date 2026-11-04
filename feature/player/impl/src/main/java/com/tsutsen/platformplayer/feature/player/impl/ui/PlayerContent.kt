@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tsutsen.platformplayer.core.data.repository.PlaybackEngine
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GesturePipeline
@@ -443,7 +446,10 @@ fun PlayerContent(
                             if (a in 0.01f..0.99f || ty != 0f) {
                                 compositingStrategy = CompositingStrategy.Offscreen
                             }
-                        }.nestedScroll(nestedScrollConnection),
+                        }
+                        .background(surfaceColor(SurfaceKeys.VIDEO_PAGE, MaterialTheme.colorScheme.surface))
+                        .surfaceTexture(SurfaceKeys.VIDEO_PAGE)
+                        .nestedScroll(nestedScrollConnection),
             ) {
                 PlayerDetails(
                     state = state,

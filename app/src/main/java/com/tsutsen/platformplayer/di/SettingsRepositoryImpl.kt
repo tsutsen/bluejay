@@ -121,6 +121,7 @@ class SettingsRepositoryImpl
                         customThemes = s.appearance.customThemes,
                         activeThemeId = s.appearance.activeThemeId,
                         thumbnailTintArgb = s.appearance.thumbnailTintArgb,
+                        thumbnailSaturation = s.appearance.thumbnailSaturation,
                     ),
                 playback =
                     PlaybackPreferences(
@@ -263,6 +264,7 @@ class SettingsRepositoryImpl
             s.appearance.dynamicColor = prefs.dynamicColor
             s.appearance.uiRounding = prefs.uiRounding
             s.appearance.thumbnailTintArgb = prefs.thumbnailTintArgb
+            s.appearance.thumbnailSaturation = prefs.thumbnailSaturation
             s.save()
             emit()
         }

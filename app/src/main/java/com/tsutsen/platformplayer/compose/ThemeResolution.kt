@@ -100,6 +100,7 @@ fun buildSurfaceSkins(activeTheme: CustomTheme?): Map<String, SurfaceSkin> =
             outlineColor = style.outlineColorArgb?.let { Color(it) },
             outlineWidth = style.outlineWidthDp?.let { Dp(it) },
             texture = style.texturePath?.let { decodeTexture(it) },
+            contentColor = style.textColorArgb?.let { Color(it) },
         )
     }
 

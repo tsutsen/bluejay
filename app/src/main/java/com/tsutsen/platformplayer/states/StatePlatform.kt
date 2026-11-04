@@ -926,15 +926,19 @@ class StatePlatform {
             var hasChanges = false;
             val lastVideo = pagerResult.getResults().firstOrNull();
 
-            if(lastVideo?.datetime != null && sub.lastVideo.getNowDiffDays() != lastVideo.datetime!!.getNowDiffDays()) {
-                Logger.i(TAG, "Subscription [${channelUrl}] has new last video date [${lastVideo.datetime?.getNowDiffDays()} Days]");
-                sub.lastVideo = lastVideo.datetime ?: sub.lastVideo;
+            val saneVideoDate = lastVideo?.datetime?.takeIf { it.isBefore(OffsetDateTime.now().plusDays(1)) }
+            if(saneVideoDate != null && sub.lastVideo.getNowDiffDays() != saneVideoDate.getNowDiffDays()) {
+                Logger.i(TAG, "Subscription [${channelUrl}] has new last video date [${saneVideoDate.getNowDiffDays()} Days]");
+                sub.lastVideo = saneVideoDate;
                 hasChanges = true;
             }
 
-            if(lastStream != null && sub.lastLiveStream.getNowDiffDays() != lastStream!!.getNowDiffDays()) {
-                Logger.i(TAG, "Subscription [${channelUrl}] has new last stream date [${lastStream!!.getNowDiffDays()} Days]");
-                sub.lastLiveStream = lastStream!!;
+            // Same absurd-date guard: a MAX datetime (scheduled/unknown stream
+            // parsed wrong by the plugin) would disable stream fetching forever.
+            val saneStreamDate = lastStream?.takeIf { it.isBefore(OffsetDateTime.now().plusDays(1)) }
+            if(saneStreamDate != null && sub.lastLiveStream.getNowDiffDays() != saneStreamDate.getNowDiffDays()) {
+                Logger.i(TAG, "Subscription [${channelUrl}] has new last stream date [${saneStreamDate.getNowDiffDays()} Days]");
+                sub.lastLiveStream = saneStreamDate;
                 hasChanges = true;
             }
 

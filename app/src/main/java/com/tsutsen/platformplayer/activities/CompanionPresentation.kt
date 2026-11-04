@@ -24,6 +24,7 @@ import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.compose.buildAppTypography
 import com.tsutsen.platformplayer.compose.rememberSurfaceSkins
+import com.tsutsen.platformplayer.core.ui.LocalThumbnailSaturation
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
@@ -137,6 +138,7 @@ class CompanionPresentation(
 
             CompositionLocalProvider(
                 LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it) },
+                LocalThumbnailSaturation provides appearance.thumbnailSaturation,
             ) {
                 BluejayTheme(
                 darkTheme = darkTheme,

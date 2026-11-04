@@ -1115,15 +1115,24 @@ private fun SectionItems(
                     ThemesSection(state.appearance, viewModel)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
-                    SettingsHeader("Thumbnail tint")
+                    SettingsHeader("Thumbnails")
                     SettingsOptionCard(
                         icon = Icons.Filled.Palette,
-                        title = "Thumbnail tint",
+                        title = "Tint",
                         subtitle =
                             if (state.appearance.thumbnailTintArgb == null) "None"
                             else "Custom color wash",
                         onClick = { onChoiceSelected(Choice.THUMBNAIL_TINT) },
                         groupPosition = GroupPosition.First,
+                    )
+                    SettingsSliderCard(
+                        icon = Icons.Filled.BrightnessAuto,
+                        title = "Desaturate",
+                        subtitle = "Color intensity of every thumbnail",
+                        value = (1f - state.appearance.thumbnailSaturation) * 100f,
+                        valueRange = 0f..100f,
+                        onValueChange = { viewModel.setThumbnailSaturation(1f - it / 100f) },
+                        groupPosition = GroupPosition.Last,
                     )
                 }
             }
@@ -2228,7 +2237,7 @@ private fun ThumbnailTintDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(Tokens.SpaceMd))
-                PresetColors.chunked(8).forEach { row ->
+                PresetColors.chunked(6).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
                         row.forEach { argb ->
                             val wash = (argb.toLong() and 0x00FFFFFFL) or (0x4D shl 24)

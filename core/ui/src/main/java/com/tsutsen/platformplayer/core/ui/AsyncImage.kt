@@ -12,8 +12,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -28,6 +29,9 @@ import coil.compose.AsyncImage as CoilAsyncImage
  * SrcOver reads as a translucent color wash over the image.
  */
 val LocalThumbnailTint = compositionLocalOf<Color?> { null }
+
+/** Thumbnail desaturation (1 = full color, 0 = grayscale), provided at the theme roots. */
+val LocalThumbnailSaturation = compositionLocalOf { 1f }
 
 /**
  * Wrapper around Coil's AsyncImage with built-in placeholder and error handling.
@@ -100,8 +104,45 @@ fun AsyncImage(
         contentScale = contentScale,
         placeholder = placeholder,
         error = error,
-        // SrcAtop (not the SrcIn default): the tint only lands on opaque image
-        // pixels, preserving the picture — a translucent wash, not a silhouette.
-        colorFilter = LocalThumbnailTint.current?.let { ColorFilter.tint(it, BlendMode.SrcAtop) },
+        colorFilter = combinedThumbnailFilter(
+            saturation = LocalThumbnailSaturation.current,
+            tint = LocalThumbnailTint.current,
+        ),
     )
+}
+
+/**
+ * One filter combining desaturation + the tint wash (a single colorFilter
+ * slot): result = wash(saturate(src)), both expressed as 4x5 color matrices.
+ * Null when both are no-ops.
+ */
+private fun combinedThumbnailFilter(
+    saturation: Float,
+    tint: Color?,
+): ColorFilter? {
+    val sat = saturation.coerceIn(0f, 1f)
+    if (sat >= 0.999f && tint == null) return null
+    val s = ColorMatrix().apply { setToSaturation(sat) }
+    if (tint == null) return ColorFilter.colorMatrix(s)
+    val a = tint.alpha.coerceIn(0f, 1f)
+    val wash =
+        ColorMatrix(
+            floatArrayOf(
+                1f - a, 0f, 0f, 0f, a * tint.red * 255f,
+                0f, 1f - a, 0f, 0f, a * tint.green * 255f,
+                0f, 0f, 1f - a, 0f, a * tint.blue * 255f,
+                0f, 0f, 0f, 1f, 0f,
+            ),
+        )
+    // Combined = wash x sat (sat applied first): M[i][j] = Σk wash[i][k]*sat[k][j],
+    // M[i][4] += wash[i][4].
+    val out = FloatArray(20)
+    for (i in 0 until 4) {
+        for (j in 0 until 5) {
+            var acc = wash[i, 4]
+            for (k in 0 until 4) acc += wash[i, k] * s[k, j]
+            out[i * 5 + j] = acc
+        }
+    }
+    return ColorFilter.colorMatrix(ColorMatrix(out))
 }

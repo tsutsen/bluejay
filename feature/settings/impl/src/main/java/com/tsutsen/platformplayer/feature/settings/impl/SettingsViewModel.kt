@@ -208,6 +208,14 @@ class SettingsViewModel
             viewModelScope.launch { settingsRepository.setThumbnailTint(argb) }
         }
 
+        /** Appearance > Thumbnail desaturation (1 = full color, 0 = grayscale). */
+        fun setThumbnailSaturation(saturation: Float) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                settingsRepository.updateAppearance(p.appearance.copy(thumbnailSaturation = saturation))
+            }
+        }
+
         /** Save or update a custom theme (Settings > Appearance > Custom themes). */
         fun saveTheme(theme: CustomTheme) {
             viewModelScope.launch { settingsRepository.saveCustomTheme(theme) }

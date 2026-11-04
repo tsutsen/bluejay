@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.core.designsystem.theme
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -26,6 +27,8 @@ data class SurfaceSkin(
     val outlineWidth: Dp? = null,
     /** Texture (decoded from the user-uploaded file); drawn tiled over the color. */
     val texture: ImageBitmap? = null,
+    /** Text/icon color override; null = theme default. */
+    val contentColor: Color? = null,
 ) {
     val hasOutline: Boolean
         get() = outlineColor != null && outlineWidth != null && outlineWidth > 0.dp
@@ -40,8 +43,9 @@ object SurfaceKeys {
     const val VIDEO_CARD = "videoCard"
     const val SETTINGS_ROW = "settingsRow"
     const val SHEET = "sheet"
+    const val VIDEO_PAGE = "videoPage"
 
-    val ALL = listOf(DOCK, TILE, VIDEO_CARD, SETTINGS_ROW, SHEET)
+    val ALL = listOf(DOCK, TILE, VIDEO_CARD, SETTINGS_ROW, SHEET, VIDEO_PAGE)
 
     fun label(key: String): String =
         when (key) {
@@ -50,6 +54,7 @@ object SurfaceKeys {
             VIDEO_CARD -> "Video cards"
             SETTINGS_ROW -> "Settings rows"
             SHEET -> "Sheets"
+            VIDEO_PAGE -> "Video page"
             else -> key
         }
 }
@@ -84,6 +89,25 @@ fun Modifier.surfaceTexture(key: String): Modifier {
             y += texture.height
         }
     }
+}
+
+/**
+ * Text/icon color for a surface: the skin override, or [fallback].
+ */
+@Composable
+fun surfaceContentColor(
+    key: String,
+    fallback: Color,
+): Color = LocalSurfaceSkins.current[key]?.contentColor ?: fallback
+
+/**
+ * The surface's outline as an M3 Card [BorderStroke] (Cards draw their own
+ * background over a modifier-drawn border, so they need the param), or null.
+ */
+@Composable
+fun surfaceBorder(key: String): BorderStroke? {
+    val skin = surfaceSkin(key)
+    return if (skin.hasOutline) BorderStroke(skin.outlineWidth!!, skin.outlineColor!!) else null
 }
 
 /**

@@ -724,7 +724,9 @@ fun OptionTileView(
     // yellow, highlight = M3 primaryContainer.
     val highlighted = tile.selected || tile.tone == TileTone.Highlight
     // User tile skin (theme editor > Custom tab) overrides the tone color.
-    val skinBg = surfaceSkin(SurfaceKeys.TILE).color
+    val skin = surfaceSkin(SurfaceKeys.TILE)
+    val skinBg = skin.color
+    val skinText = skin.contentColor
     val (bg, content, iconColor) =
         when {
             tile.disabled -> {
@@ -808,9 +810,9 @@ fun OptionTileView(
             label = "tile-bg",
         )
     val contentAnim by
-        animateColorAsState(content, animationSpec = tileColorSpec, label = "tile-content")
+        animateColorAsState(skinText ?: content, animationSpec = tileColorSpec, label = "tile-content")
     val iconAnim by
-        animateColorAsState(iconTint ?: iconColor, animationSpec = tileColorSpec, label = "tile-icon")
+        animateColorAsState(iconTint ?: (skinText ?: iconColor), animationSpec = tileColorSpec, label = "tile-icon")
     val click =
         if (tile.onLongClick != null) {
             Modifier.combinedClickable(

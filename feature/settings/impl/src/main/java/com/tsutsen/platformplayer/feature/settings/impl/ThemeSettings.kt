@@ -10,6 +10,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -33,9 +36,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Card
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ElevatedButton
@@ -49,6 +51,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,11 +79,19 @@ import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PaletteStyle
 import com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle
 import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceBorder
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceContentColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
+import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 import com.tsutsen.platformplayer.core.designsystem.component.groupShape
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.LocalSurfaceSkins
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceSkin
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
@@ -387,6 +398,15 @@ private fun ThemeEditor(
                 .padding(horizontal = Tokens.SpaceLg),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
     ) {
+        // Same toggle-group chrome as the search tab's filters, at the very
+        // top of the sheet.
+        PillTabs(
+            labels = listOf("Palette", "Custom"),
+            selected = tab,
+            onSelect = { tab = it },
+            modifier = Modifier.fillMaxWidth(),
+        )
+
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
@@ -394,11 +414,6 @@ private fun ThemeEditor(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-
-        TabRow(selectedTabIndex = tab) {
-            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Palette") })
-            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Custom") })
-        }
 
         if (tab == 0) {
             Row(
@@ -485,14 +500,6 @@ private fun ThemeEditor(
                 )
             }
 
-            ThemePreview(
-                primary = primary,
-                secondary = secondary,
-                tertiary = tertiary,
-                background = background,
-                style = style,
-                contrast = contrast,
-            )
         } else {
             Text(
                 text = "Per-surface overrides — slots left empty use the palette scheme.",
@@ -513,6 +520,16 @@ private fun ThemeEditor(
                 }
             }
         }
+
+        ThemeComponentPreview(
+            primary = primary,
+            secondary = secondary,
+            tertiary = tertiary,
+            background = background,
+            style = style,
+            contrast = contrast,
+            surfaceStyles = surfaceStyles,
+        )
 
         Button(
             onClick = {
@@ -851,7 +868,7 @@ internal fun ColorPickerDialog(
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
                     (listOf(initialColor.toArgb()) + PresetColors)
                         .distinct()
-                        .chunked(8)
+                        .chunked(6)
                         .forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
                                 row.forEach { argb ->
@@ -1015,10 +1032,10 @@ private fun SurfaceStyleSlot(
 }
 
 /**
- * One surface slot's editor: container color, outline color + width, and an
- * uploaded texture (tiled over the color). Saving an all-default style
- * removes the slot override. Textures are copied into app storage under
- * [themeId] so they survive restarts.
+ * One surface slot's editor, as a 4-page carousel: Background / Outline /
+ * Text / Texture. Saving an all-default style removes the slot override.
+ * Textures are copied into app storage under [themeId] so they survive
+ * restarts.
  */
 @Composable
 private fun SurfaceSlotDialog(
@@ -1033,6 +1050,7 @@ private fun SurfaceSlotDialog(
     var colorArgb by remember { mutableStateOf(style?.colorArgb) }
     var outlineColorArgb by remember { mutableStateOf(style?.outlineColorArgb) }
     var outlineWidth by remember { mutableStateOf(style?.outlineWidthDp ?: 0f) }
+    var textColorArgb by remember { mutableStateOf(style?.textColorArgb) }
     var texturePath by remember { mutableStateOf(style?.texturePath) }
     val texture = texturePath?.let { rememberTextureThumbnail(it) }
 
@@ -1061,53 +1079,92 @@ private fun SurfaceSlotDialog(
         onDismissRequest = onDismiss,
         title = { Text("${SurfaceKeys.label(key)} style") },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Container color", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(Tokens.SpaceXs))
-                SwatchRow(
-                    selected = colorArgb,
-                    onSelect = { colorArgb = it },
-                )
-                Spacer(Modifier.height(Tokens.SpaceMd))
-                Text("Outline color", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(Tokens.SpaceXs))
-                SwatchRow(
-                    selected = outlineColorArgb,
-                    onSelect = { outlineColorArgb = it },
-                )
-                Spacer(Modifier.height(Tokens.SpaceMd))
-                Text("Outline width", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(Tokens.SpaceXs))
-                Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                    listOf("None" to 0f, "1 dp" to 1f, "2 dp" to 2f, "3 dp" to 3f).forEach { (label, width) ->
-                        TextButton(onClick = { outlineWidth = width }) {
-                            Text(
-                                label,
-                                color =
-                                    if (outlineWidth == width) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+            Column {
+                val pagerState = rememberPagerState { 4 }
+                HorizontalPager(state = pagerState, modifier = Modifier.height(330.dp)) { page ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.SpaceXs),
+                        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                    ) {
+                        when (page) {
+                            0 -> {
+                                Text("Container color", style = MaterialTheme.typography.labelLarge)
+                                SwatchRow(selected = colorArgb, onSelect = { colorArgb = it })
+                            }
+                            1 -> {
+                                Text("Outline color", style = MaterialTheme.typography.labelLarge)
+                                SwatchRow(selected = outlineColorArgb, onSelect = { outlineColorArgb = it })
+                                Spacer(Modifier.height(Tokens.SpaceSm))
+                                Text("Outline width", style = MaterialTheme.typography.labelLarge)
+                                Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+                                    listOf("None" to 0f, "1 dp" to 1f, "2 dp" to 2f, "3 dp" to 3f).forEach { (label, width) ->
+                                        TextButton(onClick = { outlineWidth = width }) {
+                                            Text(
+                                                label,
+                                                color =
+                                                    if (outlineWidth == width) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            2 -> {
+                                Text("Text color", style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    "Titles and icons on this surface.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                SwatchRow(selected = textColorArgb, onSelect = { textColorArgb = it })
+                            }
+                            else -> {
+                                Text("Texture", style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    "Tiles edge to edge over the container color.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.height(Tokens.SpaceSm))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                                ) {
+                                    if (texture != null) {
+                                        Image(
+                                            bitmap = texture,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.size(Tokens.AvatarLg).clip(MaterialTheme.shapes.small),
+                                        )
+                                    }
+                                    TextButton(onClick = { texPicker.launch("image/*") }) { Text("Upload") }
+                                    if (texturePath != null) {
+                                        TextButton(onClick = { texturePath = null }) { Text("Remove") }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-                Spacer(Modifier.height(Tokens.SpaceMd))
-                Text("Texture", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(Tokens.SpaceXs))
+                // Carousel position dots.
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
                 ) {
-                    if (texture != null) {
-                        Image(
-                            bitmap = texture,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(Tokens.AvatarMd).clip(MaterialTheme.shapes.small),
+                    repeat(4) { i ->
+                        Box(
+                            modifier =
+                                Modifier
+                                    .padding(horizontal = Tokens.SpaceXxs)
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (pagerState.currentPage == i) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    ),
                         )
-                    }
-                    TextButton(onClick = { texPicker.launch("image/*") }) { Text("Upload") }
-                    if (texturePath != null) {
-                        TextButton(onClick = { texturePath = null }) { Text("Remove") }
                     }
                 }
             }
@@ -1115,7 +1172,7 @@ private fun SurfaceSlotDialog(
         confirmButton = {
             TextButton(onClick = {
                 val s =
-                    if (colorArgb == null && outlineColorArgb == null && outlineWidth <= 0f && texturePath == null) {
+                    if (colorArgb == null && outlineColorArgb == null && outlineWidth <= 0f && texturePath == null && textColorArgb == null) {
                         null
                     } else {
                         SurfaceStyle(
@@ -1123,6 +1180,7 @@ private fun SurfaceSlotDialog(
                             outlineColorArgb = outlineColorArgb,
                             outlineWidthDp = outlineWidth.takeIf { it > 0f },
                             texturePath = texturePath,
+                            textColorArgb = textColorArgb,
                         )
                     }
                 onUpdate(s)
@@ -1142,7 +1200,7 @@ private fun SwatchRow(
     onSelect: (Long?) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-        PresetColors.chunked(8).forEach { row ->
+        PresetColors.chunked(6).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
                 row.forEach { argb ->
                     ColorSwatch(
@@ -1160,6 +1218,175 @@ private fun SwatchRow(
                     if (selected == null) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+/**
+ * Small live preview of how the theme looks ON COMPONENTS: a mini video
+ * card, settings row, option tile and sheet strip, rendered with the
+ * generated scheme + the theme's surface slots. Light and dark side by side.
+ */
+@Composable
+private fun ThemeComponentPreview(
+    primary: Int,
+    secondary: Int?,
+    tertiary: Int?,
+    background: Int?,
+    style: PaletteStyle,
+    contrast: Float,
+    surfaceStyles: Map<String, SurfaceStyle>,
+) {
+    val schemes =
+        remember(primary, secondary, tertiary, background, style, contrast) {
+            ThemeEngine.generate(primary, secondary, tertiary, style, background = background, contrast = contrast)
+        }
+    val skins =
+        remember(surfaceStyles) {
+            surfaceStyles.mapValues { (_, st) ->
+                SurfaceSkin(
+                    color = st.colorArgb?.let { Color(it) },
+                    outlineColor = st.outlineColorArgb?.let { Color(it) },
+                    outlineWidth = st.outlineWidthDp?.let { it.dp },
+                    texture = st.texturePath?.let { decodeTextureBitmap(it) },
+                    contentColor = st.textColorArgb?.let { Color(it) },
+                )
+            }
+        }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+        ComponentPreviewCard("Light", schemes.light, skins, Modifier.weight(1f))
+        ComponentPreviewCard("Dark", schemes.dark, skins, Modifier.weight(1f))
+    }
+}
+
+private fun decodeTextureBitmap(path: String): ImageBitmap? =
+    runCatching {
+        BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = 4 })?.asImageBitmap()
+    }.getOrNull()
+
+@Composable
+private fun ComponentPreviewCard(
+    title: String,
+    scheme: ColorScheme,
+    skins: Map<String, SurfaceSkin>,
+    modifier: Modifier = Modifier,
+) {
+    MaterialTheme(colorScheme = scheme) {
+        CompositionLocalProvider(LocalSurfaceSkins provides skins) {
+            Surface(color = scheme.surface, shape = MaterialTheme.shapes.medium, modifier = modifier) {
+                Column(
+                    modifier = Modifier.padding(Tokens.SpaceMd),
+                    verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant,
+                    )
+                    // Mini video card
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.VIDEO_CARD, scheme.surface)),
+                        shape = RoundedCornerShape(6.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = surfaceBorder(SurfaceKeys.VIDEO_CARD),
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .surfaceTexture(SurfaceKeys.VIDEO_CARD)
+                                    .padding(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(30.dp)
+                                        .background(scheme.surfaceContainerHighest, RoundedCornerShape(4.dp)),
+                            )
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth(0.75f)
+                                        .height(5.dp)
+                                        .background(surfaceContentColor(SurfaceKeys.VIDEO_CARD, scheme.onSurface).copy(alpha = 0.7f), RoundedCornerShape(3.dp)),
+                            )
+                        }
+                    }
+                    // Mini settings row
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, scheme.surfaceContainer)),
+                        shape = RoundedCornerShape(6.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = surfaceBorder(SurfaceKeys.SETTINGS_ROW),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Box(Modifier.size(14.dp).background(scheme.primary, CircleShape))
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height(5.dp)
+                                    .background(surfaceContentColor(SurfaceKeys.SETTINGS_ROW, scheme.onSurface).copy(alpha = 0.7f), RoundedCornerShape(3.dp)),
+                            )
+                            Box(Modifier.size(12.dp).background(scheme.primaryContainer, CircleShape))
+                        }
+                    }
+                    // Mini tile + sheet strip
+                    Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(surfaceColor(SurfaceKeys.TILE, scheme.surfaceContainer))
+                                    .surfaceTexture(SurfaceKeys.TILE)
+                                    .surfaceOutline(SurfaceKeys.TILE, RoundedCornerShape(6.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Box(Modifier.size(12.dp).background(surfaceContentColor(SurfaceKeys.TILE, scheme.primary), CircleShape))
+                                Box(
+                                    Modifier
+                                        .width(24.dp)
+                                        .height(4.dp)
+                                        .background(surfaceContentColor(SurfaceKeys.TILE, scheme.onSurface).copy(alpha = 0.7f), RoundedCornerShape(2.dp)),
+                                )
+                            }
+                        }
+                        Box(
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(surfaceColor(SurfaceKeys.SHEET, scheme.surfaceContainerLow))
+                                    .surfaceTexture(SurfaceKeys.SHEET)
+                                    .padding(8.dp),
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(0.6f)
+                                        .height(5.dp)
+                                        .background(surfaceContentColor(SurfaceKeys.SHEET, scheme.onSurface).copy(alpha = 0.7f), RoundedCornerShape(3.dp)),
+                                )
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(0.4f)
+                                        .height(5.dp)
+                                        .background(surfaceContentColor(SurfaceKeys.SHEET, scheme.onSurface).copy(alpha = 0.45f), RoundedCornerShape(3.dp)),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

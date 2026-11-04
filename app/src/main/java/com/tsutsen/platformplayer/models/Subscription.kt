@@ -100,6 +100,13 @@ class Subscription {
     }
 
     fun updateSubscriptionState(type: String, initialPage: List<IPlatformContent>) {
+        // Plugins occasionally report absurd datetimes (OffsetDateTime.MAX for
+        // scheduled/unknown streams). Stored as-is they permanently disable
+        // shouldFetch* (diff-days < 7/30) and starve the channel out of the
+        // "All subs" feed — only accept plausibly-past dates.
+        fun sane(dt: OffsetDateTime?): OffsetDateTime? =
+            dt?.takeIf { it.isBefore(OffsetDateTime.now().plusDays(1)) }
+
         val interval: Int;
         val mostRecent: OffsetDateTime?;
         if(!initialPage.isEmpty()) {
@@ -119,7 +126,7 @@ class Subscription {
             else
                 newestVideoDays;
             interval = averageDiff.coerceAtLeast(1);
-            mostRecent = initialPage[0].datetime;
+            mostRecent = sane(initialPage[0].datetime);
         }
         else {
             interval = 5;

@@ -50,6 +50,7 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
+import com.tsutsen.platformplayer.core.ui.LocalThumbnailSaturation
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
@@ -508,6 +509,7 @@ private fun BluejayMainActivity(
 
     CompositionLocalProvider(
         LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it) },
+        LocalThumbnailSaturation provides appearance.thumbnailSaturation,
     ) {
         BluejayTheme(
             darkTheme = darkTheme,

@@ -16,12 +16,13 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -35,9 +36,11 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
-import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
-import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceBorder
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceContentColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceSkin
 import kotlin.math.roundToInt
 import kotlin.ranges.ClosedFloatingPointRange
 
@@ -55,243 +58,29 @@ fun groupShape(position: GroupPosition): Shape {
 @Composable
 private fun iconTileShape() = RoundedCornerShape(BluejayTokens().radius.sm)
 
-/**
- * Settings card that opens a sub-screen or dialog. [enabled] = false greys
- * the card out and disables the tap (e.g. rows under a master toggle).
- */
+/** Skin-aware container color for all settings rows. */
 @Composable
-fun SettingsOptionCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    groupPosition: GroupPosition = GroupPosition.Single,
-    enabled: Boolean = true,
-) {
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .surfaceOutline(SurfaceKeys.SETTINGS_ROW, groupShape(groupPosition))
-                .clickable(enabled = enabled, onClick = onClick),
-        shape = groupShape(groupPosition),
-        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .alpha(if (enabled) 1f else 0.5f)
-                    .padding(Tokens.SpaceMd),
-            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(Tokens.AvatarMd)
-                        .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = iconTileShape(),
-                        ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(Tokens.IconMd),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
+private fun settingsCardColors() =
+    CardDefaults.cardColors(
+        containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer),
+    )
 
 /**
- * Settings card with a toggle switch. [enabled] = false greys the card out
- * and disables the switch (e.g. source toggles under a master toggle).
+ * Shared settings-row content: skin-aware text color, icon tile, title +
+ * subtitle, and the caller's trailing control.
  */
 @Composable
-fun SettingsSwitchCard(
+private fun SettingsContent(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    groupPosition: GroupPosition = GroupPosition.Single,
-    enabled: Boolean = true,
-) {
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .surfaceOutline(SurfaceKeys.SETTINGS_ROW, groupShape(groupPosition)),
-        shape = groupShape(groupPosition),
-        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .alpha(if (enabled) 1f else 0.5f)
-                    .padding(Tokens.SpaceMd),
-            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(Tokens.AvatarMd)
-                        .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = iconTileShape(),
-                        ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(Tokens.IconMd),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                enabled = enabled,
-            )
-        }
-    }
-}
-
-/**
- * Settings card with a slider, for user-tunable numeric settings
- * (e.g. UI rounding in Appearance).
- */
-@Composable
-fun SettingsSliderCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
-    steps: Int = 0,
-    onValueChange: (Float) -> Unit,
-    groupPosition: GroupPosition = GroupPosition.Single,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = groupShape(groupPosition),
-        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(modifier = Modifier.padding(Tokens.SpaceMd)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(Tokens.AvatarMd)
-                            .background(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = iconTileShape(),
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(Tokens.IconMd),
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = value.roundToInt().toString(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Slider(
-                value = value,
-                onValueChange = onValueChange,
-                valueRange = valueRange,
-                steps = steps,
-                modifier = Modifier.padding(top = Tokens.SpaceXs),
-            )
-        }
-    }
-}
-
-/**
- * Settings card with both a toggle switch and navigation (chevron):
- * tapping the card opens a sub-screen, the switch toggles a boolean.
- */
-@Composable
-fun SettingsSwitchOptionCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    onClick: () -> Unit,
     iconUrl: String? = null,
-    groupPosition: GroupPosition = GroupPosition.Single,
+    content: @Composable () -> Unit,
 ) {
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .surfaceOutline(SurfaceKeys.SETTINGS_ROW, groupShape(groupPosition))
-                .clickable(onClick = onClick),
-        shape = groupShape(groupPosition),
-        colors = CardDefaults.cardColors(containerColor = surfaceColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.surfaceContainer)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    val skinText = surfaceSkin(SurfaceKeys.SETTINGS_ROW).contentColor
+    CompositionLocalProvider(
+        LocalContentColor provides
+            surfaceContentColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.onSurface),
     ) {
         Row(
             modifier =
@@ -339,9 +128,188 @@ fun SettingsSwitchOptionCard(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = skinText?.copy(alpha = 0.65f) ?: MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            content()
+        }
+    }
+}
+
+/**
+ * Settings card that opens a sub-screen or dialog. [enabled] = false greys
+ * the card out and disables the tap (e.g. rows under a master toggle).
+ */
+@Composable
+fun SettingsOptionCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    groupPosition: GroupPosition = GroupPosition.Single,
+    enabled: Boolean = true,
+) {
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .alpha(if (enabled) 1f else 0.5f)
+                .clickable(enabled = enabled, onClick = onClick),
+        shape = groupShape(groupPosition),
+        colors = settingsCardColors(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = surfaceBorder(SurfaceKeys.SETTINGS_ROW),
+    ) {
+        SettingsContent(icon = icon, title = title, subtitle = subtitle) {
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * Settings card with a toggle switch. [enabled] = false greys the card out
+ * and disables the switch (e.g. source toggles under a master toggle).
+ */
+@Composable
+fun SettingsSwitchCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    groupPosition: GroupPosition = GroupPosition.Single,
+    enabled: Boolean = true,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = groupShape(groupPosition),
+        colors = settingsCardColors(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = surfaceBorder(SurfaceKeys.SETTINGS_ROW),
+    ) {
+        CompositionLocalProvider(
+            LocalContentColor provides
+                surfaceContentColor(SurfaceKeys.SETTINGS_ROW, MaterialTheme.colorScheme.onSurface),
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .alpha(if (enabled) 1f else 0.5f)
+                        .padding(Tokens.SpaceMd),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(Tokens.AvatarMd)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = iconTileShape(),
+                            ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(Tokens.IconMd),
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    enabled = enabled,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Settings card with a slider, for user-tunable numeric settings
+ * (e.g. UI rounding in Appearance).
+ */
+@Composable
+fun SettingsSliderCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
+    steps: Int = 0,
+    onValueChange: (Float) -> Unit,
+    groupPosition: GroupPosition = GroupPosition.Single,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = groupShape(groupPosition),
+        colors = settingsCardColors(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = surfaceBorder(SurfaceKeys.SETTINGS_ROW),
+    ) {
+        Column(modifier = Modifier.padding(Tokens.SpaceMd)) {
+            SettingsContent(icon = icon, title = title, subtitle = subtitle) {
+                Text(
+                    text = value.roundToInt().toString(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = valueRange,
+                steps = steps,
+                modifier = Modifier.padding(top = Tokens.SpaceXs),
+            )
+        }
+    }
+}
+
+/**
+ * Settings card with both a toggle switch and navigation (chevron):
+ * tapping the card opens a sub-screen, the switch toggles a boolean.
+ */
+@Composable
+fun SettingsSwitchOptionCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onClick: () -> Unit,
+    iconUrl: String? = null,
+    groupPosition: GroupPosition = GroupPosition.Single,
+) {
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+        shape = groupShape(groupPosition),
+        colors = settingsCardColors(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = surfaceBorder(SurfaceKeys.SETTINGS_ROW),
+    ) {
+        SettingsContent(icon = icon, title = title, subtitle = subtitle, iconUrl = iconUrl) {
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,

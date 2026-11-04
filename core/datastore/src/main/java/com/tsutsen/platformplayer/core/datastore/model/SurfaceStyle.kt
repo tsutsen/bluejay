@@ -19,4 +19,6 @@ data class SurfaceStyle(
     val outlineWidthDp: Float? = null,
     /** Texture image (copied into app files); drawn tiled over the color. */
     val texturePath: String? = null,
+    /** Text/icon color override (ARGB); null = theme default. */
+    val textColorArgb: Long? = null,
 )

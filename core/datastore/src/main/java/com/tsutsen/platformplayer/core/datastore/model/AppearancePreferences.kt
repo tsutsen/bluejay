@@ -14,6 +14,8 @@ data class AppearancePreferences(
     val activeThemeId: String? = null,
     /** Thumbnail tint overlay (ARGB incl. alpha); null = none. */
     val thumbnailTintArgb: Long? = null,
+    /** Thumbnail desaturation: 1 = full color, 0 = grayscale. */
+    val thumbnailSaturation: Float = 1f,
 )
 
 enum class ThemeMode { AUTO, LIGHT, DARK }
