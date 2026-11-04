@@ -35,6 +35,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.DownloadSection
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
 import com.tsutsen.platformplayer.core.designsystem.component.TileTone
+import com.tsutsen.platformplayer.core.designsystem.component.optionTileStackHeight
 import com.tsutsen.platformplayer.core.designsystem.component.tokenizedChipShapes
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
@@ -173,16 +174,17 @@ internal fun OptionsModal(
                         ),
                     modifier = Modifier.weight(1f),
                 )
-                // The download group takes the remaining slot in the
-                // tile's shape: the tile's outer gap around it, and its
-                // natural height (the segments mirror the tile's content
-                // stack) makes it exactly one tile tall.
+                // The download group takes the remaining slot in the tile's
+                // shape: the tile's outer gap around it and an explicit
+                // tile-stack height (the expressive M3 Button's max intrinsic
+                // overshoots its content — IntrinsicSize made the group
+                // measure ~3dp taller than the tiles in the same row).
                 Box(
                     modifier =
                         Modifier
                             .weight(1f)
                             .padding(Tokens.SpaceXs)
-                            .height(IntrinsicSize.Min),
+                            .height(optionTileStackHeight()),
                 ) {
                     DownloadSection(
                         state = downloadState,

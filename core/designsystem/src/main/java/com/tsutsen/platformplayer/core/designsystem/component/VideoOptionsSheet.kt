@@ -82,6 +82,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -394,16 +397,17 @@ fun VideoOptionsSheet(
             // tiles' height, so it reads as part of the grid instead of a
             // lone row underneath. A full tail (or no tail) gives the group
             // a row of its own.
-            // The group sits in the same slot a tile occupies: the
-            // tile's outer gap around it, and its natural height (the
-            // segments mirror the tile's content stack) makes it
-            // exactly one tile tall — no measurement needed.
+            // The group sits in the same slot a tile occupies: the tile's
+            // outer gap around it, and an explicit tile-stack height — the
+            // expressive M3 Button's max intrinsic overshoots its content by
+            // a few dp, so deriving the height through IntrinsicSize made the
+            // group measure ~3dp taller than the tiles in the same row.
             val downloadGroup: @Composable (Modifier) -> Unit = { modifier ->
                 Box(
                     modifier =
                         modifier
                             .padding(Tokens.SpaceXs)
-                            .height(IntrinsicSize.Min),
+                            .height(optionTileStackHeight()),
                 ) {
                     DownloadSection(
                         state = downloadState,
@@ -967,6 +971,36 @@ enum class TileTone {
 private val tileColorSpec = tween<Color>(200, easing = FastOutSlowInEasing)
 
 /**
+ * The REAL rendered height of one labelSmall line, measured with the same
+ * text pipeline the tile labels use. Don't assume the style's lineHeight
+ * applies — the label renders at its natural font height, and a slot sized
+ * from the style's lineHeight made the download group ~3dp taller than the
+ * tiles beside it.
+ */
+@Composable
+fun rememberOptionLabelLineHeight(): Dp {
+    val textMeasurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelSmall
+    val linePx =
+        remember(textMeasurer, style) {
+            textMeasurer
+                .measure(text = AnnotatedString("Ag"), style = style, maxLines = 1)
+                .size
+                .height
+        }
+    return with(LocalDensity.current) { linePx.toDp() }
+}
+
+/**
+ * Height of one option tile's content stack (inner padding + icon + spacer +
+ * one labelSmall line + inner padding) — the download group pins itself to
+ * this so its M3 Button measures exactly as tall as the tiles beside it.
+ */
+@Composable
+fun optionTileStackHeight(): Dp =
+    Tokens.SpaceMd + Tokens.IconMd + Tokens.SpaceSm + rememberOptionLabelLineHeight() + Tokens.SpaceMd
+
+/**
  * Registers the leading download action in the download group. A plain
  * [Button] (it's an action, not a state) with [ButtonGroupScope.weight] 1f:
  * it takes all the horizontal space left after the unweighted chevron
@@ -993,6 +1027,13 @@ private fun RowScope.downloadLeadingItem(
     onClick: () -> Unit,
 ) {
     val showBar = progress != null || indeterminate
+    // The label/progress slot must track the typography, not a fixed dp: the
+    // grid tiles (OptionTileView) size their label intrinsically from
+    // labelSmall (16sp lineHeight), so at system font scales ≠ 1.0 a 16dp
+    // slot makes this segment measure a couple dp taller than the tiles in
+    // the same row. Converting the lineHeight to dp keeps the two stacks
+    // identical at every scale.
+    val labelSlotHeight = rememberOptionLabelLineHeight()
     // Same expressive press-scale as the grid tiles (OptionTileView).
     val pressed by interactionSource.collectIsPressedAsState()
     val pressScale by
@@ -1030,7 +1071,7 @@ private fun RowScope.downloadLeadingItem(
                     // height of a labelSmall line: swapping them changes
                     // nothing about the segment's height.
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(Tokens.SpaceLg),
+                        modifier = Modifier.fillMaxWidth().height(labelSlotHeight),
                         contentAlignment = Alignment.Center,
                     ) {
                         // Fully qualified: inside the Column the scope-bound
@@ -1176,8 +1217,11 @@ fun DownloadSection(
             animationSpec = tileColorSpec,
             label = "download-content",
         )
+    // Plain Row: the caller pins the height (optionTileStackHeight), and
+    // IntrinsicSize.Max here would size the Row by the Button's max
+    // intrinsic — a few dp over its content (see the download group).
     Row(
-        modifier = modifier.height(IntrinsicSize.Max),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
     ) {
         downloadLeadingItem(
