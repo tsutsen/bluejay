@@ -97,6 +97,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 
 private const val TAG = "PlayerScreen"
@@ -206,6 +207,9 @@ fun PlayerView(
     // previewing). Drives the badge and the timeline playhead; cleared when
     // the scrub commits (SeekCommitted) or a new video loads.
     var seekPreviewMs by remember { mutableStateOf<Long?>(null) }
+    // The last committed hold-seek target, held on the playhead until the
+    // live position flow catches up (see the SeekCommitted handler).
+    var pendingSeekMs by remember { mutableStateOf<Long?>(null) }
 
 
     val playbackEngine = remember(viewModel) { viewModel.playbackEngine() }
@@ -570,6 +574,19 @@ fun PlayerView(
                 isScrubbing = false
                 scrubPositionMs = 0L
                 seekPreviewMs = null
+                pendingSeekMs = null
+            }
+
+            // Hold the committed hold-seek target on the playhead until the
+            // live position flow catches up: nulling the preview immediately
+            // flashes the old position for a frame while ExoPlayer applies
+            // the seek.
+            LaunchedEffect(pendingSeekMs) {
+                val target = pendingSeekMs ?: return@LaunchedEffect
+                withTimeoutOrNull(1_000) {
+                    viewModel.positionMs.first { kotlin.math.abs(it - target) <= 750 }
+                }
+                pendingSeekMs = null
             }
 
             val isMinimized = state.isMinimized
@@ -843,8 +860,12 @@ fun PlayerView(
                         }
 
                         is PlayerEvent.SeekCommitted -> {
-                            // The scrub settled: the live position flow takes
-                            // over from here on.
+                            // The scrub settled. Hand the target to the
+                            // pending holder (the playhead keeps showing it
+                            // until the live position catches up — nulling
+                            // the preview outright flashes the old position
+                            // for a frame while ExoPlayer applies the seek).
+                            pendingSeekMs = event.targetMs
                             seekPreviewMs = null
                         }
 
@@ -1143,7 +1164,7 @@ fun PlayerView(
                         badgeState = badgeState,
                         onBadgeSessionEnded = remember { { badgeState = GestureBadgeState() } },
                         scrubPositionMs = scrubPositionMs,
-                        seekPreviewMs = seekPreviewMs,
+                        seekPreviewMs = pendingSeekMs ?: seekPreviewMs,
                         subtitlesOn =
                             state.selectedSubtitle != "Off" && state.selectedSubtitle != "Auto",
                         onSubtitleToggle = remember { { viewModel.toggleSubtitles() } },

@@ -9,12 +9,14 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ClosedCaption
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -28,6 +30,8 @@ import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -56,8 +60,28 @@ internal fun PlayerNormalBottomOverlay(
     // Collected here — at the leaf — so the 10 Hz position ticks recompose
     // only this overlay, not the whole player screen.
     val currentPositionMs by positionMs.collectAsState(initial = positionMs.value)
+
+    // After the scrub releases, keep showing the scrub target: the live
+    // position is still the pre-seek value until ExoPlayer applies the seek,
+    // and switching over immediately flashes the playhead back to the old
+    // spot for a frame. The pending target clears once the live position
+    // lands on it (or after a timeout, so a failed seek can't pin it).
+    var pendingSeekMs by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(isScrubbing) {
+        if (isScrubbing) pendingSeekMs = null
+        else if (scrubPositionMs > 0L) pendingSeekMs = scrubPositionMs
+    }
+    LaunchedEffect(pendingSeekMs) {
+        val target = pendingSeekMs ?: return@LaunchedEffect
+        withTimeoutOrNull(1_000) {
+            snapshotFlow { currentPositionMs }
+                .first { kotlin.math.abs(it - target) <= 750 }
+        }
+        pendingSeekMs = null
+    }
+
     val effectivePositionMs =
-        seekPreviewMs ?: (if (isScrubbing) scrubPositionMs else currentPositionMs)
+        pendingSeekMs ?: seekPreviewMs ?: (if (isScrubbing) scrubPositionMs else currentPositionMs)
 
     Column(
         modifier =
