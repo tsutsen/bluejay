@@ -303,7 +303,7 @@ fun VideoCard(
                     minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurface),
                 )
 
                 // Meta line: author only — views and posted time live in the
@@ -313,7 +313,7 @@ fun VideoCard(
                     Text(
                         text = author,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurfaceVariant),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -389,7 +389,7 @@ fun VideoCardPills(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier.padding(Tokens.SpaceMd),
             )
         }
@@ -456,7 +456,7 @@ fun VideoCardFull(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurface),
             )
 
             // Push the meta row to the bottom edge.
@@ -469,7 +469,7 @@ fun VideoCardFull(
                 Text(
                     text = author ?: "",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurfaceVariant),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -478,7 +478,7 @@ fun VideoCardFull(
                     Text(
                         text = RelativeTime.format(publishedAt),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurfaceVariant),
                     )
                 }
             }
@@ -683,14 +683,14 @@ fun VideoCardShorts(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurface),
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = card.author ?: "",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurfaceVariant),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

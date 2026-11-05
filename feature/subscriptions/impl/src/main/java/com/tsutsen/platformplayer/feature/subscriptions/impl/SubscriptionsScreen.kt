@@ -108,7 +108,6 @@ fun SubscriptionsScreen(
     viewModel: SubscriptionsViewModel = hiltViewModel(),
     playerViewModel: PlayerViewModel = hiltViewModel(),
 ) {
-    android.util.Log.w("SubsDebug", "SubscriptionsScreen composed")
     val gridColumns by viewModel.gridColumns.collectAsState()
     // Paused while this keep-alive tab is hidden (LocalTabActive).
     val watchStates by playerViewModel.watchStates.collectAsActiveState(emptyMap())

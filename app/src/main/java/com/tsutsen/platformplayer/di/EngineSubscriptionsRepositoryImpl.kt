@@ -117,16 +117,12 @@ class EngineSubscriptionsRepositoryImpl
         }
 
         override suspend fun loadCreators() {
-            android.util.Log.w("SubsDebug", "loadCreators begin")
             Logger.i(TAG, "Loading creators...")
             try {
                 val creators = scanCreators()
-                android.util.Log.w("SubsDebug", "creators=${creators.size}")
                 _feed.update { it.copy(creators = creators) }
                 loadFeed()
-                android.util.Log.w("SubsDebug", "loadFeed returned")
             } catch (e: Exception) {
-                android.util.Log.w("SubsDebug", "loadCreators failed", e)
                 Logger.e(TAG, "Error loading creators", e)
             }
         }
@@ -205,11 +201,9 @@ class EngineSubscriptionsRepositoryImpl
         @Volatile private var historyByUrl: Map<String, HistoryEntity> = emptyMap()
 
         private suspend fun reload(updated: Boolean) {
-            android.util.Log.w("SubsDebug", "reload(updated=$updated)")
             _feed.update { it.copy(isLoading = true) }
             withContext(Dispatchers.IO) {
                 historyByUrl = historyDao.observeAll().first().associateBy { it.contentUrl }
-                android.util.Log.w("SubsDebug", "history loaded")
                 // Cache-first on the initial load (not pull-to-refresh): paint
                 // the last feed immediately, refresh in background, replace
                 // when fresh data lands.
@@ -219,13 +213,10 @@ class EngineSubscriptionsRepositoryImpl
                 }
                 try {
                     flow = newFlow(updated = updated)
-                    android.util.Log.w("SubsDebug", "flow created, loadInitial...")
                     flow!!.loadInitial()
-                    android.util.Log.w("SubsDebug", "Loaded ${flow!!.items.size} items")
                     Logger.i(TAG, "Loaded ${flow!!.items.size} items")
                     saveFeedCache(flow!!.items)
                 } catch (e: Exception) {
-                    android.util.Log.w("SubsDebug", "reload failed", e)
                     Logger.e(TAG, "Error loading feed", e)
                     // A failed refresh must not wipe a cache that's on screen.
                     if (cachedItems != null) {
