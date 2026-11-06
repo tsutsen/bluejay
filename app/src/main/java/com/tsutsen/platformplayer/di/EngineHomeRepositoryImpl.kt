@@ -602,16 +602,12 @@ class EngineHomeRepositoryImpl
                 }
                 if (filterWatched || filterStarted) {
                     val h = url?.let { history[it] } ?: return@filter true
-                    val duration = h.totalDurationMs
-                    // Same watched/started split as the subs feed chips:
-                    // watched = >= 95% of duration (position or watched time),
-                    // started = in progress but not finished.
-                    val watched =
-                        duration > 0 &&
-                            (h.lastPositionMs >= 0.95 * duration || h.watchedMs >= 0.95 * duration)
-                    val started = h.lastPositionMs > 0 && !watched
-                    if (filterWatched && watched) return@filter false
-                    if (filterStarted && started) return@filter false
+                    // Single watched/started rule (core:model WatchState).
+                    val state = com.tsutsen.platformplayer.core.model.WatchState.of(
+                        h.lastPositionMs, h.watchedMs, h.totalDurationMs,
+                    )
+                    if (filterWatched && state?.isWatched == true) return@filter false
+                    if (filterStarted && state != null && !state.isWatched) return@filter false
                 }
                 true
             }

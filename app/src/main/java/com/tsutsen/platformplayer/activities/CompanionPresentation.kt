@@ -7,11 +7,9 @@ import android.view.Display
 import android.view.ViewGroup
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
+import com.tsutsen.platformplayer.compose.BluejayAppThemeRoot
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -22,13 +20,6 @@ import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import com.tsutsen.platformplayer.compose.buildAppTypography
-import com.tsutsen.platformplayer.compose.rememberSurfaceSkins
-import com.tsutsen.platformplayer.core.ui.LocalThumbnailSaturation
-import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
-import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
-import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
-import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.feature.player.impl.HistoryTracker
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -111,46 +102,7 @@ class CompanionPresentation(
             // Gated on the real prefs: a default initial would render one
             // frame of default tokens, then the radius springs would animate
             // default→saved and overshoot into negative corner radii.
-            val prefsState by settingsRepository.preferences.collectAsState(initial = null)
-            val prefs = prefsState ?: return@setContent
-            val darkTheme =
-                when (prefs.appearance.themeMode) {
-                    ThemeMode.LIGHT -> false
-                    ThemeMode.DARK -> true
-                    ThemeMode.AUTO -> isSystemInDarkTheme()
-                }
-            val appearance = prefs.appearance
-            val activeTheme =
-                appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
-            val customSchemes =
-                remember(activeTheme) {
-                    activeTheme?.let {
-                        ThemeEngine.generate(
-                            it.primary,
-                            it.secondary,
-                            it.tertiary,
-                            it.paletteStyle,
-                            background = it.background,
-                            contrast = it.contrast,
-                        )
-                    }
-                }
-
-            CompositionLocalProvider(
-                LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it) },
-                LocalThumbnailSaturation provides appearance.thumbnailSaturation,
-            ) {
-                BluejayTheme(
-                darkTheme = darkTheme,
-                dynamicColor = appearance.dynamicColor,
-                uiRounding = appearance.uiRounding,
-                colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
-                typography =
-                    remember(appearance.fontFamily, appearance.fontSizeScale) {
-                        buildAppTypography(appearance.fontFamily, appearance.fontSizeScale)
-                    },
-                surfaceSkins = rememberSurfaceSkins(appearance),
-            ) {
+            BluejayAppThemeRoot(settingsRepository) { prefs ->
                 CompanionContent(
                     playerRepository = playerRepository,
                     libraryRepository = libraryRepository,
@@ -167,7 +119,6 @@ class CompanionPresentation(
                     onPlaylistClick = onPlaylistClick,
                     onWatchStats = onWatchStats,
                 )
-                }
             }
         }
     }

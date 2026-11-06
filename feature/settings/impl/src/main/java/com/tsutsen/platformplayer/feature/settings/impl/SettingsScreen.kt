@@ -341,10 +341,10 @@ fun SettingsSectionScreen(
                             "Light" to "LIGHT",
                             "Dark" to "DARK",
                         ),
-                    selected = it.appearance.themeMode.name,
+                    selected = it.prefs.appearance.themeMode.name,
                     onSelected = { value ->
                         viewModel.updateAppearance(
-                            it.appearance.copy(themeMode = ThemeMode.valueOf(value)),
+                            it.prefs.appearance.copy(themeMode = ThemeMode.valueOf(value)),
                         )
                         selectedChoice = null
                     },
@@ -363,7 +363,7 @@ fun SettingsSectionScreen(
                             "3 columns" to "3",
                             "4 columns" to "4",
                         ),
-                    selected = it.gridColumns.toString(),
+                    selected = it.prefs.gridColumns.toString(),
                     onSelected = { value ->
                         viewModel.updateGeneral("gridColumns", value.toInt())
                         selectedChoice = null
@@ -384,7 +384,7 @@ fun SettingsSectionScreen(
                             "Serif" to "serif",
                             "Monospace" to "mono",
                         ),
-                    selected = it.subtitle.font,
+                    selected = it.prefs.subtitle.font,
                     onSelected = { value ->
                         viewModel.updateGeneral("subtitleFont", value)
                         selectedChoice = null
@@ -398,7 +398,7 @@ fun SettingsSectionScreen(
             loaded?.let {
                 StepperDialog(
                     title = "Subtitle size",
-                    value = it.subtitle.size,
+                    value = it.prefs.subtitle.size,
                     step = 1,
                     min = 8,
                     max = 32,
@@ -416,7 +416,7 @@ fun SettingsSectionScreen(
             loaded?.let {
                 StepperDialog(
                     title = "Subtitle bottom padding",
-                    value = it.subtitle.bottomPadding,
+                    value = it.prefs.subtitle.bottomPadding,
                     step = 4,
                     min = 0,
                     max = 80,
@@ -434,7 +434,7 @@ fun SettingsSectionScreen(
             loaded?.let {
                 StepperDialog(
                     title = "Subtitle outline",
-                    value = it.subtitle.outline,
+                    value = it.prefs.subtitle.outline,
                     step = 1,
                     min = 0,
                     max = 6,
@@ -453,20 +453,20 @@ fun SettingsSectionScreen(
                 ReorderDialog(
                     title = "Pages",
                     items =
-                        (it.dualScreenPages + (dualPageNames.keys - it.dualScreenPages))
+                        (it.prefs.dualScreenPages + (dualPageNames.keys - it.prefs.dualScreenPages))
                             .map { id -> id to (dualPageNames[id] ?: id) },
                     // The saved list is membership + order; the dialog shows all
                     // known pages, so filter the new order back to the enabled set.
                     onChange = { newOrder ->
                         viewModel.setDualScreenPages(
-                            newOrder.filter { id -> id in it.dualScreenPages },
+                            newOrder.filter { id -> id in it.prefs.dualScreenPages },
                         )
                     },
                     onDismiss = { selectedChoice = null },
-                    enabledIds = it.dualScreenPages,
+                    enabledIds = it.prefs.dualScreenPages,
                     onToggleEnabled = { key, checked ->
                         viewModel.setDualScreenPages(
-                            if (checked) it.dualScreenPages + key else it.dualScreenPages - key,
+                            if (checked) it.prefs.dualScreenPages + key else it.prefs.dualScreenPages - key,
                         )
                     },
                 )
@@ -478,16 +478,16 @@ fun SettingsSectionScreen(
                 ReorderDialog(
                     title = "Video tabs",
                     items =
-                        it.dualScreenVideoTabOrder
+                        it.prefs.dualScreenVideoTabOrder
                             .map { id -> id to (dualTabNames[id] ?: id) },
                     onChange = { newOrder -> viewModel.setDualScreenVideoTabOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
                     // One popup for both order and visibility: the checkbox
                     // toggles the tab's enabled state.
-                    enabledIds = it.dualScreenVideoTabs,
+                    enabledIds = it.prefs.dualScreenVideoTabs,
                     onToggleEnabled = { key, checked ->
                         viewModel.setDualScreenVideoTabs(
-                            if (checked) it.dualScreenVideoTabs + key else it.dualScreenVideoTabs - key,
+                            if (checked) it.prefs.dualScreenVideoTabs + key else it.prefs.dualScreenVideoTabs - key,
                         )
                     },
                 )
@@ -499,7 +499,7 @@ fun SettingsSectionScreen(
                 ReorderDialog(
                     title = "Video page order",
                     items =
-                        it.dualScreenPageOrder
+                        it.prefs.dualScreenPageOrder
                             .map { id -> id to (dualPageOrderNames[id] ?: id) },
                     onChange = { newOrder -> viewModel.setDualScreenPageOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
@@ -516,7 +516,7 @@ fun SettingsSectionScreen(
                             "This week" to "week",
                             "Overall" to "overall",
                         ),
-                    selected = it.dualScreenTopCreatorsScope,
+                    selected = it.prefs.dualScreenTopCreatorsScope,
                     onSelected = { value ->
                         viewModel.setDualScreenTopCreatorsScope(value)
                         selectedChoice = null
@@ -531,7 +531,7 @@ fun SettingsSectionScreen(
                 ReorderDialog(
                     title = "Dash page order",
                     items =
-                        it.dualScreenDashPageOrder
+                        it.prefs.dualScreenDashPageOrder
                             .map { id -> id to (dashPageOrderNames[id] ?: id) },
                     onChange = { newOrder -> viewModel.setDualScreenDashPageOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
@@ -542,11 +542,11 @@ fun SettingsSectionScreen(
         Choice.DUAL_SLOTS -> {
             loaded?.let {
                 SlotsDialog(
-                    slots = it.dualScreenLibrarySlots,
+                    slots = it.prefs.dualScreenLibrarySlots,
                     sectionNames = librarySectionNames,
                     playlists = playlists,
                     onSetSlot = { index, value ->
-                        val current = it.dualScreenLibrarySlots
+                        val current = it.prefs.dualScreenLibrarySlots
                         val newList = (0 until 4).map { i -> current.getOrNull(i) ?: "watch_later" }.toMutableList()
                         newList[index] = value
                         viewModel.setDualScreenLibrarySlots(newList)
@@ -561,10 +561,10 @@ fun SettingsSectionScreen(
                 MultiSelectDialog(
                     title = "Feed sources",
                     options = enabledSources.map { it.name to it.id },
-                    selected = it.dualScreenFeedSources,
+                    selected = it.prefs.dualScreenFeedSources,
                     onToggle = { id, checked ->
                         viewModel.setDualScreenFeedSources(
-                            if (checked) it.dualScreenFeedSources + id else it.dualScreenFeedSources - id,
+                            if (checked) it.prefs.dualScreenFeedSources + id else it.prefs.dualScreenFeedSources - id,
                         )
                     },
                     onDismiss = { selectedChoice = null },
@@ -576,13 +576,13 @@ fun SettingsSectionScreen(
             loaded?.let {
                 ReorderDialog(
                     title = "Library sections",
-                    items = it.librarySectionOrder.map { id -> id to (librarySectionNames[id] ?: id) },
+                    items = it.prefs.librarySectionOrder.map { id -> id to (librarySectionNames[id] ?: id) },
                     onChange = { newOrder -> viewModel.setLibrarySectionOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
-                    enabledIds = it.librarySectionsEnabled,
+                    enabledIds = it.prefs.librarySectionsEnabled,
                     onToggleEnabled = { key, checked ->
                         viewModel.setLibrarySectionsEnabled(
-                            if (checked) it.librarySectionsEnabled + key else it.librarySectionsEnabled - key,
+                            if (checked) it.prefs.librarySectionsEnabled + key else it.prefs.librarySectionsEnabled - key,
                         )
                     },
                 )
@@ -596,7 +596,7 @@ fun SettingsSectionScreen(
                     title = "Tab order",
                     // The saved list is the order; show all known tabs, missing keys appended.
                     items =
-                        (it.dockTabOrder + (names.keys - it.dockTabOrder))
+                        (it.prefs.dockTabOrder + (names.keys - it.prefs.dockTabOrder))
                             .map { id -> id to (names[id] ?: id) },
                     onChange = { newOrder -> viewModel.setDockTabOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
@@ -609,7 +609,7 @@ fun SettingsSectionScreen(
                 ChoiceDialog(
                     title = "Default tab",
                     options = bluejayNavItems.map { it.label to it.key },
-                    selected = it.defaultDockTab,
+                    selected = it.prefs.defaultDockTab,
                     onSelected = { value ->
                         viewModel.setDefaultDockTab(value)
                         selectedChoice = null
@@ -629,7 +629,7 @@ fun SettingsSectionScreen(
                             "Alphabetical" to "alphabetical",
                             "Random" to "random",
                         ),
-                    selected = it.subscriptionsOrder,
+                    selected = it.prefs.subscriptionsOrder,
                     onSelected = { value ->
                         viewModel.setSubscriptionsOrder(value)
                         selectedChoice = null
@@ -652,7 +652,7 @@ fun SettingsSectionScreen(
                             "3 years" to "3y",
                             "Any time" to "any",
                         ),
-                    selected = it.recency,
+                    selected = it.prefs.recency,
                     onSelected = { value ->
                         viewModel.setRecency(value)
                         selectedChoice = null
@@ -673,7 +673,7 @@ fun SettingsSectionScreen(
                             "Roboto" to "ROBOTO",
                             "Open Sans" to "OPEN_SANS",
                         ),
-                    selected = it.appearance.fontFamily.name,
+                    selected = it.prefs.appearance.fontFamily.name,
                     onSelected = { value ->
                         viewModel.setFontFamily(
                             com.tsutsen.platformplayer.core.datastore.model.FontFamily.valueOf(value),
@@ -688,7 +688,7 @@ fun SettingsSectionScreen(
         Choice.THUMBNAIL_TINT -> {
             loaded?.let {
                 ThumbnailTintDialog(
-                    current = it.appearance.thumbnailTintArgb,
+                    current = it.prefs.appearance.thumbnailTintArgb,
                     onPick = { argb ->
                         viewModel.setThumbnailTint(argb)
                         selectedChoice = null
@@ -709,7 +709,7 @@ fun SettingsSectionScreen(
                             "3x" to "3.0",
                             "4x" to "4.0",
                         ),
-                    selected = it.defaultSpeedup.toString(),
+                    selected = it.prefs.defaultSpeedup.toString(),
                     onSelected = { value ->
                         viewModel.updateGeneral("defaultSpeedup", value.toFloat())
                         selectedChoice = null
@@ -730,7 +730,7 @@ fun SettingsSectionScreen(
                             "High" to "1.5",
                             "Very high" to "2.0",
                         ),
-                    selected = it.speedupSensitivity.toString(),
+                    selected = it.prefs.speedupSensitivity.toString(),
                     onSelected = { value ->
                         viewModel.updateGeneral("speedupSensitivity", value.toFloat())
                         selectedChoice = null
@@ -752,7 +752,7 @@ fun SettingsSectionScreen(
                             "10s" to "10",
                             "30s" to "30",
                         ),
-                    selected = it.jumpStepSeconds.toString(),
+                    selected = it.prefs.jumpStepSeconds.toString(),
                     onSelected = { value ->
                         viewModel.updateGeneral("jumpStepSeconds", value.toInt())
                         selectedChoice = null
@@ -775,7 +775,7 @@ fun SettingsSectionScreen(
                             "720p" to "720p",
                             "1080p" to "1080p",
                         ),
-                    selected = it.defaultVideoResolution,
+                    selected = it.prefs.defaultVideoResolution,
                     onSelected = { value ->
                         viewModel.updateGeneral("defaultVideoResolution", value)
                         selectedChoice = null
@@ -799,9 +799,9 @@ fun SettingsSectionScreen(
                             "45s" to "45",
                             "60s" to "60",
                         ),
-                    selected = it.controller.seekBackSeconds.toString(),
+                    selected = it.prefs.controller.seekBackSeconds.toString(),
                     onSelected = { value ->
-                        viewModel.setController(it.controller.copy(seekBackSeconds = value.toInt()))
+                        viewModel.setController(it.prefs.controller.copy(seekBackSeconds = value.toInt()))
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -823,9 +823,9 @@ fun SettingsSectionScreen(
                             "45s" to "45",
                             "60s" to "60",
                         ),
-                    selected = it.controller.seekForwardSeconds.toString(),
+                    selected = it.prefs.controller.seekForwardSeconds.toString(),
                     onSelected = { value ->
-                        viewModel.setController(it.controller.copy(seekForwardSeconds = value.toInt()))
+                        viewModel.setController(it.prefs.controller.copy(seekForwardSeconds = value.toInt()))
                         selectedChoice = null
                     },
                     onDismiss = { selectedChoice = null },
@@ -845,7 +845,7 @@ fun SettingsSectionScreen(
                             "360p" to "360p",
                             "144p" to "144p",
                         ),
-                    selected = it.defaultDownloadResolution,
+                    selected = it.prefs.defaultDownloadResolution,
                     onSelected = { value ->
                         viewModel.updateGeneral("defaultDownloadResolution", value)
                         selectedChoice = null
@@ -864,9 +864,9 @@ fun SettingsSectionScreen(
             onBound = { keyCode, deviceName ->
                 (uiState as? SettingsUiState.Loaded)?.let { current ->
                     viewModel.setController(
-                        current.controller.copy(
+                        current.prefs.controller.copy(
                             mappings =
-                                current.controller.mappings +
+                                current.prefs.controller.mappings +
                                     (binding.id to ControllerBinding(keyCode = keyCode, deviceName = deviceName)),
                         ),
                     )
@@ -876,7 +876,7 @@ fun SettingsSectionScreen(
             onClear = {
                 (uiState as? SettingsUiState.Loaded)?.let { current ->
                     viewModel.setController(
-                        current.controller.copy(mappings = current.controller.mappings - binding.id),
+                        current.prefs.controller.copy(mappings = current.prefs.controller.mappings - binding.id),
                     )
                 }
                 bindingAction = null
@@ -1095,7 +1095,7 @@ private fun SectionItems(
                         icon = Icons.Filled.BrightnessAuto,
                         title = "Mode",
                         subtitle =
-                            when (state.appearance.themeMode) {
+                            when (state.prefs.appearance.themeMode) {
                                 ThemeMode.AUTO -> "Follow system"
                                 ThemeMode.LIGHT -> "Light"
                                 ThemeMode.DARK -> "Dark"
@@ -1107,7 +1107,7 @@ private fun SectionItems(
                         icon = Icons.Filled.Palette,
                         title = "Dynamic color",
                         subtitle = "Material You colors from wallpaper",
-                        checked = state.appearance.dynamicColor,
+                        checked = state.prefs.appearance.dynamicColor,
                         onCheckedChange = { viewModel.updateGeneral("dynamicColor", it) },
                         groupPosition = GroupPosition.Middle,
                     )
@@ -1115,7 +1115,7 @@ private fun SectionItems(
                         icon = Icons.Filled.RoundedCorner,
                         title = "UI rounding",
                         subtitle = "Corner radius across the app",
-                        value = state.appearance.uiRounding.toFloat(),
+                        value = state.prefs.appearance.uiRounding.toFloat(),
                         // Minimum 5: at 0 the radii (and the derived grid
                         // gaps) would go fully sharp, which the app no longer
                         // supports as a look.
@@ -1130,15 +1130,15 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.TextFields,
                         title = "Font",
-                        subtitle = fontFamilyLabel(state.appearance.fontFamily),
+                        subtitle = fontFamilyLabel(state.prefs.appearance.fontFamily),
                         onClick = { onChoiceSelected(Choice.FONT) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsSliderCard(
                         icon = Icons.Filled.FormatSize,
                         title = "Font size",
-                        subtitle = "Scales all text (${(state.appearance.fontSizeScale * 100).roundToInt()}%)",
-                        value = state.appearance.fontSizeScale * 100f,
+                        subtitle = "Scales all text (${(state.prefs.appearance.fontSizeScale * 100).roundToInt()}%)",
+                        value = state.prefs.appearance.fontSizeScale * 100f,
                         valueRange = 80f..140f,
                         onValueChange = { viewModel.setFontSizeScale(it / 100f) },
                         groupPosition = GroupPosition.Middle,
@@ -1146,14 +1146,14 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.GridOn,
                         title = "Grid columns",
-                        subtitle = "${state.gridColumns} columns",
+                        subtitle = "${state.prefs.gridColumns} columns",
                         onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
                         groupPosition = GroupPosition.Last,
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader("Themes")
-                    ThemesSection(state.appearance, viewModel)
+                    ThemesSection(state.prefs.appearance, viewModel)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader("Thumbnails")
@@ -1161,7 +1161,7 @@ private fun SectionItems(
                         icon = Icons.Filled.Palette,
                         title = "Tint",
                         subtitle =
-                            if (state.appearance.thumbnailTintArgb == null) "None"
+                            if (state.prefs.appearance.thumbnailTintArgb == null) "None"
                             else "Custom color wash",
                         onClick = { onChoiceSelected(Choice.THUMBNAIL_TINT) },
                         groupPosition = GroupPosition.First,
@@ -1170,7 +1170,7 @@ private fun SectionItems(
                         icon = Icons.Filled.BrightnessAuto,
                         title = "Desaturate",
                         subtitle = "Color intensity of every thumbnail",
-                        value = (1f - state.appearance.thumbnailSaturation) * 100f,
+                        value = (1f - state.prefs.appearance.thumbnailSaturation) * 100f,
                         valueRange = 0f..100f,
                         onValueChange = { viewModel.setThumbnailSaturation(1f - it / 100f) },
                         groupPosition = GroupPosition.Last,
@@ -1192,7 +1192,7 @@ private fun SectionItems(
                         icon = Icons.Filled.SystemUpdateAlt,
                         title = "Auto-update plugins",
                         subtitle = "Check for and install plugin updates on launch",
-                        checked = state.autoUpdatePlugins,
+                        checked = state.prefs.autoUpdatePlugins,
                         onCheckedChange = { viewModel.updateGeneral("autoUpdatePlugins", it) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1202,8 +1202,8 @@ private fun SectionItems(
                         title = "Video page",
                         reset =
                             if (
-                                state.showRecommendedVideos != defaults.showRecommendedVideos ||
-                                state.showComments != defaults.showComments
+                                state.prefs.showRecommendedVideos != defaults.showRecommendedVideos ||
+                                state.prefs.showComments != defaults.showComments
                             ) {
                                 {
                                     viewModel.updateGeneral(
@@ -1220,7 +1220,7 @@ private fun SectionItems(
                         icon = Icons.Filled.PlayCircle,
                         title = "Autoplay",
                         subtitle = "Play the next video in the queue when the current one ends",
-                        checked = state.autoplay,
+                        checked = state.prefs.playback.autoPlay,
                         onCheckedChange = { viewModel.setAutoplay(it) },
                         groupPosition = GroupPosition.First,
                     )
@@ -1228,7 +1228,7 @@ private fun SectionItems(
                         icon = VideoTemplate,
                         title = "Show recommended videos",
                         subtitle = "Recommended tab on the video page",
-                        checked = state.showRecommendedVideos,
+                        checked = state.prefs.showRecommendedVideos,
                         onCheckedChange = { viewModel.updateGeneral("showRecommendedVideos", it) },
                         groupPosition = GroupPosition.Middle,
                     )
@@ -1236,7 +1236,7 @@ private fun SectionItems(
                         icon = Icons.Filled.Chat,
                         title = "Show comments",
                         subtitle = "Comments tab on the video page",
-                        checked = state.showComments,
+                        checked = state.prefs.showComments,
                         onCheckedChange = { viewModel.updateGeneral("showComments", it) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1246,8 +1246,8 @@ private fun SectionItems(
                         title = "Library",
                         reset =
                             if (
-                                state.librarySectionOrder != defaults.librarySectionOrder ||
-                                state.librarySectionsEnabled != defaults.librarySectionsEnabled
+                                state.prefs.librarySectionOrder != defaults.librarySectionOrder ||
+                                state.prefs.librarySectionsEnabled != defaults.librarySectionsEnabled
                             ) {
                                 {
                                     viewModel.setLibrarySectionOrder(defaults.librarySectionOrder)
@@ -1271,8 +1271,8 @@ private fun SectionItems(
                         title = "Home feed",
                         reset =
                             if (
-                                state.showWatchedVideos != defaults.showWatchedVideos ||
-                                state.showStartedVideos != defaults.showStartedVideos
+                                state.prefs.showWatchedVideos != defaults.showWatchedVideos ||
+                                state.prefs.showStartedVideos != defaults.showStartedVideos
                             ) {
                                 {
                                     viewModel.setShowWatchedVideos(defaults.showWatchedVideos)
@@ -1286,7 +1286,7 @@ private fun SectionItems(
                         icon = Icons.Filled.Visibility,
                         title = "Show watched videos",
                         subtitle = "Hide fully watched videos from the home feed",
-                        checked = state.showWatchedVideos,
+                        checked = state.prefs.showWatchedVideos,
                         onCheckedChange = { viewModel.setShowWatchedVideos(it) },
                         groupPosition = GroupPosition.First,
                     )
@@ -1294,7 +1294,7 @@ private fun SectionItems(
                         icon = Icons.Filled.History,
                         title = "Show started videos",
                         subtitle = "Hide partially watched videos from the home feed",
-                        checked = state.showStartedVideos,
+                        checked = state.prefs.showStartedVideos,
                         onCheckedChange = { viewModel.setShowStartedVideos(it) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1305,7 +1305,7 @@ private fun SectionItems(
                         icon = Icons.Filled.RssFeed,
                         title = "Homebrew recommendations",
                         subtitle = "Build the home feed from the sources below",
-                        checked = state.homebrewRecommendations,
+                        checked = state.prefs.homebrewRecommendations,
                         onCheckedChange = { viewModel.setHomebrewRecommendations(it) },
                         groupPosition = GroupPosition.First,
                     )
@@ -1313,44 +1313,44 @@ private fun SectionItems(
                         icon = Icons.Filled.PlayCircle,
                         title = "Source picks",
                         subtitle = "Home feed from your sources",
-                        checked = state.sourceYoutubeFeed,
+                        checked = state.prefs.sourceYoutubeFeed,
                         onCheckedChange = { viewModel.setSourceYoutubeFeed(it) },
-                        enabled = state.homebrewRecommendations,
+                        enabled = state.prefs.homebrewRecommendations,
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.Subscriptions,
                         title = "Subscriptions",
                         subtitle = "Recent unwatched videos from subscribed channels",
-                        checked = state.sourceSubscriptions,
+                        checked = state.prefs.sourceSubscriptions,
                         onCheckedChange = { viewModel.setSourceSubscriptions(it) },
-                        enabled = state.homebrewRecommendations,
+                        enabled = state.prefs.homebrewRecommendations,
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.Groups,
                         title = "Top creators",
                         subtitle = "Recent unwatched videos from creators you watch most",
-                        checked = state.sourceTopCreators,
+                        checked = state.prefs.sourceTopCreators,
                         onCheckedChange = { viewModel.setSourceTopCreators(it) },
-                        enabled = state.homebrewRecommendations,
+                        enabled = state.prefs.homebrewRecommendations,
                         groupPosition = GroupPosition.Middle,
                     )
                     SpawnProbabilityCard(
-                        enabled = state.homebrewRecommendations,
-                        cut1 = state.probCut1,
-                        cut2 = state.probCut2,
-                        sourceYoutubeFeed = state.sourceYoutubeFeed,
-                        sourceSubscriptions = state.sourceSubscriptions,
-                        sourceTopCreators = state.sourceTopCreators,
+                        enabled = state.prefs.homebrewRecommendations,
+                        cut1 = state.prefs.probCut1,
+                        cut2 = state.prefs.probCut2,
+                        sourceYoutubeFeed = state.prefs.sourceYoutubeFeed,
+                        sourceSubscriptions = state.prefs.sourceSubscriptions,
+                        sourceTopCreators = state.prefs.sourceTopCreators,
                         onCutsChange = { cut1, cut2 -> viewModel.setProbCuts(cut1, cut2) },
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.History,
                         title = "Recency",
-                        subtitle = recencyLabel(state.recency),
+                        subtitle = recencyLabel(state.prefs.recency),
                         onClick = { onChoiceSelected(Choice.RECENCY) },
-                        enabled = state.homebrewRecommendations,
+                        enabled = state.prefs.homebrewRecommendations,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.VisibilityOff,
@@ -1364,8 +1364,8 @@ private fun SectionItems(
                         title = "Dock",
                         reset =
                             if (
-                                state.dockTabOrder != defaults.dockTabOrder ||
-                                state.defaultDockTab != defaults.defaultDockTab
+                                state.prefs.dockTabOrder != defaults.dockTabOrder ||
+                                state.prefs.defaultDockTab != defaults.defaultDockTab
                             ) {
                                 {
                                     viewModel.setDockTabOrder(defaults.dockTabOrder)
@@ -1386,7 +1386,7 @@ private fun SectionItems(
                         icon = Icons.Filled.PlayCircle,
                         title = "Default tab",
                         subtitle =
-                            bluejayNavItems.firstOrNull { it.key == state.defaultDockTab }?.label
+                            bluejayNavItems.firstOrNull { it.key == state.prefs.defaultDockTab }?.label
                                 ?: "Home",
                         onClick = { onChoiceSelected(Choice.DEFAULT_DOCK_TAB) },
                         groupPosition = GroupPosition.Last,
@@ -1396,7 +1396,7 @@ private fun SectionItems(
                     SettingsHeader(
                         title = "Subscriptions",
                         reset =
-                            if (state.subscriptionsOrder != defaults.subscriptionsOrder) {
+                            if (state.prefs.subscriptionsOrder != defaults.subscriptionsOrder) {
                                 { viewModel.setSubscriptionsOrder(defaults.subscriptionsOrder) }
                             } else {
                                 null
@@ -1406,7 +1406,7 @@ private fun SectionItems(
                         icon = Icons.Filled.Subscriptions,
                         title = "List order",
                         subtitle =
-                            when (state.subscriptionsOrder) {
+                            when (state.prefs.subscriptionsOrder) {
                                 "random" -> "Random"
                                 "alphabetical" -> "Alphabetical"
                                 else -> "Watch time"
@@ -1473,7 +1473,7 @@ private fun SectionItems(
                     SettingsHeader(
                         title = "Subtitles",
                         reset =
-                            if (state.subtitle != subtitlesDefault) {
+                            if (state.prefs.subtitle != subtitlesDefault) {
                                 {
                                     viewModel.updateGeneral("subtitleFont", subtitlesDefault.font)
                                     viewModel.updateGeneral(
@@ -1496,28 +1496,28 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.Subtitles,
                         title = "Subtitle font",
-                        subtitle = subtitleFontLabel(state.subtitle.font),
+                        subtitle = subtitleFontLabel(state.prefs.subtitle.font),
                         onClick = { onChoiceSelected(Choice.SUBTITLE_FONT) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.TextFields,
                         title = "Subtitle size",
-                        subtitle = "${state.subtitle.size} pt",
+                        subtitle = "${state.prefs.subtitle.size} pt",
                         onClick = { onChoiceSelected(Choice.SUBTITLE_SIZE) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.VerticalAlignBottom,
                         title = "Subtitle bottom padding",
-                        subtitle = "${state.subtitle.bottomPadding} dp",
+                        subtitle = "${state.prefs.subtitle.bottomPadding} dp",
                         onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.BorderStyle,
                         title = "Subtitle outline",
-                        subtitle = "${state.subtitle.outline} px",
+                        subtitle = "${state.prefs.subtitle.outline} px",
                         onClick = { onChoiceSelected(Choice.SUBTITLE_OUTLINE) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1527,8 +1527,8 @@ private fun SectionItems(
                         title = "Quality",
                         reset =
                             if (
-                                state.defaultVideoResolution != defaults.defaultVideoResolution ||
-                                state.defaultDownloadResolution != defaults.defaultDownloadResolution
+                                state.prefs.defaultVideoResolution != defaults.defaultVideoResolution ||
+                                state.prefs.defaultDownloadResolution != defaults.defaultDownloadResolution
                             ) {
                                 {
                                     viewModel.updateGeneral(
@@ -1547,14 +1547,14 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.Hd,
                         title = "Default video resolution",
-                        subtitle = state.defaultVideoResolution,
+                        subtitle = state.prefs.defaultVideoResolution,
                         onClick = { onChoiceSelected(Choice.VIDEO_RESOLUTION) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Download,
                         title = "Default download resolution",
-                        subtitle = state.defaultDownloadResolution,
+                        subtitle = state.prefs.defaultDownloadResolution,
                         onClick = { onChoiceSelected(Choice.DOWNLOAD_RESOLUTION) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1568,21 +1568,21 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.Speed,
                         title = "Default playback speedup",
-                        subtitle = "${state.defaultSpeedup}x",
+                        subtitle = "${state.prefs.defaultSpeedup}x",
                         onClick = { onChoiceSelected(Choice.PLAYBACK_SPEED) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Speed,
                         title = "Speedup gesture speed",
-                        subtitle = "${state.speedupSensitivity}x",
+                        subtitle = "${state.prefs.speedupSensitivity}x",
                         onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Timer,
                         title = "Time jump step",
-                        subtitle = "${state.jumpStepSeconds}s",
+                        subtitle = "${state.prefs.jumpStepSeconds}s",
                         onClick = { onChoiceSelected(Choice.JUMP_STEP) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1593,7 +1593,7 @@ private fun SectionItems(
                         icon = Icons.Filled.Gesture,
                         title = "Fullscreen player gestures",
                         subtitle =
-                            if (state.playerGestures.fullscreen.isCustomized) {
+                            if (state.prefs.playerGestures.fullscreen.isCustomized) {
                                 "Customized"
                             } else {
                                 "Defaults"
@@ -1605,7 +1605,7 @@ private fun SectionItems(
                         icon = Icons.Filled.Gesture,
                         title = "Normal player gestures",
                         subtitle =
-                            if (state.playerGestures.normal.isCustomized) {
+                            if (state.prefs.playerGestures.normal.isCustomized) {
                                 "Customized"
                             } else {
                                 "Defaults"
@@ -1627,9 +1627,9 @@ private fun SectionItems(
                         headerAction =
                             if (
                                 (mode == PlayerGestures.MODE_FULLSCREEN &&
-                                    state.playerGestures.fullscreen.isCustomized) ||
+                                    state.prefs.playerGestures.fullscreen.isCustomized) ||
                                 (mode == PlayerGestures.MODE_NORMAL &&
-                                    state.playerGestures.normal.isCustomized)
+                                    state.prefs.playerGestures.normal.isCustomized)
                             ) {
                                 {
                                     TextButton(onClick = { viewModel.resetPlayerGestures(mode) }) {
@@ -1658,9 +1658,9 @@ private fun SectionItems(
                             mode = mode,
                             slotSet =
                                 if (mode == PlayerGestures.MODE_FULLSCREEN) {
-                                    state.playerGestures.fullscreen
+                                    state.prefs.playerGestures.fullscreen
                                 } else {
-                                    state.playerGestures.normal
+                                    state.prefs.playerGestures.normal
                                 },
                                 onCellChange = { slot, type, action ->
                                     viewModel.setPlayerGesturesCell(
@@ -1688,7 +1688,7 @@ private fun SectionItems(
                         icon = DualScreen,
                         title = "Dual screen",
                         subtitle = "Show video controls on the second screen",
-                        checked = state.dualScreen,
+                        checked = state.prefs.dualScreen,
                         onCheckedChange = { enabled ->
                             viewModel.updateGeneral("dualScreen", enabled)
                             // Device-wide brightness (both screens) needs the
@@ -1708,7 +1708,7 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.Layers,
                         title = "Pages",
-                        subtitle = dualListLabel(state.dualScreenPages, dualPageNames),
+                        subtitle = dualListLabel(state.prefs.dualScreenPages, dualPageNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1718,9 +1718,9 @@ private fun SectionItems(
                         title = "Dash page",
                         reset =
                             if (
-                                state.dualScreenTopCreatorsScope !=
+                                state.prefs.dualScreenTopCreatorsScope !=
                                     defaults.dualScreenTopCreatorsScope ||
-                                state.dualScreenDashPageOrder != defaults.dualScreenDashPageOrder
+                                state.prefs.dualScreenDashPageOrder != defaults.dualScreenDashPageOrder
                             ) {
                                 {
                                     viewModel.setDualScreenTopCreatorsScope(
@@ -1738,7 +1738,7 @@ private fun SectionItems(
                         icon = Icons.Filled.Groups,
                         title = "Top creators",
                         subtitle =
-                            if (state.dualScreenTopCreatorsScope == "overall") "Overall"
+                            if (state.prefs.dualScreenTopCreatorsScope == "overall") "Overall"
                             else "This week",
                         onClick = { onChoiceSelected(Choice.DASH_TOP_CREATORS) },
                         groupPosition = GroupPosition.First,
@@ -1746,7 +1746,7 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.Reorder,
                         title = "Dash page order",
-                        subtitle = dualOrderLabel(state.dualScreenDashPageOrder, dashPageOrderNames),
+                        subtitle = dualOrderLabel(state.prefs.dualScreenDashPageOrder, dashPageOrderNames),
                         onClick = { onChoiceSelected(Choice.DASH_PAGE_ORDER) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1756,8 +1756,8 @@ private fun SectionItems(
                         title = "Video page",
                         reset =
                             if (
-                                state.dualScreenVideoTabs != defaults.dualScreenVideoTabs ||
-                                state.dualScreenVideoTabOrder != defaults.dualScreenVideoTabOrder
+                                state.prefs.dualScreenVideoTabs != defaults.dualScreenVideoTabs ||
+                                state.prefs.dualScreenVideoTabOrder != defaults.dualScreenVideoTabOrder
                             ) {
                                 {
                                     viewModel.setDualScreenVideoTabs(defaults.dualScreenVideoTabs)
@@ -1772,14 +1772,14 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.Tab,
                         title = "Video tabs",
-                        subtitle = dualOrderLabel(state.dualScreenVideoTabOrder, dualTabNames),
+                        subtitle = dualOrderLabel(state.prefs.dualScreenVideoTabOrder, dualTabNames),
                         onClick = { onChoiceSelected(Choice.DUAL_TAB_ORDER) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = SplitscreenBottom,
                         title = "Video page order",
-                        subtitle = dualOrderLabel(state.dualScreenPageOrder, dualPageOrderNames),
+                        subtitle = dualOrderLabel(state.prefs.dualScreenPageOrder, dualPageOrderNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1788,7 +1788,7 @@ private fun SectionItems(
                     SettingsHeader(
                         title = "Playlists page",
                         reset =
-                            if (state.dualScreenLibrarySlots != defaults.dualScreenLibrarySlots) {
+                            if (state.prefs.dualScreenLibrarySlots != defaults.dualScreenLibrarySlots) {
                                 { viewModel.setDualScreenLibrarySlots(defaults.dualScreenLibrarySlots) }
                             } else {
                                 null
@@ -1797,7 +1797,7 @@ private fun SectionItems(
                     SettingsOptionCard(
                         icon = Icons.Filled.VideoLibrary,
                         title = "Library slots",
-                        subtitle = slotListLabel(state.dualScreenLibrarySlots, playlists),
+                        subtitle = slotListLabel(state.prefs.dualScreenLibrarySlots, playlists),
                         onClick = { onChoiceSelected(Choice.DUAL_SLOTS) },
                     )
                 }
@@ -1805,7 +1805,7 @@ private fun SectionItems(
                     SettingsHeader(
                         title = "Home page",
                         reset =
-                            if (state.dualScreenFeedSources.isNotEmpty()) {
+                            if (state.prefs.dualScreenFeedSources.isNotEmpty()) {
                                 { viewModel.setDualScreenFeedSources(emptyList()) }
                             } else {
                                 null
@@ -1815,10 +1815,10 @@ private fun SectionItems(
                         icon = Icons.Filled.RssFeed,
                         title = "Feed sources",
                         subtitle =
-                            if (state.dualScreenFeedSources.isEmpty()) {
+                            if (state.prefs.dualScreenFeedSources.isEmpty()) {
                                 "All sources"
                             } else {
-                                state.dualScreenFeedSources.joinToString(", ") { id ->
+                                state.prefs.dualScreenFeedSources.joinToString(", ") { id ->
                                     enabledSources.firstOrNull { it.id == id }?.name ?: id
                                 }
                             },
@@ -1833,23 +1833,23 @@ private fun SectionItems(
                         icon = Icons.Filled.Games,
                         title = "Use controller",
                         subtitle = "Control playback with a gamepad or TV remote",
-                        checked = state.controller.enabled,
+                        checked = state.prefs.controller.enabled,
                         onCheckedChange = { enabled ->
-                            viewModel.setController(state.controller.copy(enabled = enabled))
+                            viewModel.setController(state.prefs.controller.copy(enabled = enabled))
                         },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Replay10,
                         title = "Backwards jump step",
-                        subtitle = "${state.controller.seekBackSeconds}s",
+                        subtitle = "${state.prefs.controller.seekBackSeconds}s",
                         onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_BACK) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Forward30,
                         title = "Forwards jump step",
-                        subtitle = "${state.controller.seekForwardSeconds}s",
+                        subtitle = "${state.prefs.controller.seekForwardSeconds}s",
                         onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_FORWARD) },
                         groupPosition = GroupPosition.Last,
                     )
@@ -1858,8 +1858,8 @@ private fun SectionItems(
                     SettingsHeader(
                         title = "Buttons",
                         reset =
-                            if (state.controller.mappings.isNotEmpty()) {
-                                { viewModel.setController(state.controller.copy(mappings = emptyMap())) }
+                            if (state.prefs.controller.mappings.isNotEmpty()) {
+                                { viewModel.setController(state.prefs.controller.copy(mappings = emptyMap())) }
                             } else {
                                 null
                             },
@@ -1867,12 +1867,12 @@ private fun SectionItems(
                     PlayerControllerActions.ALL.forEachIndexed { index, action ->
                         ControllerBindingRow(
                             action = action,
-                            binding = state.controller.mappings[action.id],
+                            binding = state.prefs.controller.mappings[action.id],
                             onCapture = { onBindRequested(action.id) },
                             onClear = {
                                 viewModel.setController(
-                                    state.controller.copy(
-                                        mappings = state.controller.mappings - action.id,
+                                    state.prefs.controller.copy(
+                                        mappings = state.prefs.controller.mappings - action.id,
                                     ),
                                 )
                             },

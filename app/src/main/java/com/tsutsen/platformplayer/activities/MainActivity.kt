@@ -38,28 +38,21 @@ import androidx.core.pip.PictureInPictureDelegate
 import androidx.core.pip.VideoPlaybackPictureInPicture
 import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.compose.BluejayAppThemeRoot
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
-import com.tsutsen.platformplayer.compose.buildAppTypography
-import com.tsutsen.platformplayer.compose.rememberSurfaceSkins
 import com.tsutsen.platformplayer.gettingstarted.GettingStartedFlow
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
 import com.tsutsen.platformplayer.core.data.repository.HomeRepository
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.Color
 import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
-import com.tsutsen.platformplayer.core.ui.LocalThumbnailSaturation
-import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.layout.AppLayout
 import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
 import com.tsutsen.platformplayer.core.designsystem.layout.NavItemDef
 import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
-import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
-import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PipSurface
@@ -456,69 +449,11 @@ private fun BluejayMainActivity(
         }
     }
 
-    // Settings are live: changing theme/grid columns re-composes this tree.
-    // Gate on the real prefs instead of a default initial: with defaults the
-    // first frame would render 100%-rounding tokens and the saved values
-    // (e.g. rounding 0) would arrive a frame later — every radius spring
-    // then animates default→saved and overshoots into negative corner
-    // radii, which is fatal ("Corner size in Px can't be negative").
-    val prefs by settingsRepository.preferences.collectAsState(initial = null)
-    val p = prefs ?: return
-    val darkTheme =
-        when (p.appearance.themeMode) {
-            ThemeMode.LIGHT -> false
-            ThemeMode.DARK -> true
-            ThemeMode.AUTO -> isSystemInDarkTheme()
-        }
-
-    // Second display: follow the "dual screen" toggle. ensureCompanion is a
-    // no-op when nothing changes and dismisses the presentation when the
-    // toggle turns off.
-    LaunchedEffect(p.dualScreen) {
-        activity.ensureCompanion()
-    }
-
-    // PiP mode: the window is the video itself — render video only, no app
-    // chrome (expanding the PiP flips this back to the full app UI).
-    val pip by activity.pipActive.collectAsState(initial = false)
-
-    val appearance = p.appearance
-    val appScope = rememberCoroutineScope()
-    // Active custom theme (if any): key colors → generated light/dark schemes.
-    val activeTheme = appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
-    val customSchemes =
-        remember(activeTheme) {
-            activeTheme?.let {
-                ThemeEngine.generate(
-                    it.primary,
-                    it.secondary,
-                    it.tertiary,
-                    it.paletteStyle,
-                    background = it.background,
-                    contrast = it.contrast,
-                )
-            }
-        }
-
-    // Deep theming: user font family/scale + per-surface skins.
-    val appTypography =
-        remember(appearance.fontFamily, appearance.fontSizeScale) {
-            buildAppTypography(appearance.fontFamily, appearance.fontSizeScale)
-        }
-    val surfaceSkins = rememberSurfaceSkins(appearance)
-
-    CompositionLocalProvider(
-        LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it) },
-        LocalThumbnailSaturation provides appearance.thumbnailSaturation,
-    ) {
-        BluejayTheme(
-            darkTheme = darkTheme,
-            dynamicColor = appearance.dynamicColor,
-            uiRounding = appearance.uiRounding,
-            colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
-            typography = appTypography,
-            surfaceSkins = surfaceSkins,
-        ) {
+    BluejayAppThemeRoot(settingsRepository) { p ->
+        val appScope = rememberCoroutineScope()
+        // PiP mode: the window is the video itself — render video only, no
+        // app chrome (expanding the PiP flips this back to the full app UI).
+        val pip by activity.pipActive.collectAsState()
         if (pip) {
             PlayerView(isPip = true)
         } else {
@@ -542,7 +477,6 @@ private fun BluejayMainActivity(
                     )
                 }
             }
-        }
         }
     }
 }

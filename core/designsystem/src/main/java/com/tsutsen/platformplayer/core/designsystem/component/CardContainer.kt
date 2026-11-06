@@ -38,6 +38,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceContentColor
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
@@ -71,6 +72,12 @@ fun ContentCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    // One packed resolve instead of four helper calls.
+    val theme = surfaceTheme(
+        SurfaceKeys.VIDEO_CARD,
+        fallbackColor = MaterialTheme.colorScheme.surfaceContainer,
+        fallbackContent = MaterialTheme.colorScheme.onSurface,
+    )
     Box(
         modifier =
             modifier
@@ -81,14 +88,13 @@ fun ContentCard(
                     bottom = Tokens.SpaceLg,
                 )
                 .clip(RoundedCornerShape(BluejayTokens().radius.card))
-                .background(surfaceColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.surfaceContainer))
+                .background(theme.color)
+                // Texture stays on the existing modifier (it reads the skin's
+                // decoded bitmap); the packed theme carries color/text/border.
                 .surfaceTexture(SurfaceKeys.VIDEO_CARD)
                 .surfaceOutline(SurfaceKeys.VIDEO_CARD, MaterialTheme.shapes.large),
     ) {
-        CompositionLocalProvider(
-            LocalContentColor provides
-                surfaceContentColor(SurfaceKeys.VIDEO_CARD, MaterialTheme.colorScheme.onSurface),
-        ) {
+        CompositionLocalProvider(LocalContentColor provides theme.contentColor) {
             content()
         }
     }

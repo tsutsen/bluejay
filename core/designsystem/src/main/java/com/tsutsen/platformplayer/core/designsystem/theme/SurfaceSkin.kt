@@ -125,3 +125,42 @@ fun Modifier.surfaceOutline(
 }
 
 
+
+/**
+ * Everything a surface needs, resolved once: call [surfaceTheme] at the top
+ * of a skinned component instead of composing 3–5 helpers at each usage.
+ */
+data class SurfaceTheme(
+    val color: Color,
+    val contentColor: Color,
+    val outlineWidth: Dp,
+    val outlineColor: Color,
+    val texture: ImageBitmap?,
+) {
+    val hasOutline: Boolean get() = outlineWidth > 0.dp
+
+    companion object {
+        @Composable
+        fun of(
+            key: String,
+            fallbackColor: Color,
+            fallbackContent: Color,
+        ): SurfaceTheme {
+            val skin = surfaceSkin(key)
+            return SurfaceTheme(
+                color = skin.color ?: fallbackColor,
+                contentColor = skin.contentColor ?: fallbackContent,
+                outlineWidth = skin.outlineWidth ?: 0.dp,
+                outlineColor = skin.outlineColor ?: Color.Unspecified,
+                texture = skin.texture,
+            )
+        }
+    }
+}
+
+@Composable
+fun surfaceTheme(
+    key: String,
+    fallbackColor: Color,
+    fallbackContent: Color,
+): SurfaceTheme = SurfaceTheme.of(key, fallbackColor, fallbackContent)

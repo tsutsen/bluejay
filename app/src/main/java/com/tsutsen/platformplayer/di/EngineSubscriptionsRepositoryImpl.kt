@@ -428,23 +428,19 @@ class EngineSubscriptionsRepositoryImpl
                             else -> showVideos
                         }
                     if (!categoryOn) return@filter false
-                    val d = video.duration
                     // Plugin items report playbackTime = -1; watch progress
-                    // lives in history (refreshed per reload).
+                    // lives in history (refreshed per reload). Single
+                    // watched/started rule (core:model WatchState).
+                    val watchedMs = historyByUrl[content.url]?.watchedMs ?: 0
                     val t = historyByUrl[content.url]?.lastPositionMs
                         ?: video.playbackTime.coerceAtLeast(0)
+                    val ws = com.tsutsen.platformplayer.core.model.WatchState.of(
+                        t, watchedMs, video.duration,
+                    )
                     when {
-                        d > 0 && t >= 0.95 * d -> {
-                            if (!showWatched) return@filter false
-                        }
-
-                        t > 0 -> {
-                            if (!showStarted) return@filter false
-                        }
-
-                        else -> {
-                            Unit
-                        } // never played: always shown
+                        ws?.isWatched == true -> if (!showWatched) return@filter false
+                        ws != null -> if (!showStarted) return@filter false
+                        else -> Unit // never played: always shown
                     }
                     true
                 }
