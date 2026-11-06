@@ -62,6 +62,7 @@ internal fun PlayerDetails(
     gridColumns: Int,
     onRecommendedClick: (VideoCard) -> Unit,
     onLoadMoreComments: () -> Unit,
+    onLoadMoreRecommendations: () -> Unit = {},
     onChannelClick: (String) -> Unit,
     onLike: () -> Unit,
     onDislike: () -> Unit,
@@ -347,6 +348,16 @@ internal fun PlayerDetails(
                             gridColumns = recColumns,
                             onClick = onRecommendedClick,
                         )
+                    }
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            TextButton(onClick = onLoadMoreRecommendations) {
+                                Text("Load more recommendations")
+                            }
+                        }
                     }
                 }
             }

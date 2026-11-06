@@ -129,9 +129,19 @@ class SettingsViewModel
             }
         }
 
-        /** Appearance > Thumbnail tint (ARGB incl. alpha; null = none). */
+        /** Appearance > Thumbnail tint (ARGB; null = none). */
         fun setThumbnailTint(argb: Long?) {
             viewModelScope.launch { settingsRepository.setThumbnailTint(argb) }
+        }
+
+        /** Appearance > Thumbnails > Tint strength (0..1). */
+        fun setThumbnailTintStrength(strength: Float) {
+            viewModelScope.launch { settingsRepository.setThumbnailTintStrength(strength) }
+        }
+
+        /** Appearance > Thumbnails > Tint blend mode ([TintBlendMode] name). */
+        fun setThumbnailTintBlendMode(mode: String) {
+            viewModelScope.launch { settingsRepository.setThumbnailTintBlendMode(mode) }
         }
 
         /** Appearance > Thumbnail desaturation (1 = full color, 0 = grayscale). */

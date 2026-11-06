@@ -332,8 +332,12 @@ class Settings {
         // keyed by SurfaceKeys.
         var surfaceStyles: Map<String, SurfaceStyle> = emptyMap()
 
-        // Thumbnail tint overlay (ARGB incl. alpha; null = none).
+        // Thumbnail tint overlay (ARGB; null = none).
         var thumbnailTintArgb: Long? = null
+
+        // Tint strength (0..1) and blend mode (TintBlendMode name).
+        var thumbnailTintStrength: Float = 0.35f
+        var thumbnailTintBlendMode: String = "WASH"
 
         // Thumbnail desaturation (1 = full color, 0 = grayscale).
         var thumbnailSaturation: Float = 1f

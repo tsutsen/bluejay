@@ -14,6 +14,8 @@ import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailSaturation
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
+import com.tsutsen.platformplayer.core.ui.LocalThumbnailTintBlendMode
+import com.tsutsen.platformplayer.core.ui.LocalThumbnailTintStrength
 
 /**
  * The single deepened theme root shared by both presentation surfaces
@@ -63,7 +65,11 @@ fun BluejayAppThemeRoot(
     val surfaceSkins = rememberSurfaceSkins(appearance)
 
     CompositionLocalProvider(
-        LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it) },
+        // The tint color is normalized opaque: how much mixes in is the
+        // strength pref, not whatever alpha an old picker baked in.
+        LocalThumbnailTint provides appearance.thumbnailTintArgb?.let { Color(it).copy(alpha = 1f) },
+        LocalThumbnailTintStrength provides appearance.thumbnailTintStrength,
+        LocalThumbnailTintBlendMode provides appearance.thumbnailTintBlendMode,
         LocalThumbnailSaturation provides appearance.thumbnailSaturation,
     ) {
         BluejayTheme(

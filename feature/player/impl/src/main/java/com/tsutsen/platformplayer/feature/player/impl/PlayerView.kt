@@ -1161,6 +1161,8 @@ fun PlayerView(
                         gridColumns = gridColumns,
                         onLoadMoreComments =
                             remember(state) { { viewModel.loadMoreComments(state.currentVideo?.url ?: "") } },
+                        onLoadMoreRecommendations =
+                            remember(state) { { viewModel.loadMoreRecommendations(state.currentVideo?.url ?: "") } },
                         isLoading = state.isLoading,
                         badgeState = badgeState,
                         onBadgeSessionEnded = remember { { badgeState = GestureBadgeState() } },

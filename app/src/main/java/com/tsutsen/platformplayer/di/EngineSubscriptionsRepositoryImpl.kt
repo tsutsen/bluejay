@@ -159,6 +159,8 @@ class EngineSubscriptionsRepositoryImpl
                     // don't apply to this one.
                     flow = newFlow(updated = false)
                     flow!!.loadInitial()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error loading creator feed", e)
                     _feed.update { it.copy(isLoading = false, error = e.message) }
@@ -216,6 +218,8 @@ class EngineSubscriptionsRepositoryImpl
                     flow!!.loadInitial()
                     Logger.i(TAG, "Loaded ${flow!!.items.size} items")
                     saveFeedCache(flow!!.items)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error loading feed", e)
                     // A failed refresh must not wipe a cache that's on screen.
@@ -262,28 +266,17 @@ class EngineSubscriptionsRepositoryImpl
             }
         }
 
-        // Survives creator switches: re-opening the Subs tab (or leaving a
-        // channel's scope) replays its accumulated pages instead of
-        // refetching the first batch.
-        private var globalBatchedPager: BatchedSubscriptionsPager? = null
-
         private suspend fun newFlow(updated: Boolean): PagerFlow<IPlatformContent, IPlatformContent> {
             val creatorId = _feed.value.activeCreatorId
             val pager =
                 if (creatorId == null) {
-                    // Batched global feed: the first batch of channels loads
-                    // up front, every further batch only when the list runs
-                    // out. An existing pager is reused (reopening the tab
-                    // must not refetch or shrink the list to one window).
-                    val existing = globalBatchedPager
-                    if (existing != null && !updated) {
-                        existing.reopen()
-                        existing
-                    } else {
-                        BatchedSubscriptionsPager(
-                            orderedSubscriptions(StateSubscriptions.instance.getSubscriptions()),
-                        ).also { globalBatchedPager = it }
-                    }
+                    // Global feed = the engine's merged pager over ALL
+                    // subscribed channels (a per-channel batch would leave
+                    // most channels' videos out of the list entirely).
+                    StateSubscriptions.instance.getGlobalSubscriptionFeed(
+                        CoroutineScope(Dispatchers.IO),
+                        updated = updated,
+                    )
                 } else {
                     val client =
                         EnabledClientResolver.clientForUrl(creatorId)
@@ -332,6 +325,8 @@ class EngineSubscriptionsRepositoryImpl
                 try {
                     flow = newFlow(updated = false)
                     flow!!.loadInitial()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error resyncing feed", e)
                     _feed.update { it.copy(isLoading = false, error = e.message) }

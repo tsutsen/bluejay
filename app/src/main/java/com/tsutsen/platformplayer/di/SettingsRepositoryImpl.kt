@@ -121,6 +121,8 @@ class SettingsRepositoryImpl
                         customThemes = s.appearance.customThemes,
                         activeThemeId = s.appearance.activeThemeId,
                         thumbnailTintArgb = s.appearance.thumbnailTintArgb,
+                        thumbnailTintStrength = s.appearance.thumbnailTintStrength,
+                        thumbnailTintBlendMode = s.appearance.thumbnailTintBlendMode,
                         thumbnailSaturation = s.appearance.thumbnailSaturation,
                     ),
                 playback =
@@ -264,6 +266,8 @@ class SettingsRepositoryImpl
             s.appearance.dynamicColor = prefs.dynamicColor
             s.appearance.uiRounding = prefs.uiRounding
             s.appearance.thumbnailTintArgb = prefs.thumbnailTintArgb
+            s.appearance.thumbnailTintStrength = prefs.thumbnailTintStrength
+            s.appearance.thumbnailTintBlendMode = prefs.thumbnailTintBlendMode
             s.appearance.thumbnailSaturation = prefs.thumbnailSaturation
             s.save()
             emit()
@@ -271,6 +275,16 @@ class SettingsRepositoryImpl
 
         override suspend fun setThumbnailTint(argb: Long?) {
             persist { it.appearance.thumbnailTintArgb = argb }
+        }
+
+        /** Appearance > Thumbnails > Tint strength (0..1). */
+        override suspend fun setThumbnailTintStrength(strength: Float) {
+            persist { it.appearance.thumbnailTintStrength = strength.coerceIn(0f, 1f) }
+        }
+
+        /** Appearance > Thumbnails > Tint blend mode ([TintBlendMode] name). */
+        override suspend fun setThumbnailTintBlendMode(mode: String) {
+            persist { it.appearance.thumbnailTintBlendMode = mode }
         }
 
         override suspend fun updatePlayback(prefs: PlaybackPreferences) {

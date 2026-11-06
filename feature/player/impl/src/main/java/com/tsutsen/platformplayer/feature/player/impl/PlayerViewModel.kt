@@ -781,6 +781,25 @@ class PlayerViewModel
             }
         }
 
+        /** Recommendations tab: fetch the next page and append it to the shared list. */
+        fun loadMoreRecommendations(contentUrl: String) {
+            viewModelScope.launch {
+                // Guard: a faster switch to a new video supersedes this request.
+                if (playerRepository.playerState.value.currentVideo
+                        ?.url != contentUrl
+                ) {
+                    return@launch
+                }
+                try {
+                    withContext(Dispatchers.IO) {
+                        playerRepository.loadMoreRecommendations(contentUrl)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("PlayerViewModel", "Failed to load more recommendations", e)
+                }
+            }
+        }
+
         fun getPlayer() = playerRepository
 
         fun playbackEngine(): PlaybackEngine = playerRepository.engine

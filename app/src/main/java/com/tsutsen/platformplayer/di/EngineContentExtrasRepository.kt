@@ -19,7 +19,12 @@ class EngineContentExtrasRepository
     @Inject
     constructor() : ContentExtrasRepository {
         private val TAG = "EngineContentExtrasRepository"
-        private val recommendationFlows = mutableMapOf<String, PagerFlow<IPlatformContent, Card>>()
+
+        // The CURRENT video's pager only: a fresh flow per open (a cached
+        // flow keeps the previous visit's pager position and would resume
+        // mid-window), and no unbounded per-URL map.
+        private var recommendationUrl: String? = null
+        private var recommendationFlow: PagerFlow<IPlatformContent, Card>? = null
 
         override suspend fun getChapters(url: String): List<VideoChapter> =
             try {
@@ -42,17 +47,29 @@ class EngineContentExtrasRepository
             try {
                 val pager = StatePlatform.instance.getContentRecommendations(url) ?: return emptyList()
                 val flow =
-                    recommendationFlows.getOrPut(url) {
-                        PagerFlow(
-                            pager,
-                            { content -> EngineCardMapper.toCard(content) },
-                            { it.id },
-                        )
-                    }
+                    PagerFlow(
+                        pager,
+                        { content -> EngineCardMapper.toCard(content) },
+                        { it.id },
+                    )
+                recommendationFlow = flow
+                recommendationUrl = url
                 flow.loadInitial()
-                flow.items
             } catch (e: Exception) {
                 Logger.w(TAG, "Failed to fetch recommendations for $url", e)
                 emptyList()
             }
+
+        override suspend fun loadMoreRecommendations(url: String): List<Card> {
+            // A different video played since: this pager no longer applies.
+            if (url != recommendationUrl) return emptyList()
+            val flow = recommendationFlow ?: return emptyList()
+            if (!flow.hasMore) return emptyList()
+            return try {
+                flow.loadNextPage()
+            } catch (e: Exception) {
+                Logger.w(TAG, "Failed to load more recommendations for $url", e)
+                emptyList()
+            }
+        }
     }

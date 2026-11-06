@@ -698,6 +698,29 @@ fun SettingsSectionScreen(
             }
         }
 
+        Choice.THUMBNAIL_TINT_BLEND -> {
+            loaded?.let {
+                ChoiceDialog(
+                    title = "Tint blend mode",
+                    options =
+                        listOf(
+                            "Wash" to com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.WASH.name,
+                            "Multiply" to com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.MULTIPLY.name,
+                            "Screen" to com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.SCREEN.name,
+                            "Overlay" to com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.OVERLAY.name,
+                            "Soft light" to com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.SOFT_LIGHT.name,
+                            "Color burn" to com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.COLOR_BURN.name,
+                        ),
+                    selected = it.prefs.appearance.thumbnailTintBlendMode,
+                    onSelected = { value ->
+                        viewModel.setThumbnailTintBlendMode(value)
+                        selectedChoice = null
+                    },
+                    onDismiss = { selectedChoice = null },
+                )
+            }
+        }
+
         Choice.PLAYBACK_SPEED -> {
             loaded?.let {
                 ChoiceDialog(
@@ -1161,10 +1184,26 @@ private fun SectionItems(
                         icon = Icons.Filled.Palette,
                         title = "Tint",
                         subtitle =
-                            if (state.prefs.appearance.thumbnailTintArgb == null) "None"
-                            else "Custom color wash",
+                            state.prefs.appearance.thumbnailTintArgb?.let { tintPreviewLabel(it) }
+                                ?: "None",
                         onClick = { onChoiceSelected(Choice.THUMBNAIL_TINT) },
                         groupPosition = GroupPosition.First,
+                    )
+                    SettingsSliderCard(
+                        icon = Icons.Filled.BorderStyle,
+                        title = "Tint strength",
+                        subtitle = "How much of the tint mixes into thumbnails",
+                        value = state.prefs.appearance.thumbnailTintStrength * 100f,
+                        valueRange = 0f..100f,
+                        onValueChange = { viewModel.setThumbnailTintStrength(it / 100f) },
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsOptionCard(
+                        icon = Icons.Filled.Layers,
+                        title = "Tint blend mode",
+                        subtitle = tintBlendLabel(state.prefs.appearance.thumbnailTintBlendMode),
+                        onClick = { onChoiceSelected(Choice.THUMBNAIL_TINT_BLEND) },
+                        groupPosition = GroupPosition.Middle,
                     )
                     SettingsSliderCard(
                         icon = Icons.Filled.BrightnessAuto,
@@ -2267,8 +2306,26 @@ private fun fontFamilyLabel(family: com.tsutsen.platformplayer.core.datastore.mo
         com.tsutsen.platformplayer.core.datastore.model.FontFamily.DEFAULT -> "System"
     }
 
+/** "Tint" row subtitle: the picked color as hex. */
+private fun tintPreviewLabel(argb: Long): String {
+    val hex = Integer.toHexString(((argb and 0x00FFFFFFL).toInt())).uppercase().padStart(6, '0')
+    return "#$hex"
+}
+
+/** "Tint blend mode" row subtitle. */
+private fun tintBlendLabel(mode: String): String =
+    when (mode) {
+        com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.MULTIPLY.name -> "Multiply"
+        com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.SCREEN.name -> "Screen"
+        com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.OVERLAY.name -> "Overlay"
+        com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.SOFT_LIGHT.name -> "Soft light"
+        com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.COLOR_BURN.name -> "Color burn"
+        else -> "Wash"
+    }
+
 /**
- * Thumbnail tint picker: preset hues offered as a ~30%-alpha wash, plus None.
+ * Thumbnail tint picker: preset hues at full color (strength is its own
+ * slider below the Tint row), plus None.
  */
 @Composable
 private fun ThumbnailTintDialog(
@@ -2282,7 +2339,7 @@ private fun ThumbnailTintDialog(
         text = {
             Column {
                 Text(
-                    "A color wash over every video thumbnail.",
+                    "The color laid over every video thumbnail. Strength and blend mode are set below the Tint row.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -2290,11 +2347,13 @@ private fun ThumbnailTintDialog(
                 PresetColors.chunked(6).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
                         row.forEach { argb ->
-                            val wash = (argb.toLong() and 0x00FFFFFFL) or (0x4D shl 24)
+                            val opaque = argb.toLong() or (0xFFL shl 24)
+                            // Legacy tints carry a baked-in 30% alpha; match
+                            // by RGB so the picked swatch still highlights.
                             ColorSwatch(
-                                color = Color(wash),
-                                isSelected = current == wash,
-                                onClick = { onPick(wash) },
+                                color = Color(opaque),
+                                isSelected = current != null && (current and 0x00FFFFFFL) == (opaque and 0x00FFFFFFL),
+                                onClick = { onPick(opaque) },
                             )
                         }
                     }
@@ -2523,6 +2582,7 @@ private enum class Choice {
     RECENCY,
     FONT,
     THUMBNAIL_TINT,
+    THUMBNAIL_TINT_BLEND,
 }
 
 @Composable

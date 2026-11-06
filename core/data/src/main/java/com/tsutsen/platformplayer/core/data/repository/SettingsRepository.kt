@@ -14,8 +14,14 @@ interface SettingsRepository {
 
     suspend fun updateAppearance(prefs: com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences)
 
-    /** Thumbnail tint overlay (ARGB incl. alpha; null = none). */
+    /** Thumbnail tint overlay (ARGB; null = none). */
     suspend fun setThumbnailTint(argb: Long?)
+
+    /** Thumbnail tint strength (0..1). */
+    suspend fun setThumbnailTintStrength(strength: Float)
+
+    /** Thumbnail tint blend mode ([TintBlendMode] name). */
+    suspend fun setThumbnailTintBlendMode(mode: String)
     suspend fun updatePlayback(prefs: com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences)
     /** Toggle queue autoplay (Settings > Content > Video page). */
     suspend fun setAutoplay(enabled: Boolean)

@@ -293,6 +293,12 @@ class EngineHomeRepositoryImpl
                     )
                 }
                 cacheFeed(visible)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // A newer refresh canceled this load: unwind silently. The
+                // canceled load must not write its cancellation into the
+                // feed state (it used to show "coroutine was canceled" and
+                // clear hasMorePages, killing load-more).
+                throw e
             } catch (e: Exception) {
                 Logger.e("EngineHomeRepository", "loadInitial failed", e)
                 _feed.update {
@@ -413,7 +419,7 @@ class EngineHomeRepositoryImpl
                     // Don't clear isLoading while an initial/refresh load is
                     // in flight — otherwise the VM resets isRefreshing and the
                     // pull-to-refresh indicator unsticks mid-refresh.
-                    _feed.update { it.copy(isLoading = !loadInitialInFlight.get()) }
+                    _feed.update { it.copy(isLoading = loadInitialInFlight.get()) }
                     return
                 }
 
@@ -426,17 +432,19 @@ class EngineHomeRepositoryImpl
                 val visible = applyContentFilters(mergeFresh(_feed.value.items, flow.items))
                 _feed.update {
                     it.copy(
-                        isLoading = !loadInitialInFlight.get(),
+                        isLoading = loadInitialInFlight.get(),
                         items = visible,
                         hasMorePages = flow.hasMore,
                         error = flow.error,
                         currentPage = it.currentPage + 1,
                     )
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.e("EngineHomeRepository", "loadNextPage failed", e)
                 _feed.update {
-                    it.copy(isLoading = !loadInitialInFlight.get(), error = e.message ?: "Failed to load more")
+                    it.copy(isLoading = loadInitialInFlight.get(), error = e.message ?: "Failed to load more")
                 }
             } finally {
                 loadNextPageInFlight.set(false)
@@ -452,7 +460,7 @@ class EngineHomeRepositoryImpl
         private suspend fun loadNextHomebrewPage() {
             val flows = _homebrewFlows
             if (flows.isEmpty() || flows.none { it.hasMore }) {
-                _feed.update { it.copy(isLoading = !loadInitialInFlight.get()) }
+                _feed.update { it.copy(isLoading = loadInitialInFlight.get()) }
                 return
             }
             val appended =
@@ -486,7 +494,7 @@ class EngineHomeRepositoryImpl
             )
             _feed.update {
                 it.copy(
-                    isLoading = !loadInitialInFlight.get(),
+                    isLoading = loadInitialInFlight.get(),
                     items = visible,
                     hasMorePages = flows.any { f -> f.hasMore },
                     currentPage = it.currentPage + 1,

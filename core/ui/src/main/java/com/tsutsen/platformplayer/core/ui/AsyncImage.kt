@@ -15,23 +15,62 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.tsutsen.platformplayer.core.datastore.model.TintBlendMode
 import coil.compose.AsyncImage as CoilAsyncImage
 
 /**
- * User thumbnail tint (Settings > Appearance > Thumbnail tint), provided at
- * the theme roots. Null = no overlay. The tint carries its own alpha, so
- * SrcOver reads as a translucent color wash over the image.
+ * User thumbnail tint (Settings > Appearance > Thumbnails > Tint), provided
+ * at the theme roots. Null = no overlay. The color is used opaque: how much
+ * of it mixes in is [LocalThumbnailTintStrength], and how it combines is
+ * [LocalThumbnailTintBlendMode].
  */
 val LocalThumbnailTint = compositionLocalOf<Color?> { null }
 
+/** Tint strength 0..1 (0 = no tint effect), provided at the theme roots. */
+val LocalThumbnailTintStrength = compositionLocalOf { 0.35f }
+
+/** Tint blend mode ([TintBlendMode] name), provided at the theme roots. */
+val LocalThumbnailTintBlendMode = compositionLocalOf { TintBlendMode.WASH.name }
+
 /** Thumbnail desaturation (1 = full color, 0 = grayscale), provided at the theme roots. */
 val LocalThumbnailSaturation = compositionLocalOf { 1f }
+
+/** Maps a [TintBlendMode] name to its draw blend mode; unknown → wash. */
+fun thumbnailTintBlend(name: String): BlendMode =
+    when (name) {
+        TintBlendMode.MULTIPLY.name -> BlendMode.Multiply
+        TintBlendMode.SCREEN.name -> BlendMode.Screen
+        TintBlendMode.OVERLAY.name -> BlendMode.Overlay
+        TintBlendMode.SOFT_LIGHT.name -> BlendMode.Softlight
+        TintBlendMode.COLOR_BURN.name -> BlendMode.ColorBurn
+        else -> BlendMode.SrcOver
+    }
+
+/**
+ * Draws the tint over the (already drawn) image with the requested blend
+ * mode and strength. Placed on the image's own modifier so the blend
+ * resolves against the image pixels; thumbnails decode opaque and use
+ * ContentScale.Crop, so the rect always sits over image content.
+ */
+fun Modifier.thumbnailTintOverlay(
+    tint: Color?,
+    strength: Float,
+    blend: BlendMode,
+): Modifier {
+    if (tint == null || strength <= 0f) return this
+    val color = tint.copy(alpha = tint.alpha.coerceIn(0f, 1f) * strength.coerceIn(0f, 1f))
+    return drawWithContent {
+        drawContent()
+        drawRect(color, blendMode = blend)
+    }
+}
 
 /**
  * Wrapper around Coil's AsyncImage with built-in placeholder and error handling.
@@ -100,49 +139,30 @@ fun AsyncImage(
     CoilAsyncImage(
         model = request,
         contentDescription = contentDescription,
-        modifier = modifier,
+        modifier =
+            modifier.thumbnailTintOverlay(
+                tint = LocalThumbnailTint.current,
+                strength = LocalThumbnailTintStrength.current,
+                blend = thumbnailTintBlend(LocalThumbnailTintBlendMode.current),
+            ),
         contentScale = contentScale,
         placeholder = placeholder,
         error = error,
         colorFilter = combinedThumbnailFilter(
             saturation = LocalThumbnailSaturation.current,
-            tint = LocalThumbnailTint.current,
         ),
     )
 }
 
 /**
- * One filter combining desaturation + the tint wash (a single colorFilter
- * slot): result = wash(saturate(src)), both expressed as 4x5 color matrices.
- * Null when both are no-ops.
+ * The desaturation matrix (the only per-pixel color work a ColorFilter can
+ * express); the tint rides on top as a blend-mode overlay instead, because
+ * Multiply/Screen/Overlay & co. have no matrix form. Null when a no-op.
  */
 private fun combinedThumbnailFilter(
     saturation: Float,
-    tint: Color?,
 ): ColorFilter? {
     val sat = saturation.coerceIn(0f, 1f)
-    if (sat >= 0.999f && tint == null) return null
-    val s = ColorMatrix().apply { setToSaturation(sat) }
-    if (tint == null) return ColorFilter.colorMatrix(s)
-    val a = tint.alpha.coerceIn(0f, 1f)
-    val wash =
-        ColorMatrix(
-            floatArrayOf(
-                1f - a, 0f, 0f, 0f, a * tint.red * 255f,
-                0f, 1f - a, 0f, 0f, a * tint.green * 255f,
-                0f, 0f, 1f - a, 0f, a * tint.blue * 255f,
-                0f, 0f, 0f, 1f, 0f,
-            ),
-        )
-    // Combined = wash x sat (sat applied first): M[i][j] = Σk wash[i][k]*sat[k][j],
-    // M[i][4] += wash[i][4].
-    val out = FloatArray(20)
-    for (i in 0 until 4) {
-        for (j in 0 until 5) {
-            var acc = wash[i, 4]
-            for (k in 0 until 4) acc += wash[i, k] * s[k, j]
-            out[i * 5 + j] = acc
-        }
-    }
-    return ColorFilter.colorMatrix(ColorMatrix(out))
+    if (sat >= 0.999f) return null
+    return ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(sat) })
 }

@@ -1259,6 +1259,21 @@ class PlayerRepositoryImpl(
         _playerState.update { it.copy(comments = comments, recommendations = recommendations) }
     }
 
+    override suspend fun loadMoreRecommendations(url: String): List<Card> {
+        val more =
+            contentExtrasRepository?.loadMoreRecommendations(url) ?: return emptyList()
+        if (more.isNotEmpty()) {
+            // Append into the shared state; the extras repo itself no-ops
+            // for stale URLs, and the video guard keeps a fast switch from
+            // appending onto the wrong list.
+            val current = _playerState.value
+            if (current.currentVideo?.url == url) {
+                _playerState.update { it.copy(recommendations = current.recommendations + more) }
+            }
+        }
+        return more
+    }
+
     override suspend fun close() {
         // Invalidate any in-flight play() so it cannot resurrect the player
         // after its resolution completes (close-during-load).
