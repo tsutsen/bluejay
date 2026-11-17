@@ -34,7 +34,6 @@ import com.tsutsen.platformplayer.writeBytes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
@@ -179,9 +178,11 @@ class StateBackup {
                 try {
                     Logger.i(TAG, "Starting AutoBackup (Last ${lastBackupHoursAgo} ago)");
                     var backupWritten = false
+                    //export() suspends; run it outside the lock. The lock still
+                    //serializes the backup write below (shared with the restore path).
+                    val data = export();
                     synchronized(_autoBackupLock) {
                         val context = StateApp.instance.contextOrNull ?: return@synchronized;
-                        val data = export();
                         val zip = data.asZip();
 
                         if(!SettingsRepositoryImpl.instance.preferences.value.storage.isStorageMainValid) {
@@ -330,7 +331,7 @@ class StateBackup {
                     UIDialogs.toast("Export saved");
                 };
         }
-        fun shareExternalBackup() {
+        suspend fun shareExternalBackup() {
             val data = export();
             val now = OffsetDateTime.now();
             val exportFile = File(
@@ -391,7 +392,7 @@ class StateBackup {
             return@withContext true
         }
 
-        fun export(): ExportStructure {
+        suspend fun export(): ExportStructure {
             val exportInfo = mapOf(
                 Pair("version", "1")
             );
@@ -422,8 +423,8 @@ class StateBackup {
             // builds — without these the backup carries no playlist data.
             try {
                 val db = AppDatabaseProvider.get(StateApp.instance.context);
-                val saved = runBlocking { db.savedVideoDao().getAll() };
-                val playlists = runBlocking { db.playlistDao().getAll() };
+                val saved = withContext(Dispatchers.IO) { db.savedVideoDao().getAll() };
+                val playlists = withContext(Dispatchers.IO) { db.playlistDao().getAll() };
                 Logger.i(TAG, "Room library export: savedVideos=${saved.size} playlists=${playlists.size}");
                 if (saved.isNotEmpty())
                     storesToSave.set("saved_videos", saved.map {
@@ -434,7 +435,7 @@ class StateBackup {
                             addedAt = it.addedAt, postedAt = it.postedAt,
                         ));
                     });
-                val videosByPlaylist = runBlocking { db.playlistDao().getAllVideos() }.groupBy { it.playlistId };
+                val videosByPlaylist = withContext(Dispatchers.IO) { db.playlistDao().getAllVideos() }.groupBy { it.playlistId };
                 val playlistBackups = playlists.map { playlist ->
                     Json.encodeToString(PlaylistBackup(
                         name = playlist.name,

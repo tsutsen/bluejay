@@ -199,13 +199,14 @@ class HttpProxyHandler(method: String, path: String, val targetUrl: String, priv
     }
 
     private fun handleChunkedTransfer(inputStream: InputStream, responseStream: OutputStream) {
-        var line: String?
         val buffer = ByteArray(8192)
 
-        while (inputStream.readLine().also { line = it } != null) {
-            val size = line!!.trim().toInt(16)
+        while (true) {
+            // Null line = end of stream; exit instead of forcing non-null.
+            val line = inputStream.readLine() ?: break
+            val size = line.trim().toInt(16)
 
-            responseStream.write(line!!.encodeToByteArray())
+            responseStream.write(line.encodeToByteArray())
             responseStream.write("\r\n".encodeToByteArray())
 
             if (size == 0) {

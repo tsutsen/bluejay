@@ -61,9 +61,10 @@ class AppBackupProvider @Inject constructor(
 
     override fun exportBackup() {
         val activity = StateApp.instance.activity ?: return
-        // export() blocks (StateHistory reads use runBlocking) and this is called
-        // from a settings onClick on the main thread — compute the zip on IO, then
-        // hand it to the SAF writer on Main (requestFileCreateAccess needs Main).
+        // export() is a suspend function that reads Room on IO, and this is
+        // called from a settings onClick on the main thread — compute the zip
+        // on IO, then hand it to the SAF writer on Main
+        // (requestFileCreateAccess needs Main).
         StateApp.instance.scope.launch(Dispatchers.IO) {
             val data = StateBackup.export()
             withContext(Dispatchers.Main) {

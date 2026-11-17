@@ -7,9 +7,8 @@ import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Telemetry
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.StringStorage
-import kotlinx.coroutines.DelicateCoroutinesApi
+import com.tsutsen.platformplayer.AppCoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -24,9 +23,10 @@ class StateTelemetry {
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun upload() {
-        GlobalScope.launch(Dispatchers.IO) {
+        // Telemetry must complete even if the launching activity dies; run on
+        // the shared app-lifetime scope instead of GlobalScope.
+        AppCoroutineScope.scope.launch(Dispatchers.IO) {
             try {
                 val telemetry = Telemetry(
                     _id.value,

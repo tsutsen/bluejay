@@ -19,7 +19,7 @@ import com.tsutsen.platformplayer.models.HistoryVideo
 import com.tsutsen.platformplayer.stores.FragmentedStorage
 import com.tsutsen.platformplayer.stores.StringDateMapStorage
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -43,8 +43,8 @@ class StateHistory {
     // --- Reads -------------------------------------------------------------
 
     /** History entries newer than [minDate], newest first (max [max]). */
-    fun getRecentHistory(minDate: OffsetDateTime, max: Int = 1000): List<HistoryEntity> {
-        return runBlocking {
+    suspend fun getRecentHistory(minDate: OffsetDateTime, max: Int = 1000): List<HistoryEntity> {
+        return withContext(Dispatchers.IO) {
             // OffsetDateTime.MIN.toEpochMilli() overflows (ArithmeticException
             // in Instant.toEpochMilli) — clamp to a representable epoch floor.
             val sinceMs = runCatching { minDate.toInstant().toEpochMilli() }
@@ -59,10 +59,10 @@ class StateHistory {
      * Upsert history entries (device sync receive, backup import).
      * No-ops in private mode (history must not accumulate).
      */
-    fun importHistoryVideos(videos: List<HistoryVideo>) {
+    suspend fun importHistoryVideos(videos: List<HistoryVideo>) {
         if (StateApp.instance.privateMode)
             return
-        runBlocking {
+        withContext(Dispatchers.IO) {
             for (video in videos)
                 historyDao.upsert(video.toHistoryEntity())
         }
@@ -96,7 +96,7 @@ class StateHistory {
 
     // --- Remote plugin history sync -----------------------------------------
 
-    fun syncRemoteHistory(plugin: JSClient): Int {
+    suspend fun syncRemoteHistory(plugin: JSClient): Int {
         if (plugin.capabilities.hasGetUserHistory &&
             plugin.isLoggedIn) {
             Logger.i(TAG, "Syncing remote history for plugin [${plugin.name}]");
@@ -107,7 +107,7 @@ class StateHistory {
         }
         return 0;
     }
-    fun syncRemoteHistory(pluginId: String, videos: IPager<IPlatformContent>, maxVideos: Int, maxPages: Int): Int {
+    suspend fun syncRemoteHistory(pluginId: String, videos: IPager<IPlatformContent>, maxVideos: Int, maxPages: Int): Int {
         if (StateApp.instance.privateMode)
             return 0
         val lastDate = _remoteHistoryDatesStore.get(pluginId) ?: OffsetDateTime.MIN;
@@ -161,7 +161,7 @@ class StateHistory {
             var updated = 0;
             if(oldestPlayback < OffsetDateTime.MAX) {
                 for(video in toSync){
-                    val updatedVideo = runBlocking {
+                    val updatedVideo = withContext(Dispatchers.IO) {
                         val existing = historyDao.getByUrl(video.url);
                         if (existing == null || existing.lastPositionMs < video.playbackTime) {
                             historyDao.upsert(video.toHistoryEntity(video.playbackDate));

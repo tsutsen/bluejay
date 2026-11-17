@@ -71,6 +71,7 @@ import javax.inject.Singleton
 @Singleton
 class PlayerRepositoryImpl(
     @ApplicationContext private val context: Context,
+    appScope: CoroutineScope,
 ) : PlayerRepository {
     private var urlResolver: VideoUrlResolver? = null
 
@@ -105,7 +106,12 @@ class PlayerRepositoryImpl(
     private val playGeneration =
         java.util.concurrent.atomic
             .AtomicInteger(0)
-    private val extrasScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    // Extras fetches run on the injected app-lifetime scope instead of a
+    // detached module-level scope: same lifetime in practice (the app scope is
+    // never cancelled), but the work is structured under one supervisor.
+    // close() must not cancel this shared scope — it only invalidates
+    // in-flight fetches via playGeneration.
+    private val extrasScope = appScope
 
     // Per-video extras caches for the session: replaying a video (tab
     // re-entry, re-tap, notification tap, next→previous) applies the cached
@@ -359,8 +365,12 @@ class PlayerRepositoryImpl(
             }
         }
 
-    // Position ticker: single source of truth for currentPositionMs
-    private val positionScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + Job())
+    // Position ticker: single source of truth for currentPositionMs. It stays
+    // on Dispatchers.Main (ExoPlayer must be accessed on the main thread) and
+    // its Job is parented to the injected app-lifetime scope so the ticker
+    // shares that lifetime without dispatching off Main.
+    private val positionScope =
+        CoroutineScope(SupervisorJob(appScope.coroutineContext[Job]) + Dispatchers.Main)
     private var positionTickerJob: Job? = null
 
     private fun startPositionTicker() {

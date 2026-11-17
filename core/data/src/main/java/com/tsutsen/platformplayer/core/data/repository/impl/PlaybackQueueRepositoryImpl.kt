@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.core.data.repository.impl
 
+import com.tsutsen.platformplayer.core.data.di.ApplicationScope
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
@@ -7,6 +8,7 @@ import android.util.Log
 import com.tsutsen.platformplayer.core.model.ContentItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,8 +23,13 @@ class PlaybackQueueRepositoryImpl
     constructor(
         private val playerRepository: PlayerRepository,
         private val settingsRepository: SettingsRepository,
+        @ApplicationScope appScope: CoroutineScope,
     ) : PlaybackQueueRepository {
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        // App-lifetime scope parented to the injected application scope;
+        // stays on Main.immediate (unchanged dispatch semantics — the queue
+        // advance/play calls expect main-thread behavior).
+        private val scope =
+            CoroutineScope(SupervisorJob(appScope.coroutineContext[Job]) + Dispatchers.Main.immediate)
 
         private val _queue = MutableStateFlow<List<ContentItem>>(emptyList())
         override val queue: StateFlow<List<ContentItem>> = _queue.asStateFlow()

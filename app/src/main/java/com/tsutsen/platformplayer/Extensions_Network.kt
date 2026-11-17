@@ -28,12 +28,14 @@ fun String.toInetAddress(): InetAddress? {
 }
 
 private fun ipStringToBytes(ipStringParam: String): ByteArray? {
-    var ipString: String? = ipStringParam;
+    // Non-null by construction: only ever reassigned from validated non-null
+    // values below, so no `!!` is needed.
+    var ipString: String = ipStringParam;
     var hasColon = false;
     var hasDot = false;
     var percentIndex = -1;
 
-    for (i in 0 until ipString!!.length) {
+    for (i in 0 until ipString.length) {
         val c = ipString[i];
         if (c == '.') {
             hasDot = true;
@@ -54,10 +56,7 @@ private fun ipStringToBytes(ipStringParam: String): ByteArray? {
     // Now decide which address family to parse.
     if (hasColon) {
         if (hasDot) {
-            ipString = convertDottedQuadToHex(ipString)
-            if (ipString == null) {
-                return null;
-            }
+            ipString = convertDottedQuadToHex(ipString) ?: return null;
         }
         if (percentIndex != -1) {
             ipString = ipString.substring(0, percentIndex);
