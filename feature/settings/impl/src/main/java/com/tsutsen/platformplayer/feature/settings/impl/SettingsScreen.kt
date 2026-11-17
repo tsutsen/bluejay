@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -64,7 +66,7 @@ fun SettingsScreen(
         is SettingsUiState.Error -> {
             Box(modifier = Modifier.fillMaxSize()) {
                 Text(
-                    text = "Error loading settings: ${current.message}",
+                    text = stringResource(R.string.settings_error_loading_settings_1_s, current.message),
                     modifier = Modifier.align(Alignment.Center).padding(Tokens.SpaceLg),
                 )
             }
@@ -72,7 +74,7 @@ fun SettingsScreen(
 
         is SettingsUiState.Loaded -> {
             Column(modifier = Modifier.fillMaxSize()) {
-                AppHeader(title = { Text("Settings", style = MaterialTheme.typography.titleLarge) })
+                AppHeader(title = { Text(stringResource(R.string.settings_settings), style = MaterialTheme.typography.titleLarge) })
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = Tokens.SpaceLg, end = Tokens.SpaceLg, bottom = Tokens.SpaceLg),
@@ -83,8 +85,8 @@ fun SettingsScreen(
                     item {
                         SettingsOptionCard(
                             icon = Icons.Filled.BrightnessAuto,
-                            title = "Appearance",
-                            subtitle = "Theme, dynamic color, contrast",
+                            title = stringResource(R.string.settings_appearance),
+                            subtitle = stringResource(R.string.settings_theme_dynamic_color_contrast),
                             onClick = { navigator.navigateToSettingsFragment("appearance") },
                             groupPosition = GroupPosition.First,
                         )
@@ -92,8 +94,8 @@ fun SettingsScreen(
                     item {
                         SettingsOptionCard(
                             icon = Icons.Filled.VideoLibrary,
-                            title = "Content",
-                            subtitle = "Plugins, video page sections",
+                            title = stringResource(R.string.settings_content),
+                            subtitle = stringResource(R.string.settings_plugins_video_page_sections),
                             onClick = { navigator.navigateToSettingsFragment("content") },
                             groupPosition = GroupPosition.Middle,
                         )
@@ -101,8 +103,8 @@ fun SettingsScreen(
                     item {
                         SettingsOptionCard(
                             icon = Icons.Filled.PlayArrow,
-                            title = "Playback",
-                            subtitle = "Subtitles, quality",
+                            title = stringResource(R.string.settings_playback),
+                            subtitle = stringResource(R.string.settings_subtitles_quality),
                             onClick = { navigator.navigateToSettingsFragment("playback") },
                             groupPosition = GroupPosition.Middle,
                         )
@@ -110,8 +112,8 @@ fun SettingsScreen(
                     item {
                         SettingsOptionCard(
                             icon = Icons.Filled.Gesture,
-                            title = "Gestures",
-                            subtitle = "Speed, per-slot gesture actions",
+                            title = stringResource(R.string.settings_gestures),
+                            subtitle = stringResource(R.string.settings_speed_per_slot_gesture_actions),
                             onClick = { navigator.navigateToSettingsFragment("gestures") },
                             groupPosition = GroupPosition.Middle,
                         )
@@ -119,8 +121,8 @@ fun SettingsScreen(
                     item {
                         SettingsOptionCard(
                             icon = Icons.Filled.Games,
-                            title = "Controller",
-                            subtitle = "Gamepad / remote button mapping",
+                            title = stringResource(R.string.settings_controller),
+                            subtitle = stringResource(R.string.settings_gamepad_remote_button_mapping),
                             onClick = { navigator.navigateToSettingsFragment("controller") },
                             groupPosition = GroupPosition.Middle,
                         )
@@ -128,8 +130,8 @@ fun SettingsScreen(
                     item {
                         SettingsOptionCard(
                             icon = DualScreen,
-                            title = "Dual screen",
-                            subtitle = "Second display pages, tabs, sections",
+                            title = stringResource(R.string.settings_dual_screen),
+                            subtitle = stringResource(R.string.settings_second_display_pages_tabs_sections),
                             onClick = { navigator.navigateToSettingsFragment("dual") },
                             groupPosition = GroupPosition.Middle,
                         )
@@ -137,8 +139,8 @@ fun SettingsScreen(
                     item {
                         SettingsOptionCard(
                             icon = Icons.Filled.Backup,
-                            title = "Backup & restore",
-                            subtitle = "Export or restore the full app state",
+                            title = stringResource(R.string.settings_backup_restore),
+                            subtitle = stringResource(R.string.settings_export_or_restore_the_full_app_state),
                             onClick = { navigator.navigateToSettingsFragment("backup") },
                             groupPosition = GroupPosition.Middle,
                         )
@@ -146,8 +148,8 @@ fun SettingsScreen(
                     item {
                         SettingsOptionCard(
                             icon = Icons.Filled.Info,
-                            title = "About",
-                            subtitle = "Version, license, support the original project",
+                            title = stringResource(R.string.settings_about),
+                            subtitle = stringResource(R.string.settings_version_license_support_the_original_project),
                             onClick = { navigator.navigateToSettingsFragment("about") },
                             groupPosition = GroupPosition.Last,
                         )
@@ -222,12 +224,12 @@ fun SettingsSectionScreen(
         Choice.THEME -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Mode",
+                    title = stringResource(R.string.settings_mode),
                     options =
                         listOf(
-                            "Follow system" to "AUTO",
-                            "Light" to "LIGHT",
-                            "Dark" to "DARK",
+                            stringResource(R.string.settings_follow_system) to "AUTO",
+                            stringResource(R.string.settings_light) to "LIGHT",
+                            stringResource(R.string.settings_dark) to "DARK",
                         ),
                     selected = it.prefs.appearance.themeMode.name,
                     onSelected = { value ->
@@ -244,12 +246,12 @@ fun SettingsSectionScreen(
         Choice.GRID_COLUMNS -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Grid columns",
+                    title = stringResource(R.string.settings_grid_columns),
                     options =
                         listOf(
-                            "2 columns" to "2",
-                            "3 columns" to "3",
-                            "4 columns" to "4",
+                            stringResource(R.string.settings_2_columns) to "2",
+                            stringResource(R.string.settings_3_columns) to "3",
+                            stringResource(R.string.settings_4_columns) to "4",
                         ),
                     selected = it.prefs.gridColumns.toString(),
                     onSelected = { value ->
@@ -264,13 +266,13 @@ fun SettingsSectionScreen(
         Choice.SUBTITLE_FONT -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Subtitle font",
+                    title = stringResource(R.string.settings_subtitle_font),
                     options =
                         listOf(
-                            "Default" to "default",
-                            "Sans-serif" to "sans",
-                            "Serif" to "serif",
-                            "Monospace" to "mono",
+                            stringResource(R.string.settings_default) to "default",
+                            stringResource(R.string.settings_sans_serif) to "sans",
+                            stringResource(R.string.settings_serif) to "serif",
+                            stringResource(R.string.settings_monospace) to "mono",
                         ),
                     selected = it.prefs.subtitle.font,
                     onSelected = { value ->
@@ -285,7 +287,7 @@ fun SettingsSectionScreen(
         Choice.SUBTITLE_SIZE -> {
             loaded?.let {
                 StepperDialog(
-                    title = "Subtitle size",
+                    title = stringResource(R.string.settings_subtitle_size),
                     value = it.prefs.subtitle.size,
                     step = 1,
                     min = 8,
@@ -303,7 +305,7 @@ fun SettingsSectionScreen(
         Choice.SUBTITLE_PADDING -> {
             loaded?.let {
                 StepperDialog(
-                    title = "Subtitle bottom padding",
+                    title = stringResource(R.string.settings_subtitle_bottom_padding),
                     value = it.prefs.subtitle.bottomPadding,
                     step = 4,
                     min = 0,
@@ -321,7 +323,7 @@ fun SettingsSectionScreen(
         Choice.SUBTITLE_OUTLINE -> {
             loaded?.let {
                 StepperDialog(
-                    title = "Subtitle outline",
+                    title = stringResource(R.string.settings_subtitle_outline),
                     value = it.prefs.subtitle.outline,
                     step = 1,
                     min = 0,
@@ -339,7 +341,7 @@ fun SettingsSectionScreen(
         Choice.DUAL_PAGES -> {
             loaded?.let {
                 ReorderDialog(
-                    title = "Pages",
+                    title = stringResource(R.string.settings_pages),
                     items =
                         (it.prefs.dualScreenPages + (dualPageNames.keys - it.prefs.dualScreenPages))
                             .map { id -> id to (dualPageNames[id] ?: id) },
@@ -364,7 +366,7 @@ fun SettingsSectionScreen(
         Choice.DUAL_TAB_ORDER -> {
             loaded?.let {
                 ReorderDialog(
-                    title = "Video tabs",
+                    title = stringResource(R.string.settings_video_tabs),
                     items =
                         it.prefs.dualScreenVideoTabOrder
                             .map { id -> id to (dualTabNames[id] ?: id) },
@@ -385,7 +387,7 @@ fun SettingsSectionScreen(
         Choice.DUAL_PAGE_ORDER -> {
             loaded?.let {
                 ReorderDialog(
-                    title = "Video page order",
+                    title = stringResource(R.string.settings_video_page_order),
                     items =
                         it.prefs.dualScreenPageOrder
                             .map { id -> id to (dualPageOrderNames[id] ?: id) },
@@ -398,11 +400,11 @@ fun SettingsSectionScreen(
         Choice.DASH_TOP_CREATORS -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Top creators",
+                    title = stringResource(R.string.settings_top_creators),
                     options =
                         listOf(
-                            "This week" to "week",
-                            "Overall" to "overall",
+                            stringResource(R.string.settings_this_week) to "week",
+                            stringResource(R.string.settings_overall) to "overall",
                         ),
                     selected = it.prefs.dualScreenTopCreatorsScope,
                     onSelected = { value ->
@@ -417,7 +419,7 @@ fun SettingsSectionScreen(
         Choice.DASH_PAGE_ORDER -> {
             loaded?.let {
                 ReorderDialog(
-                    title = "Dash page order",
+                    title = stringResource(R.string.settings_dash_page_order),
                     items =
                         it.prefs.dualScreenDashPageOrder
                             .map { id -> id to (dashPageOrderNames[id] ?: id) },
@@ -447,7 +449,7 @@ fun SettingsSectionScreen(
         Choice.DUAL_FEED_SOURCES -> {
             loaded?.let {
                 MultiSelectDialog(
-                    title = "Feed sources",
+                    title = stringResource(R.string.settings_feed_sources),
                     options = enabledSources.map { it.name to it.id },
                     selected = it.prefs.dualScreenFeedSources,
                     onToggle = { id, checked ->
@@ -463,7 +465,7 @@ fun SettingsSectionScreen(
         Choice.LIBRARY_SECTION_ORDER -> {
             loaded?.let {
                 ReorderDialog(
-                    title = "Library sections",
+                    title = stringResource(R.string.settings_library_sections),
                     items = it.prefs.librarySectionOrder.map { id -> id to (librarySectionNames[id] ?: id) },
                     onChange = { newOrder -> viewModel.setLibrarySectionOrder(newOrder) },
                     onDismiss = { selectedChoice = null },
@@ -481,7 +483,7 @@ fun SettingsSectionScreen(
             loaded?.let {
                 val names = bluejayNavItems.associate { item -> item.key to item.label }
                 ReorderDialog(
-                    title = "Tab order",
+                    title = stringResource(R.string.settings_tab_order),
                     // The saved list is the order; show all known tabs, missing keys appended.
                     items =
                         (it.prefs.dockTabOrder + (names.keys - it.prefs.dockTabOrder))
@@ -495,7 +497,7 @@ fun SettingsSectionScreen(
         Choice.DEFAULT_DOCK_TAB -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Default tab",
+                    title = stringResource(R.string.settings_default_tab),
                     options = bluejayNavItems.map { it.label to it.key },
                     selected = it.prefs.defaultDockTab,
                     onSelected = { value ->
@@ -510,12 +512,12 @@ fun SettingsSectionScreen(
         Choice.SUBSCRIPTIONS_ORDER -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Subscriptions list order",
+                    title = stringResource(R.string.settings_subscriptions_list_order),
                     options =
                         listOf(
-                            "Watch time" to "watchtime",
-                            "Alphabetical" to "alphabetical",
-                            "Random" to "random",
+                            stringResource(R.string.settings_watch_time) to "watchtime",
+                            stringResource(R.string.settings_alphabetical) to "alphabetical",
+                            stringResource(R.string.settings_random) to "random",
                         ),
                     selected = it.prefs.subscriptionsOrder,
                     onSelected = { value ->
@@ -530,15 +532,15 @@ fun SettingsSectionScreen(
         Choice.RECENCY -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Recency",                    options =
+                    title = stringResource(R.string.settings_recency),                    options =
                         listOf(
-                            "1 week" to "1w",
-                            "1 month" to "1m",
-                            "3 months" to "3m",
-                            "6 months" to "6m",
-                            "1 year" to "1y",
-                            "3 years" to "3y",
-                            "Any time" to "any",
+                            stringResource(R.string.settings_1_week) to "1w",
+                            stringResource(R.string.settings_1_month) to "1m",
+                            stringResource(R.string.settings_3_months) to "3m",
+                            stringResource(R.string.settings_6_months) to "6m",
+                            stringResource(R.string.settings_1_year) to "1y",
+                            stringResource(R.string.settings_3_years) to "3y",
+                            stringResource(R.string.settings_any_time) to "any",
                         ),
                     selected = it.prefs.recency,
                     onSelected = { value ->
@@ -553,13 +555,13 @@ fun SettingsSectionScreen(
         Choice.FONT -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Font",
+                    title = stringResource(R.string.settings_font),
                     options =
                         listOf(
-                            "System" to "DEFAULT",
-                            "Inter" to "INTER",
-                            "Roboto" to "ROBOTO",
-                            "Open Sans" to "OPEN_SANS",
+                            stringResource(R.string.settings_system) to "DEFAULT",
+                            stringResource(R.string.settings_inter) to "INTER",
+                            stringResource(R.string.settings_roboto) to "ROBOTO",
+                            stringResource(R.string.settings_open_sans) to "OPEN_SANS",
                         ),
                     selected = it.prefs.appearance.fontFamily.name,
                     onSelected = { value ->
@@ -589,7 +591,7 @@ fun SettingsSectionScreen(
         Choice.THUMBNAIL_TINT_BLEND -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Tint blend mode",
+                    title = stringResource(R.string.settings_tint_blend_mode),
                     options =
                         listOf(
                             "Wash" to com.tsutsen.platformplayer.core.datastore.model.TintBlendMode.WASH.name,
@@ -612,13 +614,13 @@ fun SettingsSectionScreen(
         Choice.PLAYBACK_SPEED -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Default playback speedup",
+                    title = stringResource(R.string.settings_default_playback_speedup),
                     options =
                         listOf(
-                            "1.5x" to "1.5",
-                            "2x" to "2.0",
-                            "3x" to "3.0",
-                            "4x" to "4.0",
+                            stringResource(R.string.settings_1_5x) to "1.5",
+                            stringResource(R.string.settings_2x) to "2.0",
+                            stringResource(R.string.settings_3x) to "3.0",
+                            stringResource(R.string.settings_4x) to "4.0",
                         ),
                     selected = it.prefs.defaultSpeedup.toString(),
                     onSelected = { value ->
@@ -633,13 +635,13 @@ fun SettingsSectionScreen(
         Choice.SPEEDUP_SENSITIVITY -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Speedup gesture speed",
+                    title = stringResource(R.string.settings_speedup_gesture_speed),
                     options =
                         listOf(
-                            "Low" to "0.5",
-                            "Normal" to "1.0",
-                            "High" to "1.5",
-                            "Very high" to "2.0",
+                            stringResource(R.string.settings_low) to "0.5",
+                            stringResource(R.string.settings_normal) to "1.0",
+                            stringResource(R.string.settings_high) to "1.5",
+                            stringResource(R.string.settings_very_high) to "2.0",
                         ),
                     selected = it.prefs.speedupSensitivity.toString(),
                     onSelected = { value ->
@@ -654,14 +656,14 @@ fun SettingsSectionScreen(
         Choice.JUMP_STEP -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Time jump step",
+                    title = stringResource(R.string.settings_time_jump_step),
                     options =
                         listOf(
-                            "1s" to "1",
-                            "3s" to "3",
-                            "5s" to "5",
-                            "10s" to "10",
-                            "30s" to "30",
+                            stringResource(R.string.settings_1s) to "1",
+                            stringResource(R.string.settings_3s) to "3",
+                            stringResource(R.string.settings_5s) to "5",
+                            stringResource(R.string.settings_10s) to "10",
+                            stringResource(R.string.settings_30s) to "30",
                         ),
                     selected = it.prefs.jumpStepSeconds.toString(),
                     onSelected = { value ->
@@ -676,15 +678,15 @@ fun SettingsSectionScreen(
         Choice.VIDEO_RESOLUTION -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Default video resolution",
+                    title = stringResource(R.string.settings_default_video_resolution),
                     options =
                         listOf(
-                            "Auto" to "Auto",
-                            "144p" to "144p",
-                            "360p" to "360p",
-                            "480p" to "480p",
-                            "720p" to "720p",
-                            "1080p" to "1080p",
+                            stringResource(R.string.settings_auto) to "Auto",
+                            stringResource(R.string.settings_144p) to "144p",
+                            stringResource(R.string.settings_360p) to "360p",
+                            stringResource(R.string.settings_480p) to "480p",
+                            stringResource(R.string.settings_720p) to "720p",
+                            stringResource(R.string.settings_1080p) to "1080p",
                         ),
                     selected = it.prefs.defaultVideoResolution,
                     onSelected = { value ->
@@ -699,16 +701,16 @@ fun SettingsSectionScreen(
         Choice.CONTROLLER_SEEK_BACK -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Backwards jump step",
+                    title = stringResource(R.string.settings_backwards_jump_step),
                     options =
                         listOf(
-                            "5s" to "5",
-                            "10s" to "10",
-                            "15s" to "15",
-                            "20s" to "20",
-                            "30s" to "30",
-                            "45s" to "45",
-                            "60s" to "60",
+                            stringResource(R.string.settings_5s) to "5",
+                            stringResource(R.string.settings_10s) to "10",
+                            stringResource(R.string.settings_15s) to "15",
+                            stringResource(R.string.settings_20s) to "20",
+                            stringResource(R.string.settings_30s) to "30",
+                            stringResource(R.string.settings_45s) to "45",
+                            stringResource(R.string.settings_60s) to "60",
                         ),
                     selected = it.prefs.controller.seekBackSeconds.toString(),
                     onSelected = { value ->
@@ -723,16 +725,16 @@ fun SettingsSectionScreen(
         Choice.CONTROLLER_SEEK_FORWARD -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Forwards jump step",
+                    title = stringResource(R.string.settings_forwards_jump_step),
                     options =
                         listOf(
-                            "5s" to "5",
-                            "10s" to "10",
-                            "15s" to "15",
-                            "20s" to "20",
-                            "30s" to "30",
-                            "45s" to "45",
-                            "60s" to "60",
+                            stringResource(R.string.settings_5s) to "5",
+                            stringResource(R.string.settings_10s) to "10",
+                            stringResource(R.string.settings_15s) to "15",
+                            stringResource(R.string.settings_20s) to "20",
+                            stringResource(R.string.settings_30s) to "30",
+                            stringResource(R.string.settings_45s) to "45",
+                            stringResource(R.string.settings_60s) to "60",
                         ),
                     selected = it.prefs.controller.seekForwardSeconds.toString(),
                     onSelected = { value ->
@@ -747,14 +749,14 @@ fun SettingsSectionScreen(
         Choice.DOWNLOAD_RESOLUTION -> {
             loaded?.let {
                 ChoiceDialog(
-                    title = "Default download resolution",
+                    title = stringResource(R.string.settings_default_download_resolution),
                     options =
                         listOf(
-                            "1080p" to "1080p",
-                            "720p" to "720p",
-                            "480p" to "480p",
-                            "360p" to "360p",
-                            "144p" to "144p",
+                            stringResource(R.string.settings_1080p) to "1080p",
+                            stringResource(R.string.settings_720p) to "720p",
+                            stringResource(R.string.settings_480p) to "480p",
+                            stringResource(R.string.settings_360p) to "360p",
+                            stringResource(R.string.settings_144p) to "144p",
                         ),
                     selected = it.prefs.defaultDownloadResolution,
                     onSelected = { value ->

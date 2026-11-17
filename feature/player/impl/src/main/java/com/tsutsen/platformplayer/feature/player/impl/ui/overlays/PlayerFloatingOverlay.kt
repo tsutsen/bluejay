@@ -18,12 +18,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.feature.player.impl.PlayerUiState
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
@@ -62,7 +64,7 @@ internal fun PlayerFloatingOverlay(
                 } else {
                     Icon(
                         imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        contentDescription = if (state.isPlaying) stringResource(R.string.player_pause_cd) else stringResource(R.string.video_play),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp),
                     )
@@ -71,7 +73,7 @@ internal fun PlayerFloatingOverlay(
             IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Close",
+                    contentDescription = stringResource(R.string.player_close_cd),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp),
                 )
@@ -87,7 +89,7 @@ internal fun PlayerFloatingOverlay(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = state.currentVideo?.title ?: "Unknown",
+                    text = state.currentVideo?.title ?: stringResource(R.string.player_unknown_title),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White,
                     maxLines = 1,
@@ -107,7 +109,7 @@ internal fun PlayerFloatingOverlay(
             IconButton(onClick = onFullscreen, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.Default.Fullscreen,
-                    contentDescription = "Fullscreen",
+                    contentDescription = stringResource(R.string.player_fullscreen_cd),
                     tint = Color.White,
                     modifier = Modifier.size(20.dp),
                 )

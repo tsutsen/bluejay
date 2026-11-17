@@ -82,6 +82,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -100,6 +101,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlaylistOption
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.ui.RelativeTime
 
 /**
@@ -201,11 +203,12 @@ fun VideoOptionsSheet(
     var checkedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
     val body: @Composable () -> Unit = {
+        val shareChooserTitle = stringResource(R.string.video_share_chooser_title)
         // Header: title, then the metadata row underneath (title and stats
         // never fit on one line at phone widths).
         val stats =
             buildList {
-                viewCount?.takeIf { it > 0 }?.let { add("${formatViewCount(it)} views") }
+                viewCount?.takeIf { it > 0 }?.let { add(stringResource(R.string.video_views_count, formatViewCount(it))) }
                 durationMs?.takeIf { it > 0 }?.let { add(formatDuration(it)) }
                 publishedAt?.let { add(RelativeTime.format(it)) }
             }
@@ -243,7 +246,7 @@ fun VideoOptionsSheet(
         val hideTile =
             onHideVideo?.let { onHide ->
                 OptionTile(
-                    label = if (isHidden) "Unhide" else "Hide",
+                    label = if (isHidden) stringResource(R.string.video_unhide) else stringResource(R.string.video_hide),
                     icon = Icons.Filled.VisibilityOff,
                     // Danger only while the hide is active; a plain "Hide"
                     // is not destructive yet. No onDismiss — it's a toggle,
@@ -258,7 +261,7 @@ fun VideoOptionsSheet(
             buildList {
                 add(
                     OptionTile(
-                        label = "Play",
+                        label = stringResource(R.string.video_play),
                         icon = Icons.Filled.PlayArrow,
                         onClick = {
                             onPlay()
@@ -268,7 +271,7 @@ fun VideoOptionsSheet(
                 )
                 add(
                     OptionTile(
-                        label = "Watch later",
+                        label = stringResource(R.string.video_watch_later),
                         icon = Icons.Filled.History,
                         selected = isWatchLaterSaved,
                         onClick = onToggleWatchLater,
@@ -276,7 +279,7 @@ fun VideoOptionsSheet(
                 )
                 add(
                     OptionTile(
-                        label = "Like",
+                        label = stringResource(R.string.video_like),
                         icon = if (isLikedSaved) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                         selected = isLikedSaved,
                         onClick = onToggleLiked,
@@ -284,7 +287,7 @@ fun VideoOptionsSheet(
                 )
                 add(
                     OptionTile(
-                        label = "Favourite",
+                        label = stringResource(R.string.video_favourite),
                         icon = if (isFavouriteSaved) Icons.Filled.Star else Icons.Filled.StarBorder,
                         selected = isFavouriteSaved,
                         onClick = onToggleFavourite,
@@ -293,7 +296,7 @@ fun VideoOptionsSheet(
                 onToggleWatched?.let { onToggle ->
                     add(
                         OptionTile(
-                            label = if (isWatched) "Watched" else "Mark as watched",
+                            label = if (isWatched) stringResource(R.string.video_watched) else stringResource(R.string.video_mark_watched),
                             icon = if (isWatched) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
                             selected = isWatched,
                             onClick = onToggle,
@@ -302,7 +305,7 @@ fun VideoOptionsSheet(
                 }
                 add(
                     OptionTile(
-                        label = "Add to playlist",
+                        label = stringResource(R.string.video_add_to_playlist),
                         icon = Icons.Filled.HistoryEdu,
                         selected = showPlaylists,
                         onClick = {
@@ -321,9 +324,9 @@ fun VideoOptionsSheet(
                     OptionTile(
                         label =
                             when {
-                                isCurrentlyPlaying -> "Now playing"
-                                isInQueue -> "Remove from queue"
-                                else -> "Add to queue"
+                                isCurrentlyPlaying -> stringResource(R.string.video_now_playing)
+                                isInQueue -> stringResource(R.string.video_remove_from_queue)
+                                else -> stringResource(R.string.video_add_to_queue)
                             },
                         icon = Icons.Filled.QueueMusic,
                         tone =
@@ -336,7 +339,7 @@ fun VideoOptionsSheet(
                 )
                 add(
                     OptionTile(
-                        label = "Share",
+                        label = stringResource(R.string.video_share),
                         icon = Icons.Filled.Share,
                         onClick = {
                             val intent =
@@ -345,7 +348,7 @@ fun VideoOptionsSheet(
                                     putExtra(Intent.EXTRA_TEXT, url)
                                 }
                             context.startActivity(
-                                Intent.createChooser(intent, "Share video"),
+                                Intent.createChooser(intent, shareChooserTitle),
                             )
                             // No onDismiss: the system share sheet opens on top;
                             // keep the options sheet open underneath.
@@ -355,7 +358,7 @@ fun VideoOptionsSheet(
                 authorUrl?.let {
                     add(
                         OptionTile(
-                            label = "Go to channel",
+                            label = stringResource(R.string.video_go_to_channel),
                             icon = Icons.Filled.Public,
                             onClick = {
                                 onGoToChannel(it)
@@ -459,7 +462,7 @@ fun VideoOptionsSheet(
                         .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
             ) {
                 Text(
-                    text = "Add this item",
+                    text = stringResource(R.string.video_add_this_item),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -567,10 +570,10 @@ private fun HideTileGroup(
             onExpandedChange = onExpandedChange,
             width = Tokens.IconMd + Tokens.SpaceMd * 2,
             shapes = shapes,
-            contentDescription = "More hide options",
+            contentDescription = stringResource(R.string.video_more_hide_options),
         ) {
             DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
-                        MenuDefaults.DropdownMenuGroupLabel { Text("Hide options") }
+                        MenuDefaults.DropdownMenuGroupLabel { Text(stringResource(R.string.video_hide_options)) }
                         val count =
                             1 + (if (onDownrankCreator != null) 1 else 0) +
                                 (if (onHideCreator != null) 1 else 0)
@@ -581,7 +584,7 @@ private fun HideTileGroup(
                                 onHideVideo()
                                 onExpandedChange(false)
                             },
-                            text = { Text("Don't show this video") },
+                            text = { Text(stringResource(R.string.video_dont_show_video)) },
                             shapes = MenuDefaults.itemShape(index++, count),
                             checkedLeadingIcon = {
                                 Icon(Icons.Filled.Check, contentDescription = null)
@@ -594,7 +597,7 @@ private fun HideTileGroup(
                                     onDownrank()
                                     onExpandedChange(false)
                                 },
-                                text = { Text("Show less from this creator") },
+                                text = { Text(stringResource(R.string.video_show_less_creator)) },
                                 shapes = MenuDefaults.itemShape(index++, count),
                                 checkedLeadingIcon = {
                                     Icon(Icons.Filled.Check, contentDescription = null)
@@ -608,7 +611,7 @@ private fun HideTileGroup(
                                     onHide()
                                     onExpandedChange(false)
                                 },
-                                text = { Text("Don't show this creator") },
+                                text = { Text(stringResource(R.string.video_dont_show_creator)) },
                                 shapes = MenuDefaults.itemShape(index++, count),
                                 checkedLeadingIcon = {
                                     Icon(Icons.Filled.Check, contentDescription = null)
@@ -901,14 +904,14 @@ private fun playlistCheckRow(
 private fun newPlaylistRow(onClick: () -> Unit) {
     // Same row shape as the checkbox rows; the + icon sits in the same
     // 48dp slot a checkbox occupies, so heights line up.
-    playlistRow("New playlist", onClick = onClick) {
+    playlistRow(stringResource(R.string.library_new_playlist_title), onClick = onClick) {
         Box(
             modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Filled.Add,
-                contentDescription = "New playlist",
+                contentDescription = stringResource(R.string.library_new_playlist_cd),
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1139,11 +1142,11 @@ private fun RowScope.downloadQualityItem(
         width = width,
         enabled = enabled,
         shapes = shapes,
-        contentDescription = "Download quality",
+        contentDescription = stringResource(R.string.video_download_quality_cd),
         interactionSource = interactionSource,
     ) {
         DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
-            MenuDefaults.DropdownMenuGroupLabel { Text("Download quality") }
+            MenuDefaults.DropdownMenuGroupLabel { Text(stringResource(R.string.video_download_quality)) }
             val count = DownloadQuality.Options.size
             DownloadQuality.Options.forEachIndexed { index, quality ->
                 CheckableDropdownMenuItem(
@@ -1245,8 +1248,8 @@ fun DownloadSection(
                 },
             label =
                 when (state) {
-                    is DownloadButtonState.Idle -> "Download"
-                    is DownloadButtonState.Downloaded -> "Delete"
+                    is DownloadButtonState.Idle -> stringResource(R.string.video_download)
+                    is DownloadButtonState.Downloaded -> stringResource(R.string.video_delete_download)
                     else -> null
                 },
             progress = (state as? DownloadButtonState.Downloading)?.progress,

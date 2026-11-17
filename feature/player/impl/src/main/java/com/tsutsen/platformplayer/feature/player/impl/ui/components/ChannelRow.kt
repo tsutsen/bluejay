@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.component.rememberIsWide
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
@@ -240,7 +242,7 @@ private fun RowScope.ChannelName(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = author?.name ?: "Unknown Channel",
+                text = author?.name ?: stringResource(R.string.player_unknown_channel),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -251,7 +253,7 @@ private fun RowScope.ChannelName(
             if (sourceIconUrl != null) {
                 AsyncImage(
                     model = sourceIconUrl,
-                    contentDescription = "Source",
+                    contentDescription = stringResource(R.string.channel_source_cd),
                     modifier =
                         Modifier
                             .padding(start = Tokens.SpaceXs)
@@ -263,7 +265,7 @@ private fun RowScope.ChannelName(
         }
         author?.subscriberCount?.takeIf { it > 0 }?.let { count ->
             Text(
-                text = "${formatCompactCount(count)} subscribers",
+                text = stringResource(R.string.channel_subscribers_count, formatCompactCount(count)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth(),
@@ -311,7 +313,7 @@ private fun SubscribeButton(
             Icon(
                 imageVector =
                     if (isSubscribed) Icons.Filled.Check else Icons.Filled.ThumbUp,
-                contentDescription = if (isSubscribed) "Subscribed" else "Subscribe",
+                contentDescription = if (isSubscribed) stringResource(R.string.channel_subscribed) else stringResource(R.string.channel_subscribe),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
@@ -328,7 +330,7 @@ private fun SubscribeButton(
             modifier = Modifier.height(Tokens.ButtonSm),
             contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
         ) {
-            Text(text = "Subscribed", style = MaterialTheme.typography.labelMedium)
+            Text(text = stringResource(R.string.channel_subscribed), style = MaterialTheme.typography.labelMedium)
         }
     } else {
         Button(
@@ -339,7 +341,7 @@ private fun SubscribeButton(
             modifier = Modifier.height(Tokens.ButtonSm),
             contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
         ) {
-            Text(text = "Subscribe", style = MaterialTheme.typography.labelMedium)
+            Text(text = stringResource(R.string.channel_subscribe), style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -349,7 +351,7 @@ private fun MoreButton(onMore: () -> Unit) {
     IconButton(onClick = onMore) {
         Icon(
             imageVector = Icons.Default.MoreVert,
-            contentDescription = "More options",
+            contentDescription = stringResource(R.string.player_more_options_cd),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

@@ -3,6 +3,7 @@ package com.tsutsen.platformplayer.feature.settings.impl
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -69,6 +70,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -123,7 +125,7 @@ internal fun SectionItems(
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsOptionCard(
                         icon = Icons.Filled.BrightnessAuto,
-                        title = "Mode",
+                        title = stringResource(R.string.settings_mode),
                         subtitle =
                             when (state.prefs.appearance.themeMode) {
                                 ThemeMode.AUTO -> "Follow system"
@@ -135,16 +137,16 @@ internal fun SectionItems(
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.Palette,
-                        title = "Dynamic color",
-                        subtitle = "Material You colors from wallpaper",
+                        title = stringResource(R.string.settings_dynamic_color),
+                        subtitle = stringResource(R.string.settings_material_you_colors_from_wallpaper),
                         checked = state.prefs.appearance.dynamicColor,
                         onCheckedChange = { viewModel.updateGeneral("dynamicColor", it) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsSliderCard(
                         icon = Icons.Filled.RoundedCorner,
-                        title = "UI rounding",
-                        subtitle = "Corner radius across the app",
+                        title = stringResource(R.string.settings_ui_rounding),
+                        subtitle = stringResource(R.string.settings_corner_radius_across_the_app),
                         value = state.prefs.appearance.uiRounding.toFloat(),
                         // Minimum 5: at 0 the radii (and the derived grid
                         // gaps) would go fully sharp, which the app no longer
@@ -159,15 +161,15 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.TextFields,
-                        title = "Font",
+                        title = stringResource(R.string.settings_font),
                         subtitle = fontFamilyLabel(state.prefs.appearance.fontFamily),
                         onClick = { onChoiceSelected(Choice.FONT) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsSliderCard(
                         icon = Icons.Filled.FormatSize,
-                        title = "Font size",
-                        subtitle = "Scales all text (${(state.prefs.appearance.fontSizeScale * 100).roundToInt()}%)",
+                        title = stringResource(R.string.settings_font_size),
+                        subtitle = stringResource(R.string.settings_scales_all_text_1_s, (state.prefs.appearance.fontSizeScale * 100).roundToInt()),
                         value = state.prefs.appearance.fontSizeScale * 100f,
                         valueRange = 80f..140f,
                         onValueChange = { viewModel.setFontSizeScale(it / 100f) },
@@ -175,7 +177,7 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.GridOn,
-                        title = "Grid columns",
+                        title = stringResource(R.string.settings_grid_columns),
                         subtitle = "${state.prefs.gridColumns} columns",
                         onClick = { onChoiceSelected(Choice.GRID_COLUMNS) },
                         groupPosition = GroupPosition.Last,
@@ -189,7 +191,7 @@ internal fun SectionItems(
                     SettingsHeader("Thumbnails")
                     SettingsOptionCard(
                         icon = Icons.Filled.Palette,
-                        title = "Tint",
+                        title = stringResource(R.string.settings_tint),
                         subtitle =
                             state.prefs.appearance.thumbnailTintArgb?.let { tintPreviewLabel(it) }
                                 ?: "None",
@@ -198,8 +200,8 @@ internal fun SectionItems(
                     )
                     SettingsSliderCard(
                         icon = Icons.Filled.BorderStyle,
-                        title = "Tint strength",
-                        subtitle = "How much of the tint mixes into thumbnails",
+                        title = stringResource(R.string.settings_tint_strength),
+                        subtitle = stringResource(R.string.settings_how_much_of_the_tint_mixes_into_thumbnails),
                         value = state.prefs.appearance.thumbnailTintStrength * 100f,
                         valueRange = 0f..100f,
                         onValueChange = { viewModel.setThumbnailTintStrength(it / 100f) },
@@ -207,15 +209,15 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Layers,
-                        title = "Tint blend mode",
+                        title = stringResource(R.string.settings_tint_blend_mode),
                         subtitle = tintBlendLabel(state.prefs.appearance.thumbnailTintBlendMode),
                         onClick = { onChoiceSelected(Choice.THUMBNAIL_TINT_BLEND) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsSliderCard(
                         icon = Icons.Filled.BrightnessAuto,
-                        title = "Desaturate",
-                        subtitle = "Color intensity of every thumbnail",
+                        title = stringResource(R.string.settings_desaturate),
+                        subtitle = stringResource(R.string.settings_color_intensity_of_every_thumbnail),
                         value = (1f - state.prefs.appearance.thumbnailSaturation) * 100f,
                         valueRange = 0f..100f,
                         onValueChange = { viewModel.setThumbnailSaturation(1f - it / 100f) },
@@ -229,15 +231,15 @@ internal fun SectionItems(
                     SettingsHeader("Plugins")
                     SettingsOptionCard(
                         icon = Icons.Filled.Extension,
-                        title = "Plugins",
-                        subtitle = "Manage installed source plugins",
+                        title = stringResource(R.string.settings_plugins),
+                        subtitle = stringResource(R.string.settings_manage_installed_source_plugins),
                         onClick = onPluginsClick,
                         groupPosition = GroupPosition.First,
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.SystemUpdateAlt,
-                        title = "Auto-update plugins",
-                        subtitle = "Check for and install plugin updates on launch",
+                        title = stringResource(R.string.settings_auto_update_plugins),
+                        subtitle = stringResource(R.string.settings_check_for_and_install_plugin_updates_on_launch),
                         checked = state.prefs.autoUpdatePlugins,
                         onCheckedChange = { viewModel.updateGeneral("autoUpdatePlugins", it) },
                         groupPosition = GroupPosition.Last,
@@ -245,7 +247,7 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Video page",
+                        title = stringResource(R.string.settings_video_page),
                         reset =
                             if (
                                 state.prefs.showRecommendedVideos != defaults.showRecommendedVideos ||
@@ -264,24 +266,24 @@ internal fun SectionItems(
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.PlayCircle,
-                        title = "Autoplay",
-                        subtitle = "Play the next video in the queue when the current one ends",
+                        title = stringResource(R.string.settings_autoplay),
+                        subtitle = stringResource(R.string.settings_play_the_next_video_in_the_queue_when_the_current_one_ends),
                         checked = state.prefs.playback.autoPlay,
                         onCheckedChange = { viewModel.setAutoplay(it) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsSwitchCard(
                         icon = VideoTemplate,
-                        title = "Show recommended videos",
-                        subtitle = "Recommended tab on the video page",
+                        title = stringResource(R.string.settings_show_recommended_videos),
+                        subtitle = stringResource(R.string.settings_recommended_tab_on_the_video_page),
                         checked = state.prefs.showRecommendedVideos,
                         onCheckedChange = { viewModel.updateGeneral("showRecommendedVideos", it) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.Chat,
-                        title = "Show comments",
-                        subtitle = "Comments tab on the video page",
+                        title = stringResource(R.string.settings_show_comments),
+                        subtitle = stringResource(R.string.settings_comments_tab_on_the_video_page),
                         checked = state.prefs.showComments,
                         onCheckedChange = { viewModel.updateGeneral("showComments", it) },
                         groupPosition = GroupPosition.Last,
@@ -289,7 +291,7 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Library",
+                        title = stringResource(R.string.settings_library),
                         reset =
                             if (
                                 state.prefs.librarySectionOrder != defaults.librarySectionOrder ||
@@ -307,14 +309,14 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.VideoLibrary,
-                        title = "Library sections",
-                        subtitle = "Order and visibility of sections on the library screen",
+                        title = stringResource(R.string.settings_library_sections),
+                        subtitle = stringResource(R.string.settings_order_and_visibility_of_sections_on_the_library_screen),
                         onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Home feed",
+                        title = stringResource(R.string.settings_home_feed),
                         reset =
                             if (
                                 state.prefs.showWatchedVideos != defaults.showWatchedVideos ||
@@ -330,16 +332,16 @@ internal fun SectionItems(
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.Visibility,
-                        title = "Show watched videos",
-                        subtitle = "Hide fully watched videos from the home feed",
+                        title = stringResource(R.string.settings_show_watched_videos),
+                        subtitle = stringResource(R.string.settings_hide_fully_watched_videos_from_the_home_feed),
                         checked = state.prefs.showWatchedVideos,
                         onCheckedChange = { viewModel.setShowWatchedVideos(it) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.History,
-                        title = "Show started videos",
-                        subtitle = "Hide partially watched videos from the home feed",
+                        title = stringResource(R.string.settings_show_started_videos),
+                        subtitle = stringResource(R.string.settings_hide_partially_watched_videos_from_the_home_feed),
                         checked = state.prefs.showStartedVideos,
                         onCheckedChange = { viewModel.setShowStartedVideos(it) },
                         groupPosition = GroupPosition.Last,
@@ -349,16 +351,16 @@ internal fun SectionItems(
                     SettingsHeader("Recommendations")
                     SettingsSwitchCard(
                         icon = Icons.Filled.RssFeed,
-                        title = "Homebrew recommendations",
-                        subtitle = "Build the home feed from the sources below",
+                        title = stringResource(R.string.settings_homebrew_recommendations),
+                        subtitle = stringResource(R.string.settings_build_the_home_feed_from_the_sources_below),
                         checked = state.prefs.homebrewRecommendations,
                         onCheckedChange = { viewModel.setHomebrewRecommendations(it) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.PlayCircle,
-                        title = "Source picks",
-                        subtitle = "Home feed from your sources",
+                        title = stringResource(R.string.settings_source_picks),
+                        subtitle = stringResource(R.string.settings_home_feed_from_your_sources),
                         checked = state.prefs.sourceYoutubeFeed,
                         onCheckedChange = { viewModel.setSourceYoutubeFeed(it) },
                         enabled = state.prefs.homebrewRecommendations,
@@ -366,8 +368,8 @@ internal fun SectionItems(
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.Subscriptions,
-                        title = "Subscriptions",
-                        subtitle = "Recent unwatched videos from subscribed channels",
+                        title = stringResource(R.string.settings_subscriptions),
+                        subtitle = stringResource(R.string.settings_recent_unwatched_videos_from_subscribed_channels),
                         checked = state.prefs.sourceSubscriptions,
                         onCheckedChange = { viewModel.setSourceSubscriptions(it) },
                         enabled = state.prefs.homebrewRecommendations,
@@ -375,8 +377,8 @@ internal fun SectionItems(
                     )
                     SettingsSwitchCard(
                         icon = Icons.Filled.Groups,
-                        title = "Top creators",
-                        subtitle = "Recent unwatched videos from creators you watch most",
+                        title = stringResource(R.string.settings_top_creators),
+                        subtitle = stringResource(R.string.settings_recent_unwatched_videos_from_creators_you_watch_most),
                         checked = state.prefs.sourceTopCreators,
                         onCheckedChange = { viewModel.setSourceTopCreators(it) },
                         enabled = state.prefs.homebrewRecommendations,
@@ -393,21 +395,21 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.History,
-                        title = "Recency",
+                        title = stringResource(R.string.settings_recency),
                         subtitle = recencyLabel(state.prefs.recency),
                         onClick = { onChoiceSelected(Choice.RECENCY) },
                         enabled = state.prefs.homebrewRecommendations,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.VisibilityOff,
-                        title = "Hidden content",
-                        subtitle = "Videos and creators you hid or reduced",
+                        title = stringResource(R.string.settings_hidden_content),
+                        subtitle = stringResource(R.string.settings_videos_and_creators_you_hid_or_reduced),
                         onClick = onHiddenContentClick,
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Dock",
+                        title = stringResource(R.string.settings_dock),
                         reset =
                             if (
                                 state.prefs.dockTabOrder != defaults.dockTabOrder ||
@@ -423,14 +425,14 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Reorder,
-                        title = "Tab order",
-                        subtitle = "Drag to reorder the bottom navigation tabs",
+                        title = stringResource(R.string.settings_tab_order),
+                        subtitle = stringResource(R.string.settings_drag_to_reorder_the_bottom_navigation_tabs),
                         onClick = { onChoiceSelected(Choice.DOCK_TAB_ORDER) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.PlayCircle,
-                        title = "Default tab",
+                        title = stringResource(R.string.settings_default_tab),
                         subtitle =
                             bluejayNavItems.firstOrNull { it.key == state.prefs.defaultDockTab }?.label
                                 ?: "Home",
@@ -440,7 +442,7 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Subscriptions",
+                        title = stringResource(R.string.settings_subscriptions),
                         reset =
                             if (state.prefs.subscriptionsOrder != defaults.subscriptionsOrder) {
                                 { viewModel.setSubscriptionsOrder(defaults.subscriptionsOrder) }
@@ -450,7 +452,7 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Subscriptions,
-                        title = "List order",
+                        title = stringResource(R.string.settings_list_order),
                         subtitle =
                             when (state.prefs.subscriptionsOrder) {
                                 "random" -> "Random"
@@ -517,7 +519,7 @@ internal fun SectionItems(
                 val subtitlesDefault = defaults.subtitle
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Subtitles",
+                        title = stringResource(R.string.settings_subtitles),
                         reset =
                             if (state.prefs.subtitle != subtitlesDefault) {
                                 {
@@ -541,28 +543,28 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Subtitles,
-                        title = "Subtitle font",
+                        title = stringResource(R.string.settings_subtitle_font),
                         subtitle = subtitleFontLabel(state.prefs.subtitle.font),
                         onClick = { onChoiceSelected(Choice.SUBTITLE_FONT) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.TextFields,
-                        title = "Subtitle size",
+                        title = stringResource(R.string.settings_subtitle_size),
                         subtitle = "${state.prefs.subtitle.size} pt",
                         onClick = { onChoiceSelected(Choice.SUBTITLE_SIZE) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.VerticalAlignBottom,
-                        title = "Subtitle bottom padding",
+                        title = stringResource(R.string.settings_subtitle_bottom_padding),
                         subtitle = "${state.prefs.subtitle.bottomPadding} dp",
                         onClick = { onChoiceSelected(Choice.SUBTITLE_PADDING) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.BorderStyle,
-                        title = "Subtitle outline",
+                        title = stringResource(R.string.settings_subtitle_outline),
                         subtitle = "${state.prefs.subtitle.outline} px",
                         onClick = { onChoiceSelected(Choice.SUBTITLE_OUTLINE) },
                         groupPosition = GroupPosition.Last,
@@ -570,7 +572,7 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Quality",
+                        title = stringResource(R.string.settings_quality),
                         reset =
                             if (
                                 state.prefs.defaultVideoResolution != defaults.defaultVideoResolution ||
@@ -592,14 +594,14 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Hd,
-                        title = "Default video resolution",
+                        title = stringResource(R.string.settings_default_video_resolution),
                         subtitle = state.prefs.defaultVideoResolution,
                         onClick = { onChoiceSelected(Choice.VIDEO_RESOLUTION) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Download,
-                        title = "Default download resolution",
+                        title = stringResource(R.string.settings_default_download_resolution),
                         subtitle = state.prefs.defaultDownloadResolution,
                         onClick = { onChoiceSelected(Choice.DOWNLOAD_RESOLUTION) },
                         groupPosition = GroupPosition.Last,
@@ -613,21 +615,21 @@ internal fun SectionItems(
                     SettingsHeader("General")
                     SettingsOptionCard(
                         icon = Icons.Filled.Speed,
-                        title = "Default playback speedup",
+                        title = stringResource(R.string.settings_default_playback_speedup),
                         subtitle = "${state.prefs.defaultSpeedup}x",
                         onClick = { onChoiceSelected(Choice.PLAYBACK_SPEED) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Speed,
-                        title = "Speedup gesture speed",
+                        title = stringResource(R.string.settings_speedup_gesture_speed),
                         subtitle = "${state.prefs.speedupSensitivity}x",
                         onClick = { onChoiceSelected(Choice.SPEEDUP_SENSITIVITY) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Timer,
-                        title = "Time jump step",
+                        title = stringResource(R.string.settings_time_jump_step),
                         subtitle = "${state.prefs.jumpStepSeconds}s",
                         onClick = { onChoiceSelected(Choice.JUMP_STEP) },
                         groupPosition = GroupPosition.Last,
@@ -637,7 +639,7 @@ internal fun SectionItems(
                     SettingsHeader("Customization")
                     SettingsOptionCard(
                         icon = Icons.Filled.Gesture,
-                        title = "Fullscreen player gestures",
+                        title = stringResource(R.string.settings_fullscreen_player_gestures),
                         subtitle =
                             if (state.prefs.playerGestures.fullscreen.isCustomized) {
                                 "Customized"
@@ -649,7 +651,7 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Gesture,
-                        title = "Normal player gestures",
+                        title = stringResource(R.string.settings_normal_player_gestures),
                         subtitle =
                             if (state.prefs.playerGestures.normal.isCustomized) {
                                 "Customized"
@@ -679,7 +681,7 @@ internal fun SectionItems(
                             ) {
                                 {
                                     TextButton(onClick = { viewModel.resetPlayerGestures(mode) }) {
-                                        Text("Reset to defaults")
+                                        Text(stringResource(R.string.settings_reset_to_defaults))
                                     }
                                 }
                             } else {
@@ -695,7 +697,7 @@ internal fun SectionItems(
                                     .padding(horizontal = Tokens.SpaceLg),
                         ) {
                             Text(
-                                text = "Each zone in a player can have its unique gestures.",
+                                text = stringResource(R.string.settings_each_zone_in_a_player_can_have_its_unique_gestures),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(bottom = Tokens.SpaceSm),
@@ -732,8 +734,8 @@ internal fun SectionItems(
                     SettingsHeader("General")
                     SettingsSwitchCard(
                         icon = DualScreen,
-                        title = "Dual screen",
-                        subtitle = "Show video controls on the second screen",
+                        title = stringResource(R.string.settings_dual_screen),
+                        subtitle = stringResource(R.string.settings_show_video_controls_on_the_second_screen),
                         checked = state.prefs.dualScreen,
                         onCheckedChange = { enabled ->
                             viewModel.updateGeneral("dualScreen", enabled)
@@ -753,7 +755,7 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Layers,
-                        title = "Pages",
+                        title = stringResource(R.string.settings_pages),
                         subtitle = dualListLabel(state.prefs.dualScreenPages, dualPageNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGES) },
                         groupPosition = GroupPosition.Last,
@@ -761,7 +763,7 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Dash page",
+                        title = stringResource(R.string.settings_dash_page),
                         reset =
                             if (
                                 state.prefs.dualScreenTopCreatorsScope !=
@@ -782,7 +784,7 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Groups,
-                        title = "Top creators",
+                        title = stringResource(R.string.settings_top_creators),
                         subtitle =
                             if (state.prefs.dualScreenTopCreatorsScope == "overall") "Overall"
                             else "This week",
@@ -791,7 +793,7 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Reorder,
-                        title = "Dash page order",
+                        title = stringResource(R.string.settings_dash_page_order),
                         subtitle = dualOrderLabel(state.prefs.dualScreenDashPageOrder, dashPageOrderNames),
                         onClick = { onChoiceSelected(Choice.DASH_PAGE_ORDER) },
                         groupPosition = GroupPosition.Last,
@@ -799,7 +801,7 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Video page",
+                        title = stringResource(R.string.settings_video_page),
                         reset =
                             if (
                                 state.prefs.dualScreenVideoTabs != defaults.dualScreenVideoTabs ||
@@ -817,14 +819,14 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Tab,
-                        title = "Video tabs",
+                        title = stringResource(R.string.settings_video_tabs),
                         subtitle = dualOrderLabel(state.prefs.dualScreenVideoTabOrder, dualTabNames),
                         onClick = { onChoiceSelected(Choice.DUAL_TAB_ORDER) },
                         groupPosition = GroupPosition.First,
                     )
                     SettingsOptionCard(
                         icon = SplitscreenBottom,
-                        title = "Video page order",
+                        title = stringResource(R.string.settings_video_page_order),
                         subtitle = dualOrderLabel(state.prefs.dualScreenPageOrder, dualPageOrderNames),
                         onClick = { onChoiceSelected(Choice.DUAL_PAGE_ORDER) },
                         groupPosition = GroupPosition.Last,
@@ -832,7 +834,7 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Playlists page",
+                        title = stringResource(R.string.settings_playlists_page),
                         reset =
                             if (state.prefs.dualScreenLibrarySlots != defaults.dualScreenLibrarySlots) {
                                 { viewModel.setDualScreenLibrarySlots(defaults.dualScreenLibrarySlots) }
@@ -842,14 +844,14 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.VideoLibrary,
-                        title = "Library slots",
+                        title = stringResource(R.string.settings_library_slots),
                         subtitle = slotListLabel(state.prefs.dualScreenLibrarySlots, playlists),
                         onClick = { onChoiceSelected(Choice.DUAL_SLOTS) },
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Home page",
+                        title = stringResource(R.string.settings_home_page),
                         reset =
                             if (state.prefs.dualScreenFeedSources.isNotEmpty()) {
                                 { viewModel.setDualScreenFeedSources(emptyList()) }
@@ -859,7 +861,7 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.RssFeed,
-                        title = "Feed sources",
+                        title = stringResource(R.string.settings_feed_sources),
                         subtitle =
                             if (state.prefs.dualScreenFeedSources.isEmpty()) {
                                 "All sources"
@@ -877,8 +879,8 @@ internal fun SectionItems(
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsSwitchCard(
                         icon = Icons.Filled.Games,
-                        title = "Use controller",
-                        subtitle = "Control playback with a gamepad or TV remote",
+                        title = stringResource(R.string.settings_use_controller),
+                        subtitle = stringResource(R.string.settings_control_playback_with_a_gamepad_or_tv_remote),
                         checked = state.prefs.controller.enabled,
                         onCheckedChange = { enabled ->
                             viewModel.setController(state.prefs.controller.copy(enabled = enabled))
@@ -887,14 +889,14 @@ internal fun SectionItems(
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Replay10,
-                        title = "Backwards jump step",
+                        title = stringResource(R.string.settings_backwards_jump_step),
                         subtitle = "${state.prefs.controller.seekBackSeconds}s",
                         onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_BACK) },
                         groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Forward30,
-                        title = "Forwards jump step",
+                        title = stringResource(R.string.settings_forwards_jump_step),
                         subtitle = "${state.prefs.controller.seekForwardSeconds}s",
                         onClick = { onChoiceSelected(Choice.CONTROLLER_SEEK_FORWARD) },
                         groupPosition = GroupPosition.Last,
@@ -902,7 +904,7 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader(
-                        title = "Buttons",
+                        title = stringResource(R.string.settings_buttons),
                         reset =
                             if (state.prefs.controller.mappings.isNotEmpty()) {
                                 { viewModel.setController(state.prefs.controller.copy(mappings = emptyMap())) }
@@ -977,7 +979,7 @@ internal fun SpawnProbabilityCard(
     ) {
         Column(modifier = Modifier.padding(Tokens.SpaceMd)) {
             Text(
-                text = "Spawn probability",
+                text = stringResource(R.string.settings_spawn_probability),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
             )

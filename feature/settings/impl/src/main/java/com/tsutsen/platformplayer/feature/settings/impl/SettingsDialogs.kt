@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,19 +67,19 @@ internal fun StepperDialog(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = { draft = (draft - step).coerceAtLeast(min) }) {
-                    Icon(Icons.Filled.Remove, contentDescription = "Decrease")
+                    Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.settings_decrease))
                 }
                 Text("$draft$suffix", style = MaterialTheme.typography.titleMedium)
                 IconButton(onClick = { draft = (draft + step).coerceAtMost(max) }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Increase")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.settings_increase))
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSelected(draft) }) { Text("OK") }
+            TextButton(onClick = { onSelected(draft) }) { Text(stringResource(R.string.settings_ok)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
         },
     )
 }
@@ -116,7 +118,7 @@ internal fun MultiSelectDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_done)) }
         },
     )
 }
@@ -158,7 +160,7 @@ internal fun ChoiceDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(R.string.settings_close))
             }
         },
     )
@@ -198,7 +200,7 @@ internal fun ReorderDialog(
                 modifier = Modifier.heightIn(max = 400.dp),
             )
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_done)) } },
     )
 }
 
@@ -214,7 +216,7 @@ internal fun ThumbnailTintDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Thumbnail tint") },
+        title = { Text(stringResource(R.string.settings_thumbnail_tint)) },
         text = {
             Column {
                 Text(
@@ -239,12 +241,12 @@ internal fun ThumbnailTintDialog(
                 }
                 Spacer(Modifier.height(Tokens.SpaceSm))
                 TextButton(onClick = { onPick(null) }) {
-                    Text("None", color = if (current == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.settings_none), color = if (current == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_close)) }
         },
     )
 }
@@ -280,7 +282,7 @@ internal fun SlotsDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = "Slot ${index + 1}",
+                                text = stringResource(R.string.settings_slot_1_s, index + 1),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -311,7 +313,7 @@ internal fun SlotsDialog(
                     if (playlists.isNotEmpty()) {
                         Spacer(Modifier.height(Tokens.SpaceSm))
                         Text(
-                            text = "Playlists",
+                            text = stringResource(R.string.settings_playlists),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -330,7 +332,7 @@ internal fun SlotsDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_done)) } },
     )
 }
 

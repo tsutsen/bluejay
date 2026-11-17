@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.LibrarySection
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PlaylistStats
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.model.VideoCard as CoreVideoCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
@@ -187,7 +189,7 @@ private fun LibrarySectionRow(
             if (section.id == "playlists") {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = "New playlist",
+                    contentDescription = stringResource(R.string.library_new_playlist_cd),
                     modifier =
                         Modifier
                             .padding(horizontal = Tokens.SpaceSm)
@@ -196,13 +198,13 @@ private fun LibrarySectionRow(
             }
             Icon(
                 imageVector = Icons.Filled.ChevronRight,
-                contentDescription = "Open ${section.title}",
+                contentDescription = stringResource(R.string.library_open_section, section.title),
             )
         }
 
         if (section.items.isEmpty()) {
             Text(
-                text = "Nothing yet",
+                text = stringResource(R.string.library_nothing_yet),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = Tokens.SpaceSm),
@@ -273,7 +275,7 @@ private fun AllCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "All",
+                    text = stringResource(R.string.library_all),
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -295,7 +297,7 @@ private fun AllCard(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "videos",
+                    text = stringResource(R.string.library_videos_label),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

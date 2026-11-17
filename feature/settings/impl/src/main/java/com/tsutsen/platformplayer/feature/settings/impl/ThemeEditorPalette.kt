@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer.feature.settings.impl
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
@@ -50,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -152,7 +154,7 @@ internal fun ThemeEditor(
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Theme name") },
+            label = { Text(stringResource(R.string.settings_theme_editor_theme_name)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -163,7 +165,7 @@ internal fun ThemeEditor(
                 horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
                 ThemeColorSlot(
-                    label = "Primary",
+                    label = stringResource(R.string.settings_theme_editor_primary),
                     color = primary,
                     optional = false,
                     modifier = Modifier.weight(1f),
@@ -171,7 +173,7 @@ internal fun ThemeEditor(
                     onClear = {},
                 )
                 ThemeColorSlot(
-                    label = "Secondary",
+                    label = stringResource(R.string.settings_theme_editor_secondary),
                     color = secondary,
                     optional = true,
                     modifier = Modifier.weight(1f),
@@ -179,7 +181,7 @@ internal fun ThemeEditor(
                     onClear = { secondary = null },
                 )
                 ThemeColorSlot(
-                    label = "Tertiary",
+                    label = stringResource(R.string.settings_theme_editor_tertiary),
                     color = tertiary,
                     optional = true,
                     modifier = Modifier.weight(1f),
@@ -188,7 +190,7 @@ internal fun ThemeEditor(
                 )
                 // Background (surfaces) is the fourth optional key color.
                 ThemeColorSlot(
-                    label = "Background",
+                    label = stringResource(R.string.settings_theme_editor_background),
                     color = background,
                     optional = true,
                     modifier = Modifier.weight(1f),
@@ -198,7 +200,7 @@ internal fun ThemeEditor(
             }
 
             Text(
-                text = "Palette style",
+                text = stringResource(R.string.settings_theme_editor_palette_style),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
             )
@@ -222,7 +224,7 @@ internal fun ThemeEditor(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = "Contrast",
+                        text = stringResource(R.string.settings_theme_editor_contrast),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
                     )
@@ -244,7 +246,7 @@ internal fun ThemeEditor(
 
         } else {
             Text(
-                text = "Per-surface overrides — slots left empty use the palette scheme.",
+                text = stringResource(R.string.settings_theme_editor_per_surface_overrides_slots_left_empty_use_the_palette_schem),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -291,7 +293,7 @@ internal fun ThemeEditor(
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Save")
+            Text(stringResource(R.string.settings_theme_editor_save))
         }
     }
 
@@ -561,7 +563,7 @@ internal fun SurfaceStyleSlot(
                 else ->
                     Icon(
                         Icons.Filled.Add,
-                        contentDescription = "Pick $label style",
+                        contentDescription = stringResource(R.string.settings_pick_1_s_style, label),
                         tint = scheme.onSurfaceVariant,
                         modifier = Modifier.size(Tokens.IconMd),
                     )
@@ -654,14 +656,14 @@ internal fun SurfaceSlotDialog(
                     ) {
                         when (page) {
                             0 -> {
-                                Text("Container color", style = MaterialTheme.typography.labelLarge)
+                                Text(stringResource(R.string.settings_container_color), style = MaterialTheme.typography.labelLarge)
                                 SwatchRow(selected = colorArgb, onSelect = { colorArgb = it })
                             }
                             1 -> {
-                                Text("Outline color", style = MaterialTheme.typography.labelLarge)
+                                Text(stringResource(R.string.settings_outline_color), style = MaterialTheme.typography.labelLarge)
                                 SwatchRow(selected = outlineColorArgb, onSelect = { outlineColorArgb = it })
                                 Spacer(Modifier.height(Tokens.SpaceSm))
-                                Text("Outline width", style = MaterialTheme.typography.labelLarge)
+                                Text(stringResource(R.string.settings_outline_width), style = MaterialTheme.typography.labelLarge)
                                 Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
                                     listOf("None" to 0f, "1 dp" to 1f, "2 dp" to 2f, "3 dp" to 3f).forEach { (label, width) ->
                                         TextButton(onClick = { outlineWidth = width }) {
@@ -676,7 +678,7 @@ internal fun SurfaceSlotDialog(
                                 }
                             }
                             2 -> {
-                                Text("Text color", style = MaterialTheme.typography.labelLarge)
+                                Text(stringResource(R.string.settings_text_color), style = MaterialTheme.typography.labelLarge)
                                 Text(
                                     "Titles and icons on this surface.",
                                     style = MaterialTheme.typography.bodySmall,
@@ -685,7 +687,7 @@ internal fun SurfaceSlotDialog(
                                 SwatchRow(selected = textColorArgb, onSelect = { textColorArgb = it })
                             }
                             else -> {
-                                Text("Texture", style = MaterialTheme.typography.labelLarge)
+                                Text(stringResource(R.string.settings_texture), style = MaterialTheme.typography.labelLarge)
                                 Text(
                                     "Tiles edge to edge over the container color.",
                                     style = MaterialTheme.typography.bodySmall,
@@ -704,9 +706,9 @@ internal fun SurfaceSlotDialog(
                                             modifier = Modifier.size(Tokens.AvatarLg).clip(MaterialTheme.shapes.small),
                                         )
                                     }
-                                    TextButton(onClick = { texPicker.launch("image/*") }) { Text("Upload") }
+                                    TextButton(onClick = { texPicker.launch("image/*") }) { Text(stringResource(R.string.settings_theme_editor_upload)) }
                                     if (texturePath != null) {
-                                        TextButton(onClick = { texturePath = null }) { Text("Remove") }
+                                        TextButton(onClick = { texturePath = null }) { Text(stringResource(R.string.settings_theme_editor_remove)) }
                                     }
                                 }
                             }
@@ -731,10 +733,10 @@ internal fun SurfaceSlotDialog(
                     }
                 onUpdate(s)
                 onDismiss()
-            }) { Text("Save") }
+            }) { Text(stringResource(R.string.settings_theme_editor_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
         },
     )
 }

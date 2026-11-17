@@ -77,6 +77,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -96,6 +97,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.core.ui.AsyncImage
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.feature.library.impl.PlaylistCardView
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
@@ -184,7 +186,7 @@ fun ChannelScreen(
                                     state.channel.sourceIconUrl?.let { iconUrl ->
                                         AsyncImage(
                                             url = iconUrl,
-                                            contentDescription = "Source",
+                                            contentDescription = stringResource(R.string.channel_source_cd),
                                             modifier =
                                                 Modifier
                                                     .padding(start = Tokens.SpaceXs)
@@ -195,20 +197,23 @@ fun ChannelScreen(
                                     }
                                 }
                                 Text(
-                                    text = formatSubscribers(state.channel.subscribers),
+                                    text = stringResource(
+                                        R.string.channel_subscribers_count,
+                                        formatSubscribers(state.channel.subscribers),
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                 )
                             }
                         }
-                    } ?: Text("Channel")
+                    } ?: Text(stringResource(R.string.channel_title))
                 },
                 leading = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.common_back_cd),
                         )
                     }
                 },
@@ -226,9 +231,9 @@ fun ChannelScreen(
                                         },
                                     contentDescription =
                                         if (state.notifyEnabled) {
-                                            "Notifications on"
+                                            stringResource(R.string.channel_notifications_on)
                                         } else {
-                                            "Notifications off"
+                                            stringResource(R.string.channel_notifications_off)
                                         },
                                 )
                             }
@@ -237,11 +242,11 @@ fun ChannelScreen(
                         // tonal once subscribed.
                         if (state.isSubscribed) {
                             FilledTonalButton(onClick = { viewModel.toggleSubscription() }) {
-                                Text("Subscribed")
+                                Text(stringResource(R.string.channel_subscribed))
                             }
                         } else {
                             Button(onClick = { viewModel.toggleSubscription() }) {
-                                Text("Subscribe")
+                                Text(stringResource(R.string.channel_subscribe))
                             }
                         }
                     }
@@ -278,10 +283,10 @@ fun ChannelScreen(
                 // is present (Videos=0, Shorts=1?, Playlists, About).
                 val tabs =
                     buildList {
-                        add(ChannelTab("Videos", Icons.Outlined.SmartDisplay))
-                        if (state.hasShorts) add(ChannelTab("Shorts", Icons.Outlined.WebStories))
-                        add(ChannelTab("Playlists", Icons.Filled.PlaylistPlay))
-                        add(ChannelTab("About", Icons.Outlined.Info))
+                        add(ChannelTab(stringResource(R.string.channel_tab_videos), Icons.Outlined.SmartDisplay))
+                        if (state.hasShorts) add(ChannelTab(stringResource(R.string.channel_tab_shorts), Icons.Outlined.WebStories))
+                        add(ChannelTab(stringResource(R.string.channel_tab_playlists), Icons.Filled.PlaylistPlay))
+                        add(ChannelTab(stringResource(R.string.channel_tab_about), Icons.Outlined.Info))
                     }
                 val tabPlaylists = tabs.indexOfFirst { it.label == "Playlists" }
                 val tabShorts = tabs.indexOfFirst { it.label == "Shorts" }
@@ -468,7 +473,7 @@ private fun ChannelContent(
                 } else {
                     // Empty state: a placeholder in the real shorts card's shape.
                     ChannelEmptyState {
-                        ShortsEmptyCard(message = "No shorts")
+                        ShortsEmptyCard(message = stringResource(R.string.channel_empty_shorts))
                     }
                 }
             } else if (isWide) {
@@ -534,7 +539,7 @@ private fun ChannelContent(
                     ChannelEmptyState {
                         ChannelEmptyCard(
                             icon = Icons.Filled.PlaylistPlay,
-                            message = "No playlists",
+                            message = stringResource(R.string.channel_empty_playlists),
                             coverRatio = 16f / 9f,
                         )
                     }
@@ -585,7 +590,7 @@ private fun ChannelContent(
                     ChannelEmptyState {
                         ChannelEmptyCard(
                             icon = Icons.Filled.VideoCall,
-                            message = "No videos",
+                            message = stringResource(R.string.channel_empty_videos),
                             coverRatio = 16f / 9f,
                         )
                     }
@@ -1001,4 +1006,4 @@ private fun ChannelBannerCover(bannerUrl: String, modifier: Modifier = Modifier)
     }
 }
 
-private fun formatSubscribers(count: Long): String = NumberFormat.getInstance().format(count) + " subscribers"
+private fun formatSubscribers(count: Long): String = NumberFormat.getInstance().format(count)

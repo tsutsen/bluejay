@@ -12,12 +12,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -63,7 +65,7 @@ internal fun PlayerCompactOverlay(
             IconButton(onClick = onMinimize) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Minimize",
+                    contentDescription = stringResource(R.string.player_minimize_cd),
                     tint = Color.White
                 )
             }
@@ -76,7 +78,7 @@ internal fun PlayerCompactOverlay(
                 } else {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        contentDescription = if (isPlaying) stringResource(R.string.player_pause_cd) else stringResource(R.string.video_play),
                         tint = Color.White
                     )
                 }
@@ -84,14 +86,14 @@ internal fun PlayerCompactOverlay(
             IconButton(onClick = onChapters) {
                 Icon(
                     imageVector = Icons.Default.MenuBook,
-                    contentDescription = "Chapters",
+                    contentDescription = stringResource(R.string.player_chapters),
                     tint = Color.White
                 )
             }
             IconButton(onClick = onSubtitleToggle) {
                 Icon(
                     imageVector = if (subtitlesOn) Icons.Filled.ClosedCaption else Icons.Outlined.ClosedCaption,
-                    contentDescription = "Subtitles",
+                    contentDescription = stringResource(R.string.player_subtitles),
                     tint = Color.White
                 )
             }
@@ -99,21 +101,21 @@ internal fun PlayerCompactOverlay(
                 Icon(
                     imageVector =
                         if (isWatchLater) Icons.Filled.Schedule else Icons.Outlined.Schedule,
-                    contentDescription = "Watch Later",
+                    contentDescription = stringResource(R.string.video_watch_later),
                     tint = if (isWatchLater) Color.White else Color.White.copy(alpha = 0.6f)
                 )
             }
             IconButton(onClick = onOptions) {
                 Icon(
                     imageVector = Icons.Default.Settings,
-                    contentDescription = "Options",
+                    contentDescription = stringResource(R.string.player_options_cd),
                     tint = Color.White
                 )
             }
             IconButton(onClick = onFullscreen) {
                 Icon(
                     imageVector = Icons.Default.Fullscreen,
-                    contentDescription = "Fullscreen",
+                    contentDescription = stringResource(R.string.player_fullscreen_cd),
                     tint = Color.White
                 )
             }

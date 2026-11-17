@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +13,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,7 +64,7 @@ internal fun SettingsHeader(
             // Compact text action — the same line height as the title, so
             // the header row keeps its height when the button appears.
             Text(
-                text = "Reset to defaults",
+                text = stringResource(R.string.settings_reset_to_defaults),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier =
@@ -259,7 +261,7 @@ internal fun BackIconButton(onBack: () -> Unit) {
     IconButton(onClick = onBack) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
+            contentDescription = stringResource(R.string.settings_back),
         )
     }
 }

@@ -1,6 +1,7 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
 import android.provider.Settings
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -37,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -134,9 +136,9 @@ internal fun ControllerBindingRow(
                 )
             }
             if (binding != null) {
-                TextButton(onClick = onClear) { Text("Clear") }
+                TextButton(onClick = onClear) { Text(stringResource(R.string.settings_clear)) }
             }
-            Text("Tap to bind", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.settings_tap_to_bind), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -200,9 +202,9 @@ fun ControllerBindingPopup(
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Bind ${action.label}", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.settings_bind_1_s, action.label), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "Press a button, d-pad direction, or push a stick fully.",
+                        text = stringResource(R.string.settings_press_a_button_d_pad_direction_or_push_a_stick_fully),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -213,8 +215,8 @@ fun ControllerBindingPopup(
                                 .padding(top = 12.dp),
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        TextButton(onClick = onClear) { Text("Clear") }
-                        TextButton(onClick = onDismiss) { Text("Cancel") }
+                        TextButton(onClick = onClear) { Text(stringResource(R.string.settings_clear)) }
+                        TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
                     }
                 }
             }

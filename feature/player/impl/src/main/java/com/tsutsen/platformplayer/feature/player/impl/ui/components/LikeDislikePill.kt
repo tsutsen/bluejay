@@ -23,9 +23,11 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.component.GroupCornerShapes
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.connectedGroupShapes
@@ -61,6 +63,8 @@ fun LikeDislikePill(
     val likeSource = remember { MutableInteractionSource() }
     val dislikeSource = remember { MutableInteractionSource() }
 
+    val likeDescription = if (isLiked) stringResource(R.string.player_unlike) else stringResource(R.string.video_like)
+    val dislikeDescription = if (isDisliked) stringResource(R.string.player_remove_dislike) else stringResource(R.string.player_dislike)
     ButtonGroup(
         overflowIndicator = { _: ButtonGroupMenuState -> },
         modifier = modifier,
@@ -72,7 +76,7 @@ fun LikeDislikePill(
             onCheckedChange = onLike,
             activeIcon = Icons.Filled.ThumbUp,
             inactiveIcon = Icons.Outlined.ThumbUp,
-            description = if (isLiked) "Unlike" else "Like",
+            description = likeDescription,
             shapes = connectedGroupShapes(GroupPosition.First, radius),
             interactionSource = likeSource,
         )
@@ -82,7 +86,7 @@ fun LikeDislikePill(
             onCheckedChange = onDislike,
             activeIcon = Icons.Filled.ThumbDown,
             inactiveIcon = Icons.Outlined.ThumbDown,
-            description = if (isDisliked) "Remove dislike" else "Dislike",
+            description = dislikeDescription,
             shapes = connectedGroupShapes(GroupPosition.Last, radius),
             interactionSource = dislikeSource,
         )

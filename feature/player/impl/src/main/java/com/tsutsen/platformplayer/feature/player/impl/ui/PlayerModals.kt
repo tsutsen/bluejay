@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +32,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.component.DownloadSection
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTile
 import com.tsutsen.platformplayer.core.designsystem.component.OptionTileView
@@ -95,7 +97,7 @@ internal fun OptionsModal(
                     .padding(bottom = Tokens.SpaceXl),
             verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
         ) {
-            OptionCard(title = "Speed") {
+            OptionCard(title = stringResource(R.string.player_speed)) {
                 listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
                     FilterChip(
                         selected = playbackSpeed == speed,
@@ -109,7 +111,7 @@ internal fun OptionsModal(
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))
                 }
             }
-            OptionCard(title = "Quality") {
+            OptionCard(title = stringResource(R.string.player_quality)) {
                 (listOf("Auto") + qualities.map { "${it}p" }).forEach { q ->
                     FilterChip(
                         selected = quality == q,
@@ -122,7 +124,7 @@ internal fun OptionsModal(
             }
             // A single track is the default — nothing to select.
             if (audioTracks.size > 1) {
-                OptionCard(title = "Audio") {
+                OptionCard(title = stringResource(R.string.player_audio)) {
                     audioTracks.forEach { track ->
                         FilterChip(
                             selected = track.label == selectedAudioTrack,
@@ -134,7 +136,7 @@ internal fun OptionsModal(
                     }
                 }
             }
-            OptionCard(title = "Subtitles") {
+            OptionCard(title = stringResource(R.string.player_subtitles)) {
                 val subtitleOptions = if (subtitles.isEmpty()) listOf("Auto", "Off") else listOf("Off") + subtitles
                 subtitleOptions.forEach { s ->
                     FilterChip(
@@ -152,7 +154,7 @@ internal fun OptionsModal(
                 OptionTileView(
                     tile =
                         OptionTile(
-                            label = "Loop",
+                            label = stringResource(R.string.player_loop),
                             icon =
                                 when (loopMode) {
                                     1 -> Icons.Filled.RepeatOne
@@ -167,7 +169,7 @@ internal fun OptionsModal(
                 OptionTileView(
                     tile =
                         OptionTile(
-                            label = "Watch later",
+                            label = stringResource(R.string.video_watch_later),
                             icon = Icons.Filled.History,
                             selected = isWatchLater,
                             onClick = onWatchLaterClick,
@@ -255,7 +257,7 @@ internal fun ChaptersPanel(
         onDismissRequest = onDismiss,
     ) {
         Text(
-            text = "Chapters",
+            text = stringResource(R.string.player_chapters),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(Tokens.SpaceLg),
         )

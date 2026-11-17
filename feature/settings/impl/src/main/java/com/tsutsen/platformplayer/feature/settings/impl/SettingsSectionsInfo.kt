@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.Uri
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,15 +96,15 @@ internal fun BackupItems(
         Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
             SettingsOptionCard(
                 icon = Icons.Filled.Upload,
-                title = "Export backup",
-                subtitle = "Save settings, subscriptions, playlists, watch later, history and plugins to a file",
+                title = stringResource(R.string.settings_export_backup),
+                subtitle = stringResource(R.string.settings_save_settings_subscriptions_playlists_watch_later_history_an),
                 onClick = { viewModel.exportBackup() },
                 groupPosition = GroupPosition.First,
             )
             SettingsOptionCard(
                 icon = Icons.Filled.Restore,
-                title = "Restore from backup",
-                subtitle = "Load a backup file and restore the app state",
+                title = stringResource(R.string.settings_restore_from_backup),
+                subtitle = stringResource(R.string.settings_load_a_backup_file_and_restore_the_app_state),
                 onClick = { confirmRestore = true },
                 groupPosition = GroupPosition.Last,
             )
@@ -121,7 +123,7 @@ internal fun BackupItems(
     if (confirmRestore) {
         AlertDialog(
             onDismissRequest = { confirmRestore = false },
-            title = { Text("Restore backup") },
+            title = { Text(stringResource(R.string.settings_restore_backup)) },
             text = {
                 Text(
                     "This replaces your current subscriptions, playlists, watch " +
@@ -131,11 +133,11 @@ internal fun BackupItems(
             },
             confirmButton = {
                 TextButton(onClick = { confirmRestore = false; viewModel.importBackup() }) {
-                    Text("Restore")
+                    Text(stringResource(R.string.settings_restore))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmRestore = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmRestore = false }) { Text(stringResource(R.string.settings_cancel)) }
             },
         )
     }
@@ -235,12 +237,12 @@ internal fun AboutItems(viewModel: SettingsViewModel) {
                 Spacer(Modifier.width(Tokens.SpaceLg))
                 Column {
                     Text(
-                        text = "Bluejay",
+                        text = stringResource(R.string.settings_bluejay),
                         style = MaterialTheme.typography.titleLarge,
                         color = scheme.onSurface,
                     )
                     Text(
-                        text = "Version $version",
+                        text = stringResource(R.string.settings_version_1_s, version),
                         style = MaterialTheme.typography.bodyMedium,
                         color = scheme.onSurfaceVariant,
                     )
@@ -261,7 +263,7 @@ internal fun AboutItems(viewModel: SettingsViewModel) {
             val updateState by viewModel.updateCheckState.collectAsState()
             SettingsOptionCard(
                 icon = Download,
-                title = "Check for updates",
+                title = stringResource(R.string.settings_check_for_updates),
                 subtitle =
                     when (val s = updateState) {
                         UpdateCheckState.Idle -> "Check GitHub releases — current $version"
@@ -277,22 +279,22 @@ internal fun AboutItems(viewModel: SettingsViewModel) {
             )
             SettingsOptionCard(
                 icon = Icons.Filled.PlayArrow,
-                title = "Launch initial setup",
-                subtitle = "Show the getting started flow again",
+                title = stringResource(R.string.settings_launch_initial_setup),
+                subtitle = stringResource(R.string.settings_show_the_getting_started_flow_again),
                 onClick = { viewModel.restartGettingStarted() },
                 groupPosition = GroupPosition.Middle,
             )
             SettingsOptionCard(
                 icon = Icons.Filled.Launch,
-                title = "Support Grayjay",
+                title = stringResource(R.string.settings_support_grayjay),
                 subtitle = "grayjay.app — the original project",
                 onClick = { openUrl(context, "https://grayjay.app") },
                 groupPosition = GroupPosition.Middle,
             )
             SettingsOptionCard(
                 icon = Icons.Filled.Code,
-                title = "GitHub",
-                subtitle = "Source code, issues, feature requests",
+                title = stringResource(R.string.settings_github),
+                subtitle = stringResource(R.string.settings_source_code_issues_feature_requests),
                 onClick = {
                     openUrl(context, "https://github.com/tsutsen-org/bluejay-android")
                 },
@@ -300,8 +302,8 @@ internal fun AboutItems(viewModel: SettingsViewModel) {
             )
             SettingsOptionCard(
                 icon = Icons.Filled.Copyright,
-                title = "License",
-                subtitle = "Source First License 1.1",
+                title = stringResource(R.string.settings_license),
+                subtitle = stringResource(R.string.settings_source_first_license_1_1),
                 onClick = {
                     openUrl(
                         context,

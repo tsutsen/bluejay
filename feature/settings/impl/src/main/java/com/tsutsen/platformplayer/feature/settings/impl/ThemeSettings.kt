@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,7 +103,7 @@ fun ThemesSection(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
-            Text("New theme", modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(R.string.settings_new_theme), modifier = Modifier.padding(start = 8.dp))
         }
     }
 
@@ -178,12 +180,12 @@ private fun DefaultThemeRow(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Default",
+                    text = stringResource(R.string.settings_default),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    text = "Material You / brand",
+                    text = stringResource(R.string.settings_theme_material_you_brand),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -191,12 +193,12 @@ private fun DefaultThemeRow(
             if (isActive) {
                 Icon(
                     Icons.Default.Check,
-                    contentDescription = "Active theme",
+                    contentDescription = stringResource(R.string.settings_theme_active_theme),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(Tokens.IconMd),
                 )
             } else {
-                TextButton(onClick = onUse) { Text("Use") }
+                TextButton(onClick = onUse) { Text(stringResource(R.string.settings_theme_use)) }
             }
         }
     }
@@ -276,17 +278,17 @@ private fun ThemeRow(
             if (isActive) {
                 Icon(
                     Icons.Default.Check,
-                    contentDescription = "Active theme",
+                    contentDescription = stringResource(R.string.settings_theme_active_theme),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(Tokens.IconMd),
                 )
             } else {
-                TextButton(onClick = onUse) { Text("Use") }
+                TextButton(onClick = onUse) { Text(stringResource(R.string.settings_theme_use)) }
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete theme",
+                    contentDescription = stringResource(R.string.settings_theme_delete_theme),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -319,8 +321,8 @@ private fun ThemePreview(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
-        ThemePreviewCard(title = "Light", scheme = schemes.light, modifier = Modifier.weight(1f))
-        ThemePreviewCard(title = "Dark", scheme = schemes.dark, modifier = Modifier.weight(1f))
+        ThemePreviewCard(title = stringResource(R.string.settings_light), scheme = schemes.light, modifier = Modifier.weight(1f))
+        ThemePreviewCard(title = stringResource(R.string.settings_dark), scheme = schemes.dark, modifier = Modifier.weight(1f))
     }
 }
 
@@ -354,7 +356,7 @@ private fun ThemePreviewCard(
                 shape = MaterialTheme.shapes.small,
             ) {
                 Text(
-                    text = "Container",
+                    text = stringResource(R.string.settings_theme_container),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onPrimaryContainer,
                     modifier = Modifier.padding(horizontal = Tokens.SpaceSm, vertical = Tokens.SpaceXs),
@@ -414,7 +416,7 @@ internal fun ColorPickerDialog(
                             }
                         }
                 }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
             }
         }
     }

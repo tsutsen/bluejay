@@ -31,6 +31,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.model.LiveChatEntry
 import com.tsutsen.platformplayer.core.model.LiveChatUiState
@@ -73,7 +75,7 @@ fun LiveChatPanel(
     Column(modifier = modifier) {
         if (state?.viewCount != null) {
             Text(
-                text = "${formatViewCount(state?.viewCount ?: 0)} watching",
+                text = stringResource(R.string.player_watching_count, formatViewCount(state?.viewCount ?: 0)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier =
@@ -186,7 +188,7 @@ private fun ChatMessageList(
             if (state.entries.isEmpty()) {
                 item {
                     Text(
-                        "Welcome to the stream!\nNo messages since you joined.",
+                        stringResource(R.string.player_live_chat_welcome),
                         modifier =
                             Modifier
                                 .fillMaxWidth()
@@ -212,7 +214,7 @@ private fun ChatMessageList(
                         SystemChatCard(
                             text =
                                 if (entry.isOutgoing) {
-                                    "You are raiding ${entry.targetName}"
+                                    stringResource(R.string.player_raiding, entry.targetName)
                                 } else {
                                     "${entry.targetName} is raiding this channel"
                                 },
@@ -256,7 +258,7 @@ private fun ChatMessageList(
                 ) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Follow latest messages",
+                        contentDescription = stringResource(R.string.player_follow_latest_cd),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }

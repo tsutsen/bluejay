@@ -49,8 +49,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ArticleCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
@@ -162,11 +164,11 @@ fun HomeScreen(
                     enabledSources.isNotEmpty() && enabledSources.all { it.id in hiddenSources }
                 if (visibleItems.isEmpty() && !state.isLoading && state.error == null) {
                     if (noSourcesSelected) {
-                        EmptyState(message = "No sources selected")
+                        EmptyState(message = stringResource(R.string.home_no_sources_selected))
                     } else {
                         EmptyState(
-                            message = "No content yet",
-                            actionLabel = "Tap to refresh",
+                            message = stringResource(R.string.home_no_content),
+                            actionLabel = stringResource(R.string.home_tap_to_refresh),
                             onAction = { viewModel.refresh() },
                         )
                     }
@@ -374,17 +376,17 @@ private fun SourceLoginNoticeCard(
         )
         Spacer(Modifier.width(Tokens.SpaceMd))
         Column(Modifier.weight(1f)) {
-            Text("Do you want to log into ${source.name}?", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.home_login_prompt_title, source.name), style = MaterialTheme.typography.titleSmall)
             Text(
-                "See more of your subscribed content from this source.",
+                stringResource(R.string.home_login_prompt_body),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.width(Tokens.SpaceMd))
         Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
-            Button(onClick = onYes) { Text("Yes") }
-            TextButton(onClick = onNo) { Text("No") }
+            Button(onClick = onYes) { Text(stringResource(R.string.common_yes)) }
+            TextButton(onClick = onNo) { Text(stringResource(R.string.common_no)) }
         }
     }
 }

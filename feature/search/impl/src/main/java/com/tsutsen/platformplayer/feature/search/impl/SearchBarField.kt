@@ -16,10 +16,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 
@@ -67,7 +69,7 @@ fun SearchBarField(
                 onExpandedChange = {},
                 placeholder = {
                     Text(
-                        text = "Search",
+                        text = stringResource(R.string.search_hint),
                         style = MaterialTheme.typography.bodyLarge,
                         color = scheme.primary,
                     )
@@ -75,7 +77,7 @@ fun SearchBarField(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Rounded.Search,
-                        contentDescription = "Search",
+                        contentDescription = stringResource(R.string.search_cd),
                         tint = scheme.primary,
                         modifier = Modifier.size(Tokens.IconMd),
                     )
@@ -92,7 +94,7 @@ fun SearchBarField(
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Close,
-                                contentDescription = "Clear",
+                                contentDescription = stringResource(R.string.search_clear_cd),
                                 tint = scheme.primary,
                             )
                         }

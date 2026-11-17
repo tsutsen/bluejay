@@ -62,6 +62,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -72,6 +73,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
@@ -123,8 +125,8 @@ fun SubscriptionsScreen(
             is SubscriptionsUiState.Success -> {
                 if (state.creators.isEmpty() && state.items.isEmpty() && !state.isLoading) {
                     EmptyState(
-                        message = "No subscriptions yet.\nSubscribe to channels to see their content here.",
-                        actionLabel = "Find channels",
+                        message = stringResource(R.string.subscriptions_empty_message),
+                        actionLabel = stringResource(R.string.subscriptions_find_channels),
                         onAction = { navigator.navigateSearch(autoFocus = false) },
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -162,14 +164,14 @@ fun SubscriptionsScreen(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
-                            text = "Error: ${state.message}",
+                            text = stringResource(R.string.subscriptions_error, state.message),
                             color = MaterialTheme.colorScheme.error,
                         )
                         Spacer(modifier = Modifier.height(Tokens.SpaceLg))
                         androidx.compose.material3.Button(
                             onClick = { viewModel.refresh() },
                         ) {
-                            Text("Retry")
+                            Text(stringResource(R.string.common_retry))
                         }
                     }
                 }
@@ -224,7 +226,7 @@ private fun SubscriptionsContent(
     if (showCreatorsGrid) {
         BluejayModalBottomSheet(
             onDismiss = { showCreatorsGrid = false },
-            title = "Subscriptions",
+            title = stringResource(R.string.subscriptions_title),
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
@@ -280,8 +282,8 @@ private fun SubscriptionsContent(
     val headerTitle =
         state.creators
             .firstOrNull { it.id == state.activeCreatorId }
-            ?.let { "by ${it.name}" }
-            ?: "All subs"
+            ?.let { stringResource(R.string.subscriptions_by_creator, it.name) }
+            ?: stringResource(R.string.subscriptions_all_subs)
 
     // One creator item: the avatar plus its window-relative bounds, so the
     // peek pill can anchor to it. (Plain map — the bounds are read by the
@@ -401,7 +403,7 @@ private fun SubscriptionsContent(
                             creator =
                                 SubscriptionCreator(
                                     id = "",
-                                    name = "All",
+                                    name = stringResource(R.string.subscriptions_creator_all),
                                     thumbnailUrl = null,
                                     subscriberCount = null,
                                     url = "",
@@ -453,7 +455,7 @@ private fun SubscriptionsContent(
                             creator =
                                 SubscriptionCreator(
                                     id = "",
-                                    name = "All",
+                                    name = stringResource(R.string.subscriptions_creator_all),
                                     thumbnailUrl = null,
                                     subscriberCount = null,
                                     url = "",
@@ -679,31 +681,31 @@ private fun SubsHeader(
         FilterChip(
             selected = filterVideo,
             onClick = onVideoToggle,
-            label = { Text("Videos") },
+            label = { Text(stringResource(R.string.subscriptions_filter_videos)) },
             shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterStreams,
             onClick = onStreamsToggle,
-            label = { Text("Live") },
+            label = { Text(stringResource(R.string.subscriptions_filter_live)) },
             shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterStarted,
             onClick = onStartedToggle,
-            label = { Text("Started") },
+            label = { Text(stringResource(R.string.subscriptions_filter_started)) },
             shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterWatched,
             onClick = onWatchedToggle,
-            label = { Text("Watched") },
+            label = { Text(stringResource(R.string.subscriptions_filter_watched)) },
             shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterShorts,
             onClick = onShortsToggle,
-            label = { Text("Shorts") },
+            label = { Text(stringResource(R.string.subscriptions_filter_shorts)) },
             shapes = tokenizedChipShapes(),
         )
     }

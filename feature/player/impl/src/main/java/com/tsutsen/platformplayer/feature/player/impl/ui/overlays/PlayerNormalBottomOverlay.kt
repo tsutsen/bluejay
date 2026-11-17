@@ -24,6 +24,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
@@ -126,7 +128,7 @@ internal fun PlayerNormalBottomOverlay(
             IconButton(onClick = onPrevious) {
                 Icon(
                     imageVector = Icons.Default.SkipPrevious,
-                    contentDescription = "Previous",
+                    contentDescription = stringResource(R.string.player_previous_cd),
                     tint = Color.White,
                 )
             }
@@ -145,7 +147,7 @@ internal fun PlayerNormalBottomOverlay(
                 } else {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        contentDescription = if (isPlaying) stringResource(R.string.player_pause_cd) else stringResource(R.string.video_play),
                         tint = Color.White,
                         modifier = Modifier.size(40.dp),
                     )
@@ -154,7 +156,7 @@ internal fun PlayerNormalBottomOverlay(
             IconButton(onClick = onNext) {
                 Icon(
                     imageVector = Icons.Default.SkipNext,
-                    contentDescription = "Next",
+                    contentDescription = stringResource(R.string.player_next_cd),
                     tint = Color.White,
                 )
             }
@@ -180,7 +182,7 @@ internal fun PlayerNormalBottomOverlay(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "${formatTime(effectivePositionMs)} / ${formatTime(durationMs)}",
+                    text = stringResource(R.string.player_time_position, formatTime(effectivePositionMs), formatTime(durationMs)),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 )
@@ -189,21 +191,21 @@ internal fun PlayerNormalBottomOverlay(
             IconButton(onClick = onSubtitleToggle) {
                 Icon(
                     imageVector = if (subtitlesOn) Icons.Filled.ClosedCaption else Icons.Outlined.ClosedCaption,
-                    contentDescription = "Subtitles",
+                    contentDescription = stringResource(R.string.player_subtitles),
                     tint = Color.White,
                 )
             }
             IconButton(onClick = onChapters) {
                 Icon(
                     imageVector = Icons.Default.MenuBook,
-                    contentDescription = "Chapters",
+                    contentDescription = stringResource(R.string.player_chapters),
                     tint = Color.White,
                 )
             }
             IconButton(onClick = onFullscreen) {
                 Icon(
                     imageVector = Icons.Default.Fullscreen,
-                    contentDescription = "Fullscreen",
+                    contentDescription = stringResource(R.string.player_fullscreen_cd),
                     tint = Color.White,
                 )
             }

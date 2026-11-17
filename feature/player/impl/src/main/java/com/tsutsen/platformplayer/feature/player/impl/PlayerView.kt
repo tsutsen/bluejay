@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 
 import android.app.Activity
@@ -66,6 +67,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -1300,7 +1302,7 @@ fun PlayerView(
                 if (showQueueSheet) {
                     BluejayModalBottomSheet(
                         onDismiss = { showQueueSheet = false },
-                        title = "Queue",
+                        title = stringResource(R.string.player_queue_title),
                         scroll = false,
                     ) {
                         QueueList(
@@ -1353,7 +1355,7 @@ fun PlayerView(
                     if (state.pluginId != null) {
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { onPluginSettingsClick(state.pluginId) }) {
-                            Text("Go to plugin settings")
+                            Text(stringResource(R.string.player_goto_plugin_settings))
                         }
                     }
                 }
@@ -1480,12 +1482,12 @@ private fun CurrentVideoOptionsSheet(
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showNewPlaylistDialog = false },
-            title = { Text("New playlist") },
+            title = { Text(stringResource(R.string.library_new_playlist_title)) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Playlist name") },
+                    label = { Text(stringResource(R.string.library_playlist_name_label)) },
                 )
             },
             confirmButton = {
@@ -1498,11 +1500,11 @@ private fun CurrentVideoOptionsSheet(
                     },
                     enabled = name.isNotBlank(),
                 ) {
-                    Text("Create")
+                    Text(stringResource(R.string.common_create))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showNewPlaylistDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showNewPlaylistDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
