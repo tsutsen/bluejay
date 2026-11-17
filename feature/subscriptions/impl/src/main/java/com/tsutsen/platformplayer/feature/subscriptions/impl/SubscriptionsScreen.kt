@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -278,18 +277,6 @@ private fun SubscriptionsContent(
     // Selecting a creator (or "All") closes the peek.
     LaunchedEffect(state.activeCreatorId) { peek = null }
 
-    // Paging footer, same as home: only after a load-more has been running
-    // for 2s — never during the initial/refresh load (items empty then).
-    var showMore by remember { mutableStateOf(false) }
-    LaunchedEffect(state.isLoading) {
-        if (state.isLoading) {
-            kotlinx.coroutines.delay(2000)
-            if (state.isLoading) showMore = true
-        } else {
-            showMore = false
-        }
-    }
-
     val headerTitle =
         state.creators
             .firstOrNull { it.id == state.activeCreatorId }
@@ -380,19 +367,6 @@ private fun SubscriptionsContent(
                                 layout = ContainerLayout.Grid(gridColumns),
                                 isLoading = state.isLoading,
                                 hasMorePages = state.hasMorePages,
-                                trailingContent =
-                                    if (showMore && state.isLoading && state.hasMorePages && state.items.isNotEmpty()) {
-                                        {
-                                            Box(
-                                                modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                androidx.compose.material3.ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
-                                            }
-                                        }
-                                    } else {
-                                        null
-                                    },
                                 onCardClick = { card -> onItemClicked(card as ModelVideoCard) },
                                 onLoadMore = onLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
@@ -518,19 +492,6 @@ private fun SubscriptionsContent(
                             layout = ContainerLayout.List,
                             isLoading = state.isLoading,
                             hasMorePages = state.hasMorePages,
-                            trailingContent =
-                                if (showMore && state.isLoading && state.hasMorePages && state.items.isNotEmpty()) {
-                                    {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
-                                        }
-                                    }
-                                } else {
-                                    null
-                                },
                             onCardClick = { card -> onItemClicked(card as ModelVideoCard) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),

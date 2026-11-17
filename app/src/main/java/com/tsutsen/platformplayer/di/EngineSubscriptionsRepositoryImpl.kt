@@ -91,8 +91,11 @@ class EngineSubscriptionsRepositoryImpl
         private val historyDao: HistoryDao,
     ) : SubscriptionRepository {
         // Starts "loading" so the screen shows a spinner from the first
-        // frame instead of a momentary empty state.
-        private val _feed = MutableStateFlow(SubscriptionFeed(isLoading = true))
+        // frame instead of a momentary empty state. hasMorePages=true from
+        // the start: the overdrag gesture must be armed even before the
+        // cache-first paint lands (a load-more arriving this early is
+        // queued by loadMore() and replayed when the fresh pager is ready).
+        private val _feed = MutableStateFlow(SubscriptionFeed(isLoading = true, hasMorePages = true))
         override val feed: StateFlow<SubscriptionFeed> = _feed.asStateFlow()
 
         // The subscription-change listener lives outside any ViewModel.
@@ -135,6 +138,11 @@ class EngineSubscriptionsRepositoryImpl
             reload(updated = true)
         }
 
+        // A load-more that arrived while the fresh fetch was still building
+        // its pager (cache-first paint, no flow yet): replayed once the
+        // fresh pager is ready.
+        @Volatile private var pendingLoadMore = false
+
         override suspend fun loadMore() {
             withContext(Dispatchers.IO) {
                 val f = flow
@@ -144,7 +152,25 @@ class EngineSubscriptionsRepositoryImpl
                     f.loadNextPage()
                     Logger.i(TAG, "Loaded more (total: ${f.items.size})")
                     applyFilters()
+                } else if (_feed.value.isLoading) {
+                    // The fresh fetch is still initializing — queue the
+                    // overdrag instead of dropping it on the floor.
+                    Logger.i(TAG, "loadMore during initial fetch: queued")
+                    pendingLoadMore = true
                 }
+            }
+        }
+
+        /** Replays a load-more queued while the fresh pager was building. */
+        private suspend fun runPendingLoadMore() {
+            if (!pendingLoadMore) return
+            pendingLoadMore = false
+            val f = flow ?: return
+            if (f.hasMore) {
+                _feed.update { it.copy(isLoading = true) }
+                f.loadNextPage()
+                Logger.i(TAG, "Loaded queued more (total: ${f.items.size})")
+                applyFilters()
             }
         }
 
@@ -222,6 +248,7 @@ class EngineSubscriptionsRepositoryImpl
                     throw e
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error loading feed", e)
+                    pendingLoadMore = false // its page never materialized
                     // A failed refresh must not wipe a cache that's on screen.
                     if (cachedItems != null) {
                         _feed.update {
@@ -238,6 +265,7 @@ class EngineSubscriptionsRepositoryImpl
                 }
                 cachedItems = null
                 applyFilters()
+                runPendingLoadMore()
             }
         }
 
@@ -245,7 +273,10 @@ class EngineSubscriptionsRepositoryImpl
         private fun emitCachedFeed() {
             val cached = cachedItems ?: return
             Logger.i(TAG, "Showing ${cached.size} cached feed items")
-            _feed.update { it.copy(items = filteredCards(cached), isLoading = true) }
+            // hasMorePages=true while painting: the cached page IS page 1 of
+            // a feed that had more — without it the overdrag gesture stays
+            // inert for the whole initial fetch.
+            _feed.update { it.copy(items = filteredCards(cached), isLoading = true, hasMorePages = true) }
         }
 
         /** @return the cached feed when fresh enough (< [FEED_CACHE_TTL_MS]), else null. */

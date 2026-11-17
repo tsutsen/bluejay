@@ -87,7 +87,7 @@ import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGa
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import androidx.compose.material3.CircularProgressIndicator
 import com.tsutsen.platformplayer.core.designsystem.component.ErrorState
-import com.tsutsen.platformplayer.core.designsystem.component.ScrollEndReached
+import com.tsutsen.platformplayer.core.designsystem.component.BottomLoadMoreBox
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCard
 import com.tsutsen.platformplayer.core.designsystem.component.VideoCardShorts
 import com.tsutsen.platformplayer.core.designsystem.component.VideoContainer
@@ -760,15 +760,13 @@ private fun WideVideoGrid(
 ) {
     val listState = rememberLazyListState()
     val rows = remember(items, columns) { items.chunked(columns) }
-    ScrollEndReached(
-        listState = listState,
-        gridState = null,
-        itemCount = items.size,
+    BottomLoadMoreBox(
         isLoading = false,
         hasMorePages = hasMore,
-        threshold = 3,
-        onEndReached = onLoadMore,
-    )
+        onLoadMore = onLoadMore,
+        atEnd = { !listState.canScrollForward },
+        modifier = Modifier.fillMaxSize(),
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
@@ -824,6 +822,7 @@ private fun WideVideoGrid(
                 }
             }
         }
+    }
     }
 }
 

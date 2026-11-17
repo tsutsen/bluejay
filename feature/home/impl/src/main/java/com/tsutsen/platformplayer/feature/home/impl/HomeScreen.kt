@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material3.Button
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -75,7 +74,6 @@ import com.tsutsen.platformplayer.core.model.WatchState
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
-import kotlinx.coroutines.delay
 
 /**
  * Home feed screen.
@@ -252,18 +250,6 @@ private fun HomeFeedContent(
 ) {
     val refreshingState = rememberPullToRefreshState()
 
-    // Paging footer: shown only when a load-more is still running 1s after
-    // it started — never during the initial/refresh load (cards empty then).
-    var showMore by remember { mutableStateOf(false) }
-    LaunchedEffect(isLoading) {
-        if (isLoading) {
-            delay(1000)
-            if (isLoading) showMore = true
-        } else {
-            showMore = false
-        }
-    }
-
     Box(modifier = modifier.fillMaxSize()) {
         PullToRefreshBox(
             // Spinner only for a deliberate refresh or the very first page.
@@ -307,19 +293,6 @@ private fun HomeFeedContent(
                         hasMorePages = hasMorePages,
                         onCardClick = onCardClick,
                         onLoadMore = onLoadMore,
-                        trailingContent =
-                            if (showMore && isLoading && hasMorePages && cards.isNotEmpty()) {
-                                {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
-                                    }
-                                }
-                            } else {
-                                null
-                            },
                         modifier = Modifier.fillMaxWidth().weight(1f),
                     ) { card ->
                     when (card) {
