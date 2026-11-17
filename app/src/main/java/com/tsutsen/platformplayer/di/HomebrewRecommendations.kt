@@ -1,4 +1,6 @@
 package com.tsutsen.platformplayer.di
+import com.tsutsen.platformplayer.states.*
+import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 
 import com.tsutsen.platformplayer.Settings
@@ -11,7 +13,6 @@ import com.tsutsen.platformplayer.core.model.PlaylistCard
 import com.tsutsen.platformplayer.core.model.PostCard
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
-import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred

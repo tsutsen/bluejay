@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.compose
 
+import com.tsutsen.platformplayer.states.*
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box

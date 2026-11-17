@@ -7,6 +7,7 @@ import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikeDislikes
 import com.tsutsen.platformplayer.api.media.models.ratings.RatingLikes
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.model.CommentItem
+import com.tsutsen.platformplayer.states.*
 import com.tsutsen.platformplayer.states.StatePlatform
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject

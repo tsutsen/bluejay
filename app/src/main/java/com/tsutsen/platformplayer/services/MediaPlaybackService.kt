@@ -35,6 +35,7 @@ import com.tsutsen.platformplayer.api.media.models.video.IPlatformVideo
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.receivers.MediaButtonReceiver
 import com.tsutsen.platformplayer.receivers.MediaControlReceiver
+import com.tsutsen.platformplayer.states.*
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlayer
 import kotlinx.coroutines.CoroutineScope

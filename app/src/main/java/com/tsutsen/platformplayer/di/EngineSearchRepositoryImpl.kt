@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.di
 
+import com.tsutsen.platformplayer.states.*
+import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.api.media.models.contents.IPlatformContent
 import com.tsutsen.platformplayer.core.data.repository.SearchRepository
 import com.tsutsen.platformplayer.core.model.Card
@@ -9,7 +11,6 @@ import com.tsutsen.platformplayer.core.model.SearchType
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.EnabledClientResolver
-import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

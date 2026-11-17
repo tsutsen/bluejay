@@ -5,6 +5,7 @@ import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.*
 import com.tsutsen.platformplayer.states.StatePlatform
 import javax.inject.Inject
 import javax.inject.Singleton
