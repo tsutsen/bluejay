@@ -59,8 +59,18 @@ internal class PlaybackSourceResolver(
                 ResolutionResult(createMediaSourceFromUrl(contentUrl), null)
             }
         } catch (e: Exception) {
-            Log.e(logTag, "Failed to resolve, creating from URL: $contentUrl", e)
-            ResolutionResult(createMediaSourceFromUrl(contentUrl), null)
+            // Only fall back to raw-URL playback when the URL is itself a
+            // playable media file. A failed resolve of a page/content URL
+            // (e.g. a YouTube watch URL) must surface the real error: feeding
+            // the page to ExoPlayer guarantees a later "Source error"
+            // (PARSING_CONTAINER_UNSUPPORTED) that hides the actual cause.
+            if (isStreamingUrl(contentUrl)) {
+                Log.e(logTag, "Failed to resolve, creating from URL: $contentUrl", e)
+                ResolutionResult(createMediaSourceFromUrl(contentUrl), null)
+            } else {
+                Log.e(logTag, "Failed to resolve $contentUrl; surfacing error", e)
+                throw e
+            }
         }
 
     /**

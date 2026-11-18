@@ -199,9 +199,10 @@ internal class SourceRecoveryManager(
      * these internally first ([onPlayerError] fires only after its retry
      * policy gives up), so reaching here means the URL is dead — expired
      * (HTTP 403 after the ~6h `expire` window), repeatedly reset by the
-     * server, or unreachable after a long device sleep. DRM/decoding/
-     * content-not-found errors are deliberately excluded: re-resolving
-     * can't fix them.
+     * server, or unreachable after a long device sleep. Container/manifest
+     * parse failures are also worth one fresh resolve: a re-resolve can
+     * mint a different itag/format that parses. DRM/decoding/content-not-
+     * found errors are deliberately excluded: re-resolving can't fix them.
      */
     private fun isRecoverableIoError(error: PlaybackException): Boolean =
         when (error.errorCode) {
@@ -212,6 +213,10 @@ internal class SourceRecoveryManager(
             PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE,
             PlaybackException.ERROR_CODE_TIMEOUT,
             PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
             -> true
             else -> false
         }

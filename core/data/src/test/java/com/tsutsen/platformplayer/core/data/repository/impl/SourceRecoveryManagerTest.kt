@@ -79,6 +79,17 @@ class SourceRecoveryManagerTest {
     }
 
     @Test
+    fun `container parse failure triggers recovery`() {
+        runBlocking {
+            val mgr = manager()
+            mgr.arm()
+            assertTrue(
+                mgr.attempt(ioError(PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED)),
+            )
+        }
+    }
+
+    @Test
     fun `non-io errors do not trigger recovery`() {
         runBlocking {
             val mgr = manager()
