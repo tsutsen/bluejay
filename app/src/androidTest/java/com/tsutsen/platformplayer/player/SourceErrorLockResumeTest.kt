@@ -75,7 +75,7 @@ class SourceErrorLockResumeTest {
         device.sleep()
         Thread.sleep(lockDurationSeconds * 1000)
         device.wakeUp()
-        device.dismissKeyguard()
+        device.executeShellCommand("wm dismiss-keyguard")
         device.waitForIdle()
 
         // Resume playback via the app's own media control receiver (same
