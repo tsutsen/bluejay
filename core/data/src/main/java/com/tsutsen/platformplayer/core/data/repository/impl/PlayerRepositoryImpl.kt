@@ -165,6 +165,12 @@ class PlayerRepositoryImpl(
     // every play path goes through). Recovery re-resolves this.
     private var currentPlayUrl: String? = null
 
+    // When the current source's stream URL expires (YouTube progressive
+    // URLs carry `expire=<epoch-seconds>`, ~6h window), or null if the
+    // resolved URL carries no expiry. The resume refresh re-resolves
+    // before the URL dies instead of burning a visible error recovery.
+    private var currentSourceExpiresAtMs: Long? = null
+
     private val _seekThumbnails =
         MutableStateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?>(null)
     override val seekThumbnails: kotlinx.coroutines.flow.StateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?> =
@@ -182,18 +188,31 @@ class PlayerRepositoryImpl(
             onPosition = { position -> _playerState.update { it.copy(currentPositionMs = position) } },
         )
 
+    // Session-scoped counters for the recovery machinery; logged on each
+    // recovery and in close(). Diagnostics only.
+    private val sourceRecoveryTelemetry = SourceRecoveryTelemetry()
+
     // Transparent source-error recovery (SABR po-token rejection / server
     // reload) — budgeted per play() (extracted).
-    private val sourceRecoveryManager =
+    // Explicit type breaks the inference cycle with the listener below
+    // (its lambdas call back into this manager).
+    private val sourceRecoveryManager: SourceRecoveryManager =
         SourceRecoveryManager(
             logTag = TAG,
             scope = extrasScope,
             state = _playerState,
             playerProvider = { _exoPlayer },
             currentPlayUrl = { currentPlayUrl },
+            currentSourceExpiresAtMs = { currentSourceExpiresAtMs },
+            lastPlayingAtMs = { playerListener.lastPlayingAtMs },
             resolve = { url, positionMs -> sourceResolver.resolveWithDetails(url, positionMs) },
             invalidateSourceCache = { url -> urlResolver?.invalidateSourceCache(url) },
-            onSourceRebuilt = { mediaSource -> currentPrimarySource = mediaSource },
+            onSourceRebuilt = { mediaSource ->
+                currentPrimarySource = mediaSource
+                // The rebuilt source carries a fresh URL (and expiry).
+                currentSourceExpiresAtMs = parseSourceExpiryMs(mediaSource.mediaItem.localConfiguration?.uri)
+            },
+            telemetry = sourceRecoveryTelemetry,
         )
 
     private val playerListener =
@@ -218,6 +237,7 @@ class PlayerRepositoryImpl(
                 }
             },
             sourceRecovery = { error -> sourceRecoveryManager.attempt(error) },
+            resumeCheck = { sourceRecoveryManager.resumeRefresh() },
         )
     private val analyticsListener = LoadAnalyticsListener(TAG)
 
@@ -247,7 +267,9 @@ class PlayerRepositoryImpl(
 
         // A fresh play arms transparent source-error recovery (SABR po-token
         // rejection etc.): remember what to re-resolve and reset the budget.
+        // Expiry is re-captured after the resolve below.
         currentPlayUrl = videoId
+        currentSourceExpiresAtMs = null
         sourceRecoveryManager.arm()
 
         // Resume: look up where this video was last watched. The position is
@@ -363,6 +385,11 @@ class PlayerRepositoryImpl(
                 Log.i(TAG, "play() aborted: superseded during resolution ($videoId)")
                 return
             }
+
+            // Capture the stream URL's expiry (YouTube progressive URLs
+            // carry `expire=<epoch-seconds>`, ~6h) so resume-after-sleep
+            // can refresh the source before it dies. Null when absent.
+            currentSourceExpiresAtMs = parseSourceExpiryMs(resolution.mediaSource?.mediaItem?.localConfiguration?.uri)
 
             Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
 
@@ -730,6 +757,14 @@ class PlayerRepositoryImpl(
         return more
     }
 
+    /**
+     * Parses the `expire` query parameter (epoch seconds) of a resolved
+     * stream URL into epoch ms. Plain URI query parsing — no extra deps.
+     * Null when the URI carries no expiry (DASH manifests, plain files).
+     */
+    private fun parseSourceExpiryMs(sourceUri: Uri?): Long? =
+        sourceUri?.getQueryParameter("expire")?.toLongOrNull()?.let { it * 1000 }
+
     override suspend fun close() {
         // Invalidate any in-flight play() so it cannot resurrect the player
         // after its resolution completes (close-during-load).
@@ -740,6 +775,8 @@ class PlayerRepositoryImpl(
         sessionManager.releasePlayer()
         currentPrimarySource = null
         currentSubtitles = emptyList()
+        currentSourceExpiresAtMs = null
+        Log.i(TAG, "Source recovery telemetry: ${sourceRecoveryTelemetry.snapshot()}")
         _playerState.update {
             PlayerState(
                 isPlaying = false,

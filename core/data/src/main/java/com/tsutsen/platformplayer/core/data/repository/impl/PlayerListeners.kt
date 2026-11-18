@@ -41,7 +41,16 @@ internal class PlayerEventListener(
     private val currentTracks: () -> CurrentTrackInfo?,
     private val replayOnceIfArmed: () -> Unit,
     private val sourceRecovery: (androidx.media3.common.PlaybackException) -> Boolean,
+    private val resumeCheck: () -> Unit,
 ) : Player.Listener {
+    /**
+     * Wall clock of the last observed playing moment (main thread only —
+     * the events arrive there). The resume refresh uses the gap to decide
+     * whether playback was suspended long enough to bother re-resolving.
+     */
+    var lastPlayingAtMs: Long = 0L
+        private set
+
     override fun onPlaybackStateChanged(playbackState: Int) {
         Log.i(logTag, "Playback state changed: $playbackState")
         val duration = playerProvider()?.duration ?: 0L
@@ -60,7 +69,20 @@ internal class PlayerEventListener(
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         Log.i(logTag, "isPlaying changed: $isPlaying")
+        if (isPlaying) lastPlayingAtMs = System.currentTimeMillis()
         state.update { it.copy(isPlaying = isPlaying) }
+    }
+
+    override fun onPlayWhenReadyChanged(
+        playWhenReady: Boolean,
+        reason: Int,
+    ) {
+        // Resume attempt: if the current source's stream URL is near
+        // expiry after a long suspension, refresh it BEFORE the buffer
+        // drains (avoids the visible recovery flash on wake-from-sleep).
+        // All gating (gap, expiry margin, budget) lives in the manager;
+        // this is a cheap no-op on ordinary resumes.
+        if (playWhenReady) resumeCheck()
     }
 
     // media3 1.x routes decoded cues here (the player's internal
