@@ -69,6 +69,8 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PaletteStyle
 import com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle
+import com.tsutsen.platformplayer.core.designsystem.component.ColorPicker
+import com.tsutsen.platformplayer.core.designsystem.component.PresetColorsFeatured
 import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
@@ -306,6 +308,13 @@ internal fun ThemeEditor(
                 ThemeSlot.BACKGROUND -> (background ?: 0xFFF7F2FA.toInt()).toColor()
             }
         ColorPickerDialog(
+            title =
+                when (slot) {
+                    ThemeSlot.PRIMARY -> stringResource(R.string.settings_slot_primary)
+                    ThemeSlot.SECONDARY -> stringResource(R.string.settings_slot_secondary)
+                    ThemeSlot.TERTIARY -> stringResource(R.string.settings_slot_tertiary)
+                    ThemeSlot.BACKGROUND -> stringResource(R.string.settings_slot_background)
+                },
             initialColor = initialColor,
             onPick = { newColor ->
                 val argb = newColor.toArgb()
@@ -741,32 +750,17 @@ internal fun SurfaceSlotDialog(
     )
 }
 
-/** One preset-swatch row plus a leading "None" button (unset). */
+/** Free-form picker (featured presets, SV square, hue, hex + live swatch). */
 @Composable
 internal fun SwatchRow(
     selected: Long?,
     onSelect: (Long?) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-        PresetColors.chunked(6).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                row.forEach { argb ->
-                    ColorSwatch(
-                        color = Color(argb),
-                        isSelected = selected == argb.toLong(),
-                        onClick = { onSelect(argb.toLong()) },
-                    )
-                }
-            }
-        }
-        TextButton(onClick = { onSelect(null) }) {
-            Text(
-                "None",
-                color =
-                    if (selected == null) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        ColorPicker(
+            initialColor = (selected ?: PresetColorsFeatured.first()).toInt(),
+            onColorChange = { onSelect(it.toLong() and 0xFFFFFFFFL) },
+        )
     }
 }
 

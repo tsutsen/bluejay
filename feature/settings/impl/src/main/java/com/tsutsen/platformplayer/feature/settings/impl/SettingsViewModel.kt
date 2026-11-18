@@ -152,6 +152,14 @@ class SettingsViewModel
             }
         }
 
+        /** Appearance > Thumbnail contrast (1 = neutral, 0 = flat gray, 2 = high contrast). */
+        fun setThumbnailContrast(contrast: Float) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                settingsRepository.updateAppearance(p.prefs.appearance.copy(thumbnailContrast = contrast))
+            }
+        }
+
         /** Save or update a custom theme (Settings > Appearance > Custom themes). */
         fun saveTheme(theme: CustomTheme) {
             viewModelScope.launch { settingsRepository.saveCustomTheme(theme) }

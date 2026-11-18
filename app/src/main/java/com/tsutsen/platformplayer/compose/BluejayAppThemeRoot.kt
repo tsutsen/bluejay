@@ -12,6 +12,7 @@ import com.tsutsen.platformplayer.core.datastore.model.AppPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
+import com.tsutsen.platformplayer.core.ui.LocalThumbnailContrast
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailSaturation
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTintBlendMode
@@ -71,6 +72,7 @@ fun BluejayAppThemeRoot(
         LocalThumbnailTintStrength provides appearance.thumbnailTintStrength,
         LocalThumbnailTintBlendMode provides appearance.thumbnailTintBlendMode,
         LocalThumbnailSaturation provides appearance.thumbnailSaturation,
+        LocalThumbnailContrast provides appearance.thumbnailContrast,
     ) {
         BluejayTheme(
             darkTheme = darkTheme,

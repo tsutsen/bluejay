@@ -347,4 +347,13 @@
     <string name="settings_video_tabs">تبويبات الفيديو</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">الفيديوهات والمنشئون الذين أخفيتهم أو قللت ظهورهم</string>
     <string name="settings_watch_time">وقت المشاهدة</string>
+    <string name="settings_thumbnail_contrast">التباين</string>
+    <string name="settings_thumbnail_contrast_desc">تباين كل الصور المصغرة</string>
+    <string name="settings_apply">تطبيق</string>
+    <string name="settings_thumbnail_preview">معاينة الصورة المصغرة</string>
+    <string name="settings_thumbnail_preview_desc">هكذا تظهر الصور المصغرة مع الإعدادات المطبقة</string>
+    <string name="settings_slot_primary">أساسي</string>
+    <string name="settings_slot_secondary">ثانوي</string>
+    <string name="settings_slot_tertiary">ثالثي</string>
+    <string name="settings_slot_background">الخلفية</string>
 </resources>

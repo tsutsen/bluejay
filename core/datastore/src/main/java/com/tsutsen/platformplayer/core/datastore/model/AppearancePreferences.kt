@@ -24,6 +24,8 @@ data class AppearancePreferences(
     val thumbnailTintBlendMode: String = TintBlendMode.WASH.name,
     /** Thumbnail desaturation: 1 = full color, 0 = grayscale. */
     val thumbnailSaturation: Float = 1f,
+    /** Thumbnail contrast: 1 = neutral, 0 = flat gray, 2 = high contrast. */
+    val thumbnailContrast: Float = 1f,
 )
 
 /** How the thumbnail tint combines with the image (Appearance > Thumbnails). */

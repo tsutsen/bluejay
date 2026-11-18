@@ -347,4 +347,13 @@ No hay mensajes desde que te uniste.</string>
     <string name="settings_video_tabs">Pestañas del vídeo</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">Vídeos y creadores que ocultaste o redujiste</string>
     <string name="settings_watch_time">Tiempo de visualización</string>
+    <string name="settings_thumbnail_contrast">Contraste</string>
+    <string name="settings_thumbnail_contrast_desc">Contraste de cada miniatura</string>
+    <string name="settings_apply">Aplicar</string>
+    <string name="settings_thumbnail_preview">Vista previa de miniatura</string>
+    <string name="settings_thumbnail_preview_desc">Así se ven las miniaturas con la configuración aplicada</string>
+    <string name="settings_slot_primary">Primario</string>
+    <string name="settings_slot_secondary">Secundario</string>
+    <string name="settings_slot_tertiary">Terciario</string>
+    <string name="settings_slot_background">Fondo</string>
 </resources>

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -39,12 +41,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PaletteStyle
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
+import com.tsutsen.platformplayer.core.designsystem.component.ColorPicker
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
 import com.tsutsen.platformplayer.core.designsystem.component.groupShape
@@ -372,117 +376,49 @@ private fun PreviewSwatch(color: Color) {
 }
 
 /**
- * Swatch-grid color picker in a dialog. M3 1.4.0 has no ColorPicker
- * composable, so a preset palette is the whole picker — tap picks.
+ * Free-form color picker in a dialog: featured presets + the free-form
+ * ColorPicker (saturation/value square, hue slider, hex field) on top,
+ * with the full 32-color preset grid below for quick picks.
  */
 @Composable
 internal fun ColorPickerDialog(
+    title: String,
     initialColor: Color,
     onPick: (Color) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Dialog(
+    // Draft color: nothing commits until Apply, so exploring colors in the
+    // picker doesn't close the dialog or write the slot immediately.
+    var draft by remember { mutableStateOf(initialColor.toArgb()) }
+    AlertDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainer,
-        ) {
+        title = { Text(title) },
+        text = {
             Column(
                 modifier =
                     Modifier
-                        .padding(Tokens.SpaceLg)
-                        .width(Tokens.DialogSm),
+                        // Scroll when the picker content exceeds the screen —
+                        // without this the bottom rows compress/clip.
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
-                Text(
-                    text = "#" + initialColor.toArgb().toString(16),
-                    style = MaterialTheme.typography.labelLarge,
+                ColorPicker(
+                    initialColor = draft,
+                    onColorChange = { draft = it },
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                    (listOf(initialColor.toArgb()) + PresetColors)
-                        .distinct()
-                        .chunked(6)
-                        .forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                                row.forEach { argb ->
-                                    ColorSwatch(
-                                        color = Color(argb),
-                                        isSelected = argb == initialColor.toArgb(),
-                                        onClick = { onPick(Color(argb)) },
-                                    )
-                                }
-                            }
-                        }
-                }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
             }
-        }
-    }
-}
-
-@Composable
-internal fun ColorSwatch(
-    color: Color,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier =
-            Modifier
-                .size(Tokens.SwatchMd)
-                .expressiveClickable(onClick = onClick)
-                .clip(CircleShape)
-                .background(color),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (isSelected) {
-            Icon(
-                Icons.Default.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(Tokens.IconXs),
-            )
-        }
-    }
-}
-
-internal val PresetColors: List<Int> =
-    listOf(
-        0xFF6750A4.toInt(),
-        0xFF7C4DFF.toInt(),
-        0xFF6200EE.toInt(),
-        0xFF5E35B1.toInt(),
-        0xFF3F51B5.toInt(),
-        0xFF1E88E5.toInt(),
-        0xFF2962FF.toInt(),
-        0xFF00B0FF.toInt(),
-        0xFF009688.toInt(),
-        0xFF018786.toInt(),
-        0xFF00BFA5.toInt(),
-        0xFF43A047.toInt(),
-        0xFF4CAF50.toInt(),
-        0xFF00C853.toInt(),
-        0xFF76FF03.toInt(),
-        0xFFFBC02D.toInt(),
-        0xFFFFAB40.toInt(),
-        0xFFF57C00.toInt(),
-        0xFFFF6D00.toInt(),
-        0xFFC62828.toInt(),
-        0xFFD50000.toInt(),
-        0xFFFF5252.toInt(),
-        0xFFC2185B.toInt(),
-        0xFFFF4081.toInt(),
-        0xFF8D6E63.toInt(),
-        0xFF546E7A.toInt(),
-        0xFF37474F.toInt(),
-        0xFF757575.toInt(),
-        0xFFB0BEC5.toInt(),
-        0xFF212121.toInt(),
-        0xFF625B71.toInt(),
-        0xFF7D5260.toInt(),
+        },
+        confirmButton = {
+            TextButton(onClick = { onPick(Color(draft)) }) {
+                Text(stringResource(R.string.settings_apply))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
+        },
     )
+}
+
 private val PaletteStyle.label: String
     get() =
         when (this) {

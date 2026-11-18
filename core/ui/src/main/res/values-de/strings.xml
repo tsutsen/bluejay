@@ -347,4 +347,13 @@ Keine Nachrichten seit deinem Beitritt.</string>
     <string name="settings_video_tabs">Video-Tabs</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">Videos und Ersteller, die du ausgeblendet oder reduziert hast</string>
     <string name="settings_watch_time">Sehzeit</string>
+    <string name="settings_thumbnail_contrast">Kontrast</string>
+    <string name="settings_thumbnail_contrast_desc">Kontrast jeder Miniaturansicht</string>
+    <string name="settings_apply">Übernehmen</string>
+    <string name="settings_thumbnail_preview">Miniaturansicht-Vorschau</string>
+    <string name="settings_thumbnail_preview_desc">So sehen Miniaturansichten mit den angewendeten Einstellungen aus</string>
+    <string name="settings_slot_primary">Primär</string>
+    <string name="settings_slot_secondary">Sekundär</string>
+    <string name="settings_slot_tertiary">Tertiär</string>
+    <string name="settings_slot_background">Hintergrund</string>
 </resources>

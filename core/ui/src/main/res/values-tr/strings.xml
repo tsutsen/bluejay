@@ -347,4 +347,13 @@ Katıldığınızdan beri mesaj yok.</string>
     <string name="settings_video_tabs">Video sekmeleri</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">Gizlediğiniz veya kısıtladığınız videolar ve üreticiler</string>
     <string name="settings_watch_time">İzleme süresi</string>
+    <string name="settings_thumbnail_contrast">Kontrast</string>
+    <string name="settings_thumbnail_contrast_desc">Her küçük resmin kontrastı</string>
+    <string name="settings_apply">Uygula</string>
+    <string name="settings_thumbnail_preview">Küçük resim önizlemesi</string>
+    <string name="settings_thumbnail_preview_desc">Küçük resimler ayarlar uygulandığında böyle görünür</string>
+    <string name="settings_slot_primary">Birincil</string>
+    <string name="settings_slot_secondary">İkincil</string>
+    <string name="settings_slot_tertiary">Üçüncül</string>
+    <string name="settings_slot_background">Arka plan</string>
 </resources>

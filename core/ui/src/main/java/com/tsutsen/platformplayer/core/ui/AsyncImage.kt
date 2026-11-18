@@ -42,6 +42,9 @@ val LocalThumbnailTintBlendMode = compositionLocalOf { TintBlendMode.WASH.name }
 /** Thumbnail desaturation (1 = full color, 0 = grayscale), provided at the theme roots. */
 val LocalThumbnailSaturation = compositionLocalOf { 1f }
 
+/** Thumbnail contrast (1 = neutral, 0 = flat gray, 2 = high contrast), provided at the theme roots. */
+val LocalThumbnailContrast = compositionLocalOf { 1f }
+
 /** Maps a [TintBlendMode] name to its draw blend mode; unknown → wash. */
 fun thumbnailTintBlend(name: String): BlendMode =
     when (name) {
@@ -71,6 +74,17 @@ fun Modifier.thumbnailTintOverlay(
         drawRect(color, blendMode = blend)
     }
 }
+
+/**
+ * Composition-local-driven thumbnail color filter (desaturate + contrast),
+ * for previews that render a local drawable instead of a Coil URL.
+ */
+@Composable
+fun rememberThumbnailColorFilter(): ColorFilter? =
+    combinedThumbnailFilter(
+        saturation = LocalThumbnailSaturation.current,
+        contrast = LocalThumbnailContrast.current,
+    )
 
 /**
  * Wrapper around Coil's AsyncImage with built-in placeholder and error handling.
@@ -150,19 +164,57 @@ fun AsyncImage(
         error = error,
         colorFilter = combinedThumbnailFilter(
             saturation = LocalThumbnailSaturation.current,
+            contrast = LocalThumbnailContrast.current,
         ),
     )
 }
 
 /**
- * The desaturation matrix (the only per-pixel color work a ColorFilter can
- * express); the tint rides on top as a blend-mode overlay instead, because
+ * Per-pixel color work a ColorFilter can express, carried in one matrix:
+ * desaturation first, then contrast (each channel scaled around the 128
+ * mid-gray); the tint rides on top as a blend-mode overlay instead, because
  * Multiply/Screen/Overlay & co. have no matrix form. Null when a no-op.
  */
 private fun combinedThumbnailFilter(
     saturation: Float,
+    contrast: Float,
 ): ColorFilter? {
     val sat = saturation.coerceIn(0f, 1f)
-    if (sat >= 0.999f) return null
-    return ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(sat) })
+    val con = contrast.coerceIn(0.5f, 2f)
+    if (sat >= 0.999f && con in 0.999f..1.001f) return null
+    val saturation = if (sat < 0.999f) ColorMatrix().also { it.setToSaturation(sat) } else null
+    val contrast = if (con !in 0.999f..1.001f) contrastMatrix(con) else null
+    // Compose's ColorMatrix has no concat helpers (android.graphics does) —
+    // multiply the 4x5 matrices here: contrast runs AFTER saturation, so the
+    // contrast matrix is "on top" of the saturation matrix.
+    val combined = when {
+        saturation == null -> contrast!!.values
+        contrast == null -> saturation.values
+        else -> concatColorMatrix(contrast.values, saturation.values)
+    }
+    return ColorFilter.colorMatrix(ColorMatrix(combined))
 }
+
+/** Row-major 4x5 multiply: [top] applied after [bottom]; returns a new 4x5 array. */
+private fun concatColorMatrix(top: FloatArray, bottom: FloatArray): FloatArray {
+    val out = FloatArray(20)
+    for (r in 0..3) {
+        for (c in 0..4) {
+            var acc = 0f
+            for (k in 0..3) acc += top[r * 5 + k] * bottom[k * 5 + c]
+            out[r * 5 + c] = acc + top[r * 5 + 4] * (if (c == 4) 1f else 0f)
+        }
+    }
+    return out
+}
+
+/** Contrast matrix: each RGB channel scaled by [contrast] around 128 mid-gray; alpha untouched. */
+private fun contrastMatrix(contrast: Float): ColorMatrix =
+    ColorMatrix(
+        floatArrayOf(
+            contrast, 0f, 0f, 0f, 128f * (1f - contrast),
+            0f, contrast, 0f, 0f, 128f * (1f - contrast),
+            0f, 0f, contrast, 0f, 128f * (1f - contrast),
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    )

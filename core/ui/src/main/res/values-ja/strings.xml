@@ -347,4 +347,13 @@
     <string name="settings_video_tabs">動画タブ</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">非表示または控えめにした動画とクリエイター</string>
     <string name="settings_watch_time">視聴時間</string>
+    <string name="settings_thumbnail_contrast">コントラスト</string>
+    <string name="settings_thumbnail_contrast_desc">すべてのサムネイルのコントラスト</string>
+    <string name="settings_apply">適用</string>
+    <string name="settings_thumbnail_preview">サムネイルプレビュー</string>
+    <string name="settings_thumbnail_preview_desc">設定を適用したときのサムネイルの表示例</string>
+    <string name="settings_slot_primary">プライマリ</string>
+    <string name="settings_slot_secondary">セカンダリ</string>
+    <string name="settings_slot_tertiary">ターシャリ</string>
+    <string name="settings_slot_background">背景</string>
 </resources>

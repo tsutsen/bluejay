@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import com.tsutsen.platformplayer.core.ui.R
+import com.tsutsen.platformplayer.feature.settings.impl.ThumbnailPreviewRow
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.BorderStyle
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Forward30
@@ -189,6 +191,10 @@ internal fun SectionItems(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                     SettingsHeader("Thumbnails")
+                    // Live sample row: the thumbnail pipeline (tint, strength,
+                    // blend, desaturate, contrast) applies to its image via the
+                    // composition locals, so every control below updates it.
+                    ThumbnailPreviewRow(groupPosition = GroupPosition.First)
                     SettingsOptionCard(
                         icon = Icons.Filled.Palette,
                         title = stringResource(R.string.settings_tint),
@@ -196,7 +202,7 @@ internal fun SectionItems(
                             state.prefs.appearance.thumbnailTintArgb?.let { tintPreviewLabel(it) }
                                 ?: "None",
                         onClick = { onChoiceSelected(Choice.THUMBNAIL_TINT) },
-                        groupPosition = GroupPosition.First,
+                        groupPosition = GroupPosition.Middle,
                     )
                     SettingsSliderCard(
                         icon = Icons.Filled.BorderStyle,
@@ -221,6 +227,15 @@ internal fun SectionItems(
                         value = (1f - state.prefs.appearance.thumbnailSaturation) * 100f,
                         valueRange = 0f..100f,
                         onValueChange = { viewModel.setThumbnailSaturation(1f - it / 100f) },
+                        groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsSliderCard(
+                        icon = Icons.Filled.Contrast,
+                        title = stringResource(R.string.settings_thumbnail_contrast),
+                        subtitle = stringResource(R.string.settings_thumbnail_contrast_desc),
+                        value = state.prefs.appearance.thumbnailContrast * 100f,
+                        valueRange = 0f..200f,
+                        onValueChange = { viewModel.setThumbnailContrast(it / 100f) },
                         groupPosition = GroupPosition.Last,
                     )
                 }

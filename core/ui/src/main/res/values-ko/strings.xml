@@ -347,4 +347,13 @@
     <string name="settings_video_tabs">동영상 탭</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">숨기거나 줄인 동영상과 크리에이터</string>
     <string name="settings_watch_time">시청 시간</string>
+    <string name="settings_thumbnail_contrast">대비</string>
+    <string name="settings_thumbnail_contrast_desc">모든 썸네일의 대비</string>
+    <string name="settings_apply">적용</string>
+    <string name="settings_thumbnail_preview">썸네일 미리보기</string>
+    <string name="settings_thumbnail_preview_desc">설정을 적용했을 때 썸네일이 표시되는 모습</string>
+    <string name="settings_slot_primary">기본</string>
+    <string name="settings_slot_secondary">보조</string>
+    <string name="settings_slot_tertiary">삼차</string>
+    <string name="settings_slot_background">배경</string>
 </resources>

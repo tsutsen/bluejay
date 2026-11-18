@@ -347,4 +347,13 @@ Aucun message depuis votre arrivée.</string>
     <string name="settings_video_tabs">Onglets vidéo</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">Vidéos et créateurs que vous avez masqués ou réduits</string>
     <string name="settings_watch_time">Temps de visionnage</string>
+    <string name="settings_thumbnail_contrast">Contraste</string>
+    <string name="settings_thumbnail_contrast_desc">Contraste de chaque miniature</string>
+    <string name="settings_apply">Appliquer</string>
+    <string name="settings_thumbnail_preview">Aperçu de la miniature</string>
+    <string name="settings_thumbnail_preview_desc">Voici à quoi ressemblent les miniatures avec les paramètres appliqués</string>
+    <string name="settings_slot_primary">Primaire</string>
+    <string name="settings_slot_secondary">Secondaire</string>
+    <string name="settings_slot_tertiary">Tertiaire</string>
+    <string name="settings_slot_background">Arrière-plan</string>
 </resources>

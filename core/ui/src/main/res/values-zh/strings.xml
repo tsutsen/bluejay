@@ -347,4 +347,13 @@
     <string name="settings_video_tabs">视频标签页</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">您隐藏或减少推荐的视频和创作者</string>
     <string name="settings_watch_time">观看时长</string>
+    <string name="settings_thumbnail_contrast">对比度</string>
+    <string name="settings_thumbnail_contrast_desc">每个缩略图的对比度</string>
+    <string name="settings_apply">应用</string>
+    <string name="settings_thumbnail_preview">缩略图预览</string>
+    <string name="settings_thumbnail_preview_desc">这是应用设置后缩略图的显示效果</string>
+    <string name="settings_slot_primary">主色</string>
+    <string name="settings_slot_secondary">辅色</string>
+    <string name="settings_slot_tertiary">第三色</string>
+    <string name="settings_slot_background">背景</string>
 </resources>

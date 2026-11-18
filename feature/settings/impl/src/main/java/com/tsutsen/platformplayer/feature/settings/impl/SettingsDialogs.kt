@@ -33,12 +33,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.component.ColorPicker
 import com.tsutsen.platformplayer.core.designsystem.component.ReorderableList
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
@@ -205,8 +208,8 @@ internal fun ReorderDialog(
 }
 
 /**
- * Thumbnail tint picker: preset hues at full color (strength is its own
- * slider below the Tint row), plus None.
+ * Thumbnail tint picker: featured presets + free-form picker; Apply commits
+ * (strength/blend mode are their own sliders below the Tint row).
  */
 @Composable
 internal fun ThumbnailTintDialog(
@@ -214,39 +217,38 @@ internal fun ThumbnailTintDialog(
     onPick: (Long?) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // Draft color: nothing commits until Apply, so dragging around in the
+    // picker doesn't close the dialog or overwrite the live setting.
+    var draft by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_thumbnail_tint)) },
         text = {
-            Column {
-                Text(
-                    "The color laid over every video thumbnail. Strength and blend mode are set below the Tint row.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(Tokens.SpaceMd))
-                PresetColors.chunked(6).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                        row.forEach { argb ->
-                            val opaque = argb.toLong() or (0xFFL shl 24)
-                            // Legacy tints carry a baked-in 30% alpha; match
-                            // by RGB so the picked swatch still highlights.
-                            ColorSwatch(
-                                color = Color(opaque),
-                                isSelected = current != null && (current and 0x00FFFFFFL) == (opaque and 0x00FFFFFFL),
-                                onClick = { onPick(opaque) },
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(Tokens.SpaceSm))
-                TextButton(onClick = { onPick(null) }) {
-                    Text(stringResource(R.string.settings_none), color = if (current == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                val presetsDesc = stringResource(R.string.picker_featured_presets)
+                Column(
+                    Modifier.semantics { contentDescription = presetsDesc },
+                ) {
+                    ColorPicker(
+                        // Legacy tints bake their alpha downstream; colorToHSV
+                        // ignores alpha, so hand the picker an opaque color.
+                        initialColor = (draft ?: 0xFF4A4A55L).toInt(),
+                        // Same opaque convention as the swatches below (the
+                        // 30% alpha is applied by the tint pipeline).
+                        onColorChange = { draft = 0xFF000000L or (it.toLong() and 0x00FFFFFFL) },
+                    )
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_close)) }
+            TextButton(onClick = {
+                onPick(draft)
+            }) { Text(stringResource(R.string.settings_apply)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
         },
     )
 }

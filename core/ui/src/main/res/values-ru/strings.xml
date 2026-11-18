@@ -347,4 +347,13 @@
     <string name="settings_video_tabs">Вкладки видео</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">Видео и авторы, которые вы скрыли или ограничили</string>
     <string name="settings_watch_time">Время просмотра</string>
+    <string name="settings_thumbnail_contrast">Контрастность</string>
+    <string name="settings_thumbnail_contrast_desc">Контрастность каждой миниатюры</string>
+    <string name="settings_apply">Применить</string>
+    <string name="settings_thumbnail_preview">Предпросмотр миниатюры</string>
+    <string name="settings_thumbnail_preview_desc">Так миниатюры выглядят с применёнными настройками</string>
+    <string name="settings_slot_primary">Основной</string>
+    <string name="settings_slot_secondary">Вторичный</string>
+    <string name="settings_slot_tertiary">Третичный</string>
+    <string name="settings_slot_background">Фон</string>
 </resources>

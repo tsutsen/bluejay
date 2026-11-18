@@ -354,4 +354,15 @@
     <string name="settings_video_tabs">Video tabs</string>
     <string name="settings_videos_and_creators_you_hid_or_reduced">Videos and creators you hid or reduced</string>
     <string name="settings_watch_time">Watch time</string>
+    <string name="picker_hex_label">Hex</string>
+    <string name="picker_featured_presets">Featured colors</string>
+    <string name="settings_thumbnail_contrast">Contrast</string>
+    <string name="settings_thumbnail_contrast_desc">Contrast of every thumbnail</string>
+    <string name="settings_apply">Apply</string>
+    <string name="settings_thumbnail_preview">Thumbnail preview</string>
+    <string name="settings_thumbnail_preview_desc">This is how thumbnails look like with the settings applied</string>
+    <string name="settings_slot_primary">Primary</string>
+    <string name="settings_slot_secondary">Secondary</string>
+    <string name="settings_slot_tertiary">Tertiary</string>
+    <string name="settings_slot_background">Background</string>
 </resources>

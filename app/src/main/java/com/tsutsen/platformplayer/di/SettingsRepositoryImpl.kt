@@ -125,6 +125,7 @@ class SettingsRepositoryImpl
                         thumbnailTintStrength = s.appearance.thumbnailTintStrength,
                         thumbnailTintBlendMode = s.appearance.thumbnailTintBlendMode,
                         thumbnailSaturation = s.appearance.thumbnailSaturation,
+                        thumbnailContrast = s.appearance.thumbnailContrast,
                     ),
                 playback =
                     PlaybackPreferences(
@@ -270,6 +271,7 @@ class SettingsRepositoryImpl
             s.appearance.thumbnailTintStrength = prefs.thumbnailTintStrength
             s.appearance.thumbnailTintBlendMode = prefs.thumbnailTintBlendMode
             s.appearance.thumbnailSaturation = prefs.thumbnailSaturation
+            s.appearance.thumbnailContrast = prefs.thumbnailContrast
             s.save()
             emit()
         }
