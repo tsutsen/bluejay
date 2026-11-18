@@ -50,8 +50,12 @@ internal class SourceRecoveryManager(
      * publishing the error to the UI.
      */
     fun attempt(error: PlaybackException): Boolean {
-        // Only recover errors our source layer explicitly marked as such —
-        // network glitches etc. keep their normal retry/error handling.
+        // Recover errors our source layer explicitly marked (SABR po-token
+        // rejections) AND IO-class failures: progressive stream URLs are
+        // time-limited (YouTube: ~6h) and resets/403s surface here once
+        // ExoPlayer's internal retries exhaust — the classic trigger is
+        // resuming playback after the device was locked long enough for
+        // the URL to expire. A fresh resolve mints a new URL.
         var cause: Throwable? = error
         var recoverable: RecoverableSourceError? = null
         while (cause != null) {
@@ -61,7 +65,7 @@ internal class SourceRecoveryManager(
             }
             cause = cause.cause
         }
-        if (recoverable == null) return false
+        if (recoverable == null && !isRecoverableIoError(error)) return false
 
         val url = currentPlayUrl()
         if (url.isNullOrEmpty()) return false
@@ -78,7 +82,8 @@ internal class SourceRecoveryManager(
         lastSourceRecoveryAtMs = now
 
         val positionMs = playerProvider()?.currentPosition ?: 0L
-        Log.w(logTag, "Recoverable source error (${recoverable.javaClass.simpleName}); " +
+        Log.w(logTag, "Recoverable source error (" +
+            (recoverable?.javaClass?.simpleName ?: error.errorCodeName) + "); " +
             "re-resolving $url at ${positionMs}ms (budget left: $sourceRecoveryBudget)")
 
         // Keep the player usable while re-resolving: clear the failed state
@@ -117,6 +122,28 @@ internal class SourceRecoveryManager(
         }
         return true
     }
+
+    /**
+     * IO-class playback errors worth a fresh resolve. ExoPlayer retries
+     * these internally first ([onPlayerError] fires only after its retry
+     * policy gives up), so reaching here means the URL is dead — expired
+     * (HTTP 403 after the ~6h `expire` window), repeatedly reset by the
+     * server, or unreachable after a long device sleep. DRM/decoding/
+     * content-not-found errors are deliberately excluded: re-resolving
+     * can't fix them.
+     */
+    private fun isRecoverableIoError(error: PlaybackException): Boolean =
+        when (error.errorCode) {
+            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
+            PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE,
+            PlaybackException.ERROR_CODE_TIMEOUT,
+            PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW,
+            -> true
+            else -> false
+        }
 
     private companion object {
         // Transparent source-recovery budget per play() call, and the
