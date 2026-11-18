@@ -27,6 +27,7 @@ import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -629,7 +630,7 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun setSubtitle(selection: String) {
-        if (selection != "Off" && selection != "Auto") {
+        if (selection != TrackSelectionValues.OFF && selection != TrackSelectionValues.AUTO) {
             trackSelection.lastExplicitSubtitle = selection
         }
         trackSelection.selectedSubtitle = selection
@@ -702,8 +703,8 @@ class PlayerRepositoryImpl(
 
     override suspend fun toggleSubtitles() {
         val current = trackSelection.selectedSubtitle
-        if (current != "Off" && current != "Auto") {
-            setSubtitle("Off")
+        if (current != TrackSelectionValues.OFF && current != TrackSelectionValues.AUTO) {
+            setSubtitle(TrackSelectionValues.OFF)
             return
         }
         val target =

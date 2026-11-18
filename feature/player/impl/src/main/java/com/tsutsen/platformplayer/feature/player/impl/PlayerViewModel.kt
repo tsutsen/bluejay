@@ -21,6 +21,7 @@ import com.tsutsen.platformplayer.core.model.ContentType
 import com.tsutsen.platformplayer.core.model.DownloadInfo
 import com.tsutsen.platformplayer.core.model.DownloadQuality
 import com.tsutsen.platformplayer.core.model.PlayerState
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import com.tsutsen.platformplayer.core.model.PlaylistOption
 import com.tsutsen.platformplayer.core.model.LiveChatUiState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
@@ -60,8 +61,8 @@ sealed interface PlayerUiState {
         val subtitleLanguages: List<String> = emptyList(),
         val audioTracks: List<AudioTrackInfo> = emptyList(),
         val selectedAudioTrack: String = "",
-        val selectedQuality: String = "Auto",
-        val selectedSubtitle: String = "Off",
+        val selectedQuality: String = TrackSelectionValues.AUTO,
+        val selectedSubtitle: String = TrackSelectionValues.OFF,
         val subtitleText: String = "",
         val chapters: List<VideoChapter> = emptyList(),
         val recommendations: List<Card> = emptyList(),

@@ -20,6 +20,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import java.time.OffsetDateTime
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 
 /**
  * Minimal stub Settings class.
@@ -255,7 +256,7 @@ class Settings {
         var downrankedCreators: List<String> = emptyList()
 
         // "Auto" or "NNNp" — quality the player starts each video at.
-        var defaultVideoResolution: String = "Auto"
+        var defaultVideoResolution: String = TrackSelectionValues.AUTO
 
         // Resolution label (DownloadQuality label) a plain download uses.
         var defaultDownloadResolution: String = "480p"

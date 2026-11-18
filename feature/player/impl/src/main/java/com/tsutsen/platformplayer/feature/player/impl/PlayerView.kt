@@ -68,6 +68,7 @@ import com.tsutsen.platformplayer.core.ui.GamepadKeyBus
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.SavedVideoType
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureAnimationConstants
 import com.tsutsen.platformplayer.feature.player.impl.gesture.MorphCoordinator
@@ -663,7 +664,7 @@ fun PlayerView(
                         scrubPositionMs = scrubPositionMs,
                         seekPreviewMs = pendingSeekMs ?: seekPreviewMs,
                         subtitlesOn =
-                            state.selectedSubtitle != "Off" && state.selectedSubtitle != "Auto",
+                            state.selectedSubtitle != TrackSelectionValues.OFF && state.selectedSubtitle != TrackSelectionValues.AUTO,
                         onSubtitleToggle = remember { { viewModel.toggleSubtitles() } },
                         onMinimize = remember { { viewModel.minimize() } },
                         onExpand = remember { { viewModel.exitMiniPlayer() } },

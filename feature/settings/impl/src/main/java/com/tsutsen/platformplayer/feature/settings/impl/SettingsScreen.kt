@@ -41,6 +41,7 @@ import com.tsutsen.platformplayer.core.designsystem.layout.AppHeader
 import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.PlayerControllerActions
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import com.tsutsen.platformplayer.core.navigation.Navigator
 
 /**
@@ -681,7 +682,8 @@ fun SettingsSectionScreen(
                     title = stringResource(R.string.settings_default_video_resolution),
                     options =
                         listOf(
-                            stringResource(R.string.settings_auto) to "Auto",
+                            // Data value is the constant; only the label is localized.
+                            stringResource(R.string.settings_auto) to TrackSelectionValues.AUTO,
                             stringResource(R.string.settings_144p) to "144p",
                             stringResource(R.string.settings_360p) to "360p",
                             stringResource(R.string.settings_480p) to "480p",

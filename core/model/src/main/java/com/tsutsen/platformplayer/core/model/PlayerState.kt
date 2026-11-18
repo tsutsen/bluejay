@@ -27,9 +27,9 @@ data class PlayerState(
     /** Available subtitle track language codes, in manifest order. */
     val subtitleLanguages: List<String> = emptyList(),
     /** UI label of the selected quality ("Auto" or "NNNp"). */
-    val selectedQuality: String = "Auto",
+    val selectedQuality: String = TrackSelectionValues.AUTO,
     /** UI label of the selected subtitle ("Auto", "Off" or a language code). */
-    val selectedSubtitle: String = "Off",
+    val selectedSubtitle: String = TrackSelectionValues.OFF,
     /** Audio tracks of the current media, in manifest order (empty when none). */
     val audioTracks: List<AudioTrackInfo> = emptyList(),
     /**
@@ -40,3 +40,19 @@ data class PlayerState(
     /** Text of the currently active subtitle cues (empty when none). */
     val subtitleText: String = "",
 )
+
+/**
+ * Canonical data values used for quality / subtitle selection state.
+ *
+ * These strings are persisted and compared as data (defaults, track
+ * selection, toggle checks) — they are NOT display labels. UI code should
+ * compare against these constants and derive the visible label from string
+ * resources (e.g. [com.tsutsen.platformplayer.core.ui.R.string.settings_auto]).
+ */
+object TrackSelectionValues {
+    /** "Auto" — let the player pick the best quality / default subtitle. */
+    const val AUTO = "Auto"
+
+    /** "Off" — disable subtitles. */
+    const val OFF = "Off"
+}

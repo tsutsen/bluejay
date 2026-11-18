@@ -24,6 +24,7 @@ import com.tsutsen.platformplayer.core.datastore.model.SubscriptionsPreferences
 import com.tsutsen.platformplayer.core.datastore.model.SubtitlePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.model.GestureAction
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -683,7 +684,7 @@ class SettingsRepositoryImpl
             s.playback.defaultPlaybackSpeed = 1f
             s.playback.defaultSpeedup = 2f
             s.playback.speedupSensitivity = 1f
-            s.content.defaultVideoResolution = "Auto"
+            s.content.defaultVideoResolution = TrackSelectionValues.AUTO
             s.content.defaultDownloadResolution = "480p"
             s.playback.subtitleFont = "default"
             s.playback.subtitleFontSize = 16

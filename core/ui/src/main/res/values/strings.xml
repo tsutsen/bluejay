@@ -8,6 +8,7 @@
     <string name="common_no">No</string>
     <string name="common_create">Create</string>
     <string name="common_cancel">Cancel</string>
+    <string name="common_off">Off</string>
 
     <!-- Channel -->
     <string name="channel_title">Channel</string>
@@ -281,7 +282,9 @@
     <string name="settings_recommended_tab_on_the_video_page">Recommended tab on the video page</string>
     <string name="settings_reset_to_defaults">Reset to defaults</string>
     <string name="settings_restore">Restore</string>
+    <string name="settings_backup_disclaimer">The backup contains your settings, subscriptions, playlists, watch later list, watch history and plugin settings. Downloaded video files are not included.</string>
     <string name="settings_restore_backup">Restore backup</string>
+    <string name="settings_restore_disclaimer">This replaces your current subscriptions, playlists, watch later list, history and settings with the contents of the backup file. Continue?</string>
     <string name="settings_restore_from_backup">Restore from backup</string>
     <string name="settings_roboto">Roboto</string>
     <string name="settings_sans_serif">Sans-serif</string>

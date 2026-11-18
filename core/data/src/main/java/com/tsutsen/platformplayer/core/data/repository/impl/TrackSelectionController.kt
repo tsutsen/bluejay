@@ -5,6 +5,7 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.exoplayer.ExoPlayer
 import com.tsutsen.platformplayer.core.model.PlayerState
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -15,9 +16,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 internal class TrackSelectionController(
     private val state: MutableStateFlow<PlayerState>,
 ) {
-    var selectedQuality: String = "Auto"
+    var selectedQuality: String = TrackSelectionValues.AUTO
 
-    var selectedSubtitle: String = "Off"
+    var selectedSubtitle: String = TrackSelectionValues.OFF
 
     // Preferred audio track (UI label); null = engine default heuristics.
     var preferredAudioTrack: String? = null
@@ -53,13 +54,13 @@ internal class TrackSelectionController(
             builder.setMaxVideoSize(9999, height + 10)
         }
         when (selectedSubtitle) {
-            "Off" -> {
+            TrackSelectionValues.OFF -> {
                 builder.setIgnoredTextSelectionFlags(
                     C.SELECTION_FLAG_AUTOSELECT or C.SELECTION_FLAG_FORCED or C.SELECTION_FLAG_DEFAULT,
                 )
             }
 
-            "Auto" -> {
+            TrackSelectionValues.AUTO -> {
                 Unit
             }
 
@@ -96,7 +97,7 @@ internal class TrackSelectionController(
         if (player == null) return
         val builder = player.trackSelectionParameters.buildUpon()
         val wanted = selectedSubtitle
-        val targetId = if (wanted == "Off" || wanted == "Auto") null else "sub_$wanted"
+        val targetId = if (wanted == TrackSelectionValues.OFF || wanted == TrackSelectionValues.AUTO) null else "sub_$wanted"
         var applied = false
         if (targetId != null) {
             for (group in player.currentTracks.groups) {

@@ -44,6 +44,7 @@ import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.AudioTrackInfo
 import com.tsutsen.platformplayer.core.model.DownloadButtonState
 import com.tsutsen.platformplayer.core.model.DownloadQuality
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import kotlinx.coroutines.flow.StateFlow
 
@@ -112,11 +113,12 @@ internal fun OptionsModal(
                 }
             }
             OptionCard(title = stringResource(R.string.player_quality)) {
-                (listOf("Auto") + qualities.map { "${it}p" }).forEach { q ->
+                (listOf(TrackSelectionValues.AUTO) + qualities.map { "${it}p" }).forEach { q ->
                     FilterChip(
                         selected = quality == q,
                         onClick = { onQualityChange(q) },
-                        label = { Text(q) },
+                        // "Auto" is the data value — display the localized label.
+                        label = { Text(if (q == TrackSelectionValues.AUTO) stringResource(R.string.settings_auto) else q) },
                         shapes = tokenizedChipShapes(),
                     )
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))
@@ -137,12 +139,26 @@ internal fun OptionsModal(
                 }
             }
             OptionCard(title = stringResource(R.string.player_subtitles)) {
-                val subtitleOptions = if (subtitles.isEmpty()) listOf("Auto", "Off") else listOf("Off") + subtitles
+                // "Auto"/"Off" are data values — display localized labels.
+                val subtitleOptions =
+                    if (subtitles.isEmpty()) {
+                        listOf(TrackSelectionValues.AUTO, TrackSelectionValues.OFF)
+                    } else {
+                        listOf(TrackSelectionValues.OFF) + subtitles
+                    }
                 subtitleOptions.forEach { s ->
                     FilterChip(
                         selected = subtitle == s,
                         onClick = { onSubtitleChange(s) },
-                        label = { Text(s) },
+                        label = {
+                            Text(
+                                when (s) {
+                                    TrackSelectionValues.AUTO -> stringResource(R.string.settings_auto)
+                                    TrackSelectionValues.OFF -> stringResource(R.string.common_off)
+                                    else -> s
+                                },
+                            )
+                        },
                         shapes = tokenizedChipShapes(),
                     )
                     Spacer(modifier = Modifier.width(Tokens.SpaceSm))

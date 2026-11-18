@@ -111,10 +111,7 @@ internal fun BackupItems(
         }
 
         Text(
-            text =
-                "The backup contains your settings, subscriptions, playlists, " +
-                    "watch later list, watch history and plugin settings. " +
-                    "Downloaded video files are not included.",
+            text = stringResource(R.string.settings_backup_disclaimer),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -125,11 +122,7 @@ internal fun BackupItems(
             onDismissRequest = { confirmRestore = false },
             title = { Text(stringResource(R.string.settings_restore_backup)) },
             text = {
-                Text(
-                    "This replaces your current subscriptions, playlists, watch " +
-                        "later list, history and settings with the contents of " +
-                        "the backup file. Continue?",
-                )
+                Text(stringResource(R.string.settings_restore_disclaimer))
             },
             confirmButton = {
                 TextButton(onClick = { confirmRestore = false; viewModel.importBackup() }) {
