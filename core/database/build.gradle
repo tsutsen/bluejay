@@ -1,8 +1,8 @@
 plugins {
-    id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
     id 'kotlin-parcelize'
-    id 'com.google.devtools.ksp'
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -37,20 +37,20 @@ android {
 
 dependencies {
     implementation project(':core:model')
-    implementation 'androidx.core:core-ktx:1.17.0'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    implementation libs.androidx.core.ktx
+    implementation libs.kotlinx.coroutines.android
 
     // Room
     // api (not implementation): AppDatabaseProvider exposes AppDatabase
     // (a RoomDatabase subtype) in this module's public API, so consumers
     // calling it need room-runtime on their compile classpath.
-    api("androidx.room:room-runtime:2.8.3")
-    implementation("androidx.room:room-ktx:2.8.3")
-    ksp("androidx.room:room-compiler:2.8.3")
+    api libs.androidx.room.runtime
+    implementation libs.androidx.room.ktx
+    ksp libs.androidx.room.compiler
 
     // Tests (JVM, Robolectric provides the Android runtime for Room)
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.robolectric:robolectric:4.14.1'
-    testImplementation 'androidx.test:core:1.6.1'
-    testImplementation "androidx.room:room-testing:2.8.3"
+    testImplementation libs.junit
+    testImplementation libs.robolectric
+    testImplementation libs.androidx.test.core
+    testImplementation libs.androidx.room.testing
 }

@@ -1,9 +1,9 @@
 plugins {
-    id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.4.0'
-    id 'com.google.dagger.hilt.android'
-    id 'com.google.devtools.ksp'
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -37,36 +37,36 @@ dependencies {
     implementation project(':core:model')
     implementation project(':core:database')
     implementation project(':core:ui')
-    implementation 'androidx.core:core-ktx:1.17.0'
-    implementation platform('androidx.compose:compose-bom:2026.08.00')
-    implementation 'androidx.compose.ui:ui'
-    implementation 'androidx.compose.ui:ui-graphics'
-    implementation 'androidx.compose.foundation:foundation'
-    implementation 'androidx.compose.runtime:runtime'
-    implementation 'androidx.compose.animation:animation'
-    implementation 'androidx.compose.material3:material3:1.5.0-beta02'
-    implementation 'androidx.compose.material:material-icons-extended'
-    implementation 'androidx.compose.material3.adaptive:adaptive'
-    implementation 'androidx.compose.material3.adaptive:adaptive-layout'
-    implementation 'androidx.compose.material3.adaptive:adaptive-navigation'
-    implementation 'androidx.media3:media3-exoplayer:1.9.0'
-    implementation 'androidx.media3:media3-exoplayer-dash:1.9.0'
-    implementation 'androidx.media3:media3-ui-compose:1.9.0'
-    implementation 'androidx.media3:media3-ui:1.9.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose'
-    implementation 'androidx.activity:activity-compose:1.13.0'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    implementation libs.androidx.core.ktx
+    implementation platform(libs.androidx.compose.bom)
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.graphics
+    implementation libs.androidx.compose.foundation
+    implementation libs.androidx.compose.runtime
+    implementation libs.androidx.compose.animation
+    implementation libs.androidx.compose.material3
+    implementation libs.androidx.compose.material.icons.extended
+    implementation libs.androidx.compose.material3.adaptive
+    implementation libs.androidx.compose.material3.adaptive.layout
+    implementation libs.androidx.compose.material3.adaptive.navigation
+    implementation libs.androidx.media3.exoplayer
+    implementation libs.androidx.media3.exoplayer.dash
+    implementation libs.androidx.media3.ui.compose
+    implementation libs.androidx.media3.ui
+    implementation libs.androidx.lifecycle.viewmodel.ktx
+    implementation libs.androidx.lifecycle.runtime.ktx
+    implementation libs.androidx.lifecycle.viewmodel.compose
+    implementation libs.androidx.activity.compose
+    implementation libs.kotlinx.coroutines.android
     
     // Coil for image loading
-    implementation 'io.coil-kt:coil-compose:2.7.0'
+    implementation libs.coil.compose
     
     // Hilt
-    implementation 'com.google.dagger:hilt-android:2.60.1'
+    implementation libs.hilt.android
 
     // Unit tests
-    testImplementation 'junit:junit:4.13.2'
-    ksp 'com.google.dagger:hilt-android-compiler:2.60.1'
-    implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
+    testImplementation libs.junit
+    ksp libs.hilt.android.compiler
+    implementation libs.androidx.hilt.navigation.compose
 }
