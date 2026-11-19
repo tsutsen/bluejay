@@ -289,7 +289,7 @@ internal fun AboutItems(viewModel: SettingsViewModel) {
                 title = stringResource(R.string.settings_github),
                 subtitle = stringResource(R.string.settings_source_code_issues_feature_requests),
                 onClick = {
-                    openUrl(context, "https://github.com/tsutsen-org/bluejay-android")
+                    openUrl(context, "https://github.com/tsutsen/bluejay")
                 },
                 groupPosition = GroupPosition.Middle,
             )
@@ -300,7 +300,7 @@ internal fun AboutItems(viewModel: SettingsViewModel) {
                 onClick = {
                     openUrl(
                         context,
-                        "https://github.com/tsutsen-org/bluejay-android/blob/master/LICENSE.md",
+                        "https://github.com/tsutsen/bluejay/blob/master/LICENSE.md",
                     )
                 },
                 groupPosition = GroupPosition.Last,

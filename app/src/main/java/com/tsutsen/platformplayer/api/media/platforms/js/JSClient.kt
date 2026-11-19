@@ -861,7 +861,7 @@ open class JSClient : IPlatformClient {
                         .distinct()
                         .parallelStream()
                         .map {
-                            val url = "https://github.com/tsutsen-org/bluejay-android/blob/master/docs/source/${it}.md";
+                            val url = "https://github.com/tsutsen/bluejay/blob/master/docs/source/${it}.md";
                             val resp = client.head(url);
                             try {
                                 if(resp.isOk)
