@@ -332,6 +332,10 @@
     <string name="settings_theme_editor_upload">تحميل</string>
     <string name="settings_theme_material_you_brand">Material You / العلامة</string>
     <string name="settings_theme_use">استخدام</string>
+    <string name="theme_export">تصدير السمة</string>
+    <string name="theme_export_failed">تعذّر تصدير السمة</string>\n    <string name="theme_import">استيراد سمة</string>
+    <string name="theme_import_failed">تعذّر استيراد السمة</string>
+    <string name="theme_imported">تم استيراد السمة</string>
     <string name="settings_this_week">هذا الأسبوع</string>
     <string name="settings_thumbnail_tint">صبغة الصور المصغرة</string>
     <string name="settings_time_jump_step">خطوة القفز الزمني</string>

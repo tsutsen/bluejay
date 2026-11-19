@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -136,6 +137,28 @@ internal fun ThemeEditor(
                 ).light
             }
         }
+
+    // Full light/dark pair for the live preview: while this editor is in
+    // composition the app theme root renders the settings screen behind the
+    // sheet with the draft scheme, so color picking feels instant. Cleared on
+    // disposal — which fires on both dismiss and save.
+    val draftSchemes =
+        remember(primary, secondary, tertiary, background, style, contrast) {
+            ThemeEngine.generate(
+                primary,
+                secondary,
+                tertiary,
+                style,
+                background = background,
+                contrast = contrast,
+            )
+        }
+    DisposableEffect(Unit) {
+        onDispose { DraftThemePreview.clear() }
+    }
+    LaunchedEffect(draftSchemes) {
+        DraftThemePreview.update(draftSchemes.light, draftSchemes.dark)
+    }
 
     Column(
         modifier =

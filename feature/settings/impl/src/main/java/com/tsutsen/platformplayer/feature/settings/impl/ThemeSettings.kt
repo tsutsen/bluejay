@@ -14,9 +14,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ColorScheme
@@ -33,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +74,23 @@ fun ThemesSection(
 ) {
     var editorOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<CustomTheme?>(null) } // null = new theme
+    val context = LocalContext.current
+
+    // Import: pick a theme JSON file, validate it and add it to the list.
+    val importLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            val imported =
+                runCatching {
+                    readImportedTheme(context, uri, appearance.customThemes.map { it.id }.toSet())
+                }.getOrNull()
+            if (imported != null) {
+                viewModel.saveTheme(imported)
+                Toast.makeText(context, R.string.theme_imported, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, R.string.theme_import_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -94,6 +117,16 @@ fun ThemesSection(
                         },
                         onUse = { viewModel.setActiveTheme(theme.id) },
                         onDelete = { viewModel.deleteTheme(theme.id) },
+                        onExport = {
+                            runCatching { exportTheme(context, theme) }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        R.string.theme_export_failed,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                        },
                     )
                 }
             }
@@ -108,6 +141,16 @@ fun ThemesSection(
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Text(stringResource(R.string.settings_new_theme), modifier = Modifier.padding(start = 8.dp))
+        }
+
+        ElevatedButton(
+            onClick = {
+                importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Default.Download, contentDescription = null)
+            Text(stringResource(R.string.theme_import), modifier = Modifier.padding(start = 8.dp))
         }
     }
 
@@ -216,6 +259,7 @@ private fun ThemeRow(
     onClick: () -> Unit,
     onUse: () -> Unit,
     onDelete: () -> Unit,
+    onExport: () -> Unit = {},
 ) {
     Card(
         onClick = onClick,
@@ -288,6 +332,13 @@ private fun ThemeRow(
                 )
             } else {
                 TextButton(onClick = onUse) { Text(stringResource(R.string.settings_theme_use)) }
+            }
+            IconButton(onClick = onExport) {
+                Icon(
+                    Icons.Default.SaveAlt,
+                    contentDescription = stringResource(R.string.theme_export),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(

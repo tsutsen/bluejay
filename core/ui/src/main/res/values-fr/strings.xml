@@ -332,6 +332,10 @@ Aucun message depuis votre arrivée.</string>
     <string name="settings_theme_editor_upload">Importer</string>
     <string name="settings_theme_material_you_brand">Material You / marque</string>
     <string name="settings_theme_use">Utiliser</string>
+    <string name="theme_export">Exporter le thème</string>
+    <string name="theme_export_failed">Impossible d\'exporter le thème</string>\n    <string name="theme_import">Importer un thème</string>
+    <string name="theme_import_failed">Impossible d\'importer le thème</string>
+    <string name="theme_imported">Thème importé</string>
     <string name="settings_this_week">Cette semaine</string>
     <string name="settings_thumbnail_tint">Teinte des miniatures</string>
     <string name="settings_time_jump_step">Durée du saut</string>

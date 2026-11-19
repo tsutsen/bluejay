@@ -332,6 +332,10 @@
     <string name="settings_theme_editor_upload">Загрузить</string>
     <string name="settings_theme_material_you_brand">Material You / фирменный</string>
     <string name="settings_theme_use">Применить</string>
+    <string name="theme_export">Экспортировать тему</string>
+    <string name="theme_export_failed">Не удалось экспортировать тему</string>\n    <string name="theme_import">Импортировать тему</string>
+    <string name="theme_import_failed">Не удалось импортировать тему</string>
+    <string name="theme_imported">Тема импортирована</string>
     <string name="settings_this_week">На этой неделе</string>
     <string name="settings_thumbnail_tint">Оттенок превью</string>
     <string name="settings_time_jump_step">Шаг перемотки</string>

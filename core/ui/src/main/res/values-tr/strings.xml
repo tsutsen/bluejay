@@ -332,6 +332,10 @@ Katıldığınızdan beri mesaj yok.</string>
     <string name="settings_theme_editor_upload">Yükle</string>
     <string name="settings_theme_material_you_brand">Material You / marka</string>
     <string name="settings_theme_use">Kullan</string>
+    <string name="theme_export">Temayı dışa aktar</string>
+    <string name="theme_export_failed">Temayı dışa aktarma başarısız</string>\n    <string name="theme_import">Temayı içe aktar</string>
+    <string name="theme_import_failed">Tema içe aktarılamadı</string>
+    <string name="theme_imported">Tema içe aktarıldı</string>
     <string name="settings_this_week">Bu hafta</string>
     <string name="settings_thumbnail_tint">Küçük resim tonu</string>
     <string name="settings_time_jump_step">Zaman atlama adımı</string>

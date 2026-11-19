@@ -16,6 +16,7 @@ import com.tsutsen.platformplayer.core.ui.LocalThumbnailContrast
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailSaturation
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTint
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTintBlendMode
+import com.tsutsen.platformplayer.feature.settings.impl.DraftThemePreview
 import com.tsutsen.platformplayer.core.ui.LocalThumbnailTintStrength
 
 /**
@@ -64,6 +65,16 @@ fun BluejayAppThemeRoot(
             buildAppTypography(appearance.fontFamily, appearance.fontSizeScale)
         }
     val surfaceSkins = rememberSurfaceSkins(appearance)
+    // Live theme-editor preview: while the editor sheet is open it pushes the
+    // draft scheme here; only the color scheme is overridden — typography and
+    // per-surface skins keep coming from prefs. Read of DraftThemePreview is
+    // snapshot-tracked, so scheme changes recompose the whole tree instantly.
+    val effectiveSchemes =
+        if (DraftThemePreview.active) {
+            DraftThemePreview.light?.let { l -> DraftThemePreview.dark?.let { d -> l to d } }
+        } else {
+            customSchemes?.let { it.light to it.dark }
+        }
 
     CompositionLocalProvider(
         // The tint color is normalized opaque: how much mixes in is the
@@ -78,7 +89,7 @@ fun BluejayAppThemeRoot(
             darkTheme = darkTheme,
             dynamicColor = appearance.dynamicColor,
             uiRounding = appearance.uiRounding,
-            colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
+            colorScheme = effectiveSchemes?.let { if (darkTheme) it.first else it.second },
             typography = appTypography,
             surfaceSkins = surfaceSkins,
         ) {

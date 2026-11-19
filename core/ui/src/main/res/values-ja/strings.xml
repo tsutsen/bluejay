@@ -332,6 +332,10 @@
     <string name="settings_theme_editor_upload">アップロード</string>
     <string name="settings_theme_material_you_brand">Material You / ブランド</string>
     <string name="settings_theme_use">使用</string>
+    <string name="theme_export">テーマをエクスポート</string>
+    <string name="theme_export_failed">テーマをエクスポートできませんでした</string>\n    <string name="theme_import">テーマをインポート</string>
+    <string name="theme_import_failed">テーマをインポートできませんでした</string>
+    <string name="theme_imported">テーマをインポートしました</string>
     <string name="settings_this_week">今週</string>
     <string name="settings_thumbnail_tint">サムネイルの色味</string>
     <string name="settings_time_jump_step">ジャンプ幅</string>

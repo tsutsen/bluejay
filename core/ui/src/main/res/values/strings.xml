@@ -339,6 +339,10 @@
     <string name="settings_theme_editor_upload">Upload</string>
     <string name="settings_theme_material_you_brand">Material You / brand</string>
     <string name="settings_theme_use">Use</string>
+    <string name="theme_export">Export theme</string>
+    <string name="theme_export_failed">Could not export theme</string>\n    <string name="theme_import">Import theme</string>
+    <string name="theme_import_failed">Could not import theme</string>
+    <string name="theme_imported">Theme imported</string>
     <string name="settings_this_week">This week</string>
     <string name="settings_thumbnail_tint">Thumbnail tint</string>
     <string name="settings_time_jump_step">Time jump step</string>

@@ -332,6 +332,10 @@ Sem mensagens desde que entrou.</string>
     <string name="settings_theme_editor_upload">Carregar</string>
     <string name="settings_theme_material_you_brand">Material You / marca</string>
     <string name="settings_theme_use">Usar</string>
+    <string name="theme_export">Exportar tema</string>
+    <string name="theme_export_failed">Não foi possível exportar o tema</string>\n    <string name="theme_import">Importar tema</string>
+    <string name="theme_import_failed">Não foi possível importar o tema</string>
+    <string name="theme_imported">Tema importado</string>
     <string name="settings_this_week">Esta semana</string>
     <string name="settings_thumbnail_tint">Tinta das miniaturas</string>
     <string name="settings_time_jump_step">Salto de tempo</string>

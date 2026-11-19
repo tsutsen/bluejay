@@ -332,6 +332,10 @@
     <string name="settings_theme_editor_upload">업로드</string>
     <string name="settings_theme_material_you_brand">Material You / 브랜드</string>
     <string name="settings_theme_use">사용</string>
+    <string name="theme_export">테마 내보내기</string>
+    <string name="theme_export_failed">테마를 내보낼 수 없습니다</string>\n    <string name="theme_import">테마 가져오기</string>
+    <string name="theme_import_failed">테마를 가져올 수 없습니다</string>
+    <string name="theme_imported">테마를 가져왔습니다</string>
     <string name="settings_this_week">이번 주</string>
     <string name="settings_thumbnail_tint">썸네일 색조</string>
     <string name="settings_time_jump_step">시간 건너뛰기 간격</string>

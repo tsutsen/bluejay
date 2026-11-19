@@ -332,6 +332,10 @@ Keine Nachrichten seit deinem Beitritt.</string>
     <string name="settings_theme_editor_upload">Hochladen</string>
     <string name="settings_theme_material_you_brand">Material You / Marke</string>
     <string name="settings_theme_use">Verwenden</string>
+    <string name="theme_export">Design exportieren</string>
+    <string name="theme_export_failed">Design konnte nicht exportiert werden</string>\n    <string name="theme_import">Design importieren</string>
+    <string name="theme_import_failed">Design konnte nicht importiert werden</string>
+    <string name="theme_imported">Design importiert</string>
     <string name="settings_this_week">Diese Woche</string>
     <string name="settings_thumbnail_tint">Vorschaubild-Farbton</string>
     <string name="settings_time_jump_step">Sprungweite</string>

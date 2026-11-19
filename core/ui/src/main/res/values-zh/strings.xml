@@ -332,6 +332,10 @@
     <string name="settings_theme_editor_upload">上传</string>
     <string name="settings_theme_material_you_brand">Material You / 品牌</string>
     <string name="settings_theme_use">使用</string>
+    <string name="theme_export">导出主题</string>
+    <string name="theme_export_failed">导出主题失败</string>\n    <string name="theme_import">导入主题</string>
+    <string name="theme_import_failed">导入主题失败</string>
+    <string name="theme_imported">主题已导入</string>
     <string name="settings_this_week">本周</string>
     <string name="settings_thumbnail_tint">缩略图色调</string>
     <string name="settings_time_jump_step">快进快退幅度</string>
