@@ -356,4 +356,6 @@
     <string name="settings_slot_secondary">보조</string>
     <string name="settings_slot_tertiary">삼차</string>
     <string name="settings_slot_background">배경</string>
+    <string name="settings_dual_swap">화면 전환</string>
+    <string name="settings_dual_swap_desc">메인 인터페이스를 다른 화면에 표시</string>
 </resources>

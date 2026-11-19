@@ -356,4 +356,6 @@ No hay mensajes desde que te uniste.</string>
     <string name="settings_slot_secondary">Secundario</string>
     <string name="settings_slot_tertiary">Terciario</string>
     <string name="settings_slot_background">Fondo</string>
+    <string name="settings_dual_swap">Intercambiar pantallas</string>
+    <string name="settings_dual_swap_desc">Poner la interfaz principal en la otra pantalla</string>
 </resources>

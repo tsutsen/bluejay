@@ -356,4 +356,6 @@ Aucun message depuis votre arrivée.</string>
     <string name="settings_slot_secondary">Secondaire</string>
     <string name="settings_slot_tertiary">Tertiaire</string>
     <string name="settings_slot_background">Arrière-plan</string>
+    <string name="settings_dual_swap">Inverser les écrans</string>
+    <string name="settings_dual_swap_desc">Placer l\'interface principale sur l\'autre écran</string>
 </resources>

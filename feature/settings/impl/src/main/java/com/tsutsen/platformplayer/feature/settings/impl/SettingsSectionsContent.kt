@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Tab
 import androidx.compose.material.icons.filled.TextFields
@@ -767,6 +768,14 @@ internal fun SectionItems(
                             }
                         },
                         groupPosition = GroupPosition.First,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.SwapVert,
+                        title = stringResource(R.string.settings_dual_swap),
+                        subtitle = stringResource(R.string.settings_dual_swap_desc),
+                        checked = state.prefs.dualScreenSwapDisplays,
+                        onCheckedChange = { viewModel.updateGeneral("dualScreenSwapDisplays", it) },
+                        groupPosition = GroupPosition.Middle,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.Layers,

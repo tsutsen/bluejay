@@ -172,6 +172,7 @@ class SettingsRepositoryImpl
                 defaultDownloadResolution = s.content.defaultDownloadResolution,
                 enableDeveloperOptions = s.advancedSettings,
                 dualScreen = s.dualScreen,
+                dualScreenSwapDisplays = s.dualScreenSwapDisplays,
                 dualScreenPages = s.dualScreenPages,
                 dualScreenVideoTabs = s.dualScreenVideoTabs,
                 dualScreenVideoTabOrder = s.dualScreenVideoTabOrder,
@@ -307,6 +308,7 @@ class SettingsRepositoryImpl
             when (key) {
                 "enableDeveloperOptions" -> setEnableDeveloperOptions(value as Boolean)
                 "dualScreen" -> setDualScreen(value as Boolean)
+                "dualScreenSwapDisplays" -> setDualScreenSwapDisplays(value as Boolean)
                 "dynamicColor" -> setDynamicColor(value as Boolean)
                 "uiRounding" -> setUiRounding((value as Number).toInt())
                 "gridColumns" -> setGridColumns(value as Int)
@@ -338,6 +340,9 @@ class SettingsRepositoryImpl
 
         override suspend fun setDualScreen(enabled: Boolean) =
             persist { it.dualScreen = enabled }
+
+        override suspend fun setDualScreenSwapDisplays(enabled: Boolean) =
+            persist { it.dualScreenSwapDisplays = enabled }
 
         override suspend fun setDynamicColor(enabled: Boolean) =
             persist { it.appearance.dynamicColor = enabled }

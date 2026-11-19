@@ -116,6 +116,7 @@ class Settings {
 
     // Second (rear) display companion window
     var dualScreen: Boolean = false
+    var dualScreenSwapDisplays: Boolean = false
     var dualScreenPages: List<String> = listOf("dash", "video", "library", "home")
     var dualScreenVideoTabs: List<String> =
         listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")

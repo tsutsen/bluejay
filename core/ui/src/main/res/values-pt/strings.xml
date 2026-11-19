@@ -356,4 +356,6 @@ Sem mensagens desde que entrou.</string>
     <string name="settings_slot_secondary">Secundária</string>
     <string name="settings_slot_tertiary">Terciária</string>
     <string name="settings_slot_background">Fundo</string>
+    <string name="settings_dual_swap">Trocar telas</string>
+    <string name="settings_dual_swap_desc">Colocar a interface principal na outra tela</string>
 </resources>

@@ -356,4 +356,6 @@
     <string name="settings_slot_secondary">ثانوي</string>
     <string name="settings_slot_tertiary">ثالثي</string>
     <string name="settings_slot_background">الخلفية</string>
+    <string name="settings_dual_swap">تبديل الشاشات</string>
+    <string name="settings_dual_swap_desc">ضع الواجهة الرئيسية على الشاشة الأخرى</string>
 </resources>

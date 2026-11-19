@@ -356,4 +356,6 @@
     <string name="settings_slot_secondary">セカンダリ</string>
     <string name="settings_slot_tertiary">ターシャリ</string>
     <string name="settings_slot_background">背景</string>
+    <string name="settings_dual_swap">画面を入れ替え</string>
+    <string name="settings_dual_swap_desc">メイン画面をもう一方のスクリーンに表示</string>
 </resources>

@@ -356,4 +356,6 @@ Nessun messaggio da quando sei entrato.</string>
     <string name="settings_slot_secondary">Secondario</string>
     <string name="settings_slot_tertiary">Terziario</string>
     <string name="settings_slot_background">Sfondo</string>
+    <string name="settings_dual_swap">Scambia schermi</string>
+    <string name="settings_dual_swap_desc">Metti l\'interfaccia principale sull\'altro schermo</string>
 </resources>

@@ -30,6 +30,7 @@ interface SettingsRepository {
     // Typed per-key setters (the keys the settings screens use).
     suspend fun setEnableDeveloperOptions(enabled: Boolean)
     suspend fun setDualScreen(enabled: Boolean)
+    suspend fun setDualScreenSwapDisplays(enabled: Boolean)
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setUiRounding(rounding: Int)
     suspend fun setGridColumns(columns: Int)

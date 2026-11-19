@@ -356,4 +356,6 @@ Keine Nachrichten seit deinem Beitritt.</string>
     <string name="settings_slot_secondary">Sekundär</string>
     <string name="settings_slot_tertiary">Tertiär</string>
     <string name="settings_slot_background">Hintergrund</string>
+    <string name="settings_dual_swap">Bildschirme tauschen</string>
+    <string name="settings_dual_swap_desc">Hauptoberfläche auf den anderen Bildschirm legen</string>
 </resources>

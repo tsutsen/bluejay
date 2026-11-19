@@ -21,6 +21,7 @@ data class AppPreferences(
     val librarySectionsEnabled: List<String> =
         listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),
     val dualScreen: Boolean = false,
+    val dualScreenSwapDisplays: Boolean = false,
     // Dash first: the companion lands on the dash page and flips to the
     // video page when a video opens.
     val dualScreenPages: List<String> = listOf("dash", "video", "library", "home"),

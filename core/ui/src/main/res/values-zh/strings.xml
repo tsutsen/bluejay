@@ -356,4 +356,6 @@
     <string name="settings_slot_secondary">辅色</string>
     <string name="settings_slot_tertiary">第三色</string>
     <string name="settings_slot_background">背景</string>
+    <string name="settings_dual_swap">交换屏幕</string>
+    <string name="settings_dual_swap_desc">将主界面放在另一块屏幕上</string>
 </resources>

@@ -356,4 +356,6 @@ Katıldığınızdan beri mesaj yok.</string>
     <string name="settings_slot_secondary">İkincil</string>
     <string name="settings_slot_tertiary">Üçüncül</string>
     <string name="settings_slot_background">Arka plan</string>
+    <string name="settings_dual_swap">Ekranları değiştir</string>
+    <string name="settings_dual_swap_desc">Ana arayüzü diğer ekrana yerleştir</string>
 </resources>

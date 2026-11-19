@@ -365,4 +365,6 @@
     <string name="settings_slot_secondary">Secondary</string>
     <string name="settings_slot_tertiary">Tertiary</string>
     <string name="settings_slot_background">Background</string>
+    <string name="settings_dual_swap">Swap screens</string>
+    <string name="settings_dual_swap_desc">Put the main interface on the other screen</string>
 </resources>
