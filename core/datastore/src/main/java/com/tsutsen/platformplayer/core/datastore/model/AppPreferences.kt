@@ -1,5 +1,7 @@
 package com.tsutsen.platformplayer.core.datastore.model
 
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
+
 data class AppPreferences(
     val appearance: AppearancePreferences = AppearancePreferences(),
     val playback: PlaybackPreferences = PlaybackPreferences(),
@@ -11,7 +13,7 @@ data class AppPreferences(
     val jumpStepSeconds: Int = 5,
     val playerGestures: PlayerGesturePreferences = PlayerGesturePreferences(),
     val controller: ControllerPreferences = ControllerPreferences(),
-    val defaultVideoResolution: String = "Auto",
+    val defaultVideoResolution: String = TrackSelectionValues.AUTO,
     val defaultDownloadResolution: String = "480p",
     val enableDeveloperOptions: Boolean = false,
     val librarySectionOrder: List<String> =
@@ -19,6 +21,7 @@ data class AppPreferences(
     val librarySectionsEnabled: List<String> =
         listOf("watch_later", "liked", "disliked", "favourite", "history", "downloads", "playlists"),
     val dualScreen: Boolean = false,
+    val dualScreenSwapDisplays: Boolean = false,
     // Dash first: the companion lands on the dash page and flips to the
     // video page when a video opens.
     val dualScreenPages: List<String> = listOf("dash", "video", "library", "home"),

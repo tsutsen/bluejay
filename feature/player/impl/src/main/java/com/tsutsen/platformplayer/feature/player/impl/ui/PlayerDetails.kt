@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.feature.player.impl
 
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 
 import androidx.compose.foundation.background
@@ -35,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -62,6 +64,7 @@ internal fun PlayerDetails(
     gridColumns: Int,
     onRecommendedClick: (VideoCard) -> Unit,
     onLoadMoreComments: () -> Unit,
+    onLoadMoreRecommendations: () -> Unit = {},
     onChannelClick: (String) -> Unit,
     onLike: () -> Unit,
     onDislike: () -> Unit,
@@ -208,7 +211,7 @@ internal fun PlayerDetails(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = state.currentVideo?.title ?: "Unknown",
+                    text = state.currentVideo?.title ?: stringResource(R.string.player_unknown_title),
                     style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     fontSize = 18.sp,
@@ -283,7 +286,7 @@ internal fun PlayerDetails(
                 if (state.comments.isEmpty()) {
                     item(key = "no-comments") {
                         Text(
-                            "No comments",
+                            stringResource(R.string.player_no_comments),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -318,7 +321,7 @@ internal fun PlayerDetails(
                             contentAlignment = Alignment.Center,
                         ) {
                             TextButton(onClick = onLoadMoreComments) {
-                                Text("Load more comments")
+                                Text(stringResource(R.string.player_load_more_comments))
                             }
                         }
                     }
@@ -348,6 +351,16 @@ internal fun PlayerDetails(
                             onClick = onRecommendedClick,
                         )
                     }
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            TextButton(onClick = onLoadMoreRecommendations) {
+                                Text(stringResource(R.string.player_load_more_recommendations))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -371,9 +384,9 @@ private fun LiveElapsedPill(startMs: Long?) {
     }
     val label =
         if (startMs != null && elapsedSecs > 0) {
-            "LIVE • ${formatLiveElapsed(elapsedSecs)}"
+            stringResource(R.string.player_live_elapsed, formatLiveElapsed(elapsedSecs))
         } else {
-            "LIVE"
+            stringResource(R.string.player_live)
         }
     Box(
         modifier =

@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material3.Button
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,8 +49,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ArticleCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
@@ -75,7 +76,6 @@ import com.tsutsen.platformplayer.core.model.WatchState
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.library.impl.VideoOptionsSheetHost
 import com.tsutsen.platformplayer.feature.player.impl.PlayerViewModel
-import kotlinx.coroutines.delay
 
 /**
  * Home feed screen.
@@ -164,11 +164,11 @@ fun HomeScreen(
                     enabledSources.isNotEmpty() && enabledSources.all { it.id in hiddenSources }
                 if (visibleItems.isEmpty() && !state.isLoading && state.error == null) {
                     if (noSourcesSelected) {
-                        EmptyState(message = "No sources selected")
+                        EmptyState(message = stringResource(R.string.home_no_sources_selected))
                     } else {
                         EmptyState(
-                            message = "No content yet",
-                            actionLabel = "Tap to refresh",
+                            message = stringResource(R.string.home_no_content),
+                            actionLabel = stringResource(R.string.home_tap_to_refresh),
                             onAction = { viewModel.refresh() },
                         )
                     }
@@ -252,18 +252,6 @@ private fun HomeFeedContent(
 ) {
     val refreshingState = rememberPullToRefreshState()
 
-    // Paging footer: shown only when a load-more is still running 1s after
-    // it started — never during the initial/refresh load (cards empty then).
-    var showMore by remember { mutableStateOf(false) }
-    LaunchedEffect(isLoading) {
-        if (isLoading) {
-            delay(1000)
-            if (isLoading) showMore = true
-        } else {
-            showMore = false
-        }
-    }
-
     Box(modifier = modifier.fillMaxSize()) {
         PullToRefreshBox(
             // Spinner only for a deliberate refresh or the very first page.
@@ -307,19 +295,6 @@ private fun HomeFeedContent(
                         hasMorePages = hasMorePages,
                         onCardClick = onCardClick,
                         onLoadMore = onLoadMore,
-                        trailingContent =
-                            if (showMore && isLoading && hasMorePages && cards.isNotEmpty()) {
-                                {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
-                                    }
-                                }
-                            } else {
-                                null
-                            },
                         modifier = Modifier.fillMaxWidth().weight(1f),
                     ) { card ->
                     when (card) {
@@ -401,17 +376,17 @@ private fun SourceLoginNoticeCard(
         )
         Spacer(Modifier.width(Tokens.SpaceMd))
         Column(Modifier.weight(1f)) {
-            Text("Do you want to log into ${source.name}?", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.home_login_prompt_title, source.name), style = MaterialTheme.typography.titleSmall)
             Text(
-                "See more of your subscribed content from this source.",
+                stringResource(R.string.home_login_prompt_body),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.width(Tokens.SpaceMd))
         Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
-            Button(onClick = onYes) { Text("Yes") }
-            TextButton(onClick = onNo) { Text("No") }
+            Button(onClick = onYes) { Text(stringResource(R.string.common_yes)) }
+            TextButton(onClick = onNo) { Text(stringResource(R.string.common_no)) }
         }
     }
 }

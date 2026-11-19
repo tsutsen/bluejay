@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.feature.player.impl.GestureBadgeState
 import com.tsutsen.platformplayer.feature.player.impl.GestureIndicatorOverlay
 import com.tsutsen.platformplayer.feature.player.impl.ui.overlays.PlayerCompactOverlay
@@ -256,8 +258,8 @@ fun PlayerControls(
                                             }.onSizeChanged { topBarHeightPx = it.height },
                                 ) {
                                     PlayerNormalTopOverlay(
-                                        title = state.currentVideo?.title ?: "Unknown",
-                                        channelName = state.currentVideo?.author?.name ?: "Unknown",
+                                        title = state.currentVideo?.title ?: stringResource(R.string.player_unknown_title),
+                                        channelName = state.currentVideo?.author?.name ?: stringResource(R.string.player_unknown_channel),
                                         onMinimize = onMinimize,
                                         loopMode = loopMode,
                                         onLoopMode = onLoopMode,

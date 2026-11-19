@@ -9,6 +9,7 @@ import com.tsutsen.platformplayer.core.model.SearchSort
 import com.tsutsen.platformplayer.core.model.SourceInfo
 import com.tsutsen.platformplayer.core.model.SearchType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
@@ -81,6 +84,13 @@ class SearchViewModel
 
         private var lastQuery: String = ""
 
+        // Cancels the previous in-flight search so results can't arrive out
+        // of order when the query / type / sort / sources change mid-flight.
+        private var searchJob: Job? = null
+
+        // Serializes history read-modify-writes from concurrent searches.
+        private val historyMutex = Mutex()
+
         /** Result sorting (views / date / rating); media search only. */
         private val _sort = MutableStateFlow(SearchSort.RELEVANCE)
         val sort: StateFlow<SearchSort> = _sort.asStateFlow()
@@ -97,14 +107,16 @@ class SearchViewModel
             if (sources == _selectedSources.value) return
             _selectedSources.value = sources
             if (lastQuery.isNotBlank()) {
-                viewModelScope.launch {
-                    searchRepository.search(
-                        lastQuery,
-                        _searchType.value,
-                        _sort.value,
-                        _selectedSources.value,
-                    )
-                }
+                searchJob?.cancel()
+                searchJob =
+                    viewModelScope.launch {
+                        searchRepository.search(
+                            lastQuery,
+                            _searchType.value,
+                            _sort.value,
+                            _selectedSources.value,
+                        )
+                    }
             }
         }
 
@@ -121,10 +133,12 @@ class SearchViewModel
             if (q.isBlank()) return
             if (q == lastQuery && type == oldType) return
             lastQuery = q
-            viewModelScope.launch {
-                searchRepository.search(q, type, _sort.value, _selectedSources.value)
-                addToHistory(q)
-            }
+            searchJob?.cancel()
+            searchJob =
+                viewModelScope.launch {
+                    searchRepository.search(q, type, _sort.value, _selectedSources.value)
+                    addToHistory(q)
+                }
         }
 
         /** Re-runs the last search with a different sort order. */
@@ -132,9 +146,11 @@ class SearchViewModel
             if (newSort == _sort.value) return
             _sort.value = newSort
             if (lastQuery.isNotBlank()) {
-                viewModelScope.launch {
-                    searchRepository.search(lastQuery, _searchType.value, _sort.value, _selectedSources.value)
-                }
+                searchJob?.cancel()
+                searchJob =
+                    viewModelScope.launch {
+                        searchRepository.search(lastQuery, _searchType.value, _sort.value, _selectedSources.value)
+                    }
             }
         }
 
@@ -145,10 +161,12 @@ class SearchViewModel
             if (query.isBlank()) return
             lastQuery = query
             _query.value = query
-            viewModelScope.launch {
-                searchRepository.search(query, _searchType.value, _sort.value, _selectedSources.value)
-                addToHistory(query)
-            }
+            searchJob?.cancel()
+            searchJob =
+                viewModelScope.launch {
+                    searchRepository.search(query, _searchType.value, _sort.value, _selectedSources.value)
+                    addToHistory(query)
+                }
         }
 
         /**
@@ -175,15 +193,19 @@ class SearchViewModel
         private suspend fun addToHistory(query: String) {
             val trimmed = query.trim()
             if (trimmed.isEmpty()) return
-            val current =
-                settingsRepository.preferences.value.searchHistory
-                    .toMutableList()
-            current.remove(trimmed)
-            current.add(0, trimmed)
-            while (current.size > 10) {
-                current.removeAt(current.size - 1)
+            // Mutex guards the read-modify-write: two concurrent searches
+            // would otherwise read the same history and drop an entry.
+            historyMutex.withLock {
+                val current =
+                    settingsRepository.preferences.value.searchHistory
+                        .toMutableList()
+                current.remove(trimmed)
+                current.add(0, trimmed)
+                while (current.size > 10) {
+                    current.removeAt(current.size - 1)
+                }
+                settingsRepository.updateGeneral("searchHistory", current)
             }
-            settingsRepository.updateGeneral("searchHistory", current)
         }
 
         /**

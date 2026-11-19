@@ -201,15 +201,15 @@ class HttpContext : AutoCloseable {
     fun respondCode(status: Int, headers: HttpHeaders, body: String? = null) {
         val bytes = body?.toByteArray(Charsets.UTF_8);
         if(headers.get("content-length").isNullOrEmpty()) {
-            if (body != null) {
-                headers.put("content-length", bytes!!.size.toString());
+            if (bytes != null) {
+                headers.put("content-length", bytes.size.toString());
             } else {
                 headers.put("content-length", "0")
             }
         }
         respond(status, headers) { responseStream ->
-            if(body != null) {
-                responseStream.write(bytes!!);
+            if(bytes != null) {
+                responseStream.write(bytes);
             }
         }
     }

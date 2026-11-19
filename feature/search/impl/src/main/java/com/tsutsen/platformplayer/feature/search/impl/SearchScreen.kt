@@ -78,6 +78,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -85,6 +86,7 @@ import androidx.core.view.OnApplyWindowInsetsListener
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
 import com.tsutsen.platformplayer.core.designsystem.component.ChannelCardView
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
@@ -212,14 +214,14 @@ fun SearchScreen(
             FilterDropdown(
                 label =
                     when {
-                        selectedSources.isEmpty() -> "All sources"
+                        selectedSources.isEmpty() -> stringResource(R.string.search_all_sources)
 
                         selectedSources.size == 1 ->
                             enabledSources
                                 .firstOrNull { it.id in selectedSources }?.name ?:
-                                "Sources"
+                                stringResource(R.string.search_sources_fallback)
 
-                        else -> "${selectedSources.size} sources"
+                        else -> stringResource(R.string.search_sources_count, selectedSources.size)
                     },
                 expanded = sourceMenuExpanded.value,
                 onExpandedChange = { sourceMenuExpanded.value = it },
@@ -413,6 +415,7 @@ fun SearchScreen(
                     // official M3 control for fixed single-select filters.
                     // Items expand to fill the row (constant height, no
                     // jitter when the sort pill appears/disappears).
+                    val typeLabels = SearchType.entries.associateWith { searchTypeLabel(it) }
                     ButtonGroup(
                         overflowIndicator = {},
                         modifier = Modifier.weight(1f),
@@ -420,7 +423,7 @@ fun SearchScreen(
                         SearchType.entries.forEach { type ->
                             toggleableItem(
                                 checked = searchType == type,
-                                label = searchTypeLabel(type),
+                                label = typeLabels[type].orEmpty(),
                                 onCheckedChange = {
                                     // Switching the type releases the field's
                                     // focus (and the keyboard).
@@ -540,7 +543,7 @@ fun SearchScreen(
 
                         uiState.error != null && uiState.items.isEmpty() -> {
                             ErrorState(
-                                message = uiState.error ?: "Search failed",
+                                message = uiState.error ?: stringResource(R.string.search_failed),
                                 onRetry = { viewModel.search(searchQuery) },
                             )
                         }
@@ -664,8 +667,8 @@ fun SearchScreen(
                             // Show empty state only after a search was executed and returned no results
                             if (hasSearched && uiState.items.isEmpty() && !uiState.isLoading && searchQuery.isNotBlank()) {
                                 EmptyState(
-                                    message = "No results for \"$searchQuery\"",
-                                    actionLabel = "Try a different search",
+                                    message = stringResource(R.string.search_no_results, searchQuery),
+                                    actionLabel = stringResource(R.string.search_try_different),
                                     onAction = {},
                                 )
                             }
@@ -712,12 +715,12 @@ private fun RecentSearches(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Recent searches",
+                    text = stringResource(R.string.search_recent_searches),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Clear all",
+                    text = stringResource(R.string.search_clear_all),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { onClearHistory() },
@@ -748,7 +751,7 @@ private fun RecentSearches(
                     )
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Delete",
+                        contentDescription = stringResource(R.string.common_delete_cd),
                         modifier =
                             Modifier
                                 .size(Tokens.IconSm)
@@ -944,9 +947,10 @@ private fun FilterDropdown(
     }
 }
 
+@Composable
 private fun searchTypeLabel(type: SearchType): String =
     when (type) {
-        SearchType.MEDIA -> "Media"
-        SearchType.CREATORS -> "Creators"
-        SearchType.PLAYLISTS -> "Playlists"
+        SearchType.MEDIA -> stringResource(R.string.search_type_media)
+        SearchType.CREATORS -> stringResource(R.string.search_type_creators)
+        SearchType.PLAYLISTS -> stringResource(R.string.search_type_playlists)
     }

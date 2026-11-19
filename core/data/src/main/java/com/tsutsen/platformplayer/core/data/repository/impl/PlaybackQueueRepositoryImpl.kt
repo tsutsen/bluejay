@@ -1,12 +1,16 @@
 package com.tsutsen.platformplayer.core.data.repository.impl
 
+import com.tsutsen.platformplayer.core.data.di.ApplicationScope
 import com.tsutsen.platformplayer.core.data.repository.PlaybackQueueRepository
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import android.util.Log
+import com.tsutsen.platformplayer.core.database.dao.HistoryDao
 import com.tsutsen.platformplayer.core.model.ContentItem
+import com.tsutsen.platformplayer.core.model.WatchState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,11 +25,21 @@ class PlaybackQueueRepositoryImpl
     constructor(
         private val playerRepository: PlayerRepository,
         private val settingsRepository: SettingsRepository,
+        private val historyDao: HistoryDao,
+        @ApplicationScope appScope: CoroutineScope,
     ) : PlaybackQueueRepository {
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        // App-lifetime scope parented to the injected application scope;
+        // stays on Main.immediate (unchanged dispatch semantics — the queue
+        // advance/play calls expect main-thread behavior).
+        private val scope =
+            CoroutineScope(SupervisorJob(appScope.coroutineContext[Job]) + Dispatchers.Main.immediate)
 
         private val _queue = MutableStateFlow<List<ContentItem>>(emptyList())
         override val queue: StateFlow<List<ContentItem>> = _queue.asStateFlow()
+
+        /** URLs whose history says they are finished (>= 95% watched),
+         *  updated live from the history table. */
+        private val watchedUrls = MutableStateFlow<Set<String>>(emptySet())
 
         init {
             scope.launch {
@@ -49,6 +63,11 @@ class PlaybackQueueRepositoryImpl
                         return@collect
                     }
                     wasCompleted = false
+                    // A finished (watched) video leaves the queue, even while
+                    // it is still the current one at the head — the history
+                    // collector owns that eviction, and re-adding it here
+                    // would fight the eviction right before auto-advance.
+                    if (current.url in watchedUrls.value) return@collect
                     // The current video is always the FIRST queue item, even
                     // when it was started from outside the queue (feed tap,
                     // recommendation, search...). Keeps the queue from ever
@@ -61,6 +80,24 @@ class PlaybackQueueRepositoryImpl
                                 listOf(current) + q.filter { it.url != current.url }
                             else listOf(current) + q
                     }
+                }
+            }
+            scope.launch {
+                // Watched videos leave the queue: whenever history says an
+                // item is finished (>= 95% of its duration, per WatchState),
+                // evict it — including the item at the head. The "current
+                // stays first" collector above deliberately does not re-add
+                // a watched video, so the eviction sticks until auto-advance
+                // (or the user) moves on.
+                historyDao.observeAll().collect { entries ->
+                    val watched =
+                        entries
+                            .filter { WatchState.finished(it.lastPositionMs, it.totalDurationMs) }
+                            .mapTo(HashSet()) { it.contentUrl }
+                    watchedUrls.value = watched
+                    val q = _queue.value
+                    val remaining = q.filterNot { it.url in watched }
+                    if (remaining.size != q.size) _queue.value = remaining
                 }
             }
         }
@@ -109,7 +146,10 @@ class PlaybackQueueRepositoryImpl
             // The finished / superseded video drops out of the queue, then
             // the first remaining item plays.
             val remaining = _queue.value.filterNot { it.url == currentUrl }
-            val next = remaining.firstOrNull() ?: return
+            // Skip watched heads when advancing: a finished video is evicted
+            // by the history collector, but until that emission lands an
+            // already-watched item could still sit at the head.
+            val next = remaining.firstOrNull { it.url !in watchedUrls.value } ?: return
             _queue.value = remaining
             play(next)
         }

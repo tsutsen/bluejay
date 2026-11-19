@@ -2,6 +2,10 @@ package com.tsutsen.platformplayer.core.designsystem.layout
 
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.designsystem.theme.effectsSpec
 import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
 import androidx.compose.animation.core.Animatable
@@ -427,7 +431,17 @@ private fun NavigationRailSurface(
                             bottomStart = bottomStart,
                         ),
                     )
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .background(surfaceColor(SurfaceKeys.DOCK, MaterialTheme.colorScheme.surfaceContainer))
+                    .surfaceTexture(SurfaceKeys.DOCK)
+                    .surfaceOutline(
+                        SurfaceKeys.DOCK,
+                        RoundedCornerShape(
+                            topStart = topStart,
+                            topEnd = topEnd,
+                            bottomEnd = bottomEnd,
+                            bottomStart = bottomStart,
+                        ),
+                    )
                     .padding(horizontal = NavSurfacePadH, vertical = NavSurfacePadV),
         ) {
             Box(

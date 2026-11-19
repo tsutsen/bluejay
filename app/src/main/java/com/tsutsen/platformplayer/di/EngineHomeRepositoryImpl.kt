@@ -16,6 +16,7 @@ import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.states.EnabledClientResolver
 import com.tsutsen.platformplayer.states.StateApp
+import com.tsutsen.platformplayer.states.*
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +56,10 @@ class EngineHomeRepositoryImpl
         override val enabledSources: StateFlow<List<SourceInfo>> = _enabledSources.asStateFlow()
 
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
+
+        // Demo mode (Settings > About): last generated demo page, so
+        // loadNextPage() appends the next deterministic page.
+        private var _demoPage = 0
 
         // Homebrew mode: the per-source pagers (home refresh, sampled sub
         // channels, top creators) backing the merged feed, kept alive so
@@ -128,6 +133,13 @@ class EngineHomeRepositoryImpl
             lastLoadFromCache = false
             // Homebrew pagers from a previous load are stale.
             _homebrewFlows = emptyList()
+
+            // Demo mode (Settings > About): publish simulated local cards,
+            // no plugin init / engine calls / cache writes at all.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoInitial()
+                return
+            }
 
             // Engine calls below (plugin init, home pager nextPage) run V8
             // `busy`/runBlocking and must not execute on the main thread —
@@ -293,6 +305,12 @@ class EngineHomeRepositoryImpl
                     )
                 }
                 cacheFeed(visible)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // A newer refresh canceled this load: unwind silently. The
+                // canceled load must not write its cancellation into the
+                // feed state (it used to show "coroutine was canceled" and
+                // clear hasMorePages, killing load-more).
+                throw e
             } catch (e: Exception) {
                 Logger.e("EngineHomeRepository", "loadInitial failed", e)
                 _feed.update {
@@ -304,6 +322,23 @@ class EngineHomeRepositoryImpl
                     )
                 }
             }
+            }
+        }
+
+        /** Demo mode: replace the feed with deterministic page 1 of demo cards. */
+        private suspend fun loadDemoInitial() {
+            Logger.i("EngineHomeRepository", "Demo mode: generating initial feed")
+            _pagerFlow = null
+            _homebrewFlows = emptyList()
+            _demoPage = 1
+            _feed.update {
+                it.copy(
+                    isLoading = false,
+                    items = com.tsutsen.platformplayer.demo.DemoContent.cards(1),
+                    hasMorePages = true,
+                    error = null,
+                    currentPage = 1,
+                )
             }
         }
 
@@ -400,6 +435,26 @@ class EngineHomeRepositoryImpl
             Logger.i("EngineHomeRepository", "loadNextPage")
             _feed.update { it.copy(isLoading = true) }
 
+            // Demo mode: append the next deterministic demo page.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                val page = _demoPage + 1
+                val fresh = com.tsutsen.platformplayer.demo.DemoContent.cards(page)
+                _feed.update {
+                    it.copy(
+                        isLoading = false,
+                        items = it.items + fresh,
+                        hasMorePages = true,
+                        currentPage = page,
+                    )
+                }
+                _demoPage = page
+                Logger.i("EngineHomeRepository", "Demo mode: appended page $page (${fresh.size} cards)")
+                // Before the try/finally below: reset the single-flight flag
+                // ourselves (the finally only runs when the try is entered).
+                loadNextPageInFlight.set(false)
+                return
+            }
+
             try {
                 // Null pager = homebrew recommendations mode: page the
                 // per-source flows instead of a single pager.
@@ -413,7 +468,7 @@ class EngineHomeRepositoryImpl
                     // Don't clear isLoading while an initial/refresh load is
                     // in flight — otherwise the VM resets isRefreshing and the
                     // pull-to-refresh indicator unsticks mid-refresh.
-                    _feed.update { it.copy(isLoading = !loadInitialInFlight.get()) }
+                    _feed.update { it.copy(isLoading = loadInitialInFlight.get()) }
                     return
                 }
 
@@ -426,17 +481,19 @@ class EngineHomeRepositoryImpl
                 val visible = applyContentFilters(mergeFresh(_feed.value.items, flow.items))
                 _feed.update {
                     it.copy(
-                        isLoading = !loadInitialInFlight.get(),
+                        isLoading = loadInitialInFlight.get(),
                         items = visible,
                         hasMorePages = flow.hasMore,
                         error = flow.error,
                         currentPage = it.currentPage + 1,
                     )
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.e("EngineHomeRepository", "loadNextPage failed", e)
                 _feed.update {
-                    it.copy(isLoading = !loadInitialInFlight.get(), error = e.message ?: "Failed to load more")
+                    it.copy(isLoading = loadInitialInFlight.get(), error = e.message ?: "Failed to load more")
                 }
             } finally {
                 loadNextPageInFlight.set(false)
@@ -452,7 +509,7 @@ class EngineHomeRepositoryImpl
         private suspend fun loadNextHomebrewPage() {
             val flows = _homebrewFlows
             if (flows.isEmpty() || flows.none { it.hasMore }) {
-                _feed.update { it.copy(isLoading = !loadInitialInFlight.get()) }
+                _feed.update { it.copy(isLoading = loadInitialInFlight.get()) }
                 return
             }
             val appended =
@@ -474,7 +531,11 @@ class EngineHomeRepositoryImpl
                 }
             val state = _feed.value
             val seen = state.items.mapTo(mutableSetOf()) { it.id }
-            val fresh = appended.filter { seen.add(it.id) }
+            // Shuffle the appended batch: fresh pages arrive in per-channel
+            // chronological order, so without a shuffle the tail of the feed
+            // was long unshuffled runs of the same creator (the initial merge
+            // interleave-shuffles, the appends didn't).
+            val fresh = appended.filter { seen.add(it.id) }.shuffled()
             val visible = applyContentFilters(state.items + fresh)
             Logger.i(
                 "EngineHomeRepository",
@@ -482,7 +543,7 @@ class EngineHomeRepositoryImpl
             )
             _feed.update {
                 it.copy(
-                    isLoading = !loadInitialInFlight.get(),
+                    isLoading = loadInitialInFlight.get(),
                     items = visible,
                     hasMorePages = flows.any { f -> f.hasMore },
                     currentPage = it.currentPage + 1,
@@ -598,16 +659,12 @@ class EngineHomeRepositoryImpl
                 }
                 if (filterWatched || filterStarted) {
                     val h = url?.let { history[it] } ?: return@filter true
-                    val duration = h.totalDurationMs
-                    // Same watched/started split as the subs feed chips:
-                    // watched = >= 95% of duration (position or watched time),
-                    // started = in progress but not finished.
-                    val watched =
-                        duration > 0 &&
-                            (h.lastPositionMs >= 0.95 * duration || h.watchedMs >= 0.95 * duration)
-                    val started = h.lastPositionMs > 0 && !watched
-                    if (filterWatched && watched) return@filter false
-                    if (filterStarted && started) return@filter false
+                    // Single watched/started rule (core:model WatchState).
+                    val state = com.tsutsen.platformplayer.core.model.WatchState.of(
+                        h.lastPositionMs, h.watchedMs, h.totalDurationMs,
+                    )
+                    if (filterWatched && state?.isWatched == true) return@filter false
+                    if (filterStarted && state != null && !state.isWatched) return@filter false
                 }
                 true
             }

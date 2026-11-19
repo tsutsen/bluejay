@@ -13,10 +13,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.component.LinkifiedText
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 
@@ -63,14 +65,14 @@ internal fun DescriptionSection(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = if (isExpanded) "Show less" else "Show more",
+                    text = if (isExpanded) stringResource(R.string.player_show_less) else stringResource(R.string.player_show_more),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                 )
             } else {
                 Text(
-                    text = "No description available",
+                    text = stringResource(R.string.player_no_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

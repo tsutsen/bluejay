@@ -1,20 +1,13 @@
 package com.tsutsen.platformplayer.sabr
 
-import android.util.Base64
 import okhttp3.Call
 import com.tsutsen.platformplayer.api.http.ManagedHttpClient
-import com.tsutsen.platformplayer.api.media.models.modifier.IRequestModifier
 import com.tsutsen.platformplayer.logging.Logger
-import com.tsutsen.platformplayer.sabr.proto.AdCuepointConfig
-import com.tsutsen.platformplayer.sabr.proto.BufferedRange
-import com.tsutsen.platformplayer.sabr.proto.CuepointEvent
 import com.tsutsen.platformplayer.sabr.proto.CuepointList
-import com.tsutsen.platformplayer.sabr.proto.ClientAbrState
 import com.tsutsen.platformplayer.sabr.proto.ClientInfo
 import com.tsutsen.platformplayer.sabr.proto.FormatInitializationMetadata
 import com.tsutsen.platformplayer.sabr.proto.LiveMetadata
 import com.tsutsen.platformplayer.sabr.proto.MediaHeader
-import com.tsutsen.platformplayer.sabr.proto.MediaType
 import com.tsutsen.platformplayer.sabr.proto.NextRequestPolicy
 import com.tsutsen.platformplayer.sabr.proto.SabrContext
 import com.tsutsen.platformplayer.sabr.proto.SabrContextSendingPolicy
@@ -22,13 +15,11 @@ import com.tsutsen.platformplayer.sabr.proto.SabrContextUpdate
 import com.tsutsen.platformplayer.sabr.proto.SabrRedirect
 import com.tsutsen.platformplayer.sabr.proto.SnackbarMessage
 import com.tsutsen.platformplayer.sabr.proto.StreamProtectionStatus
-import com.tsutsen.platformplayer.sabr.proto.StreamerContext
 import com.tsutsen.platformplayer.sabr.proto.VideoPlaybackAbrRequest
 import com.google.protobuf.ByteString
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
-import kotlin.random.Random
 
 interface SabrSessionListener {
     fun onLiveMetadata(metadata: LiveMetadata)
@@ -46,7 +37,7 @@ class SabrSession(
     private val ustreamerConfig: ByteArray,
     val videoId: String,
     private val clientInfo: ClientInfo,
-    private val poTokenRaw: String?,
+    poTokenRaw: String?,
     val isLive: Boolean,
     val durationUs: Long,
     private val ownsHttpClient: Boolean = false
@@ -60,25 +51,41 @@ class SabrSession(
 
     private val serverChosen = ConcurrentHashMap<Int, SabrFormatKey>()
 
-    private val adCuepoints = java.util.concurrent.ConcurrentSkipListMap<String, Long>()
+    private val cuepointTracker = SabrCuepointTracker()
 
     private val pumpLock = Object()
     private val buffers = ConcurrentHashMap<SabrFormatKey, SabrTrackBuffer>()
-    private val sabrContexts = ConcurrentHashMap<Int, SabrContext>()
-    private val activeSabrContexts = java.util.Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
+    private val contextTracker = SabrContextTracker()
     private val formatInitialization = ConcurrentHashMap<SabrFormatKey, FormatInitializationMetadata>()
     private val formatComplete = ConcurrentHashMap<SabrFormatKey, Boolean>()
     private val formatNoProgress = ConcurrentHashMap<SabrFormatKey, Int>()
     @Volatile private var emptyResponses = 0
 
-    @Volatile private var demandedHeaders = 0
-    @Volatile private var foreignHeaders = 0
     @Volatile private var substitutedResponses = 0
     @Volatile private var consecutiveRedirects = 0
 
     private val demandedKeys = java.util.Collections.newSetFromMap(ConcurrentHashMap<SabrFormatKey, Boolean>())
     private val requestNumber = AtomicInteger(0)
     @Volatile private var createdAtMs = System.currentTimeMillis()
+
+    private val poTokenResolver = SabrPoTokenResolver(poTokenRaw)
+    private val durationEstimator = SabrDurationEstimator { liveMetadata }
+    private val segmentAssembler = SabrSegmentAssembler(
+        bufferFor = { key -> bufferFor(key) },
+        isKnownDemandedKey = { key -> key in demandedKeys },
+        adoptServerFormat = { key -> adoptServerFormat(key) },
+        clockKey = { activeFormat(ROLE_VIDEO)?.key ?: activeFormat(ROLE_AUDIO)?.key },
+        onSegmentsSettled = { onSegmentsChanged?.run() },
+        estimator = durationEstimator
+    )
+    private val requestFactory = SabrRequestFactory(
+        clientInfo,
+        ustreamerConfig,
+        contextTracker,
+        cuepointTracker,
+        formatInitialization,
+        { format -> bufferFor(format) }
+    )
 
     private var pumpThread: Thread? = null
 
@@ -91,8 +98,6 @@ class SabrSession(
     private val released: Boolean get() = releasedFlag.get()
     val isReleased: Boolean get() = releasedFlag.get()
     @Volatile private var streamingUrl = serverAbrStreamingUrl
-    @Volatile private var poTokenDecoded: ByteString? = null
-    @Volatile private var poTokenResolved = false
     @Volatile private var playbackCookie: ByteString? = null
     @Volatile private var backoffUntilMs = 0L
     @Volatile private var serverBackoffUntilMs = 0L
@@ -177,8 +182,8 @@ class SabrSession(
     fun exportTransferable(): Transferable = Transferable(
         requestNumber = requestNumber.get(),
         playbackCookie = playbackCookie,
-        sabrContexts = sabrContexts.toMap(),
-        activeSabrContexts = activeSabrContexts.toSet(),
+        sabrContexts = contextTracker.snapshot(),
+        activeSabrContexts = contextTracker.activeSnapshot(),
         streamingUrl = streamingUrl,
         backoffUntilMs = backoffUntilMs,
         serverBackoffUntilMs = serverBackoffUntilMs,
@@ -194,8 +199,7 @@ class SabrSession(
     }
 
     fun restore(state: Transferable) {
-        sabrContexts.putAll(state.sabrContexts)
-        activeSabrContexts.addAll(state.activeSabrContexts)
+        contextTracker.inherit(state.sabrContexts, state.activeSabrContexts)
         inheritedContexts = true
 
         sabrLog("Restored SABR contexts: ${state.sabrContexts.keys.sorted()} " +
@@ -458,8 +462,6 @@ class SabrSession(
         }
     }
 
-    @Volatile private var mediaBytes = 0L
-    @Volatile private var mediaUsDelivered = 0L
     @Volatile private var throughputBytesPerSec = 0L
 
     private fun bandwidthEstimate(): Long =
@@ -603,8 +605,7 @@ class SabrSession(
             requestedResume = resumePositionUs
             positionUs = requestPositionUs()
         }
-        demandedHeaders = 0
-        foreignHeaders = 0
+        segmentAssembler.resetHeaderCounters()
 
         run {
             val v = video?.let { "v[itag=${it.itag} lastSeq=${bufferFor(it).lastCompletedFromFront()} end=${bufferFor(it).bufferedEndFromFrontUs() / 1000}ms]" } ?: ""
@@ -652,7 +653,7 @@ class SabrSession(
         } catch (ex: Throwable) {
             sabrLog("REQUEST FAILED after ${System.currentTimeMillis() - sentMs}ms " +
                 "rn=$rn host=${hostOf(finalUrl)} firstOfSession=${rn == 1} inheritedContexts=$inheritedContexts " +
-                "sentContexts=${activeSabrContexts.sorted()} cookie=${playbackCookie?.size() ?: 0}b " +
+                "sentContexts=${contextTracker.sentSnapshot()} cookie=${playbackCookie?.size() ?: 0}b " +
                 "v=${video?.itag} a=${audio?.itag} bodyBytes=${body.size} -- ${ex.javaClass.simpleName}: ${ex.message}")
             throw ex
         }
@@ -660,7 +661,7 @@ class SabrSession(
         if (headersMs > SLOW_REQUEST_LOG_MS)
             sabrLog("SLOW REQUEST ${headersMs}ms to first response byte " +
                 "rn=$rn host=${hostOf(finalUrl)} firstOfSession=${rn == 1} inheritedContexts=$inheritedContexts " +
-                "sentContexts=${activeSabrContexts.sorted()} cookie=${playbackCookie?.size() ?: 0}b " +
+                "sentContexts=${contextTracker.sentSnapshot()} cookie=${playbackCookie?.size() ?: 0}b " +
                 "v=${video?.itag} a=${audio?.itag} bodyBytes=${body.size} code=${response.code}")
 
         currentResponse = response
@@ -687,16 +688,16 @@ class SabrSession(
             .map { it.key }.toSet()
 
         val redirected: Boolean
-        val bytesBefore = mediaBytes
-        val mediaUsBefore = mediaUsDelivered
+        val bytesBefore = segmentAssembler.mediaBytes
+        val mediaUsBefore = segmentAssembler.mediaUsDelivered
         try {
             val stream = response.body?.byteStream() ?: throw SabrException("SABR response had no body")
             redirected = stream.use { consume(UmpReader(it), positionUs, acceptedKeys) }
         } finally {
             recordThroughput(
-                mediaBytes - bytesBefore,
+                segmentAssembler.mediaBytes - bytesBefore,
                 System.currentTimeMillis() - sentMs,
-                mediaUsDelivered - mediaUsBefore
+                segmentAssembler.mediaUsDelivered - mediaUsBefore
             )
             try { response.body?.close() } catch (_: Throwable) {}
             currentResponse = null
@@ -734,7 +735,7 @@ class SabrSession(
             if ((video == null || isComplete(video)) && (audio == null || isComplete(audio))) return
 
             val demandStable = videoDemand?.format?.key == video?.key && audioDemand?.format?.key == audio?.key
-            if (demandedHeaders == 0 && foreignHeaders > 0 && demandStable) {
+            if (segmentAssembler.demandedHeaders == 0 && segmentAssembler.foreignHeaders > 0 && demandStable) {
                 substitutedResponses++
                 if (substitutedResponses >= MAX_SUBSTITUTED_RESPONSES)
                     throw SabrFormatSubstitutedException(
@@ -748,7 +749,7 @@ class SabrSession(
                 .coerceAtMost(ERROR_BACKOFF_MAX_MS)
             backoffUntilMs = maxOf(backoffUntilMs, System.currentTimeMillis() + delay)
             sabrLog("Response carried no new media ($emptyResponses/$MAX_EMPTY_RESPONSES) " +
-                "at playerTimeMs=${positionUs / 1000} demandedHeaders=$demandedHeaders foreign=$foreignHeaders")
+                "at playerTimeMs=${positionUs / 1000} demandedHeaders=${segmentAssembler.demandedHeaders} foreign=${segmentAssembler.foreignHeaders}")
             if (emptyResponses >= MAX_EMPTY_RESPONSES)
                 // Reload-required (not plain SabrException): the player
                 // repository recovers it by re-resolving with a fresh source —
@@ -825,9 +826,9 @@ class SabrSession(
         lastSabrSeekUs = seekToUs
 
         synchronized(pumpLock) {
-            if (adCuepoints.isNotEmpty()) {
-                sabrLog("Dropping ${adCuepoints.size} cuepoint(s) across a server seek")
-                adCuepoints.clear()
+            if (!cuepointTracker.isEmpty) {
+                sabrLog("Dropping ${cuepointTracker.size} cuepoint(s) across a server seek")
+                cuepointTracker.clear()
             }
             seekPendingUs = seekToUs
             playbackPositionUs = seekToUs
@@ -835,41 +836,6 @@ class SabrSession(
             audioDemand?.let { audioDemand = Demand(it.format, seekToUs, it.owner, it.alternates) }
             lastActionMs = System.currentTimeMillis()
             pumpLock.notifyAll()
-        }
-    }
-
-    private fun onCuepointList(list: CuepointList) {
-        for (info in list.cuepointInfoList) {
-            val cuepoint = info.cuepoint ?: continue
-            val id = cuepoint.identifier
-            if (id.isNullOrEmpty()) continue
-
-            if (cuepoint.event == CuepointEvent.CUEPOINT_EVENT_STOP) {
-                if (adCuepoints.remove(id) != null)
-                    sabrLog("Cuepoint $id stopped")
-                continue
-            }
-
-            val endMs = info.timeRange?.takeIf { it.timescale > 0 }?.let {
-                (it.startTicks + it.durationTicks) * 1000 / it.timescale
-            } ?: 0
-            val expiryMs = maxOf(endMs, (cuepoint.offsetSec + cuepoint.durationSec).toLong() * 1000)
-
-            if (adCuepoints.put(id, expiryMs) == null) {
-                sabrLog("Cuepoint $id (${cuepoint.type}, ${cuepoint.event}, ${cuepoint.durationSec}s)")
-            }
-        }
-    }
-
-    private fun expireCuepoints(positionMs: Long) {
-        if (adCuepoints.isEmpty()) return
-        val iterator = adCuepoints.entries.iterator()
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            if (entry.value in 1 until positionMs) {
-                sabrLog("Cuepoint ${entry.key} has passed (${entry.value}ms < ${positionMs}ms); dropping it")
-                iterator.remove()
-            }
         }
     }
 
@@ -881,7 +847,6 @@ class SabrSession(
     }
 
     private fun consume(reader: UmpReader, requestedPositionUs: Long, requestedKeys: Set<SabrFormatKey> = emptySet()): Boolean {
-        val pending = HashMap<Int, SabrSegment>()
         var redirect: String? = null
         var seekToUs: Long? = null
         val partCounts = LinkedHashMap<Int, Int>()
@@ -891,30 +856,11 @@ class SabrSession(
                 val part = reader.next() ?: break
                 partCounts[part.type] = (partCounts[part.type] ?: 0) + 1
                 when (part.type) {
-                    UmpPartType.MEDIA_HEADER -> onMediaHeader(MediaHeader.parseFrom(part.data), pending, requestedKeys)
+                    UmpPartType.MEDIA_HEADER -> segmentAssembler.onMediaHeader(MediaHeader.parseFrom(part.data), requestedKeys)
 
-                    UmpPartType.MEDIA -> {
-                        val (headerId, offset) = UmpReader.decodeVarInt(part.data, 0)
-                        mediaBytes += (part.data.size - offset).toLong()
-                        pending[headerId.toInt()]?.let { segment ->
-                            segment.append(part.data, offset, part.data.size - offset)
-                            bufferFor(segment.formatKey).notifyChanged()
-                        }
-                    }
+                    UmpPartType.MEDIA -> segmentAssembler.onMediaPart(part)
 
-                    UmpPartType.MEDIA_END -> {
-                        val (headerId, _) = UmpReader.decodeVarInt(part.data, 0)
-                        pending.remove(headerId.toInt())?.let { segment ->
-                            if (segment.contentLength > 0 && segment.size != segment.contentLength) {
-                                sabrLog("Dropping truncated seq=${segment.sequenceNumber} itag=${segment.formatKey.itag} got=${segment.size} want=${segment.contentLength}")
-                                bufferFor(segment.formatKey).discard(segment)
-                            } else {
-                                segment.markComplete()
-                                bufferFor(segment.formatKey).notifyChanged()
-                                onSegmentsChanged?.run()
-                            }
-                        }
-                    }
+                    UmpPartType.MEDIA_END -> segmentAssembler.onMediaEndPart(part)
 
                     UmpPartType.NEXT_REQUEST_POLICY -> onNextRequestPolicy(NextRequestPolicy.parseFrom(part.data))
 
@@ -936,7 +882,7 @@ class SabrSession(
                         liveMetadata = metadata
                         liveMetadataAtMs = System.currentTimeMillis()
 
-                        if (first) reestimateInexactDurations()
+                        if (first) durationEstimator.reestimateInexactDurations(buffers.values)
                         if (isLive) {
                             val minS = if (metadata.minSeekableTimescale > 0) metadata.minSeekableTimeTicks.toDouble() / metadata.minSeekableTimescale else Double.NaN
                             val maxS = if (metadata.maxSeekableTimescale > 0) metadata.maxSeekableTimeTicks.toDouble() / metadata.maxSeekableTimescale else Double.NaN
@@ -953,38 +899,18 @@ class SabrSession(
                         listener?.onLiveMetadata(metadata)
                     }
 
-                    UmpPartType.SABR_CONTEXT_UPDATE -> {
-                        val update = SabrContextUpdate.parseFrom(part.data)
-                        sabrLog("SabrContextUpdate type=${update.type} scope=${update.scope} " +
-                            "sendByDefault=${update.sendByDefault} valueBytes=${update.value.size()}")
+                    UmpPartType.SABR_CONTEXT_UPDATE ->
+                        contextTracker.applyUpdate(SabrContextUpdate.parseFrom(part.data))
 
-                        sabrContexts[update.type] = SabrContext.newBuilder()
-                            .setType(update.type)
-                            .setValue(update.value)
-                            .build()
-
-                        if (update.sendByDefault) activeSabrContexts.add(update.type)
-                    }
-
-                    UmpPartType.SABR_CONTEXT_SENDING_POLICY -> {
-                        val policy = SabrContextSendingPolicy.parseFrom(part.data)
-                        sabrLog("SabrContextSendingPolicy start=${policy.startPolicyList} " +
-                            "stop=${policy.stopPolicyList} discard=${policy.discardPolicyList}")
-
-                        activeSabrContexts.addAll(policy.startPolicyList)
-                        activeSabrContexts.removeAll(policy.stopPolicyList.toSet())
-                        for (type in policy.discardPolicyList) {
-                            sabrContexts.remove(type)
-                            activeSabrContexts.remove(type)
-                        }
-                    }
+                    UmpPartType.SABR_CONTEXT_SENDING_POLICY ->
+                        contextTracker.applySendingPolicy(SabrContextSendingPolicy.parseFrom(part.data))
 
                     UmpPartType.STREAM_PROTECTION_STATUS -> {
                         val status = StreamProtectionStatus.parseFrom(part.data).status
                         sabrLog("StreamProtectionStatus=$status rn=${requestNumber.get()} " +
-                            "sentContexts=${activeSabrContexts.sorted()} heldContexts=${sabrContexts.keys.sorted()} " +
+                            "sentContexts=${contextTracker.sentSnapshot()} heldContexts=${contextTracker.heldSnapshot()} " +
                             "cookie=${playbackCookie?.size() ?: 0}b " +
-                            "poTokenBytes=${resolvePoToken()?.size() ?: 0}")
+                            "poTokenBytes=${poTokenResolver.resolve()?.size() ?: 0}")
                         // Do NOT abort on ATTESTATION_PENDING/REQUIRED: the reference
                         // JS executor records the status and keeps parsing the
                         // response (media typically keeps flowing — YouTube grants
@@ -1017,18 +943,14 @@ class SabrSession(
                         sabrLog("Snackbar message id=${SnackbarMessage.parseFrom(part.data).id} (ignored)")
                     }
 
-                    UmpPartType.CUEPOINT_LIST -> onCuepointList(CuepointList.parseFrom(part.data))
+                    UmpPartType.CUEPOINT_LIST -> cuepointTracker.onCuepointList(CuepointList.parseFrom(part.data))
                 }
             }
         } finally {
             sabrLog("Response rn=${requestNumber.get()} parts=" +
                 partCounts.entries.joinToString(",") { "${UmpPartType.name(it.key)}x${it.value}" })
 
-            for (segment in pending.values) {
-                val buffer = bufferFor(segment.formatKey)
-                buffer.discard(segment)
-                buffer.notifyChanged()
-            }
+            segmentAssembler.discardPending()
         }
 
         if (redirect != null) {
@@ -1046,115 +968,7 @@ class SabrSession(
         return false
     }
 
-    private fun onMediaHeader(header: MediaHeader, pending: HashMap<Int, SabrSegment>, requestedKeys: Set<SabrFormatKey>) {
-        val key = SabrFormatKey.of(header.itag, header.lmt, header.xtags)
-        val buffer = bufferFor(key)
-
-        if (key in requestedKeys) {
-            demandedHeaders++
-            adoptServerFormat(key)
-        }
-        else if (key !in demandedKeys) foreignHeaders++
-
-        val existing = if (header.isInitSegment) buffer.initSegment else buffer.get(header.sequenceNumber)
-        if (existing != null && existing.isComplete) {
-            pending[header.headerId] = SabrSegment(key, header.sequenceNumber, header.isInitSegment, 0, 0, 0)
-            return
-        }
-
-        val timescale = header.timeRange.timescale
-        val startUs: Long
-        var durationUs: Long
-        if (timescale > 0) {
-            startUs = ticksToUs(header.timeRange.startTicks, timescale)
-            durationUs = ticksToUs(header.timeRange.durationTicks, timescale)
-        } else {
-            startUs = header.startMs * 1000
-            durationUs = header.durationMs * 1000
-        }
-        val exact = durationUs > 0
-        if (!header.isInitSegment) {
-            backPatchPrevious(buffer, header.sequenceNumber, startUs)
-            if (!exact) durationUs = estimateSegmentUs(header.sequenceNumber, startUs, buffer)
-
-            val clock = activeFormat(ROLE_VIDEO) ?: activeFormat(ROLE_AUDIO)
-            if (clock != null && clock.key == key) mediaUsDelivered += durationUs
-        }
-
-        val segment = SabrSegment(
-            key,
-            header.sequenceNumber,
-            header.isInitSegment,
-            startUs,
-            durationUs,
-            header.contentLength.toInt(),
-            if (timescale > 0) header.timeRange.startTicks else 0,
-            timescale
-        )
-        if (exact) segment.setDuration(durationUs, exact = true)
-        pending[header.headerId] = segment
-        buffer.announce(segment)
-
-        sabrLog("MediaHeader itag=${header.itag} seq=${header.sequenceNumber} init=${header.isInitSegment} " +
-            "startMs=${startUs / 1000} durMs=${durationUs / 1000} tr=${header.timeRange.startTicks}/${header.timeRange.durationTicks}@${header.timeRange.timescale} " +
-            "hdrStartMs=${header.startMs} hdrDurMs=${header.durationMs} len=${header.contentLength}")
-    }
-
-    private fun estimateSegmentUs(sequence: Int, startUs: Long, buffer: SabrTrackBuffer): Long {
-        val cadence = liveCadenceUs(buffer)
-        if (cadence > 0) return cadence
-
-        val lm = liveMetadata
-        if (lm != null && lm.headSequenceNumber > sequence) {
-            val segments = lm.headSequenceNumber - sequence
-            val spanUs = lm.headSequenceTimeMs * 1000 - startUs
-            if (spanUs > 0) return (spanUs / segments).coerceAtLeast(1)
-        }
-
-        val prev = buffer.get(sequence - 1)
-        if (prev != null && prev.durationUs > 0) return prev.durationUs
-
-        return DEFAULT_LIVE_SEGMENT_US
-    }
-
-    private fun liveCadenceUs(buffer: SabrTrackBuffer): Long {
-        val observed = buffer.recentStartDeltasUs(8)
-        if (observed.isNotEmpty()) return observed.sorted()[observed.size / 2].coerceAtLeast(1)
-
-        val lm = liveMetadata ?: return -1
-        val anchor = buffer.firstAtOrAfter(-1) ?: return -1
-        if (lm.headSequenceNumber <= anchor.sequenceNumber) return -1
-
-        val spanUs = lm.headSequenceTimeMs * 1000 - anchor.startUs
-        if (spanUs <= 0) return -1
-        return (spanUs / (lm.headSequenceNumber - anchor.sequenceNumber)).coerceAtLeast(1)
-    }
-
-    private fun backPatchPrevious(buffer: SabrTrackBuffer, sequence: Int, startUs: Long) {
-        val prev = buffer.get(sequence - 1) ?: return
-        if (prev.durationExact) return
-
-        val deltaUs = startUs - prev.startUs
-        if (deltaUs <= 0) return
-
-        val cadence = liveCadenceUs(buffer).takeIf { it > 0 } ?: prev.durationUs
-        if (cadence > 0 && deltaUs > cadence * 3 / 2) return
-
-        prev.setDuration(deltaUs, exact = true)
-    }
-
     @Volatile private var reestimated = false
-
-    private fun reestimateInexactDurations() {
-        for (buffer in buffers.values) {
-            for (segment in buffer.snapshot()) {
-                if (segment.durationExact || segment.isInit) continue
-                buffer.get(segment.sequenceNumber + 1)?.let { backPatchPrevious(buffer, it.sequenceNumber, it.startUs) }
-                if (segment.durationExact) continue
-                segment.setDuration(estimateSegmentUs(segment.sequenceNumber, segment.startUs, buffer), exact = false)
-            }
-        }
-    }
 
     private fun onNextRequestPolicy(policy: NextRequestPolicy) {
         if (!policy.playbackCookie.isEmpty) playbackCookie = policy.playbackCookie
@@ -1162,111 +976,30 @@ class SabrSession(
         if (policy.targetAudioReadaheadMs > 0) targetAudioReadaheadMs = policy.targetAudioReadaheadMs.toLong()
         if (policy.backoffTimeMs > 0) {
             sabrLog("SERVER BACKOFF ${policy.backoffTimeMs}ms at rn=${requestNumber.get()} " +
-                "sentContexts=${activeSabrContexts.sorted()} heldContexts=${sabrContexts.keys.sorted()} " +
-                "cookie=${playbackCookie?.size() ?: 0}b poTokenBytes=${resolvePoToken()?.size() ?: 0}")
+                "sentContexts=${contextTracker.sentSnapshot()} heldContexts=${contextTracker.heldSnapshot()} " +
+                "cookie=${playbackCookie?.size() ?: 0}b poTokenBytes=${poTokenResolver.resolve()?.size() ?: 0}")
             serverBackoffUntilMs = System.currentTimeMillis() + policy.backoffTimeMs
             backoffUntilMs = maxOf(backoffUntilMs, serverBackoffUntilMs)
         }
     }
 
-    private fun buildRequest(video: SabrFormat?, audio: SabrFormat?, positionMs: Long): VideoPlaybackAbrRequest {
-        val now = System.currentTimeMillis()
-        val abrState = ClientAbrState.newBuilder()
-            .setPlayerTimeMs(positionMs)
-            .setBandwidthEstimate(bandwidthEstimate())
-            .setNetworkLatencyMs(Random.nextLong(7, 97))
-            .setTimeSinceLastActionMs(now - lastActionMs)
-            .setTimeSinceLastManualFormatSelectionMs(now - createdAtMs)
-            .setLastManualDirection(0)
-            .setDrcEnabled(true)
-            .setVisibility(0)
-            .setPreferVp9(false)
-
-        if (lastRequestMs > 0) abrState.setTimeSinceLastRequestMs(now - lastRequestMs)
-
-        val videoAlternates = videoDemand?.alternates.orEmpty()
-        val audioAlternates = audioDemand?.alternates.orEmpty()
-
-        if (video != null) {
-            val cap = videoAlternates.maxByOrNull { it.height } ?: video
-            abrState.setClientViewportWidth((if (viewportWidth > 0) viewportWidth else cap.width).toLong())
-            abrState.setClientViewportHeight((if (viewportHeight > 0) viewportHeight else cap.height).toLong())
-
-            if (videoAlternates.size <= 1) {
-                abrState.setLastManualSelectedResolution(video.height.toLong())
-                abrState.setStickyResolution(video.height.toLong())
-                abrState.setSelectedQualityHeight(video.height.toLong())
-            }
-
-            if (audio == null) abrState.setEnabledTrackTypesBitfield(MediaType.MEDIA_TYPE_VIDEO)
-        } else if (audio != null) {
-            abrState.setEnabledTrackTypesBitfield(MediaType.MEDIA_TYPE_AUDIO)
-        }
-
-        val streamerContext = StreamerContext.newBuilder()
-            .setClientInfo(clientInfo)
-            .addAllSabrContexts(sabrContexts.filterKeys { it in activeSabrContexts }.values)
-            .addAllUnsentSabrContexts(sabrContexts.keys.filter { it !in activeSabrContexts })
-
-        resolvePoToken()?.let { streamerContext.setPoToken(it) }
-        playbackCookie?.let { streamerContext.setPlaybackCookie(it) }
-
-        val request = VideoPlaybackAbrRequest.newBuilder()
-            .setClientAbrState(abrState)
-            .setVideoPlaybackUstreamerConfig(ByteString.copyFrom(ustreamerConfig))
-            .setStreamerContext(streamerContext)
-
-        expireCuepoints(positionMs)
-        for (id in adCuepoints.keys) {
-            request.addAdCuepoints(AdCuepointConfig.newBuilder()
-                .setCuepointId(id)
-                .setMagicValue(AD_CUEPOINT_MAGIC))
-        }
-
-        if (videoAlternates.isEmpty()) video?.let { request.addPreferredVideoFormatIds(it.toFormatId()) }
-        else videoAlternates.forEach { request.addPreferredVideoFormatIds(it.toFormatId()) }
-
-        if (audioAlternates.isEmpty()) audio?.let { request.addPreferredAudioFormatIds(it.toFormatId()) }
-        else audioAlternates.forEach { request.addPreferredAudioFormatIds(it.toFormatId()) }
-
-        val held = (videoAlternates + audioAlternates).ifEmpty { listOfNotNull(video, audio) }
-        for (format in held) {
-            if (!formatInitialization.containsKey(format.key)) continue
-            if (bufferFor(format).segmentCount == 0) continue
-            request.addSelectedFormatIds(format.toFormatId())
-
-            val buffer = bufferFor(format)
-            val fromUs = demandFromUs(format)
-            val lastSequence = buffer.lastCompletedSequence(fromUs)
-            if (lastSequence < 0) continue
-
-            val range = BufferedRange.newBuilder()
-                .setFormatId(format.toFormatId())
-                .setEndSegmentIndex(lastSequence.toLong())
-
-            val startSeq = firstSequenceOfRun(buffer, fromUs)
-            val startUs = buffer.get(startSeq)?.startUs ?: continue
-            val exactEnd = if (isLive) buffer.exactEndFromSequence(startSeq) else Long.MIN_VALUE
-            val end = if (exactEnd != Long.MIN_VALUE) exactEnd else buffer.bufferedEndUs(fromUs)
-            val durationUs = if (end == Long.MIN_VALUE) 0 else (end - startUs).coerceAtLeast(0)
-            range.setStartSegmentIndex(startSeq.toLong())
-                .setStartTimeMs(startUs / 1000)
-                .setDurationMs(durationUs / 1000)
-
-            val first = buffer.get(startSeq)
-            if (first != null && first.timescale > 0) {
-                range.setTimeRange(
-                    com.tsutsen.platformplayer.sabr.proto.TimeRange.newBuilder()
-                        .setStartTicks(first.startTicks)
-                        .setDurationTicks(usToTicks(durationUs, first.timescale))
-                        .setTimescale(first.timescale)
-                )
-            }
-            request.addBufferedRanges(range.build())
-        }
-
-        return request.build()
-    }
+    private fun buildRequest(video: SabrFormat?, audio: SabrFormat?, positionMs: Long): VideoPlaybackAbrRequest =
+        requestFactory.build(
+            video = video,
+            audio = audio,
+            positionMs = positionMs,
+            videoAlternates = videoDemand?.alternates.orEmpty(),
+            audioAlternates = audioDemand?.alternates.orEmpty(),
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            playbackCookie = playbackCookie,
+            poToken = poTokenResolver.resolve(),
+            bandwidthEstimate = bandwidthEstimate(),
+            lastActionMs = lastActionMs,
+            createdAtMs = createdAtMs,
+            lastRequestMs = lastRequestMs,
+            isLive = isLive
+        ) { format -> demandFromUs(format) }
 
 
     private fun clampToSeekableWindow() {
@@ -1295,47 +1028,6 @@ class SabrSession(
         }
     }
 
-    private fun firstSequenceOfRun(buffer: SabrTrackBuffer, fromUs: Long): Int {
-        val last = buffer.lastCompletedSequence(fromUs)
-        if (last < 0) return buffer.lowestSequence.coerceAtLeast(1)
-        var first = last
-        while (first > 0 && buffer.get(first - 1)?.isComplete == true) first--
-        return first.coerceAtLeast(0)
-    }
-
-    private fun resolvePoToken(): ByteString? {
-        if (poTokenResolved) return poTokenDecoded
-        poTokenResolved = true
-
-        val token = poTokenRaw
-        if (token == null) {
-            sabrLog("poToken: none set on source")
-            return null
-        }
-
-        poTokenDecoded = decodeBase64Lenient(token)?.let { ByteString.copyFrom(it) }
-        if (poTokenDecoded == null)
-            Logger.e(TAG, "Po token is not valid base64; requests will be unattested and YouTube will " +
-                "block the session once the attestation grace period expires")
-
-        sabrLog("poToken: len=${token.length} decodedBytes=${poTokenDecoded?.size() ?: 0} prefix='${token.take(12)}'")
-        return poTokenDecoded
-    }
-
-    private fun decodeBase64Lenient(value: String): ByteArray? {
-        val flags = Base64.NO_WRAP or Base64.NO_PADDING
-        try {
-            return Base64.decode(value, Base64.URL_SAFE or flags)
-        } catch (_: Throwable) {
-        }
-        return try {
-            Base64.decode(value.replace('-', '+').replace('_', '/'), Base64.DEFAULT)
-        } catch (ex: Throwable) {
-            Logger.w(TAG, "Not valid base64 in either alphabet: '${value.take(16)}...' (${value.length} chars)", ex)
-            null
-        }
-    }
-
     private fun appendRequestNumber(url: String): String {
         val separator = if (url.contains('?')) '&' else '?'
         return "$url${separator}rn=${requestNumber.incrementAndGet()}"
@@ -1353,15 +1045,7 @@ class SabrSession(
         const val ROLE_AUDIO = 1
 
         private const val LIVE_POLL_MS = 1_000L
-        private const val DEFAULT_LIVE_SEGMENT_US = 5_000_000L
 
-        private const val MICROS_PER_SECOND = 1_000_000L
-
-        private fun ticksToUs(ticks: Long, timescale: Int): Long =
-            ticks / timescale * MICROS_PER_SECOND + (ticks % timescale) * MICROS_PER_SECOND / timescale
-
-        private fun usToTicks(us: Long, timescale: Int): Long =
-            us / MICROS_PER_SECOND * timescale + (us % MICROS_PER_SECOND) * timescale / MICROS_PER_SECOND
         private const val DEFAULT_READAHEAD_MS = 20_000L
         private const val PUMP_IDLE_POLL_MS = 250L
         private const val ERROR_BACKOFF_BASE_MS = 1_000L
@@ -1376,7 +1060,6 @@ class SabrSession(
         private const val ERROR_BACKOFF_MAX_SHIFT = 5
         private const val MAX_CONSECUTIVE_ERRORS = 4
         private const val DEFAULT_KEEP_BEHIND_US = 30_000_000L
-        private const val AD_CUEPOINT_MAGIC = 11
         private const val RESTART_TOLERANCE_US = 1_000_000L
         private const val FRONTIER_EPSILON_US = 1_000_000L
         private const val NO_PROGRESS_THRESHOLD = 2

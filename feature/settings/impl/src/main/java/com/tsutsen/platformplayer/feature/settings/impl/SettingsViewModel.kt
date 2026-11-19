@@ -20,49 +20,16 @@ import javax.inject.Inject
  * MVI state for Settings screen.
  */
 sealed interface SettingsUiState {
+    /**
+     * The typed preferences AS-IS: the screen reads [AppPreferences] directly
+     * instead of a 41-field hand-maintained shadow (one mapping to forget on
+     * every new key).
+     */
     data class Loaded(
-        val appearance: AppearancePreferences,
-        val subtitle: SubtitlePreferences,
-        val defaultPlaybackSpeed: Float,
-        val defaultSpeedup: Float,
-        val speedupSensitivity: Float,
-        val defaultVideoResolution: String,
-        val defaultDownloadResolution: String,
-        val enableDeveloperOptions: Boolean,
-        val librarySectionOrder: List<String>,
-        val librarySectionsEnabled: List<String>,
-        val dualScreen: Boolean,
-        val dualScreenPages: List<String>,
-        val dualScreenVideoTabs: List<String>,
-        val dualScreenVideoTabOrder: List<String>,
-        val dualScreenPageOrder: List<String>,
-        val dualScreenTopCreatorsScope: String,
-        val dualScreenDashPageOrder: List<String>,
-        val dualScreenFeedSources: List<String>,
-        val dualScreenLibrarySlots: List<String>,
-        val gridColumns: Int,
-        val showRecommendedVideos: Boolean,
-        val showComments: Boolean,
-        val autoplay: Boolean,
-        val showWatchedVideos: Boolean,
-        val showStartedVideos: Boolean,
-        val homebrewRecommendations: Boolean,
-        val sourceYoutubeFeed: Boolean,
-        val sourceSubscriptions: Boolean,
-        val sourceTopCreators: Boolean,
-        val probCut1: Int,
-        val probCut2: Int,
-        val recency: String,
-        val autoUpdatePlugins: Boolean,
-        val dockTabOrder: List<String>,
-        val defaultDockTab: String,
-        val subscriptionsOrder: String,
-        val playerGestures: PlayerGesturePreferences,
-        val jumpStepSeconds: Int = 5,
-        val controller: ControllerPreferences = ControllerPreferences(),
+        val prefs: AppPreferences,
     ) : SettingsUiState
 
-    data object Loading : SettingsUiState
+data object Loading : SettingsUiState
 
     data class Error(
         val message: String,
@@ -135,48 +102,7 @@ class SettingsViewModel
             viewModelScope.launch {
                 settingsRepository.preferences
                     .collect { prefs ->
-                        _uiState.value =
-                            SettingsUiState.Loaded(
-                                appearance = prefs.appearance,
-                                subtitle = prefs.subtitle,
-                                defaultPlaybackSpeed = prefs.defaultPlaybackSpeed,
-                                defaultSpeedup = prefs.defaultSpeedup,
-                                speedupSensitivity = prefs.speedupSensitivity,
-                                defaultVideoResolution = prefs.defaultVideoResolution,
-                                defaultDownloadResolution = prefs.defaultDownloadResolution,
-                                enableDeveloperOptions = prefs.enableDeveloperOptions,
-                                librarySectionOrder = prefs.librarySectionOrder,
-                                librarySectionsEnabled = prefs.librarySectionsEnabled,
-                                dualScreen = prefs.dualScreen,
-                                dualScreenPages = prefs.dualScreenPages,
-                                dualScreenVideoTabs = prefs.dualScreenVideoTabs,
-                                dualScreenVideoTabOrder = prefs.dualScreenVideoTabOrder,
-                                dualScreenPageOrder = prefs.dualScreenPageOrder,
-                                dualScreenTopCreatorsScope = prefs.dualScreenTopCreatorsScope,
-                                dualScreenDashPageOrder = prefs.dualScreenDashPageOrder,
-                                dualScreenFeedSources = prefs.dualScreenFeedSources,
-                                dualScreenLibrarySlots = prefs.dualScreenLibrarySlots,
-                                gridColumns = prefs.gridColumns,
-                                showRecommendedVideos = prefs.showRecommendedVideos,
-                                showComments = prefs.showComments,
-                                autoplay = prefs.playback.autoPlay,
-                                showWatchedVideos = prefs.showWatchedVideos,
-                                showStartedVideos = prefs.showStartedVideos,
-                                homebrewRecommendations = prefs.homebrewRecommendations,
-                                sourceYoutubeFeed = prefs.sourceYoutubeFeed,
-                                sourceSubscriptions = prefs.sourceSubscriptions,
-                                sourceTopCreators = prefs.sourceTopCreators,
-                                probCut1 = prefs.probCut1,
-                                probCut2 = prefs.probCut2,
-                                recency = prefs.recency,
-                                autoUpdatePlugins = prefs.autoUpdatePlugins,
-                                dockTabOrder = prefs.dockTabOrder,
-                                defaultDockTab = prefs.defaultDockTab,
-                                subscriptionsOrder = prefs.subscriptionsOrder,
-                                playerGestures = prefs.playerGestures,
-                                jumpStepSeconds = prefs.jumpStepSeconds,
-                                controller = prefs.controller,
-                            )
+                        _uiState.value = SettingsUiState.Loaded(prefs = prefs)
                     }
             }
         }
@@ -184,6 +110,53 @@ class SettingsViewModel
         fun updateAppearance(prefs: AppearancePreferences) {
             viewModelScope.launch {
                 settingsRepository.updateAppearance(prefs)
+            }
+        }
+
+        /** Appearance > Font. */
+        fun setFontFamily(family: FontFamily) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                settingsRepository.updateAppearance(p.prefs.appearance.copy(fontFamily = family))
+            }
+        }
+
+        /** Appearance > Font size scale (1.0 = shipped sizes). */
+        fun setFontSizeScale(scale: Float) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                settingsRepository.updateAppearance(p.prefs.appearance.copy(fontSizeScale = scale))
+            }
+        }
+
+        /** Appearance > Thumbnail tint (ARGB; null = none). */
+        fun setThumbnailTint(argb: Long?) {
+            viewModelScope.launch { settingsRepository.setThumbnailTint(argb) }
+        }
+
+        /** Appearance > Thumbnails > Tint strength (0..1). */
+        fun setThumbnailTintStrength(strength: Float) {
+            viewModelScope.launch { settingsRepository.setThumbnailTintStrength(strength) }
+        }
+
+        /** Appearance > Thumbnails > Tint blend mode ([TintBlendMode] name). */
+        fun setThumbnailTintBlendMode(mode: String) {
+            viewModelScope.launch { settingsRepository.setThumbnailTintBlendMode(mode) }
+        }
+
+        /** Appearance > Thumbnail desaturation (1 = full color, 0 = grayscale). */
+        fun setThumbnailSaturation(saturation: Float) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                settingsRepository.updateAppearance(p.prefs.appearance.copy(thumbnailSaturation = saturation))
+            }
+        }
+
+        /** Appearance > Thumbnail contrast (1 = neutral, 0 = flat gray, 2 = high contrast). */
+        fun setThumbnailContrast(contrast: Float) {
+            viewModelScope.launch {
+                val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
+                settingsRepository.updateAppearance(p.prefs.appearance.copy(thumbnailContrast = contrast))
             }
         }
 
@@ -268,8 +241,8 @@ class SettingsViewModel
                 val empty = PlayerGestureSlotSet()
                 settingsRepository.updatePlayerGestures(
                     fullscreen =
-                        if (mode == "fullscreen") empty else p.playerGestures.fullscreen,
-                    normal = if (mode == "normal") empty else p.playerGestures.normal,
+                        if (mode == "fullscreen") empty else p.prefs.playerGestures.fullscreen,
+                    normal = if (mode == "normal") empty else p.prefs.playerGestures.normal,
                 )
             }
         }
@@ -284,7 +257,7 @@ class SettingsViewModel
             viewModelScope.launch {
                 val p = _uiState.value as? SettingsUiState.Loaded ?: return@launch
                 val set =
-                    if (mode == "normal") p.playerGestures.normal else p.playerGestures.fullscreen
+                    if (mode == "normal") p.prefs.playerGestures.normal else p.prefs.playerGestures.fullscreen
                 val updated =
                     (when (slot) {
                         "top" -> set.top
@@ -296,9 +269,9 @@ class SettingsViewModel
                 updated[type] = action
                 settingsRepository.updatePlayerGestures(
                     fullscreen =
-                        if (mode == "fullscreen") set.updated(slot, updated) else p.playerGestures.fullscreen,
+                        if (mode == "fullscreen") set.updated(slot, updated) else p.prefs.playerGestures.fullscreen,
                     normal =
-                        if (mode == "normal") set.updated(slot, updated) else p.playerGestures.normal,
+                        if (mode == "normal") set.updated(slot, updated) else p.prefs.playerGestures.normal,
                 )
             }
         }
@@ -380,6 +353,15 @@ class SettingsViewModel
 
         fun setSubscriptionsOrder(order: String) {
             viewModelScope.launch { settingsRepository.setSubscriptionsOrder(order) }
+        }
+
+        fun setWatchLaterAutoCleanup(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setWatchLaterAutoCleanup(enabled) }
+        }
+
+        /** Demo mode (Settings > About): simulated content, no network fetches. */
+        fun setDemoMode(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setDemoMode(enabled) }
         }
 
         fun setLibrarySectionOrder(order: List<String>) {

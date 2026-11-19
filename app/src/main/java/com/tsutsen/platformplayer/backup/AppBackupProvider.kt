@@ -29,7 +29,10 @@ import javax.inject.Singleton
  * a single IO pass, no background work.
  */
 @Singleton
-class AppBackupProvider @Inject constructor(private val savedVideoDao: SavedVideoDao) :
+class AppBackupProvider @Inject constructor(
+    private val savedVideoDao: SavedVideoDao,
+    private val historyDao: com.tsutsen.platformplayer.core.database.dao.HistoryDao,
+) :
     BackupProvider {
 
     override suspend fun summary(): BackupSummary = withContext(Dispatchers.IO) {
@@ -48,8 +51,9 @@ class AppBackupProvider @Inject constructor(private val savedVideoDao: SavedVide
         BackupSummary(
             subscriptions = subscriptions.size,
             sources = sources,
-            savedVideos = savedVideoDao.countAll(),
-            savedPlaylists = savedVideoDao.countTypesWithVideos(),
+            // History is one of the backed-up playlists: count its videos in.
+            savedVideos = savedVideoDao.countAll() + historyDao.countHistory(),
+            savedPlaylists = savedVideoDao.countTypesWithVideos() + 1,
             customSettings = countCustomSettings(),
             sections = SECTION_COUNT,
         )
@@ -57,9 +61,10 @@ class AppBackupProvider @Inject constructor(private val savedVideoDao: SavedVide
 
     override fun exportBackup() {
         val activity = StateApp.instance.activity ?: return
-        // export() blocks (StateHistory reads use runBlocking) and this is called
-        // from a settings onClick on the main thread — compute the zip on IO, then
-        // hand it to the SAF writer on Main (requestFileCreateAccess needs Main).
+        // export() is a suspend function that reads Room on IO, and this is
+        // called from a settings onClick on the main thread — compute the zip
+        // on IO, then hand it to the SAF writer on Main
+        // (requestFileCreateAccess needs Main).
         StateApp.instance.scope.launch(Dispatchers.IO) {
             val data = StateBackup.export()
             withContext(Dispatchers.Main) {

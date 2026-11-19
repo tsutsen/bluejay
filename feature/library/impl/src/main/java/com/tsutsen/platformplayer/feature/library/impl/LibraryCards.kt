@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlaylistPlay
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -102,12 +104,12 @@ fun NewPlaylistDialog(
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New playlist") },
+        title = { Text(stringResource(R.string.library_new_playlist_title)) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Playlist name") },
+                label = { Text(stringResource(R.string.library_playlist_name_label)) },
                 singleLine = true,
             )
         },
@@ -116,12 +118,12 @@ fun NewPlaylistDialog(
                 onClick = { onCreate(name) },
                 enabled = name.isNotBlank(),
             ) {
-                Text("Create")
+                Text(stringResource(R.string.common_create))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.common_cancel))
             }
         },
     )
@@ -207,7 +209,11 @@ fun PlaylistCardView(
                 Text(
                     text =
                         card.videoCount?.let { count ->
-                            "$count ${if (count == 1) "video" else "videos"}"
+                            if (count == 1) {
+                                stringResource(R.string.library_one_video)
+                            } else {
+                                stringResource(R.string.library_videos_count, count)
+                            }
                         }
                         ?: "",
                     style = MaterialTheme.typography.bodySmall,

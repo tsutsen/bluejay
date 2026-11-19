@@ -26,6 +26,11 @@ data class CustomTheme(
      * softer while the palette itself stays the same.
      */
     val contrast: Float = 0f,
+    /**
+     * Per-surface overrides (Settings > Themes > editor > Custom tab): color,
+     * outline and texture slots layered over this theme's generated scheme.
+     */
+    val surfaceStyles: Map<String, SurfaceStyle> = emptyMap(),
 )
 
 /**

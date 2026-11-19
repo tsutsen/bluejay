@@ -1,75 +1,58 @@
 package com.tsutsen.platformplayer.core.data.repository.impl
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
-import androidx.core.content.ContextCompat
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionParameters
-import androidx.media3.common.Tracks
-import androidx.media3.common.text.CueGroup
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.analytics.AnalyticsListener
-import androidx.media3.exoplayer.dash.DashMediaSource
-import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import androidx.media3.exoplayer.source.SingleSampleMediaSource
-import androidx.media3.exoplayer.text.TextRenderer
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
-import com.tsutsen.platformplayer.core.data.BuildConfig
 import com.tsutsen.platformplayer.core.data.repository.CommentRepository
 import com.tsutsen.platformplayer.core.data.repository.ContentExtrasRepository
 import com.tsutsen.platformplayer.core.data.repository.PlaybackEngine
 import com.tsutsen.platformplayer.core.data.repository.PlaybackVideoSize
 import com.tsutsen.platformplayer.core.data.repository.PlayerRepository
-import com.tsutsen.platformplayer.core.data.repository.ResolutionResult
 import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubtitleSource
 import com.tsutsen.platformplayer.core.data.repository.VideoAudioTrack
-import com.tsutsen.platformplayer.core.data.repository.VideoDetails
 import com.tsutsen.platformplayer.core.data.repository.VideoStreamOption
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
 import com.tsutsen.platformplayer.core.data.service.PlayerService
 import com.tsutsen.platformplayer.core.database.dao.HistoryDao
-import com.tsutsen.platformplayer.core.model.AudioTrackInfo
-import com.tsutsen.platformplayer.core.model.Author
 import com.tsutsen.platformplayer.core.model.Card
 import com.tsutsen.platformplayer.core.model.CommentItem
 import com.tsutsen.platformplayer.core.model.ContentItem
 import com.tsutsen.platformplayer.core.model.PlayerState
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import com.tsutsen.platformplayer.core.model.VideoChapter
-import com.tsutsen.platformplayer.core.data.playback.RecoverableSourceError
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Singleton
 
 /**
  * PlayerRepository implementation with actual ExoPlayer usage.
  * Resolves content URLs to streaming URLs via engine plugins.
+ *
+ * Orchestrator over focused collaborators: [PlaybackSourceResolver]
+ * (source construction + resolve), [SideContentCache] (per-video extras
+ * caches), [PlaybackPositionTracker] (position ticker),
+ * [SourceRecoveryManager] (SABR source-error recovery) and
+ * [PlayerEventListener]/[LoadAnalyticsListener] (player event mirroring).
  */
 @Singleton
 class PlayerRepositoryImpl(
     @ApplicationContext private val context: Context,
+    appScope: CoroutineScope,
 ) : PlayerRepository {
     private var urlResolver: VideoUrlResolver? = null
 
@@ -104,24 +87,53 @@ class PlayerRepositoryImpl(
     private val playGeneration =
         java.util.concurrent.atomic
             .AtomicInteger(0)
-    private val extrasScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    // Per-video extras caches for the session: replaying a video (tab
-    // re-entry, re-tap, notification tap, next→previous) applies the cached
-    // extras instantly instead of refetching comments/recommendations/
-    // chapters over the network. Bounded LRU, ~50 videos each.
-    private val commentsCache = ExtrasCache<List<CommentItem>>()
-    private val recommendationsCache = ExtrasCache<List<Card>>()
-    private val chaptersCache = ExtrasCache<List<VideoChapter>>()
+    // Extras fetches run on the injected app-lifetime scope instead of a
+    // detached module-level scope: same lifetime in practice (the app scope is
+    // never cancelled), but the work is structured under one supervisor.
+    // close() must not cancel this shared scope — it only invalidates
+    // in-flight fetches via playGeneration.
+    private val extrasScope = appScope
 
     private val TAG = "PlayerRepositoryImpl"
 
     private val _playerState = MutableStateFlow(PlayerState())
     override val playerState: StateFlow<PlayerState> = _playerState.asStateFlow()
 
+    // User-selected track preferences (UI labels) and their application to
+    // the ExoPlayer; re-applied to each new player.
+    private val trackSelection = TrackSelectionController(_playerState)
+
+    // Per-video extras caches for the session: replaying a video (tab
+    // re-entry, re-tap, notification tap, next→previous) applies the cached
+    // extras instantly instead of refetching comments/recommendations/
+    // chapters over the network. Bounded LRU, ~50 videos each.
+    private val commentsCache =
+        SideContentCache<List<CommentItem>>(
+            logTag = TAG,
+            what = "comments",
+            playGeneration = playGeneration,
+            state = _playerState,
+        )
+    private val recommendationsCache =
+        SideContentCache<List<Card>>(
+            logTag = TAG,
+            what = "recommendations",
+            playGeneration = playGeneration,
+            state = _playerState,
+        )
+    private val chaptersCache =
+        SideContentCache<List<VideoChapter>>(
+            logTag = TAG,
+            what = "chapters",
+            playGeneration = playGeneration,
+            state = _playerState,
+        )
+
     /** Media3 handle for same-module consumers (PlayerService); use [engine] elsewhere. */
     internal val exoPlayer: ExoPlayer? get() = _exoPlayer
-    private var _exoPlayer: ExoPlayer? = null
+    // The live player instance is owned by [sessionManager]; this getter
+    // keeps the call sites unchanged.
+    private val _exoPlayer: ExoPlayer? get() = sessionManager.player
     override val positionMs: Long get() = _exoPlayer?.currentPosition ?: 0L
     override val durationMs: Long get() = _exoPlayer?.duration ?: 0L
     override val videoSize: PlaybackVideoSize?
@@ -131,20 +143,6 @@ class PlayerRepositoryImpl(
     override val loopMode: kotlinx.coroutines.flow.StateFlow<Int> = _loopMode.asStateFlow()
     private var loopOnceArmed = false
 
-    // Holds the connection to PlayerService open while playback is active.
-    // The bind is what makes the service create its MediaSession — a bare
-    // start never does (onGetSession is only called on connect).
-    private var mediaController: MediaController? = null
-
-    // User-selected track preferences (UI labels). Applied to the ExoPlayer
-    // via [applyTrackSelectionParameters] and re-applied to each new player.
-    private var selectedQuality: String = "Auto"
-    private var selectedSubtitle: String = "Off"
-    // Preferred audio track (UI label); null = engine default heuristics.
-    private var preferredAudioTrack: String? = null
-
-    /** Last concretely selected track — used by [toggleSubtitles] when re-enabling. */
-    private var lastExplicitSubtitle: String? = null
     private var pendingResumePosition: Long = 0
 
     // The primary source + engine-provided subtitle tracks for the video
@@ -161,256 +159,102 @@ class PlayerRepositoryImpl(
     private var currentVideoStreams: List<VideoStreamOption> = emptyList()
     private var currentVideoStreamUrl: String? = null
 
+    /** Pre-merged subtitle sources of the current video (built by [sourceResolver]). */
+    private var currentSubtitleSource: MediaSource? = null
+
     // The URL of the video currently loaded (set by play(), the one place
     // every play path goes through). Recovery re-resolves this.
     private var currentPlayUrl: String? = null
+
+    // When the current source's stream URL expires (YouTube progressive
+    // URLs carry `expire=<epoch-seconds>`, ~6h window), or null if the
+    // resolved URL carries no expiry. The resume refresh re-resolves
+    // before the URL dies instead of burning a visible error recovery.
+    private var currentSourceExpiresAtMs: Long? = null
 
     private val _seekThumbnails =
         MutableStateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?>(null)
     override val seekThumbnails: kotlinx.coroutines.flow.StateFlow<com.tsutsen.platformplayer.core.data.repository.SeekThumbnailProvider?> =
         _seekThumbnails.asStateFlow()
 
+    // Media source construction / content-URL resolution (extracted).
+    private val sourceResolver =
+        PlaybackSourceResolver(context, urlResolverProvider = { urlResolver }, logTag = TAG)
+
+    // Position ticker (extracted): see [PlaybackPositionTracker].
+    private val positionTracker =
+        PlaybackPositionTracker(
+            appScope = appScope,
+            playerProvider = { _exoPlayer },
+            onPosition = { position -> _playerState.update { it.copy(currentPositionMs = position) } },
+        )
+
+    // Session-scoped counters for the recovery machinery; logged on each
+    // recovery and in close(). Diagnostics only.
+    private val sourceRecoveryTelemetry = SourceRecoveryTelemetry()
+
     // Transparent source-error recovery (SABR po-token rejection / server
-    // reload): budget per play() so a persistently rejected stream can't
-    // loop recoveries forever, plus a minimum spacing between attempts.
-    private var sourceRecoveryBudget = 0
-    private var lastSourceRecoveryAtMs = 0L
+    // reload) — budgeted per play() (extracted).
+    // Explicit type breaks the inference cycle with the listener below
+    // (its lambdas call back into this manager).
+    private val sourceRecoveryManager: SourceRecoveryManager =
+        SourceRecoveryManager(
+            logTag = TAG,
+            scope = extrasScope,
+            state = _playerState,
+            playerProvider = { _exoPlayer },
+            currentPlayUrl = { currentPlayUrl },
+            currentSourceExpiresAtMs = { currentSourceExpiresAtMs },
+            lastPlayingAtMs = { playerListener.lastPlayingAtMs },
+            resolve = { url, positionMs -> sourceResolver.resolveWithDetails(url, positionMs) },
+            invalidateSourceCache = { url -> urlResolver?.invalidateSourceCache(url) },
+            onSourceRebuilt = { mediaSource ->
+                currentPrimarySource = mediaSource
+                // The rebuilt source carries a fresh URL (and expiry).
+                currentSourceExpiresAtMs = parseSourceExpiryMs(mediaSource.mediaItem.localConfiguration?.uri)
+            },
+            telemetry = sourceRecoveryTelemetry,
+        )
 
     private val playerListener =
-        object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                Log.i(TAG, "Playback state changed: $playbackState")
-                val duration = _exoPlayer?.duration ?: 0L
-                _playerState.update {
-                    it.copy(
-                        isLoading = playbackState == Player.STATE_BUFFERING,
-                        isCompleted = playbackState == Player.STATE_ENDED,
-                        durationMs = duration,
-                    )
+        PlayerEventListener(
+            logTag = TAG,
+            state = _playerState,
+            playerProvider = { _exoPlayer },
+            currentTracks = {
+                if (currentAudioTracks.isEmpty() && currentSubtitles.isEmpty() && currentVideoStreams.isEmpty()) {
+                    null
+                } else {
+                    CurrentTrackInfo(currentAudioTracks, currentSubtitles, currentVideoStreams)
                 }
-                // LOOP_ONCE: replay the video exactly one more time, then stop.
-                if (playbackState == Player.STATE_ENDED && loopOnceArmed) {
+            },
+            replayOnceIfArmed = {
+                if (loopOnceArmed) {
                     loopOnceArmed = false
                     _exoPlayer?.let {
                         it.seekTo(0)
                         it.playWhenReady = true
                     }
                 }
-            }
+            },
+            sourceRecovery = { error -> sourceRecoveryManager.attempt(error) },
+            resumeCheck = { sourceRecoveryManager.resumeRefresh() },
+        )
+    private val analyticsListener = LoadAnalyticsListener(TAG)
 
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                Log.i(TAG, "isPlaying changed: $isPlaying")
-                _playerState.update { it.copy(isPlaying = isPlaying) }
-            }
-
-            // media3 1.x routes decoded cues here (the player's internal
-            // TextOutput forwards to listeners) - no TextOutput plumbing needed.
-            override fun onCues(cueGroup: CueGroup) {
-                val text =
-                    cueGroup.cues
-                        .mapNotNull { cue -> cue.text?.toString() }
-                        .joinToString("\n")
-                _playerState.update {
-                    if (it.subtitleText == text) it else it.copy(subtitleText = text)
-                }
-            }
-
-            override fun onPositionDiscontinuity(
-                oldPosition: Player.PositionInfo,
-                newPosition: Player.PositionInfo,
-                reason: Int,
-            ) {
-                // Don't update position here - let the position ticker handle it
-                // This avoids race conditions with seekTo() and scrubbing
-            }
-
-            override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
-                _playerState.update { it.copy(playbackSpeed = playbackParameters.speed) }
-            }
-
-            override fun onTracksChanged(tracks: Tracks) {
-                // Unmuxed streams expose exactly one merged audio group; the
-                // options were seeded from the resolver instead.
-                val unmuxedAudio = currentAudioTracks.isNotEmpty()
-                val heights = mutableListOf<Int>()
-                val languages = mutableListOf<String>()
-                val audioTracks: MutableList<AudioTrackInfo> =
-                    if (unmuxedAudio) _playerState.value.audioTracks.toMutableList()
-                    else mutableListOf()
-                var selectedAudio: String? = null
-                for (group in tracks.groups) {
-                    when (group.mediaTrackGroup.type) {
-                        C.TRACK_TYPE_VIDEO -> {
-                            for (i in 0 until group.length) {
-                                val height = group.getTrackFormat(i).height
-                                if (height > 0) heights.add(height)
-                            }
-                        }
-
-                        C.TRACK_TYPE_TEXT -> {
-                            for (i in 0 until group.length) {
-                                val language = group.getTrackFormat(i).language
-                                if (!language.isNullOrBlank()) languages.add(language)
-                            }
-                        }
-
-                        C.TRACK_TYPE_AUDIO -> {
-                            if (unmuxedAudio) {
-                                selectedAudio = _playerState.value.selectedAudioTrack
-                            } else {
-                                for (i in 0 until group.length) {
-                                    val format = group.getTrackFormat(i)
-                                    // "und" (undetermined) is not a language: it
-                                    // labels the chip "und" and selection by it is
-                                    // a no-op.
-                                    val language =
-                                        format.language
-                                            ?.takeIf { it != "und" && it != "undetermined" }
-                                    // Chip key = language, else label. Tracks
-                                    // sharing a key are the same choice at
-                                    // different bitrates (SAB groups them in one
-                                    // TrackGroup) — one chip per key. Tracks with
-                                    // neither cannot be targeted via
-                                    // TrackSelectionParameters — skip them.
-                                    val key = language ?: format.label
-                                    if (key.isNullOrBlank()) continue
-                                    if (group.isTrackSelected(i) && selectedAudio == null) {
-                                        selectedAudio = key
-                                    }
-                                    if (audioTracks.none { it.label == key }) {
-                                        audioTracks.add(
-                                            AudioTrackInfo(
-                                                id = "${group.mediaTrackGroup.id}:$i",
-                                                label = key,
-                                                language = language,
-                                            ),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                // Unmuxed streams report only the one loaded file; the real
-                // options were seeded from the resolver.
-                val qualities =
-                    if (currentVideoStreams.isNotEmpty()) _playerState.value.videoQualities
-                    else heights.distinct().sortedDescending()
-                // Engine-provided subtitle tracks first (SAB streams carry
-                // no text tracks), then player-reported text tracks (DASH).
-                val subtitles = (currentSubtitles.map { it.name } + languages).distinct()
-                _playerState.update {
-                    if (it.videoQualities == qualities &&
-                        it.subtitleLanguages == subtitles &&
-                        it.audioTracks == audioTracks &&
-                        it.selectedAudioTrack == selectedAudio.orEmpty()
-                    ) {
-                        it
-                    } else {
-                        it.copy(
-                            videoQualities = qualities,
-                            subtitleLanguages = subtitles,
-                            audioTracks = audioTracks,
-                            selectedAudioTrack = selectedAudio.orEmpty(),
-                        )
-                    }
-                }
-            }
-
-
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                Log.e(TAG, "Player error: ${error.errorCodeName}, message: ${error.message}", error)
-                if (attemptSourceRecovery(error)) return
-                _playerState.update { it.copy(error = error.message ?: "Unknown error") }
-            }
-
-            override fun onLoadingChanged(isLoading: Boolean) {
-                Log.i(TAG, "Loading changed: $isLoading")
-            }
-
-            override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
-                Log.i(TAG, "Playback suppression reason changed: $playbackSuppressionReason")
-            }
-
-            override fun onIsLoadingChanged(isLoading: Boolean) {
-                Log.i(TAG, "isLoading changed: $isLoading")
-            }
-
-            override fun onMediaItemTransition(
-                mediaItem: MediaItem?,
-                reason: Int,
-            ) {
-                Log.i(TAG, "MediaItem transitioned: ${mediaItem?.mediaId}, reason: $reason")
-            }
-
-            override fun onEvents(
-                player: Player,
-                events: Player.Events,
-            ) {
-                // Gated: this fires on every ExoPlayer event batch on the main
-                // thread, and the string interpolation alone is not free.
-                if (BuildConfig.DEBUG) {
-                    Log.i(TAG, "Player events: $events")
-                }
-            }
-        }
-
-    // Position ticker: single source of truth for currentPositionMs
-    private val positionScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main + Job())
-    private var positionTickerJob: Job? = null
-
-    private fun startPositionTicker() {
-        positionTickerJob?.cancel()
-        positionTickerJob =
-            positionScope.launch {
-                while (true) {
-                    val player = _exoPlayer
-                    if (player != null) {
-                        val position = player.currentPosition
-                        _playerState.update { it.copy(currentPositionMs = position) }
-                    }
-                    kotlinx.coroutines.delay(250) // 4Hz; the ViewModel quantizes emissions to 500ms, so UI is unaffected
-                }
-            }
-    }
-
-    private val analyticsListener =
-        object : AnalyticsListener {
-            override fun onLoadError(
-                eventTime: AnalyticsListener.EventTime,
-                loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
-                mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData,
-                error: java.io.IOException,
-                wasCanceled: Boolean,
-            ) {
-                val trackType =
-                    when (mediaLoadData.trackType) {
-                        C.TRACK_TYPE_VIDEO -> "VIDEO"
-                        C.TRACK_TYPE_AUDIO -> "AUDIO"
-                        C.TRACK_TYPE_TEXT -> "TEXT"
-                        C.TRACK_TYPE_METADATA -> "METADATA"
-                        C.TRACK_TYPE_UNKNOWN -> "UNKNOWN"
-                        else -> "OTHER"
-                    }
-                Log.e(TAG, "LoadError track=$trackType uri=${loadEventInfo.uri} wasCanceled=$wasCanceled", error)
-            }
-
-            override fun onLoadCompleted(
-                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
-                loadEventInfo: androidx.media3.exoplayer.source.LoadEventInfo,
-                mediaLoadData: androidx.media3.exoplayer.source.MediaLoadData,
-            ) {
-                Log.i(TAG, "LoadCompleted track=${mediaLoadData.trackType} bytes=${loadEventInfo.bytesLoaded}")
-            }
-
-            override fun onDroppedVideoFrames(
-                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
-                droppedFrames: Int,
-                elapsedMs: Long,
-            ) {
-                Log.w(TAG, "Dropped $droppedFrames video frames")
-            }
-        }
+    // Owns the ExoPlayer instance and its PlayerService/MediaController
+    // connection (see [ExoPlayerConnectionManager]).
+    private val sessionManager =
+        ExoPlayerConnectionManager(
+            context = context,
+            logTag = TAG,
+            playerListener = playerListener,
+            analyticsListener = analyticsListener,
+            onPlayerCreated = {
+                positionTracker.start()
+                engine.onPlayerReplaced()
+            },
+        )
 
     override suspend fun play(
         videoId: String,
@@ -424,8 +268,10 @@ class PlayerRepositoryImpl(
 
         // A fresh play arms transparent source-error recovery (SABR po-token
         // rejection etc.): remember what to re-resolve and reset the budget.
+        // Expiry is re-captured after the resolve below.
         currentPlayUrl = videoId
-        sourceRecoveryBudget = SOURCE_RECOVERY_MAX_ATTEMPTS
+        currentSourceExpiresAtMs = null
+        sourceRecoveryManager.arm()
 
         // Resume: look up where this video was last watched. The position is
         // applied before prepare() below so the first READY is already there.
@@ -450,6 +296,13 @@ class PlayerRepositoryImpl(
                 comments = emptyList(),
                 recommendations = emptyList(),
                 chapters = emptyList(),
+                // Zero the progress too: keeping the OLD video's position/
+                // duration here lets the 4Hz position tracker pair the stale
+                // media position with the NEW video on its next tick, which
+                // the history persister then writes under the new video's
+                // url (watch-progress bleeding onto the wrong thumbnail).
+                currentPositionMs = 0L,
+                durationMs = 0L,
                 currentVideo =
                     initial
                         ?: ContentItem(
@@ -471,69 +324,54 @@ class PlayerRepositoryImpl(
         val prefs = settingsRepository?.preferences?.value
 
         // A new video starts at the user's default resolution. selectedQuality
-        // is a persistent field, so reset it here (the one place every play
-        // path goes through) before the track selection is applied below.
+        // is a persistent preference, so reset it here (the one place every
+        // play path goes through) before the track selection is applied below.
         prefs?.defaultVideoResolution?.let { res ->
-            selectedQuality = res
+            trackSelection.selectedQuality = res
             _playerState.update { it.copy(selectedQuality = res) }
         }
 
+        // Demo mode (Settings > About): demo urls (`demo://video/...`) play
+        // the bundled demo images as a looping slideshow — no plugin
+        // resolution, no network, no extras fetches.
+        if (videoId.startsWith(DemoPlayback.URL_PREFIX)) {
+            playDemoImages(videoId, generation, initial)
+            return
+        }
+
         if (prefs != null) {
-            extrasScope.launch {
-                if (prefs.showComments) {
-                    launch(Dispatchers.IO) {
-                        try {
-                            val comments =
-                                commentsCache.get(videoId)
-                                    ?: commentRepository?.getComments(videoId)
-                                    ?: emptyList()
-                            commentsCache.put(videoId, comments)
-                            if (generation == playGeneration.get()) {
-                                _playerState.update { it.copy(comments = comments) }
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to fetch comments for $videoId", e)
-                        }
-                    }
-                }
-                if (prefs.showRecommendedVideos) {
-                    launch(Dispatchers.IO) {
-                        try {
-                            val recs =
-                                recommendationsCache.get(videoId)
-                                    ?: contentExtrasRepository?.getRecommendations(videoId)
-                                    ?: emptyList()
-                            recommendationsCache.put(videoId, recs)
-                            if (generation == playGeneration.get()) {
-                                _playerState.update { it.copy(recommendations = recs) }
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to fetch recommendations for $videoId", e)
-                        }
-                    }
-                }
-                launch(Dispatchers.IO) {
-                    try {
-                        val chapters =
-                            chaptersCache.get(videoId)
-                                ?: contentExtrasRepository?.getChapters(videoId)
-                                ?: emptyList()
-                        chaptersCache.put(videoId, chapters)
-                        if (generation == playGeneration.get() && chapters.isNotEmpty()) {
-                            _playerState.update { it.copy(chapters = chapters) }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to fetch chapters for $videoId", e)
-                    }
-                }
+            if (prefs.showComments) {
+                commentsCache.fetchOrReplay(
+                    extrasScope,
+                    videoId,
+                    generation,
+                    fetch = { commentRepository?.getComments(videoId) ?: emptyList() },
+                    update = { comments -> copy(comments = comments) },
+                )
             }
+            if (prefs.showRecommendedVideos) {
+                recommendationsCache.fetchOrReplay(
+                    extrasScope,
+                    videoId,
+                    generation,
+                    fetch = { contentExtrasRepository?.getRecommendations(videoId) ?: emptyList() },
+                    update = { recs -> copy(recommendations = recs) },
+                )
+            }
+            chaptersCache.fetchOrReplay(
+                extrasScope,
+                videoId,
+                generation,
+                fetch = { contentExtrasRepository?.getChapters(videoId) ?: emptyList() },
+                update = { chapters -> if (chapters.isNotEmpty()) copy(chapters = chapters) else this },
+            )
         }
 
         try {
             Log.i(TAG, "========================================")
             Log.i(TAG, "play() called with videoId: $videoId")
             Log.i(TAG, "videoId length: ${videoId.length}")
-            Log.i(TAG, "Is streaming URL: ${isStreamingUrl(videoId)}")
+            Log.i(TAG, "Is streaming URL: ${sourceResolver.isStreamingUrl(videoId)}")
             Log.i(TAG, "Is empty: ${videoId.isEmpty()}")
             Log.i(TAG, "========================================")
 
@@ -544,12 +382,15 @@ class PlayerRepositoryImpl(
             // what was causing the "tap -> nothing -> screen already loaded" gap.
             val resolution =
                 withContext(Dispatchers.IO) {
-                    if (!isStreamingUrl(videoId)) {
+                    if (!sourceResolver.isStreamingUrl(videoId)) {
                         Log.i(TAG, "Content URL detected, resolving to MediaSource + details...")
-                        resolveWithDetails(videoId, pendingResumePosition)
+                        sourceResolver.resolveWithDetails(videoId, pendingResumePosition)
                     } else {
                         Log.i(TAG, "Streaming URL detected, creating MediaSource from URL...")
-                        ResolutionResult(createMediaSourceFromUrl(videoId), null)
+                        com.tsutsen.platformplayer.core.data.repository.ResolutionResult(
+                            sourceResolver.createMediaSourceFromUrl(videoId),
+                            null,
+                        )
                     }
                 }
 
@@ -561,38 +402,20 @@ class PlayerRepositoryImpl(
                 return
             }
 
+            // Capture the stream URL's expiry (YouTube progressive URLs
+            // carry `expire=<epoch-seconds>`, ~6h) so resume-after-sleep
+            // can refresh the source before it dies. Null when absent.
+            currentSourceExpiresAtMs = parseSourceExpiryMs(resolution.mediaSource?.mediaItem?.localConfiguration?.uri)
+
             Log.i(TAG, "MediaSource to use: ${resolution.mediaSource?.javaClass?.simpleName}")
 
             // Only the ExoPlayer instance itself must be touched from the main thread.
             withContext(Dispatchers.Main) {
-                if (_exoPlayer == null) {
-                    Log.i(TAG, "Creating new ExoPlayer instance")
-                    _exoPlayer =
-                        ExoPlayer
-                            .Builder(context)
-                            .setHandleAudioBecomingNoisy(true)
-                            .build()
-                    _exoPlayer?.addListener(playerListener)
-                    _exoPlayer?.addAnalyticsListener(analyticsListener)
-                    // media3 1.x disables legacy text decoding by default, so
-                    // the raw VTT subtitle sources we attach can't be decoded
-                    // without opting back in.
-                    _exoPlayer?.let { player ->
-                        for (i in 0 until player.rendererCount) {
-                            if (player.getRendererType(i) == C.TRACK_TYPE_TEXT) {
-                                (player.getRenderer(i) as? TextRenderer)
-                                    ?.experimentalSetLegacyDecodingEnabled(true)
-                            }
-                        }
-                    }
-                    startPositionTicker()
-                    // A host may have attached while _exoPlayer was still null
-                    // (surface update ran once at first composition); push the
-                    // now-created instance so the surface actually renders.
-                    engine.onPlayerReplaced()
-                } else {
-                    Log.i(TAG, "Using existing ExoPlayer instance")
-                }
+                // Creates the player on first use; the created-instance hook
+                // starts the position ticker and pushes the instance to any
+                // host that attached while it was still null (surface update
+                // ran once at first composition).
+                sessionManager.ensurePlayer()
 
                 if (resolution.mediaSource == null) {
                     Log.e(TAG, "Failed to create MediaSource, cannot play video")
@@ -632,13 +455,13 @@ class PlayerRepositoryImpl(
                     currentVideoStreams.firstOrNull { it.url == currentVideoStreamUrl }?.height
                         ?: currentVideoStreams.firstOrNull()?.height
                 val unmuxedQuality = activeHeight?.let { "${it}p" }
-                if (unmuxedQuality != null) selectedQuality = unmuxedQuality
+                if (unmuxedQuality != null) trackSelection.selectedQuality = unmuxedQuality
                 _playerState.update {
                     it.copy(
                         subtitleLanguages = currentSubtitles.map { subtitle -> subtitle.name },
                         subtitleText = "",
                         audioTracks = currentAudioTracks.map { track ->
-                            AudioTrackInfo(track.id, track.label, track.language)
+                            com.tsutsen.platformplayer.core.model.AudioTrackInfo(track.id, track.label, track.language)
                         },
                         selectedAudioTrack =
                             resolution.videoDetails?.activeAudioTrack.orEmpty(),
@@ -654,7 +477,8 @@ class PlayerRepositoryImpl(
                     )
                 }
 
-                val subtitleSource = buildSubtitleMediaSource()
+                currentSubtitleSource = sourceResolver.buildAllSubtitleMediaSource(currentSubtitles)
+                val subtitleSource = currentSubtitleSource
                 val mediaSource =
                     if (subtitleSource != null) {
                         MergingMediaSource(true, resolution.mediaSource, subtitleSource)
@@ -662,7 +486,7 @@ class PlayerRepositoryImpl(
                         resolution.mediaSource
                     }
 
-                Log.i(TAG, "Setting MediaSource on ExoPlayer (subtitle=$selectedSubtitle)...")
+                Log.i(TAG, "Setting MediaSource on ExoPlayer (subtitle=${trackSelection.selectedSubtitle})...")
                 _exoPlayer?.setMediaSource(mediaSource)
                 // Seeking before prepare() makes this the player's initial
                 // position, so ExoPlayer starts its first load at the resume
@@ -687,35 +511,11 @@ class PlayerRepositoryImpl(
                     }
                 // Re-apply the user's track preferences to a (possibly new)
                 // player so quality/subtitle choices persist across videos.
-                applyTrackSelectionParameters()
+                trackSelection.applyTrackSelectionParameters(_exoPlayer)
 
                 // Register playback with the system: media notification,
                 // lock-screen controls, media buttons (media3 session service).
-                ContextCompat.startForegroundService(
-                    context,
-                    Intent(context, PlayerService::class.java),
-                )
-                if (mediaController == null) {
-                    val future =
-                        MediaController
-                            .Builder(
-                                context,
-                                SessionToken(
-                                    context,
-                                    ComponentName(context, PlayerService::class.java),
-                                ),
-                            ).buildAsync()
-                    future.addListener(
-                        {
-                            try {
-                                mediaController = future.get()
-                            } catch (t: Throwable) {
-                                Log.w(TAG, "MediaController connection failed", t)
-                            }
-                        },
-                        ContextCompat.getMainExecutor(context),
-                    )
-                }
+                sessionManager.startServiceAndConnectController()
 
                 Log.i(TAG, "Updating player state with video details...")
                 Log.i(TAG, "Resolution has videoDetails: ${resolution.videoDetails != null}")
@@ -728,7 +528,7 @@ class PlayerRepositoryImpl(
                 val currentVideo =
                     resolution.videoDetails?.let { details ->
                         Log.i(TAG, "Mapping video details to ContentItem...")
-                        mapVideoDetailsToContentItem(details)
+                        sourceResolver.mapVideoDetailsToContentItem(details)
                     } ?: run {
                         Log.w(TAG, "No video details, using stub ContentItem")
                         ContentItem(
@@ -769,187 +569,114 @@ class PlayerRepositoryImpl(
         }
     }
 
-    private suspend fun resolveWithDetails(
-        contentUrl: String,
-        resumePositionMs: Long = 0,
-    ): ResolutionResult =
-        try {
-            Log.i(TAG, "Resolving MediaSource + details for content URL: $contentUrl")
-            Log.i(TAG, "urlResolver is null: ${urlResolver == null}")
-            val resolver = urlResolver
-            if (resolver != null) {
-                Log.i(TAG, "Calling resolver.resolve()...")
-                val resolution = resolver.resolve(contentUrl, resumePositionMs)
-                Log.i(TAG, "Resolved MediaSource: ${resolution.mediaSource?.javaClass?.simpleName}")
-                Log.i(TAG, "Video details available: ${resolution.videoDetails != null}")
-                if (resolution.videoDetails != null) {
-                    Log.i(TAG, "VideoDetails title: ${resolution.videoDetails.title}")
-                }
-                resolution
-            } else {
-                Log.w(TAG, "WARNING: VideoUrlResolver not provided, creating MediaSource from URL")
-                ResolutionResult(createMediaSourceFromUrl(contentUrl), null)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to resolve, creating from URL: $contentUrl", e)
-            ResolutionResult(createMediaSourceFromUrl(contentUrl), null)
-        }
-
     /**
-     * Transparent playback recovery for source errors that a fresh resolve
-     * can fix. SABR playback dies mid-stream with a po-token rejection
-     * (YouTube returns 403 / ATTESTATION_REQUIRED on requests after the
-     * first — typical trigger: seek or rebuffer). A re-resolve of the same
-     * video mints a fresh attestation, so instead of surfacing a dead
-     * player we silently rebuild the source and continue at the position
-     * the error interrupted.
-     *
-     * Called from onPlayerError (main thread). Returns true when recovery
-     * was started — the caller then skips publishing the error to the UI.
+     * Demo-mode playback: a `demo://video/...` url plays the 6 bundled demo
+     * images (core/ui drawable-nodpi demo_1..6) as a Media3 image playlist,
+     * 5 s per image, looping ([Player.REPEAT_MODE_ALL]). Titles/channels
+     * derive from the same [DemoPlayback] mapping the feed cards use, so the
+     * player shows the title the tapped card had. No network, no resolution
+     * step, no history persistence (guarded in the history persister).
      */
-    private fun attemptSourceRecovery(error: androidx.media3.common.PlaybackException): Boolean {
-        // Only recover errors our source layer explicitly marked as such —
-        // network glitches etc. keep their normal retry/error handling.
-        var cause: Throwable? = error
-        var recoverable: RecoverableSourceError? = null
-        while (cause != null) {
-            if (cause is RecoverableSourceError) {
-                recoverable = cause
-                break
-            }
-            cause = cause.cause
+    private suspend fun playDemoImages(
+        videoId: String,
+        generation: Int,
+        initial: com.tsutsen.platformplayer.core.model.ContentItem?,
+    ) {
+        Log.i(TAG, "Demo mode playback: $videoId")
+        val parsed = DemoPlayback.parseUrl(videoId)
+        if (parsed == null) {
+            Log.e(TAG, "Malformed demo url: $videoId")
+            _playerState.update { it.copy(isLoading = false, error = "Malformed demo url") }
+            return
         }
-        if (recoverable == null) return false
+        val (page, index) = parsed
+        val seed = DemoPlayback.seedFor(page, index)
+        val resolvedThumbnail =
+            initial?.thumbnailUrl ?: demoResourceUri(DemoPlayback.thumbnailResName(seed))
+        val item =
+            initial?.copy(durationMs = DemoPlayback.TOTAL_DURATION_MS)
+                ?: com.tsutsen.platformplayer.core.model.ContentItem(
+                    id = "demo-$page-$index",
+                    url = videoId,
+                    title = DemoPlayback.title(seed),
+                    author =
+                        com.tsutsen.platformplayer.core.model.Author(
+                            id = DemoPlayback.channelUrl(seed),
+                            name = DemoPlayback.channel(seed),
+                            url = DemoPlayback.channelUrl(seed),
+                            thumbnailUrl = null,
+                        ),
+                    thumbnailUrl = resolvedThumbnail,
+                    contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+                    publishedAt = DemoPlayback.publishedAt(seed),
+                    durationMs = DemoPlayback.TOTAL_DURATION_MS,
+                    description = "Demo mode content — no network fetch",
+                )
 
-        val url = currentPlayUrl
-        if (url.isNullOrEmpty()) return false
-        if (sourceRecoveryBudget <= 0) {
-            Log.w(TAG, "Source recovery budget exhausted; surfacing error")
-            return false
+        // The player was closed (or superseded) before this play ran.
+        if (generation != playGeneration.get()) {
+            Log.i(TAG, "Demo play aborted: superseded ($videoId)")
+            return
         }
-        val now = System.currentTimeMillis()
-        if (now - lastSourceRecoveryAtMs < SOURCE_RECOVERY_MIN_INTERVAL_MS) {
-            Log.w(TAG, "Source recovery attempted too recently; surfacing error")
-            return false
+
+        // Slideshow duration (6 x 5 s) — the persister sees a sane total.
+        _playerState.update {
+            it.copy(
+                isLoading = false,
+                isPlaying = true,
+                isCompleted = false,
+                error = null,
+                currentVideo = item,
+                durationMs = DemoPlayback.TOTAL_DURATION_MS,
+                currentPositionMs = 0L,
+                videoQualities = emptyList(),
+                audioTracks = emptyList(),
+                subtitleLanguages = emptyList(),
+            )
         }
-        sourceRecoveryBudget--
-        lastSourceRecoveryAtMs = now
 
-        val positionMs = _exoPlayer?.currentPosition ?: 0L
-        Log.w(TAG, "Recoverable source error (${recoverable.javaClass.simpleName}); " +
-            "re-resolving $url at ${positionMs}ms (budget left: $sourceRecoveryBudget)")
-
-        // Keep the player usable while re-resolving: clear the failed state
-        // and show loading, so the UI doesn't flash the error slab.
-        _playerState.update { it.copy(isLoading = true, error = null) }
-
-        extrasScope.launch {
-            try {
-                // Drop cached attestation tokens first — a plain re-resolve
-                // can return the same rejected token from the plugin's cache.
-                withContext(Dispatchers.IO) { urlResolver?.invalidateSourceCache(url) }
-                val resolution = withContext(Dispatchers.IO) { resolveWithDetails(url, positionMs) }
-                val mediaSource = resolution.mediaSource
-                if (mediaSource == null) {
-                    Log.e(TAG, "Source recovery resolve produced no MediaSource")
-                    _playerState.update { it.copy(isLoading = false, error = "Failed to resolve video source") }
-                    return@launch
+        withContext(Dispatchers.Main) {
+            sessionManager.ensurePlayer()
+            val player =
+                _exoPlayer ?: run {
+                    Log.e(TAG, "Demo play: no player instance")
+                    _playerState.update { it.copy(isLoading = false, error = "Failed to create player") }
+                    return@withContext
                 }
-                withContext(Dispatchers.Main) {
-                    val player = _exoPlayer
-                    if (player == null) {
-                        Log.w(TAG, "Source recovery aborted: player gone")
-                        return@withContext
+            val mediaItems =
+                (1..DemoPlayback.IMAGE_COUNT).mapNotNull { n ->
+                    val uri = demoResourceUri("demo_$n")
+                    if (uri.isEmpty()) {
+                        null
+                    } else {
+                        MediaItem
+                            .Builder()
+                            .setUri(Uri.parse(uri))
+                            .setImageDurationMs(DemoPlayback.IMAGE_DURATION_MS)
+                            .build()
                     }
-                    currentPrimarySource = mediaSource
-                    player.setMediaSource(mediaSource)
-                    player.seekTo(positionMs)
-                    player.prepare()
-                    player.playWhenReady = true
-                    Log.i(TAG, "Source recovery applied; playback rebuilt at ${positionMs}ms")
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Source recovery failed", e)
-                _playerState.update { it.copy(isLoading = false, error = e.message ?: "Playback failed") }
+            if (mediaItems.isEmpty()) {
+                Log.e(TAG, "Demo play: no demo images found")
+                _playerState.update { it.copy(isLoading = false, error = "Demo images unavailable") }
+                return@withContext
             }
+            player.setMediaItems(mediaItems)
+            // Loop the slideshow until another video is played.
+            player.repeatMode = Player.REPEAT_MODE_ALL
+            player.prepare()
+            player.playWhenReady = true
+            // Media notification / lock-screen controls for the demo item.
+            sessionManager.startServiceAndConnectController()
+            Log.i(TAG, "Demo slideshow started (${mediaItems.size} images)")
         }
-        return true
     }
 
-    private fun isStreamingUrl(url: String): Boolean =
-        url.contains(".mpd") || url.contains(".m3u8") || url.contains("dash") || url.contains("hls")
-
-    /**
-     * Map VideoDetails to ContentItem for display in the player UI.
-     */
-    private fun mapVideoDetailsToContentItem(details: VideoDetails): ContentItem =
-        ContentItem(
-            id = details.id,
-            url = details.url,
-            title = details.title,
-            author =
-                details.authorName?.let {
-                    Author(
-                        id = details.id,
-                        name = it,
-                        url = details.authorUrl,
-                        thumbnailUrl = details.authorThumbnailUrl,
-                        subscriberCount = details.authorSubscriberCount,
-                    )
-                },
-            thumbnailUrl = details.thumbnailUrl,
-            contentType =
-                if (details.isLive) com.tsutsen.platformplayer.core.model.ContentType.LIVE
-                else com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
-            publishedAt = details.publishedAtMs,
-            durationMs = details.durationMs,
-            viewCount = details.viewCount,
-            description = details.description,
-            likeCount = details.likeCount,
-            dislikeCount = details.dislikeCount,
-            sourceIconUrl = details.sourceIconUrl,
-        )
-
-    private fun createHttpDataSourceFactory(): DefaultHttpDataSource.Factory =
-        DefaultHttpDataSource
-            .Factory()
-            .setUserAgent("Bluejay/1.0")
-            .setAllowCrossProtocolRedirects(true)
-
-    private fun createMediaSourceFromUrl(url: String): MediaSource {
-        Log.i(TAG, "createMediaSourceFromUrl() called with URL: $url")
-        Log.i(TAG, "URL contains .mpd: ${url.contains(".mpd")}")
-        Log.i(TAG, "URL contains .m3u8: ${url.contains(".m3u8")}")
-        Log.i(TAG, "URL contains 'dash': ${url.contains("dash")}")
-        Log.i(TAG, "URL contains 'hls': ${url.contains("hls")}")
-
-        val httpDataSourceFactory = createHttpDataSourceFactory()
-
-        return when {
-            url.contains(".mpd") || url.contains("dash") -> {
-                Log.i(TAG, "Creating DASH MediaSource for URL: $url")
-                DashMediaSource
-                    .Factory(httpDataSourceFactory)
-                    .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
-            }
-
-            url.contains(".m3u8") || url.contains("hls") -> {
-                Log.i(TAG, "Creating HLS MediaSource for URL: $url")
-                HlsMediaSource
-                    .Factory(httpDataSourceFactory)
-                    .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
-            }
-
-            else -> {
-                // Check if this is a progressive streaming URL that needs DASH conversion
-                Log.i(TAG, "Checking if URL is progressive streaming...")
-                // For now, try progressive media source
-                Log.i(TAG, "Creating Progressive MediaSource for URL: $url")
-                ProgressiveMediaSource
-                    .Factory(httpDataSourceFactory)
-                    .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
-            }
-        }
+    /** `android.resource://` uri for a drawable resolved by name (demo images live in core/ui). */
+    private fun demoResourceUri(resName: String): String {
+        val resId = context.resources.getIdentifier(resName, "drawable", context.packageName)
+        if (resId == 0) return ""
+        return "android.resource://${context.packageName}/$resId"
     }
 
     override suspend fun pause() {
@@ -1015,26 +742,26 @@ class PlayerRepositoryImpl(
             val option =
                 if (height == null) currentVideoStreams.firstOrNull() // "Auto" = best
                 else currentVideoStreams.firstOrNull { it.height == height }
-            selectedQuality = quality
+            trackSelection.selectedQuality = quality
             _playerState.update { it.copy(selectedQuality = quality) }
             if (option != null && option.url != currentVideoStreamUrl) {
                 rebuildUnmuxedSource(videoUrl = option.url)
             }
             return
         }
-        selectedQuality = quality
-        applyTrackSelectionParameters()
+        trackSelection.selectedQuality = quality
+        trackSelection.applyTrackSelectionParameters(_exoPlayer)
         _playerState.update { it.copy(selectedQuality = quality) }
     }
 
     override suspend fun setSubtitle(selection: String) {
-        if (selection != "Off" && selection != "Auto") {
-            lastExplicitSubtitle = selection
+        if (selection != TrackSelectionValues.OFF && selection != TrackSelectionValues.AUTO) {
+            trackSelection.lastExplicitSubtitle = selection
         }
-        selectedSubtitle = selection
-        applyTrackSelectionParameters()
+        trackSelection.selectedSubtitle = selection
+        trackSelection.applyTrackSelectionParameters(_exoPlayer)
         _playerState.update { it.copy(selectedSubtitle = selection) }
-        applySubtitleSource()
+        trackSelection.applySubtitleSelection(_exoPlayer)
     }
 
     override suspend fun setAudioTrack(selection: String) {
@@ -1043,13 +770,13 @@ class PlayerRepositoryImpl(
         val track = currentAudioTracks.firstOrNull { it.label == selection }
         if (track != null) {
             if (selection != _playerState.value.selectedAudioTrack) {
-                preferredAudioTrack = selection
+                trackSelection.preferredAudioTrack = selection
                 rebuildUnmuxedSource(audioLabel = selection)
             }
             return
         }
-        preferredAudioTrack = selection
-        applyTrackSelectionParameters()
+        trackSelection.preferredAudioTrack = selection
+        trackSelection.applyTrackSelectionParameters(_exoPlayer)
     }
 
     /**
@@ -1073,17 +800,17 @@ class PlayerRepositoryImpl(
                 val wasReady = player.playWhenReady
                 val videoSource =
                     ProgressiveMediaSource
-                        .Factory(createHttpDataSourceFactory())
+                        .Factory(sourceResolver.createHttpDataSourceFactory())
                         .createMediaSource(MediaItem.fromUri(Uri.parse(vUrl)))
                 val audioSource =
                     ProgressiveMediaSource
-                        .Factory(createHttpDataSourceFactory())
+                        .Factory(sourceResolver.createHttpDataSourceFactory())
                         .createMediaSource(MediaItem.fromUri(Uri.parse(audio.url)))
                 val base = MergingMediaSource(true, videoSource, audioSource)
-                // Subtitle toggles rebuild from the primary source — point it
-                // at the new merge so the choices survive.
+                // Subtitle toggles are track-selection changes over the
+                // pre-merged sources — keep the merge alive across the swap.
                 currentPrimarySource = base
-                val subtitleSource = buildSubtitleMediaSource()
+                val subtitleSource = currentSubtitleSource
                 player.setMediaSource(
                     if (subtitleSource != null) MergingMediaSource(true, base, subtitleSource)
                     else base,
@@ -1100,116 +827,14 @@ class PlayerRepositoryImpl(
     }
 
     override suspend fun toggleSubtitles() {
-        val current = selectedSubtitle
-        if (current != "Off" && current != "Auto") {
-            setSubtitle("Off")
+        val current = trackSelection.selectedSubtitle
+        if (current != TrackSelectionValues.OFF && current != TrackSelectionValues.AUTO) {
+            setSubtitle(TrackSelectionValues.OFF)
             return
         }
-        val target = lastExplicitSubtitle ?: currentSubtitles.firstOrNull()?.name
+        val target =
+            trackSelection.lastExplicitSubtitle ?: currentSubtitles.firstOrNull()?.name
         if (target != null) setSubtitle(target)
-    }
-
-    /**
-     * Rebuilds the player's media source with (or without) the subtitle
-     * source matching [selectedSubtitle], keeping the current position.
-     */
-    private suspend fun applySubtitleSource() {
-        withContext(Dispatchers.Main) {
-            val player = _exoPlayer ?: return@withContext
-            val primary = currentPrimarySource ?: return@withContext
-            val positionBefore = player.currentPosition
-            val wasReady = player.playWhenReady
-            val subtitleSource = buildSubtitleMediaSource()
-            player.setMediaSource(
-                if (subtitleSource != null) MergingMediaSource(true, primary, subtitleSource) else primary,
-            )
-            player.prepare()
-            player.playWhenReady = wasReady
-            if (positionBefore > 0) player.seekTo(positionBefore)
-        }
-    }
-
-    /**
-     * Builds a [SingleSampleMediaSource] for the currently selected
-     * subtitle, or null when no subtitle is selected ("Auto"/"Off"),
-     * the selection doesn't match a track of the current video, the
-     * format is unsupported, or resolving the content fails.
-     */
-    private suspend fun buildSubtitleMediaSource(): MediaSource? {
-        val subtitle = currentSubtitles.firstOrNull { it.name == selectedSubtitle } ?: return null
-        val format = subtitle.format?.lowercase() ?: return null
-        if (format !in SUPPORTED_SUBTITLE_FORMATS) return null
-        val uri = runCatching { subtitle.contentUri() }.getOrNull() ?: return null
-        return SingleSampleMediaSource
-            .Factory(DefaultDataSource.Factory(context, createHttpDataSourceFactory()))
-            .createMediaSource(
-                MediaItem.SubtitleConfiguration
-                    .Builder(uri)
-                    .setMimeType(subtitle.format)
-                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                    .build(),
-                C.TIME_UNSET,
-            )
-    }
-
-    /**
-     * Rebuilds the player's track selection parameters from the user's
-     * quality/subtitle preferences.
-     *
-     * Quality: "NNNp" caps the maximum video height (media3 picks the
-     * highest track at or below it); "Auto" clears the cap.
-     * Subtitles: "Off" ignores all text tracks, a language code prefers
-     * that language, "Auto" leaves selection to the default heuristics.
-     */
-    private fun applyTrackSelectionParameters() {
-        val player = _exoPlayer ?: return
-        val builder = TrackSelectionParameters.Builder()
-        val height = selectedQuality.removeSuffix("p").toIntOrNull()
-        if (height != null && height > 0) {
-            // Constrain a narrow band around the selected height so the exact
-            // quality is forced. A max-only cap would leave lower tracks
-            // "acceptable" and SABR's sticky ABR would keep the current (lower)
-            // format instead of stepping up. "NNNp" => [NNN-10, NNN+10]; Auto => unconstrained.
-            //
-            // maxWidth MUST be a real large value (9999), not -1: media3's
-            // isWithinMaxConstraints checks `format.width <= maxVideoWidth`, so -1 makes
-            // EVERY video track fail the max constraint. Combined with the in-band high-res
-            // track being ineligible, that sends media3 down the "outside min & max ->
-            // prefer lower quality" path and it collapses to 144p. Grayjay uses 9999.
-            builder.setMinVideoSize(0, height - 10)
-            builder.setMaxVideoSize(9999, height + 10)
-        }
-        when (selectedSubtitle) {
-            "Off" -> {
-                builder.setIgnoredTextSelectionFlags(
-                    C.SELECTION_FLAG_AUTOSELECT or C.SELECTION_FLAG_FORCED or C.SELECTION_FLAG_DEFAULT,
-                )
-            }
-
-            "Auto" -> {
-                Unit
-            }
-
-            else -> {
-                builder.setPreferredTextLanguages(selectedSubtitle)
-            }
-        }
-        // Audio: select by language when the track carries one, by label
-        // otherwise. ponytail: two tracks sharing a language resolve to the
-        // first one — per-track group/track forcing (removed from the
-        // Player API in media3 1.9) if that ever matters.
-        preferredAudioTrack?.let { label ->
-            val track = _playerState.value.audioTracks.firstOrNull { it.label == label }
-            if (track != null) {
-                val language = track.language
-                if (language != null) {
-                    builder.setPreferredAudioLanguages(language)
-                } else {
-                    builder.setPreferredAudioLabels(track.label)
-                }
-            }
-        }
-        player.setTrackSelectionParameters(builder.build())
     }
 
     override suspend fun toggleFullscreen() {
@@ -1243,19 +868,41 @@ class PlayerRepositoryImpl(
         _playerState.update { it.copy(comments = comments, recommendations = recommendations) }
     }
 
+    override suspend fun loadMoreRecommendations(url: String): List<Card> {
+        val more =
+            contentExtrasRepository?.loadMoreRecommendations(url) ?: return emptyList()
+        if (more.isNotEmpty()) {
+            // Append into the shared state; the extras repo itself no-ops
+            // for stale URLs, and the video guard keeps a fast switch from
+            // appending onto the wrong list.
+            val current = _playerState.value
+            if (current.currentVideo?.url == url) {
+                _playerState.update { it.copy(recommendations = current.recommendations + more) }
+            }
+        }
+        return more
+    }
+
+    /**
+     * Parses the `expire` query parameter (epoch seconds) of a resolved
+     * stream URL into epoch ms. Plain URI query parsing — no extra deps.
+     * Null when the URI carries no expiry (DASH manifests, plain files).
+     */
+    private fun parseSourceExpiryMs(sourceUri: Uri?): Long? =
+        sourceUri?.getQueryParameter("expire")?.toLongOrNull()?.let { it * 1000 }
+
     override suspend fun close() {
         // Invalidate any in-flight play() so it cannot resurrect the player
         // after its resolution completes (close-during-load).
         playGeneration.incrementAndGet()
-        positionTickerJob?.cancel()
-        positionTickerJob = null
-        mediaController?.release()
-        mediaController = null
+        positionTracker.stop()
+        sessionManager.disconnectMediaController()
         context.stopService(Intent(context, PlayerService::class.java))
-        _exoPlayer?.release()
-        _exoPlayer = null
+        sessionManager.releasePlayer()
         currentPrimarySource = null
         currentSubtitles = emptyList()
+        currentSourceExpiresAtMs = null
+        Log.i(TAG, "Source recovery telemetry: ${sourceRecoveryTelemetry.snapshot()}")
         _playerState.update {
             PlayerState(
                 isPlaying = false,
@@ -1268,41 +915,6 @@ class PlayerRepositoryImpl(
                 brightness = 1f,
                 playbackSpeed = 1f,
             )
-        }
-    }
-
-    private companion object {
-        // Formats ExoPlayer's text renderer can display (mirrors Grayjay).
-        val SUPPORTED_SUBTITLE_FORMATS = setOf("text/vtt", "application/x-subrip")
-
-        // Transparent source-recovery budget per play() call, and the
-        // minimum spacing between recovery attempts (guards against a
-        // persistently rejected source looping recoveries).
-        const val SOURCE_RECOVERY_MAX_ATTEMPTS = 3
-        const val SOURCE_RECOVERY_MIN_INTERVAL_MS = 5_000L
-    }
-}
-
-/**
- * Small thread-safe LRU cache keyed by video URL.
- */
-private class ExtrasCache<V>(
-    private val capacity: Int = 50,
-) {
-    private val map = LinkedHashMap<String, V>(16, 0.75f, true)
-
-    @Synchronized
-    fun get(key: String): V? = map[key]
-
-    @Synchronized
-    fun put(
-        key: String,
-        value: V,
-    ) {
-        map[key] = value
-        while (map.size > capacity) {
-            val eldest = map.keys.first()
-            map.remove(eldest)
         }
     }
 }

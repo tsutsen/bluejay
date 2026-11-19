@@ -6,9 +6,10 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -61,6 +62,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -71,8 +73,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.collectAsActiveState
+import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
+import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCardInnerGap
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.EmptyState
@@ -120,8 +125,8 @@ fun SubscriptionsScreen(
             is SubscriptionsUiState.Success -> {
                 if (state.creators.isEmpty() && state.items.isEmpty() && !state.isLoading) {
                     EmptyState(
-                        message = "No subscriptions yet.\nSubscribe to channels to see their content here.",
-                        actionLabel = "Find channels",
+                        message = stringResource(R.string.subscriptions_empty_message),
+                        actionLabel = stringResource(R.string.subscriptions_find_channels),
                         onAction = { navigator.navigateSearch(autoFocus = false) },
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -159,14 +164,14 @@ fun SubscriptionsScreen(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
-                            text = "Error: ${state.message}",
+                            text = stringResource(R.string.subscriptions_error, state.message),
                             color = MaterialTheme.colorScheme.error,
                         )
                         Spacer(modifier = Modifier.height(Tokens.SpaceLg))
                         androidx.compose.material3.Button(
                             onClick = { viewModel.refresh() },
                         ) {
-                            Text("Retry")
+                            Text(stringResource(R.string.common_retry))
                         }
                     }
                 }
@@ -217,6 +222,52 @@ private fun SubscriptionsContent(
     val rootOrigin = remember { mutableStateOf(Offset.Zero) }
     val pillSize = remember { mutableStateOf(IntSize.Zero) }
     val slide = remember { Animatable(0f) }
+    var showCreatorsGrid by remember { mutableStateOf(false) }
+    if (showCreatorsGrid) {
+        BluejayModalBottomSheet(
+            onDismiss = { showCreatorsGrid = false },
+            title = stringResource(R.string.subscriptions_title),
+        ) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Tokens.SpaceLg),
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
+                contentPadding = PaddingValues(bottom = Tokens.SpaceLg),
+            ) {
+                items(state.creators.size) { i ->
+                    val creator = state.creators[i]
+                    Column(
+                        modifier =
+                            Modifier
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable {
+                                    onCreatorSelected(creator.id)
+                                    showCreatorsGrid = false
+                                }
+                                .padding(Tokens.SpaceSm),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+                    ) {
+                        CreatorAvatar(
+                            creator = creator,
+                            isSelected = creator.id == state.activeCreatorId,
+                            onClick = {
+                                onCreatorSelected(creator.id)
+                                showCreatorsGrid = false
+                            },
+                        )
+                        Text(
+                            text = creator.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
     LaunchedEffect(peek) {
         if (peek != null) {
             slide.snapTo(0f)
@@ -228,23 +279,11 @@ private fun SubscriptionsContent(
     // Selecting a creator (or "All") closes the peek.
     LaunchedEffect(state.activeCreatorId) { peek = null }
 
-    // Paging footer, same as home: only after a load-more has been running
-    // for 2s — never during the initial/refresh load (items empty then).
-    var showMore by remember { mutableStateOf(false) }
-    LaunchedEffect(state.isLoading) {
-        if (state.isLoading) {
-            kotlinx.coroutines.delay(2000)
-            if (state.isLoading) showMore = true
-        } else {
-            showMore = false
-        }
-    }
-
     val headerTitle =
         state.creators
             .firstOrNull { it.id == state.activeCreatorId }
-            ?.let { "by ${it.name}" }
-            ?: "All subs"
+            ?.let { stringResource(R.string.subscriptions_by_creator, it.name) }
+            ?: stringResource(R.string.subscriptions_all_subs)
 
     // One creator item: the avatar plus its window-relative bounds, so the
     // peek pill can anchor to it. (Plain map — the bounds are read by the
@@ -330,19 +369,6 @@ private fun SubscriptionsContent(
                                 layout = ContainerLayout.Grid(gridColumns),
                                 isLoading = state.isLoading,
                                 hasMorePages = state.hasMorePages,
-                                trailingContent =
-                                    if (showMore && state.isLoading && state.hasMorePages && state.items.isNotEmpty()) {
-                                        {
-                                            Box(
-                                                modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                androidx.compose.material3.ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
-                                            }
-                                        }
-                                    } else {
-                                        null
-                                    },
                                 onCardClick = { card -> onItemClicked(card as ModelVideoCard) },
                                 onLoadMore = onLoadMore,
                                 modifier = Modifier.fillMaxWidth(),
@@ -371,17 +397,20 @@ private fun SubscriptionsContent(
                     contentPadding = PaddingValues(top = TabContentTopPadding),
                 ) {
                     item {
+                        // Long-press opens the full creators grid (same layout
+                        // as the search results' creator grid).
                         CreatorAvatar(
                             creator =
                                 SubscriptionCreator(
                                     id = "",
-                                    name = "All",
+                                    name = stringResource(R.string.subscriptions_creator_all),
                                     thumbnailUrl = null,
                                     subscriberCount = null,
                                     url = "",
                                 ),
                             isSelected = state.activeCreatorId == null,
                             onClick = { onCreatorSelected(null) },
+                            onLongClick = { showCreatorsGrid = true },
                         )
                     }
                     items(state.creators) { creator ->
@@ -420,17 +449,20 @@ private fun SubscriptionsContent(
                     contentPadding = PaddingValues(horizontal = Tokens.SpaceLg),
                 ) {
                     item {
+                        // Long-press opens the full creators grid (same layout
+                        // as the search results' creator grid).
                         CreatorAvatar(
                             creator =
                                 SubscriptionCreator(
                                     id = "",
-                                    name = "All",
+                                    name = stringResource(R.string.subscriptions_creator_all),
                                     thumbnailUrl = null,
                                     subscriberCount = null,
                                     url = "",
                                 ),
                             isSelected = state.activeCreatorId == null,
                             onClick = { onCreatorSelected(null) },
+                            onLongClick = { showCreatorsGrid = true },
                         )
                     }
                     items(state.creators) { creator ->
@@ -462,19 +494,6 @@ private fun SubscriptionsContent(
                             layout = ContainerLayout.List,
                             isLoading = state.isLoading,
                             hasMorePages = state.hasMorePages,
-                            trailingContent =
-                                if (showMore && state.isLoading && state.hasMorePages && state.items.isNotEmpty()) {
-                                    {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = Tokens.SpaceMd),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            ContainedLoadingIndicator(modifier = Modifier.size(Tokens.IconMd))
-                                        }
-                                    }
-                                } else {
-                                    null
-                                },
                             onCardClick = { card -> onItemClicked(card as ModelVideoCard) },
                             onLoadMore = onLoadMore,
                             modifier = Modifier.fillMaxWidth(),
@@ -662,31 +681,31 @@ private fun SubsHeader(
         FilterChip(
             selected = filterVideo,
             onClick = onVideoToggle,
-            label = { Text("Videos") },
+            label = { Text(stringResource(R.string.subscriptions_filter_videos)) },
             shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterStreams,
             onClick = onStreamsToggle,
-            label = { Text("Live") },
+            label = { Text(stringResource(R.string.subscriptions_filter_live)) },
             shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterStarted,
             onClick = onStartedToggle,
-            label = { Text("Started") },
+            label = { Text(stringResource(R.string.subscriptions_filter_started)) },
             shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterWatched,
             onClick = onWatchedToggle,
-            label = { Text("Watched") },
+            label = { Text(stringResource(R.string.subscriptions_filter_watched)) },
             shapes = tokenizedChipShapes(),
         )
         FilterChip(
             selected = filterShorts,
             onClick = onShortsToggle,
-            label = { Text("Shorts") },
+            label = { Text(stringResource(R.string.subscriptions_filter_shorts)) },
             shapes = tokenizedChipShapes(),
         )
     }

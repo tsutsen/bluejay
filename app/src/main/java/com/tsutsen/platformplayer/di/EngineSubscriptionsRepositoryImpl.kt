@@ -15,6 +15,7 @@ import com.tsutsen.platformplayer.core.model.SubscriptionFeed
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.Subscription
 import com.tsutsen.platformplayer.states.EnabledClientResolver
+import com.tsutsen.platformplayer.states.*
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StateSubscriptions
 import com.tsutsen.platformplayer.stores.FragmentedStorage
@@ -45,20 +46,23 @@ internal data class SubsFeedCache(
 /** File-store key of the subs feed cache (also read by HomebrewRecommendations source 2). */
 internal const val SUBS_FEED_CACHE_KEY = "subscriptions_feed_cache"
 
-/** Cached feed is a launch shortcut only; after this, wait for fresh data. */
+/** Freshness hint (lastSyncedAt indicators); stale caches still paint. */
 internal const val SUBS_FEED_CACHE_TTL_MS = 60L * 60L * 1000L
 
 /**
  * The subs feed file cache when still fresh (< [SUBS_FEED_CACHE_TTL_MS]),
- * else null. Read by the Subs tab (cache-first paint) and by
- * HomebrewRecommendations (source 2 seeds from it).
+ * else null. Read by HomebrewRecommendations (source 2 seeds from it).
+ * With [allowStale] the cache is returned regardless of age — the Subs
+ * tab paints it stale-while-revalidate while the network verify runs.
  */
-internal suspend fun readFreshSubsFeedCache(): List<IPlatformContent>? =
+internal suspend fun readFreshSubsFeedCache(allowStale: Boolean = false): List<IPlatformContent>? =
     try {
         val raw = FragmentedStorage.get<StringStorage>(SUBS_FEED_CACHE_KEY).value
         if (raw.isBlank()) return null // StringStorage default is ""
         val payload = Serializer.json.decodeFromString<SubsFeedCache>(raw)
-        if (System.currentTimeMillis() - payload.cachedAt > SUBS_FEED_CACHE_TTL_MS || payload.items.isEmpty()) {
+        if ((!allowStale &&
+                System.currentTimeMillis() - payload.cachedAt > SUBS_FEED_CACHE_TTL_MS) ||
+            payload.items.isEmpty()) {
             null
         } else {
             payload.items.toList()
@@ -91,14 +95,21 @@ class EngineSubscriptionsRepositoryImpl
         private val historyDao: HistoryDao,
     ) : SubscriptionRepository {
         // Starts "loading" so the screen shows a spinner from the first
-        // frame instead of a momentary empty state.
-        private val _feed = MutableStateFlow(SubscriptionFeed(isLoading = true))
+        // frame instead of a momentary empty state. hasMorePages=true from
+        // the start: the overdrag gesture must be armed even before the
+        // cache-first paint lands (a load-more arriving this early is
+        // queued by loadMore() and replayed when the fresh pager is ready).
+        private val _feed = MutableStateFlow(SubscriptionFeed(isLoading = true, hasMorePages = true))
         override val feed: StateFlow<SubscriptionFeed> = _feed.asStateFlow()
 
         // The subscription-change listener lives outside any ViewModel.
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         private var flow: PagerFlow<IPlatformContent, IPlatformContent>? = null
+
+        // Demo mode (Settings > About): last generated demo page for
+        // loadMore(); demo content never touches the engine or the cache.
+        private var demoPage = 0
 
         // File-backed cache of the last loaded global feed; painted on launch
         // while a fresh fetch runs (same UX as the home feed's Room cache).
@@ -118,6 +129,11 @@ class EngineSubscriptionsRepositoryImpl
 
         override suspend fun loadCreators() {
             Logger.i(TAG, "Loading creators...")
+            // Demo mode: simulated creators + demo feed, no engine calls.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoFeed(reset = true)
+                return
+            }
             try {
                 val creators = scanCreators()
                 _feed.update { it.copy(creators = creators) }
@@ -135,7 +151,18 @@ class EngineSubscriptionsRepositoryImpl
             reload(updated = true)
         }
 
+        // A load-more that arrived while the fresh fetch was still building
+        // its pager (cache-first paint, no flow yet): replayed once the
+        // fresh pager is ready.
+        @Volatile private var pendingLoadMore = false
+
         override suspend fun loadMore() {
+            // Demo mode: append the next deterministic demo page, no engine
+            // calls, no cache write.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoFeed(reset = false)
+                return
+            }
             withContext(Dispatchers.IO) {
                 val f = flow
                 if (f != null && f.hasMore) {
@@ -144,7 +171,29 @@ class EngineSubscriptionsRepositoryImpl
                     f.loadNextPage()
                     Logger.i(TAG, "Loaded more (total: ${f.items.size})")
                     applyFilters()
+                    // Only the global feed pages belong in the feed cache —
+                    // a per-channel pager's pages must not overwrite it.
+                    if (_feed.value.activeCreatorId == null) saveFeedCache(f.items)
+                } else if (_feed.value.isLoading) {
+                    // The fresh fetch is still initializing — queue the
+                    // overdrag instead of dropping it on the floor.
+                    Logger.i(TAG, "loadMore during initial fetch: queued")
+                    pendingLoadMore = true
                 }
+            }
+        }
+
+        /** Replays a load-more queued while the fresh pager was building. */
+        private suspend fun runPendingLoadMore() {
+            if (!pendingLoadMore) return
+            pendingLoadMore = false
+            val f = flow ?: return
+            if (f.hasMore) {
+                _feed.update { it.copy(isLoading = true) }
+                f.loadNextPage()
+                Logger.i(TAG, "Loaded queued more (total: ${f.items.size})")
+                applyFilters()
+                if (_feed.value.activeCreatorId == null) saveFeedCache(f.items)
             }
         }
 
@@ -153,12 +202,20 @@ class EngineSubscriptionsRepositoryImpl
             _feed.update {
                 it.copy(activeCreatorId = creatorId, items = emptyList(), isLoading = true)
             }
+            // Demo mode: re-generate the demo cards scoped to the demo
+            // channel (demo://channel/<n>), no engine calls.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoFeed(reset = true)
+                return
+            }
             withContext(Dispatchers.IO) {
                 try {
                     // A fresh pager per scope: the previous scope's pages
                     // don't apply to this one.
                     flow = newFlow(updated = false)
                     flow!!.loadInitial()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error loading creator feed", e)
                     _feed.update { it.copy(isLoading = false, error = e.message) }
@@ -201,13 +258,28 @@ class EngineSubscriptionsRepositoryImpl
         @Volatile private var historyByUrl: Map<String, HistoryEntity> = emptyMap()
 
         private suspend fun reload(updated: Boolean) {
-            _feed.update { it.copy(isLoading = true) }
+            // Demo mode: simulated feed, no engine calls, no cache write.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoFeed(reset = true)
+                return
+            }
+            // Revisit (tab re-entry, not pull-to-refresh) with the engine's
+            // global feed still in memory: the pager window is emitted
+            // directly once loadInitial resumes — no spinner flash, no cache
+            // repaint.
+            val preloaded =
+                !updated &&
+                    _feed.value.activeCreatorId == null &&
+                    StateSubscriptions.instance.isGlobalFeedPreloaded()
+            if (!preloaded) {
+                _feed.update { it.copy(isLoading = true) }
+            }
             withContext(Dispatchers.IO) {
                 historyByUrl = historyDao.observeAll().first().associateBy { it.contentUrl }
                 // Cache-first on the initial load (not pull-to-refresh): paint
-                // the last feed immediately, refresh in background, replace
-                // when fresh data lands.
-                if (!updated) {
+                // the last feed immediately (stale included), refresh in
+                // background, replace when fresh data lands.
+                if (!updated && !preloaded) {
                     cachedItems = loadCachedFeed()
                     emitCachedFeed()
                 }
@@ -216,8 +288,11 @@ class EngineSubscriptionsRepositoryImpl
                     flow!!.loadInitial()
                     Logger.i(TAG, "Loaded ${flow!!.items.size} items")
                     saveFeedCache(flow!!.items)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error loading feed", e)
+                    pendingLoadMore = false // its page never materialized
                     // A failed refresh must not wipe a cache that's on screen.
                     if (cachedItems != null) {
                         _feed.update {
@@ -234,6 +309,7 @@ class EngineSubscriptionsRepositoryImpl
                 }
                 cachedItems = null
                 applyFilters()
+                runPendingLoadMore()
             }
         }
 
@@ -241,11 +317,14 @@ class EngineSubscriptionsRepositoryImpl
         private fun emitCachedFeed() {
             val cached = cachedItems ?: return
             Logger.i(TAG, "Showing ${cached.size} cached feed items")
-            _feed.update { it.copy(items = filteredCards(cached), isLoading = true) }
+            // hasMorePages=true while painting: the cached page IS page 1 of
+            // a feed that had more — without it the overdrag gesture stays
+            // inert for the whole initial fetch.
+            _feed.update { it.copy(items = filteredCards(cached), isLoading = true, hasMorePages = true) }
         }
 
-        /** @return the cached feed when fresh enough (< [FEED_CACHE_TTL_MS]), else null. */
-        private suspend fun loadCachedFeed(): List<IPlatformContent>? = readFreshSubsFeedCache()
+        /** @return the cached feed, stale included (stale-while-revalidate). */
+        private suspend fun loadCachedFeed(): List<IPlatformContent>? = readFreshSubsFeedCache(allowStale = true)
 
         private suspend fun saveFeedCache(items: List<IPlatformContent>) {
             if (items.isEmpty()) return
@@ -266,6 +345,9 @@ class EngineSubscriptionsRepositoryImpl
             val creatorId = _feed.value.activeCreatorId
             val pager =
                 if (creatorId == null) {
+                    // Global feed = the engine's merged pager over ALL
+                    // subscribed channels (a per-channel batch would leave
+                    // most channels' videos out of the list entirely).
                     StateSubscriptions.instance.getGlobalSubscriptionFeed(
                         CoroutineScope(Dispatchers.IO),
                         updated = updated,
@@ -286,6 +368,12 @@ class EngineSubscriptionsRepositoryImpl
          */
         private suspend fun resyncSubscriptions() {
             withContext(Dispatchers.IO) {
+                // Demo mode: keep the simulated creator list, never scan
+                // real subscriptions.
+                if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                    _feed.update { it.copy(creators = demoCreators()) }
+                    return@withContext
+                }
                 val creators = scanCreators()
                 _feed.update { it.copy(creators = creators) }
                 val active = _feed.value.activeCreatorId
@@ -318,6 +406,8 @@ class EngineSubscriptionsRepositoryImpl
                 try {
                     flow = newFlow(updated = false)
                     flow!!.loadInitial()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error resyncing feed", e)
                     _feed.update { it.copy(isLoading = false, error = e.message) }
@@ -373,6 +463,10 @@ class EngineSubscriptionsRepositoryImpl
         }
 
         private fun applyFilters() {
+            // Demo mode: the filter chips don't apply to the simulated feed
+            // (and flow/cachedItems are null here — a pass through would
+            // wipe the demo items).
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) return
             val f = flow
             // While a fresh load is in flight the new pager's first page hasn't
             // landed yet: keep the cached items on screen so the chips keep
@@ -428,23 +522,19 @@ class EngineSubscriptionsRepositoryImpl
                             else -> showVideos
                         }
                     if (!categoryOn) return@filter false
-                    val d = video.duration
                     // Plugin items report playbackTime = -1; watch progress
-                    // lives in history (refreshed per reload).
+                    // lives in history (refreshed per reload). Single
+                    // watched/started rule (core:model WatchState).
+                    val watchedMs = historyByUrl[content.url]?.watchedMs ?: 0
                     val t = historyByUrl[content.url]?.lastPositionMs
                         ?: video.playbackTime.coerceAtLeast(0)
+                    val ws = com.tsutsen.platformplayer.core.model.WatchState.of(
+                        t, watchedMs, video.duration,
+                    )
                     when {
-                        d > 0 && t >= 0.95 * d -> {
-                            if (!showWatched) return@filter false
-                        }
-
-                        t > 0 -> {
-                            if (!showStarted) return@filter false
-                        }
-
-                        else -> {
-                            Unit
-                        } // never played: always shown
+                        ws?.isWatched == true -> if (!showWatched) return@filter false
+                        ws != null -> if (!showStarted) return@filter false
+                        else -> Unit // never played: always shown
                     }
                     true
                 }
@@ -453,8 +543,45 @@ class EngineSubscriptionsRepositoryImpl
             return EngineCardMapper.toCards(filtered)
         }
 
+        /** Demo mode: publish the deterministic demo page for the current scope. */
+        private suspend fun loadDemoFeed(reset: Boolean) {
+            val creatorId = _feed.value.activeCreatorId
+            val page = if (reset) 1 else demoPage + 1
+            val existing = if (reset) emptyList() else _feed.value.items
+            val fresh =
+                com.tsutsen.platformplayer.demo.DemoContent.cards(page).filter { card ->
+                    creatorId == null || card.authorUrl == creatorId
+                }
+            demoPage = page
+            _feed.update {
+                it.copy(
+                    items = existing + fresh,
+                    creators = if (it.creators.isEmpty()) demoCreators() else it.creators,
+                    isLoading = false,
+                    hasMorePages = true,
+                    error = null,
+                    currentPage = page,
+                )
+            }
+            Logger.i(TAG, "Demo mode: feed page $page (+${fresh.size} cards)")
+        }
+
+        /** Demo mode: the four simulated channels (bundled thumbnails). */
+        private fun demoCreators(): List<SubscriptionCreator> {
+            val thumbnails = com.tsutsen.platformplayer.demo.DemoContent.imageUris()
+            return (1..4).map { n ->
+                SubscriptionCreator(
+                    id = "demo://channel/$n",
+                    name = "Demo Channel $n",
+                    thumbnailUrl = thumbnails.getOrNull(n - 1),
+                    subscriberCount = null,
+                    url = "demo://channel/$n",
+                    hasNewContent = false,
+                )
+            }
+        }
+
         private companion object {
             const val TAG = "EngineSubscriptionsRepository"
-            const val FEED_CACHE_TTL_MS = SUBS_FEED_CACHE_TTL_MS
         }
     }

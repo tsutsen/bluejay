@@ -1,6 +1,8 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,14 +10,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceContentColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 
 /**
  * Modal bottom sheet wrapper for player options, chapters, etc.
@@ -43,12 +50,20 @@ fun BluejayModalBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = surfaceColor(SurfaceKeys.SHEET, MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         // Scrollable so long sheets (e.g. many playlists) never clip their
-        // bottom rows ("Go to channel" was cut off below the fold).
+        // bottom rows ("Go to channel" was cut off below the fold). The
+        // skin's texture paints under the content; its text color wraps it.
+        CompositionLocalProvider(
+            LocalContentColor provides
+                surfaceContentColor(SurfaceKeys.SHEET, MaterialTheme.colorScheme.onSurfaceVariant),
+        ) {
         Column(
             modifier =
                 Modifier
+                    .clip(MaterialTheme.shapes.extraLarge)
+                    .surfaceTexture(SurfaceKeys.SHEET)
                     .then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                     .padding(bottom = 32.dp),
         ) {
@@ -76,6 +91,7 @@ fun BluejayModalBottomSheet(
                 }
             }
             content()
+        }
         }
     }
 }

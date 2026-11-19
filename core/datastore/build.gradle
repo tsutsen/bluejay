@@ -1,7 +1,7 @@
 plugins {
-    id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '2.4.0'
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -26,8 +26,8 @@ android {
 
 dependencies {
     implementation project(':core:model')
-    implementation 'androidx.core:core-ktx:1.17.0'
-    implementation 'androidx.datastore:datastore-preferences:1.1.1'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
-    implementation "org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0"
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.datastore.preferences
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.kotlinx.serialization.core
 }

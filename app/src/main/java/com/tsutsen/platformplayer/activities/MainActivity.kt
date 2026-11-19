@@ -38,6 +38,7 @@ import androidx.core.pip.PictureInPictureDelegate
 import androidx.core.pip.VideoPlaybackPictureInPicture
 import androidx.lifecycle.lifecycleScope
 import com.tsutsen.platformplayer.Settings
+import com.tsutsen.platformplayer.compose.BluejayAppThemeRoot
 import com.tsutsen.platformplayer.compose.BluejayNavGraph
 import com.tsutsen.platformplayer.gettingstarted.GettingStartedFlow
 import com.tsutsen.platformplayer.core.data.repository.ChannelRepository
@@ -52,8 +53,6 @@ import com.tsutsen.platformplayer.core.designsystem.layout.AppNavigationChrome
 import com.tsutsen.platformplayer.core.designsystem.layout.NavItemDef
 import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.designsystem.layout.rememberAppLayoutConfig
-import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTheme
-import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.navigation.NavDestination
 import com.tsutsen.platformplayer.core.navigation.Navigator
 import com.tsutsen.platformplayer.feature.player.impl.PipSurface
@@ -165,6 +164,26 @@ class MainActivity :
         pipLog("onPause")
     }
 
+    private val displayListener = object : android.hardware.display.DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) {
+            // A display appearing (dock/wake/re-enumeration) may be the
+            // companion panel — retry now instead of waiting for the timer.
+            mainHandler.post { maybeApplyDisplayAssignment(); ensureCompanion() }
+        }
+
+        override fun onDisplayChanged(displayId: Int) {
+            // Power-state transitions (STATE_OFF -> STATE_ON) are exactly the
+            // wake race that made companionDisplay() return null.
+            mainHandler.post { maybeApplyDisplayAssignment(); ensureCompanion() }
+        }
+
+        override fun onDisplayRemoved(displayId: Int) {
+            mainHandler.post { ensureCompanion() }
+        }
+    }
+
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
     override fun onStart() {
         super.onStart()
         pipLog("onStart")
@@ -176,11 +195,15 @@ class MainActivity :
         // foreground. The rear display can still be in its wake/return
         // transition when onStart fires (STATE_OFF), so retry a couple of
         // times — ensureCompanion() is a no-op once the presentation shows.
+        (getSystemService(Context.DISPLAY_SERVICE) as DisplayManager)
+            .registerDisplayListener(displayListener, mainHandler)
+        maybeApplyDisplayAssignment()
         ensureCompanion()
         lifecycleScope.launch {
             for (delay in longArrayOf(2_500L, 6_000L)) {
                 delay(delay)
                 if (isFinishing || isDestroyed) return@launch
+                maybeApplyDisplayAssignment()
                 ensureCompanion()
             }
         }
@@ -196,18 +219,65 @@ class MainActivity :
         // true after a jammed close — see onResume's self-heal).
         if (pipActive.value) return
         val enabled = settingsRepository.preferences.value.dualScreen
-        val display = rearDisplay()
+        val display = companionDisplay()
         if (!enabled || display == null) {
             companionPresentation?.dismiss()
             companionPresentation = null
+            // If the swapped path launched the activity companion, it has
+            // to go too — the companion only exists while dual-screen is
+            // live (onStart re-asserts it).
+            CompanionNavBus.finishCompanionActivity()
             return
         }
+        // Swapped: the companion must take the DEFAULT (front) display while
+        // the main UI sits on the non-default one. A Presentation cannot
+        // show on the default display (show() throws InvalidDisplayException
+        // by design) — host the companion UI in a real activity there
+        // instead (Cocoon's ExternalDisplayActivity pattern). The unswapped
+        // path below keeps the Presentation.
+        // Decide from PREFS, not the activity's current display: on a toggle
+        // the task takes a moment to actually move, and keying off the
+        // current location left the companion stranded in front of the
+        // returning main UI (blank screen until a back gesture).
+        val swappedWanted =
+            settingsRepository.preferences.value.let { it.dualScreen && it.dualScreenSwapDisplays }
+        if (swappedWanted) {
+            companionPresentation?.dismiss()
+            companionPresentation = null
+            launchCompanionActivityOnDefaultDisplay()
+            return
+        }
+        // Normal (unswapped) path: the companion lives on a Presentation on
+        // the other display — make sure no leftover activity companion is
+        // squatting on the default display from a previous swap.
+        CompanionNavBus.finishCompanionActivity()
         val current = companionPresentation
-        if (current != null && current.isShowing) return
+        if (current != null && current.isShowing) {
+            // Recreate if the environment moved us to another display (the
+            // swap relaunch): a presentation pinned to the old display would
+            // stack main + companion UI on the same screen and leave the
+            // other one blank.
+            val wantId = display?.displayId
+            if (wantId != null && current.display?.displayId == wantId) return
+        }
         current?.dismiss()
+        // Re-validate at show() time: the display can drop STATE_ON / detach
+        // between companionDisplay()'s check and the window add (wake/return
+        // transitions, the swap relaunch) — Presentation.show() then throws
+        // InvalidDisplayException and crashes the app.
+        if (!display.isValid || display.state != Display.STATE_ON) {
+            android.util.Log.w("MainActivity", "[swap-dbg] display ${display.displayId} not ready (valid=${display.isValid} state=${display.state}); skip")
+            return
+        }
+        android.util.Log.w("MainActivity", "[swap-dbg] show companion on display ${display.displayId} (own=${display.displayId})")
+        // Some ROMs reject TYPE_PRESENTATION windows added to the DEFAULT
+        // display ("specified display can not be found") unless the window
+        // context is that display's own context.
+        val presentationContext =
+            if (display.displayId == Display.DEFAULT_DISPLAY) createDisplayContext(display) else this
         companionPresentation =
             CompanionPresentation(
-                context = this,
+                context = presentationContext,
                 display = display,
                 playerRepository = playerRepository,
                 libraryRepository = libraryRepository,
@@ -228,15 +298,124 @@ class MainActivity :
                 // Tapping the stats card opens the watch-stats detail on the
                 // main screen.
                 onWatchStats = { navigator.navigateWatchStatsDetail() },
-            ).also { it.show() }
+            )
+        try {
+            companionPresentation?.show()
+        } catch (e: android.view.WindowManager.InvalidDisplayException) {
+            // NOTE: InvalidDisplayException extends RuntimeException, not
+            // IllegalArgumentException. The race is handled by the timed
+            // retries in onStart — the next ensureCompanion() re-validates
+            // and picks a fresh display.
+            android.util.Log.w("MainActivity", "Companion display vanished before show(); will retry (own=${display.displayId}, target=${display.displayId}, msg=${e.message})")
+            companionPresentation?.dismiss()
+            companionPresentation = null
+        }
     }
 
-    private fun rearDisplay(): Display? {
-        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        return displayManager.displays.firstOrNull {
-            it.displayId != Display.DEFAULT_DISPLAY && it.isValid &&
-                it.state == Display.STATE_ON
+    /**
+     * Swapped mode: launch (or re-assert) the companion UI as a real
+     * activity on the DEFAULT display. Dedupe via [CompanionNavBus]'s
+     * weak reference — ensureCompanion() runs on every display event, and
+     * startActivity on an already-running singleTask instance would still
+     * churn it to the front.
+     */
+    private fun launchCompanionActivityOnDefaultDisplay() {
+        // Reinstall the nav callbacks: they point at this instance's
+        // navigator, which changes across the swap relaunch.
+        installCompanionNavCallbacks()
+        val existing = CompanionNavBus.companionActivityRef?.get()
+        if (existing != null && !existing.isFinishing && !existing.isDestroyed) {
+            return
         }
+        val intent = Intent(this, CompanionActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val options =
+            android.app.ActivityOptions.makeBasic()
+                .setLaunchDisplayId(Display.DEFAULT_DISPLAY)
+                .toBundle()
+        try {
+            startActivity(intent, options)
+        } catch (e: Exception) {
+            // Some ROMs decline cross-display activity launches (display
+            // mid-transition, OEM task controls). The timed retries in
+            // onStart re-run ensureCompanion(), which lands here again.
+            android.util.Log.w("MainActivity", "CompanionActivity launch failed; will retry (msg=${e.message})")
+        }
+    }
+
+    /** Route second-screen taps back to this activity's navigator. */
+    private fun installCompanionNavCallbacks() {
+        CompanionNavBus.onChannelClick = { url -> navigator.navigateToChannel(url) }
+        CompanionNavBus.onPlaylistClick = { url -> navigator.navigateToPlaylist(url) }
+        CompanionNavBus.onWatchStats = { navigator.navigateWatchStatsDetail() }
+    }
+
+    /**
+     * Display the companion UI should live on: the first valid, powered-on
+     * display that is NOT the one this activity is currently on. Normally
+     * that's the first non-default display; with "Swap screens" enabled and
+     * a successful move, the activity itself sits on the physical rear panel
+     * and the companion takes the default (front) display.
+     */
+    private fun companionDisplay(): Display? {
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val ownDisplayId =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display.displayId
+            else Display.DEFAULT_DISPLAY
+        return displayManager.displays.firstOrNull {
+            it.displayId != ownDisplayId && it.isValid && it.state == Display.STATE_ON
+        }
+    }
+
+    /**
+     * "Swap screens": move this activity (the main video UI) onto the
+     * non-default physical display so users on devices whose primary panel
+     * is the "wrong" one (e.g. Anbernic RG DS bottoms vs AYN Thor tops) can
+     * choose which screen hosts which interface. Moves via a relaunch with
+     * ActivityOptions.setLaunchDisplayId — public API has no in-place task
+     * move. The relaunchedForDisplay extra guards against relaunch loops;
+     * if the ROM declines the move we simply stay put (companion picks the
+     * other screen via companionDisplay(), i.e. today's behavior).
+     */
+    /**
+     * Bring this activity onto the display the current prefs say the main UI
+     * belongs on: the non-default physical panel while "Swap screens" is on,
+     * the default display otherwise. Relaunches via
+     * ActivityOptions.setLaunchDisplayId — the system relocates the running
+     * singleTask task in place (no finish(); finishing first kills the task
+     * before the move lands). Only fires when we are NOT already on the
+     * target, so pref changes can call this directly without loop guards.
+     */
+    private fun maybeApplyDisplayAssignment() {
+        if (isFinishing || isDestroyed || pipActive.value) return
+        val prefs = settingsRepository.preferences.value
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val targetId =
+            if (prefs.dualScreen && prefs.dualScreenSwapDisplays) {
+                displayManager.displays.firstOrNull {
+                    it.displayId != Display.DEFAULT_DISPLAY && it.isValid &&
+                        it.state == Display.STATE_ON
+                }?.displayId ?: Display.DEFAULT_DISPLAY
+            } else {
+                Display.DEFAULT_DISPLAY
+            }
+        val ownId =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display.displayId
+            else Display.DEFAULT_DISPLAY
+        if (ownId == targetId) return
+        val intent = intent
+            .setClass(this, MainActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        val options =
+            android.app.ActivityOptions.makeBasic().setLaunchDisplayId(targetId).toBundle()
+        // Freeze-frame mask: snapshot the current content, hand it to the
+        // relaunched instance via SwapFreezeFrame, and cover this window so
+        // the display being left shows a static frame instead of a hole or
+        // splash while the system tears the window down. Best-effort — a
+        // failed capture/overlay just means the plain relaunch flash.
+        val freezeFrame = SwapFreezeFrame.capture(this)
+        SwapFreezeFrame.prepareRelaunch(this, freezeFrame, targetId)
+        startActivity(intent, options)
     }
 
     override fun onResume() {
@@ -299,12 +478,17 @@ class MainActivity :
     }
 
     override fun onStop() {
+        (getSystemService(Context.DISPLAY_SERVICE) as DisplayManager)
+            .unregisterDisplayListener(displayListener)
         super.onStop()
         pipLog("onStop")
         // The companion only makes sense while the app is in the
         // foreground — dismiss on minimize. onStart() re-asserts it.
         companionPresentation?.dismiss()
         companionPresentation = null
+        // Swapped mode hosts the companion in CompanionActivity — finish it
+        // too, mirroring the presentation dismiss above.
+        CompanionNavBus.finishCompanionActivity()
         // Stopped while OUT of PiP: pause so the video doesn't keep
         // playing invisibly. Auto-enter PiP also stops the activity on
         // entry, but modeChanged(true) has set pipActive by then, so the
@@ -315,8 +499,12 @@ class MainActivity :
     }
 
     override fun onDestroy() {
+        SwapFreezeFrame.detach(this)
         companionPresentation?.dismiss()
         companionPresentation = null
+        // Belt-and-braces: onStop already finished the companion activity,
+        // but the swap relaunch can destroy us without a normal stop cycle.
+        CompanionNavBus.finishCompanionActivity()
         PipSurface.surfaceView.value = null
         pip.close()
         super.onDestroy()
@@ -350,6 +538,18 @@ class MainActivity :
         StateApp.instance.setGlobalContext(this, lifecycleScope, "compose")
         StateApp.instance.mainAppStarting(this)
         pipLog("onCreate")
+        // React to dual-screen / swap toggles immediately: move the task and
+        // re-assert the companion as soon as the switch flips, not just on
+        // the next lifecycle pass.
+        lifecycleScope.launch {
+            settingsRepository.preferences
+                .map { Pair(it.dualScreen, it.dualScreenSwapDisplays) }
+                .distinctUntilChanged()
+                .collect {
+                    maybeApplyDisplayAssignment()
+                    ensureCompanion()
+                }
+        }
 
         // Jetpack PiP (androidx.core:core-pip), used canonically: the
         // delegate owns the platform callbacks and the official helper
@@ -419,6 +619,12 @@ class MainActivity :
         // Set navigator for non-Compose code access
         StateApp.instance.navigator = navigator
 
+        // Route second-screen (CompanionActivity) taps to this navigator —
+        // installed at startup and refreshed in
+        // launchCompanionActivityOnDefaultDisplay() (the swap relaunch
+        // replaces this instance).
+        installCompanionNavCallbacks()
+
         // Start on the configured default tab (Settings > Content > Dock).
         navigator.setStartDestination(dockKeyToDestination(SettingsRepositoryImpl.instance.preferences.value.defaultDockTab))
 
@@ -432,6 +638,13 @@ class MainActivity :
                 settingsRepository,
             )
         }
+
+        // Continuation of the swap freeze-frame: if this instance was
+        // relaunched onto a new display, cover the fresh content with the
+        // snapshot the old instance left behind and fade it out once the
+        // first real frame is drawn. No-op when there is no pending frame
+        // for this display (normal cold starts, in-place task moves).
+        SwapFreezeFrame.consumeOnCreate(this)
     }
 }
 
@@ -450,56 +663,11 @@ private fun BluejayMainActivity(
         }
     }
 
-    // Settings are live: changing theme/grid columns re-composes this tree.
-    // Gate on the real prefs instead of a default initial: with defaults the
-    // first frame would render 100%-rounding tokens and the saved values
-    // (e.g. rounding 0) would arrive a frame later — every radius spring
-    // then animates default→saved and overshoots into negative corner
-    // radii, which is fatal ("Corner size in Px can't be negative").
-    val prefs by settingsRepository.preferences.collectAsState(initial = null)
-    val p = prefs ?: return
-    val darkTheme =
-        when (p.appearance.themeMode) {
-            ThemeMode.LIGHT -> false
-            ThemeMode.DARK -> true
-            ThemeMode.AUTO -> isSystemInDarkTheme()
-        }
-
-    // Second display: follow the "dual screen" toggle. ensureCompanion is a
-    // no-op when nothing changes and dismisses the presentation when the
-    // toggle turns off.
-    LaunchedEffect(p.dualScreen) {
-        activity.ensureCompanion()
-    }
-
-    // PiP mode: the window is the video itself — render video only, no app
-    // chrome (expanding the PiP flips this back to the full app UI).
-    val pip by activity.pipActive.collectAsState(initial = false)
-
-    val appearance = p.appearance
-    val appScope = rememberCoroutineScope()
-    // Active custom theme (if any): key colors → generated light/dark schemes.
-    val activeTheme = appearance.customThemes.firstOrNull { it.id == appearance.activeThemeId }
-    val customSchemes =
-        remember(activeTheme) {
-            activeTheme?.let {
-                ThemeEngine.generate(
-                    it.primary,
-                    it.secondary,
-                    it.tertiary,
-                    it.paletteStyle,
-                    background = it.background,
-                    contrast = it.contrast,
-                )
-            }
-        }
-
-    BluejayTheme(
-        darkTheme = darkTheme,
-        dynamicColor = appearance.dynamicColor,
-        uiRounding = appearance.uiRounding,
-        colorScheme = customSchemes?.let { if (darkTheme) it.dark else it.light },
-    ) {
+    BluejayAppThemeRoot(settingsRepository) { p ->
+        val appScope = rememberCoroutineScope()
+        // PiP mode: the window is the video itself — render video only, no
+        // app chrome (expanding the PiP flips this back to the full app UI).
+        val pip by activity.pipActive.collectAsState()
         if (pip) {
             PlayerView(isPip = true)
         } else {

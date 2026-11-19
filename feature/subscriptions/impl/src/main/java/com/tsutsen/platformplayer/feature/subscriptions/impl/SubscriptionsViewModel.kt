@@ -62,24 +62,29 @@ class SubscriptionsViewModel
 
         init {
             viewModelScope.launch {
-                subscriptionRepository.feed.collect { feed ->
-                    if (!feed.isLoading) _isRefreshing.value = false
-                    _uiState.value =
-                        SubscriptionsUiState.Success(
-                            items = feed.items,
-                            creators = feed.creators,
-                            activeCreatorId = feed.activeCreatorId,
-                            filterStarted = feed.filterStarted,
-                            filterWatched = feed.filterWatched,
-                            filterVideo = feed.filterVideo,
-                            filterStreams = feed.filterStreams,
-                            filterShorts = feed.filterShorts,
-                            isLoading = feed.isLoading,
-                            hasMorePages = feed.hasMorePages,
-                            error = feed.error,
-                            isRefreshing = _isRefreshing.value,
-                        )
-                }
+                // Combine with the live isRefreshing flag instead of snapshotting
+                // it at collect time — a refresh started after the last feed
+                // emission must still show the spinner.
+                subscriptionRepository.feed
+                    .combine(_isRefreshing) { feed, isRefreshing -> feed to isRefreshing }
+                    .collect { (feed, isRefreshing) ->
+                        if (!feed.isLoading) _isRefreshing.value = false
+                        _uiState.value =
+                            SubscriptionsUiState.Success(
+                                items = feed.items,
+                                creators = feed.creators,
+                                activeCreatorId = feed.activeCreatorId,
+                                filterStarted = feed.filterStarted,
+                                filterWatched = feed.filterWatched,
+                                filterVideo = feed.filterVideo,
+                                filterStreams = feed.filterStreams,
+                                filterShorts = feed.filterShorts,
+                                isLoading = feed.isLoading,
+                                hasMorePages = feed.hasMorePages,
+                                error = feed.error,
+                                isRefreshing = isRefreshing,
+                            )
+                    }
             }
             viewModelScope.launch {
                 subscriptionRepository.loadCreators()

@@ -60,6 +60,7 @@ import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.models.ImageVariable
 import com.tsutsen.platformplayer.states.AnnouncementType
 import com.tsutsen.platformplayer.states.StateAnnouncement
+import com.tsutsen.platformplayer.states.*
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.states.StatePlugins
 import kotlinx.coroutines.CompletableDeferred
@@ -860,7 +861,7 @@ open class JSClient : IPlatformClient {
                         .distinct()
                         .parallelStream()
                         .map {
-                            val url = "https://github.com/tsutsen-org/bluejay-android/blob/master/docs/source/${it}.md";
+                            val url = "https://github.com/tsutsen/bluejay/blob/master/docs/source/${it}.md";
                             val resp = client.head(url);
                             try {
                                 if(resp.isOk)

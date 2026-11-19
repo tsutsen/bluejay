@@ -11,6 +11,7 @@ import com.tsutsen.platformplayer.core.datastore.model.BrowsingPreferences
 import com.tsutsen.platformplayer.core.datastore.model.ControllerPreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
+import com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle
 import com.tsutsen.platformplayer.core.datastore.model.DownloadsPreferences
 import com.tsutsen.platformplayer.core.datastore.model.LoggingPreferences
 import com.tsutsen.platformplayer.core.datastore.model.NotificationPreferences
@@ -23,6 +24,7 @@ import com.tsutsen.platformplayer.core.datastore.model.SubscriptionsPreferences
 import com.tsutsen.platformplayer.core.datastore.model.SubtitlePreferences
 import com.tsutsen.platformplayer.core.datastore.model.ThemeMode
 import com.tsutsen.platformplayer.core.model.GestureAction
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +44,7 @@ class SettingsRepositoryImpl
     constructor() : SettingsRepository {
         init {
             migrateLegacyHiddenSets()
+            migrateLegacySurfaceStyles()
         }
 
         private val _preferences = MutableStateFlow(fromSettings())
@@ -57,6 +60,24 @@ class SettingsRepositoryImpl
             MutableStateFlow(Settings.instance.content.hiddenCreatorEntries)
         override val hiddenCreators: StateFlow<List<HiddenContentEntry>> =
             _hiddenCreators.asStateFlow()
+
+        /**
+         * One-time migration: the old global per-surface overrides move into
+         * the active theme (they are per-theme now); parked untouched when no
+         * theme is active.
+         */
+        private fun migrateLegacySurfaceStyles() {
+            val a = Settings.instance.appearance
+            if (a.surfaceStyles.isEmpty()) return
+            val id = a.activeThemeId ?: return
+            a.customThemes.firstOrNull { it.id == id }?.let { theme ->
+                a.customThemes =
+                    a.customThemes.filter { it.id != id } +
+                        theme.copy(surfaceStyles = theme.surfaceStyles + a.surfaceStyles)
+                a.surfaceStyles = emptyMap()
+                Settings.instance.save()
+            }
+        }
 
         /**
          * One-time migration: the legacy binary hide sets (hiddenVideoUrls =
@@ -92,10 +113,19 @@ class SettingsRepositoryImpl
                         themeMode =
                             runCatching { ThemeMode.valueOf(s.appearance.themeMode) }
                                 .getOrDefault(ThemeMode.AUTO),
+                        fontFamily =
+                            runCatching { com.tsutsen.platformplayer.core.datastore.model.FontFamily.valueOf(s.appearance.fontFamily) }
+                                .getOrDefault(com.tsutsen.platformplayer.core.datastore.model.FontFamily.DEFAULT),
+                        fontSizeScale = s.appearance.fontSizeScale,
                         dynamicColor = s.appearance.dynamicColor,
                         uiRounding = s.appearance.uiRounding,
                         customThemes = s.appearance.customThemes,
                         activeThemeId = s.appearance.activeThemeId,
+                        thumbnailTintArgb = s.appearance.thumbnailTintArgb,
+                        thumbnailTintStrength = s.appearance.thumbnailTintStrength,
+                        thumbnailTintBlendMode = s.appearance.thumbnailTintBlendMode,
+                        thumbnailSaturation = s.appearance.thumbnailSaturation,
+                        thumbnailContrast = s.appearance.thumbnailContrast,
                     ),
                 playback =
                     PlaybackPreferences(
@@ -142,6 +172,7 @@ class SettingsRepositoryImpl
                 defaultDownloadResolution = s.content.defaultDownloadResolution,
                 enableDeveloperOptions = s.advancedSettings,
                 dualScreen = s.dualScreen,
+                dualScreenSwapDisplays = s.dualScreenSwapDisplays,
                 dualScreenPages = s.dualScreenPages,
                 dualScreenVideoTabs = s.dualScreenVideoTabs,
                 dualScreenVideoTabOrder = s.dualScreenVideoTabOrder,
@@ -221,7 +252,9 @@ class SettingsRepositoryImpl
                 other =
                     OtherPreferences(
                         watchLaterAddStart = s.other.watchLaterAddStart,
+                        watchLaterAutoCleanup = s.other.watchLaterAutoCleanup,
                         playlistAllowDups = s.other.playlistAllowDups,
+                        demoMode = s.other.demoMode,
                     ),
             )
         }
@@ -233,10 +266,31 @@ class SettingsRepositoryImpl
         override suspend fun updateAppearance(prefs: AppearancePreferences) {
             val s = Settings.instance
             s.appearance.themeMode = prefs.themeMode.name
+            s.appearance.fontFamily = prefs.fontFamily.name
+            s.appearance.fontSizeScale = prefs.fontSizeScale
             s.appearance.dynamicColor = prefs.dynamicColor
             s.appearance.uiRounding = prefs.uiRounding
+            s.appearance.thumbnailTintArgb = prefs.thumbnailTintArgb
+            s.appearance.thumbnailTintStrength = prefs.thumbnailTintStrength
+            s.appearance.thumbnailTintBlendMode = prefs.thumbnailTintBlendMode
+            s.appearance.thumbnailSaturation = prefs.thumbnailSaturation
+            s.appearance.thumbnailContrast = prefs.thumbnailContrast
             s.save()
             emit()
+        }
+
+        override suspend fun setThumbnailTint(argb: Long?) {
+            persist { it.appearance.thumbnailTintArgb = argb }
+        }
+
+        /** Appearance > Thumbnails > Tint strength (0..1). */
+        override suspend fun setThumbnailTintStrength(strength: Float) {
+            persist { it.appearance.thumbnailTintStrength = strength.coerceIn(0f, 1f) }
+        }
+
+        /** Appearance > Thumbnails > Tint blend mode ([TintBlendMode] name). */
+        override suspend fun setThumbnailTintBlendMode(mode: String) {
+            persist { it.appearance.thumbnailTintBlendMode = mode }
         }
 
         override suspend fun updatePlayback(prefs: PlaybackPreferences) {
@@ -256,6 +310,7 @@ class SettingsRepositoryImpl
             when (key) {
                 "enableDeveloperOptions" -> setEnableDeveloperOptions(value as Boolean)
                 "dualScreen" -> setDualScreen(value as Boolean)
+                "dualScreenSwapDisplays" -> setDualScreenSwapDisplays(value as Boolean)
                 "dynamicColor" -> setDynamicColor(value as Boolean)
                 "uiRounding" -> setUiRounding((value as Number).toInt())
                 "gridColumns" -> setGridColumns(value as Int)
@@ -287,6 +342,9 @@ class SettingsRepositoryImpl
 
         override suspend fun setDualScreen(enabled: Boolean) =
             persist { it.dualScreen = enabled }
+
+        override suspend fun setDualScreenSwapDisplays(enabled: Boolean) =
+            persist { it.dualScreenSwapDisplays = enabled }
 
         override suspend fun setDynamicColor(enabled: Boolean) =
             persist { it.appearance.dynamicColor = enabled }
@@ -409,6 +467,12 @@ class SettingsRepositoryImpl
 
         override suspend fun setDefaultDockTab(key: String) =
             persist { it.other.defaultDockTab = key }
+
+        override suspend fun setWatchLaterAutoCleanup(enabled: Boolean) =
+            persist { it.other.watchLaterAutoCleanup = enabled }
+
+        override suspend fun setDemoMode(enabled: Boolean) =
+            persist { it.other.demoMode = enabled }
 
         override suspend fun setSubscriptionsOrder(order: String) =
             persist { it.subscriptions.subscriptionsOrder = order }
@@ -635,7 +699,7 @@ class SettingsRepositoryImpl
             s.playback.defaultPlaybackSpeed = 1f
             s.playback.defaultSpeedup = 2f
             s.playback.speedupSensitivity = 1f
-            s.content.defaultVideoResolution = "Auto"
+            s.content.defaultVideoResolution = TrackSelectionValues.AUTO
             s.content.defaultDownloadResolution = "480p"
             s.playback.subtitleFont = "default"
             s.playback.subtitleFontSize = 16

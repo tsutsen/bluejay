@@ -161,6 +161,22 @@
                 <data android:mimeType="application/zip" />
             </intent-filter>
         </activity>
+        <!-- Companion UI on the DEFAULT display while "Swap screens" moved
+             MainActivity to the non-default display (a Presentation cannot
+             show on the default display). Own empty taskAffinity so it never
+             drags MainActivity's task across displays; singleTask dedupes
+             relaunches; configChanges mirrors MainActivity so display swaps
+             and rotations don't rebuild it. -->
+        <activity
+            android:name=".activities.CompanionActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density|fontScale"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.App.NoActionBar"
+            android:windowSoftInputMode="adjustPan"
+            />
         <activity
             android:name=".activities.CaptchaActivity"
             android:screenOrientation="sensorPortrait"

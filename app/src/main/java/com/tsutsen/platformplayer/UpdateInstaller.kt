@@ -13,7 +13,6 @@ import android.view.View
 import com.tsutsen.platformplayer.logging.Logger
 import com.tsutsen.platformplayer.receivers.InstallReceiver
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -58,7 +57,9 @@ object UpdateInstaller {
             Logger.e(TAG, "Failed to check unknown sources permission", t)
         }
 
-        GlobalScope.launch(Dispatchers.IO) {
+        // The install must survive activity death (it streams the APK into a
+        // PackageInstaller session), so it runs on the app-lifetime scope.
+        AppCoroutineScope.scope.launch(Dispatchers.IO) {
             var inputStream: InputStream? = null
             var session: PackageInstaller.Session? = null
             try {

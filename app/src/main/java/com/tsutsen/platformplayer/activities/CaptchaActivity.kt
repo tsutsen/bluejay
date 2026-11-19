@@ -78,12 +78,15 @@ class CaptchaActivity : Activity() {
 
         _captchaConfig = _pluginConfig?.captcha
             ?: throw IllegalStateException("Plugin has no captcha support");
+        // _captchaConfig is guaranteed non-null by the throw above; take a
+        // local non-null view instead of using `!!` on the field.
+        val captchaConfig = requireNotNull(_captchaConfig) { "Plugin has no captcha support" };
 
         _extraUrl = intent.getStringExtra("url");
         _extraBody = intent.getStringExtra("body");
 
-        if (_captchaConfig!!.userAgent != null)
-            _webView.settings.userAgentString = _captchaConfig!!.userAgent;
+        if (captchaConfig.userAgent != null)
+            _webView.settings.userAgentString = captchaConfig.userAgent;
         val capturedUserAgent = _webView.settings.userAgentString;
         _webView.settings.useWideViewPort = true;
         _webView.settings.loadWithOverviewMode = true;

@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.states
 
+import com.tsutsen.platformplayer.states.*
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ClipData
@@ -236,8 +237,11 @@ class StateApp {
         val thisScope = scopeOrNull;
         if(thisScope == null) {
             //throw IllegalStateException("Attempted to use a global lifetime scope while MainActivity is no longer available");
-            Logger.w(TAG, "Attempted to use a global lifetime scope while MainActivity is no longer available, USING GLOBAL SCOPE");
-            return GlobalScope;
+            Logger.w(TAG, "Attempted to use a global lifetime scope while MainActivity is no longer available, USING APP COROUTINE SCOPE");
+            // App-lifetime fallback instead of GlobalScope: work launched here
+            // (installs, syncs, backup) must survive activity death but should
+            // still be structured under a supervisor rather than unscoped.
+            return AppCoroutineScope.scope;
         }
         return thisScope;
     }

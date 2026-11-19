@@ -67,3 +67,11 @@
 -keep class com.google.protobuf.** { *; }
 # SABR innertube protos (generated into build/ from app/src/main/proto/sabr)
 -keep class com.tsutsen.platformplayer.sabr.proto.** { *; }
+
+# Room: generated database implementations are loaded reflectively by name
+# (Class.forName(cls.name + "_Impl") in RoomDatabase$Builder.build) — without
+# a keep rule R8 strips them and every Room DB outside the Hilt graph fails
+# to open at runtime ("Cannot find implementation for ...$DB"). Seen live:
+# DBSubscriptionCache$DB_Impl missing -> "All subs" feed permanently empty.
+-keep class com.tsutsen.platformplayer.stores.db.types.** { *; }
+-keep class * extends androidx.room.RoomDatabase { *; }

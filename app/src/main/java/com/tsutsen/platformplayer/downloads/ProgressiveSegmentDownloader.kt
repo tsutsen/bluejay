@@ -5,6 +5,7 @@ import com.tsutsen.platformplayer.api.http.ManagedHttpClient
 import com.tsutsen.platformplayer.api.media.models.modifier.IRequestModifier
 import com.tsutsen.platformplayer.api.media.platforms.js.JSClient
 import com.tsutsen.platformplayer.logging.Logger
+import com.tsutsen.platformplayer.states.*
 import com.tsutsen.platformplayer.states.StatePlatform
 import com.tsutsen.platformplayer.toHumanBytesSpeed
 import kotlinx.coroutines.CancellationException

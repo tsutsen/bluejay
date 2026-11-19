@@ -23,7 +23,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -35,6 +38,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import com.tsutsen.platformplayer.core.ui.R
+import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
+import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
 import com.tsutsen.platformplayer.core.model.VideoChapter
 import com.tsutsen.platformplayer.feature.player.impl.formatTime
@@ -126,7 +132,7 @@ internal fun PlayerNormalBottomOverlay(
             IconButton(onClick = onPrevious) {
                 Icon(
                     imageVector = Icons.Default.SkipPrevious,
-                    contentDescription = "Previous",
+                    contentDescription = stringResource(R.string.player_previous_cd),
                     tint = Color.White,
                 )
             }
@@ -145,7 +151,7 @@ internal fun PlayerNormalBottomOverlay(
                 } else {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        contentDescription = if (isPlaying) stringResource(R.string.player_pause_cd) else stringResource(R.string.video_play),
                         tint = Color.White,
                         modifier = Modifier.size(40.dp),
                     )
@@ -154,25 +160,45 @@ internal fun PlayerNormalBottomOverlay(
             IconButton(onClick = onNext) {
                 Icon(
                     imageVector = Icons.Default.SkipNext,
-                    contentDescription = "Next",
+                    contentDescription = stringResource(R.string.player_next_cd),
                     tint = Color.White,
                 )
             }
             // Current chapter title fills the space left of the time text.
+            // Tapping it opens the chapters list (the former dedicated
+            // button was removed) — the chevron signals clickability.
+            val currentChapter = chapters.lastOrNull { it.startTimeMs <= effectivePositionMs }
             Box(
-                modifier = Modifier.weight(1f),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .then(
+                            if (chapters.isNotEmpty()) {
+                                Modifier.expressiveClickable(onClick = onChapters)
+                            } else Modifier,
+                        ),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                val currentChapter = chapters.lastOrNull { it.startTimeMs <= effectivePositionMs }
                 if (currentChapter != null) {
-                    Text(
-                        text = currentChapter.title,
-                        color = Color.White.copy(alpha = 0.9f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = currentChapter.title,
+                            color = Color.White.copy(alpha = 0.9f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier =
+                                Modifier
+                                    .weight(1f, fill = false)
+                                    .padding(horizontal = 8.dp),
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = stringResource(R.string.player_chapters),
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(Tokens.IconSm),
+                        )
+                    }
                 }
             }
             Box(
@@ -180,7 +206,7 @@ internal fun PlayerNormalBottomOverlay(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "${formatTime(effectivePositionMs)} / ${formatTime(durationMs)}",
+                    text = stringResource(R.string.player_time_position, formatTime(effectivePositionMs), formatTime(durationMs)),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 )
@@ -189,21 +215,14 @@ internal fun PlayerNormalBottomOverlay(
             IconButton(onClick = onSubtitleToggle) {
                 Icon(
                     imageVector = if (subtitlesOn) Icons.Filled.ClosedCaption else Icons.Outlined.ClosedCaption,
-                    contentDescription = "Subtitles",
-                    tint = Color.White,
-                )
-            }
-            IconButton(onClick = onChapters) {
-                Icon(
-                    imageVector = Icons.Default.MenuBook,
-                    contentDescription = "Chapters",
+                    contentDescription = stringResource(R.string.player_subtitles),
                     tint = Color.White,
                 )
             }
             IconButton(onClick = onFullscreen) {
                 Icon(
                     imageVector = Icons.Default.Fullscreen,
-                    contentDescription = "Fullscreen",
+                    contentDescription = stringResource(R.string.player_fullscreen_cd),
                     tint = Color.White,
                 )
             }
@@ -268,27 +287,50 @@ internal fun PlayerNormalBottomOverlay(
                 interactionSource = remember { MutableInteractionSource() },
             )
             // Storyboard preview bubble, floating above the thumb while the
-            // timeline is being dragged.
+            // timeline is being dragged. Measured out of the layout (0x0
+            // placeable, placed manually): as a normal measured child it
+            // would inflate the wrap-content overlay's height while dragging
+            // and lift the whole control bar up.
             val frame = previewFrame
             if (isDragging && sheetBitmap != null && frame != null) {
-                val previewWidth = 160.dp
+                val previewWidth = 108.dp
                 val previewHeight =
                     (previewWidth * frame.height / frame.width.coerceAtLeast(1))
                 val bubbleOffsetX =
                     (maxWidth * playheadFraction - previewWidth / 2)
                         .coerceIn(0.dp, maxWidth - previewWidth)
+                val bubbleOffsetY = -previewHeight - 14.dp
+                // Rounding from the app's tokens: container = sm, image =
+                // container minus the padding so the frame's corners match.
+                // Background = secondary (the frame "outline" around the image).
+                val bubbleRadius = BluejayTokens().radius.sm
+                val imageRadius = (bubbleRadius - Tokens.SpaceXs).coerceAtLeast(0.dp)
                 Column(
                     modifier =
                         Modifier
-                            .align(Alignment.TopStart)
-                            .offset(x = bubbleOffsetX, y = (-previewHeight - 14.dp))
+                            .layout { measurable, _ ->
+                                val placeable = measurable.measure(
+                                    androidx.compose.ui.unit.Constraints(),
+                                )
+                                layout(0, 0) {
+                                    placeable.placeRelative(
+                                        bubbleOffsetX.roundToPx(),
+                                        bubbleOffsetY.roundToPx(),
+                                    )
+                                }
+                            }
                             .background(
-                                Color.Black.copy(alpha = 0.85f),
-                                RoundedCornerShape(8.dp),
+                                MaterialTheme.colorScheme.secondary,
+                                RoundedCornerShape(bubbleRadius),
                             )
-                            .padding(3.dp),
+                            .padding(Tokens.SpaceXs),
                 ) {
-                    Canvas(modifier = Modifier.size(previewWidth, previewHeight)) {
+                    Canvas(
+                        modifier =
+                            Modifier
+                                .size(previewWidth, previewHeight)
+                                .clip(RoundedCornerShape(imageRadius)),
+                    ) {
                         drawImage(
                             image = sheetBitmap,
                             srcOffset = IntOffset(frame.x, frame.y),

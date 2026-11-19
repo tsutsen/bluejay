@@ -20,10 +20,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.data.repository.LibraryRepository
 import com.tsutsen.platformplayer.core.designsystem.component.ContainerLayout
 import com.tsutsen.platformplayer.core.designsystem.component.ContentCard
@@ -72,7 +74,7 @@ fun LibrarySectionDetailScreen(
             AppHeader(
                 title = {
                     Text(
-                        text = section?.title ?: "Library",
+                        text = section?.title ?: stringResource(R.string.library_title),
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -80,7 +82,7 @@ fun LibrarySectionDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.common_back_cd),
                         )
                     }
                 },
@@ -88,7 +90,7 @@ fun LibrarySectionDetailScreen(
                     if (sectionId == LibraryRepository.WATCH_LATER_ID) {
                         TextButton(onClick = { viewModel.removeWatched() }) {
                             Text(
-                                text = "Remove watched",
+                                text = stringResource(R.string.library_remove_watched),
                                 style = MaterialTheme.typography.labelLarge,
                             )
                         }
@@ -108,7 +110,7 @@ fun LibrarySectionDetailScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = "Nothing yet",
+                                text = stringResource(R.string.library_nothing_yet),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

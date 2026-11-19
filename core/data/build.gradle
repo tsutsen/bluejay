@@ -1,8 +1,8 @@
 plugins {
-    id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
-    id 'com.google.devtools.ksp'
-    id 'com.google.dagger.hilt.android' version '2.60.1'
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -39,17 +39,17 @@ dependencies {
     implementation project(':core:model')
     implementation project(':core:database')
     api project(':core:datastore')
-    implementation 'androidx.core:core-ktx:1.17.0'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
-    implementation 'androidx.media3:media3-exoplayer:1.9.0'
-    implementation 'androidx.media3:media3-session:1.9.0'
-    implementation 'androidx.media3:media3-exoplayer-dash:1.9.0'
-    implementation 'androidx.media3:media3-exoplayer-hls:1.9.0'
-    implementation 'androidx.media3:media3-datasource:1.9.0'
+    implementation libs.androidx.core.ktx
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.androidx.media3.exoplayer
+    implementation libs.androidx.media3.session
+    implementation libs.androidx.media3.exoplayer.dash
+    implementation libs.androidx.media3.exoplayer.hls
+    implementation libs.androidx.media3.datasource
     
     // Hilt Dependency Injection
-    implementation 'com.google.dagger:hilt-android:2.60.1'
-    ksp 'com.google.dagger:hilt-android-compiler:2.60.1'
+    implementation libs.hilt.android
+    ksp libs.hilt.android.compiler
 
-    testImplementation 'junit:junit:4.13.2'
+    testImplementation libs.junit
 }

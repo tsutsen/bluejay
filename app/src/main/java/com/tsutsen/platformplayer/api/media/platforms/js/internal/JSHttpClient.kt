@@ -54,12 +54,12 @@ class JSHttpClient : ManagedHttpClient {
 
         _currentCookieMap = hashMapOf();
         _otherCookieMap = hashMapOf();
-        if(!auth?.cookieMap.isNullOrEmpty()) {
-            for(domainCookies in auth!!.cookieMap!!)
+        auth?.cookieMap?.takeIf { it.isNotEmpty() }?.let { cookieMap ->
+            for(domainCookies in cookieMap)
                 _currentCookieMap.put(domainCookies.key, HashMap(domainCookies.value));
         }
-        if(!captcha?.cookieMap.isNullOrEmpty()) {
-            for(domainCookies in captcha!!.cookieMap!!) {
+        captcha?.cookieMap?.takeIf { it.isNotEmpty() }?.let { cookieMap ->
+            for(domainCookies in cookieMap) {
                 if(_currentCookieMap.containsKey(domainCookies.key))
                     _currentCookieMap[domainCookies.key]?.putAll(domainCookies.value);
                 else
@@ -71,12 +71,12 @@ class JSHttpClient : ManagedHttpClient {
 
     fun resetAuthCookies() {
         _currentCookieMap.clear();
-        if(!_auth?.cookieMap.isNullOrEmpty()) {
-            for(domainCookies in _auth!!.cookieMap!!)
+        _auth?.cookieMap?.takeIf { it.isNotEmpty() }?.let { cookieMap ->
+            for(domainCookies in cookieMap)
                 _currentCookieMap.put(domainCookies.key, HashMap(domainCookies.value));
         }
-        if(!_captcha?.cookieMap.isNullOrEmpty()) {
-            for(domainCookies in _captcha!!.cookieMap!!) {
+        _captcha?.cookieMap?.takeIf { it.isNotEmpty() }?.let { cookieMap ->
+            for(domainCookies in cookieMap) {
                 if(_currentCookieMap.containsKey(domainCookies.key))
                     _currentCookieMap[domainCookies.key]?.putAll(domainCookies.value);
                 else

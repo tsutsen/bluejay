@@ -1,5 +1,6 @@
 package com.tsutsen.platformplayer.compose
 
+import com.tsutsen.platformplayer.states.*
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -378,6 +379,16 @@ fun BluejayNavGraph(
                     onBack = { navigator.goBack() },
                     onPluginsClick = { navigator.navigateToPluginBrowser() },
                     onHiddenContentClick = { navigator.navigateToSettingsFragment("hiddenContent") },
+                    onNavigateTab = { tab ->
+                        when (tab) {
+                            "home" -> navigator.navigateHome()
+                            "search" -> navigator.navigateSearch()
+                            "subscriptions" -> navigator.navigateSubscriptions()
+                            "library" -> navigator.navigateLibrary()
+                            "notifications" -> navigator.navigateNotifications()
+                            "settings" -> navigator.navigateSettings()
+                        }
+                    },
                 )
             }
 

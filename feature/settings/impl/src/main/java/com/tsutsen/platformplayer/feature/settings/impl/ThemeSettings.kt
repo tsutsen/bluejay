@@ -1,29 +1,27 @@
 package com.tsutsen.platformplayer.feature.settings.impl
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import com.tsutsen.platformplayer.core.ui.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ColorScheme
@@ -32,41 +30,37 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.PaletteStyle
 import com.tsutsen.platformplayer.core.designsystem.component.BluejayModalBottomSheet
+import com.tsutsen.platformplayer.core.designsystem.component.ColorPicker
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.expressiveClickable
 import com.tsutsen.platformplayer.core.designsystem.component.groupShape
-import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.ThemeEngine
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
-import com.tsutsen.platformplayer.core.designsystem.theme.spatialSpec
-import java.util.UUID
-import kotlin.math.roundToInt
+
 
 /**
  * Custom themes management: list of saved themes + the theme editor sheet.
@@ -80,11 +74,35 @@ fun ThemesSection(
 ) {
     var editorOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<CustomTheme?>(null) } // null = new theme
+    val context = LocalContext.current
+
+    // Import: pick a theme JSON file, validate it and add it to the list.
+    val importLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            val imported =
+                runCatching {
+                    readImportedTheme(context, uri, appearance.customThemes.map { it.id }.toSet())
+                }.getOrNull()
+            if (imported != null) {
+                viewModel.saveTheme(imported)
+                Toast.makeText(context, R.string.theme_imported, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, R.string.theme_import_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
+        // "Default" is the always-present first entry (Material You / brand);
+        // selecting it deactivates any custom theme.
+        DefaultThemeRow(
+            isActive = appearance.activeThemeId == null,
+            groupPosition = GroupPosition.fromIndex(0, appearance.customThemes.size + 1),
+            onUse = { viewModel.setActiveTheme(null) },
+        )
         if (appearance.customThemes.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
                 appearance.customThemes.forEachIndexed { index, theme ->
@@ -92,24 +110,25 @@ fun ThemesSection(
                         theme = theme,
                         isActive = theme.id == appearance.activeThemeId,
                         groupPosition =
-                            GroupPosition.fromIndex(index, appearance.customThemes.size),
+                            GroupPosition.fromIndex(index + 1, appearance.customThemes.size + 1),
                         onClick = {
                             editing = theme
                             editorOpen = true
                         },
                         onUse = { viewModel.setActiveTheme(theme.id) },
                         onDelete = { viewModel.deleteTheme(theme.id) },
+                        onExport = {
+                            runCatching { exportTheme(context, theme) }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        R.string.theme_export_failed,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                        },
                     )
                 }
-            }
-        }
-
-        if (appearance.activeThemeId != null) {
-            TextButton(
-                onClick = { viewModel.setActiveTheme(null) },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) {
-                Text("Use default theme")
             }
         }
 
@@ -121,7 +140,17 @@ fun ThemesSection(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
-            Text("New theme", modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(R.string.settings_new_theme), modifier = Modifier.padding(start = 8.dp))
+        }
+
+        ElevatedButton(
+            onClick = {
+                importLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Default.Download, contentDescription = null)
+            Text(stringResource(R.string.theme_import), modifier = Modifier.padding(start = 8.dp))
         }
     }
 
@@ -147,6 +176,81 @@ fun ThemesSection(
     }
 }
 
+/** The always-present "Default" theme entry (Material You / brand colors). */
+@Composable
+private fun DefaultThemeRow(
+    isActive: Boolean,
+    groupPosition: GroupPosition = GroupPosition.Single,
+    onUse: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = groupShape(groupPosition),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isActive) scheme.secondaryContainer else scheme.surfaceContainer,
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(Tokens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
+                modifier = Modifier.clip(CircleShape),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(Tokens.SwatchSm)
+                            .background(scheme.primary, CircleShape),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .size(Tokens.SwatchSm)
+                            .background(scheme.secondary, CircleShape),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .size(Tokens.SwatchSm)
+                            .background(scheme.tertiary, CircleShape),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_default),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = stringResource(R.string.settings_theme_material_you_brand),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (isActive) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = stringResource(R.string.settings_theme_active_theme),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(Tokens.IconMd),
+                )
+            } else {
+                TextButton(onClick = onUse) { Text(stringResource(R.string.settings_theme_use)) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ThemeRow(
     theme: CustomTheme,
@@ -155,6 +259,7 @@ private fun ThemeRow(
     onClick: () -> Unit,
     onUse: () -> Unit,
     onDelete: () -> Unit,
+    onExport: () -> Unit = {},
 ) {
     Card(
         onClick = onClick,
@@ -221,383 +326,26 @@ private fun ThemeRow(
             if (isActive) {
                 Icon(
                     Icons.Default.Check,
-                    contentDescription = "Active theme",
+                    contentDescription = stringResource(R.string.settings_theme_active_theme),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(Tokens.IconMd),
                 )
             } else {
-                TextButton(onClick = onUse) { Text("Use") }
+                TextButton(onClick = onUse) { Text(stringResource(R.string.settings_theme_use)) }
+            }
+            IconButton(onClick = onExport) {
+                Icon(
+                    Icons.Default.SaveAlt,
+                    contentDescription = stringResource(R.string.theme_export),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete theme",
+                    contentDescription = stringResource(R.string.settings_theme_delete_theme),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-        }
-    }
-}
-
-/**
- * Theme editor form: name, three key colors in one row (primary required,
- * secondary and tertiary optional), a swatch-style palette style selector,
- * and a compact light+dark preview of the generated scheme.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ThemeEditor(
-    initial: CustomTheme?,
-    onSave: (CustomTheme) -> Unit,
-) {
-    var name by remember(initial) { mutableStateOf(initial?.name ?: "") }
-    var primary by remember(initial) {
-        mutableStateOf(initial?.primary ?: 0xFF6750A4.toInt())
-    }
-    var secondary by remember(initial) { mutableStateOf(initial?.secondary) }
-    var tertiary by remember(initial) { mutableStateOf(initial?.tertiary) }
-    var background by remember(initial) { mutableStateOf(initial?.background) }
-    var style by remember(initial) {
-        mutableStateOf(initial?.paletteStyle ?: PaletteStyle.TONAL_SPOT)
-    }
-    var contrast by remember(initial) { mutableStateOf(initial?.contrast ?: 0f) }
-    var pickSlot by remember { mutableStateOf<ThemeSlot?>(null) }
-
-    // One generated scheme per style, so each swatch square shows what that
-    // style actually does with the user's current colors.
-    val styleSchemes =
-        remember(primary, secondary, tertiary, background, contrast) {
-            PaletteStyle.entries.associateWith {
-                ThemeEngine.generate(
-                    primary,
-                    secondary,
-                    tertiary,
-                    it,
-                    background = background,
-                    contrast = contrast,
-                ).light
-            }
-        }
-
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Tokens.SpaceLg),
-        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
-    ) {
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Theme name") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
-        ) {
-            ThemeColorSlot(
-                label = "Primary",
-                color = primary,
-                optional = false,
-                modifier = Modifier.weight(1f),
-                onPick = { pickSlot = ThemeSlot.PRIMARY },
-                onClear = {},
-            )
-            ThemeColorSlot(
-                label = "Secondary",
-                color = secondary,
-                optional = true,
-                modifier = Modifier.weight(1f),
-                onPick = { pickSlot = ThemeSlot.SECONDARY },
-                onClear = { secondary = null },
-            )
-            ThemeColorSlot(
-                label = "Tertiary",
-                color = tertiary,
-                optional = true,
-                modifier = Modifier.weight(1f),
-                onPick = { pickSlot = ThemeSlot.TERTIARY },
-                onClear = { tertiary = null },
-            )
-            // Background (surfaces) is the fourth optional key color.
-            ThemeColorSlot(
-                label = "Background",
-                color = background,
-                optional = true,
-                modifier = Modifier.weight(1f),
-                onPick = { pickSlot = ThemeSlot.BACKGROUND },
-                onClear = { background = null },
-            )
-        }
-
-        Text(
-            text = "Palette style",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
-        ) {
-            PaletteStyle.entries.forEach { option ->
-                PaletteSwatchSquare(
-                    scheme = styleSchemes.getValue(option),
-                    selected = style == option,
-                    onClick = { style = option },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = "Contrast",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    text = if (contrast == 0f) "standard" else (contrast * 100).roundToInt().toString() + "%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            // -1 = minimum, 0 = standard (as specced), 1 = maximum — the
-            // spec's contrast level drives the per-role contrast curves.
-            Slider(
-                value = contrast,
-                onValueChange = { contrast = it },
-                valueRange = -1f..1f,
-                steps = 3,
-            )
-        }
-
-        ThemePreview(
-            primary = primary,
-            secondary = secondary,
-            tertiary = tertiary,
-            background = background,
-            style = style,
-            contrast = contrast,
-        )
-
-        Button(
-            onClick = {
-                onSave(
-                    CustomTheme(
-                        id = initial?.id ?: UUID.randomUUID().toString(),
-                        name = name.ifBlank { "My theme" },
-                        primary = primary,
-                        secondary = secondary,
-                        tertiary = tertiary,
-                        background = background,
-                        paletteStyle = style,
-                        contrast = contrast,
-                    ),
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Save")
-        }
-    }
-
-    pickSlot?.let { slot ->
-        val initialColor =
-            when (slot) {
-                ThemeSlot.PRIMARY -> primary.toColor()
-                ThemeSlot.SECONDARY -> (secondary ?: 0xFF625B71.toInt()).toColor()
-                ThemeSlot.TERTIARY -> (tertiary ?: 0xFF7D5260.toInt()).toColor()
-                ThemeSlot.BACKGROUND -> (background ?: 0xFFF7F2FA.toInt()).toColor()
-            }
-        ColorPickerDialog(
-            initialColor = initialColor,
-            onPick = { newColor ->
-                val argb = newColor.toArgb()
-                when (slot) {
-                    ThemeSlot.PRIMARY -> primary = argb
-                    ThemeSlot.SECONDARY -> secondary = argb
-                    ThemeSlot.TERTIARY -> tertiary = argb
-                    ThemeSlot.BACKGROUND -> background = argb
-                }
-                pickSlot = null
-            },
-            onDismiss = { pickSlot = null },
-        )
-    }
-}
-
-/**
- * One key color as a tappable swatch: circle + label under it. The plus icon
- * reads as an add (pick a color) when the slot is empty and turns 45° into
- * an X when filled, so tapping clears it; the required (primary) slot has no
- * clear state and always opens the picker.
- */
-@Composable
-private fun ThemeColorSlot(
-    label: String,
-    color: Int?,
-    optional: Boolean,
-    modifier: Modifier = Modifier,
-    onPick: () -> Unit,
-    onClear: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    // Keeps the last filled color so the fade-out has something to fade.
-    var shownColor by remember { mutableStateOf(color) }
-    LaunchedEffect(color) { color?.let { shownColor = it } }
-    val filled = color != null
-    // The X state only exists on optional slots; primary stays a plain plus.
-    val clearable = filled && optional
-    val fillAlpha by
-        animateFloatAsState(
-            targetValue = if (filled) 1f else 0f,
-            animationSpec = spatialSpec<Float>(),
-            label = "slot-fill",
-        )
-    val plusScale by
-        animateFloatAsState(
-            targetValue = if (clearable || !filled) 1f else 0f,
-            animationSpec = spatialSpec<Float>(),
-            label = "slot-plus-scale",
-        )
-    val plusRotation by
-        animateFloatAsState(
-            targetValue = if (clearable) 45f else 0f,
-            animationSpec = spatialSpec<Float>(),
-            label = "slot-plus-rotation",
-        )
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(Tokens.SwatchLg)
-                    .expressiveClickable(
-                        onClick = { if (clearable) onClear() else onPick() },
-                    )
-                    .clip(CircleShape)
-                    .background(scheme.surfaceContainerHighest)
-                    .background((shownColor?.toColor() ?: Color.Transparent).copy(alpha = fillAlpha)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = if (clearable) "Remove $label color" else "Pick $label color",
-                tint = scheme.onSurfaceVariant,
-                modifier =
-                    Modifier
-                        .size(Tokens.IconMd)
-                        .scale(plusScale)
-                        .rotate(plusRotation),
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = scheme.onSurfaceVariant,
-        )
-    }
-}
-
-/**
- * Swatch square for the palette style selector: a 2x2 grid of primary |
- * secondary over tertiary | surface. Surface is the divergent cell — styles
- * treat neutrals differently (e.g. expressive shifts neutral hue, vibrant
- * raises neutral chroma) while the key colors anchor the comparison.
- * The swatches fill the square edge to edge; selection grows a 2dp primary
- * ring INTO the square (the ring is the padding, so no background peeks
- * behind it) while the corner rounding morphs.
- */
-@Composable
-private fun PaletteSwatchSquare(
-    scheme: ColorScheme,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val r = BluejayTokens().radius
-    val ring by
-        animateFloatAsState(
-            targetValue = if (selected) Tokens.StrokeEmphasized.value else 0f,
-            animationSpec = spatialSpec<Float>(),
-            label = "swatch-ring",
-        )
-    val outerCorner by
-        animateFloatAsState(
-            targetValue = if (selected) r.md.value else r.lg.value,
-            animationSpec = spatialSpec<Float>(),
-            label = "swatch-corner",
-        )
-    val ringColor by
-        animateColorAsState(
-            targetValue =
-                if (selected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHighest
-                },
-            animationSpec = tween(200, easing = FastOutSlowInEasing),
-            label = "swatch-ring-color",
-        )
-    Box(
-        modifier =
-            modifier
-                .aspectRatio(1f)
-                .expressiveClickable(onClick = onClick)
-                // spring overshoot: corner/padding must stay non-negative
-                .clip(RoundedCornerShape(outerCorner.coerceAtLeast(0f).dp))
-                .background(ringColor)
-                .padding(ring.coerceAtLeast(0f).dp),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape((outerCorner - ring).coerceAtLeast(0f).dp)),
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(scheme.primary),
-                    )
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(scheme.secondary),
-                    )
-                }
-                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(scheme.tertiary),
-                    )
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .background(scheme.surface),
-                    )
-                }
             }
         }
     }
@@ -628,8 +376,8 @@ private fun ThemePreview(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm),
     ) {
-        ThemePreviewCard(title = "Light", scheme = schemes.light, modifier = Modifier.weight(1f))
-        ThemePreviewCard(title = "Dark", scheme = schemes.dark, modifier = Modifier.weight(1f))
+        ThemePreviewCard(title = stringResource(R.string.settings_light), scheme = schemes.light, modifier = Modifier.weight(1f))
+        ThemePreviewCard(title = stringResource(R.string.settings_dark), scheme = schemes.dark, modifier = Modifier.weight(1f))
     }
 }
 
@@ -663,7 +411,7 @@ private fun ThemePreviewCard(
                 shape = MaterialTheme.shapes.small,
             ) {
                 Text(
-                    text = "Container",
+                    text = stringResource(R.string.settings_theme_container),
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onPrimaryContainer,
                     modifier = Modifier.padding(horizontal = Tokens.SpaceSm, vertical = Tokens.SpaceXs),
@@ -679,119 +427,48 @@ private fun PreviewSwatch(color: Color) {
 }
 
 /**
- * Swatch-grid color picker in a dialog. M3 1.4.0 has no ColorPicker
- * composable, so a preset palette is the whole picker — tap picks.
+ * Free-form color picker in a dialog: featured presets + the free-form
+ * ColorPicker (saturation/value square, hue slider, hex field) on top,
+ * with the full 32-color preset grid below for quick picks.
  */
 @Composable
-private fun ColorPickerDialog(
+internal fun ColorPickerDialog(
+    title: String,
     initialColor: Color,
     onPick: (Color) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Dialog(
+    // Draft color: nothing commits until Apply, so exploring colors in the
+    // picker doesn't close the dialog or write the slot immediately.
+    var draft by remember { mutableStateOf(initialColor.toArgb()) }
+    AlertDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainer,
-        ) {
+        title = { Text(title) },
+        text = {
             Column(
                 modifier =
                     Modifier
-                        .padding(Tokens.SpaceLg)
-                        .width(Tokens.DialogSm),
+                        // Scroll when the picker content exceeds the screen —
+                        // without this the bottom rows compress/clip.
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
-                Text(
-                    text = "#" + initialColor.toArgb().toString(16),
-                    style = MaterialTheme.typography.labelLarge,
+                ColorPicker(
+                    initialColor = draft,
+                    onColorChange = { draft = it },
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                    (listOf(initialColor.toArgb()) + PresetColors)
-                        .distinct()
-                        .chunked(8)
-                        .forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceSm)) {
-                                row.forEach { argb ->
-                                    ColorSwatch(
-                                        color = Color(argb),
-                                        isSelected = argb == initialColor.toArgb(),
-                                        onClick = { onPick(Color(argb)) },
-                                    )
-                                }
-                            }
-                        }
-                }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
             }
-        }
-    }
-}
-
-@Composable
-private fun ColorSwatch(
-    color: Color,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier =
-            Modifier
-                .size(Tokens.SwatchMd)
-                .expressiveClickable(onClick = onClick)
-                .clip(CircleShape)
-                .background(color),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (isSelected) {
-            Icon(
-                Icons.Default.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(Tokens.IconXs),
-            )
-        }
-    }
-}
-
-private val PresetColors: List<Int> =
-    listOf(
-        0xFF6750A4.toInt(),
-        0xFF7C4DFF.toInt(),
-        0xFF6200EE.toInt(),
-        0xFF5E35B1.toInt(),
-        0xFF3F51B5.toInt(),
-        0xFF1E88E5.toInt(),
-        0xFF2962FF.toInt(),
-        0xFF00B0FF.toInt(),
-        0xFF009688.toInt(),
-        0xFF018786.toInt(),
-        0xFF00BFA5.toInt(),
-        0xFF43A047.toInt(),
-        0xFF4CAF50.toInt(),
-        0xFF00C853.toInt(),
-        0xFF76FF03.toInt(),
-        0xFFFBC02D.toInt(),
-        0xFFFFAB40.toInt(),
-        0xFFF57C00.toInt(),
-        0xFFFF6D00.toInt(),
-        0xFFC62828.toInt(),
-        0xFFD50000.toInt(),
-        0xFFFF5252.toInt(),
-        0xFFC2185B.toInt(),
-        0xFFFF4081.toInt(),
-        0xFF8D6E63.toInt(),
-        0xFF546E7A.toInt(),
-        0xFF37474F.toInt(),
-        0xFF757575.toInt(),
-        0xFFB0BEC5.toInt(),
-        0xFF212121.toInt(),
-        0xFF625B71.toInt(),
-        0xFF7D5260.toInt(),
+        },
+        confirmButton = {
+            TextButton(onClick = { onPick(Color(draft)) }) {
+                Text(stringResource(R.string.settings_apply))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
+        },
     )
-
-private enum class ThemeSlot { PRIMARY, SECONDARY, TERTIARY, BACKGROUND }
+}
 
 private val PaletteStyle.label: String
     get() =
@@ -801,5 +478,3 @@ private val PaletteStyle.label: String
             PaletteStyle.EXPRESSIVE -> "Expressive"
             PaletteStyle.FRUIT_SALAD -> "Fruit salad"
         }
-
-private fun Int.toColor(): Color = Color(this)

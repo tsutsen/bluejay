@@ -6,6 +6,7 @@ import com.tsutsen.platformplayer.core.designsystem.layout.bluejayNavItems
 import com.tsutsen.platformplayer.core.datastore.model.ControllerBinding
 import com.tsutsen.platformplayer.core.datastore.model.CustomTheme
 import com.tsutsen.platformplayer.core.datastore.model.HiddenContentEntry
+import com.tsutsen.platformplayer.core.datastore.model.SurfaceStyle
 import com.tsutsen.platformplayer.logging.LogLevel
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -19,6 +20,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import java.time.OffsetDateTime
+import com.tsutsen.platformplayer.core.model.TrackSelectionValues
 
 /**
  * Minimal stub Settings class.
@@ -114,6 +116,7 @@ class Settings {
 
     // Second (rear) display companion window
     var dualScreen: Boolean = false
+    var dualScreenSwapDisplays: Boolean = false
     var dualScreenPages: List<String> = listOf("dash", "video", "library", "home")
     var dualScreenVideoTabs: List<String> =
         listOf("info", "controls", "comments", "chapters", "recommended", "queue", "dot")
@@ -254,7 +257,7 @@ class Settings {
         var downrankedCreators: List<String> = emptyList()
 
         // "Auto" or "NNNp" — quality the player starts each video at.
-        var defaultVideoResolution: String = "Auto"
+        var defaultVideoResolution: String = TrackSelectionValues.AUTO
 
         // Resolution label (DownloadQuality label) a plain download uses.
         var defaultDownloadResolution: String = "480p"
@@ -293,7 +296,14 @@ class Settings {
     class OtherSettings {
         var shouldClearWebviewCookies: Boolean = false
         var watchLaterAddStart: Boolean = false
+
+        // Remove watched videos from the Watch Later library slot automatically.
+        var watchLaterAutoCleanup: Boolean = false
         var playlistAllowDups: Boolean = false
+
+        // Demo mode (Settings > About): show simulated local content, never
+        // fetch from the network.
+        var demoMode: Boolean = false
 
         // Dock tab keys in display order (Settings > Content > Dock).
         // Defaults to the designsystem's tab list; unknown keys are ignored
@@ -315,11 +325,34 @@ class Settings {
         // UI rounding as a percent (100 = shipped radii, 0 = sharp)
         var uiRounding: Int = 100
 
+        // App font family (FontFamily name: DEFAULT | INTER | ROBOTO | OPEN_SANS)
+        var fontFamily: String = "DEFAULT"
+
+        // Font size scale (1.0 = shipped sizes)
+        var fontSizeScale: Float = 1.0f
+
         // User-created themes (key colors → generated scheme)
         var customThemes: List<CustomTheme> = emptyList()
 
         // Active custom theme id (null = default theming)
         var activeThemeId: String? = null
+
+        // Per-surface user skins (Settings > Appearance > Surface styles),
+        // keyed by SurfaceKeys.
+        var surfaceStyles: Map<String, SurfaceStyle> = emptyMap()
+
+        // Thumbnail tint overlay (ARGB; null = none).
+        var thumbnailTintArgb: Long? = null
+
+        // Tint strength (0..1) and blend mode (TintBlendMode name).
+        var thumbnailTintStrength: Float = 0.35f
+        var thumbnailTintBlendMode: String = "WASH"
+
+        // Thumbnail desaturation (1 = full color, 0 = grayscale).
+        var thumbnailSaturation: Float = 1f
+
+        // Thumbnail contrast (1 = neutral, 0 = flat gray, 2 = high contrast).
+        var thumbnailContrast: Float = 1f
     }
 
     @Serializable

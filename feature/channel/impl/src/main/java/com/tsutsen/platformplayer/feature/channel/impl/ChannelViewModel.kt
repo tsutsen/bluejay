@@ -124,7 +124,10 @@ class ChannelViewModel
                 _uiState.update {
                     if (it is ChannelUiState.Loaded) it.copy(contentLoading = true) else it
                 }
-                val page = channelRepository.loadInitialContents(url)
+                val page = runCatching { channelRepository.loadInitialContents(url) }
+                    .getOrElse { e ->
+                        ChannelContentPage(emptyList(), hasMore = false, error = e.message ?: "Failed to load contents")
+                    }
                 _uiState.update { state ->
                     if (state is ChannelUiState.Loaded) {
                         state.copy(
@@ -148,7 +151,10 @@ class ChannelViewModel
                 _uiState.update {
                     if (it is ChannelUiState.Loaded) it.copy(isLoadingMore = true) else it
                 }
-                val page = channelRepository.loadNextPage(url)
+                val page = runCatching { channelRepository.loadNextPage(url) }
+                    .getOrElse { e ->
+                        ChannelContentPage(emptyList(), hasMore = false, error = e.message ?: "Failed to load more")
+                    }
                 _uiState.update {
                     if (it is ChannelUiState.Loaded) {
                         it.copy(
@@ -194,7 +200,10 @@ class ChannelViewModel
         val url = state.channel.url
         viewModelScope.launch {
             _uiState.update { if (it is ChannelUiState.Loaded) it.copy(shortsLoading = true) else it }
-            val page = channelRepository.loadNextPage(url, CHANNEL_TYPE_SHORTS)
+            val page = runCatching { channelRepository.loadNextPage(url, CHANNEL_TYPE_SHORTS) }
+                .getOrElse { e ->
+                    ChannelContentPage(emptyList(), hasMore = false, error = e.message ?: "Failed to load shorts")
+                }
             _uiState.update {
                 if (it is ChannelUiState.Loaded) {
                     it.copy(
@@ -260,7 +269,24 @@ class ChannelViewModel
                             }
                         }
                     }
-                val page = channelRepository.loadInitialContents(url)
+                    .onFailure { e ->
+                        //A failed refresh must not leave the spinner up.
+                        _uiState.update {
+                            if (it is ChannelUiState.Loaded) {
+                                it.copy(
+                                    isRefreshing = false,
+                                    contentError = e.message ?: "Failed to refresh channel",
+                                )
+                            } else {
+                                it
+                            }
+                        }
+                        return@launch
+                    }
+                val page = runCatching { channelRepository.loadInitialContents(url) }
+                    .getOrElse { e ->
+                        ChannelContentPage(emptyList(), hasMore = false, error = e.message ?: "Failed to load contents")
+                    }
                 _uiState.update {
                     if (it is ChannelUiState.Loaded) {
                         it.copy(

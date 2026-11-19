@@ -19,8 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.ui.R
 
 @Composable
 internal fun PlayerNormalTopOverlay(
@@ -55,7 +57,7 @@ internal fun PlayerNormalTopOverlay(
         IconButton(onClick = onMinimize) {
             Icon(
                 imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = "Minimize",
+                contentDescription = stringResource(R.string.player_minimize_cd),
                 tint = Color.White,
             )
         }
@@ -79,9 +81,9 @@ internal fun PlayerNormalTopOverlay(
         IconButton(onClick = onLoopMode) {
             val (icon, label) =
                 when (loopMode) {
-                    1 -> Icons.Filled.RepeatOne to "Loop once"
-                    2 -> Icons.Filled.Repeat to "Loop indefinitely"
-                    else -> Icons.Outlined.Repeat to "Do not loop"
+                    1 -> Icons.Filled.RepeatOne to stringResource(R.string.player_loop_once)
+                    2 -> Icons.Filled.Repeat to stringResource(R.string.player_loop_indefinitely)
+                    else -> Icons.Outlined.Repeat to stringResource(R.string.player_do_not_loop)
                 }
             Icon(
                 imageVector = icon,
@@ -93,21 +95,21 @@ internal fun PlayerNormalTopOverlay(
             Icon(
                 imageVector =
                     if (isWatchLater) Icons.Filled.Schedule else Icons.Outlined.Schedule,
-                contentDescription = "Watch Later",
+                contentDescription = stringResource(R.string.video_watch_later),
                 tint = if (isWatchLater) Color.White else Color.White.copy(alpha = 0.6f),
             )
         }
         IconButton(onClick = onQueue) {
             Icon(
                 imageVector = Icons.Default.QueueMusic,
-                contentDescription = "Queue",
+                contentDescription = stringResource(R.string.player_queue_title),
                 tint = Color.White,
             )
         }
         IconButton(onClick = onOptions) {
             Icon(
                 imageVector = Icons.Default.Settings,
-                contentDescription = "Options",
+                contentDescription = stringResource(R.string.player_options_cd),
                 tint = Color.White,
             )
         }

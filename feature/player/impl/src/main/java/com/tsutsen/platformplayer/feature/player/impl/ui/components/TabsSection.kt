@@ -3,8 +3,10 @@ package com.tsutsen.platformplayer.feature.player.impl
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.designsystem.component.PillTabs
 
 @Composable
@@ -17,8 +19,8 @@ internal fun TabsSection(
 ) {
     val tabs =
         buildList {
-            if (showComments) add(0 to if (isLive) "Live chat" else "Comments")
-            if (showRecommended) add(1 to "Recommended")
+            if (showComments) add(0 to if (isLive) stringResource(R.string.player_tab_live_chat) else stringResource(R.string.player_tab_comments))
+            if (showRecommended) add(1 to stringResource(R.string.player_tab_recommended))
         }
     if (tabs.isEmpty()) return
     val selectedPill = tabs.indexOfFirst { it.first == selectedTab }.coerceAtLeast(0)

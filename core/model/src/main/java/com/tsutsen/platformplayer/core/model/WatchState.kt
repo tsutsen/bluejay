@@ -12,6 +12,27 @@ data class WatchState(
 ) {
     companion object {
         /**
+         * The single watched/started split for feed filters (home + subs used
+         * to hand-roll the 0.95 formula twice). watched = >= 95% of duration
+         * by position or accumulated watched time; started = begun, not
+         * finished. Null = fresh (no meaningful progress).
+         */
+        fun of(
+            positionMs: Long,
+            watchedMs: Long,
+            durationMs: Long,
+        ): WatchState? {
+            if (durationMs <= 0) return null
+            val watched =
+                positionMs >= 0.95 * durationMs || watchedMs >= 0.95 * durationMs
+            return when {
+                watched -> WatchState(1f, isWatched = true)
+                positionMs > 0 -> WatchState((positionMs.toFloat() / durationMs).coerceIn(0f, 1f), isWatched = false)
+                else -> null
+            }
+        }
+
+        /**
          * A video counts as watched once playback passes this fraction of
          * its duration. The single definition of the rule: drives the
          * checkmark on video cards and playlist cleanups like

@@ -1,5 +1,9 @@
 package com.tsutsen.platformplayer.core.designsystem.component
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -23,17 +28,45 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTheme
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceContentColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceOutline
 import com.tsutsen.platformplayer.core.model.Card
 
 /**
@@ -64,6 +97,12 @@ fun ContentCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    // One packed resolve instead of four helper calls.
+    val theme = surfaceTheme(
+        SurfaceKeys.VIDEO_CARD,
+        fallbackColor = MaterialTheme.colorScheme.surfaceContainer,
+        fallbackContent = MaterialTheme.colorScheme.onSurface,
+    )
     Box(
         modifier =
             modifier
@@ -74,9 +113,15 @@ fun ContentCard(
                     bottom = Tokens.SpaceLg,
                 )
                 .clip(RoundedCornerShape(BluejayTokens().radius.card))
-                .background(MaterialTheme.colorScheme.surfaceContainer),
+                .background(theme.color)
+                // Texture stays on the existing modifier (it reads the skin's
+                // decoded bitmap); the packed theme carries color/text/border.
+                .surfaceTexture(SurfaceKeys.VIDEO_CARD)
+                .surfaceOutline(SurfaceKeys.VIDEO_CARD, MaterialTheme.shapes.large),
     ) {
-        content()
+        CompositionLocalProvider(LocalContentColor provides theme.contentColor) {
+            content()
+        }
     }
 }
 
@@ -153,31 +198,30 @@ fun VideoContainer(
     when (layout) {
         is ContainerLayout.List -> {
             val state = rememberLazyListState()
-            ScrollEndReached(
-                listState = state,
-                gridState = null,
-                itemCount = items.size,
-                isLoading = isLoading,
-                hasMorePages = hasMorePages,
-                threshold = 6,
-                onEndReached = onLoadMore,
-            )
             AutoLoadFill(
                 listState = state,
                 itemCount = items.size,
                 hasMorePages = hasMorePages,
                 onLoadMore = onLoadMore,
             )
-            LazyColumn(
+            BottomLoadMoreBox(
+                isLoading = isLoading,
+                hasMorePages = hasMorePages,
+                onLoadMore = onLoadMore,
+                atEnd = { !state.canScrollForward },
                 modifier = modifier.fillMaxSize(),
-                state = state,
-                contentPadding = effectivePadding,
-                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg),
             ) {
-                if (topContent != null) {
-                    item(key = "__top__") { topContent() }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = state,
+                    contentPadding = effectivePadding,
+                    verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg),
+                ) {
+                    if (topContent != null) {
+                        item(key = "__top__") { topContent() }
+                    }
+                    renderCards(items, cardContent, trailingContent)
                 }
-                renderCards(items, cardContent, trailingContent)
             }
         }
 
@@ -204,33 +248,32 @@ fun VideoContainer(
 
         is ContainerLayout.Grid -> {
             val state = rememberLazyGridState()
-            ScrollEndReached(
-                listState = null,
-                gridState = state,
-                itemCount = items.size,
-                isLoading = isLoading,
-                hasMorePages = hasMorePages,
-                threshold = 6,
-                onEndReached = onLoadMore,
-            )
             AutoLoadFill(
                 gridState = state,
                 itemCount = items.size,
                 hasMorePages = hasMorePages,
                 onLoadMore = onLoadMore,
             )
-            LazyVerticalGrid(
+            BottomLoadMoreBox(
+                isLoading = isLoading,
+                hasMorePages = hasMorePages,
+                onLoadMore = onLoadMore,
+                atEnd = { !state.canScrollForward },
                 modifier = modifier.fillMaxSize(),
-                state = state,
-                columns = GridCells.Fixed(layout.columns),
-                contentPadding = effectivePadding,
-                horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
-                verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
             ) {
-                if (topContent != null) {
-                    item(key = "__top__") { topContent() }
+                LazyVerticalGrid(
+                    modifier = Modifier.fillMaxSize(),
+                    state = state,
+                    columns = GridCells.Fixed(layout.columns),
+                    contentPadding = effectivePadding,
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+                    verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
+                ) {
+                    if (topContent != null) {
+                        item(key = "__top__") { topContent() }
+                    }
+                    renderCards(items, cardContent, trailingContent)
                 }
-                renderCards(items, cardContent, trailingContent)
             }
         }
 
@@ -286,6 +329,191 @@ fun VideoContainer(
                     cardContent(card)
                 }
             }
+        }
+    }
+}
+
+/** Minimum time the committed ring stays pinned, so fast loads still read as an action. */
+private const val BOTTOM_LOAD_MIN_PIN_MS = 600L
+
+/** Hard cap on waiting out an observable loading state before settling the ring away. */
+private const val BOTTOM_LOAD_MAX_PIN_MS = 30_000L
+
+/** How far above the bottom edge the ring rests once fully pulled in. */
+private val BOTTOM_LOAD_REST_DP = 20.dp
+
+/**
+ * The bottom twin of pull-to-refresh. When the content is scrolled to its
+ * end, dragging further up pulls a circular indicator up from the bottom
+ * edge — it follows the finger and the content shifts up damped, so the
+ * overdrag visibly "grabs" something. Releasing past the threshold commits
+ * the load: the indicator pins at its resting spot with the M3 loading
+ * spinner until [isLoading] clears, then settles back out of view.
+ * Without a commit (or with [hasMorePages] false) everything is inert.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun BottomLoadMoreBox(
+    isLoading: Boolean,
+    hasMorePages: Boolean,
+    onLoadMore: () -> Unit,
+    atEnd: () -> Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    if (!hasMorePages) {
+        Box(modifier) { content() }
+        return
+    }
+    val density = LocalDensity.current
+    val thresholdPx = with(density) { 80.dp.toPx() }
+    val maxPullPx = with(density) { 160.dp.toPx() }
+    val ringSizePx = with(density) { 48.dp.toPx() }
+    val gapPx = with(density) { 12.dp.toPx() }
+    // Distance the ring travels from fully hidden below the edge to fully
+    // visible...
+    val ringTravelPx = ringSizePx + gapPx
+    // ...plus the resting inset: at the commit threshold it sits seated
+    // [BOTTOM_LOAD_REST_DP] above the bottom edge, not flush with it.
+    val restPx = with(density) { BOTTOM_LOAD_REST_DP.toPx() }
+    val holdPx = thresholdPx
+
+    val pull = remember { mutableFloatStateOf(0f) }
+    var pinned by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val isLoadingNow = rememberUpdatedState(isLoading)
+
+    // The running settle/hold animation. The finger must always win over
+    // it: while it runs, [pull] is written every frame, so a drag that
+    // doesn't cancel it gets yanked back — felt as sticky, inertia-less
+    // scrolling.
+    var pullAnimJob: kotlinx.coroutines.Job? = null
+
+    // Animates the pull to [target] on a spring, mirroring each frame into
+    // [pull] (the drag writes it directly; this takes over on release).
+    fun animatePullTo(target: Float) {
+        pullAnimJob?.cancel()
+        pullAnimJob = scope.launch {
+            val anim = Animatable(pull.floatValue)
+            val job = launch { anim.animateTo(target, spring(stiffness = Spring.StiffnessMediumLow)) }
+            while (job.isActive) {
+                pull.floatValue = anim.value
+                withFrameNanos { }
+            }
+            pull.floatValue = anim.value
+        }
+    }
+
+    val settle: () -> Unit = { animatePullTo(0f) }
+
+    // Commit owns the pin's whole lifecycle — it must NOT depend on
+    // observing isLoading become true: a fast load flips the repository's
+    // isLoading true->false within one frame, so a keyed effect would never
+    // see the transition and the pin would stick forever. Pin, snap to the
+    // hold spot, load; then keep the ring at least [BOTTOM_LOAD_MIN_PIN_MS]
+    // (so quick loads still read as a deliberate action), and wait out any
+    // observable loading before settling away.
+    val commit: () -> Unit = {
+        if (!pinned) {
+            pinned = true
+            scope.launch {
+                animatePullTo(holdPx)
+                onLoadMore()
+                val start = android.os.SystemClock.elapsedRealtime()
+                delay(BOTTOM_LOAD_MIN_PIN_MS)
+                while (isLoadingNow.value && android.os.SystemClock.elapsedRealtime() - start < BOTTOM_LOAD_MAX_PIN_MS) {
+                    withFrameNanos { }
+                }
+                pinned = false
+                animatePullTo(0f)
+            }
+        }
+    }
+
+    val connection = remember {
+        object : NestedScrollConnection {
+            var atEndCheck: () -> Boolean = { false }
+            var onCommit: () -> Unit = {}
+            var grabPull: () -> Unit = {}
+            var onRelease: () -> Unit = {}
+            var threshold = 0f
+            var maxPull = 0f
+            var isPinned: () -> Boolean = { false }
+
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source != NestedScrollSource.UserInput || isPinned()) return Offset.Zero
+                // Upward drag at the end = pull; downward drag retracts it.
+                if (atEndCheck() && (available.y < 0f || pull.floatValue > 0f)) {
+                    grabPull() // the finger takes over from any settle animation
+                    val newPull = (pull.floatValue - available.y).coerceIn(0f, maxPull)
+                    val consumed = pull.floatValue - newPull
+                    pull.floatValue = newPull
+                    return Offset(available.x, consumed)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                // Return value = the portion WE consume. Pass-through must be
+                // Velocity.Zero, not `available` — returning the full velocity
+                // ate every fling and the list lost all inertia.
+                if (isPinned()) return Velocity.Zero
+                if (pull.floatValue >= threshold) {
+                    onCommit()
+                    return available // the ring takes over the motion
+                }
+                if (pull.floatValue > 0f) {
+                    // Retract, but do NOT eat the fling: eating it here made
+                    // a fling right after a small overdrag attempt stop dead.
+                    // The list is at its end anyway, so the fling has nothing
+                    // to scroll; the settle animation runs alongside.
+                    onRelease()
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+    SideEffect {
+        connection.atEndCheck = atEnd
+        connection.onCommit = commit
+        connection.grabPull = {
+            // Finger grabs the pull: kill the settle animation so its
+            // per-frame writes stop fighting the drag.
+            pullAnimJob?.cancel()
+            pullAnimJob = null
+        }
+        connection.onRelease = settle
+        connection.threshold = thresholdPx
+        connection.maxPull = maxPullPx
+        connection.isPinned = { pinned }
+    }
+
+    Box(
+        modifier
+            .nestedScroll(connection)
+            .clipToBounds(),
+    ) {
+        // Damped content shift up, mirroring the top pull-to-refresh's
+        // downward shift so the overdrag "grabs" something.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { translationY = -pull.floatValue * 0.5f },
+        ) { content() }
+        if (pull.floatValue > 0.5f || pinned) {
+            ContainedLoadingIndicator(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .size(48.dp)
+                        .graphicsLayer {
+                            translationY = (ringTravelPx - pull.floatValue).coerceAtLeast(0f) - restPx
+                            alpha = (pull.floatValue / ringTravelPx).coerceIn(0f, 1f)
+                        },
+            )
         }
     }
 }

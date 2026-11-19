@@ -13,6 +13,15 @@ interface SettingsRepository {
     val preferences: StateFlow<AppPreferences>
 
     suspend fun updateAppearance(prefs: com.tsutsen.platformplayer.core.datastore.model.AppearancePreferences)
+
+    /** Thumbnail tint overlay (ARGB; null = none). */
+    suspend fun setThumbnailTint(argb: Long?)
+
+    /** Thumbnail tint strength (0..1). */
+    suspend fun setThumbnailTintStrength(strength: Float)
+
+    /** Thumbnail tint blend mode ([TintBlendMode] name). */
+    suspend fun setThumbnailTintBlendMode(mode: String)
     suspend fun updatePlayback(prefs: com.tsutsen.platformplayer.core.datastore.model.PlaybackPreferences)
     /** Toggle queue autoplay (Settings > Content > Video page). */
     suspend fun setAutoplay(enabled: Boolean)
@@ -21,6 +30,7 @@ interface SettingsRepository {
     // Typed per-key setters (the keys the settings screens use).
     suspend fun setEnableDeveloperOptions(enabled: Boolean)
     suspend fun setDualScreen(enabled: Boolean)
+    suspend fun setDualScreenSwapDisplays(enabled: Boolean)
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setUiRounding(rounding: Int)
     suspend fun setGridColumns(columns: Int)
@@ -44,6 +54,12 @@ interface SettingsRepository {
     suspend fun setDockTabOrder(order: List<String>)
     suspend fun setDefaultDockTab(key: String)
     suspend fun setSubscriptionsOrder(order: String)
+
+    /** Remove finished videos from the Watch Later library slot automatically (Settings > Content > Library). */
+    suspend fun setWatchLaterAutoCleanup(enabled: Boolean)
+
+    /** Demo mode (Settings > About): simulated local content instead of network fetches. */
+    suspend fun setDemoMode(enabled: Boolean)
 
     /**
      * Assign a video's spawn probability (Hidden content page, sheet "Hide").

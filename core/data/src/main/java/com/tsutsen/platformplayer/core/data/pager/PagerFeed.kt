@@ -36,6 +36,11 @@ class PagerFeed<T, R>(
             seenKeys.clear()
             append(source.getResults().mapNotNull(map))
             _items
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Cancellation must unwind, not masquerade as a page error —
+            // swallowing it kept the canceled coroutine running and wrote
+            // "coroutine was canceled" into the feed error.
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "loadInitial failed", e)
             error = e.message
@@ -51,6 +56,8 @@ class PagerFeed<T, R>(
             val delta = source.getResults().mapNotNull(map)
             error = null
             append(delta)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "loadNextPage failed", e)
             error = e.message
@@ -67,6 +74,8 @@ class PagerFeed<T, R>(
         return try {
             error = null
             append(source.getResults().mapNotNull(map))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "mergeCurrentResults failed", e)
             error = e.message

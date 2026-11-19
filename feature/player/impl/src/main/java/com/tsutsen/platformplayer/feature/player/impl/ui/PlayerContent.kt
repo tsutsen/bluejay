@@ -25,11 +25,13 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -41,7 +43,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tsutsen.platformplayer.core.ui.R
 import com.tsutsen.platformplayer.core.data.repository.PlaybackEngine
+import com.tsutsen.platformplayer.core.designsystem.theme.SurfaceKeys
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceColor
+import com.tsutsen.platformplayer.core.designsystem.theme.surfaceTexture
 import com.tsutsen.platformplayer.core.model.VideoCard
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GestureConfigs
 import com.tsutsen.platformplayer.feature.player.impl.gesture.GesturePipeline
@@ -87,6 +93,7 @@ fun PlayerContent(
     onRecommendedClick: (VideoCard) -> Unit,
     gridColumns: Int,
     onLoadMoreComments: () -> Unit,
+    onLoadMoreRecommendations: () -> Unit = {},
     onChannelClick: (String) -> Unit,
     onLike: () -> Unit,
     onDislike: () -> Unit,
@@ -288,7 +295,15 @@ fun PlayerContent(
                 videoModifier.background(
                     Color.Black.copy(alpha = 0.45f * endDim.value),
                 ),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(R.string.player_the_end),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = endDim.value),
+            )
+        }
 
         // ==================== 1b. Subtitle overlay ====================
         // Rendered inside the video's offset/size space (clipped with it) so
@@ -443,7 +458,10 @@ fun PlayerContent(
                             if (a in 0.01f..0.99f || ty != 0f) {
                                 compositingStrategy = CompositingStrategy.Offscreen
                             }
-                        }.nestedScroll(nestedScrollConnection),
+                        }
+                        .background(surfaceColor(SurfaceKeys.VIDEO_PAGE, MaterialTheme.colorScheme.surface))
+                        .surfaceTexture(SurfaceKeys.VIDEO_PAGE)
+                        .nestedScroll(nestedScrollConnection),
             ) {
                 PlayerDetails(
                     state = state,
@@ -455,6 +473,7 @@ fun PlayerContent(
                     onRecommendedClick = onRecommendedClick,
                     gridColumns = gridColumns,
                     onLoadMoreComments = onLoadMoreComments,
+                    onLoadMoreRecommendations = onLoadMoreRecommendations,
                     onChannelClick = onChannelClick,
                     onLike = onLike,
                     onDislike = onDislike,

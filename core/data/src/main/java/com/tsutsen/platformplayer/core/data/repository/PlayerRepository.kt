@@ -83,6 +83,14 @@ interface PlayerRepository {
      */
     fun setVideoExtras(comments: List<CommentItem>, recommendations: List<Card>)
 
+    /**
+     * Next page of recommended videos for the content URL. The caller
+     * appends the result onto [playerState recommendations] via
+     * [setVideoExtras] so both displays see the same list. Empty = no more
+     * pages (or another video took over).
+     */
+    suspend fun loadMoreRecommendations(url: String): List<Card>
+
     val mediaSessionToken: android.media.session.MediaSession.Token?
         get() = null
 

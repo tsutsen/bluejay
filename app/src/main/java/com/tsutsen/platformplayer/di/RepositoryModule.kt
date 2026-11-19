@@ -16,6 +16,7 @@ import com.tsutsen.platformplayer.core.data.repository.SettingsRepository
 import com.tsutsen.platformplayer.core.data.repository.SubscriptionRepository
 import com.tsutsen.platformplayer.core.data.repository.UpdateRepository
 import com.tsutsen.platformplayer.core.data.repository.VideoUrlResolver
+import com.tsutsen.platformplayer.core.data.di.ApplicationScope
 import com.tsutsen.platformplayer.core.data.repository.impl.LibraryRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.PlaybackQueueRepositoryImpl
 import com.tsutsen.platformplayer.core.data.repository.impl.PlayerRepositoryImpl
@@ -26,6 +27,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 @Module
@@ -91,24 +95,37 @@ abstract class RepositoryModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object PlayerRepositoryModule {
+    /**
+     * Shared app-lifetime scope for repositories: one supervisor for all
+     * long-lived (fire-and-forget) repository work. Never cancelled — it
+     * lives for the process.
+     */
+    @Provides
+    @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     @Provides
     @Singleton
     fun provideBackupProvider(
         savedVideoDao: com.tsutsen.platformplayer.core.database.dao.SavedVideoDao,
+        historyDao: com.tsutsen.platformplayer.core.database.dao.HistoryDao,
     ): com.tsutsen.platformplayer.feature.settings.impl.BackupProvider =
-        com.tsutsen.platformplayer.backup.AppBackupProvider(savedVideoDao)
+        com.tsutsen.platformplayer.backup.AppBackupProvider(savedVideoDao, historyDao)
 
     @Provides
     @Singleton
     fun providePlayerRepository(
         @ApplicationContext context: Context,
+        @ApplicationScope appScope: CoroutineScope,
         urlResolver: VideoUrlResolver,
         commentRepository: CommentRepository,
         contentExtrasRepository: ContentExtrasRepository,
         settingsRepository: SettingsRepository,
         historyDao: com.tsutsen.platformplayer.core.database.dao.HistoryDao,
     ): PlayerRepository {
-        val impl = PlayerRepositoryImpl(context)
+        val impl = PlayerRepositoryImpl(context, appScope)
         impl.setUrlResolver(urlResolver)
         impl.setExtrasRepositories(commentRepository, contentExtrasRepository, settingsRepository)
         impl.setHistoryDao(historyDao)
