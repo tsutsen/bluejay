@@ -144,14 +144,11 @@ internal fun ThemeEditor(
                 .padding(horizontal = Tokens.SpaceLg),
         verticalArrangement = Arrangement.spacedBy(Tokens.SpaceMd),
     ) {
-        // Same toggle-group chrome as the search tab's filters, at the very
-        // top of the sheet.
-        PillTabs(
-            labels = listOf("Palette", "Custom"),
-            selected = tab,
-            onSelect = { tab = it },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // The Palette/Custom PillTabs toggle is deliberately hidden: the
+        // Custom tab (per-surface overrides) is underbaked and not ready for
+        // release. `tab` stays pinned at 0 so only the Palette content
+        // renders; restore the toggle above the name field when the Custom
+        // tab ships (the else-branch below is kept intact for that).
 
         OutlinedTextField(
             value = name,
