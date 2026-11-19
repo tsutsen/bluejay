@@ -301,6 +301,10 @@ class Settings {
         var watchLaterAutoCleanup: Boolean = false
         var playlistAllowDups: Boolean = false
 
+        // Demo mode (Settings > About): show simulated local content, never
+        // fetch from the network.
+        var demoMode: Boolean = false
+
         // Dock tab keys in display order (Settings > Content > Dock).
         // Defaults to the designsystem's tab list; unknown keys are ignored
         // and missing keys are appended by the reader.

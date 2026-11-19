@@ -99,6 +99,9 @@ internal class PlayerHistoryPersister(
         durationMs: Long,
         force: Boolean,
     ) {
+        // Demo mode: never persist watch progress for demo urls (they are
+        // simulated slideshows, not real watched content).
+        if (video.url.startsWith("demo://")) return
         val now = System.currentTimeMillis()
         if (
             !force &&

@@ -364,4 +364,6 @@ Keine Nachrichten seit deinem Beitritt.</string>
     <string name="settings_slot_background">Hintergrund</string>
     <string name="settings_dual_swap">Bildschirme tauschen</string>
     <string name="settings_dual_swap_desc">Hauptoberfläche auf den anderen Bildschirm legen</string>
+    <string name="settings_demo_mode">Demo-Modus</string>
+    <string name="settings_demo_mode_desc">Simulierten Inhalte anzeigen, statt Daten aus dem Netzwerk zu laden</string>
 </resources>

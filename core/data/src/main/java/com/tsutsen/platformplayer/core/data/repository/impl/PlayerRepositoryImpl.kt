@@ -331,6 +331,14 @@ class PlayerRepositoryImpl(
             _playerState.update { it.copy(selectedQuality = res) }
         }
 
+        // Demo mode (Settings > About): demo urls (`demo://video/...`) play
+        // the bundled demo images as a looping slideshow — no plugin
+        // resolution, no network, no extras fetches.
+        if (videoId.startsWith(DemoPlayback.URL_PREFIX)) {
+            playDemoImages(videoId, generation, initial)
+            return
+        }
+
         if (prefs != null) {
             if (prefs.showComments) {
                 commentsCache.fetchOrReplay(
@@ -559,6 +567,116 @@ class PlayerRepositoryImpl(
             // don't clobber one a newer play() has already loaded in its place.
             if (generation == playGeneration.get()) pendingResumePosition = 0
         }
+    }
+
+    /**
+     * Demo-mode playback: a `demo://video/...` url plays the 6 bundled demo
+     * images (core/ui drawable-nodpi demo_1..6) as a Media3 image playlist,
+     * 5 s per image, looping ([Player.REPEAT_MODE_ALL]). Titles/channels
+     * derive from the same [DemoPlayback] mapping the feed cards use, so the
+     * player shows the title the tapped card had. No network, no resolution
+     * step, no history persistence (guarded in the history persister).
+     */
+    private suspend fun playDemoImages(
+        videoId: String,
+        generation: Int,
+        initial: com.tsutsen.platformplayer.core.model.ContentItem?,
+    ) {
+        Log.i(TAG, "Demo mode playback: $videoId")
+        val parsed = DemoPlayback.parseUrl(videoId)
+        if (parsed == null) {
+            Log.e(TAG, "Malformed demo url: $videoId")
+            _playerState.update { it.copy(isLoading = false, error = "Malformed demo url") }
+            return
+        }
+        val (page, index) = parsed
+        val seed = DemoPlayback.seedFor(page, index)
+        val resolvedThumbnail =
+            initial?.thumbnailUrl ?: demoResourceUri(DemoPlayback.thumbnailResName(seed))
+        val item =
+            initial?.copy(durationMs = DemoPlayback.TOTAL_DURATION_MS)
+                ?: com.tsutsen.platformplayer.core.model.ContentItem(
+                    id = "demo-$page-$index",
+                    url = videoId,
+                    title = DemoPlayback.title(seed),
+                    author =
+                        com.tsutsen.platformplayer.core.model.Author(
+                            id = DemoPlayback.channelUrl(seed),
+                            name = DemoPlayback.channel(seed),
+                            url = DemoPlayback.channelUrl(seed),
+                            thumbnailUrl = null,
+                        ),
+                    thumbnailUrl = resolvedThumbnail,
+                    contentType = com.tsutsen.platformplayer.core.model.ContentType.VIDEO,
+                    publishedAt = DemoPlayback.publishedAt(seed),
+                    durationMs = DemoPlayback.TOTAL_DURATION_MS,
+                    description = "Demo mode content — no network fetch",
+                )
+
+        // The player was closed (or superseded) before this play ran.
+        if (generation != playGeneration.get()) {
+            Log.i(TAG, "Demo play aborted: superseded ($videoId)")
+            return
+        }
+
+        // Slideshow duration (6 x 5 s) — the persister sees a sane total.
+        _playerState.update {
+            it.copy(
+                isLoading = false,
+                isPlaying = true,
+                isCompleted = false,
+                error = null,
+                currentVideo = item,
+                durationMs = DemoPlayback.TOTAL_DURATION_MS,
+                currentPositionMs = 0L,
+                videoQualities = emptyList(),
+                audioTracks = emptyList(),
+                subtitleLanguages = emptyList(),
+            )
+        }
+
+        withContext(Dispatchers.Main) {
+            sessionManager.ensurePlayer()
+            val player =
+                _exoPlayer ?: run {
+                    Log.e(TAG, "Demo play: no player instance")
+                    _playerState.update { it.copy(isLoading = false, error = "Failed to create player") }
+                    return@withContext
+                }
+            val mediaItems =
+                (1..DemoPlayback.IMAGE_COUNT).mapNotNull { n ->
+                    val uri = demoResourceUri("demo_$n")
+                    if (uri.isEmpty()) {
+                        null
+                    } else {
+                        MediaItem
+                            .Builder()
+                            .setUri(Uri.parse(uri))
+                            .setImageDurationMs(DemoPlayback.IMAGE_DURATION_MS)
+                            .build()
+                    }
+                }
+            if (mediaItems.isEmpty()) {
+                Log.e(TAG, "Demo play: no demo images found")
+                _playerState.update { it.copy(isLoading = false, error = "Demo images unavailable") }
+                return@withContext
+            }
+            player.setMediaItems(mediaItems)
+            // Loop the slideshow until another video is played.
+            player.repeatMode = Player.REPEAT_MODE_ALL
+            player.prepare()
+            player.playWhenReady = true
+            // Media notification / lock-screen controls for the demo item.
+            sessionManager.startServiceAndConnectController()
+            Log.i(TAG, "Demo slideshow started (${mediaItems.size} images)")
+        }
+    }
+
+    /** `android.resource://` uri for a drawable resolved by name (demo images live in core/ui). */
+    private fun demoResourceUri(resName: String): String {
+        val resId = context.resources.getIdentifier(resName, "drawable", context.packageName)
+        if (resId == 0) return ""
+        return "android.resource://${context.packageName}/$resId"
     }
 
     override suspend fun pause() {

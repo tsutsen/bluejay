@@ -364,4 +364,6 @@
     <string name="settings_slot_background">Фон</string>
     <string name="settings_dual_swap">Поменять экраны</string>
     <string name="settings_dual_swap_desc">Разместить главный интерфейс на другом экране</string>
+    <string name="settings_demo_mode">Демо-режим</string>
+    <string name="settings_demo_mode_desc">Показывать имитированный контент вместо загрузки из сети</string>
 </resources>

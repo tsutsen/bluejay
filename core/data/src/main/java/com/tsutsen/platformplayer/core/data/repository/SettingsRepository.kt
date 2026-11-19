@@ -58,6 +58,9 @@ interface SettingsRepository {
     /** Remove finished videos from the Watch Later library slot automatically (Settings > Content > Library). */
     suspend fun setWatchLaterAutoCleanup(enabled: Boolean)
 
+    /** Demo mode (Settings > About): simulated local content instead of network fetches. */
+    suspend fun setDemoMode(enabled: Boolean)
+
     /**
      * Assign a video's spawn probability (Hidden content page, sheet "Hide").
      * 0 = never shown; 100 removes the entry (fully shown). [name] and

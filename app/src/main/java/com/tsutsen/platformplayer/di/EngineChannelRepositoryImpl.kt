@@ -32,7 +32,32 @@ class EngineChannelRepositoryImpl
         private val contentFlows = mutableMapOf<String, PagerFlow<IPlatformContent, Card>>()
         private val playlistFlows = mutableMapOf<String, PagerFlow<IPlatformPlaylist, Card>>()
 
+        // Demo mode (Settings > About): demo channel pages
+        // (demo://channel/<n>) page the simulated catalog per channel — no
+        // engine calls. Next page per demo channel url.
+        private val demoChannelPages = mutableMapOf<String, Int>()
+
         override suspend fun getChannel(url: String): ChannelInfo =
+            // Demo mode: simulated channel info, no engine calls.
+            if (url.startsWith("demo://channel/")) {
+                val n = url.removePrefix("demo://channel/").toIntOrNull() ?: 1
+                ChannelInfo(
+                    url = url,
+                    name = "Demo Channel $n",
+                    thumbnail =
+                        com.tsutsen.platformplayer.demo.DemoContent.imageUris().getOrNull(n - 1),
+                    banner = null,
+                    subscribers = 1_000L * n,
+                    description = "Demo mode content — no network fetch",
+                    links = emptyMap(),
+                    isSubscribed = false,
+                    notifyEnabled = false,
+                )
+            } else {
+                getRealChannel(url)
+            }
+
+        private suspend fun getRealChannel(url: String): ChannelInfo =
             // getChannelCapabilities() runs V8 `busy` on the calling thread —
             // callers use viewModelScope (Main), so dispatch to IO.
             withContext(Dispatchers.IO) {
@@ -76,6 +101,8 @@ class EngineChannelRepositoryImpl
         }
 
         override suspend fun toggleSubscription(url: String): Boolean {
+            // Demo mode: simulated channels can't be subscribed to.
+            if (url.startsWith("demo://channel/")) return false
             if (StateSubscriptions.instance.isSubscribed(url)) {
                 StateSubscriptions.instance.removeSubscription(url, isUserAction = true)
             } else {
@@ -97,6 +124,15 @@ class EngineChannelRepositoryImpl
         // the V8 engine refuses to run on the main thread — so every engine
         // call here is dispatched to IO ("Cannot run on main thread").
         override suspend fun loadInitialContents(url: String, type: String?): ChannelContentPage =
+            // Demo mode: the demo channel's deterministic pages.
+            if (url.startsWith("demo://channel/")) {
+                demoChannelPages[url] = 1
+                ChannelContentPage(demoChannelCards(url, 1), hasMore = true, error = null)
+            } else {
+                loadRealInitialContents(url, type)
+            }
+
+        private suspend fun loadRealInitialContents(url: String, type: String?): ChannelContentPage =
             withContext(Dispatchers.IO) {
                 // Fresh flow per open: a cached flow keeps the previous
                 // visit's pager position and would start mid-window.
@@ -114,6 +150,16 @@ class EngineChannelRepositoryImpl
             }
 
         override suspend fun loadNextPage(url: String, type: String?): ChannelContentPage =
+            // Demo mode: advance the demo channel's page counter.
+            if (url.startsWith("demo://channel/")) {
+                val page = (demoChannelPages[url] ?: 1) + 1
+                demoChannelPages[url] = page
+                ChannelContentPage(demoChannelCards(url, page), hasMore = true, error = null)
+            } else {
+                loadRealNextPage(url, type)
+            }
+
+        private suspend fun loadRealNextPage(url: String, type: String?): ChannelContentPage =
             withContext(Dispatchers.IO) {
                 val flow = contentFlowFor(url, type)
                 flow.loadNextPage()
@@ -131,6 +177,10 @@ class EngineChannelRepositoryImpl
                 flow.loadInitial()
                 flow.items
             }
+
+        /** Demo mode: the demo channel's cards for a page (filtered by channel). */
+        private fun demoChannelCards(url: String, page: Int): List<Card> =
+            com.tsutsen.platformplayer.demo.DemoContent.cards(page).filter { it.authorUrl == url }
 
         private fun flowKey(url: String, type: String?): String = "$url|${type ?: ""}"
 

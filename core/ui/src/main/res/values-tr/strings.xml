@@ -364,4 +364,6 @@ Katıldığınızdan beri mesaj yok.</string>
     <string name="settings_slot_background">Arka plan</string>
     <string name="settings_dual_swap">Ekranları değiştir</string>
     <string name="settings_dual_swap_desc">Ana arayüzü diğer ekrana yerleştir</string>
+    <string name="settings_demo_mode">Demo modu</string>
+    <string name="settings_demo_mode_desc">Ağdan veri almak yerine simüle edilmiş içerik göster</string>
 </resources>

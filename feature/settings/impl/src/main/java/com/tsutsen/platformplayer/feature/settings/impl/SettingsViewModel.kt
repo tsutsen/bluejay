@@ -359,6 +359,11 @@ class SettingsViewModel
             viewModelScope.launch { settingsRepository.setWatchLaterAutoCleanup(enabled) }
         }
 
+        /** Demo mode (Settings > About): simulated content, no network fetches. */
+        fun setDemoMode(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setDemoMode(enabled) }
+        }
+
         fun setLibrarySectionOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateLibrarySectionOrder(order) }
         }

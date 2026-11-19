@@ -364,4 +364,6 @@
     <string name="settings_slot_background">背景</string>
     <string name="settings_dual_swap">画面を入れ替え</string>
     <string name="settings_dual_swap_desc">メイン画面をもう一方のスクリーンに表示</string>
+    <string name="settings_demo_mode">デモモード</string>
+    <string name="settings_demo_mode_desc">ネットワークから取得する代わりにシミュレートされたコンテンツを表示する</string>
 </resources>

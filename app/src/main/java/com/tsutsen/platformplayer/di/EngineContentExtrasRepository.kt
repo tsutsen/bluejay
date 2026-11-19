@@ -27,6 +27,10 @@ class EngineContentExtrasRepository
         private var recommendationUrl: String? = null
         private var recommendationFlow: PagerFlow<IPlatformContent, Card>? = null
 
+        // Demo mode: how many demo pages past the watched video's page have
+        // already been served by loadMoreRecommendations.
+        private var demoRecPageOffset = 1
+
         override suspend fun getChapters(url: String): List<VideoChapter> =
             try {
                 StatePlatform.instance
@@ -44,8 +48,19 @@ class EngineContentExtrasRepository
                 emptyList()
             }
 
-        override suspend fun getRecommendations(url: String): List<Card> =
-            try {
+        override suspend fun getRecommendations(url: String): List<Card> {
+            // Demo mode: a demo video's recommendations are the next demo
+            // page (a different page than the watched one) — no engine calls.
+            if (url.startsWith(com.tsutsen.platformplayer.core.data.repository.impl.DemoPlayback.URL_PREFIX)) {
+                val page =
+                    com.tsutsen.platformplayer.core.data.repository.impl.DemoPlayback
+                        .parseUrl(url)?.first?.plus(1) ?: 1
+                recommendationUrl = url
+                recommendationFlow = null
+                demoRecPageOffset = 1
+                return com.tsutsen.platformplayer.demo.DemoContent.cards(page)
+            }
+            return try {
                 val pager = StatePlatform.instance.getContentRecommendations(url) ?: return emptyList()
                 val flow =
                     PagerFlow(
@@ -60,8 +75,18 @@ class EngineContentExtrasRepository
                 Logger.w(TAG, "Failed to fetch recommendations for $url", e)
                 emptyList()
             }
+        }
 
         override suspend fun loadMoreRecommendations(url: String): List<Card> {
+            // Demo mode: keep paging the simulated catalog past the watched
+            // video's page.
+            if (url.startsWith(com.tsutsen.platformplayer.core.data.repository.impl.DemoPlayback.URL_PREFIX)) {
+                if (url != recommendationUrl) return emptyList()
+                val watchedPage =
+                    com.tsutsen.platformplayer.core.data.repository.impl.DemoPlayback
+                        .parseUrl(url)?.first ?: 0
+                return com.tsutsen.platformplayer.demo.DemoContent.cards(watchedPage + demoRecPageOffset.also { demoRecPageOffset++ })
+            }
             // A different video played since: this pager no longer applies.
             if (url != recommendationUrl) return emptyList()
             val flow = recommendationFlow ?: return emptyList()

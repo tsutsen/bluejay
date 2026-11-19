@@ -7,4 +7,6 @@ data class OtherPreferences(
     val watchLaterAutoCleanup: Boolean = false,
     /** Allow adding a video to a playlist it is already in. */
     val playlistAllowDups: Boolean = false,
+    /** Demo mode (Settings > About): show simulated local content, never fetch from the network. */
+    val demoMode: Boolean = false,
 )

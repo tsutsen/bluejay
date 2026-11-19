@@ -107,6 +107,10 @@ class EngineSubscriptionsRepositoryImpl
 
         private var flow: PagerFlow<IPlatformContent, IPlatformContent>? = null
 
+        // Demo mode (Settings > About): last generated demo page for
+        // loadMore(); demo content never touches the engine or the cache.
+        private var demoPage = 0
+
         // File-backed cache of the last loaded global feed; painted on launch
         // while a fresh fetch runs (same UX as the home feed's Room cache).
         private val feedCache by lazy { FragmentedStorage.get<StringStorage>(SUBS_FEED_CACHE_KEY) }
@@ -125,6 +129,11 @@ class EngineSubscriptionsRepositoryImpl
 
         override suspend fun loadCreators() {
             Logger.i(TAG, "Loading creators...")
+            // Demo mode: simulated creators + demo feed, no engine calls.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoFeed(reset = true)
+                return
+            }
             try {
                 val creators = scanCreators()
                 _feed.update { it.copy(creators = creators) }
@@ -148,6 +157,12 @@ class EngineSubscriptionsRepositoryImpl
         @Volatile private var pendingLoadMore = false
 
         override suspend fun loadMore() {
+            // Demo mode: append the next deterministic demo page, no engine
+            // calls, no cache write.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoFeed(reset = false)
+                return
+            }
             withContext(Dispatchers.IO) {
                 val f = flow
                 if (f != null && f.hasMore) {
@@ -186,6 +201,12 @@ class EngineSubscriptionsRepositoryImpl
             if (creatorId == _feed.value.activeCreatorId) return
             _feed.update {
                 it.copy(activeCreatorId = creatorId, items = emptyList(), isLoading = true)
+            }
+            // Demo mode: re-generate the demo cards scoped to the demo
+            // channel (demo://channel/<n>), no engine calls.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoFeed(reset = true)
+                return
             }
             withContext(Dispatchers.IO) {
                 try {
@@ -237,6 +258,11 @@ class EngineSubscriptionsRepositoryImpl
         @Volatile private var historyByUrl: Map<String, HistoryEntity> = emptyMap()
 
         private suspend fun reload(updated: Boolean) {
+            // Demo mode: simulated feed, no engine calls, no cache write.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoFeed(reset = true)
+                return
+            }
             // Revisit (tab re-entry, not pull-to-refresh) with the engine's
             // global feed still in memory: the pager window is emitted
             // directly once loadInitial resumes — no spinner flash, no cache
@@ -342,6 +368,12 @@ class EngineSubscriptionsRepositoryImpl
          */
         private suspend fun resyncSubscriptions() {
             withContext(Dispatchers.IO) {
+                // Demo mode: keep the simulated creator list, never scan
+                // real subscriptions.
+                if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                    _feed.update { it.copy(creators = demoCreators()) }
+                    return@withContext
+                }
                 val creators = scanCreators()
                 _feed.update { it.copy(creators = creators) }
                 val active = _feed.value.activeCreatorId
@@ -431,6 +463,10 @@ class EngineSubscriptionsRepositoryImpl
         }
 
         private fun applyFilters() {
+            // Demo mode: the filter chips don't apply to the simulated feed
+            // (and flow/cachedItems are null here — a pass through would
+            // wipe the demo items).
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) return
             val f = flow
             // While a fresh load is in flight the new pager's first page hasn't
             // landed yet: keep the cached items on screen so the chips keep
@@ -505,6 +541,44 @@ class EngineSubscriptionsRepositoryImpl
 
             // Convert to Cards
             return EngineCardMapper.toCards(filtered)
+        }
+
+        /** Demo mode: publish the deterministic demo page for the current scope. */
+        private suspend fun loadDemoFeed(reset: Boolean) {
+            val creatorId = _feed.value.activeCreatorId
+            val page = if (reset) 1 else demoPage + 1
+            val existing = if (reset) emptyList() else _feed.value.items
+            val fresh =
+                com.tsutsen.platformplayer.demo.DemoContent.cards(page).filter { card ->
+                    creatorId == null || card.authorUrl == creatorId
+                }
+            demoPage = page
+            _feed.update {
+                it.copy(
+                    items = existing + fresh,
+                    creators = if (it.creators.isEmpty()) demoCreators() else it.creators,
+                    isLoading = false,
+                    hasMorePages = true,
+                    error = null,
+                    currentPage = page,
+                )
+            }
+            Logger.i(TAG, "Demo mode: feed page $page (+${fresh.size} cards)")
+        }
+
+        /** Demo mode: the four simulated channels (bundled thumbnails). */
+        private fun demoCreators(): List<SubscriptionCreator> {
+            val thumbnails = com.tsutsen.platformplayer.demo.DemoContent.imageUris()
+            return (1..4).map { n ->
+                SubscriptionCreator(
+                    id = "demo://channel/$n",
+                    name = "Demo Channel $n",
+                    thumbnailUrl = thumbnails.getOrNull(n - 1),
+                    subscriberCount = null,
+                    url = "demo://channel/$n",
+                    hasNewContent = false,
+                )
+            }
         }
 
         private companion object {

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Copyright
 import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.tsutsen.platformplayer.core.data.repository.UpdateCheckState
 import com.tsutsen.platformplayer.core.designsystem.component.GroupPosition
 import com.tsutsen.platformplayer.core.designsystem.component.SettingsOptionCard
+import com.tsutsen.platformplayer.core.designsystem.component.SettingsSwitchCard
 import com.tsutsen.platformplayer.core.designsystem.icon.Download
 import com.tsutsen.platformplayer.core.designsystem.theme.BluejayTokens
 import com.tsutsen.platformplayer.core.designsystem.theme.Tokens
@@ -195,6 +197,21 @@ internal fun AboutItems(viewModel: SettingsViewModel) {
         }.getOrNull() ?: "unknown"
 
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceLg)) {
+        // Demo mode (Settings > About): show simulated local content instead
+        // of fetching from the network.
+        val uiState by viewModel.uiState.collectAsState()
+        val demoPrefs = (uiState as? SettingsUiState.Loaded)?.prefs
+        if (demoPrefs != null) {
+            SettingsSwitchCard(
+                icon = Icons.Filled.SmartToy,
+                title = stringResource(R.string.settings_demo_mode),
+                subtitle = stringResource(R.string.settings_demo_mode_desc),
+                checked = demoPrefs.other.demoMode,
+                onCheckedChange = { viewModel.setDemoMode(it) },
+                groupPosition = GroupPosition.First,
+            )
+        }
+
         Card(
             shape = RoundedCornerShape(BluejayTokens().radius.card),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),

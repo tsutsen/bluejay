@@ -364,4 +364,6 @@
     <string name="settings_slot_background">背景</string>
     <string name="settings_dual_swap">交换屏幕</string>
     <string name="settings_dual_swap_desc">将主界面放在另一块屏幕上</string>
+    <string name="settings_demo_mode">演示模式</string>
+    <string name="settings_demo_mode_desc">显示模拟内容,而不是从网络获取</string>
 </resources>

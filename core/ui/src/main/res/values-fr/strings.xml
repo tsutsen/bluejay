@@ -364,4 +364,6 @@ Aucun message depuis votre arrivée.</string>
     <string name="settings_slot_background">Arrière-plan</string>
     <string name="settings_dual_swap">Inverser les écrans</string>
     <string name="settings_dual_swap_desc">Placer l\'interface principale sur l\'autre écran</string>
+    <string name="settings_demo_mode">Mode démo</string>
+    <string name="settings_demo_mode_desc">Afficher un contenu simulé au lieu de récupérer des données du réseau</string>
 </resources>

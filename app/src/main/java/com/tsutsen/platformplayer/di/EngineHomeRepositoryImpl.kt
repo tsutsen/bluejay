@@ -57,6 +57,10 @@ class EngineHomeRepositoryImpl
 
         private var _pagerFlow: PagerFlow<IPlatformContent, Card>? = null
 
+        // Demo mode (Settings > About): last generated demo page, so
+        // loadNextPage() appends the next deterministic page.
+        private var _demoPage = 0
+
         // Homebrew mode: the per-source pagers (home refresh, sampled sub
         // channels, top creators) backing the merged feed, kept alive so
         // loadNextPage() can page them — infinite scroll in homebrew mode.
@@ -129,6 +133,13 @@ class EngineHomeRepositoryImpl
             lastLoadFromCache = false
             // Homebrew pagers from a previous load are stale.
             _homebrewFlows = emptyList()
+
+            // Demo mode (Settings > About): publish simulated local cards,
+            // no plugin init / engine calls / cache writes at all.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                loadDemoInitial()
+                return
+            }
 
             // Engine calls below (plugin init, home pager nextPage) run V8
             // `busy`/runBlocking and must not execute on the main thread —
@@ -314,6 +325,23 @@ class EngineHomeRepositoryImpl
             }
         }
 
+        /** Demo mode: replace the feed with deterministic page 1 of demo cards. */
+        private suspend fun loadDemoInitial() {
+            Logger.i("EngineHomeRepository", "Demo mode: generating initial feed")
+            _pagerFlow = null
+            _homebrewFlows = emptyList()
+            _demoPage = 1
+            _feed.update {
+                it.copy(
+                    isLoading = false,
+                    items = com.tsutsen.platformplayer.demo.DemoContent.cards(1),
+                    hasMorePages = true,
+                    error = null,
+                    currentPage = 1,
+                )
+            }
+        }
+
         private suspend fun loadCachedFeed() {
             try {
                 val entities = homeFeedCacheDao.observeValidCache().first()
@@ -406,6 +434,26 @@ class EngineHomeRepositoryImpl
             }
             Logger.i("EngineHomeRepository", "loadNextPage")
             _feed.update { it.copy(isLoading = true) }
+
+            // Demo mode: append the next deterministic demo page.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                val page = _demoPage + 1
+                val fresh = com.tsutsen.platformplayer.demo.DemoContent.cards(page)
+                _feed.update {
+                    it.copy(
+                        isLoading = false,
+                        items = it.items + fresh,
+                        hasMorePages = true,
+                        currentPage = page,
+                    )
+                }
+                _demoPage = page
+                Logger.i("EngineHomeRepository", "Demo mode: appended page $page (${fresh.size} cards)")
+                // Before the try/finally below: reset the single-flight flag
+                // ourselves (the finally only runs when the try is entered).
+                loadNextPageInFlight.set(false)
+                return
+            }
 
             try {
                 // Null pager = homebrew recommendations mode: page the

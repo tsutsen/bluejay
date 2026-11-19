@@ -364,4 +364,6 @@ Sem mensagens desde que entrou.</string>
     <string name="settings_slot_background">Fundo</string>
     <string name="settings_dual_swap">Trocar telas</string>
     <string name="settings_dual_swap_desc">Colocar a interface principal na outra tela</string>
+    <string name="settings_demo_mode">Modo demonstração</string>
+    <string name="settings_demo_mode_desc">Mostrar conteúdo simulado em vez de buscar da rede</string>
 </resources>

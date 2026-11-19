@@ -373,4 +373,6 @@
     <string name="settings_slot_background">Background</string>
     <string name="settings_dual_swap">Swap screens</string>
     <string name="settings_dual_swap_desc">Put the main interface on the other screen</string>
+    <string name="settings_demo_mode">Demo mode</string>
+    <string name="settings_demo_mode_desc">Show simulated content instead of fetching from the network</string>
 </resources>

@@ -254,6 +254,7 @@ class SettingsRepositoryImpl
                         watchLaterAddStart = s.other.watchLaterAddStart,
                         watchLaterAutoCleanup = s.other.watchLaterAutoCleanup,
                         playlistAllowDups = s.other.playlistAllowDups,
+                        demoMode = s.other.demoMode,
                     ),
             )
         }
@@ -469,6 +470,9 @@ class SettingsRepositoryImpl
 
         override suspend fun setWatchLaterAutoCleanup(enabled: Boolean) =
             persist { it.other.watchLaterAutoCleanup = enabled }
+
+        override suspend fun setDemoMode(enabled: Boolean) =
+            persist { it.other.demoMode = enabled }
 
         override suspend fun setSubscriptionsOrder(order: String) =
             persist { it.subscriptions.subscriptionsOrder = order }

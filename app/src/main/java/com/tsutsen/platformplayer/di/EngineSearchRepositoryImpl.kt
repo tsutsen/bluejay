@@ -40,6 +40,10 @@ class EngineSearchRepositoryImpl
         /** Non-empty when the user restricted the search to some sources. */
         private var restrictedSources: Set<String>? = null
 
+        // Demo mode (Settings > About): the query is answered from the
+        // simulated local catalog; _demoPage tracks the last generated page.
+        private var _demoPage = 0
+
         init {
             publishEnabledSources()
             // The enabled set changes at runtime (plugin toggles, auto
@@ -74,6 +78,21 @@ class EngineSearchRepositoryImpl
             restrictedSources = sources.takeIf { it.isNotEmpty() }
             publishEnabledSources()
             _results.update { it.copy(query = query, isLoading = true, error = null, items = emptyList()) }
+
+            // Demo mode: search the simulated catalog (case-insensitive
+            // title contains; empty query = all), no engine calls.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                _demoPage = 1
+                _results.update {
+                    it.copy(
+                        isLoading = false,
+                        items = com.tsutsen.platformplayer.demo.DemoContent.search(query, page = 1),
+                        hasMorePages = true,
+                        error = null,
+                    )
+                }
+                return
+            }
 
             try {
                 // Run engine call on IO dispatcher to avoid main thread blocking
@@ -126,11 +145,28 @@ class EngineSearchRepositoryImpl
             _results.update { SearchResult() }
             _pagerFlow = null
             _lastQuery = ""
+            _demoPage = 0
         }
 
         override suspend fun nextPage() {
             Logger.i("EngineSearchRepository", "nextPage")
             _results.update { it.copy(isLoading = true) }
+
+            // Demo mode: generate the next page of the simulated catalog.
+            if (com.tsutsen.platformplayer.demo.DemoContent.demoModeEnabled()) {
+                val page = _demoPage + 1
+                val fresh = com.tsutsen.platformplayer.demo.DemoContent.search(_lastQuery, page)
+                _demoPage = page
+                _results.update {
+                    it.copy(
+                        isLoading = false,
+                        items = it.items + fresh,
+                        hasMorePages = true,
+                        error = null,
+                    )
+                }
+                return
+            }
 
             try {
                 val flow = _pagerFlow ?: return
