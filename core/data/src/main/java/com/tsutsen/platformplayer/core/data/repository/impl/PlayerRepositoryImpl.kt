@@ -296,6 +296,13 @@ class PlayerRepositoryImpl(
                 comments = emptyList(),
                 recommendations = emptyList(),
                 chapters = emptyList(),
+                // Zero the progress too: keeping the OLD video's position/
+                // duration here lets the 4Hz position tracker pair the stale
+                // media position with the NEW video on its next tick, which
+                // the history persister then writes under the new video's
+                // url (watch-progress bleeding onto the wrong thumbnail).
+                currentPositionMs = 0L,
+                durationMs = 0L,
                 currentVideo =
                     initial
                         ?: ContentItem(

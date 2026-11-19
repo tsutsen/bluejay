@@ -266,14 +266,12 @@ internal class PlayerPlaybackController(
     fun close() {
         speedBeforeHold = null
         PlayerEventBus.emit(PlayerEvent.Closed)
-        // A closed player session consumes the current video — drop it
-        // from the queue so it doesn't linger at the head afterwards.
-        // (playerRepository.close() nulls currentVideo, so the queue's
-        // "current stays first" collector won't re-add it.)
-        val current = playerRepository.playerState.value.currentVideo
-        if (current != null) {
-            playbackQueueRepository.remove(current.url)
-        }
+        // Closing a video empties the queue: the whole pending list goes
+        // with the session, not just the current video. (playerRepository
+        // .close() nulls currentVideo, so the queue's "current stays first"
+        // collector won't re-add anything afterwards. Minimize keeps
+        // playback — and therefore the queue — alive; only close clears.)
+        playbackQueueRepository.clear()
         scope.launch {
             playerRepository.close()
         }

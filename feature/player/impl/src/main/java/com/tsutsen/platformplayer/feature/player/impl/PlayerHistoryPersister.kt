@@ -64,7 +64,18 @@ internal class PlayerHistoryPersister(
             lastSampledDurationMs = 0
             return
         }
+        // Second guard against cross-video bleed: a tick whose duration is
+        // unknown (the new source is still resolving — play() zeroes the
+        // state's duration on switch) or whose position cannot belong to
+        // this video (position past the duration) is stale media from the
+        // previous video. Don't persist it and don't record it as this
+        // video's last sample — the flush-on-switch above would otherwise
+        // write the previous video's position under the new video's url.
+        // The video identity is still kept so a later switch flushes with
+        // the last VALID sample.
+        val staleTick = durationMs <= 0L || (positionMs > 0L && positionMs > durationMs)
         lastSampledVideo = video
+        if (staleTick) return
         lastSampledPositionMs = positionMs
         lastSampledDurationMs = durationMs
         persist(
