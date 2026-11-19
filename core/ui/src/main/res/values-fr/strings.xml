@@ -238,6 +238,8 @@ Aucun message depuis votre arrivée.</string>
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">Lancer la configuration initiale</string>
     <string name="settings_library">Bibliothèque</string>
+    <string name="settings_watch_later_cleanup">Nettoyage de « À regarder plus tard »</string>
+    <string name="settings_watch_later_cleanup_desc">Retirer les vidéos regardées de « À regarder plus tard »</string>
     <string name="settings_library_sections">Sections de la bibliothèque</string>
     <string name="settings_library_slots">Emplacements de la bibliothèque</string>
     <string name="settings_license">Licence</string>

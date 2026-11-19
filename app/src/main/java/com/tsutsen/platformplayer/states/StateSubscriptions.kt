@@ -171,6 +171,14 @@ class StateSubscriptions {
         }
     }
 
+    /** True when the global feed pager is already built (no fetch needed). */
+    fun isGlobalFeedPreloaded(group: SubscriptionGroup? = null): Boolean {
+        val feed = getFeed(group?.id, false) ?: return false;
+        synchronized(feed.lock) {
+            return feed.feed != null;
+        }
+    }
+
     private var loadIndex = 0;
     suspend fun getGlobalSubscriptionFeed(scope: CoroutineScope, updated: Boolean, group: SubscriptionGroup? = null): IPager<IPlatformContent> {
         val feed = getFeed(group?.id, true) ?: return EmptyPager();

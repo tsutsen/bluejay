@@ -238,6 +238,8 @@
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">بدء الإعداد الأولي</string>
     <string name="settings_library">المكتبة</string>
+    <string name="settings_watch_later_cleanup">تنظيف المشاهدة لاحقاً</string>
+    <string name="settings_watch_later_cleanup_desc">إزالة الفيديوهات التي تمت مشاهدتها من قائمة المشاهدة لاحقاً</string>
     <string name="settings_library_sections">أقسام المكتبة</string>
     <string name="settings_library_slots">خانات المكتبة</string>
     <string name="settings_license">الترخيص</string>

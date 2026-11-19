@@ -408,6 +408,13 @@ class MainActivity :
             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         val options =
             android.app.ActivityOptions.makeBasic().setLaunchDisplayId(targetId).toBundle()
+        // Freeze-frame mask: snapshot the current content, hand it to the
+        // relaunched instance via SwapFreezeFrame, and cover this window so
+        // the display being left shows a static frame instead of a hole or
+        // splash while the system tears the window down. Best-effort — a
+        // failed capture/overlay just means the plain relaunch flash.
+        val freezeFrame = SwapFreezeFrame.capture(this)
+        SwapFreezeFrame.prepareRelaunch(this, freezeFrame, targetId)
         startActivity(intent, options)
     }
 
@@ -492,6 +499,7 @@ class MainActivity :
     }
 
     override fun onDestroy() {
+        SwapFreezeFrame.detach(this)
         companionPresentation?.dismiss()
         companionPresentation = null
         // Belt-and-braces: onStop already finished the companion activity,
@@ -630,6 +638,13 @@ class MainActivity :
                 settingsRepository,
             )
         }
+
+        // Continuation of the swap freeze-frame: if this instance was
+        // relaunched onto a new display, cover the fresh content with the
+        // snapshot the old instance left behind and fade it out once the
+        // first real frame is drawn. No-op when there is no pending frame
+        // for this display (normal cold starts, in-place task moves).
+        SwapFreezeFrame.consumeOnCreate(this)
     }
 }
 

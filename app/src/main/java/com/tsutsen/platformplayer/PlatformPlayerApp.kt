@@ -2,6 +2,7 @@ package com.tsutsen.platformplayer
 
 import com.tsutsen.platformplayer.di.SettingsRepositoryEntryPoint
 import com.tsutsen.platformplayer.di.SettingsRepositoryImpl
+import com.tsutsen.platformplayer.di.WatchLaterCleanupWatcher
 
 import android.app.Application
 import android.content.Context
@@ -51,6 +52,10 @@ class PlatformPlayerApp : Application(), ImageLoaderFactory {
 
     @Inject
     lateinit var playerRepository: PlayerRepository
+
+    /** Eagerly starts the Watch Later auto-cleanup collector (Settings > Content > Library). */
+    @Inject
+    lateinit var watchLaterCleanupWatcher: WatchLaterCleanupWatcher
 
     @Inject
     lateinit var notificationDao: NotificationDao

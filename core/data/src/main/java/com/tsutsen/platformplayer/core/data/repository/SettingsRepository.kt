@@ -55,6 +55,9 @@ interface SettingsRepository {
     suspend fun setDefaultDockTab(key: String)
     suspend fun setSubscriptionsOrder(order: String)
 
+    /** Remove finished videos from the Watch Later library slot automatically (Settings > Content > Library). */
+    suspend fun setWatchLaterAutoCleanup(enabled: Boolean)
+
     /**
      * Assign a video's spawn probability (Hidden content page, sheet "Hide").
      * 0 = never shown; 100 removes the entry (fully shown). [name] and

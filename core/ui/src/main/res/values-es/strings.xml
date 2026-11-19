@@ -238,6 +238,8 @@ No hay mensajes desde que te uniste.</string>
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">Iniciar configuración inicial</string>
     <string name="settings_library">Biblioteca</string>
+    <string name="settings_watch_later_cleanup">Limpieza de Ver más tarde</string>
+    <string name="settings_watch_later_cleanup_desc">Quitar los vídeos vistos de Ver más tarde</string>
     <string name="settings_library_sections">Secciones de la biblioteca</string>
     <string name="settings_library_slots">Espacios de la biblioteca</string>
     <string name="settings_license">Licencia</string>

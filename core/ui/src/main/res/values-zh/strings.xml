@@ -238,6 +238,8 @@
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">启动初始设置</string>
     <string name="settings_library">媒体库</string>
+    <string name="settings_watch_later_cleanup">稍后观看清理</string>
+    <string name="settings_watch_later_cleanup_desc">自动从稍后观看中移除已看完的视频</string>
     <string name="settings_library_sections">媒体库分区</string>
     <string name="settings_library_slots">媒体库槽位</string>
     <string name="settings_license">许可证</string>

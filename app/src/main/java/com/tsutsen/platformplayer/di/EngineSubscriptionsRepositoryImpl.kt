@@ -46,20 +46,23 @@ internal data class SubsFeedCache(
 /** File-store key of the subs feed cache (also read by HomebrewRecommendations source 2). */
 internal const val SUBS_FEED_CACHE_KEY = "subscriptions_feed_cache"
 
-/** Cached feed is a launch shortcut only; after this, wait for fresh data. */
+/** Freshness hint (lastSyncedAt indicators); stale caches still paint. */
 internal const val SUBS_FEED_CACHE_TTL_MS = 60L * 60L * 1000L
 
 /**
  * The subs feed file cache when still fresh (< [SUBS_FEED_CACHE_TTL_MS]),
- * else null. Read by the Subs tab (cache-first paint) and by
- * HomebrewRecommendations (source 2 seeds from it).
+ * else null. Read by HomebrewRecommendations (source 2 seeds from it).
+ * With [allowStale] the cache is returned regardless of age — the Subs
+ * tab paints it stale-while-revalidate while the network verify runs.
  */
-internal suspend fun readFreshSubsFeedCache(): List<IPlatformContent>? =
+internal suspend fun readFreshSubsFeedCache(allowStale: Boolean = false): List<IPlatformContent>? =
     try {
         val raw = FragmentedStorage.get<StringStorage>(SUBS_FEED_CACHE_KEY).value
         if (raw.isBlank()) return null // StringStorage default is ""
         val payload = Serializer.json.decodeFromString<SubsFeedCache>(raw)
-        if (System.currentTimeMillis() - payload.cachedAt > SUBS_FEED_CACHE_TTL_MS || payload.items.isEmpty()) {
+        if ((!allowStale &&
+                System.currentTimeMillis() - payload.cachedAt > SUBS_FEED_CACHE_TTL_MS) ||
+            payload.items.isEmpty()) {
             null
         } else {
             payload.items.toList()
@@ -153,6 +156,9 @@ class EngineSubscriptionsRepositoryImpl
                     f.loadNextPage()
                     Logger.i(TAG, "Loaded more (total: ${f.items.size})")
                     applyFilters()
+                    // Only the global feed pages belong in the feed cache —
+                    // a per-channel pager's pages must not overwrite it.
+                    if (_feed.value.activeCreatorId == null) saveFeedCache(f.items)
                 } else if (_feed.value.isLoading) {
                     // The fresh fetch is still initializing — queue the
                     // overdrag instead of dropping it on the floor.
@@ -172,6 +178,7 @@ class EngineSubscriptionsRepositoryImpl
                 f.loadNextPage()
                 Logger.i(TAG, "Loaded queued more (total: ${f.items.size})")
                 applyFilters()
+                if (_feed.value.activeCreatorId == null) saveFeedCache(f.items)
             }
         }
 
@@ -230,13 +237,23 @@ class EngineSubscriptionsRepositoryImpl
         @Volatile private var historyByUrl: Map<String, HistoryEntity> = emptyMap()
 
         private suspend fun reload(updated: Boolean) {
-            _feed.update { it.copy(isLoading = true) }
+            // Revisit (tab re-entry, not pull-to-refresh) with the engine's
+            // global feed still in memory: the pager window is emitted
+            // directly once loadInitial resumes — no spinner flash, no cache
+            // repaint.
+            val preloaded =
+                !updated &&
+                    _feed.value.activeCreatorId == null &&
+                    StateSubscriptions.instance.isGlobalFeedPreloaded()
+            if (!preloaded) {
+                _feed.update { it.copy(isLoading = true) }
+            }
             withContext(Dispatchers.IO) {
                 historyByUrl = historyDao.observeAll().first().associateBy { it.contentUrl }
                 // Cache-first on the initial load (not pull-to-refresh): paint
-                // the last feed immediately, refresh in background, replace
-                // when fresh data lands.
-                if (!updated) {
+                // the last feed immediately (stale included), refresh in
+                // background, replace when fresh data lands.
+                if (!updated && !preloaded) {
                     cachedItems = loadCachedFeed()
                     emitCachedFeed()
                 }
@@ -280,8 +297,8 @@ class EngineSubscriptionsRepositoryImpl
             _feed.update { it.copy(items = filteredCards(cached), isLoading = true, hasMorePages = true) }
         }
 
-        /** @return the cached feed when fresh enough (< [FEED_CACHE_TTL_MS]), else null. */
-        private suspend fun loadCachedFeed(): List<IPlatformContent>? = readFreshSubsFeedCache()
+        /** @return the cached feed, stale included (stale-while-revalidate). */
+        private suspend fun loadCachedFeed(): List<IPlatformContent>? = readFreshSubsFeedCache(allowStale = true)
 
         private suspend fun saveFeedCache(items: List<IPlatformContent>) {
             if (items.isEmpty()) return
@@ -492,6 +509,5 @@ class EngineSubscriptionsRepositoryImpl
 
         private companion object {
             const val TAG = "EngineSubscriptionsRepository"
-            const val FEED_CACHE_TTL_MS = SUBS_FEED_CACHE_TTL_MS
         }
     }

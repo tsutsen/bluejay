@@ -238,6 +238,8 @@ Katıldığınızdan beri mesaj yok.</string>
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">İlk kurulumu başlat</string>
     <string name="settings_library">Kitaplık</string>
+    <string name="settings_watch_later_cleanup">Sonra İzle temizliği</string>
+    <string name="settings_watch_later_cleanup_desc">İzlenen videoları Sonra İzle listesinden kaldır</string>
     <string name="settings_library_sections">Kitaplık bölümleri</string>
     <string name="settings_library_slots">Kitaplık alanları</string>
     <string name="settings_license">Lisans</string>

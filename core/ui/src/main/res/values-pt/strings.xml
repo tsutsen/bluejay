@@ -238,6 +238,8 @@ Sem mensagens desde que entrou.</string>
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">Iniciar configuração inicial</string>
     <string name="settings_library">Biblioteca</string>
+    <string name="settings_watch_later_cleanup">Limpeza de Assistir mais tarde</string>
+    <string name="settings_watch_later_cleanup_desc">Remover vídeos assistidos de Assistir mais tarde</string>
     <string name="settings_library_sections">Secções da biblioteca</string>
     <string name="settings_library_slots">Espaços da biblioteca</string>
     <string name="settings_license">Licença</string>

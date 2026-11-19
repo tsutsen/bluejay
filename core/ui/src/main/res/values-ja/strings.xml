@@ -238,6 +238,8 @@
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">初期設定を開始</string>
     <string name="settings_library">ライブラリ</string>
+    <string name="settings_watch_later_cleanup">後で見るのクリーンアップ</string>
+    <string name="settings_watch_later_cleanup_desc">視聴済みの動画を「後で見る」から削除します</string>
     <string name="settings_library_sections">ライブラリのセクション</string>
     <string name="settings_library_slots">ライブラリのスロット</string>
     <string name="settings_license">ライセンス</string>

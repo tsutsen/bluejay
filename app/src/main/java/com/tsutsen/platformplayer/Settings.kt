@@ -296,6 +296,9 @@ class Settings {
     class OtherSettings {
         var shouldClearWebviewCookies: Boolean = false
         var watchLaterAddStart: Boolean = false
+
+        // Remove watched videos from the Watch Later library slot automatically.
+        var watchLaterAutoCleanup: Boolean = false
         var playlistAllowDups: Boolean = false
 
         // Dock tab keys in display order (Settings > Content > Dock).

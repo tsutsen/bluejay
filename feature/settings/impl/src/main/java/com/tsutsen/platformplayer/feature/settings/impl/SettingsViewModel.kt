@@ -355,6 +355,10 @@ class SettingsViewModel
             viewModelScope.launch { settingsRepository.setSubscriptionsOrder(order) }
         }
 
+        fun setWatchLaterAutoCleanup(enabled: Boolean) {
+            viewModelScope.launch { settingsRepository.setWatchLaterAutoCleanup(enabled) }
+        }
+
         fun setLibrarySectionOrder(order: List<String>) {
             viewModelScope.launch { settingsRepository.updateLibrarySectionOrder(order) }
         }

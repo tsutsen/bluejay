@@ -238,6 +238,8 @@ Nessun messaggio da quando sei entrato.</string>
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">Avvia configurazione iniziale</string>
     <string name="settings_library">Libreria</string>
+    <string name="settings_watch_later_cleanup">Pulizia di Guarda più tardi</string>
+    <string name="settings_watch_later_cleanup_desc">Rimuovi i video guardati da Guarda più tardi</string>
     <string name="settings_library_sections">Sezioni della libreria</string>
     <string name="settings_library_slots">Slot della libreria</string>
     <string name="settings_license">Licenza</string>

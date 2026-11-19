@@ -56,6 +56,7 @@ import com.tsutsen.platformplayer.core.designsystem.icon.Download
 import com.tsutsen.platformplayer.core.designsystem.icon.DualScreen
 import com.tsutsen.platformplayer.core.designsystem.icon.SplitscreenBottom
 import com.tsutsen.platformplayer.core.designsystem.icon.VideoTemplate
+import androidx.compose.material.icons.filled.AutoDelete
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -311,13 +312,15 @@ internal fun SectionItems(
                         reset =
                             if (
                                 state.prefs.librarySectionOrder != defaults.librarySectionOrder ||
-                                state.prefs.librarySectionsEnabled != defaults.librarySectionsEnabled
+                                state.prefs.librarySectionsEnabled != defaults.librarySectionsEnabled ||
+                                state.prefs.other.watchLaterAutoCleanup != defaults.other.watchLaterAutoCleanup
                             ) {
                                 {
                                     viewModel.setLibrarySectionOrder(defaults.librarySectionOrder)
                                     viewModel.setLibrarySectionsEnabled(
                                         defaults.librarySectionsEnabled,
                                     )
+                                    viewModel.setWatchLaterAutoCleanup(defaults.other.watchLaterAutoCleanup)
                                 }
                             } else {
                                 null
@@ -328,6 +331,15 @@ internal fun SectionItems(
                         title = stringResource(R.string.settings_library_sections),
                         subtitle = stringResource(R.string.settings_order_and_visibility_of_sections_on_the_library_screen),
                         onClick = { onChoiceSelected(Choice.LIBRARY_SECTION_ORDER) },
+                        groupPosition = GroupPosition.First,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.AutoDelete,
+                        title = stringResource(R.string.settings_watch_later_cleanup),
+                        subtitle = stringResource(R.string.settings_watch_later_cleanup_desc),
+                        checked = state.prefs.other.watchLaterAutoCleanup,
+                        onCheckedChange = { viewModel.setWatchLaterAutoCleanup(it) },
+                        groupPosition = GroupPosition.Last,
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Tokens.SpaceXs)) {

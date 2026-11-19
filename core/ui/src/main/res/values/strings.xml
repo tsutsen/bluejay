@@ -245,6 +245,8 @@
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">Launch initial setup</string>
     <string name="settings_library">Library</string>
+    <string name="settings_watch_later_cleanup">Watch Later cleanup</string>
+    <string name="settings_watch_later_cleanup_desc">Remove watched videos from Watch Later</string>
     <string name="settings_library_sections">Library sections</string>
     <string name="settings_library_slots">Library slots</string>
     <string name="settings_license">License</string>

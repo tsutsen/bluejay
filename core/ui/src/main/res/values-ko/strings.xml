@@ -238,6 +238,8 @@
     <string name="settings_inter">Inter</string>
     <string name="settings_launch_initial_setup">초기 설정 시작</string>
     <string name="settings_library">라이브러리</string>
+    <string name="settings_watch_later_cleanup">나중에 보기 정리</string>
+    <string name="settings_watch_later_cleanup_desc">시청한 동영상을 나중에 보기에서 삭제합니다</string>
     <string name="settings_library_sections">라이브러리 섹션</string>
     <string name="settings_library_slots">라이브러리 슬롯</string>
     <string name="settings_license">라이선스</string>
