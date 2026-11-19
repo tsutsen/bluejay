@@ -104,12 +104,44 @@ class StateBackup {
             0x11.toByte(), 0x22.toByte(), 0x33.toByte(), 0x44.toByte()
         )
 
+        private val BUFFER = ByteArray(16384)
+
+        // magic(4) + marker(2) + formatVersion + flags
+        private const val AUTO_HEADER_SIZE = 8
+
         private val AUTO_MARKER = byteArrayOf(
             'G'.code.toByte(), 'J'.code.toByte()
         )
 
         private const val AUTO_FORMAT_VERSION: Byte = 1
         private const val FLAG_ENCRYPTED: Byte = 0x01
+        private const val TEMP_BACKUP_NAME = "BluejayBackup.ezip.tmp"
+
+        /**
+         * Validates a freshly written auto-backup by reading it back from
+         * disk: the auto-backup header must be intact and the embedded zip
+         * must enumerate at least one entry with readable content. Throws on
+         * any failure so the caller keeps the previous backup file.
+         */
+        private fun verifyAutoBackupBytes(bytes: ByteArray, destination: DocumentFile) {
+            if (bytes.size < AUTO_HEADER_SIZE)
+                throw IllegalStateException("Auto-backup too small (${bytes.size} bytes) [${destination.uri}]");
+            if (!bytes.hasNewAutoHeader())
+                throw IllegalStateException("Auto-backup header invalid [${destination.uri}]");
+            var entries = 0;
+            ByteArrayInputStream(bytes, AUTO_HEADER_SIZE, bytes.size - AUTO_HEADER_SIZE).use { input ->
+                ZipInputStream(input).use { zip ->
+                    while (zip.nextEntry != null) {
+                        // Drain the entry so CRC/size checks actually run.
+                        while (zip.read(BUFFER) != -1) { };
+                        entries++;
+                    }
+                }
+            }
+            if (entries == 0)
+                throw IllegalStateException("Auto-backup zip has no entries [${destination.uri}]");
+            Logger.i(TAG, "Auto-backup verified: ${bytes.size} bytes, ${entries} entries [${destination.uri}]");
+        }
 
         private fun ByteArray.startsWithZipSignature(): Boolean =
             this.size >= 2 && this[0] == 0x50.toByte() && this[1] == 0x4B.toByte()
@@ -135,6 +167,13 @@ class StateBackup {
             val mainBackupFile = dir.findFile("BluejayBackup.ezip") ?: if(create) dir.createFile("bluejay/ezip", "BluejayBackup.ezip") else null;
             val secondaryBackupFile = dir.findFile("BluejayBackup.ezip.old") ?: if(create) dir.createFile("bluejay/ezip", "BluejayBackup.ezip.old") else null;
             return Pair(mainBackupFile, secondaryBackupFile);
+        }
+        private fun getAutomaticBackupTempFile(context: Context): DocumentFile? {
+            if(!SettingsRepositoryImpl.instance.preferences.value.storage.isStorageMainValid)
+                return null;
+            val uri = SettingsRepositoryImpl.instance.preferences.value.storage.storageGeneralUri ?: return null;
+            val dir = DocumentFile.fromTreeUri(context, uri) ?: return null;
+            return dir.findFile(TEMP_BACKUP_NAME) ?: dir.createFile("bluejay/ezip", TEMP_BACKUP_NAME);
         }
         fun getAllMigrationStores(): List<ManagedStore<*>> = listOf(
             StateSubscriptions.instance.toMigrateCheck(),
@@ -197,7 +236,20 @@ class StateBackup {
                             if (exportFile?.exists() == true && backupFiles.second != null)
                                 exportFile.copyTo(context, backupFiles.second!!);
                             val backupBytes = AUTO_MAGIC + AUTO_MARKER + byteArrayOf(AUTO_FORMAT_VERSION, 0x00.toByte()) + zip
-                            exportFile!!.writeBytes(context, backupBytes)
+                            // Write-verify-swap: write to a temp document, read it
+                            // back and verify, and only then promote it to the main
+                            // backup. A failed write must never overwrite the last
+                            // good backup with a truncated/corrupt one.
+                            val tempFile = getAutomaticBackupTempFile(context);
+                            if (tempFile == null) throw IllegalStateException("Could not create temp backup file [$TEMP_BACKUP_NAME]");
+                            try {
+                                tempFile.writeBytes(context, backupBytes);
+                                val written = tempFile.readBytes(context) ?: throw IllegalStateException("Could not read back temp backup [$TEMP_BACKUP_NAME]");
+                                verifyAutoBackupBytes(written, exportFile!!);
+                                exportFile.writeBytes(context, backupBytes);
+                            } finally {
+                                runCatching { tempFile.delete() };
+                            }
 
                             backupWritten = true
                         }
@@ -424,6 +476,9 @@ class StateBackup {
             // builds — without these the backup carries no playlist data.
             try {
                 val db = AppDatabaseProvider.get(StateApp.instance.context);
+                // Fold any transactions still in the WAL into the main db file
+                // before reading, so the backup cannot miss recent rows.
+                AppDatabaseProvider.checkpointWal(StateApp.instance.context);
                 val saved = withContext(Dispatchers.IO) { db.savedVideoDao().getAll() };
                 val playlists = withContext(Dispatchers.IO) { db.playlistDao().getAll() };
                 Logger.i(TAG, "Room library export: savedVideos=${saved.size} playlists=${playlists.size}");
@@ -473,6 +528,12 @@ class StateBackup {
             val cache = getCache(historyVideos ?: listOf());
 
             val export = ExportStructure(exportInfo, settings, storesToSave, pluginUrls, pluginSettings, cache);
+
+            // "Backup now" summary: what went into this zip, with per-table
+            // row counts, so a future data-loss incident can be diagnosed
+            // from logs alone.
+            val counts = storesToSave.entries.joinToString(", ") { "${it.key}=${it.value.size}" };
+            Logger.i(TAG, "Backup summary: ${counts}, plugins=${pluginSettings.size}, settings=${if (settings != null) "yes" else "no"}");
 
             return export;
         }
@@ -544,6 +605,9 @@ class StateBackup {
                         scope.launch(Dispatchers.Main) { progress.setText(text); }
                     }
                     try {
+                        // Fold WAL into the main file before the import reads
+                        // (getByName) and writes (upsert/insert) Room data.
+                        AppDatabaseProvider.checkpointWal(context);
                         if (options.importSettings && export.settings != null) {
                             Logger.i(TAG, "Importing settings");
                             step("Importing settings..");
