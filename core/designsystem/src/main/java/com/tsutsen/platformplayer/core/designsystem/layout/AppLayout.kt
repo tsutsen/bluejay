@@ -601,20 +601,21 @@ fun AppLayout(
                 // the bottom edge as the slot shrinks (no content squeeze);
                 // reads are deferred into layout/draw, so no per-frame
                 // recomposition.
-                // Respect the system bottom nav bar (edge-to-edge):
-                // without this the dock slides underneath it in portrait.
-                val navBarBottom = with(density) { WindowInsets.systemBars.getBottom(density).toDp() }
                 Box(
                     modifier =
                         Modifier
-                            .padding(bottom = navBarBottom)
                             .layout { measurable, constraints ->
+                                // Respect the system bottom nav bar (edge-to-edge):
+                                // the slot grows by the inset and the bar rests on top
+                                // of it, still sliding off the bottom edge when the
+                                // player morphs to fullscreen.
+                                val navBarBottomPx = WindowInsets.systemBars.getBottom(this)
                                 val slot =
                                     (DockExpandedHeight.toPx() *
                                         (1f - DockChromeProgress.fullscreen.coerceIn(0f, 1f)))
-                                        .roundToInt()
+                                        .roundToInt() + navBarBottomPx
                                 val placeable = measurable.measure(constraints)
-                                layout(placeable.width, slot) { placeable.place(0, 0) }
+                                layout(placeable.width, slot) { placeable.place(0, navBarBottomPx) }
                             }
                             .graphicsLayer {
                                 alpha = 1f - DockChromeProgress.fullscreen.coerceIn(0f, 1f)
