@@ -24,6 +24,7 @@ So, here, you can expect pretty much everything you see in Grayjay but with a mo
 And there are some unique things as well:
 
 - **Second screen** of your Android device can now control playback, show stats, comments, queues, recommended videos, your pinned playlists, and home feed
+- **Homebrew recommendations** for custom home feed without logging into any online accounts
 - Proper **landscape** mode support
 - Light and dark mode and custom color **themes**
 - Customizable **gesture** controls

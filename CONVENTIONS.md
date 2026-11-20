@@ -35,9 +35,6 @@ bluejay/
 │   ├── designsystem/             # Shared Compose components
 │   ├── model/                    # Domain models
 │   ├── navigation/               # Navigation graph & destinations
-│   ├── notifications/            # Notification handling
-│   ├── sync/                     # Sync service
-│   ├── testing/                  # Test utilities
 │   └── ui/                       # UI utilities
 └── feature/                      # Feature modules
     └── <name>/                   # Each feature has its own module
@@ -94,7 +91,10 @@ package com.tsutsen.platformplayer.feature.home
 package com.tsutsen.platformplayer.feature.settings
 ```
 
-**Note:** Do NOT include `.impl` in the package name. The `/impl/` directory is for build structure only.
+**Note:** The `.impl` suffix IS included in the package name to match the directory structure:
+```kotlin
+package com.tsutsen.platformplayer.feature.home.impl
+```
 
 ### Core Modules
 
@@ -768,15 +768,13 @@ docs(conventions): add conventions document
 
 ### Phase 1: Structural (High Priority)
 
-1. Move `feature/dualscreen/src/` to `feature/dualscreen/impl/src/`
-2. Update package declarations to remove `.impl` suffix
-3. Move repository impls from `app/di/` to `core/data/repository/impl/`
+1. Move remaining repository impls from `app/di/` to `core/data/repository/impl/` (8 files still in `app/di/`)
 
 ### Phase 2: Naming (Medium Priority)
 
-1. Rename `I*` interfaces to remove prefix
-2. Rename `MetaData` → `Metadata`
-3. Standardize UI state to `sealed interface`
+1. Rename `I*` interfaces in `app/.../api/media/` to remove prefix (60 files, legacy plugin API)
+2. Rename `MetaData` → `Metadata` (13 files)
+3. UI state already uses `sealed interface` consistently ✓
 
 ### Phase 3: Architecture (Low Priority)
 
@@ -786,5 +784,5 @@ docs(conventions): add conventions document
 
 ---
 
-*Last updated: 2026-07-29*
+*Last updated: 2026-11-20*
 *Owner: Bluejay Core Team*
