@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Hd
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircle
@@ -162,6 +163,15 @@ internal fun SectionItems(
                             viewModel.updateGeneral("uiRounding", it.roundToInt())
                         },
                         groupPosition = GroupPosition.Middle,
+                    )
+                    SettingsSwitchCard(
+                        icon = Icons.Filled.Language,
+                        title = stringResource(R.string.settings_localization),
+                        subtitle = stringResource(R.string.settings_localization_disabled_desc),
+                        checked = false,
+                        onCheckedChange = {},
+                        groupPosition = GroupPosition.Middle,
+                        enabled = false,
                     )
                     SettingsOptionCard(
                         icon = Icons.Filled.TextFields,

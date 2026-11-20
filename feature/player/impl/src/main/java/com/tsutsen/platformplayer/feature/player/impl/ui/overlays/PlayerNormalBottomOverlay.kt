@@ -118,12 +118,46 @@ internal fun PlayerNormalBottomOverlay(
     val effectivePositionMs =
         pendingSeekMs ?: seekPreviewMs ?: (if (isScrubbing) scrubPositionMs else currentPositionMs)
 
-    Column(
+    val currentChapter = chapters.lastOrNull { it.startTimeMs <= effectivePositionMs }
+    // Narrow (portrait) widths: the chapter title gets squeezed between the
+    // transport buttons and the time, so it moves to its own row above.
+    BoxWithConstraints(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
     ) {
+        val hoistChapter = maxWidth < 480.dp
+        Column {
+        if (hoistChapter && currentChapter != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                        .then(
+                            if (chapters.isNotEmpty()) {
+                                Modifier.expressiveClickable(onClick = onChapters)
+                            } else Modifier,
+                        ),
+            ) {
+                Text(
+                    text = currentChapter.title,
+                    color = Color.White.copy(alpha = 0.9f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = stringResource(R.string.player_chapters),
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(Tokens.IconSm),
+                )
+            }
+        }
         // Controls row
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -164,42 +198,45 @@ internal fun PlayerNormalBottomOverlay(
                     tint = Color.White,
                 )
             }
-            // Current chapter title fills the space left of the time text.
-            // Tapping it opens the chapters list (the former dedicated
-            // button was removed) — the chevron signals clickability.
-            val currentChapter = chapters.lastOrNull { it.startTimeMs <= effectivePositionMs }
-            Box(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .then(
-                            if (chapters.isNotEmpty()) {
-                                Modifier.expressiveClickable(onClick = onChapters)
-                            } else Modifier,
-                        ),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                if (currentChapter != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = currentChapter.title,
-                            color = Color.White.copy(alpha = 0.9f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier =
-                                Modifier
-                                    .weight(1f, fill = false)
-                                    .padding(horizontal = 8.dp),
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = stringResource(R.string.player_chapters),
-                            tint = Color.White.copy(alpha = 0.8f),
-                            modifier = Modifier.size(Tokens.IconSm),
-                        )
+            // Current chapter title fills the space left of the time text
+            // on wide layouts; on narrow ones it lives in the row above.
+            // Tapping it opens the chapters list — the chevron signals clickability.
+            if (!hoistChapter) {
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .then(
+                                if (chapters.isNotEmpty()) {
+                                    Modifier.expressiveClickable(onClick = onChapters)
+                                } else Modifier,
+                            ),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (currentChapter != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = currentChapter.title,
+                                color = Color.White.copy(alpha = 0.9f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier =
+                                    Modifier
+                                        .weight(1f, fill = false)
+                                        .padding(horizontal = 8.dp),
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = stringResource(R.string.player_chapters),
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(Tokens.IconSm),
+                            )
+                        }
                     }
                 }
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
             Box(
                 modifier = Modifier.height(40.dp),
@@ -368,6 +405,7 @@ internal fun PlayerNormalBottomOverlay(
                             },
                 )
             }
+        }
         }
     }
 }

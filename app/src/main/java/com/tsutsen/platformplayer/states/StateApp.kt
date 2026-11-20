@@ -1018,6 +1018,9 @@ class StateApp {
         }
     }
     fun getLocaleSetting(context: Context?): Locale? {
+        // Localization gated off: translations are auto-generated and need
+        // polish before release. Flip to true to re-enable; code stays.
+        if (!LOCALIZATION_ENABLED) return null;
         return context?.getSharedPreferences("language", Context.MODE_PRIVATE)
                 ?.getString("language", null)
                 ?.let { Locale(it) };
@@ -1030,6 +1033,7 @@ class StateApp {
     }
 
     companion object {
+        const val LOCALIZATION_ENABLED = false;
         private const val MAX_LOG_BYTES = 2L * 1024 * 1024 // 2MB cap, truncated on startup
         private val TAG = "StateApp";
         @SuppressLint("StaticFieldLeak") //This is only alive while MainActivity is alive
